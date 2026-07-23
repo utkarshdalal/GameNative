@@ -61,6 +61,12 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private boolean sceneInitialized = false;
     private final EffectComposer effectComposer;
     private FrameRating frameRating;
+    // Null on every launch except the Meta Quest immersive path — see XrFrameBridge's kdoc.
+    // volatile: set from a background capture thread, read from the GL render thread — see the
+    // identical field in VulkanRenderer for why a plain field is a real cross-thread visibility
+    // bug here, not just a theoretical one (confirmed: the equivalent Vulkan bridge never fired
+    // despite attaching successfully, until this was added there).
+    private volatile XrFrameBridge xrFrameBridge = null;
 
     public GLRenderer(XServerViewGL xServerView, XServer xServer) {
         this.xServerView = xServerView;
@@ -148,8 +154,20 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     void drawScene() {
+        // xrFrameBridge is null on every launch except the Quest immersive path (see
+        // XrFrameBridge's kdoc) — beginFrame() binds its own FBO (wrapping a GPU buffer the
+        // immersive session samples directly, no CPU readback needed) and reports the
+        // resolution to render at; null means it didn't bind anything, so rendering proceeds
+        // into whatever's already bound (the SurfaceView's own surface) exactly as if this
+        // bridge didn't exist at all.
         boolean xrFrame = false;
-        // if (XrActivity.isSupported()) xrFrame = XrActivity.getInstance().beginFrame(XrActivity.getImmersive(), XrActivity.getSBS());
+        if (xrFrameBridge != null) {
+            int[] xrTargetSize = xrFrameBridge.beginFrame();
+            if (xrTargetSize != null) {
+                xrFrame = true;
+                setRenderTargetSizeOverride(xrTargetSize[0], xrTargetSize[1]);
+            }
+        }
 
         int targetWidth = renderTargetWidthOverride > 0 ? renderTargetWidthOverride : surfaceWidth;
         int targetHeight = renderTargetHeightOverride > 0 ? renderTargetHeightOverride : surfaceHeight;
@@ -222,8 +240,10 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         if ((!magnifierEnabled && !fullscreen) || renderingToOffscreenTarget) GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
 
         if (xrFrame) {
-            // XrActivity.getInstance().endFrame();
-            // XrActivity.updateControllers();
+            xrFrameBridge.endFrame();
+            // GLSurfaceView normally only redraws when something changes (RENDERMODE_WHEN_DIRTY)
+            // — the immersive session needs a continuous stream of frames regardless, same as
+            // GameNativeXR drives its own render loop this way.
             xServerView.requestRender();
         }
     }
@@ -339,6 +359,13 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     public void setOnFrameRenderedListener(Runnable onFrameRenderedListener) {
         this.onFrameRenderedListener = onFrameRenderedListener;
+    }
+
+    /** See {@link XrFrameBridge}. Pass null to detach (e.g. when leaving immersive mode). */
+    public void setXrFrameBridge(XrFrameBridge xrFrameBridge) {
+        this.xrFrameBridge = xrFrameBridge;
+        viewportNeedsUpdate = true;
+        xServerView.requestRender();
     }
 
     private Drawable createRootCursorDrawable() {

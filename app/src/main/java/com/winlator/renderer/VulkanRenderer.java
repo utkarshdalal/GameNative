@@ -66,6 +66,16 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private Drawable rootCursorDrawable;
     private Cursor lastCursor = null;
     private boolean xRenderingPausedForScanout = false;
+    // volatile: set from ImmersiveXrActivity's own background capture thread, read from
+    // whichever thread drives onUpdateWindowContentDirect (a real gamepad/game-rendering
+    // thread, not that capture thread) — without this the write may never become visible on the
+    // other thread at all (the JIT is free to cache the field's value once the read loop is hot).
+    private volatile VulkanXrFrameBridge xrFrameBridge = null;
+
+    /** See VulkanXrFrameBridge's kdoc — null except for the Meta Quest immersive path. */
+    public void setVulkanXrFrameBridge(VulkanXrFrameBridge xrFrameBridge) {
+        this.xrFrameBridge = xrFrameBridge;
+    }
 
     private volatile ArrayList<RenderableWindow> renderableWindows = new ArrayList<>();
     private static final java.util.concurrent.atomic.AtomicLong ID_GEN =
@@ -450,6 +460,15 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                             rx, ry, pixmap.width, pixmap.height, fenceFd);
                         g.lock();
                     } else {
+                        // THIS is the method PresentExtension actually calls for every real
+                        // DXVK/Vulkan frame present (see PresentExtension.java's pixmapPresent —
+                        // it routes VulkanRenderer specifically to onUpdateWindowContentDirect,
+                        // not onUpdateWindowContent, which an earlier version of this hook was
+                        // wrongly placed in and confirmed via logging to never be called at all
+                        // for this renderer/path). This is the one live per-frame call site.
+                        if (xrFrameBridge != null) {
+                            xrFrameBridge.onScanoutBuffer(ahbPtr, pixmap.width, pixmap.height);
+                        }
                         nativeUpdateWindowContentAHB(nativeHandle, targetId, ahbPtr,
                             pixmap.width, pixmap.height, rx, ry);
                     }
@@ -506,6 +525,11 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                             xRenderingPausedForScanout = true;
                         }
                     } else if (!scanoutNow) {
+                        // No XR bridge hook here (an earlier version had one) — confirmed via
+                        // logging that this method is never even called for a real DXVK/Vulkan
+                        // game: PresentExtension routes frame presents for VulkanRenderer to
+                        // onUpdateWindowContentDirect below instead (see its own kdoc), not here.
+                        // This one only runs for other WindowManager listener callbacks.
                         nativeUpdateWindowContentAHB(handle, drawableId, ahbPtr,
                             drawable.width, drawable.height, rx, ry);
                     }
@@ -753,6 +777,19 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             || pendingContrast != 0.0f
             || Math.abs(pendingGamma - 1.0f) > 1e-3f
             || pendingFilterMode != 0;
+    }
+
+    /** Whether any active effect/filter/color adjustment is currently forcing the compositor
+     * path, blocking the zero-copy scanout fast-path. See {@link #resetScreenEffects()}. */
+    public boolean isEffectsRequireCompositor() { return effectsRequireCompositor; }
+
+    /** Turns off every effect, filter, and color adjustment (back to defaults), letting scanout
+     * re-establish itself if nothing else is blocking it. Used by the immersive quick-menu tab's
+     * "reset" action — screen effects are the single most common reason a user would otherwise
+     * need to hunt through several unrelated settings to get the zero-copy path back. */
+    public void resetScreenEffects() {
+        setFilterMode(0);
+        setEffect(EFFECT_NONE, 0.0f, SCALE_FIT, 0, 0.0f, 0.0f, 1.0f);
     }
     public int getEffectId() { return pendingEffectId; }
     public float getSharpness() { return pendingSharpness; }

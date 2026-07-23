@@ -1,6 +1,7 @@
 package app.gamenative.ui.component
 
 import android.view.KeyEvent
+import timber.log.Timber
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
@@ -56,6 +57,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -63,7 +65,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +81,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -122,6 +129,7 @@ private object QuickMenuTab {
     const val EFFECTS = 2
     const val CONTROLLER = 3
     const val TOOLS = 4
+    const val IMMERSIVE = 5
     const val INVITE = 6
     const val POWER = 7
 }
@@ -240,6 +248,35 @@ private fun matchesPerformanceHudPreset(
 // fpsLimiterSteps / fpsLimiterCurrentIndex / fpsLimiterProgress /
 // nextFpsLimiterValue / previousFpsLimiterValue live in FpsLimiterUtils.kt
 
+/**
+ * Lets ANY quick-menu row — no matter how deeply nested, in this file or any other — report its
+ * own gamepad interaction to the Meta Quest immersive activity, without threading a dedicated
+ * parameter through every intermediate composable in between (the previous approach: adding a
+ * new callback param to QuickMenuAdjustmentRow, then to its tab wrapper, then to QuickMenu itself,
+ * then to every call site — for every single row that needed it. A new row buried in some future
+ * tab would need the SAME threading redone by hand, easy to forget).
+ *
+ * Exists because normal Android/Compose gamepad input (real hardware, real KeyEvents) already
+ * works correctly for every existing row with zero extra code — this is ONLY needed because the
+ * immersive activity's Quest-Touch-controller input is synthetic and confirmed, repeatedly this
+ * session, to never reach Compose's own key dispatch or default click-on-focused-view behavior in
+ * that Activity. [QuickMenu] provides the real implementation (backed by state it forwards to
+ * ImmersiveXrActivity via registerAdjustmentControl/registerFocusedActivate); everywhere else —
+ * i.e. normal 2D panel mode — gets the no-op default below, so a row that reports itself here
+ * costs nothing and needs no `if (immersive)` branching of its own.
+ */
+class ImmersiveInputBypass(
+    // Reports (onDecrease, onIncrease) while a row is both focused and lock-toggled (A to lock,
+    // DPAD_LEFT/RIGHT to adjust, B or losing focus to unlock) — for slider-style rows.
+    val reportAdjustment: (Pair<() -> Unit, () -> Unit>?) -> Unit,
+    // Reports a row's own click/select action while it's focused — for plain radio/toggle rows
+    // that only need a single BUTTON_A/DPAD_CENTER press to activate.
+    val reportActivate: ((() -> Unit)?) -> Unit,
+)
+val LocalImmersiveInputBypass = staticCompositionLocalOf {
+    ImmersiveInputBypass(reportAdjustment = {}, reportActivate = {})
+}
+
 @Composable
 fun QuickMenu(
     isVisible: Boolean,
@@ -274,11 +311,73 @@ fun QuickMenu(
     onLsfgMultiplierChanged: (Int) -> Unit = {},
     onLsfgFlowScaleChanged: (Float) -> Unit = {},
     onLsfgPerformanceModeChanged: (Boolean) -> Unit = {},
+    // Immersive tab — only shown when non-null (i.e. hosted by ImmersiveXrActivity)
+    immersiveControls: app.gamenative.ui.screen.xr.ImmersiveControls? = null,
     onAnimationComplete: (Boolean) -> Unit = {},
     /** Lets the menu open itself when the running game asks for its Steam invite dialog. */
     onRequestOpen: () -> Unit = {},
+    // Hands the live FocusManager up to the caller — see its call site's kdoc for why:
+    // dispatching synthetic dpad KeyEvents through Activity.dispatchKeyEvent() turned out to
+    // never reach Compose's key/focus dispatch at all in the immersive activity (confirmed via
+    // logging: dispatchKeyEvent() gets called and returns false, but nothing here ever sees the
+    // event — some other Android View still holds real view-level focus). Calling
+    // FocusManager.moveFocus() directly bypasses that whole broken path.
+    registerFocusManager: ((androidx.compose.ui.focus.FocusManager) -> Unit)? = null,
+    // Same bypass, for the tab rail specifically: LB/RB tab-cycling used to go through
+    // dispatchMenuKeyEvent (KEYCODE_BUTTON_L1/R1) into the SAME broken KeyEvent path — this hands
+    // up a direct "cycle forward/backward through the tabs actually shown right now" action
+    // instead, called straight from ImmersiveXrActivity's LB/RB handling.
+    registerCycleTab: ((Boolean) -> Unit) -> Unit = {},
+    // Same bypass again, for a locked QuickMenuAdjustmentRow's left/right slider drag: arrow-key
+    // movement already skips Compose's key dispatch entirely for this Activity (moveMenuFocus
+    // calls FocusManager.moveFocus() directly, see registerFocusManager's kdoc above) — which
+    // means a locked slider's own onPreviewKeyEvent (listening for DPAD_LEFT/RIGHT) never sees
+    // those presses either, since moveFocus fires first and moves focus away mid-adjustment
+    // instead. Registers a live getter for "is some row currently locked, and if so its
+    // decrease/increase actions" so ImmersiveXrActivity can drive it directly, the same way it
+    // drives tab cycling and focus movement.
+    registerAdjustmentControl: (() -> Pair<() -> Unit, () -> Unit>?) -> Unit = {},
+    // Same bypass again, for LEFT specifically: FocusManager.moveFocus(Left) reaching the tab
+    // rail from tab content turned out to depend on the focused row's vertical position lining
+    // up with a rail icon in Compose's spatial search heuristic — it worked from some rows and
+    // not others, confirmed by comparing logs from a session where it worked against one where it
+    // didn't. A direct requestFocus() on the CURRENTLY SELECTED tab's own rail button is
+    // reliable regardless of where in the content focus currently is, same as registerCycleTab.
+    registerFocusTabRail: (() -> Unit) -> Unit = {},
+    // Same bypass again, for a plain radio/selectable row that only reacts to BUTTON_A/DPAD_CENTER
+    // (e.g. ScreenEffectsPanel's scaling-mode rows): relying on Android's default "click whatever
+    // holds real view focus" behavior for that key turned out to be exactly as unreliable here as
+    // it was for the tab rail and adjustment-row lock — confirmed via logs showing scaling-mode
+    // selection simply not registering in the immersive activity despite Compose showing the row
+    // as focused. Registers a live getter for "is some row focused right now that just wants a
+    // plain activate on A, and if so its action" so ImmersiveXrActivity can invoke it directly.
+    registerFocusedActivate: (() -> (() -> Unit)?) -> Unit = {},
+    // Receives the Menu/Start button's physical-hold state, pushed live from
+    // ImmersiveXrActivity's native polling. While true, this Composable's own onPreviewKeyEvent
+    // consumes any key event it sees — Horizon OS's own gamepad input dispatch generates real
+    // Android KeyEvents (DPAD_CENTER/BUTTON_A/BUTTON_START) while that button is physically held,
+    // a completely separate path from the immersive activity's OpenXR-polling-driven bypasses,
+    // which has no visibility into or control over it.
+    registerStartHeld: ((Boolean) -> Unit) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(registerFocusManager) {
+        registerFocusManager?.invoke(focusManager)
+    }
+    val focusTabRailScope = rememberCoroutineScope()
+    var activeAdjustment by remember { mutableStateOf<Pair<() -> Unit, () -> Unit>?>(null) }
+    var activeRadioActivate by remember { mutableStateOf<(() -> Unit)?>(null) }
+    LaunchedEffect(Unit) {
+        registerFocusedActivate { activeRadioActivate }
+    }
+    var startHeld by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        registerStartHeld { startHeld = it }
+    }
+    LaunchedEffect(Unit) {
+        registerAdjustmentControl { activeAdjustment }
+    }
     val exitGameItem = QuickMenuItem(
         id = QuickMenuAction.EXIT_GAME,
         icon = Icons.AutoMirrored.Filled.ExitToApp,
@@ -364,6 +463,7 @@ fun QuickMenu(
                 PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.POWER && !isPowerControlAvailable -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.IMMERSIVE && immersiveControls == null -> QuickMenuTab.HUD
                 else -> PrefManager.quickMenuLastTab
             }
         )
@@ -375,6 +475,7 @@ fun QuickMenu(
         QuickMenuTab.TOOLS -> R.string.task_manager
         QuickMenuTab.INVITE -> R.string.steam_invite_tab_title
         QuickMenuTab.POWER -> R.string.power_control
+        QuickMenuTab.IMMERSIVE -> R.string.quick_menu_tab_immersive
         else -> R.string.quick_menu_tab_controller
     }
 
@@ -413,6 +514,9 @@ fun QuickMenu(
         }
     }
     val powerItemFocusRequester = remember { FocusRequester() }
+    val immersiveScrollState = rememberScrollState()
+    val immersiveTabFocusRequester = remember { FocusRequester() }
+    val immersiveItemFocusRequester = remember { FocusRequester() }
 
     val visibleState = remember { MutableTransitionState(false) }
     visibleState.targetState = isVisible
@@ -427,7 +531,120 @@ fun QuickMenu(
         onDismiss()
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    // Only the tabs actually shown in the rail, in on-screen order — mirrors the conditions each
+    // QuickMenuTabButton below is gated on (isLsfgAvailable, a renderer being available, etc).
+    val availableTabs = remember(isLsfgAvailable, renderer, glRenderer, immersiveControls) {
+        buildList {
+            add(QuickMenuTab.HUD)
+            if (isLsfgAvailable) add(QuickMenuTab.LSFG)
+            if (renderer != null || glRenderer != null) add(QuickMenuTab.EFFECTS)
+            add(QuickMenuTab.CONTROLLER)
+            add(QuickMenuTab.TOOLS)
+            if (immersiveControls != null) add(QuickMenuTab.IMMERSIVE)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        registerFocusTabRail {
+            val requester = when (selectedTab) {
+                QuickMenuTab.HUD -> hudTabFocusRequester
+                QuickMenuTab.LSFG -> lsfgTabFocusRequester
+                QuickMenuTab.EFFECTS -> effectsTabFocusRequester
+                QuickMenuTab.CONTROLLER -> controllerTabFocusRequester
+                QuickMenuTab.TOOLS -> toolsTabFocusRequester
+                QuickMenuTab.IMMERSIVE -> immersiveTabFocusRequester
+                else -> null
+            }
+            if (requester == null) return@registerFocusTabRail
+            // A single attempt genuinely failed in practice — "FocusRequester is not
+            // initialized" thrown for the rail button's own requester, confirmed via logging —
+            // meaning the rail wasn't done composing/attaching yet at that exact instant. The
+            // OTHER requestFocus call site in this file (content-item focus on tab switch)
+            // already retries 3x for the identical reason; this one previously didn't, so a
+            // single mistimed LEFT press silently did nothing instead of retrying like that one.
+            focusTabRailScope.launch {
+                repeat(3) { attempt ->
+                    try {
+                        requester.requestFocus()
+                        Timber.i("QuickMenu: requestFocusTabRail succeeded for tab=%s on attempt=%d", selectedTab, attempt)
+                        return@launch
+                    } catch (e: IllegalStateException) {
+                        Timber.w(e, "QuickMenu: requestFocusTabRail failed for tab=%s on attempt=%d", selectedTab, attempt)
+                        delay(80)
+                    }
+                }
+                Timber.w("QuickMenu: requestFocusTabRail never succeeded for tab=%s after 3 attempts", selectedTab)
+            }
+        }
+    }
+
+    LaunchedEffect(availableTabs) {
+        registerCycleTab { forward ->
+            val currentIndex = availableTabs.indexOf(selectedTab).takeIf { it >= 0 } ?: 0
+            val nextTab = if (forward) {
+                availableTabs[(currentIndex + 1) % availableTabs.size]
+            } else {
+                availableTabs[(currentIndex - 1 + availableTabs.size) % availableTabs.size]
+            }
+            selectedTab = nextTab
+            PrefManager.quickMenuLastTab = nextTab
+        }
+    }
+
+    CompositionLocalProvider(
+        LocalImmersiveInputBypass provides ImmersiveInputBypass(
+            reportAdjustment = { activeAdjustment = it },
+            reportActivate = { activeRadioActivate = it },
+        ),
+    ) {
+    Box(
+        modifier = modifier.fillMaxSize()
+            // Directly cycling tabs on the shoulder buttons, instead of relying on Compose's
+            // directional (dpad) focus search to cross from the content pane into the separate
+            // tab-rail column, sidesteps a real reported problem: users couldn't reach the rail
+            // ("les categories") via dpad-left at all once focus was inside a tab's content —
+            // same LB/RB pattern as a real console dashboard's tab switching, and it works
+            // regardless of where focus currently is or how the two panes are laid out.
+            .onPreviewKeyEvent { keyEvent ->
+                // Real KeyEvent.KEYCODE_BUTTON_START/DPAD_CENTER/BUTTON_A events reach here
+                // through Android's own gamepad input dispatch while the Menu/Start button is
+                // physically held — a completely separate path from the immersive activity's
+                // native OpenXR polling/bypass mechanism, which has no visibility into or control
+                // over it. Left unconsumed, Android's key-fallback mechanism re-dispatches
+                // BUTTON_START as KEYCODE_DPAD_CENTER — the "click the focused element" behavior
+                // reported as "Start acts like the A button" (toggling the HUD/FPS limiter,
+                // unlocking a locked adjustment row, etc., purely from holding Start).
+                // registerStartHeld's level state covers this for every affected key code, not
+                // just BUTTON_START — consuming everything while it's true, on every action (not
+                // just ACTION_DOWN), blocks the fallback from ever firing while the menu is
+                // visible; Start's actual open/close behavior is handled entirely separately, by
+                // the long-press detector in ImmersiveXrActivity (see toggleQuickMenu).
+                if (isVisible && startHeld) {
+                    return@onPreviewKeyEvent true
+                }
+                if (keyEvent.nativeKeyEvent.action != KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
+                // Fires for ANY key event that reaches this Composable, from wherever focus
+                // currently is, bubbling up through every ancestor on its way here (onPreviewKeyEvent
+                // semantics) — if a dispatched dpad/DPAD_CENTER event never shows up in this log at
+                // all, the event isn't reaching Compose's key/focus dispatch in the first place;
+                // if it DOES show up but focus never visibly moves, the problem is downstream of
+                // here (directional focus search itself, or nothing was focused to move from).
+                Timber.i("QuickMenu: onPreviewKeyEvent keyCode=%d selectedTab=%d", keyEvent.nativeKeyEvent.keyCode, selectedTab)
+                val currentIndex = availableTabs.indexOf(selectedTab).takeIf { it >= 0 } ?: 0
+                val nextTab = when (keyEvent.nativeKeyEvent.keyCode) {
+                    KeyEvent.KEYCODE_BUTTON_L1 -> availableTabs[(currentIndex - 1 + availableTabs.size) % availableTabs.size]
+                    KeyEvent.KEYCODE_BUTTON_R1 -> availableTabs[(currentIndex + 1) % availableTabs.size]
+                    else -> null
+                }
+                if (nextTab != null) {
+                    selectedTab = nextTab
+                    PrefManager.quickMenuLastTab = nextTab
+                    true
+                } else {
+                    false
+                }
+            },
+    ) {
         AnimatedVisibility(
             visible = isVisible,
             enter = fadeIn(animationSpec = tween(200)),
@@ -437,11 +654,13 @@ fun QuickMenu(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss,
-                    ),
+                    // Not .clickable() on purpose: that implicitly adds a focus target the size
+                    // of the whole screen, sitting right behind every other focusable item in
+                    // the menu — a prime candidate for Compose's directional (dpad) focus search
+                    // to land on by mistake, which would silently close the whole menu on the
+                    // next DPAD_CENTER. pointerInput+detectTapGestures dismisses on tap without
+                    // registering any focus node at all.
+                    .pointerInput(Unit) { detectTapGestures { onDismiss() } },
             )
         }
 
@@ -602,6 +821,20 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = toolsTabFocusRequester,
                                 )
+                                if (immersiveControls != null) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.ViewInAr,
+                                        contentDescriptionResId = R.string.quick_menu_tab_immersive,
+                                        selected = selectedTab == QuickMenuTab.IMMERSIVE,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.IMMERSIVE
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = immersiveTabFocusRequester,
+                                    )
+                                }
                             }
 
                             Box(
@@ -752,6 +985,17 @@ fun QuickMenu(
                                         )
                                     }
 
+                                    QuickMenuTab.IMMERSIVE -> {
+                                        if (immersiveControls != null) {
+                                            ImmersiveQuickMenuTab(
+                                                controls = immersiveControls,
+                                                scrollState = immersiveScrollState,
+                                                focusRequester = immersiveItemFocusRequester,
+                                                modifier = Modifier.fillMaxSize(),
+                                            )
+                                        }
+                                    }
+
                                     else -> {
                                         Column(
                                             modifier = Modifier
@@ -797,14 +1041,15 @@ fun QuickMenu(
             }
         }
     }
+    }
 
     LaunchedEffect(isVisible, selectedTab) {
         onToolsVisibilityChanged(isVisible && selectedTab == QuickMenuTab.TOOLS)
     }
 
-    LaunchedEffect(isVisible) {
+    LaunchedEffect(isVisible, selectedTab) {
         if (isVisible) {
-            repeat(3) {
+            repeat(3) { attempt ->
                 try {
                     when (selectedTab) {
                         QuickMenuTab.HUD -> hudItemFocusRequester.requestFocus()
@@ -813,13 +1058,17 @@ fun QuickMenu(
                         QuickMenuTab.EFFECTS -> effectsItemFocusRequester.requestFocus()
                         QuickMenuTab.POWER -> powerItemFocusRequester.requestFocus()
                         QuickMenuTab.TOOLS -> toolsItemFocusRequester.requestFocus()
+                        QuickMenuTab.IMMERSIVE -> immersiveItemFocusRequester.requestFocus()
                         else -> controllerItemFocusRequester.requestFocus()
                     }
+                    Timber.i("QuickMenu: requestFocus succeeded for tab=%d on attempt=%d", selectedTab, attempt)
                     return@LaunchedEffect
-                } catch (_: Exception) {
+                } catch (t: Exception) {
+                    Timber.w(t, "QuickMenu: requestFocus threw for tab=%d on attempt=%d", selectedTab, attempt)
                     delay(80)
                 }
             }
+            Timber.w("QuickMenu: requestFocus never succeeded for tab=%d after 3 attempts", selectedTab)
         }
     }
 }
@@ -1012,7 +1261,9 @@ private fun PerformanceHudQuickMenuTab(
         )
 
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp),
+            modifier = Modifier
+                .padding(horizontal = 8.dp)
+                .focusGroup(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             PerformanceHudPreset.values().forEach { preset ->
@@ -1046,7 +1297,9 @@ private fun PerformanceHudQuickMenuTab(
         )
 
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp),
+            modifier = Modifier
+                .padding(horizontal = 8.dp)
+                .focusGroup(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             listOf(
@@ -1328,7 +1581,9 @@ private fun LsfgQuickMenuTab(
             title = stringResource(R.string.lsfg_multiplier),
         )
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp),
+            modifier = Modifier
+                .padding(horizontal = 8.dp)
+                .focusGroup(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             listOf(0, 2, 3, 4).forEach { value ->
@@ -1409,6 +1664,111 @@ private fun LsfgQuickMenuTab(
 
 
 @Composable
+private fun ImmersiveQuickMenuTab(
+    controls: app.gamenative.ui.screen.xr.ImmersiveControls,
+    scrollState: ScrollState,
+    focusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier,
+) {
+    val accentColor = PluviaTheme.colors.accentPurple
+
+    Column(
+        modifier = modifier
+            .verticalScroll(scrollState)
+            .focusGroup(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        // ── Passthrough ────────────────────────────────────────────────
+        QuickMenuSectionHeader(
+            title = stringResource(R.string.immersive_passthrough),
+            subtitle = stringResource(R.string.immersive_passthrough_desc),
+        )
+        QuickMenuToggleRow(
+            title = stringResource(R.string.immersive_passthrough_toggle),
+            enabled = controls.passthroughEnabled,
+            onToggle = { controls.onPassthroughToggle(!controls.passthroughEnabled) },
+            accentColor = accentColor,
+            focusRequester = focusRequester,
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // ── Resize/move handles ───────────────────────────────────────────
+        // Position/size sliders removed at the user's explicit request — the trigger-driven
+        // grab handles (drawn just inside the content edges while this toggle is on) are now the
+        // ONLY way to move/resize, not an alternative alongside a slider-based one.
+        QuickMenuSectionHeader(
+            title = stringResource(R.string.immersive_resize_mode_title),
+            subtitle = stringResource(R.string.immersive_resize_mode_desc),
+        )
+        QuickMenuToggleRow(
+            title = stringResource(R.string.immersive_resize_mode_toggle),
+            enabled = controls.resizeModeEnabled,
+            onToggle = { controls.onResizeModeToggle(!controls.resizeModeEnabled) },
+            accentColor = accentColor,
+        )
+
+        if (controls.directRenderBlockedByEffects != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            QuickMenuSectionHeader(
+                title = stringResource(R.string.immersive_direct_render_title),
+                subtitle = stringResource(
+                    if (controls.directRenderBlockedByEffects) {
+                        R.string.immersive_reset_effects_status_blocked
+                    } else {
+                        R.string.immersive_reset_effects_status_ok
+                    },
+                ),
+            )
+            val resetInteractionSource = remember { MutableInteractionSource() }
+            val resetIsFocused by resetInteractionSource.collectIsFocusedAsState()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        if (resetIsFocused) {
+                            accentColor.copy(alpha = 0.16f)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f)
+                        },
+                    )
+                    .then(
+                        if (resetIsFocused) {
+                            Modifier.border(width = 2.dp, color = accentColor.copy(alpha = 0.7f), shape = RoundedCornerShape(14.dp))
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .selectable(
+                        selected = false,
+                        interactionSource = resetInteractionSource,
+                        indication = null,
+                        onClick = controls.onResetScreenEffects,
+                    )
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.immersive_reset_effects_button),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(R.string.immersive_reset_effects_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+    }
+}
+
+@Composable
 private fun QuickMenuSectionHeader(
     title: String,
     subtitle: String? = null,
@@ -1459,8 +1819,7 @@ private fun QuickMenuCloseButton(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
-            )
-            .focusable(interactionSource = interactionSource),
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -1489,6 +1848,14 @@ private fun QuickMenuTabButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val shape = RoundedCornerShape(14.dp)
+    // Same default-click unreliability as ScreenEffectRadioRow/QuickMenuChoiceChip — see
+    // LocalImmersiveInputBypass's kdoc. Without this, moving focus onto a rail button via LEFT
+    // + UP/DOWN and pressing A didn't reliably select the tab; LB/RB (registerCycleTab, which
+    // calls onSelected directly) was the only reliable way in.
+    val inputBypass = LocalImmersiveInputBypass.current
+    LaunchedEffect(isFocused) {
+        inputBypass.reportActivate(if (isFocused) onSelected else null)
+    }
 
     Box(
         modifier = modifier
@@ -1509,18 +1876,19 @@ private fun QuickMenuTabButton(
                     Modifier
                 }
             )
-            .onFocusChanged {
-                if (it.isFocused && !selected) {
-                    onSelected()
-                }
-            }
+            // Selecting on focus alone (not requiring a click/DPAD_CENTER) was a real hazard once
+            // directional focus movement actually started working (see registerFocusManager):
+            // moving focus onto a rail button recomposes the whole tab content area, which can
+            // reshuffle what's focusable and trigger another focus change, another selection,
+            // another recompose — the tab switch that froze the menu. Selecting only on an
+            // explicit click (still fires from LB/RB now, see registerTabSelector) removes that
+            // whole class of cascade.
             .selectable(
                 selected = selected,
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onSelected,
-            )
-            .focusable(interactionSource = interactionSource),
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -1588,8 +1956,7 @@ private fun QuickMenuRailActionButton(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
-            )
-            .focusable(interactionSource = interactionSource),
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -1613,6 +1980,10 @@ private fun QuickMenuChoiceChip(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val shape = RoundedCornerShape(12.dp)
+    val inputBypass = LocalImmersiveInputBypass.current
+    LaunchedEffect(isFocused) {
+        inputBypass.reportActivate(if (isFocused) onClick else null)
+    }
 
     Box(
         modifier = modifier
@@ -1653,7 +2024,6 @@ private fun QuickMenuChoiceChip(
                 indication = null,
                 onClick = onClick,
             )
-            .focusable(interactionSource = interactionSource)
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -1682,6 +2052,16 @@ internal fun QuickMenuAdjustmentRow(
     val isFocused by interactionSource.collectIsFocusedAsState()
     val shape = RoundedCornerShape(14.dp)
     var isAdjustmentLocked by remember { mutableStateOf(false) }
+    // Reports (onDecrease, onIncrease) up while this row is both focused and lock-toggled, null
+    // otherwise — see LocalImmersiveInputBypass's kdoc. Keyed only on isFocused/isAdjustmentLocked,
+    // not onDecrease/onIncrease: those two are fresh lambda instances every recomposition (inline
+    // closures over the caller's own state), which would restart this effect on every unrelated
+    // recompose — harmless but wasteful. The closures stored here stay valid regardless of when
+    // they were captured, since they read their captured state fresh at call time, not creation.
+    val inputBypass = LocalImmersiveInputBypass.current
+    LaunchedEffect(isFocused, isAdjustmentLocked) {
+        inputBypass.reportAdjustment(if (isFocused && isAdjustmentLocked) (onDecrease to onIncrease) else null)
+    }
 
     Column(
         modifier = modifier
@@ -1724,6 +2104,14 @@ internal fun QuickMenuAdjustmentRow(
             )
             .onFocusChanged {
                 if (!it.isFocused) {
+                    // Only logged when this row was actually locked — an unrelated row losing
+                    // focus during normal navigation is expected and not interesting; a LOCKED
+                    // row losing focus (forcing the lock off) is exactly the event that needed
+                    // direct evidence, since from the outside it's indistinguishable from a
+                    // deliberate B-press unlock.
+                    if (isAdjustmentLocked) {
+                        Timber.i("QuickMenu: row '%s' lost focus while locked — force-unlocking", title)
+                    }
                     isAdjustmentLocked = false
                 }
             }
@@ -1731,12 +2119,29 @@ internal fun QuickMenuAdjustmentRow(
             .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && isFocused) {
                     when {
-                        keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_A -> {
-                            isAdjustmentLocked = !isAdjustmentLocked
+                        // A only LOCKS, never toggles off — a repeated A press (whether the user
+                        // meant to confirm again, or it arrived via the DPAD_CENTER/BUTTON_A
+                        // fallback dispatched for the "nothing else focused" case, see
+                        // ImmersiveXrActivity's BUTTON_A handling) must never undo an in-progress
+                        // adjustment. Only BUTTON_B or losing focus unlocks — see below and
+                        // onFocusChanged. Confirmed via logs: this WAS toggling off mid-adjustment
+                        // ("row lock toggled to false" from a genuine BUTTON_A press, not B),
+                        // exactly matching "one tick works, then I need B to get back in".
+                        !isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_A -> {
+                            isAdjustmentLocked = true
+                            Timber.i("QuickMenu: row '%s' locked", title)
                             true
                         }
 
-                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_B -> {
+                        // ImmersiveXrActivity's B handler dispatches KEYCODE_BACK, not
+                        // KEYCODE_BUTTON_B (see triggerMenuDirection's caller) — this never
+                        // matched before, so B was "working" only by accident: the unconsumed
+                        // BACK event propagated further and cleared focus, which onFocusChanged
+                        // then read as an unlock. Checking BACK directly makes this an explicit,
+                        // consumed unlock instead of a side effect of losing focus.
+                        isAdjustmentLocked &&
+                            (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_B ||
+                                keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BACK) -> {
                             isAdjustmentLocked = false
                             true
                         }
@@ -1976,7 +2381,6 @@ internal fun QuickMenuToggleRow(
                 indication = null,
                 onClick = onToggle,
             )
-            .focusable(interactionSource = interactionSource)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -2200,10 +2604,6 @@ private fun QuickMenuItemRow(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
-            )
-            .focusable(
-                enabled = isEnabled,
-                interactionSource = interactionSource,
             )
             .padding(horizontal = 12.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,

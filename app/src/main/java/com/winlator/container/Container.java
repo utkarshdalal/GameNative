@@ -90,6 +90,7 @@ public class Container {
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
+    private boolean launchImmersiveMode;
     private boolean launchRealSteam;
     private boolean launchBionicSteam;
     private boolean allowSteamUpdates;
@@ -346,6 +347,14 @@ public class Container {
 
     public void setShowFPS(boolean showFPS) {
         this.showFPS = showFPS;
+    }
+
+    public boolean isLaunchImmersiveMode() {
+        return launchImmersiveMode;
+    }
+
+    public void setLaunchImmersiveMode(boolean launchImmersiveMode) {
+        this.launchImmersiveMode = launchImmersiveMode;
     }
 
     public boolean isLaunchRealSteam() {
@@ -694,6 +703,7 @@ public class Container {
             data.put("wincomponents", wincomponents);
             data.put("drives", drives);
             data.put("showFPS", showFPS);
+            data.put("launchImmersiveMode", launchImmersiveMode);
             data.put("launchRealSteam", launchRealSteam);
             data.put("launchBionicSteam", launchBionicSteam);
             data.put("allowSteamUpdates", allowSteamUpdates);
@@ -827,6 +837,9 @@ public class Container {
                     break;
                 case "showFPS" :
                     setShowFPS(data.getBoolean(key));
+                    break;
+                case "launchImmersiveMode" :
+                    setLaunchImmersiveMode(data.getBoolean(key));
                     break;
                 case "launchRealSteam" :
                     setLaunchRealSteam(data.getBoolean(key));

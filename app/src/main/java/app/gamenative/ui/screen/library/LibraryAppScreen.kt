@@ -61,6 +61,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -552,6 +554,16 @@ private fun formatBytes(bytes: Long): String {
     }
 }
 
+// Bundled into one parameter to keep AppScreenContent's own parameter count with headroom
+// below the threshold where Compose starts emitting a second "changed" bitmask int — this
+// composable has crashed with an ART VerifyError on API < 29 (Meta Quest legacyXr) once it
+// crossed that line.
+internal data class ImmersiveModeUiState(
+    val isSupported: Boolean = false,
+    val isEnabled: Boolean = false,
+    val onChange: (Boolean) -> Unit = {},
+)
+
 @Composable
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
@@ -571,6 +583,7 @@ internal fun AppScreenContent(
     onBack: () -> Unit = {},
     optionsMenu: List<AppMenuOption>,
     dialogOpen: Boolean = false,
+    immersiveMode: ImmersiveModeUiState = ImmersiveModeUiState(),
 ) {
     val context = LocalContext.current
     // reactive — recomposes when network state changes
@@ -967,6 +980,29 @@ internal fun AppScreenContent(
                                 icon = Icons.Default.Delete,
                                 contentDescription = if (isInstalled || hasLeftoverInstall) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
                                 onClick = onDeleteDownloadClick,
+                            )
+                        }
+                    }
+
+                    if (immersiveMode.isSupported && isInstalled) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp)
+                                .clickable { immersiveMode.onChange(!immersiveMode.isEnabled) },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = immersiveMode.isEnabled,
+                                onCheckedChange = immersiveMode.onChange,
+                                colors = CheckboxDefaults.colors(
+                                    uncheckedColor = Color.White.copy(alpha = 0.7f),
+                                ),
+                            )
+                            Text(
+                                text = stringResource(R.string.launch_immersive_mode),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White,
                             )
                         }
                     }

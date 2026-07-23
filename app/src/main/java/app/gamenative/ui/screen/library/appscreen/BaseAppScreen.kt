@@ -1045,6 +1045,20 @@ abstract class BaseAppScreen {
             mutableStateOf(hasLeftoverInstall(context, libraryItem))
         }
 
+        // Immersive/VR launch mode is only offered on Meta Quest.
+        val isImmersiveModeSupported = remember(libraryItem.appId) {
+            app.gamenative.MainActivity.isMetaQuest(context)
+        }
+        var isImmersiveModeEnabledState by remember(libraryItem.appId) { mutableStateOf(false) }
+        if (isImmersiveModeSupported) {
+            LaunchedEffect(libraryItem.appId) {
+                isImmersiveModeEnabledState = withContext(Dispatchers.IO) {
+                    runCatching { ContainerUtils.getContainer(context, libraryItem.appId).isLaunchImmersiveMode() }
+                        .getOrDefault(false)
+                }
+            }
+        }
+
         val uiScope = rememberCoroutineScope()
 
         suspend fun performStateRefresh(includeUpdatePending: Boolean) {
@@ -1333,6 +1347,20 @@ abstract class BaseAppScreen {
             hasLeftoverInstall = hasLeftoverInstallState,
             isUpdatePending = isUpdatePendingState,
             downloadInfo = downloadInfo,
+            immersiveMode = app.gamenative.ui.screen.library.ImmersiveModeUiState(
+                isSupported = isImmersiveModeSupported,
+                isEnabled = isImmersiveModeEnabledState,
+                onChange = { enabled ->
+                    isImmersiveModeEnabledState = enabled
+                    uiScope.launch(Dispatchers.IO) {
+                        runCatching {
+                            val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                            container.setLaunchImmersiveMode(enabled)
+                            container.saveData()
+                        }
+                    }
+                },
+            ),
             onDownloadInstallClick = {
                 if (app.gamenative.launch.LaunchReadiness.pending) {
                     showReadiness = true
