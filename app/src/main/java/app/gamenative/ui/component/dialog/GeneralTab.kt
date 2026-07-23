@@ -44,6 +44,14 @@ import com.winlator.contents.ContentProfile
 import com.winlator.xenvironment.components.PulseAudioComponent
 import java.util.Locale
 
+/**
+ * Content for the General settings tab in the container configuration.
+ * Handles variant selection, resolution, language, and audio driver settings.
+ *
+ * @param state The shared state for the configuration dialog.
+ * @param nonzeroResolutionError Error message for zero or invalid resolution.
+ * @param aspectResolutionError Error message for invalid aspect ratio (width <= height).
+ */
 @Composable
 fun GeneralTabContent(
     state: ContainerConfigState,
@@ -111,9 +119,12 @@ fun GeneralTabContent(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val widthInt = state.customScreenWidth.value.toIntOrNull() ?: 0
-                        val heightInt = state.customScreenHeight.value.toIntOrNull() ?: 0
-                        if (widthInt == 0 || heightInt == 0) {
+                        val widthRaw = state.customScreenWidth.value.toIntOrNull() ?: 0
+                        val heightRaw = state.customScreenHeight.value.toIntOrNull() ?: 0
+                        val widthInt = evenRound(widthRaw.toFloat())
+                        val heightInt = evenRound(heightRaw.toFloat())
+
+                        if (widthRaw == 0 || heightRaw == 0) {
                             state.customResolutionValidationError.value = nonzeroResolutionError
                         } else if (widthInt <= heightInt) {
                             state.customResolutionValidationError.value = aspectResolutionError
@@ -271,20 +282,20 @@ fun GeneralTabContent(
             placeholder = { Text(text = stringResource(R.string.exec_arguments_example)) },
             singleLine = true,
         )
-        val displayNameForLanguage: (String) -> String = { code ->
+        val displayNameForLanguage: @Composable (String) -> String = { code ->
             when (code) {
-                "schinese" -> "Simplified Chinese"
-                "tchinese" -> "Traditional Chinese"
-                "koreana" -> "Korean"
-                "latam" -> "Spanish (Latin America)"
-                "brazilian" -> "Portuguese (Brazil)"
+                "schinese" -> stringResource(R.string.language_schinese)
+                "tchinese" -> stringResource(R.string.language_tchinese)
+                "koreana" -> stringResource(R.string.language_koreana)
+                "latam" -> stringResource(R.string.language_latam)
+                "brazilian" -> stringResource(R.string.language_brazilian)
                 else -> code.replaceFirstChar { ch -> ch.titlecase(Locale.getDefault()) }
             }
         }
         SettingsListDropdown(
             enabled = true,
             value = state.languageIndex.value,
-            items = state.languages.map(displayNameForLanguage),
+            items = state.languages.map { displayNameForLanguage(it) },
             fallbackDisplay = displayNameForLanguage("english"),
             onItemSelected = { index ->
                 state.languageIndex.value = index

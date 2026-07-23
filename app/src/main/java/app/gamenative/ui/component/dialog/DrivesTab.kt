@@ -33,6 +33,13 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.winlator.container.Container
 
+/**
+ * Content for the Drives settings tab in the container configuration.
+ * Configures virtual drive mappings, allowing Android local storage paths
+ * to be mounted as Windows drive letters (D:, E:, etc.) within the container.
+ *
+ * @param state The shared state for the configuration dialog.
+ */
 @Composable
 fun DrivesTabContent(state: ContainerConfigState) {
     val context = LocalContext.current

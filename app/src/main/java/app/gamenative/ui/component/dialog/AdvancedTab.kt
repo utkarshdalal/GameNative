@@ -9,6 +9,13 @@ import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
 
+/**
+ * Content for the Advanced settings tab in the container configuration.
+ * Handles system-level settings such as startup behavior (service loading),
+ * and per-process CPU affinity for 32-bit and 64-bit applications.
+ *
+ * @param state The shared state for the configuration dialog.
+ */
 @Composable
 fun AdvancedTabContent(state: ContainerConfigState) {
     val config = state.config.value

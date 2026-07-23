@@ -29,6 +29,13 @@ import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVars
 import kotlin.math.roundToInt
 
+/**
+ * Content for the Graphics settings tab in the container configuration.
+ * Handles driver selection, version management, DX wrapper settings, and LSFG configuration.
+ *
+ * @param state The shared state for the configuration dialog.
+ * @param default If true, this is configuring global default settings (hides some per-game options).
+ */
 @Composable
 fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
     val config = state.config.value

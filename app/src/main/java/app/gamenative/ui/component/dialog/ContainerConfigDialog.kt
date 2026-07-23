@@ -1,6 +1,5 @@
 package app.gamenative.ui.component.dialog
 
-import android.widget.Spinner
 import android.widget.ArrayAdapter
 import android.content.res.Configuration
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -153,6 +152,42 @@ internal fun winComponentsItemTitleRes(string: String): Int {
     }
 }
 
+/**
+ * Rounds a float value to the nearest even integer.
+ * This is required by many mobile GPU drivers to avoid rendering artifacts or crashes
+ * when using resolutions that are not divisible by 2.
+ *
+ * @param value The float value to be rounded.
+ * @return The nearest even integer to the input value.
+ */
+internal fun evenRound(value: Float): Int = (value / 2.0f).roundToInt() * 2
+
+/**
+ * Calculates the greatest common divisor (GCD) of two integers using the Euclidean algorithm.
+ *
+ * @param a The first integer.
+ * @param b The second integer.
+ * @return The greatest common divisor of a and b.
+ */
+internal fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
+
+/**
+ * Calculates and formats the aspect ratio for a given resolution.
+ * Handles special cases for common mobile aspect ratios like 19.5:9 and 21.5:9.
+ *
+ * @param width The width of the resolution in pixels.
+ * @param height The height of the resolution in pixels.
+ * @return A string representation of the aspect ratio (e.g., "16:9" or "19.5:9").
+ */
+internal fun calculateAspectRatio(width: Int, height: Int): String {
+    val common = gcd(width, height)
+    val w = width / common
+    val h = height / common
+    if ((w == 13) && (h == 6)) return "19.5:9"
+    if ((w == 43) && (h == 18)) return "21.5:9"
+    return "$w:$h"
+}
+
 private data class ContainerConfigDialogStaticData(
     val screenSizes: List<String>,
     val baseGraphicsDrivers: List<String>,
@@ -199,6 +234,10 @@ private data class ContainerConfigDialogStaticData(
     val languages: List<String>,
 )
 
+/**
+ * Composable that provides static data for the Container Configuration dialog.
+ * This includes pre-defined screen sizes, driver lists, and other constants.
+ */
 @Composable
 private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStaticData {
     val context = LocalContext.current
@@ -213,8 +252,41 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
             }
         }
 
+    val displayMetrics = context.resources.displayMetrics
+    val screenWidth = maxOf(displayMetrics.widthPixels, displayMetrics.heightPixels).toFloat()
+    val screenHeight = minOf(displayMetrics.widthPixels, displayMetrics.heightPixels).toFloat()
+
+    val nativeWidth = evenRound(screenWidth)
+    val nativeHeight = evenRound(screenHeight)
+    val nativeRes = "${nativeWidth}x$nativeHeight"
+    val nativeRatio = calculateAspectRatio(nativeWidth, nativeHeight)
+
+    val optimizedWidth = evenRound(screenWidth * 0.75f)
+    val optimizedHeight = evenRound(screenHeight * 0.75f)
+    val optimizedRes = "${optimizedWidth}x$optimizedHeight"
+    val optimizedRatio = calculateAspectRatio(optimizedWidth, optimizedHeight)
+
+    val halfWidth = evenRound(screenWidth * 0.5f)
+    val halfHeight = evenRound(screenHeight * 0.5f)
+    val halfRes = "${halfWidth}x$halfHeight"
+    val halfRatio = calculateAspectRatio(halfWidth, halfHeight)
+
+    val baseScreenSizes = stringArrayResource(R.array.screen_size_entries).toList()
+    val adaptiveScreenSizes = mutableListOf<String>()
+
+    // Add device specific resolutions if they don't exactly match existing presets
+    listOf(
+        Triple(nativeRes, nativeRatio, context.getString(R.string.resolution_native)),
+        Triple(optimizedRes, optimizedRatio, context.getString(R.string.resolution_optimized)),
+        Triple(halfRes, halfRatio, context.getString(R.string.resolution_half)),
+    ).forEach { (res, ratio, label) ->
+        if (baseScreenSizes.none { it.startsWith(res) }) {
+            adaptiveScreenSizes.add("$res ($ratio, $label)")
+        }
+    }
+
     return ContainerConfigDialogStaticData(
-        screenSizes = stringArrayResource(R.array.screen_size_entries).toList(),
+        screenSizes = baseScreenSizes + adaptiveScreenSizes,
         baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList(),
         dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList(),
         displayRenderers = stringArrayResource(R.array.displayrenderers_entries).toList(),
@@ -272,6 +344,16 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
     )
 }
 
+/**
+ * Main dialog for configuring container settings including graphics, emulation, and environment variables.
+ *
+ * @param visible Whether the dialog is currently shown.
+ * @param default If true, this dialog is configuring the global default settings.
+ * @param title The title to display in the top bar.
+ * @param initialConfig The initial container configuration to load.
+ * @param onDismissRequest Callback when the dialog should be dismissed.
+ * @param onSave Callback when the configuration is saved.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContainerConfigDialog(
@@ -1030,8 +1112,10 @@ fun ContainerConfigDialog(
 
         val applyScreenSizeToConfig: () -> Unit = {
             val screenSize = if (screenSizeIndex == 0) {
-                if (customScreenWidth.isNotEmpty() && customScreenHeight.isNotEmpty()) {
-                    "${customScreenWidth}x$customScreenHeight"
+                val widthInt = customScreenWidth.toIntOrNull() ?: 0
+                val heightInt = customScreenHeight.toIntOrNull() ?: 0
+                if (widthInt != 0 && heightInt != 0) {
+                    "${evenRound(widthInt.toFloat())}x${evenRound(heightInt.toFloat())}"
                 } else {
                     config.screenSize
                 }
@@ -1388,7 +1472,13 @@ private fun Preview_ContainerConfigDialog() {
 }
 
 /**
- * Editable dropdown for selecting executable paths from the container's A: drive
+ * A dropdown component for selecting an executable path from the container's drives.
+ * Scans the A: drive for available .exe files and provides a searchable list.
+ *
+ * @param modifier Modifier for the container.
+ * @param value The current executable path value.
+ * @param onValueChange Callback when a new path is selected or entered.
+ * @param containerData The container data used to scan for executables.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

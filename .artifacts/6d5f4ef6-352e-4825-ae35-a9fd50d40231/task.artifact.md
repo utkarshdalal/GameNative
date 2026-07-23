@@ -1,0 +1,8 @@
+- [x] Update `StringUtils.kt` with `normalizeForComparison()` and add KDoc
+- [x] Update `StringUtilsTest.kt` with tests for `normalizeForComparison()`
+- [x] Update `LibraryViewModel.kt` with improved sibling linking logic and KDoc
+- [x] Update `LibraryListCard.kt` to fix `InstallStatusBadge` logic and add KDoc
+- [x] Update `LibraryGridCard.kt` with accessibility labels and KDoc
+- [x] Update `LibraryAppScreen.kt` to make source switcher scrollable and add KDoc
+- [x] Verify changes (run tests, check build)
+- [x] Finalize walkthrough

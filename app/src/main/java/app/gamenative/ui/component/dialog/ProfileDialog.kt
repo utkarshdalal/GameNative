@@ -142,7 +142,7 @@ fun ProfileDialog(
                             scrollState.value < scrollState.maxValue
                         }
                     }
-                    
+
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Box(modifier = Modifier.weight(1f)) {
                             Column(
@@ -189,7 +189,7 @@ fun ProfileDialog(
                                     }
                                 }
                             }
-                            
+
                             // Top fade gradient
                             if (showTopFade.value) {
                                 Box(
@@ -207,7 +207,7 @@ fun ProfileDialog(
                                         )
                                 )
                             }
-                            
+
                             // Bottom fade gradient
                             if (showBottomFade.value) {
                                 Box(

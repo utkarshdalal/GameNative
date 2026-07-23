@@ -190,6 +190,9 @@
     <string name="container_config_custom_resolution_separator">x</string>
     <string name="container_config_custom_resolution_error_nonzero">Width and height must be greater than 0</string>
     <string name="container_config_custom_resolution_error_aspect">Width must be greater than height</string>
+    <string name="resolution_native">Native</string>
+    <string name="resolution_optimized">Optimized</string>
+    <string name="resolution_half">Half</string>
     <string name="storage_info">Storage Info</string>
     <string name="duplicate">Duplicate</string>
     <string name="reconfigure">Reconfigure</string>
@@ -2090,4 +2093,11 @@
     <string name="game_launch_tip_23">Tip: If you have a Mali GPU, please use System Drivers.</string>
     <string name="game_launch_tip_24">Tip: Getting a blank screen? Try using the \"%s\" option in the menu to check if your drivers are working correctly.</string>
     <string name="game_launch_tip_25">Tip: Use Proton x86-64 if you can\'t click the mouse in games.</string>
+    <string name="aspect_ratio_19_5_9">19.5:9</string>
+    <string name="aspect_ratio_21_5_9">21.5:9</string>
+    <string name="language_schinese">Simplified Chinese</string>
+    <string name="language_tchinese">Traditional Chinese</string>
+    <string name="language_koreana">Korean</string>
+    <string name="language_latam">Spanish (Latin America)</string>
+    <string name="language_brazilian">Portuguese (Brazil)</string>
 </resources>
