@@ -28,12 +28,22 @@ import java.util.Comparator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-public class ContainerManager {
+/**
+ * Manages Wine containers, including their creation, duplication, and lifecycle.
+ * This class follows the Singleton pattern and should be accessed via [getInstance(Context)].
+ */
+public final class ContainerManager {
     private final ArrayList<Container> containers = new ArrayList<>();
     private final File homeDir;
     private final Context context;
     private static ContainerManager instance;
 
+    /**
+     * Returns the singleton instance of ContainerManager.
+     *
+     * @param context The context used to initialize the manager.
+     * @return The singleton instance.
+     */
     public static synchronized ContainerManager getInstance(Context context) {
         if (instance == null) {
             instance = new ContainerManager(context.getApplicationContext());

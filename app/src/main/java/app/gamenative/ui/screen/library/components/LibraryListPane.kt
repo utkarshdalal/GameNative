@@ -67,10 +67,12 @@ import kotlinx.coroutines.flow.filterNotNull
 import timber.log.Timber
 
 /**
- * Calculates the installed games count based on the current filter state.
+ * Calculates the total number of installed games across all sources.
+ * It iterates through active sources (Steam, Custom, GOG, Epic, Amazon) and sums their counts.
  *
- * @param state The current library state containing filters and visibility settings
- * @return The number of installed games, respecting current filters and source visibility
+ * @param context The Android context.
+ * @param state The current library state containing visibility filters.
+ * @return Total count of installed apps.
  */
 private fun calculateInstalledCount(context: android.content.Context, state: LibraryState): Int {
     if (state.appInfoSortType.contains(AppFilter.INSTALLED)) {
@@ -128,16 +130,15 @@ private fun calculateInstalledCount(context: android.content.Context, state: Lib
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LibraryListPane(
-
     state: LibraryState,
     listState: LazyGridState,
     currentLayout: PaneType,
-    firstGridItemFocusRequester: FocusRequester? = null,
-    focusTargetListIndex: Int? = null,
     onPageChange: (Int) -> Unit,
     onNavigate: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    firstGridItemFocusRequester: FocusRequester? = null,
+    focusTargetListIndex: Int? = null,
 ) {
     val context = LocalContext.current
     val snackBarHost = remember { SnackbarHostState() }
@@ -307,33 +308,35 @@ internal fun LibraryListPane(
                                     }
                                 }
 
-                                if (listIndex > 0 && currentLayout == PaneType.LIST) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = horizontalPadding),
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                    )
-                                }
-
-                                Box(modifier = Modifier.graphicsLayer { this.alpha = alpha }) {
-                                    val appItemModifier = if (firstGridItemFocusRequester != null &&
-                                        focusTargetListIndex != null &&
-                                        listIndex == focusTargetListIndex
-                                    ) {
-                                        Modifier.focusRequester(firstGridItemFocusRequester)
-                                    } else {
-                                        Modifier
+                                Column {
+                                    if (listIndex > 0 && currentLayout == PaneType.LIST) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = horizontalPadding),
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                        )
                                     }
 
-                                    AppItem(
-                                        modifier = appItemModifier,
-                                        appInfo = item,
-                                        onClick = { onNavigate(item.appId) },
-                                        paneType = currentLayout,
-                                        onFocus = { targetOfScroll = item.index },
-                                        imageRefreshCounter = state.imageRefreshCounter,
-                                        compatibilityStatus = state.compatibilityMap[item.name],
-                                        gameStats = state.statsFor(item),
-                                    )
+                                    Box(modifier = Modifier.graphicsLayer { this.alpha = alpha }) {
+                                        val appItemModifier = if (firstGridItemFocusRequester != null &&
+                                            focusTargetListIndex != null &&
+                                            listIndex == focusTargetListIndex
+                                        ) {
+                                            Modifier.focusRequester(firstGridItemFocusRequester)
+                                        } else {
+                                            Modifier
+                                        }
+
+                                        AppItem(
+                                            modifier = appItemModifier,
+                                            appInfo = item,
+                                            onClick = { onNavigate(item.appId) },
+                                            paneType = currentLayout,
+                                            onFocus = { targetOfScroll = item.index },
+                                            imageRefreshCounter = state.imageRefreshCounter,
+                                            compatibilityStatus = state.compatibilityMap[item.name],
+                                            gameStats = state.statsFor(item),
+                                        )
+                                    }
                                 }
                             }
                             if (state.appInfoList.size < state.totalAppsInFilter) {
@@ -374,15 +377,17 @@ internal fun LibraryListPane(
                         ),
                     ) {
                         items(totalSkeletonCount) { index ->
-                            if (index > 0 && currentLayout == PaneType.LIST) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = horizontalPadding),
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                            Column {
+                                if (index > 0 && currentLayout == PaneType.LIST) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = horizontalPadding),
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                                    )
+                                }
+                                GameSkeletonLoader(
+                                    paneType = currentLayout,
                                 )
                             }
-                            GameSkeletonLoader(
-                                paneType = currentLayout,
-                            )
                         }
                     }
                 }

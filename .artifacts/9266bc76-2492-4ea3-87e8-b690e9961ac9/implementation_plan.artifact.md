@@ -1,75 +1,59 @@
-# Implementation Plan - Fix Crashes, ANRs, and UI Stability in Library List View
+# Implementation Plan - Finalize and Polish PR #1758
 
-This plan aims to implement the changes and feedback from [PR #1758](https://github.com/utkarshdalal/GameNative/pull/1758) to resolve critical application crashes and ANRs, especially when games are stored on external storage.
+This plan covers the final steps to polish and stabilize PR #1758, addressing race conditions, UI issues, and documentation gaps.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> The `ContainerManager` will be converted to a strict singleton. This involves making its constructor private and updating all instantiation sites to use `getInstance(Context)`.
+> The documentation coverage will be increased significantly. Please verify if any specific documentation style (other than standard KDoc/Javadoc) is required.
 
 ## Proposed Changes
 
-### Core Infrastructure
+### Core Utils & Logic
 
-#### [MODIFY] [ContainerManager.java](app/src/main/java/com/winlator/container/ContainerManager.java)
+#### [MODIFY] [CustomGameCache.kt](file:///app/src/main/java/app/gamenative/utils/CustomGameCache.kt)
+- Add thread-safety to `getOrRebuildCache` and `addEntry` using a `synchronized` block or `Mutex`.
+- This prevents concurrent disk scans when multiple icons are resolved simultaneously.
+
+#### [MODIFY] [ContainerManager.java](file:///app/src/main/java/com/winlator/container/ContainerManager.java)
 - Make the constructor `private`.
 - Make `getInstance(Context)` thread-safe using a synchronized block.
+- Ensure the class is `final` to strictly enforce the Singleton pattern.
+- Double-check all usages to ensure no reflection is used to bypass the private constructor (though unlikely).
 
-#### [MODIFY] [AdrenotoolsManager.java](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/com/winlator/contents/AdrenotoolsManager.java)
-- Replace `new ContainerManager(context)` with `ContainerManager.getInstance(context)`.
+#### [MODIFY] [CustomGameScanner.kt](file:///app/src/main/java/app/gamenative/utils/CustomGameScanner.kt)
+- Wrap external storage access in `try-catch` blocks and add `exists()` checks to handle "hot-plugged" drives gracefully.
+- Add KDoc to public methods to increase coverage.
 
-#### [MODIFY] [ImageFsInstaller.java](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/com/winlator/xenvironment/ImageFsInstaller.java)
-- Replace `new ContainerManager(context)` with `ContainerManager.getInstance(context)`.
+### UI Components
 
-#### [MODIFY] [PluviaMain.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/PluviaMain.kt)
-- Replace `ContainerManager(context)` with `ContainerManager.getInstance(context)`.
+#### [MODIFY] [LibraryListPane.kt](file:///app/src/main/java/app/gamenative/ui/screen/library/components/LibraryListPane.kt)
+- Fix overlapping horizontal dividers in `LIST` layout by wrapping the divider and the item `Box` in a `Column`.
+- Ensure proper spacing and alignment for the divider.
 
-#### [MODIFY] [XServerScreen.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt)
-- Replace `ContainerManager(context)` with `ContainerManager.getInstance(context)`.
+### Documentation & Cleanup
 
-#### [MODIFY] [ContainerUtils.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/utils/ContainerUtils.kt)
-- Replace all `ContainerManager(context)` calls with `ContainerManager.getInstance(context)` in `hasContainer`, `getContainer`, `getOrCreateContainer`, `getOrCreateContainerWithOverride`, and `deleteContainer`.
+#### [MODIFY] [task.artifact.md](file:///.artifacts/9266bc76-2492-4ea3-87e8-b690e9961ac9/task.artifact.md)
+- Fix non-standard Markdown syntax (remove backticks from task list items).
 
-#### [MODIFY] [EpicAppScreen.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/appscreen/EpicAppScreen.kt)
-- Removed redundant `ContainerManager` import if unused directly (will check during execution).
-
----
-
-### Library UI Components
-
-#### [MODIFY] [LibraryListCard.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/components/LibraryListCard.kt)
-- Add `imageRefreshCounter: Long` parameter to `ListViewCard`.
-- Add `imageRefreshCounter` to the `produceState` keys for icon loading. This ensures icons are re-fetched if the refresh counter changes (e.g., when external storage becomes ready).
-
-#### [MODIFY] [LibraryAppItem.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/components/LibraryAppItem.kt)
-- Pass the `imageRefreshCounter` from `AppItem` to `ListViewCard`.
-
-#### [MODIFY] [LibraryListPane.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/components/LibraryListPane.kt)
-- Move the `HorizontalDivider` logic out of the animated `Box` and `Column` to prevent it from being part of the item cell's animated alpha and touch area.
-- Position the divider above the item's animated `Box`.
-
----
-
-#### [NEW] Documentation Coverage
-
-#### [MODIFY] Multiple Files
-Add KDoc/Javadoc to public classes and methods in the modified files to meet the PR's documentation coverage requirements (80%+).
-
-Files to be updated:
-- [ContainerManager.java](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/com/winlator/container/ContainerManager.java)
-- [LibraryListCard.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/components/LibraryListCard.kt)
-- [LibraryAppItem.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/components/LibraryAppItem.kt)
-- [LibraryListPane.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/components/LibraryListPane.kt)
-- [ContainerUtils.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/utils/ContainerUtils.kt)
-- [EpicAppScreen.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/appscreen/EpicAppScreen.kt)
+#### [MODIFY] Various Files
+- Increase docstring coverage to >80% in:
+    - `CustomGameScanner.kt`
+    - `CustomGameCache.kt`
+    - `ContainerManager.java`
+    - `LibraryListCard.kt`
+    - `LibraryAppItem.kt`
+    - `LibraryListPane.kt`
+- Replace absolute machine-specific paths in comments/docs with relative repository links (e.g., `[ContainerManager.java](file:///com/winlator/container/ContainerManager.java)`).
 
 ## Verification Plan
 
 ### Automated Tests
-- Run a build to ensure all `ContainerManager` references are correctly updated and the private constructor doesn't break anything.
-- `gradlew :app:assembleDebug`
+- Run existing unit tests (if any) related to `ContainerManager` and `CustomGameScanner`.
+- I will check for test files and run them.
 
 ### Manual Verification
-- Verify that the Library screen loads correctly.
-- Verify that switching between List and Grid layouts works as expected.
-- Verify that icons load correctly in List view.
+- Deploy the app to a device/emulator.
+- Test the `LIST` layout and verify horizontal dividers are correctly placed and not overlapping.
+- Test "hot-plugging" by simulating storage changes (if possible) or verifying that missing paths don't cause crashes.
+- Verify that custom game icons load correctly without triggering multiple scans (check logs).

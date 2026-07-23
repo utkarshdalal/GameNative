@@ -31,6 +31,10 @@ import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.text.ifEmpty
 
+/**
+ * Utility for scanning and managing custom games added manually by the user.
+ * It handles icon extraction, cover image lookup, and library item creation.
+ */
 object CustomGameScanner {
 
     // Default root path for Custom Games. Always use the app's external storage sandbox
@@ -538,6 +542,10 @@ object CustomGameScanner {
         return items
     }
 
+    /**
+     * Rebuilds the cache entry for a specific game folder.
+     * This is useful when a game's metadata or files change.
+     */
     private fun handleCustomGameDetection(folder: File, appId: String, idPart: Int) {
         CustomGameCache.addEntry(idPart, folder.absolutePath)
 
@@ -567,6 +575,13 @@ object CustomGameScanner {
         }
     }
 
+    /**
+     * Creates a [LibraryItem] from a given folder path.
+     * Validates the folder and attempts to match it with Steam if configured.
+     *
+     * @param folderPath The absolute path to the game folder.
+     * @return A [LibraryItem] or null if the folder is invalid.
+     */
     fun createLibraryItemFromFolder(folderPath: String): LibraryItem? {
         val folder = File(folderPath)
         try {
@@ -654,16 +669,22 @@ object CustomGameScanner {
      * Preserves other metadata fields (steamgriddbFetched, releaseDate) if they exist.
      */
     private fun writeGameIdToFile(folder: File, gameId: Int) {
-        // Read existing metadata to preserve other fields
-        val existing = app.gamenative.utils.GameMetadataManager.read(folder)
-        val metadata = if (existing != null) {
-            // Preserve existing metadata fields, only update appId
-            existing.copy(appId = gameId)
-        } else {
-            // Create new metadata with just the appId
-            app.gamenative.utils.GameMetadata(appId = gameId)
+        try {
+            if (!folder.exists() || !folder.isDirectory) return
+
+            // Read existing metadata to preserve other fields
+            val existing = app.gamenative.utils.GameMetadataManager.read(folder)
+            val metadata = if (existing != null) {
+                // Preserve existing metadata fields, only update appId
+                existing.copy(appId = gameId)
+            } else {
+                // Create new metadata with just the appId
+                app.gamenative.utils.GameMetadata(appId = gameId)
+            }
+            app.gamenative.utils.GameMetadataManager.write(folder, metadata)
+        } catch (e: Exception) {
+            Timber.tag("CustomGameScanner").e(e, "Failed to write game ID to file in ${folder.path}")
         }
-        app.gamenative.utils.GameMetadataManager.write(folder, metadata)
     }
 
     /**

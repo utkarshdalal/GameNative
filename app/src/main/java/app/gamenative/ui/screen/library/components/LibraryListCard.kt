@@ -220,6 +220,9 @@ internal fun ListViewCard(
 
 /**
  * Compact install status badge for list view.
+ *
+ * @param appInfo The library item to show status for.
+ * @param isRefreshing Whether the library is currently refreshing.
  */
 @Composable
 private fun InstallStatusBadge(
@@ -281,6 +284,11 @@ private fun InstallStatusBadge(
 
 /**
  * Gets the icon URL for a game in list view.
+ * For custom games, it attempts to resolve a local icon path; otherwise, it falls back to the client icon URL.
+ *
+ * @param context The Android context.
+ * @param appInfo The library item to resolve the icon for.
+ * @return A URL string (can be file:// or http://).
  */
 private fun getListIconUrl(context: Context, appInfo: LibraryItem): String {
     if (appInfo.isRecommended) return appInfo.iconHash

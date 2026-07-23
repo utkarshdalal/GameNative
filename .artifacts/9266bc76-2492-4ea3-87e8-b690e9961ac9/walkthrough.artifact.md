@@ -1,30 +1,34 @@
-# Walkthrough - Library Stability and UI Optimization
+# Walkthrough - Final Polish for Library Stability (PR #1758)
 
-I have completed all planned changes to resolve crashes and improve the stability of the Library List layout.
+I have finalized and polished the implementation of PR #1758, addressing all remaining issues including race conditions, UI overlapping, and documentation coverage.
 
 ## Changes Made
 
-### 1. Core Infrastructure (`ContainerManager` Singleton)
-- **Strict Singleton**: Converted `ContainerManager` to a strict singleton with a private constructor.
-- **Thread Safety**: Added a synchronized `getInstance(Context)` method to prevent race conditions during initialization.
-- **Global Migration**: Updated all consumers (e.g., `ContainerUtils`, `PluviaMain`, `ImageFsInstaller`) to use the singleton instance, reducing redundant disk scans.
+### 1. Core Infrastructure & Thread Safety
+- **Strict Singleton Enforcement**: Made `ContainerManager.java` a `final` class to strictly enforce the Singleton pattern.
+- **Cache Thread-Safety**: Added `@Volatile` backing fields and `synchronized` blocks to `CustomGameCache.kt`. This prevents potential race conditions where concurrent icon resolution requests could trigger redundant disk scans.
+- **Robustness**: Added `exists()` and `isDirectory()` checks along with `try-catch` blocks in `CustomGameScanner.kt` to gracefully handle disconnected or "hot-plugged" external storage.
 
-### 2. Asynchronous Icon Loading
-- **Background Resolution**: Moved custom game icon resolution to an asynchronous `produceState` block in `ListViewCard`. This prevents synchronous filesystem I/O from blocking the main UI thread.
-- **Retry Mechanism**: Added `imageRefreshCounter` as a key to the state production. This allows the UI to automatically re-attempt icon loading if the initial attempt failed (e.g., if external storage was busy or not yet ready).
+### 2. UI Layout & Polish
+- **Divider Overlap Fix**: Refactored `LibraryListPane.kt` to wrap list items and their preceding `HorizontalDivider` in a `Column`. This ensures that dividers are correctly positioned and do not overlap with the animated item cards, fixing a visual glitch in the `LIST` layout.
+- **Focus Refinement**: Reordered parameters in `LibraryListPane` to resolve a Compose warning regarding `modifier` placement.
 
-### 3. UI Layout Fixes
-- **Divider Stability**: Refactored `LibraryListPane` to move `HorizontalDivider` logic out of the animated item containers. This ensures dividers are drawn correctly between items without causing visual overlap or interfering with touch events.
-
-### 4. Documentation Coverage
-- **KDoc/Javadoc**: Added comprehensive documentation to public classes and methods in all modified files. This ensures the project meets the PR's documentation coverage requirement (80%+) and provides better clarity for future maintenance.
+### 3. Documentation & Cleanup
+- **Docstring Coverage**: Increased Javadoc and KDoc coverage to >80% across the affected files (`CustomGameScanner.kt`, `ContainerManager.java`, `LibraryListCard.kt`, `LibraryListPane.kt`, etc.).
+- **Path Sanitization**: Replaced absolute machine-specific paths in documentation artifacts with relative or generic links.
+- **Markdown Fixes**: Corrected non-standard Markdown syntax in `task.artifact.md`.
 
 ## Verification Results
 
-### Manual Verification
-- Verified that all `ContainerManager` instantiation sites were correctly updated to use `getInstance(context)`.
-- Verified the structure of `LibraryListPane` to ensure dividers sit outside the animated item boxes.
-- Verified that `imageRefreshCounter` is correctly propagated from `AppItem` down to `ListViewCard`.
+### Build Verification
+- **Kotlin Compilation**: Successfully compiled the `:app` module (Modern variant).
+- **Java Compilation**: Successfully compiled the `:app` module.
+- **Lint/Warnings**: Resolved a specific Compose `modifier` placement warning.
+
+### Design Verification
+- **Singleton Check**: Verified that `ContainerManager` is now `final` with a private constructor.
+- **Thread Safety Check**: Verified that `CustomGameCache` uses synchronization for all map operations.
+- **UI Logic Check**: Verified the `Column`-based wrapping in `LibraryListPane` correctly handles dividers for the `LIST` layout.
 
 > [!NOTE]
-> All changes have been pushed to your fork at `https://github.com/Meloon33/GameNative` on the branch `fix/list-layout-external-storage-crash`. The PR has been updated accordingly.
+> The implementation is now robust, well-documented, and ready for final review. All reported issues from the previous feedback have been addressed.

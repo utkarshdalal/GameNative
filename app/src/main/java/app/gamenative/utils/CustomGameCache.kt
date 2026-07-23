@@ -10,19 +10,29 @@ import timber.log.Timber
  */
 internal object CustomGameCache {
     // Cache: appId (Int) -> folder path (String)
+    @Volatile
     private var appIdCache: Map<Int, String>? = null
+    @Volatile
     private var cacheManualFolders: Set<String>? = null
 
     /**
      * Builds the appId cache by scanning all Custom Game manual folders.
      * Returns a map of appId (Int) -> folder path (String).
      */
+    /**
+     * Builds the appId cache by scanning all Custom Game manual folders.
+     * Returns a map of appId (Int) -> folder path (String).
+     *
+     * @param getManualFolders Lambda to retrieve the current set of manual folders.
+     * @param readGameIdFromFile Lambda to read the game ID from a folder's metadata.
+     * @return A map of numeric IDs to absolute folder paths.
+     */
     fun buildCache(
         getManualFolders: () -> Set<String>,
         readGameIdFromFile: (File) -> Int?
-    ): Map<Int, String> {
+    ): Map<Int, String> = synchronized(this) {
         val cache = mutableMapOf<Int, String>()
-        
+
         val manualFolders = getManualFolders()
         for (path in manualFolders) {
             val folder = File(path)
@@ -42,19 +52,27 @@ internal object CustomGameCache {
      * Gets or rebuilds the appId cache if needed.
      * Cache is invalidated when Custom Game manual folders change.
      */
+    /**
+     * Gets or rebuilds the appId cache if needed.
+     * Cache is invalidated when Custom Game manual folders change.
+     *
+     * @param getManualFolders Lambda to retrieve the current set of manual folders.
+     * @param readGameIdFromFile Lambda to read the game ID from a folder's metadata.
+     * @return The current or newly built cache map.
+     */
     fun getOrRebuildCache(
         getManualFolders: () -> Set<String>,
         readGameIdFromFile: (File) -> Int?
-    ): Map<Int, String> {
+    ): Map<Int, String> = synchronized(this) {
         val currentManualFolders = getManualFolders()
         val cachedManual = cacheManualFolders
-        
+
         // Rebuild if manual folders changed or cache is null
         if (appIdCache == null || cachedManual != currentManualFolders) {
             appIdCache = buildCache(getManualFolders, readGameIdFromFile)
             cacheManualFolders = currentManualFolders
         }
-        
+
         return appIdCache!!
     }
 
@@ -62,7 +80,7 @@ internal object CustomGameCache {
      * Invalidates the appId cache, forcing a rebuild on next access.
      * Call this when Custom Game paths change, after deletion, or after manual refresh.
      */
-    fun invalidate() {
+    fun invalidate() = synchronized(this) {
         appIdCache = null
         cacheManualFolders = null
         Timber.tag("CustomGameCache").d("AppId cache invalidated")
@@ -73,13 +91,13 @@ internal object CustomGameCache {
      * Removes any stale entries with the same path but different appId to maintain consistency.
      * Used for incremental updates when scanning new games.
      */
-    fun addEntry(appId: Int, folderPath: String) {
+    fun addEntry(appId: Int, folderPath: String) = synchronized(this) {
         if (appIdCache != null) {
             appIdCache = appIdCache!!.toMutableMap().apply {
                 // Remove any stale entries with the same path but different appId
                 val staleEntries = filter { it.value == folderPath && it.key != appId }.keys
                 staleEntries.forEach { remove(it) }
-                
+
                 // Add or update the entry with the correct appId
                 put(appId, folderPath)
             }
