@@ -216,21 +216,40 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
     val displayMetrics = context.resources.displayMetrics
     val nativeWidth = maxOf(displayMetrics.widthPixels, displayMetrics.heightPixels)
     val nativeHeight = minOf(displayMetrics.widthPixels, displayMetrics.heightPixels)
-    val deviceRes = "${nativeWidth}x${nativeHeight}"
-    val halfRes = "${(nativeWidth * 0.5f).roundToInt()}x${(nativeHeight * 0.5f).roundToInt()}"
-    val optimizedRes = "${(nativeWidth * 0.75f).roundToInt()}x${(nativeHeight * 0.75f).roundToInt()}"
+
+    fun toEven(value: Float): Int {
+        val rounded = value.roundToInt()
+        return rounded - (rounded % 2)
+    }
+
+    fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
+
+    fun calculateAspectRatio(width: Int, height: Int): String {
+        val common = gcd(width, height)
+        val w = width / common
+        val h = height / common
+        if (w == 13 && h == 6) return "19.5:9"
+        if (w == 43 && h == 18) return "21.5:9"
+        return "$w:$h"
+    }
+
+    val nativeRes = "${nativeWidth}x$nativeHeight"
+    val optimizedRes = "${toEven(nativeWidth * 0.75f)}x${toEven(nativeHeight * 0.75f)}"
+    val halfRes = "${toEven(nativeWidth * 0.5f)}x${toEven(nativeHeight * 0.5f)}"
+
+    val nativeRatio = calculateAspectRatio(nativeWidth, nativeHeight)
 
     val baseScreenSizes = stringArrayResource(R.array.screen_size_entries).toList()
     val adaptiveScreenSizes = mutableListOf<String>()
 
     // Add device specific resolutions if they don't exactly match existing presets
     listOf(
-        deviceRes to context.getString(R.string.resolution_native),
+        nativeRes to context.getString(R.string.resolution_native),
         optimizedRes to context.getString(R.string.resolution_optimized),
         halfRes to context.getString(R.string.resolution_half)
     ).forEach { (res, label) ->
         if (baseScreenSizes.none { it.startsWith(res) }) {
-            adaptiveScreenSizes.add("$res ($label)")
+            adaptiveScreenSizes.add("$res ($nativeRatio, $label)")
         }
     }
 
