@@ -1,6 +1,9 @@
 package app.gamenative.ui.component.dialog
 
 import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -46,6 +49,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -63,6 +67,7 @@ import androidx.core.net.toUri
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.ModInstall
+import app.gamenative.data.ModInstallSource
 import app.gamenative.data.ModInstallStatus
 import app.gamenative.data.ModPlacementMode
 import app.gamenative.data.ModPlacementRecipe
@@ -80,6 +85,10 @@ import app.gamenative.mods.FomodInstaller
 import app.gamenative.mods.FomodAutoSelector
 import app.gamenative.mods.FomodInstallerDetector
 import app.gamenative.mods.FomodParser
+import app.gamenative.mods.DuplicateLocalModContentException
+import app.gamenative.mods.LocalModImporter
+import app.gamenative.mods.LocalModSourceSelection
+import app.gamenative.mods.LocalModSourceType
 import app.gamenative.mods.ModArchiveEntry
 import app.gamenative.mods.ModArchiveInstallAssessor
 import app.gamenative.mods.ModConflictAnalyzer
@@ -168,6 +177,15 @@ internal data class PendingFileSelection(
     val reference: NexusModReference,
     val modInfo: NexusModInfo,
     val files: List<NexusModFile>,
+)
+
+internal data class PendingLocalModImport(
+    val source: LocalModSourceSelection,
+    val installId: String? = null,
+    val modName: String,
+    val version: String = "",
+    val estimatedRequiredBytes: Long,
+    val availableBytes: Long,
 )
 
 internal data class PendingCollectionSelection(
@@ -643,6 +661,11 @@ fun NexusModsDialog(
     var bethesdaPluginAssetIssues by remember { mutableStateOf<List<BethesdaPluginAssetIssue>>(emptyList()) }
     var diagnosticsLoading by remember { mutableStateOf(false) }
     var pendingFileSelection by remember { mutableStateOf<PendingFileSelection?>(null) }
+    var pendingLocalImport by remember { mutableStateOf<PendingLocalModImport?>(null) }
+    var localImportRetryInstallId by rememberSaveable(libraryItem.appId) {
+        mutableStateOf<String?>(null)
+    }
+    var localInspectionGeneration by remember { mutableStateOf(0L) }
     var pendingCollectionSelection by remember { mutableStateOf<PendingCollectionSelection?>(null) }
     var selectedCollectionKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     val collectionQueue = remember { mutableStateMapOf<String, CollectionQueueItem>() }
@@ -698,6 +721,103 @@ fun NexusModsDialog(
         if (NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) return false
         SnackbarManager.show(context.getString(R.string.nexus_integration_temporarily_unavailable))
         return true
+    }
+
+    fun inspectLocalSource(
+        retryInstallId: String?,
+        inspect: suspend () -> LocalModSourceSelection,
+    ) {
+        val generation = localInspectionGeneration + 1L
+        localInspectionGeneration = generation
+        scope.launch {
+            val inspectingMessage = context.getString(R.string.local_mod_inspecting)
+            loadingMessage = inspectingMessage
+            try {
+                val source = inspect()
+                val retryTarget = retryInstallId?.let { dao.getInstall(it) }
+                if (
+                    retryInstallId != null &&
+                    (
+                        retryTarget == null ||
+                            retryTarget.appId != libraryItem.appId ||
+                            retryTarget.source != source.type.installSource.name
+                        )
+                ) {
+                    throw IOException(context.getString(R.string.nexus_invalid_source_metadata))
+                }
+                val storage = NexusModManager.checkLocalImportStorage(
+                    context = context,
+                    appId = libraryItem.appId,
+                    sourceBytes = source.sizeBytes,
+                    requiresExtraction = source.type == LocalModSourceType.ARCHIVE,
+                )
+                if (localInspectionGeneration != generation) return@launch
+                pendingLocalImport = PendingLocalModImport(
+                    source = source,
+                    installId = retryTarget?.installId,
+                    modName = (
+                        retryTarget?.modName ?: if (
+                            source.type == LocalModSourceType.FILES && source.fileCount > 1
+                        ) {
+                            context.getString(R.string.local_mod_default_name)
+                        } else {
+                            LocalModImporter.suggestedModName(
+                                source,
+                                context.getString(R.string.local_mod_default_name),
+                            )
+                        }
+                    ).take(LocalModImporter.MAX_MOD_NAME_LENGTH),
+                    version = retryTarget?.version.orEmpty(),
+                    estimatedRequiredBytes = storage.estimatedRequiredBytes,
+                    availableBytes = storage.availableBytes,
+                )
+                selectedTab = ManageModsTab.IMPORT
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (localInspectionGeneration == generation) {
+                    SnackbarManager.show(
+                        NexusImportState.userMessage(
+                            error = e,
+                            fallback = context.getString(R.string.local_mod_unreadable),
+                        ),
+                    )
+                }
+            } finally {
+                if (localInspectionGeneration == generation && loadingMessage == inspectingMessage) {
+                    loadingMessage = null
+                }
+            }
+        }
+    }
+
+    fun consumeLocalImportRetryId(): String? = localImportRetryInstallId.also {
+        localImportRetryInstallId = null
+    }
+
+    val localArchiveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        val retryInstallId = consumeLocalImportRetryId()
+        uri ?: return@rememberLauncherForActivityResult
+        inspectLocalSource(retryInstallId) { LocalModImporter.inspectArchive(context, uri) }
+    }
+    val localFilesLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
+        val retryInstallId = consumeLocalImportRetryId()
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+        inspectLocalSource(retryInstallId) { LocalModImporter.inspectFiles(context, uris) }
+    }
+    val localFolderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+        val retryInstallId = consumeLocalImportRetryId()
+        uri ?: return@rememberLauncherForActivityResult
+        inspectLocalSource(retryInstallId) { LocalModImporter.inspectFolder(context, uri) }
+    }
+
+    fun launchLocalSourcePicker(sourceType: LocalModSourceType, retryInstallId: String? = null) {
+        localImportRetryInstallId = retryInstallId
+        when (sourceType) {
+            LocalModSourceType.ARCHIVE -> localArchiveLauncher.launch(arrayOf("*/*"))
+            LocalModSourceType.FILES -> localFilesLauncher.launch(arrayOf("*/*"))
+            LocalModSourceType.FOLDER -> localFolderLauncher.launch(null)
+        }
     }
 
     fun refreshLastPlacement() {
@@ -1611,6 +1731,111 @@ fun NexusModsDialog(
         }
     }
 
+    fun openImportedLocalMod(install: ModInstall) {
+        selectedInstall = install
+        selectedTab = ManageModsTab.PLACEMENT
+        placementChoice = PlacementChoice.AUTOMATIC
+        loadRecipes(install)
+        refreshEntries(install)
+    }
+
+    fun importLocalMod(pending: PendingLocalModImport) {
+        val modName = pending.modName.trim()
+        if (modName.isBlank()) {
+            SnackbarManager.show(context.getString(R.string.local_mod_name_required))
+            return
+        }
+        pendingLocalImport = null
+        scope.launch {
+            try {
+                val cleanup = NexusModManager.cleanupOrphanedFilesForApp(context, libraryItem.appId)
+                if (cleanup.reclaimedBytes > 0L) {
+                    SnackbarManager.show(
+                        context.getString(
+                            R.string.nexus_cleaned_old_temp_files,
+                            StorageUtils.formatBinarySize(cleanup.reclaimedBytes),
+                        ),
+                    )
+                }
+                val storage = NexusModManager.checkLocalImportStorage(
+                    context = context,
+                    appId = libraryItem.appId,
+                    sourceBytes = pending.source.sizeBytes,
+                    requiresExtraction = pending.source.type == LocalModSourceType.ARCHIVE,
+                )
+                if (!storage.canImport) {
+                    if (pendingLocalImport == null) {
+                        pendingLocalImport = pending.copy(
+                            estimatedRequiredBytes = storage.estimatedRequiredBytes,
+                            availableBytes = storage.availableBytes,
+                        )
+                    }
+                    SnackbarManager.show(
+                        context.getString(
+                            R.string.nexus_not_enough_storage_import,
+                            StorageUtils.formatBinarySize(storage.estimatedRequiredBytes),
+                            StorageUtils.formatBinarySize(storage.availableBytes),
+                        ),
+                    )
+                    return@launch
+                }
+                loadingMessage = context.getString(R.string.local_mod_starting, pending.source.displayName)
+                progress = 0f
+                importProgress = null
+                val install = NexusModImportService.enqueueLocalImport(
+                    context = context,
+                    appId = libraryItem.appId,
+                    source = pending.source,
+                    modName = modName,
+                    version = pending.version,
+                    installId = pending.installId ?: "local_${UUID.randomUUID()}",
+                ).await()
+                openImportedLocalMod(install)
+                SnackbarManager.show(context.getString(R.string.local_mod_imported))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: DuplicateLocalModContentException) {
+                openImportedLocalMod(e.existingInstall)
+                SnackbarManager.show(context.getString(R.string.local_mod_duplicate, e.existingInstall.modName))
+            } catch (e: Exception) {
+                SnackbarManager.show(
+                    NexusImportState.userMessage(
+                        error = e,
+                        fallback = context.getString(R.string.local_mod_import_failed),
+                    ),
+                )
+            } finally {
+                loadingMessage = null
+                importProgress = null
+            }
+        }
+    }
+
+    fun resumeStagedLocalMod(install: ModInstall) {
+        scope.launch {
+            try {
+                loadingMessage = context.getString(R.string.local_mod_starting, install.fileName)
+                progress = 0f
+                importProgress = null
+                val resumed = NexusModImportService.resumeLocalImport(context, install).await()
+                openImportedLocalMod(resumed)
+                SnackbarManager.show(context.getString(R.string.local_mod_imported))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                SnackbarManager.show(
+                    NexusImportState.userMessage(
+                        error = e,
+                        fallback = context.getString(R.string.local_mod_import_failed),
+                    ),
+                )
+            } finally {
+                loadingMessage = null
+                importProgress = null
+            }
+        }
+    }
+
     suspend fun receiveAuthorizedDownload(download: AuthorizedNexusWebsiteDownload) {
         if (blockUnavailableOnlineAccess()) return
         val reference = download.reference
@@ -1671,20 +1896,45 @@ fun NexusModsDialog(
     }
 
     fun retryInstall(install: ModInstall) {
+        if (ModInstallSource.isLocal(install.source)) {
+            val sourceType = LocalModSourceType.fromInstallSource(install.source)
+            if (sourceType == null || install.appId != libraryItem.appId) {
+                SnackbarManager.show(context.getString(R.string.nexus_invalid_source_metadata))
+                return
+            }
+            scope.launch {
+                val canResumeStagedContent = withContext(Dispatchers.IO) {
+                    NexusModManager.hasCompletePendingLocalContent(context, install)
+                }
+                if (canResumeStagedContent) {
+                    resumeStagedLocalMod(install)
+                } else {
+                    launchLocalSourcePicker(sourceType, install.installId)
+                }
+            }
+            return
+        }
+        val gameDomain = install.nexusGameDomain
+        val modId = install.nexusModId
+        val fileId = install.nexusFileId
+        if (gameDomain.isNullOrBlank() || modId == null || fileId == null) {
+            SnackbarManager.show(context.getString(R.string.nexus_invalid_source_metadata))
+            return
+        }
         importFile(
             reference = NexusModReference(
-                gameDomain = install.nexusGameDomain,
-                modId = install.nexusModId,
-                fileId = install.nexusFileId,
+                gameDomain = gameDomain,
+                modId = modId,
+                fileId = fileId,
             ),
             modInfo = NexusModInfo(
-                modId = install.nexusModId,
+                modId = modId,
                 name = install.modName,
                 summary = install.metadataSummary(),
                 version = install.version,
             ),
             file = NexusModFile(
-                fileId = install.nexusFileId,
+                fileId = fileId,
                 name = install.fileName,
                 version = install.version,
                 fileName = install.fileName,
@@ -1696,6 +1946,7 @@ fun NexusModsDialog(
 
     fun localizedImportStatus(status: String): String = when (status) {
         "Starting" -> context.getString(R.string.nexus_queue_starting)
+        "Copying" -> context.getString(R.string.local_mod_import_status_copying)
         "Downloading" -> context.getString(R.string.nexus_import_status_downloading)
         "Unpacking" -> context.getString(R.string.nexus_import_status_unpacking)
         else -> status
@@ -2548,6 +2799,11 @@ fun NexusModsDialog(
                 ) {
                     when (selectedTab) {
                         ManageModsTab.IMPORT -> {
+                            LocalModImportSection(
+                                onChooseArchive = { launchLocalSourcePicker(LocalModSourceType.ARCHIVE) },
+                                onChooseFiles = { launchLocalSourcePicker(LocalModSourceType.FILES) },
+                                onChooseFolder = { launchLocalSourcePicker(LocalModSourceType.FOLDER) },
+                            )
                             if (!NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) {
                                 NexusIntegrationUnavailableSection()
                             } else {
@@ -2592,6 +2848,7 @@ fun NexusModsDialog(
                                 enabledByInstallId = profileEnabledByInstallId,
                                 selectedInstall = selectedInstall,
                                 placementNeededInstallIds = placementNeededInstallIds,
+                                activeInstallIds = activeDownloads.keys,
                                 onSelect = ::selectInstallForPlacement,
                                 onSetEnabled = ::setProfileInstallEnabled,
                                 onDelete = { install ->
@@ -2763,15 +3020,22 @@ fun NexusModsDialog(
                                 Text(message, style = MaterialTheme.typography.bodyMedium)
                             }
                             displayedImportProgress?.let { detail ->
-                                if (detail.status == "Downloading" && detail.downloadedBytes > 0L) {
+                                val reportsByteProgress =
+                                    detail.status == "Downloading" || detail.status == "Copying"
+                                if (reportsByteProgress && detail.downloadedBytes > 0L) {
                                     val totalText = if (detail.totalBytes > 0L) {
                                         StorageUtils.formatBinarySize(detail.totalBytes)
                                     } else {
                                         stringResource(R.string.nexus_progress_unknown)
                                     }
+                                    val progressString = if (detail.status == "Copying") {
+                                        R.string.local_mod_copied_progress
+                                    } else {
+                                        R.string.nexus_downloaded_progress
+                                    }
                                     Text(
                                         text = stringResource(
-                                            R.string.nexus_downloaded_progress,
+                                            progressString,
                                             StorageUtils.formatBinarySize(detail.downloadedBytes),
                                             totalText,
                                         ),
@@ -2817,6 +3081,15 @@ fun NexusModsDialog(
                 )
             }
         }
+    }
+
+    pendingLocalImport?.let { pending ->
+        LocalModReviewDialog(
+            pending = pending,
+            onPendingChange = { pendingLocalImport = it },
+            onConfirm = { importLocalMod(pending) },
+            onDismiss = { pendingLocalImport = null },
+        )
     }
 
     pendingApply?.let { pending ->

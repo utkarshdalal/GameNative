@@ -8,6 +8,24 @@ import androidx.room.PrimaryKey
 
 enum class ModInstallSource {
     NEXUS,
+    LOCAL_ARCHIVE,
+    LOCAL_FILES,
+    LOCAL_FOLDER,
+    ;
+
+    val isLocal: Boolean
+        get() = when (this) {
+            LOCAL_ARCHIVE,
+            LOCAL_FILES,
+            LOCAL_FOLDER,
+            -> true
+            NEXUS -> false
+        }
+
+    companion object {
+        fun isLocal(source: String): Boolean =
+            entries.firstOrNull { it.name == source }?.isLocal == true
+    }
 }
 
 enum class ModInstallStatus {
@@ -84,13 +102,13 @@ data class ModInstall(
     val source: String = ModInstallSource.NEXUS.name,
 
     @ColumnInfo(name = "nexus_game_domain")
-    val nexusGameDomain: String,
+    val nexusGameDomain: String? = null,
 
     @ColumnInfo(name = "nexus_mod_id")
-    val nexusModId: Long,
+    val nexusModId: Long? = null,
 
     @ColumnInfo(name = "nexus_file_id")
-    val nexusFileId: Long,
+    val nexusFileId: Long? = null,
 
     @ColumnInfo(name = "mod_name")
     val modName: String,
@@ -127,6 +145,9 @@ data class ModInstall(
 
     @ColumnInfo(name = "metadata_json")
     val metadataJson: String = "",
+
+    @ColumnInfo(name = "archive_sha256")
+    val archiveSha256: String = "",
 )
 
 @Entity(
