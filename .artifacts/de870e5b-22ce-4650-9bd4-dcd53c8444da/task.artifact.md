@@ -1,14 +1,16 @@
-- `[x]` Add string resources to `strings.xml`
-- `[x]` Update `ContainerConfigDialog.kt`
-    - `[x]` Implement/Refine `evenRound` with KDoc
-    - `[x]` Update resolution rounding logic
-    - `[x]` Update aspect ratio calculation with KDoc
-    - `[x]` Recalculate aspect ratio per adaptive resolution
-    - `[x]` Add KDoc
-- `[x]` Update `GeneralTab.kt`
-    - `[x]` Use string resources for language names
-    - `[x]` Add KDoc
-- `[x]` Update `GraphicsTab.kt`
-    - `[x]` Add KDoc
-- `[x]` Update `walkthrough.artifact.md`
-- `[x]` Verify changes
+# Tasks - PR 1759 Finalization
+
+- [x] Refactor resolution logic in `ContainerConfigDialog.kt`
+    - [x] Move `evenRound`, `gcd`, `calculateAspectRatio` to top level
+    - [x] Apply `evenRound` to custom resolutions
+- [x] Add KDoc to Tab Composables
+    - [x] `EmulationTabContent`
+    - [x] `ControllerTabContent`
+    - [x] `WineTabContent`
+    - [x] `WinComponentsTabContent`
+    - [x] `EnvironmentTabContent`
+    - [x] `DrivesTabContent`
+    - [x] `AdvancedTabContent`
+- [x] Verify `arrays.xml` aspect ratios
+- [x] Update artifacts and verify links
+- [x] UI Verification via Compose Preview (Attempted, manual logic verification performed)

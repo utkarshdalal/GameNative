@@ -8,6 +8,13 @@ import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.winlator.core.KeyValueSet
 
+/**
+ * Content for the Win Components settings tab in the container configuration.
+ * Allows overriding individual Windows components (Direct3D, DirectSound, etc.)
+ * with either Builtin (Wine) or Native implementations.
+ *
+ * @param state The shared state for the configuration dialog.
+ */
 @Composable
 fun WinComponentsTabContent(state: ContainerConfigState) {
     val config = state.config.value

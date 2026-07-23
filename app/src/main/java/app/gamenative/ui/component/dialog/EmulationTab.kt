@@ -13,6 +13,13 @@ import com.winlator.container.Container
 import com.winlator.core.StringUtils
 import java.util.Locale
 
+/**
+ * Content for the Emulation settings tab in the container configuration.
+ * Configures CPU emulation parameters including Box64 and FEXCore versions, presets,
+ * and architecture-specific optimizations like TSO and x87 precision.
+ *
+ * @param state The shared state for the configuration dialog.
+ */
 @Composable
 fun EmulationTabContent(state: ContainerConfigState) {
     val config = state.config.value

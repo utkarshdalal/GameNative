@@ -12,6 +12,13 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.core.StringUtils
 
+/**
+ * Content for the Wine settings tab in the container configuration.
+ * Configures Wine-specific environment settings including GPU identification,
+ * video memory size, and off-screen rendering modes.
+ *
+ * @param state The shared state for the configuration dialog.
+ */
 @Composable
 fun WineTabContent(state: ContainerConfigState) {
     val config = state.config.value
