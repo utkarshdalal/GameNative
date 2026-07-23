@@ -153,8 +153,17 @@ internal fun AppItem(
     }
 }
 
+/**
+ * Composable that displays an icon representing the source of a game (e.g., Steam, Epic).
+ *
+ * @param gameSource The source of the game.
+ * @param modifier The modifier to be applied to the layout.
+ * @param iconSize The size of the icon in dp.
+ * @param alignmentBoxSize The size of the containing box in dp, used for alignment.
+ */
 @Composable
 fun GameSourceIcon(
+
     gameSource: GameSource,
     modifier: Modifier = Modifier,
     iconSize: Int = 12,

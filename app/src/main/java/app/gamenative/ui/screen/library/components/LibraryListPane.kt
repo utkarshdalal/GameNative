@@ -112,9 +112,23 @@ private fun calculateInstalledCount(context: android.content.Context, state: Lib
     return steamCount + customGameCount + gogCount + epicCount + amazonCount
 }
 
+/**
+ * Composable that displays the library items in a scrollable list or grid.
+ *
+ * @param state The current state of the library.
+ * @param listState The state of the scrollable grid.
+ * @param currentLayout The current layout type (list, hero grid, etc.).
+ * @param firstGridItemFocusRequester Focus requester for the first item in the grid.
+ * @param focusTargetListIndex The index of the item that should receive focus.
+ * @param onPageChange Callback for pagination.
+ * @param onNavigate Callback for navigating to a game's detail screen.
+ * @param onRefresh Callback for manual library refresh.
+ * @param modifier The modifier to be applied to the layout.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LibraryListPane(
+
     state: LibraryState,
     listState: LazyGridState,
     currentLayout: PaneType,

@@ -55,9 +55,22 @@ import kotlinx.coroutines.withContext
 
 /**
  * List view card with compact layout.
+ *
+ * @param modifier The modifier to be applied to the layout.
+ * @param appInfo Information about the library item (game/app).
+ * @param onClick Callback when the card is clicked.
+ * @param onFocus Callback when the card receives focus.
+ * @param isFocused Whether the card is currently focused.
+ * @param onFocusChanged Callback when focus state changes.
+ * @param isRefreshing Whether the library is currently refreshing.
+ * @param imageRefreshCounter Counter to trigger icon reloads.
+ * @param compatibilityStatus The compatibility status of the game.
+ * @param gameStats Statistics for the game (e.g., play time).
+ * @param context The Android context.
  */
 @Composable
 internal fun ListViewCard(
+
     modifier: Modifier,
     appInfo: LibraryItem,
     onClick: () -> Unit,

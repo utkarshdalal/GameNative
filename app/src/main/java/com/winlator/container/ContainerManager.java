@@ -371,6 +371,13 @@ public class ContainerManager {
         }
     }
 
+    /**
+     * Extracts common container pattern files.
+     *
+     * @param containerDir The directory to extract to.
+     * @param onExtractFileListener Listener for file extraction events.
+     * @return true if successful, false otherwise.
+     */
     public boolean extractContainerPatternCommon(File containerDir, OnExtractFileListener onExtractFileListener) {
         Log.d("Extraction", "extracting container_pattern_common.tzst");
         File componentFile = ContainerFilesDownloaderKt.ensureContainerFileAvailableBlocking(context, "container_pattern_common", new ProgressCallback() {
@@ -389,7 +396,17 @@ public class ContainerManager {
         }
     }
 
+    /**
+     * Extracts the container pattern file for a specific Wine version.
+     *
+     * @param wineVersion The identifier of the Wine version.
+     * @param contentsManager Manager for Wine contents.
+     * @param containerDir The directory to extract to.
+     * @param onExtractFileListener Listener for file extraction events.
+     * @return true if successful, false otherwise.
+     */
     public boolean extractContainerPatternFile(String wineVersion, ContentsManager contentsManager, File containerDir, OnExtractFileListener onExtractFileListener) {
+
         WineInfo wineInfo = WineInfo.fromIdentifier(context, contentsManager, wineVersion);
         if (WineInfo.isMainWineVersion(wineVersion)) {
             Log.d("Extraction", "extracting container_pattern_gamenative.tzst");

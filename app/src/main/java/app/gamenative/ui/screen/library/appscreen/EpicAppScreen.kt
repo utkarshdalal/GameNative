@@ -47,6 +47,10 @@ import app.gamenative.ui.util.SnackbarManager
 import timber.log.Timber
 
 // TODO: Verify all tests and do DLC auto-install with base game.
+/**
+ * Implementation of [BaseAppScreen] for Epic Games.
+ * Handles game information display, installation, and management for the Epic Games Store.
+ */
 class EpicAppScreen : BaseAppScreen() {
 
     companion object {
@@ -54,6 +58,11 @@ class EpicAppScreen : BaseAppScreen() {
 
         private val uninstallDialogAppIds = mutableStateListOf<String>()
 
+        /**
+         * Triggers the uninstall confirmation dialog for a specific app.
+         *
+         * @param appId The ID of the app to uninstall.
+         */
         fun showUninstallDialog(appId: String) {
             Timber.tag(TAG).d("showUninstallDialog: appId=$appId")
             if (!uninstallDialogAppIds.contains(appId)) {
@@ -62,11 +71,22 @@ class EpicAppScreen : BaseAppScreen() {
             }
         }
 
+        /**
+         * Hides the uninstall confirmation dialog for a specific app.
+         *
+         * @param appId The ID of the app.
+         */
         fun hideUninstallDialog(appId: String) {
             Timber.tag(TAG).d("hideUninstallDialog: appId=$appId")
             uninstallDialogAppIds.remove(appId)
         }
 
+        /**
+         * Checks if the uninstall confirmation dialog should be shown for an app.
+         *
+         * @param appId The ID of the app.
+         * @return true if the dialog should be shown.
+         */
         fun shouldShowUninstallDialog(appId: String): Boolean {
             val result = uninstallDialogAppIds.contains(appId)
             Timber.tag(TAG).d("shouldShowUninstallDialog: appId=$appId, result=$result")
@@ -79,6 +99,11 @@ class EpicAppScreen : BaseAppScreen() {
         // Shared state for install dialog - list of appIds that should show the dialog
         private val installDialogAppIds = mutableStateListOf<String>()
 
+        /**
+         * Triggers the install dialog for a specific app.
+         *
+         * @param appId The ID of the app to install.
+         */
         fun showInstallDialog(appId: String) {
             Timber.tag(TAG).d("showInstallDialog: appId=$appId")
             if (!installDialogAppIds.contains(appId)) {
@@ -87,11 +112,22 @@ class EpicAppScreen : BaseAppScreen() {
             }
         }
 
+        /**
+         * Hides the install dialog for a specific app.
+         *
+         * @param appId The ID of the app.
+         */
         fun hideInstallDialog(appId: String) {
             Timber.tag(TAG).d("hideInstallDialog: appId=$appId")
             installDialogAppIds.remove(appId)
         }
 
+        /**
+         * Checks if the install dialog should be shown for an app.
+         *
+         * @param appId The ID of the app.
+         * @return true if the dialog should be shown.
+         */
         fun shouldShowInstallDialog(appId: String): Boolean {
             val result = installDialogAppIds.contains(appId)
             Timber.tag(TAG).d("shouldShowInstallDialog: appId=$appId, result=$result")
@@ -101,20 +137,38 @@ class EpicAppScreen : BaseAppScreen() {
         // Shared state for game manager dialog - map of gameId to GameManagerDialogState
         private val gameManagerDialogStates = mutableStateMapOf<Int, app.gamenative.ui.component.dialog.state.GameManagerDialogState>()
 
+        /**
+         * Triggers the game manager dialog (e.g., for DLC selection) for a specific game.
+         *
+         * @param gameId The ID of the game.
+         * @param state The state of the dialog.
+         */
         fun showGameManagerDialog(gameId: Int, state: app.gamenative.ui.component.dialog.state.GameManagerDialogState) {
             Timber.tag(TAG).d("showGameManagerDialog: gameId=$gameId")
             gameManagerDialogStates[gameId] = state
         }
 
+        /**
+         * Hides the game manager dialog for a specific game.
+         *
+         * @param gameId The ID of the game.
+         */
         fun hideGameManagerDialog(gameId: Int) {
             Timber.tag(TAG).d("hideGameManagerDialog: gameId=$gameId")
             gameManagerDialogStates.remove(gameId)
         }
 
+        /**
+         * Retrieves the state of the game manager dialog for a specific game.
+         *
+         * @param gameId The ID of the game.
+         * @return The dialog state, or null if not found.
+         */
         fun getGameManagerDialogState(gameId: Int): app.gamenative.ui.component.dialog.state.GameManagerDialogState? {
             return gameManagerDialogStates[gameId]
         }
     }
+
 
     @Composable
     override fun getGameDisplayInfo(
