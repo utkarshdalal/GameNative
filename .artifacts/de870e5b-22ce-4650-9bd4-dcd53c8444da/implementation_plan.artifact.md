@@ -26,8 +26,8 @@ Finalize the resolution enhancement logic, improve documentation coverage, and s
 ## Verification Plan
 
 ### Automated Tests
-- I will verify the logic by manual inspection of the code changes.
-- I will check the KDoc coverage mentally (ensuring all specified functions have complete docstrings).
+- Run `ResolutionUtilsTest.kt` to verify `evenRound`, `gcd`, and `calculateAspectRatio` logic.
+- Command: `./gradlew :app:testDebugUnitTest --tests "app.gamenative.ui.component.dialog.ResolutionUtilsTest"`
 
 ### Manual Verification
 - Review the `ContainerConfigDialog` code to ensure `evenRound` is correctly applied to both dimensions before `calculateAspectRatio` is called for each resolution.
