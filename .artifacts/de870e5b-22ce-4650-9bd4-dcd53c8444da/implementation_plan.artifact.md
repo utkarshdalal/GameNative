@@ -5,29 +5,42 @@ Finalize the resolution enhancement logic, improve documentation coverage, and s
 ## User Review Required
 
 > [!IMPORTANT]
-> The aspect ratio logic will be changed to ensure each adaptive resolution calculates its own ratio based on its specific rounded dimensions. This might result in slightly different ratio labels for "Optimized" or "Half" resolutions compared to "Native" if the rounding affects the proportion.
+> All resolution dimensions (including custom ones) will now be forced to the nearest even integer. This ensures compatibility across all mobile GPU drivers and prevents common rendering artifacts.
 
 ## Proposed Changes
 
 ### UI & Logic Enhancements
 
 #### [MODIFY] [ContainerConfigDialog.kt](app/src/main/java/app/gamenative/ui/component/dialog/ContainerConfigDialog.kt)
-- Update `rememberContainerConfigDialogStaticData` to recalculate aspect ratio for each adaptive resolution separately.
-- Add full KDoc (with `@param` and `@return`) to `evenRound`, `gcd`, and `calculateAspectRatio` to increase coverage to >80%.
+- Move `evenRound`, `gcd`, and `calculateAspectRatio` from `rememberContainerConfigDialogStaticData` to the top level of the file as `internal` functions to allow reuse.
+- Update `applyScreenSizeToConfig` to apply `evenRound` to custom resolution inputs.
+- Add full KDoc to these functions to increase coverage.
+
+### Tab Documentation (KDoc)
+Add comprehensive KDoc to the following Composable functions to bring project documentation coverage to >80%:
+- `EmulationTabContent` in [EmulationTab.kt](app/src/main/java/app/gamenative/ui/component/dialog/EmulationTab.kt)
+- `ControllerTabContent` in [ControllerTab.kt](app/src/main/java/app/gamenative/ui/component/dialog/ControllerTab.kt)
+- `WineTabContent` in [WineTab.kt](app/src/main/java/app/gamenative/ui/component/dialog/WineTab.kt)
+- `WinComponentsTabContent` in [WinComponentsTab.kt](app/src/main/java/app/gamenative/ui/component/dialog/WinComponentsTab.kt)
+- `EnvironmentTabContent` in [EnvironmentTab.kt](app/src/main/java/app/gamenative/ui/component/dialog/EnvironmentTab.kt)
+- `DrivesTabContent` in [DrivesTab.kt](app/src/main/java/app/gamenative/ui/component/dialog/DrivesTab.kt)
+- `AdvancedTabContent` in [AdvancedTab.kt](app/src/main/java/app/gamenative/ui/component/dialog/AdvancedTab.kt)
+
+### Resource Verification
+- Verify that `arrays.xml` contains the correct 20:9 aspect ratios for 1200x540 and 1600x720.
 
 ### Artifact Synchronization
-
-#### [MODIFY] [task.artifact.md](file:///E:/workspace/StudioProjects/GameNative/.artifacts/de870e5b-22ce-4650-9bd4-dcd53c8444da/task.artifact.md)
-- Ensure all tasks related to PR 1759 are accurately listed and marked as complete after execution.
-
-#### [MODIFY] [walkthrough.artifact.md](file:///E:/workspace/StudioProjects/GameNative/.artifacts/de870e5b-22ce-4650-9bd4-dcd53c8444da/walkthrough.artifact.md)
-- Update the walkthrough to specifically mention the "even-pixel rounding" implementation and the per-resolution aspect ratio fix.
+- Update [task.artifact.md](.artifacts/de870e5b-22ce-4650-9bd4-dcd53c8444da/task.artifact.md) and [walkthrough.artifact.md](.artifacts/de870e5b-22ce-4650-9bd4-dcd53c8444da/walkthrough.artifact.md) to reflect the completed state.
+- Ensure all file links use repository-relative paths.
 
 ## Verification Plan
 
 ### Automated Tests
-- Run `ResolutionUtilsTest.kt` to verify `evenRound`, `gcd`, and `calculateAspectRatio` logic.
+- Run [ResolutionUtilsTest.kt](app/src/test/java/app/gamenative/ui/component/dialog/ResolutionUtilsTest.kt) to verify `evenRound` (forcing even integers), `gcd` calculation, and aspect ratio formatting (including mobile-specific ratios like 19.5:9).
 - Command: `./gradlew :app:testDebugUnitTest --tests "app.gamenative.ui.component.dialog.ResolutionUtilsTest"`
+- Run a build check to ensure no syntax errors.
+- Verify KDoc presence for all targeted functions.
 
 ### Manual Verification
-- Review the `ContainerConfigDialog` code to ensure `evenRound` is correctly applied to both dimensions before `calculateAspectRatio` is called for each resolution.
+- Render Compose previews for `ContainerConfigDialog` to verify UI stability.
+- Verify that entering an odd number in the custom resolution dialog results in an even number being saved (e.g., 1281 -> 1282 or 1280).
