@@ -11,6 +11,7 @@ import app.gamenative.data.EpicGame
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.EpicGameToken
+import app.gamenative.PrefManager
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
@@ -640,6 +641,13 @@ class EpicService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (PrefManager.forceOffline) {
+            Timber.tag("EPIC").i("Force Offline Mode active - stopping service")
+            val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_EPIC, "Stopping...")
+            startForeground(NotificationHelper.NOTIFICATION_ID_EPIC, notification)
+            stopSelf()
+            return START_NOT_STICKY
+        }
         Timber.tag("EPIC").d("onStartCommand() - action: ${intent?.action}")
 
         val instance = getInstance()

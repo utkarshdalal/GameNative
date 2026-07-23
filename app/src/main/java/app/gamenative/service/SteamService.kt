@@ -3439,6 +3439,13 @@ class SteamService : Service(), IChallengeUrlChanged {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (PrefManager.forceOffline) {
+            Timber.i("[SteamService]: Force Offline Mode active - stopping service")
+            val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_STEAM, "Stopping...")
+            startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification)
+            stopSelf()
+            return START_NOT_STICKY
+        }
 
         // Start up the notification early to to avoid ForegroundServiceDidNotStartInTimeException
         val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_STEAM, "Running...")

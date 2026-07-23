@@ -42,6 +42,7 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.PrefManager
+import app.gamenative.NetworkMonitor
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.component.dialog.SingleChoiceDialog
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -346,6 +347,19 @@ fun SettingsGroupInterface(
             onCheckedChange = { newValue ->
                 showGamepadHints = newValue
                 PrefManager.showGamepadHints = newValue
+            },
+        )
+
+        var forceOffline by rememberSaveable { mutableStateOf(PrefManager.forceOffline) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_force_offline_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_force_offline_subtitle)) },
+            state = forceOffline,
+            onCheckedChange = { newValue ->
+                forceOffline = newValue
+                PrefManager.forceOffline = newValue
+                NetworkMonitor.update()
             },
         )
 

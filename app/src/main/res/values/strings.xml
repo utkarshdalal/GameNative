@@ -1084,6 +1084,8 @@
     <string name="settings_interface_warn_before_exit_subtitle">Require double back press to exit — first press shows a warning</string>
     <string name="settings_interface_show_gamepad_hints_title">Show controller hints</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Show the controller button hints bar at the bottom of the screen</string>
+    <string name="settings_interface_force_offline_title">Force Offline Mode</string>
+    <string name="settings_interface_force_offline_subtitle">Disable all network connections and suppress connection alerts</string>
     <string name="settings_interface_icon_style">Icon style</string>
     <string name="settings_interface_custom_games">Custom Games</string>
     <string name="settings_interface_custom_game_import_as_steam">Import custom games as Steam games</string>

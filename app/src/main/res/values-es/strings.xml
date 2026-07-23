@@ -998,6 +998,8 @@
     <string name="settings_interface_warn_before_exit_title">Avisar antes de salir</string>
     <string name="settings_interface_warn_before_exit_subtitle">Requiere pulsar atrás dos veces para salir — la primera muestra un aviso</string>
     <string name="settings_interface_show_gamepad_hints_title">Mostrar pistas del mando</string>
+    <string name="settings_interface_force_offline_title">Modo sin conexión forzado</string>
+    <string name="settings_interface_force_offline_subtitle">Desactiva todas las conexiones de red y suprime las alertas de conexión</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Muestra la barra de pistas de botones del mando en la parte inferior de la pantalla</string>
     <string name="settings_interface_icon_style">Estilo del icono</string>
     <string name="settings_interface_custom_games">Juegos personalizados</string>

@@ -332,7 +332,7 @@ fun PluviaMain(
 
     // Check for updates on app start
     LaunchedEffect(Unit) {
-        if (BuildConfig.MODERN_ANDROID) return@LaunchedEffect
+        if (BuildConfig.MODERN_ANDROID || PrefManager.forceOffline) return@LaunchedEffect
         val checkedUpdateInfo = UpdateChecker.checkForUpdate(context)
         if (checkedUpdateInfo != null) {
             val appVersionCode = BuildConfig.VERSION_CODE
@@ -362,6 +362,7 @@ fun PluviaMain(
             scope.launch(Dispatchers.IO) {
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(resolvedAppId)
                 val isOffline = when {
+                    PrefManager.forceOffline -> true
                     gameSource != GameSource.STEAM -> false
                     SteamService.isLoggedIn -> false
                     !NetworkMonitor.hasInternet.value -> true
@@ -673,6 +674,11 @@ fun PluviaMain(
 
     LaunchedEffect(Unit) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            if (PrefManager.forceOffline) {
+                Timber.i("[PluviaMain]: Force Offline Mode active - skipping platform service startup")
+                return@repeatOnLifecycle
+            }
+
             // Only attempt reconnection if not already connected/connecting and not in offline mode
             val shouldAttemptReconnect = !state.isSteamConnected &&
                 !isConnecting &&
@@ -1277,7 +1283,7 @@ fun PluviaMain(
 
             // Connection status banner (overlay) - dismissible so users can access navigation
             if (state.currentScreen != PluviaScreen.LoginUser && !connectionBannerDismissed && initialConnectDone && !state.isSteamConnected &&
-                SteamUtils.hasStoredCredentials()) {
+                SteamUtils.hasStoredCredentials() && !PrefManager.forceOffline) {
                 Box(modifier = Modifier.zIndex(5f)) {
                     ConnectionStatusBanner(
                         connectionState = state.connectionState,

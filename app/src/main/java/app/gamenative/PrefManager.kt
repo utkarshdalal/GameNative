@@ -550,6 +550,13 @@ object PrefManager {
             setPref(EPIC_OFFLINE_MODE, value)
         }
 
+    private val FORCE_OFFLINE = booleanPreferencesKey("force_offline")
+    var forceOffline: Boolean
+        get() = getPref(FORCE_OFFLINE, false)
+        set(value) {
+            setPref(FORCE_OFFLINE, value)
+        }
+
 
     private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
     var useLegacyDRM: Boolean

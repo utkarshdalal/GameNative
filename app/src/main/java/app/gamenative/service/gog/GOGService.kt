@@ -12,6 +12,7 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
@@ -726,6 +727,13 @@ class GOGService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (PrefManager.forceOffline) {
+            Timber.i("[GOGService] Force Offline Mode active - stopping service")
+            val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_GOG, "Stopping...")
+            startForeground(NotificationHelper.NOTIFICATION_ID_GOG, notification)
+            stopSelf()
+            return START_NOT_STICKY
+        }
         Timber.d("[GOGService] onStartCommand() - action: ${intent?.action}")
 
         // Start as foreground service

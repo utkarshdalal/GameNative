@@ -84,11 +84,11 @@ class MainViewModel @Inject constructor(
     private val _uiEvent = Channel<MainUiEvent>()
     val uiEvent = _uiEvent.receiveAsFlow()
 
-    private val _offline = MutableStateFlow(false)
+    private val _offline = MutableStateFlow(PrefManager.forceOffline)
     val isOffline: StateFlow<Boolean> get() = _offline
 
     fun setOffline(value: Boolean) {
-        _offline.value = value
+        _offline.value = value || PrefManager.forceOffline
     }
 
     private val _updateInfo = MutableStateFlow<UpdateInfo?>(null)
