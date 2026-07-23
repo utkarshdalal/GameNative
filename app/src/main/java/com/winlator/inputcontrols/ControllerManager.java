@@ -369,8 +369,7 @@ public class ControllerManager {
 
         if (slot > 0) {
             if (slotAssignments.get(0) != null || slot0ReservedForVirtual) return slot;
-            scanForDevices();
-            if (detectedDevices.size() != 1) return slot;
+            if (slotAssignments.size() != 1) return slot;
             InputDevice device = inputManager.getInputDevice(deviceId);
             String deviceIdentifier = getDeviceIdentifier(device);
             if (deviceIdentifier == null) return slot;
