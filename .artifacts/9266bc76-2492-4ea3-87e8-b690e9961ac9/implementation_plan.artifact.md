@@ -28,7 +28,10 @@ This plan aims to implement the changes and feedback from [PR #1758](https://git
 - Replace `ContainerManager(context)` with `ContainerManager.getInstance(context)`.
 
 #### [MODIFY] [ContainerUtils.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/utils/ContainerUtils.kt)
-- Replace all `ContainerManager(context)` calls with `ContainerManager.getInstance(context)`.
+- Replace all `ContainerManager(context)` calls with `ContainerManager.getInstance(context)` in `hasContainer`, `getContainer`, `getOrCreateContainer`, `getOrCreateContainerWithOverride`, and `deleteContainer`.
+
+#### [MODIFY] [EpicAppScreen.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/appscreen/EpicAppScreen.kt)
+- Removed redundant `ContainerManager` import if unused directly (will check during execution).
 
 ---
 
@@ -47,7 +50,20 @@ This plan aims to implement the changes and feedback from [PR #1758](https://git
 
 ---
 
-### Verification Plan
+#### [NEW] Documentation Coverage
+
+#### [MODIFY] Multiple Files
+Add KDoc/Javadoc to public classes and methods in the modified files to meet the PR's documentation coverage requirements (80%+).
+
+Files to be updated:
+- [ContainerManager.java](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/com/winlator/container/ContainerManager.java)
+- [LibraryListCard.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/components/LibraryListCard.kt)
+- [LibraryAppItem.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/components/LibraryAppItem.kt)
+- [LibraryListPane.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/components/LibraryListPane.kt)
+- [ContainerUtils.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/utils/ContainerUtils.kt)
+- [EpicAppScreen.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/appscreen/EpicAppScreen.kt)
+
+## Verification Plan
 
 ### Automated Tests
 - Run a build to ensure all `ContainerManager` references are correctly updated and the private constructor doesn't break anything.

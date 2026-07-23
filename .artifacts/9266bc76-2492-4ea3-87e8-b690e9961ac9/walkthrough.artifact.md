@@ -1,29 +1,30 @@
-# Walkthrough - Core Infrastructure (Step 1)
+# Walkthrough - Library Stability and UI Optimization
 
-I have completed the refactoring of `ContainerManager` to a singleton pattern. This ensures that only one instance of the manager exists, preventing redundant disk scans of the internal home directory and improving thread safety across the application.
+I have completed all planned changes to resolve crashes and improve the stability of the Library List layout.
 
 ## Changes Made
 
-### Core Infrastructure
+### 1. Core Infrastructure (`ContainerManager` Singleton)
+- **Strict Singleton**: Converted `ContainerManager` to a strict singleton with a private constructor.
+- **Thread Safety**: Added a synchronized `getInstance(Context)` method to prevent race conditions during initialization.
+- **Global Migration**: Updated all consumers (e.g., `ContainerUtils`, `PluviaMain`, `ImageFsInstaller`) to use the singleton instance, reducing redundant disk scans.
 
-#### [ContainerManager.java](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/com/winlator/container/ContainerManager.java)
-- Converted `ContainerManager` to a strict singleton.
-- Made the constructor `private`.
-- Added a synchronized `getInstance(Context)` method to ensure thread safety during initialization.
+### 2. Asynchronous Icon Loading
+- **Background Resolution**: Moved custom game icon resolution to an asynchronous `produceState` block in `ListViewCard`. This prevents synchronous filesystem I/O from blocking the main UI thread.
+- **Retry Mechanism**: Added `imageRefreshCounter` as a key to the state production. This allows the UI to automatically re-attempt icon loading if the initial attempt failed (e.g., if external storage was busy or not yet ready).
 
-### Singleton Migration
-Updated the following classes to use `ContainerManager.getInstance(context)` instead of creating new instances:
-- [AdrenotoolsManager.java](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/com/winlator/contents/AdrenotoolsManager.java)
-- [ImageFsInstaller.java](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/com/winlator/xenvironment/ImageFsInstaller.java)
-- [PluviaMain.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/PluviaMain.kt)
-- [XServerScreen.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt)
-- [ContainerUtils.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/utils/ContainerUtils.kt)
-- [EpicAppScreen.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/appscreen/EpicAppScreen.kt) (removed redundant import)
+### 3. UI Layout Fixes
+- **Divider Stability**: Refactored `LibraryListPane` to move `HorizontalDivider` logic out of the animated item containers. This ensures dividers are drawn correctly between items without causing visual overlap or interfering with touch events.
+
+### 4. Documentation Coverage
+- **KDoc/Javadoc**: Added comprehensive documentation to public classes and methods in all modified files. This ensures the project meets the PR's documentation coverage requirement (80%+) and provides better clarity for future maintenance.
 
 ## Verification Results
 
-### Automated Tests
-- Verified that all compilation errors related to the `private` constructor were resolved by updating all instantiation sites.
+### Manual Verification
+- Verified that all `ContainerManager` instantiation sites were correctly updated to use `getInstance(context)`.
+- Verified the structure of `LibraryListPane` to ensure dividers sit outside the animated item boxes.
+- Verified that `imageRefreshCounter` is correctly propagated from `AppItem` down to `ListViewCard`.
 
 > [!NOTE]
-> I have committed these changes locally to the branch `fix/list-layout-external-storage-crash`. However, I do not have permissions to push directly to the remote repository `utkarshdalal/GameNative`. Please push the changes to GitHub to make them available for review in the PR.
+> All changes have been pushed to your fork at `https://github.com/Meloon33/GameNative` on the branch `fix/list-layout-external-storage-crash`. The PR has been updated accordingly.

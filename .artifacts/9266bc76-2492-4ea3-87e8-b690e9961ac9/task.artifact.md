@@ -1,10 +1,17 @@
-- `[/]` Step 1: Core Infrastructure (`ContainerManager` Singleton)
-    - `[ ]` Modify `ContainerManager.java` (private constructor, synchronized `getInstance`)
-    - `[ ]` Update `AdrenotoolsManager.java`
-    - `[ ]` Update `ImageFsInstaller.java`
-    - `[ ]` Update `PluviaMain.kt`
-    - `[ ]` Update `XServerScreen.kt`
-    - `[ ]` Update `ContainerUtils.kt`
-    - `[ ]` Update `EpicAppScreen.kt` (clean up import if needed)
-- `[ ]` Step 2: Asynchronous Icon loading in `LibraryListCard`
-- `[ ]` Step 3: UI Layout Fix in `LibraryListPane`
+- `[x]` Step 1: Core Infrastructure (`ContainerManager` Singleton)
+    - `[x]` Modify `ContainerManager.java` (private constructor, synchronized `getInstance`)
+    - `[x]` Update `AdrenotoolsManager.java`
+    - `[x]` Update `ImageFsInstaller.java`
+    - `[x]` Update `PluviaMain.kt`
+    - `[x]` Update `XServerScreen.kt`
+    - `[x]` Update `ContainerUtils.kt`
+    - `[x]` Update `EpicAppScreen.kt` (clean up import if needed)
+- `[x]` Step 2: Asynchronous Icon loading in `LibraryListCard`
+- `[x]` Step 3: UI Layout Fix in `LibraryListPane`
+- `[x]` Step 4: Documentation Coverage
+    - `[x]` Add Javadoc to `ContainerManager.java`
+    - `[x]` Add KDoc to `LibraryListCard.kt`
+    - `[x]` Add KDoc to `LibraryAppItem.kt`
+    - `[x]` Add KDoc to `LibraryListPane.kt`
+    - `[x]` Add KDoc to `ContainerUtils.kt`
+    - `[x]` Add KDoc to `EpicAppScreen.kt`
