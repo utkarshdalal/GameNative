@@ -1498,11 +1498,7 @@
     <string name="nexus_filter_placement">Local</string>
     <string name="nexus_filter_manual">Manual</string>
     <string name="nexus_filter_unsupported">Não compatível</string>
-    <string name="nexus_account_title">Conta Nexus</string>
-    <string name="nexus_account_api_hint">Entre no Nexus Mods, abra o menu do seu perfil e vá para Site preferences &gt; API Access. Copie sua Personal API Key e cole aqui.</string>
-    <string name="nexus_account_key_local">Sua chave é salva localmente neste dispositivo.</string>
-    <string name="nexus_personal_api_key">Chave API pessoal</string>
-    <string name="nexus_save_check_key">Salvar e verificar chave</string>
+    <string name="nexus_integration_temporarily_unavailable">O suporte ao Nexus Mods foi temporariamente desativado enquanto o GameNative está sendo registrado no Nexus Mods. Os mods já instalados ainda podem ser gerenciados.</string>
     <string name="nexus_invalid_nxm_callback">Esta autorização do Nexus é inválida, expirou, já foi usada ou não corresponde mais a uma solicitação ativa do GameNative. Inicie o download novamente em Gerenciar mods Nexus.</string>
     <string name="nexus_nxm_callback_received">Autorização de download do Nexus recebida. Volte para Gerenciar mods Nexus se o download não for retomado automaticamente.</string>
     <string name="nexus_authorize_in_browser">O Nexus exige uma confirmação no site para esta conta. No navegador, escolha Download with Manager e depois Slow Download; o GameNative retomará automaticamente.</string>
@@ -1838,9 +1834,6 @@
     <string name="nexus_checking_target_files">Verificando arquivos de destino</string>
     <string name="nexus_target_files_exist_overwrite">Os arquivos de destino já existem. Escolha Substituir arquivos e crie backups para substituí-los.</string>
     <string name="nexus_scan_placement_conflicts_failed">Falha ao verificar conflitos de posicionamento</string>
-    <string name="nexus_validating_api_key">Validando chave Nexus API</string>
-    <string name="nexus_connected_nexus_user">Conectado a Nexus como %1$s</string>
-    <string name="nexus_api_key_validation_failed">Nexus API validação da chave falhou</string>
     <string name="nexus_mod_deleted">Modificação excluída</string>
     <string name="nexus_mod_deleted_with_skipped">Modificação excluída; %1$d os arquivos alterados foram mantidos no lugar</string>
     <string name="nexus_fomod_mappings_need_manual_placement">Mapeamentos de arquivo FOMOD que precisam de posicionamento manual: %1$d</string>

@@ -117,6 +117,59 @@ class NexusImportStateTest {
     }
 
     @Test
+    fun unavailableOnlineAccess_pausesImportWithoutDiscardingCompletedDownload() {
+        val completed = NexusImportState.markDownloadComplete(
+            install = install(status = ModInstallStatus.IMPORTING, fileId = 10L),
+            downloadedBytes = 4_096L,
+        )
+
+        val paused = NexusImportState.pauseWhileOnlineAccessUnavailable(
+            install = completed,
+            message = "Nexus downloads unavailable",
+        )
+
+        assertEquals(ModInstallStatus.PAUSED.name, paused.status)
+        assertEquals("Nexus downloads unavailable", JSONObject(paused.metadataJson).getString("error"))
+        assertTrue(NexusImportState.hasCompletedDownload(paused, archiveBytes = 4_096L))
+        assertFalse(NexusImportState.isWaitingForWebsiteAuthorization(paused))
+    }
+
+    @Test
+    fun unavailableOnlineAccess_doesNotRewriteMatchingPause() {
+        val paused = NexusImportState.pauseWhileOnlineAccessUnavailable(
+            install = install(status = ModInstallStatus.IMPORTING, fileId = 10L),
+            message = "Nexus downloads unavailable",
+            now = 2L,
+        )
+
+        val unchanged = NexusImportState.pauseWhileOnlineAccessUnavailable(
+            install = paused,
+            message = "Nexus downloads unavailable",
+            now = 99L,
+        )
+
+        assertEquals(paused, unchanged)
+    }
+
+    @Test
+    fun unavailableOnlineAccess_replacesObsoleteWebsiteAuthorizationPause() {
+        val awaitingAuthorization = NexusImportState.pauseForWebsiteAuthorization(
+            install = install(status = ModInstallStatus.IMPORTING, fileId = 10L),
+            message = "Authorize this file on Nexus Mods",
+        )
+
+        val paused = NexusImportState.pauseWhileOnlineAccessUnavailable(
+            install = awaitingAuthorization,
+            message = "Nexus downloads unavailable",
+            now = 99L,
+        )
+
+        assertEquals("Nexus downloads unavailable", JSONObject(paused.metadataJson).getString("error"))
+        assertFalse(NexusImportState.isWaitingForWebsiteAuthorization(paused))
+        assertEquals(99L, paused.updatedAt)
+    }
+
+    @Test
     fun userMessage_expiredAuthorizationAlwaysIncludesRecoveryStep() {
         val error = NexusApiException(
             message = "The Nexus website download authorization expired",

@@ -14,7 +14,7 @@ data class NexusModReference(
 /**
  * Short-lived, file-specific authorization issued by nexusmods.com in an NXM link.
  *
- * This is deliberately separate from the user's API key. Free Nexus accounts must
+ * This is deliberately separate from Nexus account authentication. Free Nexus accounts must
  * visit the website for each file and return these values to the mod manager.
  */
 data class NexusDownloadAuthorization(

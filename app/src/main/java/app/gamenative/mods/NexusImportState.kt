@@ -86,6 +86,29 @@ internal object NexusImportState {
         )
     }
 
+    fun pauseWhileOnlineAccessUnavailable(
+        install: ModInstall,
+        message: String,
+        now: Long = System.currentTimeMillis(),
+    ): ModInstall {
+        val metadata = runCatching { JSONObject(install.metadataJson) }.getOrElse { JSONObject() }
+        if (
+            install.status == ModInstallStatus.PAUSED.name &&
+            metadata.optString("error") == message &&
+            !metadata.optBoolean(WEBSITE_AUTHORIZATION_REQUIRED_KEY, false)
+        ) {
+            return install
+        }
+        metadata
+            .put("error", message)
+            .put(WEBSITE_AUTHORIZATION_REQUIRED_KEY, false)
+        return install.copy(
+            status = ModInstallStatus.PAUSED.name,
+            updatedAt = now,
+            metadataJson = metadata.toString(),
+        )
+    }
+
     fun isWaitingForWebsiteAuthorization(install: ModInstall): Boolean =
         runCatching {
             JSONObject(install.metadataJson).optBoolean(WEBSITE_AUTHORIZATION_REQUIRED_KEY, false)
@@ -177,7 +200,8 @@ internal object NexusImportState {
             ""
         }
         val base = when (error.reason) {
-            NexusApiErrorReason.AUTHENTICATION -> "Nexus rejected the API key. Reconnect the Nexus account and try again."
+            NexusApiErrorReason.AUTHENTICATION ->
+                "Nexus account authorization is unavailable or was rejected. Reconnect the Nexus account and try again."
             NexusApiErrorReason.FORBIDDEN -> "Nexus denied access to this resource for the current account."
             NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_REQUIRED ->
                 "Free Nexus accounts must authorize this file on the Nexus Mods website before GameNative can download it."
@@ -191,7 +215,7 @@ internal object NexusImportState {
             NexusApiErrorReason.NOT_FOUND -> error.message ?: "Nexus could not find this mod, file, or collection revision."
             NexusApiErrorReason.RATE_LIMITED -> "Nexus API rate limit reached."
             NexusApiErrorReason.OTHER -> when (error.statusCode) {
-                401 -> "Nexus rejected the API key. Reconnect the Nexus account and try again."
+                401 -> "Nexus account authorization was rejected. Reconnect the Nexus account and try again."
                 403 -> "Nexus denied access to this resource for the current account."
                 404 -> error.message ?: "Nexus could not find this mod, file, or collection revision."
                 429 -> "Nexus API rate limit reached."

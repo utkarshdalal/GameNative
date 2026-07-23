@@ -1626,11 +1626,7 @@
     <string name="nexus_filter_placement">배치</string>
     <string name="nexus_filter_manual">수동</string>
     <string name="nexus_filter_unsupported">지원 안 됨</string>
-    <string name="nexus_account_title">Nexus 계정</string>
-    <string name="nexus_account_api_hint">Nexus Mods에 로그인하고 프로필 메뉴를 연 다음 Site preferences &gt; API Access로 이동하세요. Personal API Key를 복사해 여기에 붙여넣으세요.</string>
-    <string name="nexus_account_key_local">키는 이 기기에 로컬로 저장됩니다.</string>
-    <string name="nexus_personal_api_key">개인 API 키</string>
-    <string name="nexus_save_check_key">저장하고 키 확인</string>
+    <string name="nexus_integration_temporarily_unavailable">GameNative를 Nexus Mods에 등록하는 동안 Nexus Mods 지원이 일시적으로 비활성화되었습니다. 이미 설치된 모드는 계속 관리할 수 있습니다.</string>
     <string name="nexus_invalid_nxm_callback">이 Nexus 인증은 유효하지 않거나 만료되었거나 이미 사용되었거나, 더 이상 활성 GameNative 요청과 일치하지 않습니다. Nexus 모드 관리에서 다운로드를 다시 시작하세요.</string>
     <string name="nexus_nxm_callback_received">Nexus 다운로드 인증을 받았습니다. 다운로드가 자동으로 재개되지 않으면 Nexus 모드 관리로 돌아가세요.</string>
     <string name="nexus_authorize_in_browser">이 계정은 Nexus 웹사이트에서 확인해야 합니다. 브라우저에서 Download with Manager를 선택한 다음 Slow Download를 선택하세요. GameNative가 자동으로 재개됩니다.</string>
@@ -1966,9 +1962,6 @@
     <string name="nexus_checking_target_files">대상 파일 확인 중</string>
     <string name="nexus_target_files_exist_overwrite">대상 파일이 이미 존재합니다. 파일 덮어쓰기를 선택하고 백업을 생성하여 대체합니다.</string>
     <string name="nexus_scan_placement_conflicts_failed">배치 충돌을 검색하지 못했습니다.</string>
-    <string name="nexus_validating_api_key">Nexus API 키 유효성 검사 중</string>
-    <string name="nexus_connected_nexus_user">Nexus에 %1$s로 연결됨</string>
-    <string name="nexus_api_key_validation_failed">Nexus API 키 검증 실패</string>
     <string name="nexus_mod_deleted">모드 삭제됨</string>
     <string name="nexus_mod_deleted_with_skipped">모드가 삭제되었습니다. %1$d 변경된 파일이 그대로 남아 있습니다.</string>
     <string name="nexus_fomod_mappings_need_manual_placement">%1$d FOMOD 파일 매핑에는 수동 배치가 필요함</string>

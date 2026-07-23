@@ -1,7 +1,6 @@
 package app.gamenative.mods
 
 import app.gamenative.BuildConfig
-import app.gamenative.PrefManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -106,6 +105,7 @@ class NexusApiClient(
         "https://api.nexusmods.com/v2/graphql",
         "https://api-router.nexusmods.com/graphql",
     ),
+    private val accessTokenProvider: () -> String? = { null },
 ) {
     private companion object {
         private const val MAX_COLLECTION_PAYLOAD_BYTES = 256L * 1024L * 1024L
@@ -113,18 +113,19 @@ class NexusApiClient(
     }
 
     private val jsonMediaType = "application/json".toMediaType()
-    private val configuredHosts: Set<String> =
-        (listOf(baseUrl, nexusBaseUrl) + graphUrls)
-            .mapNotNull { it.toHttpUrlOrNull()?.host?.lowercase() }
+    private val authenticatedOrigins: Set<String> =
+        (listOf(baseUrl) + graphUrls)
+            .mapNotNull { it.toHttpUrlOrNull() }
+            .map { "${it.scheme}://${it.host.lowercase()}:${it.port}" }
             .toSet()
     private val configuredHttpHosts: Set<String> =
         (listOf(baseUrl, nexusBaseUrl) + graphUrls)
             .mapNotNull { it.toHttpUrlOrNull()?.takeIf { url -> url.scheme == "http" }?.host?.lowercase() }
             .toSet()
 
-    suspend fun validateKey(apiKey: String = PrefManager.nexusApiKey): NexusUserInfo =
+    suspend fun getCurrentUser(): NexusUserInfo =
         withContext(Dispatchers.IO) {
-            val json = getObject("/users/validate.json", apiKey)
+            val json = getObject("/users/validate.json")
             NexusUserInfo(
                 name = json.optString("name"),
                 userId = json.optLong("user_id", 0L),
@@ -132,9 +133,9 @@ class NexusApiClient(
             )
         }
 
-    suspend fun getModInfo(gameDomain: String, modId: Long, apiKey: String = PrefManager.nexusApiKey): NexusModInfo =
+    suspend fun getModInfo(gameDomain: String, modId: Long): NexusModInfo =
         withContext(Dispatchers.IO) {
-            val json = getObject("/games/$gameDomain/mods/$modId.json", apiKey)
+            val json = getObject("/games/$gameDomain/mods/$modId.json")
             NexusModInfo(
                 modId = json.optLong("mod_id", modId),
                 name = json.optString("name", "Nexus mod $modId"),
@@ -143,9 +144,9 @@ class NexusApiClient(
             )
         }
 
-    suspend fun getModFiles(gameDomain: String, modId: Long, apiKey: String = PrefManager.nexusApiKey): List<NexusModFile> =
+    suspend fun getModFiles(gameDomain: String, modId: Long): List<NexusModFile> =
         withContext(Dispatchers.IO) {
-            val json = getObject("/games/$gameDomain/mods/$modId/files.json", apiKey)
+            val json = getObject("/games/$gameDomain/mods/$modId/files.json")
             val files = json.optJSONArray("files") ?: JSONArray()
             buildList {
                 for (i in 0 until files.length()) {
@@ -174,7 +175,6 @@ class NexusApiClient(
         fileId: Long,
         downloadAuthorization: NexusDownloadAuthorization? = null,
         isPremiumAccount: Boolean? = null,
-        apiKey: String = PrefManager.nexusApiKey,
     ): List<NexusDownloadLink> = withContext(Dispatchers.IO) {
         val path = "/games/$gameDomain/mods/$modId/files/$fileId/download_link.json"
         val url = (baseUrl.trimEnd('/') + path).toHttpUrlOrNull()
@@ -190,7 +190,7 @@ class NexusApiClient(
         val array = try {
             JSONArray(
                 execute(
-                    request = baseRequest(authorizedUrl.toString(), apiKey).build(),
+                    request = authenticatedRequest(authorizedUrl.toString()).build(),
                     displayPath = path,
                 ),
             )
@@ -216,13 +216,10 @@ class NexusApiClient(
         }
     }
 
-    suspend fun getCollectionRevision(
-        reference: NexusCollectionReference,
-        apiKey: String = PrefManager.nexusApiKey,
-    ): NexusCollectionInfo = withContext(Dispatchers.IO) {
+    suspend fun getCollectionRevision(reference: NexusCollectionReference): NexusCollectionInfo = withContext(Dispatchers.IO) {
         var lastError: NexusApiException? = null
         try {
-            return@withContext getCollectionRevisionGraph(reference, apiKey)
+            return@withContext getCollectionRevisionGraph(reference)
         } catch (e: CancellationException) {
             throw e
         } catch (e: NexusApiException) {
@@ -242,7 +239,7 @@ class NexusApiClient(
 
         for (path in revisionPaths) {
             try {
-                return@withContext parseCollectionRevision(getObject(path, apiKey), reference)
+                return@withContext parseCollectionRevision(getObject(path), reference)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: NexusApiException) {
@@ -259,15 +256,12 @@ class NexusApiClient(
         throw lastError ?: NexusApiException("Nexus collection was not found", 404)
     }
 
-    private fun getCollectionRevisionGraph(
-        reference: NexusCollectionReference,
-        apiKey: String,
-    ): NexusCollectionInfo {
+    private fun getCollectionRevisionGraph(reference: NexusCollectionReference): NexusCollectionInfo {
         val payload = collectionRevisionGraphPayload(reference)
         var lastError: NexusApiException? = null
         for (url in graphUrls.distinct()) {
             try {
-                val response = postObject(url, payload, apiKey)
+                val response = postObject(url, payload)
                 val errors = response.optJSONArray("errors")
                 val data = response.optJSONObject("data")
                 val revision = data?.optJSONObject("collectionRevision")
@@ -281,7 +275,7 @@ class NexusApiClient(
                 val downloadLink = revision.optStringFromAny("downloadLink", "download_link")
                 val manifestInfo = if (downloadLink.isNotBlank()) {
                     try {
-                        getCollectionManifest(downloadLink, graphInfo, apiKey)
+                        getCollectionManifest(downloadLink, graphInfo)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
@@ -352,14 +346,11 @@ class NexusApiClient(
             )
     }
 
-    private fun getObject(path: String, apiKey: String): JSONObject =
-        JSONObject(execute(path, apiKey))
+    private fun getObject(path: String): JSONObject =
+        JSONObject(execute(path))
 
-    private fun getArray(path: String, apiKey: String): JSONArray =
-        JSONArray(execute(path, apiKey))
-
-    private fun postObject(url: String, payload: JSONObject, apiKey: String): JSONObject {
-        val request = baseRequest(url, apiKey)
+    private fun postObject(url: String, payload: JSONObject): JSONObject {
+        val request = authenticatedRequest(url)
             .post(payload.toString().toRequestBody(jsonMediaType))
             .build()
         return JSONObject(execute(request, url))
@@ -368,15 +359,14 @@ class NexusApiClient(
     private fun getCollectionManifest(
         downloadLink: String,
         graphInfo: NexusCollectionInfo,
-        apiKey: String,
     ): NexusCollectionInfo? {
-        val raw = fetchCollectionPayload(resolveNexusUrl(downloadLink), apiKey)
+        val raw = fetchCollectionPayload(resolveNexusUrl(downloadLink))
         val body = raw.toString(StandardCharsets.UTF_8).trimStart()
         val payload = if (body.startsWith("{")) {
             val json = JSONObject(body)
             val nextLink = json.firstDownloadLink()
             if (nextLink != null) {
-                fetchCollectionPayload(resolveNexusUrl(nextLink), apiKey)
+                fetchCollectionPayload(resolveNexusUrl(nextLink))
             } else {
                 raw
             }
@@ -387,14 +377,14 @@ class NexusApiClient(
         return parseCollectionManifest(JSONObject(jsonText), graphInfo)
     }
 
-    private fun fetchCollectionPayload(url: String, apiKey: String): ByteArray {
+    private fun fetchCollectionPayload(url: String): ByteArray {
         val parsed = url.toHttpUrlOrNull()
             ?: throw NexusApiException("Invalid Nexus collection download URL")
         if (!parsed.isAllowedCollectionScheme()) {
             throw NexusApiException("Nexus collection download URL must use HTTPS")
         }
-        val request = if (parsed.shouldAttachApiKey()) {
-            baseRequest(url, apiKey)
+        val request = if (parsed.requiresAuthentication()) {
+            authenticatedRequest(url)
         } else {
             publicRequest(url)
         }.build()
@@ -432,26 +422,25 @@ class NexusApiClient(
         }
     }
 
-    private fun execute(path: String, apiKey: String): String {
+    private fun execute(path: String): String {
         return execute(
-            request = baseRequest(baseUrl.trimEnd('/') + path, apiKey).build(),
+            request = authenticatedRequest(baseUrl.trimEnd('/') + path).build(),
             displayPath = path,
         )
     }
 
-    private fun baseRequest(url: String, apiKey: String): Request.Builder {
-        if (apiKey.isBlank()) {
-            throw NexusApiException("Nexus API key is required")
+    private fun authenticatedRequest(url: String): Request.Builder {
+        val accessToken = accessTokenProvider()?.trim().orEmpty()
+        if (accessToken.isBlank()) {
+            throw NexusApiException(
+                message = "Nexus Mods account connection is temporarily unavailable",
+                reason = NexusApiErrorReason.AUTHENTICATION,
+            )
         }
-        return Request.Builder()
-            .url(url)
+        return publicRequest(url)
             .addHeader("Content-Type", "application/json")
-            .addHeader("Accept", "application/json")
-            .addHeader("APIKEY", apiKey)
+            .addHeader("Authorization", "Bearer $accessToken")
             .addHeader("Protocol-Version", "1.0")
-            .addHeader("Application-Name", "GameNative")
-            .addHeader("Application-Version", BuildConfig.VERSION_NAME)
-            .addHeader("User-Agent", "GameNative/${BuildConfig.VERSION_NAME}")
     }
 
     private fun publicRequest(url: String): Request.Builder =
@@ -469,7 +458,7 @@ class NexusApiClient(
             val body = response.body.string()
             if (!response.isSuccessful) {
                 val message = when (response.code) {
-                    401 -> "Nexus API key was rejected"
+                    401 -> "Nexus account authorization was rejected"
                     403 -> "Nexus denied access to this resource"
                     404 -> if (displayPath.contains("download_link", ignoreCase = true)) {
                         "This Nexus file is no longer downloadable"
@@ -497,7 +486,7 @@ class NexusApiClient(
             val daily = response.header("x-rl-daily-remaining")?.toIntOrNull()
             if (!response.isSuccessful) {
                 val message = when (response.code) {
-                    401 -> "Nexus API key was rejected"
+                    401 -> "Nexus account authorization was rejected"
                     403 -> "Nexus denied access to this resource"
                     429 -> "Nexus API rate limit reached"
                     else -> "Nexus API request failed (${response.code})"
@@ -568,13 +557,8 @@ class NexusApiClient(
     private fun HttpUrl.isAllowedCollectionScheme(): Boolean =
         scheme == "https" || (scheme == "http" && host.lowercase() in configuredHttpHosts)
 
-    private fun HttpUrl.shouldAttachApiKey(): Boolean =
-        isNexusOwnedHost(host) || host.lowercase() in configuredHosts
-
-    private fun isNexusOwnedHost(host: String): Boolean {
-        val normalized = host.lowercase()
-        return normalized == "nexusmods.com" || normalized.endsWith(".nexusmods.com")
-    }
+    private fun HttpUrl.requiresAuthentication(): Boolean =
+        "$scheme://${host.lowercase()}:$port" in authenticatedOrigins
 
     private fun Exception.toNexusApiException(): NexusApiException =
         this as? NexusApiException

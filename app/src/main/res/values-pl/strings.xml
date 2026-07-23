@@ -1626,11 +1626,7 @@
     <string name="nexus_filter_placement">Umieszczenie</string>
     <string name="nexus_filter_manual">Ręczne</string>
     <string name="nexus_filter_unsupported">Nieobsługiwane</string>
-    <string name="nexus_account_title">Konto Nexus</string>
-    <string name="nexus_account_api_hint">Zaloguj się do Nexus Mods, otwórz menu profilu, a potem przejdź do Site preferences &gt; API Access. Skopiuj swój Personal API Key i wklej go tutaj.</string>
-    <string name="nexus_account_key_local">Klucz jest przechowywany lokalnie na tym urządzeniu.</string>
-    <string name="nexus_personal_api_key">Osobisty klucz API</string>
-    <string name="nexus_save_check_key">Zapisz i sprawdź klucz</string>
+    <string name="nexus_integration_temporarily_unavailable">Obsługa Nexus Mods została tymczasowo wyłączona na czas rejestracji GameNative w Nexus Mods. Nadal możesz zarządzać już zainstalowanymi modami.</string>
     <string name="nexus_invalid_nxm_callback">Ta autoryzacja Nexus jest nieprawidłowa, wygasła, została już użyta albo nie odpowiada już aktywnemu żądaniu GameNative. Ponownie rozpocznij pobieranie na ekranie „Zarządzaj modami Nexus”.</string>
     <string name="nexus_nxm_callback_received">Otrzymano autoryzację pobierania z Nexus. Wróć do ekranu „Zarządzaj modami Nexus”, jeśli pobieranie nie zostanie automatycznie wznowione.</string>
     <string name="nexus_authorize_in_browser">Nexus wymaga potwierdzenia w witrynie dla tego konta. W przeglądarce wybierz Download with Manager, a następnie Slow Download; GameNative automatycznie wznowi pobieranie.</string>
@@ -1966,9 +1962,6 @@
     <string name="nexus_checking_target_files">Sprawdzanie plików docelowych</string>
     <string name="nexus_target_files_exist_overwrite">Pliki docelowe już istnieją. Wybierz opcję Zastąp pliki i utwórz kopie zapasowe, aby je zastąpić.</string>
     <string name="nexus_scan_placement_conflicts_failed">Nie udało się przeskanować konfliktów miejsc docelowych</string>
-    <string name="nexus_validating_api_key">Zatwierdzenie klawisza Nexus API</string>
-    <string name="nexus_connected_nexus_user">Połączono z Nexus jako %1$s</string>
-    <string name="nexus_api_key_validation_failed">Nexus API sprawdzenie klucza nie powiodło się</string>
     <string name="nexus_mod_deleted">Mod usunięty</string>
     <string name="nexus_mod_deleted_with_skipped">Mod usunięty; %1$d zmienione pliki pozostawiono na miejscu</string>
     <string name="nexus_fomod_mappings_need_manual_placement">%1$d FOMOD mapowania plików wymagają ręcznego umieszczenia</string>

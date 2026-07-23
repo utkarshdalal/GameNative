@@ -1622,11 +1622,7 @@
     <string name="nexus_filter_placement">Розміщення</string>
     <string name="nexus_filter_manual">Вручну</string>
     <string name="nexus_filter_unsupported">Не підтримується</string>
-    <string name="nexus_account_title">Обліковий запис Nexus</string>
-    <string name="nexus_account_api_hint">Увійдіть у Nexus Mods, відкрийте меню профілю, потім перейдіть до Site preferences &gt; API Access. Скопіюйте Personal API Key і вставте його тут.</string>
-    <string name="nexus_account_key_local">Ключ зберігається локально на цьому пристрої.</string>
-    <string name="nexus_personal_api_key">Особистий API-ключ</string>
-    <string name="nexus_save_check_key">Зберегти й перевірити ключ</string>
+    <string name="nexus_integration_temporarily_unavailable">Підтримку Nexus Mods тимчасово вимкнено, поки GameNative проходить реєстрацію в Nexus Mods. Уже встановленими модами все ще можна керувати.</string>
     <string name="nexus_invalid_nxm_callback">Ця авторизація Nexus недійсна, прострочена, уже використана або більше не відповідає активному запиту GameNative. Знову почніть завантаження в розділі «Керування модами Nexus».</string>
     <string name="nexus_nxm_callback_received">Авторизацію завантаження Nexus отримано. Поверніться до розділу «Керування модами Nexus», якщо завантаження не продовжиться автоматично.</string>
     <string name="nexus_authorize_in_browser">Nexus вимагає підтвердження на вебсайті для цього облікового запису. У браузері виберіть Download with Manager, а потім Slow Download; GameNative автоматично продовжить завантаження.</string>
@@ -1962,9 +1958,6 @@
     <string name="nexus_checking_target_files">Перевірка цільових файлів</string>
     <string name="nexus_target_files_exist_overwrite">Цільові файли вже існують. Виберіть Перезаписати файли та створити резервні копії, щоб замінити їх.</string>
     <string name="nexus_scan_placement_conflicts_failed">Не вдалося сканувати конфлікти розміщення</string>
-    <string name="nexus_validating_api_key">Перевірка ключа Nexus API</string>
-    <string name="nexus_connected_nexus_user">Підключено до Nexus як %1$s</string>
-    <string name="nexus_api_key_validation_failed">Не вдалося перевірити ключ API Nexus</string>
     <string name="nexus_mod_deleted">Мод видалено</string>
     <string name="nexus_mod_deleted_with_skipped">Мод видалено; %1$d змінених файлів залишилися на місці</string>
     <string name="nexus_fomod_mappings_need_manual_placement">%1$d FOMOD відображення файлів потребує ручного розміщення</string>

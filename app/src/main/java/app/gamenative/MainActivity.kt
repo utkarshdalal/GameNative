@@ -37,6 +37,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.NexusDownloadLinkInbox
+import app.gamenative.mods.NexusIntegrationStatus
 import app.gamenative.mods.NexusPendingDownloadStore
 import app.gamenative.ui.screen.library.appscreen.BaseAppScreen
 import app.gamenative.service.SteamService
@@ -301,6 +302,11 @@ class MainActivity : ComponentActivity() {
             // Do not retain a signed NXM grant as the Activity's launch intent. Android can
             // otherwise replay it after a configuration change or process recreation.
             setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+            if (!NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) {
+                Timber.i("[NexusDownload]: Ignoring NXM callback while online Nexus access is disabled")
+                SnackbarManager.show(getString(R.string.nexus_integration_temporarily_unavailable))
+                return
+            }
             val restoredDownloads = NexusPendingDownloadStore.restore(this)
             restoredDownloads.forEach { NexusDownloadLinkInbox.expect(it) }
             val reference = intent.dataString?.let(NexusDownloadLinkInbox::submit)

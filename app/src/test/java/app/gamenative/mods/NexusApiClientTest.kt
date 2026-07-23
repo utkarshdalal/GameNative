@@ -26,6 +26,7 @@ class NexusApiClientTest {
             baseUrl = server.url("/v1").toString().trimEnd('/'),
             nexusBaseUrl = server.url("").toString().trimEnd('/'),
             graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { "test-access-token" },
         )
     }
 
@@ -64,7 +65,7 @@ class NexusApiClientTest {
                 ),
         )
 
-        val files = client.getModFiles("skyrimspecialedition", 123, apiKey = "key")
+        val files = client.getModFiles("skyrimspecialedition", 123)
 
         assertEquals(1, files.size)
         assertEquals(55L, files.single().fileId)
@@ -75,8 +76,27 @@ class NexusApiClientTest {
         assertEquals(true, files.single().isPrimary)
         assertEquals("2024-01-02T03:04:05.000Z", files.single().uploadedTime)
         val request = server.takeRequest()
-        assertEquals("key", request.headers["APIKEY"])
+        assertEquals("Bearer test-access-token", request.headers["Authorization"])
+        assertEquals(null, request.headers["APIKEY"])
         assertEquals("GameNative", request.headers["Application-Name"])
+    }
+
+    @Test
+    fun missingAccessToken_failsBeforeSendingRequest() = runBlocking {
+        val disconnectedClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+        )
+
+        val error = runCatching {
+            disconnectedClient.getModInfo("fallout4", 1)
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(NexusApiErrorReason.AUTHENTICATION, (error as NexusApiException).reason)
+        assertEquals(0, server.requestCount)
     }
 
     @Test
@@ -90,7 +110,7 @@ class NexusApiClientTest {
         )
 
         val error = runCatching {
-            client.getModInfo("fallout4", 1, apiKey = "key")
+            client.getModInfo("fallout4", 1)
         }.exceptionOrNull()
 
         assertTrue(error is NexusApiException)
@@ -109,7 +129,7 @@ class NexusApiClientTest {
         )
 
         val error = runCatching {
-            client.getDownloadLinks("fallout4", 1, 2, apiKey = "key")
+            client.getDownloadLinks("fallout4", 1, 2)
         }.exceptionOrNull()
 
         assertTrue(error is NexusApiException)
@@ -130,7 +150,6 @@ class NexusApiClientTest {
                 modId = 58_277,
                 fileId = 123_456,
                 isPremiumAccount = false,
-                apiKey = "key",
             )
         }.exceptionOrNull()
 
@@ -155,7 +174,6 @@ class NexusApiClientTest {
                 gameDomain = "newvegas",
                 modId = 58_277,
                 fileId = 123_456,
-                apiKey = "key",
             )
         }.exceptionOrNull()
 
@@ -202,7 +220,6 @@ class NexusApiClientTest {
 
         val collection = client.getCollectionRevision(
             NexusCollectionReference("skyrimspecialedition", "test", 5),
-            apiKey = "key",
         )
 
         assertEquals("Test Collection", collection.name)
@@ -261,7 +278,6 @@ class NexusApiClientTest {
 
         val collection = client.getCollectionRevision(
             NexusCollectionReference("skyrimspecialedition", "test", 5),
-            apiKey = "key",
         )
 
         assertEquals("Test Collection", collection.name)
@@ -355,7 +371,6 @@ class NexusApiClientTest {
 
         val collection = client.getCollectionRevision(
             NexusCollectionReference("skyrimspecialedition", "test", 8),
-            apiKey = "key",
         )
 
         assertEquals("Big Collection", collection.name)
@@ -441,7 +456,6 @@ class NexusApiClientTest {
 
         val collection = client.getCollectionRevision(
             NexusCollectionReference("skyrimspecialedition", "test", 9),
-            apiKey = "key",
         )
 
         assertEquals(listOf(100L), collection.files.map { it.modId })

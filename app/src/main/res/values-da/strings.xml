@@ -1498,11 +1498,7 @@
     <string name="nexus_filter_placement">Placering</string>
     <string name="nexus_filter_manual">Manuel</string>
     <string name="nexus_filter_unsupported">Ikke understøttet</string>
-    <string name="nexus_account_title">Nexus-konto</string>
-    <string name="nexus_account_api_hint">Log ind på Nexus Mods, åbn din profilmenu, og gå til Site preferences &gt; API Access. Kopiér din Personal API Key, og indsæt den her.</string>
-    <string name="nexus_account_key_local">Din nøgle gemmes lokalt på denne enhed.</string>
-    <string name="nexus_personal_api_key">Personlig API-nøgle</string>
-    <string name="nexus_save_check_key">Gem og kontrollér nøgle</string>
+    <string name="nexus_integration_temporarily_unavailable">Understøttelse af Nexus Mods er midlertidigt deaktiveret, mens GameNative bliver registreret hos Nexus Mods. Allerede installerede mods kan stadig administreres.</string>
     <string name="nexus_invalid_nxm_callback">Denne Nexus-godkendelse er ugyldig, udløbet, allerede brugt eller svarer ikke længere til en aktiv GameNative-anmodning. Start downloadingen fra Administrer Nexus-mods igen.</string>
     <string name="nexus_nxm_callback_received">Godkendelse af Nexus-download modtaget. Gå tilbage til Administrer Nexus-mods, hvis downloadingen ikke genoptages automatisk.</string>
     <string name="nexus_authorize_in_browser">Nexus kræver bekræftelse på webstedet for denne konto. Vælg Download with Manager og derefter Slow Download i browseren; GameNative genoptager automatisk.</string>
@@ -1838,9 +1834,6 @@
     <string name="nexus_checking_target_files">Kontrol af målfiler</string>
     <string name="nexus_target_files_exist_overwrite">Målfiler findes allerede. Vælg Overskriv filer, og opret sikkerhedskopier for at erstatte dem.</string>
     <string name="nexus_scan_placement_conflicts_failed">Kunne ikke scanne placeringskonflikter</string>
-    <string name="nexus_validating_api_key">Validerer Nexus API-tast</string>
-    <string name="nexus_connected_nexus_user">Forbundet til Nexus som %1$s</string>
-    <string name="nexus_api_key_validation_failed">Nexus API nøglevalidering mislykkedes</string>
     <string name="nexus_mod_deleted">Mod slettet</string>
     <string name="nexus_mod_deleted_with_skipped">Mod slettet; ændrede filer blev efterladt: %1$d</string>
     <string name="nexus_fomod_mappings_need_manual_placement">FOMOD-filtilknytninger, der kræver manuel placering: %1$d</string>

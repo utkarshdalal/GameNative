@@ -1568,11 +1568,7 @@
     <string name="nexus_filter_placement">Platzierung</string>
     <string name="nexus_filter_manual">Manuell</string>
     <string name="nexus_filter_unsupported">Nicht unterstützt</string>
-    <string name="nexus_account_title">Nexus-Konto</string>
-    <string name="nexus_account_api_hint">Melde dich bei Nexus Mods an, öffne dein Profilmenü und gehe zu Site preferences &gt; API Access. Kopiere deinen Personal API Key und füge ihn hier ein.</string>
-    <string name="nexus_account_key_local">Dein Schlüssel wird lokal auf diesem Gerät gespeichert.</string>
-    <string name="nexus_personal_api_key">Persönlicher API-Schlüssel</string>
-    <string name="nexus_save_check_key">Speichern und Schlüssel prüfen</string>
+    <string name="nexus_integration_temporarily_unavailable">Die Nexus-Mods-Unterstützung wurde vorübergehend deaktiviert, während GameNative bei Nexus Mods registriert wird. Bereits installierte Mods können weiterhin verwaltet werden.</string>
     <string name="nexus_invalid_nxm_callback">Diese Nexus-Autorisierung ist ungültig, abgelaufen, wurde bereits verwendet oder entspricht keiner aktiven GameNative-Anfrage mehr. Starte den Download erneut über Nexus-Mods verwalten.</string>
     <string name="nexus_nxm_callback_received">Nexus-Download-Autorisierung erhalten. Kehre zu Nexus-Mods verwalten zurück, falls der Download nicht automatisch fortgesetzt wird.</string>
     <string name="nexus_authorize_in_browser">Nexus erfordert für dieses Konto eine Bestätigung auf der Website. Wähle im Browser Download with Manager und anschließend Slow Download aus; GameNative fährt automatisch fort.</string>
@@ -1908,9 +1904,6 @@
     <string name="nexus_checking_target_files">Zieldateien prüfen</string>
     <string name="nexus_target_files_exist_overwrite">Zieldateien existieren bereits. Wählen Sie Dateien überschreiben und erstellen Sie Backups, um sie zu ersetzen.</string>
     <string name="nexus_scan_placement_conflicts_failed">Platzierungskonflikte konnten nicht gescannt werden</string>
-    <string name="nexus_validating_api_key">Validieren der Nexus API-Taste</string>
-    <string name="nexus_connected_nexus_user">Verbunden mit Nexus als %1$s</string>
-    <string name="nexus_api_key_validation_failed">Nexus API Schlüsselüberprüfung fehlgeschlagen</string>
     <string name="nexus_mod_deleted">Mod gelöscht</string>
     <string name="nexus_mod_deleted_with_skipped">Mod gelöscht; geänderte Dateien wurden an Ort und Stelle belassen: %1$d</string>
     <string name="nexus_fomod_mappings_need_manual_placement">FOMOD-Dateizuordnungen, die manuelle Platzierung benötigen: %1$d</string>

@@ -60,7 +60,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
-import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.ModInstall
@@ -108,6 +107,7 @@ import app.gamenative.mods.NexusCollectionReusePolicy
 import app.gamenative.mods.NexusCollectionUrlParser
 import app.gamenative.mods.NexusDownloadLinkInbox
 import app.gamenative.mods.NexusImportState
+import app.gamenative.mods.NexusIntegrationStatus
 import app.gamenative.mods.NexusModFile
 import app.gamenative.mods.NexusModInfo
 import app.gamenative.mods.NexusModManager
@@ -124,7 +124,6 @@ import app.gamenative.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOf
@@ -164,12 +163,6 @@ private class NexusWebsiteAuthorizationException(
     message: String,
     cause: Throwable? = null,
 ) : IOException(message, cause)
-
-internal data class ApiKeyValidationState(
-    val checking: Boolean = false,
-    val message: String = "",
-    val success: Boolean? = null,
-)
 
 internal data class PendingFileSelection(
     val reference: NexusModReference,
@@ -634,10 +627,6 @@ fun NexusModsDialog(
         RecipeDraft(targetRoot = roots.firstOrNull()?.type?.name ?: ModTargetRoot.GAME_DIR.name)
     }
 
-    var apiKey by remember { mutableStateOf(PrefManager.nexusApiKey) }
-    var apiKeyValidation by remember { mutableStateOf<ApiKeyValidationState?>(null) }
-    var apiKeyValidationJob by remember { mutableStateOf<Job?>(null) }
-    var apiKeyValidationGeneration by remember { mutableStateOf(0L) }
     var nexusUserInfo by remember { mutableStateOf<NexusUserInfo?>(null) }
     var nexusUrl by remember { mutableStateOf("") }
     var loadingMessage by remember { mutableStateOf<String?>(null) }
@@ -681,54 +670,10 @@ fun NexusModsDialog(
     var healthLoading by remember(libraryItem.appId) { mutableStateOf(false) }
     var diagnosticsPaused by remember { mutableStateOf(false) }
 
-    fun invalidateApiKeyValidation() {
-        apiKeyValidationGeneration++
-        apiKeyValidationJob?.cancel()
-        apiKeyValidationJob = null
-        if (
-            apiKeyValidation?.checking == true &&
-            loadingMessage == context.getString(R.string.nexus_validating_api_key)
-        ) {
-            loadingMessage = null
-        }
-        nexusUserInfo = null
-        apiKeyValidation = null
-    }
-
-    fun validateApiKey() {
-        val requestedKey = apiKey.trim()
-        if (requestedKey.isBlank()) return
-        apiKeyValidationJob?.cancel()
-        val generation = apiKeyValidationGeneration + 1L
-        apiKeyValidationGeneration = generation
-        val validatingMessage = context.getString(R.string.nexus_validating_api_key)
-        apiKeyValidation = ApiKeyValidationState(checking = true, message = validatingMessage)
-        loadingMessage = validatingMessage
-        apiKeyValidationJob = scope.launch {
-            try {
-                val user = apiClient.validateKey(requestedKey)
-                if (apiKeyValidationGeneration != generation) return@launch
-                PrefManager.saveNexusApiKey(requestedKey)
-                if (apiKeyValidationGeneration != generation) return@launch
-                nexusUserInfo = user
-                val connectedMessage = context.getString(R.string.nexus_connected_nexus_user, user.name)
-                apiKeyValidation = ApiKeyValidationState(message = connectedMessage, success = true)
-                SnackbarManager.show(connectedMessage)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                if (apiKeyValidationGeneration != generation) return@launch
-                nexusUserInfo = null
-                val errorMessage = e.message ?: context.getString(R.string.nexus_api_key_validation_failed)
-                apiKeyValidation = ApiKeyValidationState(message = errorMessage, success = false)
-                SnackbarManager.show(errorMessage)
-            } finally {
-                if (apiKeyValidationGeneration == generation) {
-                    if (loadingMessage == validatingMessage) loadingMessage = null
-                    apiKeyValidationJob = null
-                }
-            }
-        }
+    fun blockUnavailableOnlineAccess(): Boolean {
+        if (NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) return false
+        SnackbarManager.show(context.getString(R.string.nexus_integration_temporarily_unavailable))
+        return true
     }
 
     fun refreshLastPlacement() {
@@ -1481,6 +1426,7 @@ fun NexusModsDialog(
         requestId: String? = null,
         nexusUserId: Long? = nexusUserInfo?.userId,
     ): Boolean {
+        if (blockUnavailableOnlineAccess()) return false
         val pendingReference = reference.copy(
             fileId = file.fileId,
             downloadAuthorization = null,
@@ -1574,7 +1520,7 @@ fun NexusModsDialog(
     }
 
     fun importFile(reference: NexusModReference, modInfo: NexusModInfo, file: NexusModFile) {
-        val requestedKey = apiKey.trim()
+        if (blockUnavailableOnlineAccess()) return
         val knownUser = nexusUserInfo
         if (reference.downloadAuthorization?.isExpired() == true) {
             requestWebsiteDownloadAuthorization(reference, modInfo, file)
@@ -1582,10 +1528,7 @@ fun NexusModsDialog(
         }
         scope.launch {
             try {
-                val user = knownUser ?: apiClient.validateKey(requestedKey).also {
-                    if (apiKey.trim() == requestedKey) nexusUserInfo = it
-                }
-                PrefManager.saveNexusApiKey(requestedKey)
+                val user = knownUser ?: apiClient.getCurrentUser().also { nexusUserInfo = it }
                 val authorizationUserId = reference.downloadAuthorization?.userId
                 if (authorizationUserId != null && authorizationUserId != user.userId) {
                     SnackbarManager.show(context.getString(R.string.nexus_authorization_wrong_account))
@@ -1645,6 +1588,7 @@ fun NexusModsDialog(
     }
 
     suspend fun receiveAuthorizedDownload(download: AuthorizedNexusWebsiteDownload) {
+        if (blockUnavailableOnlineAccess()) return
         val reference = download.reference
         val matchingPending = download.pending
         if (matchingPending.appId != libraryItem.appId) return
@@ -1696,8 +1640,10 @@ fun NexusModsDialog(
         importFile(reference, matchingPending.modInfo, matchingPending.file)
     }
 
-    LaunchedEffect(apiClient, libraryItem.appId) {
-        NexusDownloadLinkInbox.callbacksFor(libraryItem.appId).collect(::receiveAuthorizedDownload)
+    if (NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) {
+        LaunchedEffect(apiClient, libraryItem.appId) {
+            NexusDownloadLinkInbox.callbacksFor(libraryItem.appId).collect(::receiveAuthorizedDownload)
+        }
     }
 
     fun retryInstall(install: ModInstall) {
@@ -1731,7 +1677,7 @@ fun NexusModsDialog(
         else -> status
     }
 
-    suspend fun resolveCollectionMod(collectionFile: NexusCollectionFile, apiKey: String): PendingCollectionMod {
+    suspend fun resolveCollectionMod(collectionFile: NexusCollectionFile): PendingCollectionMod {
         if (collectionFile.modId <= 0L || collectionFile.fileId <= 0L) {
             return PendingCollectionMod(
                 collectionFile = collectionFile,
@@ -1741,8 +1687,8 @@ fun NexusModsDialog(
             )
         }
         return try {
-            val modInfo = apiClient.getModInfo(collectionFile.gameDomain, collectionFile.modId, apiKey)
-            val files = apiClient.getModFiles(collectionFile.gameDomain, collectionFile.modId, apiKey)
+            val modInfo = apiClient.getModInfo(collectionFile.gameDomain, collectionFile.modId)
+            val files = apiClient.getModFiles(collectionFile.gameDomain, collectionFile.modId)
             val file = files.firstOrNull { it.fileId == collectionFile.fileId }
                 ?: collectionFile.toFallbackNexusFile()
             PendingCollectionMod(collectionFile, modInfo, file)
@@ -1772,14 +1718,13 @@ fun NexusModsDialog(
     }
 
     fun resolveCollection(reference: app.gamenative.mods.NexusCollectionReference) {
-        val requestedKey = apiKey.trim()
+        if (blockUnavailableOnlineAccess()) return
         scope.launch {
             try {
                 loadingMessage = context.getString(R.string.nexus_resolving_nexus_collection)
                 progress = 0f
                 importProgress = null
-                val collection = apiClient.getCollectionRevision(reference, requestedKey)
-                PrefManager.saveNexusApiKey(requestedKey)
+                val collection = apiClient.getCollectionRevision(reference)
                 if (collection.files.isEmpty()) {
                     SnackbarManager.show(context.getString(R.string.nexus_collection_no_downloadable_mods))
                     return@launch
@@ -1787,7 +1732,7 @@ fun NexusModsDialog(
                 val resolvedMods = mutableListOf<PendingCollectionMod>()
                 collection.files.forEachIndexed { index, file ->
                     loadingMessage = context.getString(R.string.nexus_resolving_collection_item, index + 1, collection.files.size)
-                    resolvedMods += resolveCollectionMod(file, requestedKey)
+                    resolvedMods += resolveCollectionMod(file)
                 }
                 pendingFileSelection = null
                 pendingCollectionSelection = PendingCollectionSelection(collection, resolvedMods)
@@ -1804,13 +1749,13 @@ fun NexusModsDialog(
     }
 
     fun importCollection(pending: PendingCollectionSelection, selectedKeys: Set<String>) {
+        if (blockUnavailableOnlineAccess()) return
         if (collectionImportRunning) return
         val collectionMods = pending.mods.filter { it.canImport && it.collectionKey() in selectedKeys }
         if (collectionMods.isEmpty()) {
             SnackbarManager.show(context.getString(R.string.nexus_no_selected_collection_mods_ready))
             return
         }
-        val requestedKey = apiKey.trim()
         val knownUser = nexusUserInfo
         collectionImportRunning = true
         scope.launch {
@@ -1991,9 +1936,7 @@ fun NexusModsDialog(
                 }
                 val nexusUserForDownloads = if (modsNeedingDownload.isNotEmpty()) {
                     try {
-                        (knownUser ?: apiClient.validateKey(requestedKey).also {
-                            if (apiKey.trim() == requestedKey) nexusUserInfo = it
-                        }).also { PrefManager.saveNexusApiKey(requestedKey) }
+                        knownUser ?: apiClient.getCurrentUser().also { nexusUserInfo = it }
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
@@ -2251,6 +2194,7 @@ fun NexusModsDialog(
     }
 
     fun resolveUrlAndImport() {
+        if (blockUnavailableOnlineAccess()) return
         val collectionReference = NexusCollectionUrlParser.parse(nexusUrl)
         if (collectionReference != null) {
             resolveCollection(collectionReference)
@@ -2261,15 +2205,13 @@ fun NexusModsDialog(
             SnackbarManager.show(context.getString(R.string.nexus_enter_valid_nexus_url))
             return
         }
-        val requestedKey = apiKey.trim()
         scope.launch {
             try {
                 loadingMessage = context.getString(R.string.nexus_resolving_nexus_mod)
                 progress = 0f
                 importProgress = null
-                val modInfo = apiClient.getModInfo(reference.gameDomain, reference.modId, requestedKey)
-                val files = apiClient.getModFiles(reference.gameDomain, reference.modId, requestedKey)
-                PrefManager.saveNexusApiKey(requestedKey)
+                val modInfo = apiClient.getModInfo(reference.gameDomain, reference.modId)
+                val files = apiClient.getModFiles(reference.gameDomain, reference.modId)
                 if (files.isEmpty()) {
                     SnackbarManager.show(context.getString(R.string.nexus_no_downloadable_files_mod))
                     return@launch
@@ -2582,38 +2524,33 @@ fun NexusModsDialog(
                 ) {
                     when (selectedTab) {
                         ManageModsTab.IMPORT -> {
-                            ApiKeySection(
-                                apiKey = apiKey,
-                                validationState = apiKeyValidation,
-                                onApiKeyChange = {
-                                    invalidateApiKeyValidation()
-                                    apiKey = it
-                                },
-                                onValidate = ::validateApiKey,
-                            )
-                            ImportSection(
-                                nexusUrl = nexusUrl,
-                                onUrlChange = { nexusUrl = it },
-                                onImport = ::resolveUrlAndImport,
-                            )
-                            pendingFileSelection?.let { pending ->
-                                FileSelectionSection(
-                                    pending = pending,
-                                    onImport = { file ->
-                                        val authorization = pending.reference.downloadAuthorization
-                                            ?.takeIf { pending.reference.fileId == file.fileId }
-                                        importFile(
-                                            reference = pending.reference.copy(
-                                                fileId = file.fileId,
-                                                downloadAuthorization = authorization,
-                                            ),
-                                            modInfo = pending.modInfo,
-                                            file = file,
-                                        )
-                                    },
+                            if (!NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) {
+                                NexusIntegrationUnavailableSection()
+                            } else {
+                                ImportSection(
+                                    nexusUrl = nexusUrl,
+                                    onUrlChange = { nexusUrl = it },
+                                    onImport = ::resolveUrlAndImport,
                                 )
+                                pendingFileSelection?.let { pending ->
+                                    FileSelectionSection(
+                                        pending = pending,
+                                        onImport = { file ->
+                                            val authorization = pending.reference.downloadAuthorization
+                                                ?.takeIf { pending.reference.fileId == file.fileId }
+                                            importFile(
+                                                reference = pending.reference.copy(
+                                                    fileId = file.fileId,
+                                                    downloadAuthorization = authorization,
+                                                ),
+                                                modInfo = pending.modInfo,
+                                                file = file,
+                                            )
+                                        },
+                                    )
+                                }
+                                pendingCollectionSelection?.let { pending -> CollectionSelectionContent(pending) }
                             }
-                            pendingCollectionSelection?.let { pending -> CollectionSelectionContent(pending) }
                         }
 
                         ManageModsTab.MODS -> {

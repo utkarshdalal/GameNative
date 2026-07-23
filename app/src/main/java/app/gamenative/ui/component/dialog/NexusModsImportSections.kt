@@ -14,11 +14,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +37,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
-import app.gamenative.mods.NexusCollectionFile
 import app.gamenative.mods.NexusCollectionInstallClassification
 import app.gamenative.mods.NexusFileSelector
 import app.gamenative.mods.NexusModFile
@@ -53,61 +50,28 @@ private enum class CollectionDisplayFilter(@StringRes val labelRes: Int) {
     MANUAL(R.string.nexus_filter_manual),
     UNSUPPORTED(R.string.nexus_filter_unsupported),
 }
+
 @Composable
-internal fun ApiKeySection(
-    apiKey: String,
-    validationState: ApiKeyValidationState?,
-    onApiKeyChange: (String) -> Unit,
-    onValidate: () -> Unit,
-) {
+internal fun NexusIntegrationUnavailableSection() {
     Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Default.Key, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text(stringResource(R.string.nexus_account_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Default.Link, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Text(
+                    text = stringResource(R.string.nexus_add_from_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
             Text(
-                stringResource(R.string.nexus_account_api_hint),
+                stringResource(R.string.nexus_integration_temporarily_unavailable),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(
-                stringResource(R.string.nexus_account_key_local),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            NoExtractOutlinedTextField(
-                value = apiKey,
-                onValueChange = onApiKeyChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.nexus_personal_api_key)) },
-                singleLine = true,
-            )
-            OutlinedButton(
-                onClick = onValidate,
-                enabled = apiKey.isNotBlank() && validationState?.checking != true,
-            ) {
-                Text(stringResource(R.string.nexus_save_check_key))
-            }
-            validationState?.let { state ->
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (state.checking) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    }
-                    Text(
-                        text = state.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = when (state.success) {
-                            true -> MaterialTheme.colorScheme.primary
-                            false -> MaterialTheme.colorScheme.error
-                            null -> MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                }
-            }
         }
     }
 }
+
 @Composable
 internal fun ImportSection(
     nexusUrl: String,

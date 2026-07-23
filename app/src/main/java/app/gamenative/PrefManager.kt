@@ -3,15 +3,16 @@ package app.gamenative
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.byteArrayPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.gamenative.data.GameSource
 import app.gamenative.enums.AppTheme
@@ -32,10 +33,17 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import timber.log.Timber
+
+internal val RETIRED_NEXUS_PERSONAL_API_KEY = byteArrayPreferencesKey("nexus_api_key_enc")
+
+internal fun Preferences.hasRetiredNexusPersonalApiKey(): Boolean =
+    this[RETIRED_NEXUS_PERSONAL_API_KEY] != null
+
+internal fun MutablePreferences.removeRetiredNexusPersonalApiKey() {
+    remove(RETIRED_NEXUS_PERSONAL_API_KEY)
+}
 
 /**
  * A universal Preference Manager that can be used anywhere within gamenative.
@@ -55,8 +63,29 @@ object PrefManager {
 
     private lateinit var dataStore: DataStore<Preferences>
 
+    @Volatile
+    private var retiredNexusPersonalApiKeyRemoved = false
+
     fun init(context: Context) {
         dataStore = context.datastore
+
+        // Personal Nexus API keys are no longer accepted by the public integration.
+        // Keep this idempotent cleanup for several releases so restored backups are
+        // also scrubbed before any application code can run.
+        if (!retiredNexusPersonalApiKeyRemoved) {
+            runCatching {
+                if (runBlocking { dataStore.data.first().hasRetiredNexusPersonalApiKey() }) {
+                    Timber.i("Removing retired Nexus Personal API key")
+                    runBlocking {
+                        dataStore.edit { preferences -> preferences.removeRetiredNexusPersonalApiKey() }
+                    }
+                }
+            }.onSuccess {
+                retiredNexusPersonalApiKeyRemoved = true
+            }.onFailure {
+                Timber.w(it, "Failed to remove retired Nexus Personal API key; will retry")
+            }
+        }
 
         // Note: Should remove after a few release versions. we've moved to encrypted values.
         val oldPassword = stringPreferencesKey("password")
@@ -1409,39 +1438,6 @@ object PrefManager {
     var usageAnalyticsEnabled: Boolean
         get() = getPref(USAGE_ANALYTICS_ENABLED, true)
         set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
-
-    private val NEXUS_API_KEY_ENC = byteArrayPreferencesKey("nexus_api_key_enc")
-    private val nexusApiKeySaveMutex = Mutex()
-    val nexusApiKey: String
-        get() {
-            val encryptedBytes = getPref(NEXUS_API_KEY_ENC, ByteArray(0))
-            return if (encryptedBytes.isEmpty()) {
-                ""
-            } else {
-                runCatching { String(Crypto.decrypt(encryptedBytes)) }
-                    .onFailure {
-                        Timber.w(it, "Failed to decrypt Nexus API key; clearing saved key")
-                        removePref(NEXUS_API_KEY_ENC)
-                    }
-                    .getOrDefault("")
-            }
-        }
-
-    suspend fun saveNexusApiKey(value: String) {
-        nexusApiKeySaveMutex.withLock {
-            if (value.isBlank()) {
-                dataStore.edit { it.remove(NEXUS_API_KEY_ENC) }
-                return@withLock
-            }
-            val encrypted = try {
-                Crypto.encrypt(value.toByteArray())
-            } catch (e: Exception) {
-                Timber.w(e, "Failed to encrypt Nexus API key")
-                throw e
-            }
-            dataStore.edit { it[NEXUS_API_KEY_ENC] = encrypted }
-        }
-    }
 
     private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")
     var nexusLastPlacementJson: String
