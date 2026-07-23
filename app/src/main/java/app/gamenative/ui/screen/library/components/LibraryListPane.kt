@@ -293,6 +293,13 @@ internal fun LibraryListPane(
                                     }
                                 }
 
+                                if (listIndex > 0 && currentLayout == PaneType.LIST) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = horizontalPadding),
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    )
+                                }
+
                                 Box(modifier = Modifier.graphicsLayer { this.alpha = alpha }) {
                                     val appItemModifier = if (firstGridItemFocusRequester != null &&
                                         focusTargetListIndex != null &&
@@ -303,24 +310,16 @@ internal fun LibraryListPane(
                                         Modifier
                                     }
 
-                                    Column {
-                                        if (listIndex > 0 && currentLayout == PaneType.LIST) {
-                                            HorizontalDivider(
-                                                modifier = Modifier.padding(horizontal = horizontalPadding),
-                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                            )
-                                        }
-                                        AppItem(
-                                            modifier = appItemModifier,
-                                            appInfo = item,
-                                            onClick = { onNavigate(item.appId) },
-                                            paneType = currentLayout,
-                                            onFocus = { targetOfScroll = item.index },
-                                            imageRefreshCounter = state.imageRefreshCounter,
-                                            compatibilityStatus = state.compatibilityMap[item.name],
-                                            gameStats = state.statsFor(item),
-                                        )
-                                    }
+                                    AppItem(
+                                        modifier = appItemModifier,
+                                        appInfo = item,
+                                        onClick = { onNavigate(item.appId) },
+                                        paneType = currentLayout,
+                                        onFocus = { targetOfScroll = item.index },
+                                        imageRefreshCounter = state.imageRefreshCounter,
+                                        compatibilityStatus = state.compatibilityMap[item.name],
+                                        gameStats = state.statsFor(item),
+                                    )
                                 }
                             }
                             if (state.appInfoList.size < state.totalAppsInFilter) {
@@ -361,17 +360,15 @@ internal fun LibraryListPane(
                         ),
                     ) {
                         items(totalSkeletonCount) { index ->
-                            Column {
-                                if (index > 0 && currentLayout == PaneType.LIST) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = horizontalPadding),
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                                    )
-                                }
-                                GameSkeletonLoader(
-                                    paneType = currentLayout,
+                            if (index > 0 && currentLayout == PaneType.LIST) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = horizontalPadding),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                                 )
                             }
+                            GameSkeletonLoader(
+                                paneType = currentLayout,
+                            )
                         }
                     }
                 }

@@ -122,6 +122,7 @@ internal fun AppItem(
             isFocused = isFocused,
             onFocusChanged = { isFocused = it },
             isRefreshing = isRefreshing,
+            imageRefreshCounter = imageRefreshCounter,
             compatibilityStatus = compatibilityStatus,
             gameStats = gameStats,
             context = context,

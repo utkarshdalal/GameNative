@@ -65,6 +65,7 @@ internal fun ListViewCard(
     isFocused: Boolean,
     onFocusChanged: (Boolean) -> Unit,
     isRefreshing: Boolean,
+    imageRefreshCounter: Long,
     compatibilityStatus: GameCompatibilityStatus?,
     gameStats: GameCardStats?,
     context: Context,
@@ -120,6 +121,7 @@ internal fun ListViewCard(
                 initialValue = "",
                 key1 = appInfo.appId,
                 key2 = appInfo.clientIconUrl,
+                key3 = imageRefreshCounter,
             ) {
                 value = withContext(Dispatchers.IO) {
                     getListIconUrl(context, appInfo)
