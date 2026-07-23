@@ -556,6 +556,10 @@ private fun formatBytes(bytes: Long): String {
     }
 }
 
+/**
+ * Main content for the App Detail screen.
+ * This layout is shared across all game sources (Steam, GOG, Epic, Amazon, Custom).
+ */
 @Composable
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
@@ -1219,6 +1223,9 @@ internal fun AppScreenContent(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {

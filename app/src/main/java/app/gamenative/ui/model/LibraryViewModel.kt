@@ -53,6 +53,7 @@ import app.gamenative.utils.GpuGameStatsCache
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.HardwareUtils
+import app.gamenative.utils.normalizeForComparison
 import app.gamenative.utils.unaccent
 import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -79,6 +80,13 @@ import timber.log.Timber
 private const val PLAYABLE_FPS_THRESHOLD = 30
 private const val PROVEN_RUNS_THRESHOLD = 5
 
+/**
+ * ViewModel for the Library screen, responsible for managing the state of the game library,
+ * including filtering, sorting, and cross-store awareness.
+ *
+ * It aggregates games from various sources (Steam, GOG, Epic, Amazon, Custom) and handles
+ * synchronization of their installation status and play history.
+ */
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val libraryPlayHistoryDao: LibraryPlayHistoryDao,
@@ -563,6 +571,13 @@ class LibraryViewModel @Inject constructor(
         return true
     }
 
+    /**
+     * Filters and sorts the library apps based on the current state.
+     * Handles sibling linking across different game stores.
+     *
+     * @param paginationPage The page number to load.
+     * @return The job handling the filtering.
+     */
     private fun onFilterApps(paginationPage: Int = 0): Job {
         Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
         return viewModelScope.launch(Dispatchers.IO) {
@@ -583,6 +598,47 @@ class LibraryViewModel @Inject constructor(
                 val status = compatibilityStatusFor(cached)
                 return status == GameCompatibilityStatus.COMPATIBLE || status == GameCompatibilityStatus.GPU_COMPATIBLE
             }
+
+            // Map all owned games to a unified structure for sibling detection before any search/tab filtering.
+            // This ensures the source switcher can always find the sibling game regardless of the current view.
+            data class SiblingInfo(val appId: String, val gameSource: GameSource, val isInstalled: Boolean)
+
+            // Helper to build Steam LibraryItems for sibling detection
+            val steamEntriesForSiblings = appList.map { item ->
+                val appId = "${GameSource.STEAM.name}_${item.id}"
+                val isInstalled = downloadDirectorySet.contains(SteamService.getAppDirName(item))
+                val normalizedName = item.name.normalizeForComparison()
+                normalizedName to SiblingInfo(appId, GameSource.STEAM, isInstalled)
+            }
+
+            val gogEntriesForSiblings = gogGameList.map { game ->
+                val appId = "${GameSource.GOG.name}_${game.id}"
+                val normalizedName = game.title.normalizeForComparison()
+                normalizedName to SiblingInfo(appId, GameSource.GOG, game.isInstalled)
+            }
+
+            val epicEntriesForSiblings = epicGameList.map { game ->
+                val appId = "${GameSource.EPIC.name}_${game.id}"
+                val normalizedName = game.title.normalizeForComparison()
+                normalizedName to SiblingInfo(appId, GameSource.EPIC, game.isInstalled)
+            }
+
+            val amazonEntriesForSiblings = amazonGameList.map { game ->
+                val appId = "${GameSource.AMAZON.name}_${game.appId}"
+                val normalizedName = game.title.normalizeForComparison()
+                normalizedName to SiblingInfo(appId, GameSource.AMAZON, game.isInstalled)
+            }
+
+            // Scan all custom games for sibling detection
+            val customGameItemsAll = CustomGameScanner.scanAsLibraryItems()
+            val customEntriesForSiblings = customGameItemsAll.map { item ->
+                val normalizedName = item.name.normalizeForComparison()
+                normalizedName to SiblingInfo(item.appId, item.gameSource, true)
+            }
+
+            // Global mapping: normalized name -> List of siblings
+            val globalSiblingLookup = (steamEntriesForSiblings + gogEntriesForSiblings + epicEntriesForSiblings + amazonEntriesForSiblings + customEntriesForSiblings)
+                .groupBy({ it.first }, { it.second })
 
             val steamOwnerTypeFiltered: List<SteamApp> = appList
                 .asSequence()
@@ -954,18 +1010,15 @@ class LibraryViewModel @Inject constructor(
                 if (includeAmazon && !steamCollectionSelected) addAll(amazonEntries)
             }
 
-            // Group by normalized name to find sibling sources
-            val entriesByNormalizedName = rawEntries.groupBy { it.item.name.unaccent().lowercase().trim() }
-
             val combined = rawEntries.map { entry ->
-                val normalizedName = entry.item.name.unaccent().lowercase().trim()
-                val siblings = entriesByNormalizedName[normalizedName] ?: emptyList()
+                val normalizedName = entry.item.name.normalizeForComparison()
+                val siblings = globalSiblingLookup[normalizedName] ?: emptyList()
                 val otherSources = siblings
-                    .filter { it.item.appId != entry.item.appId }
-                    .map { it.item.gameSource }
+                    .filter { it.appId != entry.item.appId && it.gameSource != entry.item.gameSource }
+                    .map { it.gameSource }
                     .distinct()
                 val isInstalledOnOtherSource = siblings
-                    .any { it.item.appId != entry.item.appId && it.isInstalled }
+                    .any { it.appId != entry.item.appId && it.gameSource != entry.item.gameSource && it.isInstalled }
 
                 entry.copy(
                     item = entry.item.copy(

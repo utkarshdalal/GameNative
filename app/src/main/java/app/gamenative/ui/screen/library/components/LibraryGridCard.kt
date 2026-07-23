@@ -512,6 +512,9 @@ private fun RecSimilarBadge(iconUrl: String?, extraCount: Int, modifier: Modifie
 
 /**
  * Status icons for grid view (installed, family share).
+ * Includes support for "installed elsewhere" status with appropriate accessibility labels.
+ *
+ * @param appInfo The library item information.
  */
 @Composable
 private fun GridStatusIcons(appInfo: LibraryItem) {
@@ -523,6 +526,11 @@ private fun GridStatusIcons(appInfo: LibraryItem) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isInstalled || isInstalledElsewhere) {
+            val contentDescription = if (isInstalled) {
+                stringResource(R.string.library_installed)
+            } else {
+                stringResource(R.string.library_installed_elsewhere)
+            }
             Box(
                 modifier = Modifier
                     .size(20.dp)
@@ -532,7 +540,7 @@ private fun GridStatusIcons(appInfo: LibraryItem) {
             ) {
                 Icon(
                     Icons.Filled.Check,
-                    contentDescription = stringResource(R.string.library_installed),
+                    contentDescription = contentDescription,
                     tint = if (isInstalled) PluviaTheme.colors.statusInstalled else PluviaTheme.colors.statusInstalled.copy(alpha = 0.6f),
                     modifier = Modifier.size(12.dp),
                 )

@@ -207,6 +207,10 @@ internal fun ListViewCard(
 
 /**
  * Compact install status badge for list view.
+ * Displays the current status of the game (Ready, Installing, Installed, or Not Installed).
+ *
+ * @param appInfo The library item information.
+ * @param isRefreshing Whether the library is currently refreshing.
  */
 @Composable
 private fun InstallStatusBadge(
@@ -244,13 +248,13 @@ private fun InstallStatusBadge(
     }
 
     val (text, color) = when {
-        !isSteam -> stringResource(R.string.library_status_ready) to MaterialTheme.colorScheme.tertiary
-
         isDownloading -> "${(downloadProgress * 100).toInt()}%" to MaterialTheme.colorScheme.primary
 
-        isInstalled -> stringResource(R.string.library_installed) to MaterialTheme.colorScheme.tertiary
+        isInstalled && isSteam -> stringResource(R.string.library_installed) to MaterialTheme.colorScheme.tertiary
 
         appInfo.isInstalledOnOtherSource -> stringResource(R.string.library_installed_elsewhere) to MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f)
+
+        !isSteam -> stringResource(R.string.library_status_ready) to MaterialTheme.colorScheme.tertiary
 
         else -> stringResource(R.string.library_not_installed) to MaterialTheme.colorScheme.onSurfaceVariant.copy(
             alpha = 0.6f,
