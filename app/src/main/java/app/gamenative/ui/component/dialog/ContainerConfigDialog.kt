@@ -223,17 +223,30 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
 
     /**
      * Rounds a float value to the nearest even integer.
-     * This is required by many mobile GPU drivers to avoid rendering artifacts or crashes.
+     * This is required by many mobile GPU drivers to avoid rendering artifacts or crashes
+     * when using resolutions that are not divisible by 2.
+     *
+     * @param value The float value to be rounded.
+     * @return The nearest even integer to the input value.
      */
     fun evenRound(value: Float): Int = (value / 2.0f).roundToInt() * 2
 
     /**
-     * Calculates the greatest common divisor of two integers.
+     * Calculates the greatest common divisor (GCD) of two integers using the Euclidean algorithm.
+     *
+     * @param a The first integer.
+     * @param b The second integer.
+     * @return The greatest common divisor of a and b.
      */
     fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
 
     /**
      * Calculates and formats the aspect ratio for a given resolution.
+     * Handles special cases for common mobile aspect ratios like 19.5:9 and 21.5:9.
+     *
+     * @param width The width of the resolution in pixels.
+     * @param height The height of the resolution in pixels.
+     * @return A string representation of the aspect ratio (e.g., "16:9" or "19.5:9").
      */
     fun calculateAspectRatio(width: Int, height: Int): String {
         val common = gcd(width, height)
@@ -246,24 +259,30 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
 
     val nativeWidth = evenRound(screenWidth)
     val nativeHeight = evenRound(screenHeight)
-
     val nativeRes = "${nativeWidth}x$nativeHeight"
-    val optimizedRes = "${evenRound(screenWidth * 0.75f)}x${evenRound(screenHeight * 0.75f)}"
-    val halfRes = "${evenRound(screenWidth * 0.5f)}x${evenRound(screenHeight * 0.5f)}"
-
     val nativeRatio = calculateAspectRatio(nativeWidth, nativeHeight)
+
+    val optimizedWidth = evenRound(screenWidth * 0.75f)
+    val optimizedHeight = evenRound(screenHeight * 0.75f)
+    val optimizedRes = "${optimizedWidth}x$optimizedHeight"
+    val optimizedRatio = calculateAspectRatio(optimizedWidth, optimizedHeight)
+
+    val halfWidth = evenRound(screenWidth * 0.5f)
+    val halfHeight = evenRound(screenHeight * 0.5f)
+    val halfRes = "${halfWidth}x$halfHeight"
+    val halfRatio = calculateAspectRatio(halfWidth, halfHeight)
 
     val baseScreenSizes = stringArrayResource(R.array.screen_size_entries).toList()
     val adaptiveScreenSizes = mutableListOf<String>()
 
     // Add device specific resolutions if they don't exactly match existing presets
     listOf(
-        nativeRes to context.getString(R.string.resolution_native),
-        optimizedRes to context.getString(R.string.resolution_optimized),
-        halfRes to context.getString(R.string.resolution_half)
-    ).forEach { (res, label) ->
+        Triple(nativeRes, nativeRatio, context.getString(R.string.resolution_native)),
+        Triple(optimizedRes, optimizedRatio, context.getString(R.string.resolution_optimized)),
+        Triple(halfRes, halfRatio, context.getString(R.string.resolution_half))
+    ).forEach { (res, ratio, label) ->
         if (baseScreenSizes.none { it.startsWith(res) }) {
-            adaptiveScreenSizes.add("$res ($nativeRatio, $label)")
+            adaptiveScreenSizes.add("$res ($ratio, $label)")
         }
     }
 
