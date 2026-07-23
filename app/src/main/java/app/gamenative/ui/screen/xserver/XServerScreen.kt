@@ -29,8 +29,11 @@ import app.gamenative.BuildConfig
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.DropdownMenu
@@ -351,6 +354,39 @@ fun XServerScreen(
     onWindowMapped: ((Context, Window) -> Unit)? = null,
     onWindowUnmapped: ((Window) -> Unit)? = null,
     onGameLaunchError: ((String) -> Unit)? = null,
+    // Non-null only when hosted by ImmersiveXrActivity — presence alone is what makes the
+    // QuickMenu's "Immersif" tab show up.
+    immersiveControls: app.gamenative.ui.screen.xr.ImmersiveControls? = null,
+    // ImmersiveXrActivity needs to know when the quick menu (or any other non-SurfaceView
+    // overlay) is showing, because it captures the game's SurfaceView directly (the only way
+    // to reliably get real frames out of it — capturing the whole Window can't see SurfaceView
+    // content at all, since it's composited on its own layer) and switches to a whole-window
+    // capture only while such an overlay is up, since the game is paused underneath anyway.
+    onQuickMenuVisibilityChanged: (Boolean) -> Unit = {},
+    // See QuickMenu's registerFocusManager kdoc — only meaningful when hosted by
+    // ImmersiveXrActivity, which needs to drive Compose focus directly since dispatching
+    // synthetic dpad KeyEvents through Activity.dispatchKeyEvent() doesn't reach Compose there.
+    registerQuickMenuFocusManager: ((androidx.compose.ui.focus.FocusManager) -> Unit)? = null,
+    // See QuickMenu's registerCycleTab kdoc — same bypass, for LB/RB tab switching.
+    registerQuickMenuCycleTab: (((Boolean) -> Unit) -> Unit)? = null,
+    // See QuickMenu's registerAdjustmentControl kdoc — same bypass, for a locked slider's
+    // left/right drag.
+    registerQuickMenuAdjustmentControl: ((() -> Pair<() -> Unit, () -> Unit>?) -> Unit)? = null,
+    // See QuickMenu's registerFocusTabRail kdoc — same bypass, for LEFT reliably reaching the tab
+    // rail regardless of the focused row's vertical position.
+    registerQuickMenuFocusTabRail: ((() -> Unit) -> Unit)? = null,
+    // See QuickMenu's registerFocusedActivate kdoc — same bypass, for a plain radio/toggle row
+    // whose default DPAD_CENTER/A click doesn't reliably fire in the immersive activity.
+    registerQuickMenuFocusedActivate: ((() -> (() -> Unit)?) -> Unit)? = null,
+    // Registers toggleQuickMenu (open/close only, no IME/controller-rescan/touchpad side
+    // effects) — see its own kdoc. Used by ImmersiveXrActivity's long-press-Start gesture instead
+    // of the shared, side-effect-heavy registerBackAction handler.
+    registerQuickMenuToggle: ((() -> Unit) -> Unit)? = null,
+    // See QuickMenu's registerStartHeld kdoc — pushes the Menu/Start button's physical-hold
+    // state so QuickMenu can suppress the real Android KeyEvents Horizon OS's own gamepad input
+    // dispatch generates while it's held (a separate path from this Activity's native OpenXR
+    // polling/bypasses, immune to all of them).
+    registerQuickMenuStartHeld: (((Boolean) -> Unit) -> Unit)? = null,
 ) {
     Timber.i("Starting up XServerScreen")
     val context = LocalContext.current
@@ -522,6 +558,9 @@ fun XServerScreen(
     var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
     var shouldForceResumeOnMenuClose by remember { mutableStateOf(false) }
     var showQuickMenu by remember { mutableStateOf(false) }
+    LaunchedEffect(showQuickMenu) {
+        onQuickMenuVisibilityChanged(showQuickMenu)
+    }
     var quickMenuToolsVisible by remember { mutableStateOf(false) }
     var quickMenuWineProcesses by remember { mutableStateOf<List<ProcessInfo>>(emptyList()) }
     var quickMenuWineProcessesLoading by remember { mutableStateOf(false) }
@@ -1026,6 +1065,20 @@ fun XServerScreen(
         showQuickMenu = false
     }
 
+    // Dedicated open/close toggle for the immersive activity's long-press-Start gesture —
+    // deliberately NOT gameBack(): that handler also does IME checks, a controller rescan, and
+    // releases touchpad pointer capture on open, none of which belong to "just open/close the
+    // quick menu" and were suspected of causing Start to behave like a confirm/select press.
+    // This does nothing but flip showQuickMenu.
+    val toggleQuickMenu: () -> Unit = {
+        Timber.i("toggleQuickMenu: invoked, showQuickMenu=%b", showQuickMenu)
+        if (showQuickMenu) {
+            dismissOverlayMenu()
+        } else {
+            showQuickMenu = true
+        }
+    }
+
     LaunchedEffect(showQuickMenu, quickMenuToolsVisible, xServerView) {
         if (!showQuickMenu || !quickMenuToolsVisible) {
             quickMenuWineProcesses = emptyList()
@@ -1392,6 +1445,7 @@ fun XServerScreen(
 
     DisposableEffect(container) {
         registerBackAction(gameBack)
+        registerQuickMenuToggle?.invoke(toggleQuickMenu)
         onDispose {
             Timber.d("XServerScreen leaving, clearing back action")
             removePerformanceHud()
@@ -1404,6 +1458,7 @@ fun XServerScreen(
                 PluviaApp.isOverlayPaused = false
             }
             registerBackAction { }
+            registerQuickMenuToggle?.invoke {}
         }   // preserve suspend state across activity recreation while a game is still running
     }
 
@@ -2628,6 +2683,14 @@ fun XServerScreen(
             onLsfgMultiplierChanged = ::applyLsfgMultiplier,
             onLsfgFlowScaleChanged = ::applyLsfgFlowScale,
             onLsfgPerformanceModeChanged = ::applyLsfgPerformanceMode,
+            // Immersive tab (tab only visible when hosted by ImmersiveXrActivity)
+            immersiveControls = immersiveControls,
+            registerFocusManager = registerQuickMenuFocusManager,
+            registerCycleTab = registerQuickMenuCycleTab ?: {},
+            registerAdjustmentControl = registerQuickMenuAdjustmentControl ?: {},
+            registerFocusTabRail = registerQuickMenuFocusTabRail ?: {},
+            registerFocusedActivate = registerQuickMenuFocusedActivate ?: {},
+            registerStartHeld = registerQuickMenuStartHeld ?: {},
             onAnimationComplete = { isMenuVisible ->
                 if (isMenuVisible) {
                     pauseForOverlayIfAllowed()
@@ -2654,6 +2717,13 @@ fun XServerScreen(
         }
 
         if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu && !keepPausedForEditor) {
+            val resumeButtonFocusRequester = remember { FocusRequester() }
+            // Not focusable by default touch-only flows don't need it, but a gamepad's
+            // DPAD_CENTER only activates a clickable() that currently has focus — request it
+            // as soon as this button appears so it's reachable without a prior focus target.
+            LaunchedEffect(Unit) {
+                runCatching { resumeButtonFocusRequester.requestFocus() }
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -2671,6 +2741,8 @@ fun XServerScreen(
                             color = androidx.compose.ui.graphics.Color.White,
                             shape = androidx.compose.foundation.shape.CircleShape,
                         )
+                        .focusRequester(resumeButtonFocusRequester)
+                        .focusable()
                         .clickable(onClick = ::resumeFromManualButton),
                     contentAlignment = Alignment.Center,
                 ) {

@@ -3597,11 +3597,15 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        if (!hasActiveOperations()) {
+        // keepAlive is the same flag MainActivity's onStop/onDestroy already respect (see
+        // MainActivity.kt) — this callback is a separate Android lifecycle hook (fires when a
+        // TASK is torn down, not tied to any one Activity's own lifecycle) that was bypassing it
+        // entirely, force-stopping Steam out from under an immersive session in progress.
+        if (!hasActiveOperations() && !keepAlive) {
             Timber.i("Task removed and no active work — stopping service")
             stopSelf()
         } else {
-            Timber.i("Task removed but active work exists — keeping service alive")
+            Timber.i("Task removed but active work or keepAlive exists — keeping service alive")
         }
     }
 

@@ -76,6 +76,7 @@
     <string name="private_branch_password_success">Branche débloquée !</string>
     <string name="private_branch_password_invalid">Code d\'accès invalide</string>
     <string name="run_app">Jouer</string>
+    <string name="launch_immersive_mode">Lancer en mode immersif (VR)</string>
     <string name="download_prompt_title">Installer l\'application</string>
     <string name="calculating_space_requirements">Calcul des besoins en espace…</string>
     <string name="delete_prompt_title">Supprimer l\'application</string>
@@ -310,6 +311,19 @@
     <string name="screen_effects_close">Fermer</string>
     <string name="quick_menu_tab_general">Général</string>
     <string name="quick_menu_tab_controller">Contrôles</string>
+    <string name="quick_menu_tab_immersive">Immersif</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Voir ton environnement réel à travers l\'écran virtuel</string>
+    <string name="immersive_passthrough_toggle">Activer le passthrough</string>
+    <string name="immersive_resize_mode_title">Poignées de redimensionnement / déplacement</string>
+    <string name="immersive_resize_mode_desc">Affiche des poignées juste à l\'intérieur des bords du jeu quand c\'est activé — désactivé par défaut, pour garder l\'image nette sans marge autour.</string>
+    <string name="immersive_resize_mode_toggle">Afficher les poignées</string>
+    <string name="immersive_direct_render_title">Performance</string>
+    <string name="immersive_reset_effects_status_blocked">Un effet, filtre ou réglage contraste/luminosité/gamma actif bloque le mode de rendu le plus rapide.</string>
+    <string name="immersive_reset_effects_status_ok">Rien ne bloque actuellement le mode de rendu le plus rapide.</string>
+    <string name="immersive_reset_effects_button">Réinitialiser les effets d\'écran</string>
+    <string name="immersive_reset_effects_desc">Désactive tous les effets, filtres et réglages contraste/luminosité/gamma. Effet immédiat — aucun redémarrage nécessaire.</string>
+    <string name="immersive_onboarding_disable_passthrough">Désactive le passthrough pour de meilleures performances</string>
     <string name="performance_hud">HUD de performance</string>
     <string name="performance_hud_description">Afficher ou masquer la surcouche en jeu.</string>
     <string name="performance_hud_fps_limiter">Limiteur de FPS</string>

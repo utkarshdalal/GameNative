@@ -974,6 +974,15 @@ private fun ScreenEffectAdjustmentRow(
     val accentColor = PluviaTheme.colors.accentPurple
     val shape = RoundedCornerShape(14.dp)
     var isAdjustmentLocked by remember { mutableStateOf(false) }
+    // See QuickMenu.kt's LocalImmersiveInputBypass kdoc (identical mechanism as
+    // QuickMenuAdjustmentRow, kept in sync) — reports (onDecrease, onIncrease) up while this row
+    // is both focused and lock-toggled, null otherwise, so the Meta Quest immersive activity
+    // (which bypasses this row's own onPreviewKeyEvent entirely for arrow keys, since synthetic
+    // dpad KeyEvents never reach Compose's key dispatch in that Activity) can still drive it.
+    val inputBypass = LocalImmersiveInputBypass.current
+    LaunchedEffect(isFocused, isAdjustmentLocked) {
+        inputBypass.reportAdjustment(if (isFocused && isAdjustmentLocked) (onDecrease to onIncrease) else null)
+    }
 
     Column(
         modifier = Modifier
@@ -1023,12 +1032,20 @@ private fun ScreenEffectAdjustmentRow(
             .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && isFocused) {
                     when {
-                        keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_A -> {
-                            isAdjustmentLocked = !isAdjustmentLocked
+                        // A only LOCKS, never toggles off — see QuickMenuAdjustmentRow's identical
+                        // handler for why (a repeated A press must never undo an in-progress
+                        // adjustment). Only BUTTON_B or losing focus unlocks.
+                        !isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_A -> {
+                            isAdjustmentLocked = true
                             true
                         }
 
-                        isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_B -> {
+                        // ImmersiveXrActivity's B handler dispatches KEYCODE_BACK, not
+                        // KEYCODE_BUTTON_B — see QuickMenuAdjustmentRow's identical handler for
+                        // why both are checked here.
+                        isAdjustmentLocked &&
+                            (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_B ||
+                                keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BACK) -> {
                             isAdjustmentLocked = false
                             true
                         }
@@ -1286,6 +1303,17 @@ private fun ScreenEffectRadioRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
+    // Reports onSelect up while this row is focused, null otherwise — see
+    // LocalImmersiveInputBypass's kdoc (QuickMenu.kt): a plain .selectable() relies on Android's
+    // default "DPAD_CENTER/A clicks whatever holds real view focus" behavior, which the Meta
+    // Quest immersive activity found to be unreliable for this exact case (real Android view
+    // focus doesn't always track Compose's own internal focus there — confirmed separately for
+    // tab-rail buttons and adjustment-row locks earlier this session). Lets that Activity invoke
+    // onSelect directly instead of gambling on the default click path.
+    val inputBypass = LocalImmersiveInputBypass.current
+    LaunchedEffect(isFocused) {
+        inputBypass.reportActivate(if (isFocused) onSelect else null)
+    }
     val accentColor = PluviaTheme.colors.accentPurple
     val shape = RoundedCornerShape(14.dp)
 

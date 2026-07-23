@@ -80,6 +80,18 @@ class MainActivity : ComponentActivity() {
                 Build.MANUFACTURER.equals("Meta", true) ||
                 Build.MANUFACTURER.equals("Pico", true)
 
+        // Immersive/VR launch mode currently only targets Meta Quest — unlike isHeadset()
+        // above, this intentionally excludes Pico.
+        //
+        // Confirmed on a real Quest 3: `hasSystemFeature("android.hardware.vr.headtracking")`
+        // returns false for a plain 2D-panel app (that feature isn't declared outside an
+        // active VR/XR session), so — unlike an earlier version of this check — it must NOT
+        // be required here. Manufacturer/brand alone is enough, same as isHeadset() does.
+        fun isMetaQuest(context: Context): Boolean =
+            Build.MANUFACTURER.equals("Oculus", true) ||
+                Build.MANUFACTURER.equals("Meta", true) ||
+                Build.BRAND.equals("oculus", true)
+
         // Store pending launch request to be processed after UI is ready
         @Volatile
         private var pendingLaunchRequest: IntentLaunchManager.LaunchRequest? = null

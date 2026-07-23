@@ -1052,6 +1052,24 @@ abstract class BaseAppScreen {
             mutableStateOf(hasLeftoverInstall(context, libraryItem))
         }
 
+        // Immersive/VR launch mode is only offered on Meta Quest, and only for games running
+        // through the Wine/Proton path — a native Android (Steam Frame) install never goes
+        // through ImmersiveXrActivity (MainViewModel returns early for those, before ever
+        // looking at this flag), so offering the toggle there would be misleading.
+        val isImmersiveModeSupported = remember(libraryItem.appId) {
+            app.gamenative.MainActivity.isMetaQuest(context) &&
+                !app.gamenative.service.SteamService.isAndroidPlatform(libraryItem.gameId)
+        }
+        var isImmersiveModeEnabledState by remember(libraryItem.appId) { mutableStateOf(false) }
+        if (isImmersiveModeSupported) {
+            LaunchedEffect(libraryItem.appId) {
+                isImmersiveModeEnabledState = withContext(Dispatchers.IO) {
+                    runCatching { ContainerUtils.getContainer(context, libraryItem.appId).isLaunchImmersiveMode() }
+                        .getOrDefault(false)
+                }
+            }
+        }
+
         // hasAndroidVersion() can hit the database (SteamService.getAppInfoOf does a blocking
         // Room query) — compute it off the main thread once per screen visit, instead of
         // re-running it synchronously on the main thread every time Edit Container is opened.
@@ -1396,6 +1414,20 @@ abstract class BaseAppScreen {
             hasLeftoverInstall = hasLeftoverInstallState,
             isUpdatePending = isUpdatePendingState,
             downloadInfo = downloadInfo,
+            immersiveMode = app.gamenative.ui.screen.library.ImmersiveModeUiState(
+                isSupported = isImmersiveModeSupported,
+                isEnabled = isImmersiveModeEnabledState,
+                onChange = { enabled ->
+                    isImmersiveModeEnabledState = enabled
+                    uiScope.launch(Dispatchers.IO) {
+                        runCatching {
+                            val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                            container.setLaunchImmersiveMode(enabled)
+                            container.saveData()
+                        }
+                    }
+                },
+            ),
             onDownloadInstallClick = {
                 if (app.gamenative.launch.LaunchReadiness.pending) {
                     showReadiness = true
