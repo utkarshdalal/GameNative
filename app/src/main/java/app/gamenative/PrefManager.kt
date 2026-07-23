@@ -3,7 +3,6 @@ package app.gamenative
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
-import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.byteArrayPreferencesKey
@@ -27,7 +26,6 @@ import com.winlator.core.DefaultVersion
 import com.winlator.xenvironment.components.PulseAudioComponent
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.util.EnumSet
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,15 +34,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import timber.log.Timber
-
-internal val RETIRED_NEXUS_PERSONAL_API_KEY = byteArrayPreferencesKey("nexus_api_key_enc")
-
-internal fun Preferences.hasRetiredNexusPersonalApiKey(): Boolean =
-    this[RETIRED_NEXUS_PERSONAL_API_KEY] != null
-
-internal fun MutablePreferences.removeRetiredNexusPersonalApiKey() {
-    remove(RETIRED_NEXUS_PERSONAL_API_KEY)
-}
 
 /**
  * A universal Preference Manager that can be used anywhere within gamenative.
@@ -63,8 +52,6 @@ object PrefManager {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private lateinit var dataStore: DataStore<Preferences>
-
-    private val retiredNexusPersonalApiKeyCleanupScheduled = AtomicBoolean(false)
 
     fun init(context: Context) {
         dataStore = context.datastore
@@ -87,25 +74,6 @@ object PrefManager {
                 Timber.i("Converting old refresh token to encrypted")
                 refreshToken = it
                 removePref(oldRefreshToken)
-            }
-        }
-
-        // Keep this cleanup for several releases so restored backups are also scrubbed.
-        // No production code reads or sends the retired value while removal runs on IO.
-        if (retiredNexusPersonalApiKeyCleanupScheduled.compareAndSet(false, true)) {
-            val initializedDataStore = dataStore
-            scope.launch {
-                runCatching {
-                    initializedDataStore.edit { preferences ->
-                        if (preferences.hasRetiredNexusPersonalApiKey()) {
-                            Timber.i("Removing retired Nexus Personal API key")
-                            preferences.removeRetiredNexusPersonalApiKey()
-                        }
-                    }
-                }.onFailure {
-                    retiredNexusPersonalApiKeyCleanupScheduled.set(false)
-                    Timber.w(it, "Failed to remove retired Nexus Personal API key; will retry")
-                }
             }
         }
     }
