@@ -79,7 +79,7 @@ public class AdrenotoolsManager {
     }
 
     private void reloadContainers(String adrenoToolsDriverId) {
-        ContainerManager containerManager = new ContainerManager(mContext);
+        ContainerManager containerManager = ContainerManager.getInstance(mContext);
         for (Container container : containerManager.getContainers()) {
             KeyValueSet config = new KeyValueSet(container.getGraphicsDriverConfig());
             Log.d("AdrenotoolsManager", "Checking if container driver version " + config.get("version") + " matches " + getDriverName(adrenoToolsDriverId));

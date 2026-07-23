@@ -34,14 +34,14 @@ public class ContainerManager {
     private final Context context;
     private static ContainerManager instance;
 
-    public static ContainerManager getInstance(Context context) {
+    public static synchronized ContainerManager getInstance(Context context) {
         if (instance == null) {
             instance = new ContainerManager(context.getApplicationContext());
         }
         return instance;
     }
 
-    public ContainerManager(Context context) {
+    private ContainerManager(Context context) {
         this.context = context;
         File rootDir = ImageFs.find(context).getRootDir();
         homeDir = new File(rootDir, "home");

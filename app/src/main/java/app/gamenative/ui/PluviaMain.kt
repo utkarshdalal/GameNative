@@ -1613,7 +1613,7 @@ fun preLaunchApp(
 
         // create container if it does not already exist
         // TODO: combine somehow with container creation in HomeLibraryAppScreen
-        val containerManager = ContainerManager(context)
+        val containerManager = ContainerManager.getInstance(context)
         val container = if (useTemporaryOverride) {
             ContainerUtils.getOrCreateContainerWithOverride(context, appId)
         } else {

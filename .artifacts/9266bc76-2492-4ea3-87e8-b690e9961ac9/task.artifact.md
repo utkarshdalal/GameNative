@@ -1,0 +1,10 @@
+- `[/]` Step 1: Core Infrastructure (`ContainerManager` Singleton)
+    - `[ ]` Modify `ContainerManager.java` (private constructor, synchronized `getInstance`)
+    - `[ ]` Update `AdrenotoolsManager.java`
+    - `[ ]` Update `ImageFsInstaller.java`
+    - `[ ]` Update `PluviaMain.kt`
+    - `[ ]` Update `XServerScreen.kt`
+    - `[ ]` Update `ContainerUtils.kt`
+    - `[ ]` Update `EpicAppScreen.kt` (clean up import if needed)
+- `[ ]` Step 2: Asynchronous Icon loading in `LibraryListCard`
+- `[ ]` Step 3: UI Layout Fix in `LibraryListPane`

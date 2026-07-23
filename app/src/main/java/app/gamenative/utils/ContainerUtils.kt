@@ -639,12 +639,12 @@ object ContainerUtils {
     }
 
     fun hasContainer(context: Context, appId: String): Boolean {
-        val containerManager = ContainerManager(context)
+        val containerManager = ContainerManager.getInstance(context)
         return containerManager.hasContainer(appId)
     }
 
     fun getContainer(context: Context, appId: String): Container {
-        val containerManager = ContainerManager(context)
+        val containerManager = ContainerManager.getInstance(context)
         return if (containerManager.hasContainer(appId)) {
             containerManager.getContainerById(appId)
         } else {
@@ -1003,7 +1003,7 @@ object ContainerUtils {
     }
 
     fun getOrCreateContainer(context: Context, appId: String): Container {
-        val containerManager = ContainerManager(context)
+        val containerManager = ContainerManager.getInstance(context)
 
         val container = if (containerManager.hasContainer(appId)) {
             containerManager.getContainerById(appId)
@@ -1077,7 +1077,7 @@ object ContainerUtils {
     }
 
     fun getOrCreateContainerWithOverride(context: Context, appId: String): Container {
-        val containerManager = ContainerManager(context)
+        val containerManager = ContainerManager.getInstance(context)
 
         return if (containerManager.hasContainer(appId)) {
             val container = containerManager.getContainerById(appId)
@@ -1119,7 +1119,7 @@ object ContainerUtils {
      */
     fun deleteContainer(context: Context, appId: String) {
         Timber.i("[ContainerDeletion] Attempting to delete container for appId=$appId")
-        val manager = ContainerManager(context)
+        val manager = ContainerManager.getInstance(context)
         val hasContainer = manager.hasContainer(appId)
         Timber.i("[ContainerDeletion] hasContainer($appId) = $hasContainer")
         if (hasContainer) {
