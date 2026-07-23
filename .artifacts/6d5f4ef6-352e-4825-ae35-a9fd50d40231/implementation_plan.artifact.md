@@ -1,57 +1,34 @@
-# Implementation Plan - Cross-Store Awareness and Source Switcher Improvements
+# Implementation Plan - Resolution Enhancement and Localization (PR #1759)
 
-This plan addresses the feedback from PR #1760 regarding the "cross-store awareness and source switcher" feature. It aims to improve name normalization, sibling filtering logic, data scope for source switching, and UI accessibility/layout.
+This plan documents the resolution enhancement logic and localization changes implemented in PR #1759. The goal is to ensure GPU driver compatibility by rounding resolutions to even integers and improving aspect ratio calculations for mobile devices.
 
 ## Proposed Changes
 
-### [Component Name] Utilities
+### UI Logic & Utilities
 
-#### [MODIFY] [StringUtils.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/utils/StringUtils.kt)
-- Add `normalizeForComparison()` extension function to `String` (or `CharSequence`).
-- This function will:
-    1. Unaccent the string.
-    2. Convert to lowercase.
-    3. Remove all non-alphanumeric characters (including symbols like ®).
-    4. Trim whitespace.
+#### [MODIFY] [ContainerConfigDialog.kt](app/src/main/java/app/gamenative/ui/component/dialog/ContainerConfigDialog.kt)
+- Implement `evenRound`, `gcd`, and `calculateAspectRatio` as top-level internal functions.
+- Ensure all custom resolutions are rounded to the nearest even integer.
 
-### [Component Name] Library Logic
+### Resource Localization
 
-#### [MODIFY] [LibraryViewModel.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/model/LibraryViewModel.kt)
-- Update sibling grouping logic in `onFilterApps`:
-    - Calculate a "global" mapping of all owned games (from Steam, GOG, Epic, Amazon, and Custom) indexed by the new `normalizeForComparison()` result.
-    - This global mapping should be created from the full lists (`appList`, `gogGameList`, etc.) BEFORE any filters (search, tabs, collections) are applied.
-    - Use this global mapping to populate `otherSources` and `isInstalledOnOtherSource` for each `LibraryItem`.
-    - Fix sibling filtering logic: A sibling is a game with the same normalized name but a different `appId` **AND** a different `gameSource`.
+#### [MODIFY] [arrays.xml](app/src/main/res/values/arrays.xml)
+- Update `screen_size_entries` to include correct 20:9 aspect ratios for 1200x540 and 1600x720.
 
-### [Component Name] UI Components
+### Documentation Improvements
 
-#### [MODIFY] [LibraryListCard.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/components/LibraryListCard.kt)
-- Fix logic error in `InstallStatusBadge`: Move the check for `appInfo.isInstalledOnOtherSource` above the `!isSteam` check so that non-Steam games can correctly show "Installed elsewhere".
-
-#### [MODIFY] [LibraryGridCard.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/components/LibraryGridCard.kt)
-- Add an accessibility label for the "installed elsewhere" status icon in `GridStatusIcons`.
-
-#### [MODIFY] [LibraryAppScreen.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/screen/library/LibraryAppScreen.kt)
-- Make the "Also available on" row horizontally scrollable in `AppScreenContent` to handle cases where a game is available on many platforms.
-
-### [Component Name] Documentation
-
-#### [MODIFY] Multiple Files
-- Add KDoc to public functions and classes modified in this task to improve docstring coverage, as recommended in the PR review.
-
-### [Component Name] Tests
-
-#### [NEW] [StringUtilsTest.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/test/java/app/gamenative/utils/StringUtilsTest.kt) (Update)
-- Add test cases for `normalizeForComparison()` to ensure it correctly links games like "The Witcher® 3" and "THE WITCHER 3".
+#### [MODIFY] [AdvancedTab.kt](app/src/main/java/app/gamenative/ui/component/dialog/AdvancedTab.kt)
+#### [MODIFY] [ControllerTab.kt](app/src/main/java/app/gamenative/ui/component/dialog/ControllerTab.kt)
+#### [MODIFY] [EmulationTab.kt](app/src/main/java/app/gamenative/ui/component/dialog/EmulationTab.kt)
+- Add comprehensive KDoc to tab composables and remove outdated claims regarding features like suspend policy, shooter mode, and TSO/x87 precision.
 
 ## Verification Plan
 
 ### Automated Tests
-- Run `StringUtilsTest` to verify the normalization logic.
-- Command: `./gradlew :app:testDebugUnitTest --tests "app.gamenative.utils.StringUtilsTest"`
+- Run [ResolutionUtilsTest.kt](app/src/test/java/app/gamenative/ui/component/dialog/ResolutionUtilsTest.kt) to verify rounding and aspect ratio logic.
+- Command: `./gradlew :app:testDebugUnitTest --tests "app.gamenative.ui.component.dialog.ResolutionUtilsTest"`
+- Run a build check to ensure no syntax errors.
 
 ### Manual Verification
-- Since I cannot run the app, I will:
-    1. Carefully review the modified `when` expression in `LibraryListCard.kt`.
-    2. Verify that the "Also available on" `Row` in `LibraryAppScreen.kt` now has a `horizontalScroll` modifier.
-    3. Verify that `LibraryViewModel.kt` uses the full library data for sibling linking.
+- Verify custom resolution input in `ContainerConfigDialog`.
+- Check KDoc coverage and accuracy for all modified tabs.

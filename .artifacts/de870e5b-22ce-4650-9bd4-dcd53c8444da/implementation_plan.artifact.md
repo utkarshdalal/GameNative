@@ -39,8 +39,8 @@ Add comprehensive KDoc to the following Composable functions to bring project do
 - Run [ResolutionUtilsTest.kt](app/src/test/java/app/gamenative/ui/component/dialog/ResolutionUtilsTest.kt) to verify `evenRound` (forcing even integers), `gcd` calculation, and aspect ratio formatting (including mobile-specific ratios like 19.5:9).
 - Command: `./gradlew :app:testDebugUnitTest --tests "app.gamenative.ui.component.dialog.ResolutionUtilsTest"`
 - Run a build check to ensure no syntax errors.
-- Verify KDoc presence for all targeted functions.
 
 ### Manual Verification
+- Verify KDoc presence and accuracy for all targeted functions.
 - Render Compose previews for `ContainerConfigDialog` to verify UI stability.
 - Verify that entering an odd number in the custom resolution dialog results in an even number being saved (e.g., 1281 -> 1282 or 1280).

@@ -11,7 +11,7 @@ This plan addresses recommendations from PR #1759 reviews to improve resolution 
 
 ### [Resources]
 
-#### [MODIFY] [arrays.xml](file:///E:/workspace/StudioProjects/GameNative/app/src/main/res/values/arrays.xml)
+#### [MODIFY] [arrays.xml](app/src/main/res/values/arrays.xml)
 - Update `1200x540 (16:9)` to `1200x540 (20:9)`.
 - Update `1600x720 (16:9)` to `1600x720 (20:9)`.
 
@@ -19,7 +19,7 @@ This plan addresses recommendations from PR #1759 reviews to improve resolution 
 
 ### [UI Components]
 
-#### [MODIFY] [ContainerConfigDialog.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/component/dialog/ContainerConfigDialog.kt)
+#### [MODIFY] [ContainerConfigDialog.kt](app/src/main/java/app/gamenative/ui/component/dialog/ContainerConfigDialog.kt)
 - Implement `toEven(value: Float): Int` helper to ensure dimensions are rounded to the nearest even number, preventing rendering artifacts on some GPU drivers.
 - Implement `calculateAspectRatio(width: Int, height: Int): String` using GCD to determine the simplified aspect ratio.
 - Update `rememberContainerConfigDialogStaticData` to:

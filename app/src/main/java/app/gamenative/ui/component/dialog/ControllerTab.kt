@@ -18,8 +18,7 @@ import com.winlator.container.Container
 
 /**
  * Content for the Controller settings tab in the container configuration.
- * Manages input APIs (XInput, DirectInput), on-screen controller visibility,
- * shooter mode, and physical controller mappings.
+ * Manages input APIs (XInput, DirectInput), and on-screen controller visibility.
  *
  * @param state The shared state for the configuration dialog.
  * @param default If true, this is configuring global default settings.

@@ -12,7 +12,7 @@ import com.alorma.compose.settings.ui.SettingsGroup
 /**
  * Content for the Advanced settings tab in the container configuration.
  * Handles system-level settings such as startup behavior (service loading),
- * suspend policy, and per-process CPU affinity for 32-bit and 64-bit applications.
+ * and per-process CPU affinity for 32-bit and 64-bit applications.
  *
  * @param state The shared state for the configuration dialog.
  */

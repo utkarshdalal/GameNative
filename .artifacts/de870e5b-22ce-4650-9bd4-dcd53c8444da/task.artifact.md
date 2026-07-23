@@ -3,12 +3,12 @@
 - [x] Refactor resolution logic in `ContainerConfigDialog.kt`
     - [x] Move `evenRound`, `gcd`, `calculateAspectRatio` to top level
     - [x] Apply `evenRound` to custom resolutions
+    - [x] Round dimensions before aspect ratio validation in `GeneralTab.kt` to prevent square resolutions (e.g., 4x3 -> 4x4)
 - [x] Add KDoc to Tab Composables
     - [x] `EmulationTabContent`
     - [x] `ControllerTabContent`
     - [x] `WineTabContent`
     - [x] `WinComponentsTabContent`
-    - [x] `EnvironmentTabContent`
     - [x] `DrivesTabContent`
     - [x] `AdvancedTabContent`
 - [x] Verify `arrays.xml` aspect ratios

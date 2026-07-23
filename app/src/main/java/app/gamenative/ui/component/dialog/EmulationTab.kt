@@ -15,8 +15,7 @@ import java.util.Locale
 
 /**
  * Content for the Emulation settings tab in the container configuration.
- * Configures CPU emulation parameters including Box64 and FEXCore versions, presets,
- * and architecture-specific optimizations like TSO and x87 precision.
+ * Configures CPU emulation parameters including Box64 and FEXCore versions, and presets.
  *
  * @param state The shared state for the configuration dialog.
  */

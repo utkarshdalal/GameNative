@@ -35,13 +35,6 @@ import com.winlator.core.envvars.EnvVarInfo
 import com.winlator.core.envvars.EnvVars
 import com.winlator.core.envvars.EnvVarSelectionType
 
-/**
- * Content for the Environment settings tab in the container configuration.
- * Manages custom environment variables for the container, allowing users
- * to add, edit, or remove key-value pairs to tune specific game or driver behaviors.
- *
- * @param state The shared state for the configuration dialog.
- */
 @Composable
 fun EnvironmentTabContent(state: ContainerConfigState) {
     val config = state.config.value

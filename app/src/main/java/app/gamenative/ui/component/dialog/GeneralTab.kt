@@ -119,9 +119,12 @@ fun GeneralTabContent(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val widthInt = state.customScreenWidth.value.toIntOrNull() ?: 0
-                        val heightInt = state.customScreenHeight.value.toIntOrNull() ?: 0
-                        if (widthInt == 0 || heightInt == 0) {
+                        val widthRaw = state.customScreenWidth.value.toIntOrNull() ?: 0
+                        val heightRaw = state.customScreenHeight.value.toIntOrNull() ?: 0
+                        val widthInt = evenRound(widthRaw.toFloat())
+                        val heightInt = evenRound(heightRaw.toFloat())
+
+                        if (widthRaw == 0 || heightRaw == 0) {
                             state.customResolutionValidationError.value = nonzeroResolutionError
                         } else if (widthInt <= heightInt) {
                             state.customResolutionValidationError.value = aspectResolutionError

@@ -22,7 +22,7 @@ This walkthrough summarizes the final iteration of PR #1759, focusing on driver 
 ### Automated Verification
 - **Compilation**: Successfully compiled the `:app` module using `compileModernDebugKotlin`.
 - **Static Analysis**: Verified modified files using `analyze_file`, resolving high-priority warnings.
-- **Unit Testing**: Added [ResolutionUtilsTest.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/test/java/app/gamenative/ui/component/dialog/ResolutionUtilsTest.kt) as a lightweight JUnit test.
+- **Unit Testing**: Added [ResolutionUtilsTest.kt](app/src/test/java/app/gamenative/ui/component/dialog/ResolutionUtilsTest.kt) as a lightweight JUnit test.
 
 ### Manual Verification
 - Verified that common mobile aspect ratios (19.5:9, 21.5:9) are correctly detected and displayed.
