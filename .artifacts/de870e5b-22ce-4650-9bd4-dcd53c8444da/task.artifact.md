@@ -1,0 +1,12 @@
+- `[ ]` Add string resources to `strings.xml`
+- `[ ]` Update `ContainerConfigDialog.kt`
+    - `[ ]` Implement `evenRound`
+    - `[ ]` Update resolution rounding logic
+    - `[ ]` Update aspect ratio calculation
+    - `[ ]` Add KDoc
+- `[ ]` Update `GeneralTab.kt`
+    - `[ ]` Use string resources for language names
+    - `[ ]` Add KDoc
+- `[ ]` Update `GraphicsTab.kt`
+    - `[ ]` Add KDoc
+- `[ ]` Verify changes

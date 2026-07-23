@@ -199,6 +199,10 @@ private data class ContainerConfigDialogStaticData(
     val languages: List<String>,
 )
 
+/**
+ * Composable that provides static data for the Container Configuration dialog.
+ * This includes pre-defined screen sizes, driver lists, and other constants.
+ */
 @Composable
 private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStaticData {
     val context = LocalContext.current
@@ -214,28 +218,38 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
         }
 
     val displayMetrics = context.resources.displayMetrics
-    val nativeWidth = maxOf(displayMetrics.widthPixels, displayMetrics.heightPixels)
-    val nativeHeight = minOf(displayMetrics.widthPixels, displayMetrics.heightPixels)
+    val screenWidth = maxOf(displayMetrics.widthPixels, displayMetrics.heightPixels).toFloat()
+    val screenHeight = minOf(displayMetrics.widthPixels, displayMetrics.heightPixels).toFloat()
 
-    fun toEven(value: Float): Int {
-        val rounded = value.roundToInt()
-        return rounded - (rounded % 2)
-    }
+    /**
+     * Rounds a float value to the nearest even integer.
+     * This is required by many mobile GPU drivers to avoid rendering artifacts or crashes.
+     */
+    fun evenRound(value: Float): Int = (value / 2.0f).roundToInt() * 2
 
+    /**
+     * Calculates the greatest common divisor of two integers.
+     */
     fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
 
+    /**
+     * Calculates and formats the aspect ratio for a given resolution.
+     */
     fun calculateAspectRatio(width: Int, height: Int): String {
         val common = gcd(width, height)
         val w = width / common
         val h = height / common
-        if (w == 13 && h == 6) return "19.5:9"
-        if (w == 43 && h == 18) return "21.5:9"
+        if (w == 13 && h == 6) return context.getString(R.string.aspect_ratio_19_5_9)
+        if (w == 43 && h == 18) return context.getString(R.string.aspect_ratio_21_5_9)
         return "$w:$h"
     }
 
+    val nativeWidth = evenRound(screenWidth)
+    val nativeHeight = evenRound(screenHeight)
+
     val nativeRes = "${nativeWidth}x$nativeHeight"
-    val optimizedRes = "${toEven(nativeWidth * 0.75f)}x${toEven(nativeHeight * 0.75f)}"
-    val halfRes = "${toEven(nativeWidth * 0.5f)}x${toEven(nativeHeight * 0.5f)}"
+    val optimizedRes = "${evenRound(screenWidth * 0.75f)}x${evenRound(screenHeight * 0.75f)}"
+    val halfRes = "${evenRound(screenWidth * 0.5f)}x${evenRound(screenHeight * 0.5f)}"
 
     val nativeRatio = calculateAspectRatio(nativeWidth, nativeHeight)
 
@@ -312,6 +326,16 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
     )
 }
 
+/**
+ * Main dialog for configuring container settings including graphics, emulation, and environment variables.
+ *
+ * @param visible Whether the dialog is currently shown.
+ * @param default If true, this dialog is configuring the global default settings.
+ * @param title The title to display in the top bar.
+ * @param initialConfig The initial container configuration to load.
+ * @param onDismissRequest Callback when the dialog should be dismissed.
+ * @param onSave Callback when the configuration is saved.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContainerConfigDialog(
@@ -1428,7 +1452,13 @@ private fun Preview_ContainerConfigDialog() {
 }
 
 /**
- * Editable dropdown for selecting executable paths from the container's A: drive
+ * A dropdown component for selecting an executable path from the container's drives.
+ * Scans the A: drive for available .exe files and provides a searchable list.
+ *
+ * @param modifier Modifier for the container.
+ * @param value The current executable path value.
+ * @param onValueChange Callback when a new path is selected or entered.
+ * @param containerData The container data used to scan for executables.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
