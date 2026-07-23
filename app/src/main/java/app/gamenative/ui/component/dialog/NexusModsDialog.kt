@@ -669,6 +669,30 @@ fun NexusModsDialog(
     var healthReport by remember(libraryItem.appId) { mutableStateOf<ModHealthReport?>(null) }
     var healthLoading by remember(libraryItem.appId) { mutableStateOf(false) }
     var diagnosticsPaused by remember { mutableStateOf(false) }
+    val nexusAuthenticationUnavailableMessage =
+        context.getString(R.string.nexus_integration_temporarily_unavailable)
+
+    fun nexusUserMessage(
+        error: Throwable,
+        fallback: String? = null,
+        expiredAuthorizationMessage: String? = null,
+    ): String {
+        val authenticationMessage = nexusAuthenticationUnavailableMessage
+        return if (fallback == null) {
+            NexusImportState.userMessage(
+                error = error,
+                expiredAuthorizationMessage = expiredAuthorizationMessage,
+                authenticationMessage = authenticationMessage,
+            )
+        } else {
+            NexusImportState.userMessage(
+                error = error,
+                fallback = fallback,
+                expiredAuthorizationMessage = expiredAuthorizationMessage,
+                authenticationMessage = authenticationMessage,
+            )
+        }
+    }
 
     fun blockUnavailableOnlineAccess(): Boolean {
         if (NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) return false
@@ -1578,7 +1602,7 @@ fun NexusModsDialog(
                 if (NexusImportState.requiresWebsiteAuthorization(e)) {
                     requestWebsiteDownloadAuthorization(reference, modInfo, file)
                 } else {
-                    SnackbarManager.show(NexusImportState.userMessage(e))
+                    SnackbarManager.show(nexusUserMessage(e))
                 }
             } finally {
                 loadingMessage = null
@@ -1739,9 +1763,9 @@ fun NexusModsDialog(
                 selectedTab = ManageModsTab.IMPORT
                 SnackbarManager.show(context.getString(R.string.nexus_collection_resolve_ready, resolvedMods.count { it.canImport }))
             } catch (e: NexusApiException) {
-                SnackbarManager.show(NexusImportState.userMessage(e, context.getString(R.string.nexus_resolve_collection_failed)))
+                SnackbarManager.show(nexusUserMessage(e, context.getString(R.string.nexus_resolve_collection_failed)))
             } catch (e: Exception) {
-                SnackbarManager.show(NexusImportState.userMessage(e, context.getString(R.string.nexus_resolve_collection_failed)))
+                SnackbarManager.show(nexusUserMessage(e, context.getString(R.string.nexus_resolve_collection_failed)))
             } finally {
                 if (loadingMessage?.startsWith(context.getString(R.string.nexus_resolving_prefix)) == true) loadingMessage = null
             }
@@ -1940,7 +1964,7 @@ fun NexusModsDialog(
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        val errorMessage = NexusImportState.userMessage(e)
+                        val errorMessage = nexusUserMessage(e)
                         failQueuedItems(errorMessage)
                         SnackbarManager.show(errorMessage)
                         return@launch
@@ -2129,7 +2153,7 @@ fun NexusModsDialog(
                         if (e is NexusWebsiteAuthorizationException || NexusImportState.requiresWebsiteAuthorization(e)) {
                             failed++
                             collectionCancelRequested = true
-                            val errorMessage = NexusImportState.userMessage(
+                            val errorMessage = nexusUserMessage(
                                 error = e,
                                 expiredAuthorizationMessage = context.getString(R.string.nexus_authorization_expired),
                             )
@@ -2148,7 +2172,7 @@ fun NexusModsDialog(
                             pendingMod,
                             status = if (canceled) CollectionQueueStatus.CANCELED else CollectionQueueStatus.FAILED,
                             message = if (canceled) context.getString(R.string.nexus_queue_canceled) else context.getString(R.string.nexus_queue_failed),
-                            error = NexusImportState.userMessage(e),
+                            error = nexusUserMessage(e),
                         )
                     } finally {
                         activeCollectionInstallId = null
@@ -2181,7 +2205,7 @@ fun NexusModsDialog(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                val errorMessage = NexusImportState.userMessage(e)
+                val errorMessage = nexusUserMessage(e)
                 failQueuedItems(errorMessage)
                 SnackbarManager.show(errorMessage)
             } finally {
@@ -2225,9 +2249,9 @@ fun NexusModsDialog(
                     selectedTab = ManageModsTab.IMPORT
                 }
             } catch (e: NexusApiException) {
-                SnackbarManager.show(NexusImportState.userMessage(e, context.getString(R.string.nexus_resolve_url_failed)))
+                SnackbarManager.show(nexusUserMessage(e, context.getString(R.string.nexus_resolve_url_failed)))
             } catch (e: Exception) {
-                SnackbarManager.show(NexusImportState.userMessage(e, context.getString(R.string.nexus_resolve_url_failed)))
+                SnackbarManager.show(nexusUserMessage(e, context.getString(R.string.nexus_resolve_url_failed)))
             } finally {
                 if (loadingMessage == context.getString(R.string.nexus_resolving_nexus_mod)) loadingMessage = null
             }

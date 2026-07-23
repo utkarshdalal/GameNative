@@ -200,6 +200,31 @@ class NexusImportStateTest {
         )
     }
 
+    @Test
+    fun userMessage_authenticationPrefersLocalizedOverride() {
+        val error = NexusApiException(
+            message = "Nexus account authorization was rejected",
+            statusCode = 401,
+            reason = NexusApiErrorReason.AUTHENTICATION,
+        )
+
+        assertEquals(
+            "Nexus integration temporarily unavailable",
+            NexusImportState.userMessage(
+                error = error,
+                authenticationMessage = "Nexus integration temporarily unavailable",
+            ),
+        )
+
+        assertEquals(
+            "Nexus integration temporarily unavailable",
+            NexusImportState.userMessage(
+                error = NexusApiException("Request failed", statusCode = 401),
+                authenticationMessage = "Nexus integration temporarily unavailable",
+            ),
+        )
+    }
+
     private fun install(
         status: ModInstallStatus,
         fileId: Long,

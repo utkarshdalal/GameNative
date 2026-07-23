@@ -27,6 +27,7 @@ import com.winlator.core.DefaultVersion
 import com.winlator.xenvironment.components.PulseAudioComponent
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.util.EnumSet
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -63,29 +64,10 @@ object PrefManager {
 
     private lateinit var dataStore: DataStore<Preferences>
 
-    @Volatile
-    private var retiredNexusPersonalApiKeyRemoved = false
+    private val retiredNexusPersonalApiKeyCleanupScheduled = AtomicBoolean(false)
 
     fun init(context: Context) {
         dataStore = context.datastore
-
-        // Personal Nexus API keys are no longer accepted by the public integration.
-        // Keep this idempotent cleanup for several releases so restored backups are
-        // also scrubbed before any application code can run.
-        if (!retiredNexusPersonalApiKeyRemoved) {
-            runCatching {
-                if (runBlocking { dataStore.data.first().hasRetiredNexusPersonalApiKey() }) {
-                    Timber.i("Removing retired Nexus Personal API key")
-                    runBlocking {
-                        dataStore.edit { preferences -> preferences.removeRetiredNexusPersonalApiKey() }
-                    }
-                }
-            }.onSuccess {
-                retiredNexusPersonalApiKeyRemoved = true
-            }.onFailure {
-                Timber.w(it, "Failed to remove retired Nexus Personal API key; will retry")
-            }
-        }
 
         // Note: Should remove after a few release versions. we've moved to encrypted values.
         val oldPassword = stringPreferencesKey("password")
@@ -105,6 +87,25 @@ object PrefManager {
                 Timber.i("Converting old refresh token to encrypted")
                 refreshToken = it
                 removePref(oldRefreshToken)
+            }
+        }
+
+        // Keep this cleanup for several releases so restored backups are also scrubbed.
+        // No production code reads or sends the retired value while removal runs on IO.
+        if (retiredNexusPersonalApiKeyCleanupScheduled.compareAndSet(false, true)) {
+            val initializedDataStore = dataStore
+            scope.launch {
+                runCatching {
+                    initializedDataStore.edit { preferences ->
+                        if (preferences.hasRetiredNexusPersonalApiKey()) {
+                            Timber.i("Removing retired Nexus Personal API key")
+                            preferences.removeRetiredNexusPersonalApiKey()
+                        }
+                    }
+                }.onFailure {
+                    retiredNexusPersonalApiKeyCleanupScheduled.set(false)
+                    Timber.w(it, "Failed to remove retired Nexus Personal API key; will retry")
+                }
             }
         }
     }

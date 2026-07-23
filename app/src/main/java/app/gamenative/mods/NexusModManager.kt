@@ -366,6 +366,7 @@ object NexusModManager {
             val message = NexusImportState.userMessage(
                 error = e,
                 expiredAuthorizationMessage = context.getString(R.string.nexus_authorization_expired),
+                authenticationMessage = context.getString(R.string.nexus_integration_temporarily_unavailable),
             )
             recordTerminalImport(ModInstallStatus.ERROR, message)
             if (e is NexusApiException) throw e

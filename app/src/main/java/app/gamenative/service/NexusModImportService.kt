@@ -17,6 +17,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallStatus
+import app.gamenative.db.dao.ModDao
 import app.gamenative.mods.ModDownloadRegistry
 import app.gamenative.mods.ModImportProgress
 import app.gamenative.mods.NexusApiClient
@@ -183,25 +184,17 @@ class NexusModImportService : Service() {
             try {
                 val dao = NexusModManager.dao(applicationContext)
                 val onlineAccessAvailable = NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE
-                val interrupted = NexusModManager.resumableImportStatuses
-                    .flatMap { status -> dao.getInstallsByStatus(status) }
-                    .distinctBy { it.installId }
-                    .filter { ModDownloadRegistry.get(it.installId) == null }
+                val interrupted = queryResumableImports(dao)
                     .filter { install ->
                         !onlineAccessAvailable || !NexusImportState.isWaitingForWebsiteAuthorization(install)
                     }
                 if (interrupted.isEmpty()) return@launch
-                val (completeArchives, downloadsNeedingLinks) = interrupted.partition {
-                    NexusModManager.hasCompletePendingArchive(applicationContext, it)
+                val (completeArchives, downloadsNeedingLinks) = if (!onlineAccessAvailable) {
+                    pauseDownloadsNeedingOnlineAccess(applicationContext, dao, interrupted) to emptyList()
+                } else {
+                    partitionByCompleteArchive(applicationContext, interrupted)
                 }
-                val nexusUser = if (!onlineAccessAvailable) {
-                    val message = getString(R.string.nexus_integration_temporarily_unavailable)
-                    downloadsNeedingLinks.forEach { install ->
-                        val paused = NexusImportState.pauseWhileOnlineAccessUnavailable(install, message)
-                        if (paused != install) dao.upsertInstall(paused)
-                    }
-                    null
-                } else if (downloadsNeedingLinks.isNotEmpty()) {
+                val nexusUser = if (downloadsNeedingLinks.isNotEmpty()) {
                     try {
                         NexusApiClient().getCurrentUser()
                     } catch (e: CancellationException) {
@@ -407,20 +400,9 @@ class NexusModImportService : Service() {
             val appContext = context.applicationContext
             val hasInterruptedImports = withContext(Dispatchers.IO) {
                 val dao = NexusModManager.dao(appContext)
-                val interrupted = NexusModManager.resumableImportStatuses
-                    .flatMap { status -> dao.getInstallsByStatus(status) }
-                    .distinctBy { it.installId }
-                    .filter { ModDownloadRegistry.get(it.installId) == null }
+                val interrupted = queryResumableImports(dao)
                 if (!NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) {
-                    val (completeArchives, downloadsNeedingLinks) = interrupted.partition {
-                        NexusModManager.hasCompletePendingArchive(appContext, it)
-                    }
-                    val message = appContext.getString(R.string.nexus_integration_temporarily_unavailable)
-                    downloadsNeedingLinks.forEach { install ->
-                        val paused = NexusImportState.pauseWhileOnlineAccessUnavailable(install, message)
-                        if (paused != install) dao.upsertInstall(paused)
-                    }
-                    completeArchives.isNotEmpty()
+                    pauseDownloadsNeedingOnlineAccess(appContext, dao, interrupted).isNotEmpty()
                 } else {
                     interrupted.any { install -> !NexusImportState.isWaitingForWebsiteAuthorization(install) }
                 }
@@ -440,16 +422,42 @@ class NexusModImportService : Service() {
 
         private suspend fun pauseInterruptedImports(context: Context) = withContext(Dispatchers.IO) {
             val dao = NexusModManager.dao(context)
-            val message = context.getString(R.string.nexus_integration_temporarily_unavailable)
+            pauseDownloadsNeedingOnlineAccess(context, dao, queryResumableImports(dao))
+        }
+
+        private suspend fun queryResumableImports(dao: ModDao): List<ModInstall> =
             NexusModManager.resumableImportStatuses
                 .flatMap { status -> dao.getInstallsByStatus(status) }
                 .distinctBy { it.installId }
                 .filter { ModDownloadRegistry.get(it.installId) == null }
-                .filterNot { NexusModManager.hasCompletePendingArchive(context, it) }
-                .forEach { install ->
-                    val paused = NexusImportState.pauseWhileOnlineAccessUnavailable(install, message)
-                    if (paused != install) dao.upsertInstall(paused)
-                }
+
+        private fun partitionByCompleteArchive(
+            context: Context,
+            installs: List<ModInstall>,
+        ): Pair<List<ModInstall>, List<ModInstall>> =
+            installs.partition { NexusModManager.hasCompletePendingArchive(context, it) }
+
+        private suspend fun pauseDownloadsNeedingOnlineAccess(
+            context: Context,
+            dao: ModDao,
+            installs: List<ModInstall>,
+        ): List<ModInstall> {
+            val (completeArchives, downloadsNeedingLinks) =
+                partitionByCompleteArchive(context, installs)
+            pauseImportsWhileOnlineAccessUnavailable(context, dao, downloadsNeedingLinks)
+            return completeArchives
+        }
+
+        private suspend fun pauseImportsWhileOnlineAccessUnavailable(
+            context: Context,
+            dao: ModDao,
+            installs: List<ModInstall>,
+        ) {
+            val message = context.getString(R.string.nexus_integration_temporarily_unavailable)
+            installs.forEach { install ->
+                val paused = NexusImportState.pauseWhileOnlineAccessUnavailable(install, message)
+                if (paused != install) dao.upsertInstall(paused)
+            }
         }
 
         internal fun putImportRequest(intent: Intent, request: NexusImportRequest) {
