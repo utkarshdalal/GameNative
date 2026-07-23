@@ -1,12 +1,14 @@
-- `[ ]` Add string resources to `strings.xml`
-- `[ ]` Update `ContainerConfigDialog.kt`
-    - `[ ]` Implement `evenRound`
-    - `[ ]` Update resolution rounding logic
-    - `[ ]` Update aspect ratio calculation
-    - `[ ]` Add KDoc
-- `[ ]` Update `GeneralTab.kt`
-    - `[ ]` Use string resources for language names
-    - `[ ]` Add KDoc
-- `[ ]` Update `GraphicsTab.kt`
-    - `[ ]` Add KDoc
-- `[ ]` Verify changes
+- `[x]` Add string resources to `strings.xml`
+- `[x]` Update `ContainerConfigDialog.kt`
+    - `[x]` Implement/Refine `evenRound` with KDoc
+    - `[x]` Update resolution rounding logic
+    - `[x]` Update aspect ratio calculation with KDoc
+    - `[x]` Recalculate aspect ratio per adaptive resolution
+    - `[x]` Add KDoc
+- `[x]` Update `GeneralTab.kt`
+    - `[x]` Use string resources for language names
+    - `[x]` Add KDoc
+- `[x]` Update `GraphicsTab.kt`
+    - `[x]` Add KDoc
+- `[x]` Update `walkthrough.artifact.md`
+- `[x]` Verify changes

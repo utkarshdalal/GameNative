@@ -1,49 +1,33 @@
-# PR #1759 (Resolution Enhancements) Finalization Plan
+# Implementation Plan - PR 1759 Finalization
 
-This plan addresses mathematical correctness for GPU drivers, UI consistency, documentation standards, and automated review feedback for the Resolution Enhancements pull request.
+Finalize the resolution enhancement logic, improve documentation coverage, and synchronize project artifacts to meet quality gates.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> The pixel rounding logic will now use `evenRound` (nearest even integer) instead of `toEven` (round down to even). This ensures framebuffer dimensions are always even, which is a requirement for many mobile GPU drivers to avoid artifacts or crashes.
-
-> [!NOTE]
-> Several hardcoded strings related to language names and aspect ratios will be moved to `strings.xml` to meet project standards and fix bot feedback.
+> The aspect ratio logic will be changed to ensure each adaptive resolution calculates its own ratio based on its specific rounded dimensions. This might result in slightly different ratio labels for "Optimized" or "Half" resolutions compared to "Native" if the rounding affects the proportion.
 
 ## Proposed Changes
 
-### UI Components
+### UI & Logic Enhancements
 
-#### [MODIFY] [ContainerConfigDialog.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/component/dialog/ContainerConfigDialog.kt)
-- Replace `toEven` with `evenRound(value: Float): Int` using the formula `(value / 2.0f).roundToInt() * 2`.
-- Apply `evenRound` to `nativeWidth` and `nativeHeight` at the beginning of `rememberContainerConfigDialogStaticData`.
-- Use rounded values for all scaling calculations (Optimized, Half).
-- Update `calculateAspectRatio` to use rounded values and fetch aspect ratio strings from resources.
-- Add KDoc to `evenRound`, `gcd`, `calculateAspectRatio`, `rememberContainerConfigDialogStaticData`, `ContainerConfigDialog`, and `ExecutablePathDropdown`.
+#### [MODIFY] [ContainerConfigDialog.kt](app/src/main/java/app/gamenative/ui/component/dialog/ContainerConfigDialog.kt)
+- Update `rememberContainerConfigDialogStaticData` to recalculate aspect ratio for each adaptive resolution separately.
+- Add full KDoc (with `@param` and `@return`) to `evenRound`, `gcd`, and `calculateAspectRatio` to increase coverage to >80%.
 
-#### [MODIFY] [GeneralTab.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/component/dialog/GeneralTab.kt)
-- Update `displayNameForLanguage` to use string resources for localized language names.
-- Add KDoc to `GeneralTabContent`.
+### Artifact Synchronization
 
-#### [MODIFY] [GraphicsTab.kt](file:///E:/workspace/StudioProjects/GameNative/app/src/main/java/app/gamenative/ui/component/dialog/GraphicsTab.kt)
-- Add KDoc to `GraphicsTabContent`.
+#### [MODIFY] [task.artifact.md](file:///E:/workspace/StudioProjects/GameNative/.artifacts/de870e5b-22ce-4650-9bd4-dcd53c8444da/task.artifact.md)
+- Ensure all tasks related to PR 1759 are accurately listed and marked as complete after execution.
 
-### Resources
-
-#### [MODIFY] [strings.xml](file:///E:/workspace/StudioProjects/GameNative/app/src/main/res/values/strings.xml)
-- Add missing string resources for:
-    - Language names (Simplified Chinese, Traditional Chinese, Korean, Spanish (Latin America), Portuguese (Brazil)).
-    - Aspect ratios (19.5:9, 21.5:9).
+#### [MODIFY] [walkthrough.artifact.md](file:///E:/workspace/StudioProjects/GameNative/.artifacts/de870e5b-22ce-4650-9bd4-dcd53c8444da/walkthrough.artifact.md)
+- Update the walkthrough to specifically mention the "even-pixel rounding" implementation and the per-resolution aspect ratio fix.
 
 ## Verification Plan
 
 ### Automated Tests
-- Build the project to ensure no compilation errors.
-- Verify KDoc coverage manually by checking the modified files.
+- I will verify the logic by manual inspection of the code changes.
+- I will check the KDoc coverage mentally (ensuring all specified functions have complete docstrings).
 
 ### Manual Verification
-- Deploy the app to a device or emulator.
-- Open the Container Configuration dialog.
-- Verify that "Native", "Optimized", and "Half" resolutions display even numbers in the dropdown.
-- Verify that the aspect ratios (e.g., 19.5:9) are displayed correctly.
-- Verify that selecting a custom resolution still works and enforces the rules (greater than 0, width > height).
+- Review the `ContainerConfigDialog` code to ensure `evenRound` is correctly applied to both dimensions before `calculateAspectRatio` is called for each resolution.
