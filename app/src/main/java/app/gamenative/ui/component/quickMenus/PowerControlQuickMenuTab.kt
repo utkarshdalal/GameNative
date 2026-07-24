@@ -76,7 +76,10 @@ fun PowerControlQuickMenuTab(
             coroutineScope.launch(Dispatchers.IO) {
                 // Update current profile
                 PowerManager.currentProfile?.let { profile ->
-                    val updatedProfile = profile.copy(enableAutoTuning = enabled)
+                    val updatedProfile = profile.copy(
+                        enableAutoTuning = enabled,
+                        name = PerformancePreset.CUSTOM.displayName
+                    )
                     PowerManager.setCurrentProfile(updatedProfile)
                 }
 
