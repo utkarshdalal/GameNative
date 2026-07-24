@@ -17,6 +17,11 @@ import timber.log.Timber
  * Uses a PerformanceDriver implementation for device-specific operations.
  */
 object PowerManager {
+    private val json = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    }
+
     private var driver: PerformanceDriver? = null
     private var autoTuner: PerformanceAutoTuner? = null
 
@@ -489,11 +494,11 @@ object PowerManager {
      */
     fun saveProfile() {
         try {
-            val json = if (currentProfile != null) {
-                Json.encodeToString(currentProfile)
+            val jsonString = if (currentProfile != null) {
+                json.encodeToString(currentProfile)
             } else ""
-            PrefManager.powerControlProfile = json
-            Timber.tag("PowerManager").d("Saved power profile: $json")
+            PrefManager.powerControlProfile = jsonString
+            Timber.tag("PowerManager").d("Saved power profile: $jsonString")
         } catch (e: Exception) {
             Timber.tag("PowerManager").e(e, "Failed to save power profile")
         }
@@ -651,15 +656,15 @@ object PowerManager {
      */
     private fun restoreSavedProfile() {
         try {
-            val json = PrefManager.powerControlProfile
-            if (json.isEmpty()) {
+            val jsonString = PrefManager.powerControlProfile
+            if (jsonString.isEmpty()) {
                 currentProfile = driver?.getDefaultProfile()
                 Timber.tag("PowerManager").d("No saved profile to restore")
                 return
             }
 
-            currentProfile = Json.decodeFromString<PowerProfile>(json)
-            Timber.tag("PowerManager").d("Restoring power profile: $json")
+            currentProfile = json.decodeFromString<PowerProfile>(jsonString)
+            Timber.tag("PowerManager").d("Restoring power profile: $jsonString")
 
             val success = update {
                 governor(currentProfile!!.governor.governorName)
