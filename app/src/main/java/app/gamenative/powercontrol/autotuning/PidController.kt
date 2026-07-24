@@ -1,5 +1,6 @@
 package app.gamenative.powercontrol.autotuning
 
+import android.os.SystemClock
 import timber.log.Timber
 import kotlin.math.abs
 
@@ -41,7 +42,7 @@ class PidController(
      * @return Control output value clamped between outputMin and outputMax
      */
     fun calculate(setpoint: Double, processVariable: Double): Double {
-        val currentTime = System.currentTimeMillis()
+        val currentTime = SystemClock.elapsedRealtime()
 
         // Calculate time delta in seconds
         val dt = if (isInitialized && lastUpdateTime > 0) {

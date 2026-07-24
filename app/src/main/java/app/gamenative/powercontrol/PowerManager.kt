@@ -30,11 +30,7 @@ object PowerManager {
     var targetFps: Int = 0
         set(value) {
             // Enforce non-negative values and round/clamp if necessary
-            field = if (value != 0) {
-                value.coerceAtLeast(0)
-            } else {
-                360
-            }
+            field = value.coerceAtLeast(0)
         }
 
     var currentFps: Float = 0f

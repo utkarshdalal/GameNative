@@ -844,24 +844,24 @@ else {
 **Example Tuning Session (Simplified/Illustrative):**
 ```
 [0s]  Target: 60 FPS, Current: 45 FPS, CPU usage: 50%, GPU usage: 50%
-      → Large FPS error detected
+      → Large FPS error (15.0 > 5.0 threshold)
       → PID calculates adjustment, applies with decay factor (0.3)
       → CPU perf: 50% → 52%, GPU perf: 50% → 52%
 
-[2s]  Target: 60 FPS, Current: 58 FPS, CPU usage: 80%, GPU usage: 75%
-      → Small FPS error, high usage detected
+[2s]  Target: 60 FPS, Current: 54 FPS, CPU usage: 88%, GPU usage: 87%
+      → FPS error = 6.0 (> 5.0) OR CPU usage > 85%
       → PID continues adjustment with integral accumulation
       → CPU perf: 52% → 54%, GPU perf: 52% → 54%
 
-[4s]  Target: 60 FPS, Current: 60 FPS, CPU usage: 68%, GPU usage: 65%
-      → FPS stable, usage below 70% threshold
-      → Gradual reduction (-2% step)
-      → CPU perf: 54% → 52%, GPU perf: 54% → 52%
+[4s]  Target: 60 FPS, Current: 59 FPS, CPU usage: 78%, GPU usage: 75%
+      → FPS error = 1.0, usage between thresholds (70%-85%)
+      → Maintain current performance, reset PID
+      → CPU perf: 54% (unchanged), GPU perf: 54% (unchanged)
 
 [6s]  Target: 60 FPS, Current: 60 FPS, CPU usage: 65%, GPU usage: 60%
-      → FPS stable, usage below 70% threshold
-      → Continue gradual reduction
-      → CPU perf: 52% → 50%, GPU perf: 52% → 50%
+      → FPS stable (error < 2.0), usage below 70% threshold
+      → Gradual reduction (-2% step)
+      → CPU perf: 54% → 52%, GPU perf: 54% → 52%
 ```
 *Note: Actual PID calculations use Kp=0.5, Ki=0.2, Kd=0.1 with ADJUSTMENT_DECAY_FACTOR=0.3.
 Enable verbose logging to see exact P/I/D terms and outputs.*

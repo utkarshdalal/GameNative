@@ -144,8 +144,8 @@ class PerformanceAutoTuner(
         val targetFps = PowerManager.targetFps.toDouble()
         val currentFps = PowerManager.currentFps.toDouble()
 
-        // Skip tuning when currentFps is 0
-        if (currentFps == 0.0) {
+        // Skip tuning when targetFps is 0 (FPS limiter disabled) or currentFps is 0
+        if (targetFps == 0.0 || currentFps == 0.0) {
             return
         }
 
