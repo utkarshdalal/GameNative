@@ -507,91 +507,91 @@ private fun SuccessView(
                 }
             }
         }
-    } // End of auto-tuning check
 
-    state.ramInfo?.let { ramInfo ->
-        if (ramInfo.maxAvailablePowerLevel > 0) {
-            SectionHeader(title = "RAM")
-
-            Text(
-                text = stringResource(R.string.power_control_ram_min_power),
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Slider(
-                    value = selectedMinRamPowerLevel.toFloat(),
-                    onValueChange = { newValue ->
-                        val newLevel = newValue.toInt()
-
-                        if (newLevel <= selectedMaxRamPowerLevel) {
-                            selectedMinRamPowerLevel = newLevel
-                        }
-                    },
-                    onValueChangeFinished = {
-                        onMinRamPowerChanged(selectedMinRamPowerLevel)
-                    },
-                    valueRange = 0f..ramInfo.maxAvailablePowerLevel.toFloat(),
-                    steps = (ramInfo.maxAvailablePowerLevel - 1).coerceAtLeast(0),
-                    modifier = Modifier.weight(1f)
-                )
+        state.ramInfo?.let { ramInfo ->
+            if (ramInfo.maxAvailablePowerLevel > 0) {
+                SectionHeader(title = "RAM")
 
                 Text(
-                    text = selectedMinRamPowerLevel.toString(),
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Medium
+                    text = stringResource(R.string.power_control_ram_min_power),
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.SemiBold
                     ),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.width(20.dp)
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
-            }
 
-            Text(
-                text = stringResource(R.string.power_control_ram_max_power),
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Slider(
+                        value = selectedMinRamPowerLevel.toFloat(),
+                        onValueChange = { newValue ->
+                            val newLevel = newValue.toInt()
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Slider(
-                    value = selectedMaxRamPowerLevel.toFloat(),
-                    onValueChange = { newValue ->
-                        val newLevel = newValue.toInt()
+                            if (newLevel <= selectedMaxRamPowerLevel) {
+                                selectedMinRamPowerLevel = newLevel
+                            }
+                        },
+                        onValueChangeFinished = {
+                            onMinRamPowerChanged(selectedMinRamPowerLevel)
+                        },
+                        valueRange = 0f..ramInfo.maxAvailablePowerLevel.toFloat(),
+                        steps = (ramInfo.maxAvailablePowerLevel - 1).coerceAtLeast(0),
+                        modifier = Modifier.weight(1f)
+                    )
 
-                        if (newLevel >= selectedMinRamPowerLevel) {
-                            selectedMaxRamPowerLevel = newLevel
-                        }
-                    },
-                    onValueChangeFinished = {
-                        onMaxRamPowerChanged(selectedMaxRamPowerLevel)
-                    },
-                    valueRange = 0f..ramInfo.maxAvailablePowerLevel.toFloat(),
-                    steps = (ramInfo.maxAvailablePowerLevel - 1).coerceAtLeast(0),
-                    modifier = Modifier.weight(1f)
-                )
+                    Text(
+                        text = selectedMinRamPowerLevel.toString(),
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.width(20.dp)
+                    )
+                }
 
                 Text(
-                    text = selectedMaxRamPowerLevel.toString(),
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Medium
+                    text = stringResource(R.string.power_control_ram_max_power),
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontWeight = FontWeight.SemiBold
                     ),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.width(20.dp)
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Slider(
+                        value = selectedMaxRamPowerLevel.toFloat(),
+                        onValueChange = { newValue ->
+                            val newLevel = newValue.toInt()
+
+                            if (newLevel >= selectedMinRamPowerLevel) {
+                                selectedMaxRamPowerLevel = newLevel
+                            }
+                        },
+                        onValueChangeFinished = {
+                            onMaxRamPowerChanged(selectedMaxRamPowerLevel)
+                        },
+                        valueRange = 0f..ramInfo.maxAvailablePowerLevel.toFloat(),
+                        steps = (ramInfo.maxAvailablePowerLevel - 1).coerceAtLeast(0),
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Text(
+                        text = selectedMaxRamPowerLevel.toString(),
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.width(20.dp)
+                    )
+                }
             }
         }
-    }
+    } // End of auto-tuning check
 }

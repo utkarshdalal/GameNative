@@ -138,7 +138,7 @@ object PowerManager {
 
     /**
      * Start automatic performance tuning.
-     * Uses PID controller to adjust CPU/GPU frequencies based on targetFps and utilization.
+     * Uses PID controller to adjust CPU/GPU/Bus frequencies based on targetFps and utilization.
      * Works with any driver that supports CPU frequency and GPU power level control.
      */
     fun startAutoTuning() {
@@ -157,10 +157,12 @@ object PowerManager {
         }
 
         val numGpuLevels = if (driver.isGpuSupported()) driver.getNumGpuPowerLevels() else 0
+        val numBusLevels = if (driver.isBusSupported()) driver.getNumBusLevels() else 0
 
         autoTuner = PerformanceAutoTuner(
             availableCpuFreqs = availableCpuFreqs,
             numGpuLevels = numGpuLevels,
+            numBusLevels = numBusLevels,
             onCpuFrequencyChange = { freq ->
                 update {
                     setMinCpuValue(freq)
@@ -173,11 +175,17 @@ object PowerManager {
                     setMaxGpuPowerLevel(level)
                 }
             },
+            onBusLevelChange = { level ->
+                update {
+                    setMinBusLevel(level)
+                    setMaxBusLevel(level)
+                }
+            },
             enableLogging = false
         )
 
         autoTuner?.start()
-        Timber.tag("PowerManager").i("Auto-tuning started (CPU freqs: ${availableCpuFreqs.size}, GPU levels: $numGpuLevels)")
+        Timber.tag("PowerManager").i("Auto-tuning started (CPU freqs: ${availableCpuFreqs.size}, GPU levels: $numGpuLevels, Bus levels: $numBusLevels)")
     }
 
     /**

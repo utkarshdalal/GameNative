@@ -105,7 +105,7 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
 7. **PerformanceAutoTuner** (Auto-Tuning)
    - Location: `autotuning/PerformanceAutoTuner.kt`
    - Automatic performance tuner using PID controllers
-   - Dynamically adjusts CPU frequencies and GPU power levels based on:
+   - Dynamically adjusts CPU frequencies, GPU power levels and RAM bus level based on:
      - Target FPS (from XServer frame rate limiter)
      - Current FPS (from Performance HUD)
      - CPU usage percentage

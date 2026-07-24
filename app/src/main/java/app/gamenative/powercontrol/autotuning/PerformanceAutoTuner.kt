@@ -5,20 +5,24 @@ import timber.log.Timber
 import kotlin.math.abs
 
 /**
- * Automatic performance tuner that uses PID controllers to adjust CPU and GPU
+ * Automatic performance tuner that uses PID controllers to adjust CPU, GPU, and RAM bus
  * performance based on target FPS and current utilization metrics.
  *
  * @param availableCpuFreqs List of available CPU frequencies
  * @param numGpuLevels Number of GPU power levels
+ * @param numBusLevels Number of RAM bus levels
  * @param onCpuFrequencyChange Callback when CPU frequency changes
  * @param onGpuLevelChange Callback when GPU level changes
+ * @param onBusLevelChange Callback when RAM bus level changes
  * @param enableLogging Enable verbose logging of tuning operations
  */
 class PerformanceAutoTuner(
     private val availableCpuFreqs: List<Long>,
     private val numGpuLevels: Int,
+    private val numBusLevels: Int,
     private val onCpuFrequencyChange: (Long) -> Unit,
     private val onGpuLevelChange: (Int) -> Unit,
+    private val onBusLevelChange: (Int) -> Unit,
     private val enableLogging: Boolean = false
 ) {
     companion object {
@@ -37,8 +41,10 @@ class PerformanceAutoTuner(
 
     private var cpuPidController: PidController? = null
     private var gpuPidController: PidController? = null
+    private var busPidController: PidController? = null
     private var currentCpuPerformance: Double = 50.0
     private var currentGpuPerformance: Double = 50.0
+    private var currentBusPerformance: Double = 50.0
     private var isRunning: Boolean = false
     private var tuningThread: Thread? = null
 
@@ -59,7 +65,7 @@ class PerformanceAutoTuner(
         val minCpuFreq = availableCpuFreqs.first().toDouble()
         val maxCpuFreq = availableCpuFreqs.last().toDouble()
 
-        Timber.tag(TAG).i("Starting auto-tuning (CPU: $minCpuFreq-$maxCpuFreq kHz, GPU levels: $numGpuLevels)")
+        Timber.tag(TAG).i("Starting auto-tuning (CPU: $minCpuFreq-$maxCpuFreq kHz, GPU levels: $numGpuLevels, Bus levels: $numBusLevels)")
 
         // Initialize CPU PID controller for incremental adjustments
         cpuPidController = PidController(
@@ -87,9 +93,24 @@ class PerformanceAutoTuner(
             )
         }
 
+        // Initialize RAM Bus PID controller
+        if (numBusLevels > 0) {
+            busPidController = PidController(
+                kp = 0.5,
+                ki = 0.2,
+                kd = 0.1,
+                outputMin = -100.0,
+                outputMax = 100.0,
+                integralLimit = 50.0,
+                tag = "BusPidController",
+                enableLogging = enableLogging
+            )
+        }
+
         // Reset performance baselines
         currentCpuPerformance = 50.0
         currentGpuPerformance = 50.0
+        currentBusPerformance = 50.0
 
         isRunning = true
 
@@ -129,8 +150,10 @@ class PerformanceAutoTuner(
 
         cpuPidController?.reset()
         gpuPidController?.reset()
+        busPidController?.reset()
         cpuPidController = null
         gpuPidController = null
+        busPidController = null
 
         if (enableLogging) {
             Timber.tag(TAG).i("Auto-tuning stopped and reset")
@@ -155,6 +178,7 @@ class PerformanceAutoTuner(
 
         tuneCpu(targetFps, currentFps)
         tuneGpu(targetFps, currentFps)
+        tuneBus(targetFps, currentFps)
     }
 
     /**
@@ -234,6 +258,46 @@ class PerformanceAutoTuner(
                 Timber.tag(TAG).d(
                     "GPU: FPS=%.1f/%.1f, usage=%.1f%%, perf=%.1f%%, level=%d",
                     currentFps, targetFps, gpuUsage, currentGpuPerformance, gpuLevel
+                )
+            }
+        }
+    }
+
+    /**
+     * Tune RAM bus level based on FPS
+     */
+    private fun tuneBus(targetFps: Double, currentFps: Double) {
+        if (numBusLevels <= 0) return
+
+        busPidController?.let { controller ->
+            val fpsError = abs(targetFps - currentFps)
+
+            // If we're hitting target FPS, reduce bus performance to save power
+            if (fpsError < FPS_ERROR_THRESHOLD && currentBusPerformance > MIN_PERFORMANCE + 5.0) {
+                currentBusPerformance = (currentBusPerformance - PERFORMANCE_REDUCTION_STEP).coerceAtLeast(MIN_PERFORMANCE)
+                controller.reset()
+            }
+            // If we're missing target FPS, increase bus performance
+            else if (fpsError > FPS_ERROR_LARGE) {
+                val adjustment = controller.calculate(targetFps, currentFps)
+                currentBusPerformance = (currentBusPerformance + adjustment * ADJUSTMENT_DECAY_FACTOR).coerceIn(MIN_PERFORMANCE, MAX_PERFORMANCE)
+            }
+            // Otherwise maintain current performance
+            else {
+                controller.reset()
+            }
+
+            // Map percentage to UI-friendly bus level (higher = better performance)
+            val targetLevel = (currentBusPerformance * (numBusLevels - 1) / 100.0).toInt()
+            val busLevel = targetLevel.coerceIn(0, numBusLevels - 1)
+
+            // Apply bus level change
+            onBusLevelChange(busLevel)
+
+            if (enableLogging) {
+                Timber.tag(TAG).d(
+                    "Bus: FPS=%.1f/%.1f, perf=%.1f%%, level=%d",
+                    currentFps, targetFps, currentBusPerformance, busLevel
                 )
             }
         }
