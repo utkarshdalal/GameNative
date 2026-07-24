@@ -448,19 +448,8 @@ class SteamService : Service(), IChallengeUrlChanged {
         val internalAppInstallPath: String
             get() = Paths.get(DownloadService.baseDataDirPath, "Steam", "steamapps", "common").pathString
 
-        /**
-         * Root used when "use external storage" is enabled. On legacy this is whatever the
-         * user picked in settings (SD card / USB). On modern we force the primary external
-         * app-scoped dir (/storage/emulated/0/Android/data/<pkg>/files) so no permission
-         * is needed. Falls back to the configured path if for some reason the primary
-         * external app dir isn't available yet (e.g. before populateDownloadService runs).
-         */
         private val externalAppInstallRoot: String
-            get() = if (BuildConfig.MODERN_ANDROID && DownloadService.baseExternalAppDirPath.isNotBlank()) {
-                DownloadService.baseExternalAppDirPath + "/files"
-            } else {
-                PrefManager.externalStoragePath
-            }
+            get() = PrefManager.externalStoragePath
 
         val externalAppInstallPath: String
             get() = Paths.get(externalAppInstallRoot, "Steam", "steamapps", "common").pathString
