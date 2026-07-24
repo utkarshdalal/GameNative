@@ -80,13 +80,6 @@ fun PowerControlQuickMenuTab(
                     PowerManager.setCurrentProfile(updatedProfile)
                 }
 
-                // Start or stop auto-tuning
-                if (enabled) {
-                    PowerManager.startAutoTuning()
-                } else {
-                    PowerManager.stopAutoTuning()
-                }
-
                 refreshTrigger++
             }
         },
@@ -95,20 +88,21 @@ fun PowerControlQuickMenuTab(
                 Timber.d("Applying profile: $profile")
 
                 // Update PowerManager's current profile reference immediately
-                PowerManager.setCurrentProfile(profile)
+                val updatedProfile = profile.copy(enableAutoTuning = false)
+                PowerManager.setCurrentProfile(updatedProfile)
 
                 val success = PowerManager.update {
-                    name(profile.name)
-                    governor(profile.governor.governorName)
-                    minCpuValue(profile.minCpuFreq)
-                    maxCpuValue(profile.maxCpuFreq)
+                    name(updatedProfile.name)
+                    governor(updatedProfile.governor.governorName)
+                    minCpuValue(updatedProfile.minCpuFreq)
+                    maxCpuValue(updatedProfile.maxCpuFreq)
                     if (PowerManager.isGpuSupported()) {
-                        minGpuPowerLevel(profile.minGpuPowerLevel)
-                        maxGpuPowerLevel(profile.maxGpuPowerLevel)
+                        minGpuPowerLevel(updatedProfile.minGpuPowerLevel)
+                        maxGpuPowerLevel(updatedProfile.maxGpuPowerLevel)
                     }
                     if (PowerManager.isBusSupported()) {
-                        minBusLevel(profile.minBusLevel)
-                        maxBusLevel(profile.maxBusLevel)
+                        minBusLevel(updatedProfile.minBusLevel)
+                        maxBusLevel(updatedProfile.maxBusLevel)
                     }
                 }
 
