@@ -627,6 +627,7 @@ fun XServerScreen(
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
             ?.setFrameRateLimit(limit)
+        PowerManager.targetFps = limit
     }
 
     fun effectiveFpsLimit(): Int =

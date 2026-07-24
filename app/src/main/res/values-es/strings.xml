@@ -2173,4 +2173,6 @@
     <string name="power_control_available_frequencies">Frecuencias disponibles</string>
     <string name="power_control_pserver_required">PServer no disponible</string>
     <string name="power_control_pserver_required_desc">Esta función requiere el servicio PServer (disponible en dispositivos AYN y Retroid). Puede ver la configuración actual pero no puede realizar cambios sin PServer.</string>
+    <string name="power_control_auto_tuning">Ajuste automático</string>
+    <string name="power_control_auto_tuning_desc">Ajustar automáticamente el rendimiento según los FPS</string>
 </resources>

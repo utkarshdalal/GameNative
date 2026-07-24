@@ -61,20 +61,12 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         return isSamsungSdkAvailable
     }
 
-    override fun isGovernorSupported(): Boolean {
-        return false
-    }
-
     override fun isGpuSupported(): Boolean {
         return isSamsungSdkAvailable
     }
 
     override fun isBusSupported(): Boolean {
         return isSamsungSdkAvailable
-    }
-
-    override fun isFanSupported(): Boolean {
-        return false
     }
 
     override fun getDisplayUnit(): DisplayUnit {

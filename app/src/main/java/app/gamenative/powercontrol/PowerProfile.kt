@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class PowerProfile(
+    var enableAutoTuning: Boolean = true,
     var name: String,
     var governor: CpuGovernor,
     var minCpuFreq: Long,
@@ -13,7 +14,7 @@ data class PowerProfile(
     var minGpuPowerLevel: Int = 0,
     var maxGpuPowerLevel: Int = 0,
     var minBusLevel: Int = 0,
-    var maxBusLevel: Int = 0
+    var maxBusLevel: Int = 0,
 )
 
 object PowerProfiles {

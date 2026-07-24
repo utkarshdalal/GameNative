@@ -2,13 +2,12 @@ package app.gamenative.powercontrol
 
 import android.content.Context
 import app.gamenative.PrefManager
+import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
 import app.gamenative.powercontrol.drivers.PServerDriver
 import app.gamenative.powercontrol.drivers.PerformanceDriver
 import app.gamenative.powercontrol.drivers.SamsungPerformanceDriver
 import app.gamenative.powercontrol.profiles.CpuGovernor
-import app.gamenative.powercontrol.profiles.PerformancePreset
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 
@@ -19,6 +18,7 @@ import timber.log.Timber
  */
 object PowerManager {
     private var driver: PerformanceDriver? = null
+    private var autoTuner: PerformanceAutoTuner? = null
 
     /**
      * The currently active power profile.
@@ -26,6 +26,34 @@ object PowerManager {
      */
     var currentProfile: PowerProfile? = null
         private set
+
+    var targetFps: Int = 0
+        set(value) {
+            // Enforce non-negative values and round/clamp if necessary
+            field = if (value != 0) {
+                value.coerceAtLeast(0)
+            } else {
+                360
+            }
+        }
+
+    var currentFps: Float = 0f
+        set(value) {
+            // Enforce non-negative values and round/clamp if necessary
+            field = value.coerceAtLeast(0f)
+        }
+
+    var currentCpuUsage: Float = 0f
+        set(value) {
+            // Enforce 0-100% range
+            field = value.coerceIn(0f, 100f)
+        }
+
+    var currentGpuUsage: Float = 0f
+        set(value) {
+            // Enforce 0-100% range
+            field = value.coerceIn(0f, 100f)
+        }
 
     /**
      * Initialize PowerManager with application context.
@@ -103,7 +131,68 @@ object PowerManager {
     fun stop() {
         // Save the current profile if available, otherwise read from driver
         saveProfile()
+        stopAutoTuning()
         getDriver().stop()
+    }
+
+    /**
+     * Start automatic performance tuning.
+     * Uses PID controller to adjust CPU/GPU frequencies based on targetFps and utilization.
+     * Works with any driver that supports CPU frequency and GPU power level control.
+     */
+    fun startAutoTuning() {
+        val driver = getDriver()
+
+        if (autoTuner?.isRunning() == true) {
+            Timber.tag("PowerManager").w("Auto-tuning already running")
+            return
+        }
+
+        // Check if driver supports required features
+        val availableCpuFreqs = driver.getAvailableCpuFrequencies()
+        if (availableCpuFreqs.isEmpty()) {
+            Timber.tag("PowerManager").w("Auto-tuning requires CPU frequency control")
+            return
+        }
+
+        val numGpuLevels = if (driver.isGpuSupported()) driver.getNumGpuPowerLevels() else 0
+
+        autoTuner = PerformanceAutoTuner(
+            availableCpuFreqs = availableCpuFreqs,
+            numGpuLevels = numGpuLevels,
+            onCpuFrequencyChange = { freq ->
+                update {
+                    setMinCpuValue(freq)
+                    setMaxCpuValue(freq)
+                }
+            },
+            onGpuLevelChange = { level ->
+                update {
+                    setMinGpuPowerLevel(level)
+                    setMaxGpuPowerLevel(level)
+                }
+            },
+            enableLogging = false
+        )
+
+        autoTuner?.start()
+        Timber.tag("PowerManager").i("Auto-tuning started (CPU freqs: ${availableCpuFreqs.size}, GPU levels: $numGpuLevels)")
+    }
+
+    /**
+     * Stop automatic performance tuning.
+     */
+    fun stopAutoTuning() {
+        autoTuner?.let {
+            if (!it.isRunning()) {
+                Timber.tag("PowerManager").w("Auto-tuning not running")
+                return
+            }
+            it.stop()
+            autoTuner = null
+        } ?: run {
+            Timber.tag("PowerManager").w("Auto-tuning not initialized")
+        }
     }
 
     /**
@@ -587,6 +676,10 @@ object PowerManager {
                 Timber.tag("PowerManager").i("Successfully restored power profile")
             } else {
                 Timber.tag("PowerManager").w("Failed to restore power profile")
+            }
+
+            if (currentProfile?.enableAutoTuning == true) {
+                startAutoTuning()
             }
         } catch (e: Exception) {
             Timber.tag("PowerManager").e(e, "Failed to restore power profile")

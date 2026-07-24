@@ -2182,4 +2182,6 @@
     <string name="power_control_available_frequencies">可用頻率</string>
     <string name="power_control_pserver_required">PServer不可用</string>
     <string name="power_control_pserver_required_desc">此功能需要PServer服務（適用於AYN和Retroid裝置）。您可以檢視目前設定，但無法在沒有PServer的情況下進行變更。</string>
+    <string name="power_control_auto_tuning">自動調整</string>
+    <string name="power_control_auto_tuning_desc">根據幀率自動調整效能</string>
 </resources>

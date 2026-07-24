@@ -22,6 +22,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +43,7 @@ import app.gamenative.powercontrol.drivers.PerformanceDriver
 @Composable
 fun PowerControlQuickMenuContent(
     uiState: PowerControlUiState,
+    onAutoTuningToggled: (Boolean) -> Unit,
     onProfileSelected: (PowerProfile) -> Unit,
     onGovernorSelected: (String) -> Unit,
     onMinFreqChanged: (Int) -> Unit,
@@ -68,6 +70,7 @@ fun PowerControlQuickMenuContent(
             is PowerControlUiState.Success -> {
                 SuccessView(
                     state = uiState,
+                    onAutoTuningToggled = onAutoTuningToggled,
                     onProfileSelected = onProfileSelected,
                     onGovernorSelected = onGovernorSelected,
                     onMinFreqChanged = onMinFreqChanged,
@@ -75,7 +78,7 @@ fun PowerControlQuickMenuContent(
                     onMinGpuPowerChanged = onMinGpuPowerChanged,
                     onMaxGpuPowerChanged = onMaxGpuPowerChanged,
                     onMinRamPowerChanged = onMinRamPowerChanged,
-                    onMaxRamPowerChanged = onMaxRamPowerChanged
+                    onMaxRamPowerChanged = onMaxRamPowerChanged,
                 )
             }
         }
@@ -132,6 +135,7 @@ private fun LoadingView() {
 @Composable
 private fun SuccessView(
     state: PowerControlUiState.Success,
+    onAutoTuningToggled: (Boolean) -> Unit,
     onProfileSelected: (PowerProfile) -> Unit,
     onGovernorSelected: (String) -> Unit,
     onMinFreqChanged: (Int) -> Unit,
@@ -139,7 +143,7 @@ private fun SuccessView(
     onMinGpuPowerChanged: (Int) -> Unit,
     onMaxGpuPowerChanged: (Int) -> Unit,
     onMinRamPowerChanged: (Int) -> Unit,
-    onMaxRamPowerChanged: (Int) -> Unit
+    onMaxRamPowerChanged: (Int) -> Unit,
 ) {
     var isProfileDropdownExpanded by remember { mutableStateOf(false) }
     var isGovernorDropdownExpanded by remember { mutableStateOf(false) }
@@ -181,63 +185,96 @@ private fun SuccessView(
         }
     }
 
-    SectionHeader(title = "Profile")
-
-    Text(
-        text = stringResource(R.string.power_control_profiles),
-        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-        color = MaterialTheme.colorScheme.onSurface,
-    )
-
-    Box {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .clickable { isProfileDropdownExpanded = true }
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    // Auto-Tuning Toggle
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = state.selectedProfile.name,
-                style = MaterialTheme.typography.bodyLarge,
+                text = stringResource(R.string.power_control_auto_tuning),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            Text(
+                text = stringResource(R.string.power_control_auto_tuning_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             )
         }
+        Switch(
+            checked = state.selectedProfile.enableAutoTuning,
+            onCheckedChange = onAutoTuningToggled
+        )
+    }
 
-        DropdownMenu(
-            expanded = isProfileDropdownExpanded,
-            onDismissRequest = { isProfileDropdownExpanded = false }
-        ) {
-            state.availableProfiles.forEach { profile ->
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text(
-                                text = profile.name,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = "${formatFrequency(profile.minCpuFreq)} - ${formatFrequency(profile.maxCpuFreq)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                    onClick = {
-                        isProfileDropdownExpanded = false
-                        onProfileSelected(profile)
-                    }
+    // Only show manual controls when auto-tuning is disabled
+    if (!state.selectedProfile.enableAutoTuning) {
+        SectionHeader(title = "Profile")
+
+        Text(
+            text = stringResource(R.string.power_control_profiles),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        Box {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable { isProfileDropdownExpanded = true }
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = state.selectedProfile.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            DropdownMenu(
+                expanded = isProfileDropdownExpanded,
+                onDismissRequest = { isProfileDropdownExpanded = false }
+            ) {
+                state.availableProfiles.forEach { profile ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(
+                                    text = profile.name,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = "${formatFrequency(profile.minCpuFreq)} - ${formatFrequency(profile.maxCpuFreq)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        },
+                        onClick = {
+                            isProfileDropdownExpanded = false
+                            onProfileSelected(profile)
+                        }
+                    )
+                }
             }
         }
     }
@@ -296,84 +333,13 @@ private fun SuccessView(
         }
     }
 
-    if (state.cpuInfo.availableFrequencies.isNotEmpty()) {
-        Text(
-            text = stringResource(R.string.power_control_cpu_min_freq),
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Slider(
-                value = selectedMinFreqIndex.toFloat(),
-                onValueChange = { newValue ->
-                    val newIndex = newValue.toInt()
-                    if (newIndex <= selectedMaxFreqIndex) {
-                        selectedMinFreqIndex = newIndex
-                    }
-                },
-                onValueChangeFinished = {
-                    onMinFreqChanged(selectedMinFreqIndex)
-                },
-                valueRange = 0f..(state.cpuInfo.availableFrequencies.size - 1).toFloat(),
-                steps = state.cpuInfo.availableFrequencies.size - 2,
-                modifier = Modifier.weight(1f)
-            )
+    // Only show manual controls when auto-tuning is disabled
+    if (!state.selectedProfile.enableAutoTuning) {
+        if (state.cpuInfo.availableFrequencies.isNotEmpty()) {
             Text(
-                text = formatFrequency(state.cpuInfo.availableFrequencies[selectedMinFreqIndex]),
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.width(80.dp)
-            )
-        }
-
-        Text(
-            text = stringResource(R.string.power_control_cpu_max_freq),
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Slider(
-                value = selectedMaxFreqIndex.toFloat(),
-                onValueChange = { newValue ->
-                    val newIndex = newValue.toInt()
-                    if (newIndex >= selectedMinFreqIndex) {
-                        selectedMaxFreqIndex = newIndex
-                    }
-                },
-                onValueChangeFinished = {
-                    onMaxFreqChanged(selectedMaxFreqIndex)
-                },
-                valueRange = 0f..(state.cpuInfo.availableFrequencies.size - 1).toFloat(),
-                steps = state.cpuInfo.availableFrequencies.size - 2,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = formatFrequency(state.cpuInfo.availableFrequencies[selectedMaxFreqIndex]),
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.width(80.dp)
-            )
-        }
-    }
-
-    state.gpuInfo?.let { gpuInfo ->
-        SectionHeader(title = "GPU")
-
-        if (gpuInfo.availableFrequencies.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.power_control_gpu_freq),
+                text = stringResource(R.string.power_control_cpu_min_freq),
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             Row(
@@ -382,92 +348,166 @@ private fun SuccessView(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Slider(
-                    value = gpuInfo.currentFreqIndex.toFloat(),
-                    onValueChange = { },
-                    enabled = false,
-                    valueRange = 0f..(gpuInfo.availableFrequencies.size - 1).toFloat(),
-                    steps = gpuInfo.availableFrequencies.size - 2,
+                    value = selectedMinFreqIndex.toFloat(),
+                    onValueChange = { newValue ->
+                        val newIndex = newValue.toInt()
+                        if (newIndex <= selectedMaxFreqIndex) {
+                            selectedMinFreqIndex = newIndex
+                        }
+                    },
+                    onValueChangeFinished = {
+                        onMinFreqChanged(selectedMinFreqIndex)
+                    },
+                    valueRange = 0f..(state.cpuInfo.availableFrequencies.size - 1).toFloat(),
+                    steps = state.cpuInfo.availableFrequencies.size - 2,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = formatFrequency(gpuInfo.availableFrequencies[gpuInfo.currentFreqIndex]),
+                    text = formatFrequency(state.cpuInfo.availableFrequencies[selectedMinFreqIndex]),
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.width(80.dp)
+                )
+            }
+
+            Text(
+                text = stringResource(R.string.power_control_cpu_max_freq),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Slider(
+                    value = selectedMaxFreqIndex.toFloat(),
+                    onValueChange = { newValue ->
+                        val newIndex = newValue.toInt()
+                        if (newIndex >= selectedMinFreqIndex) {
+                            selectedMaxFreqIndex = newIndex
+                        }
+                    },
+                    onValueChangeFinished = {
+                        onMaxFreqChanged(selectedMaxFreqIndex)
+                    },
+                    valueRange = 0f..(state.cpuInfo.availableFrequencies.size - 1).toFloat(),
+                    steps = state.cpuInfo.availableFrequencies.size - 2,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = formatFrequency(state.cpuInfo.availableFrequencies[selectedMaxFreqIndex]),
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.width(80.dp)
                 )
             }
         }
 
-        if (gpuInfo.maxAvailablePowerLevel > 0) {
-            Text(
-                text = stringResource(R.string.power_control_gpu_min_power),
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+        state.gpuInfo?.let { gpuInfo ->
+            SectionHeader(title = "GPU")
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Slider(
-                    value = selectedMinGpuPowerLevel.toFloat(),
-                    onValueChange = { newValue ->
-                        val newLevel = newValue.toInt()
-                        if (newLevel <= selectedMaxGpuPowerLevel) {
-                            selectedMinGpuPowerLevel = newLevel
-                        }
-                    },
-                    onValueChangeFinished = {
-                        onMinGpuPowerChanged(selectedMinGpuPowerLevel)
-                    },
-                    valueRange = 0f..gpuInfo.maxAvailablePowerLevel.toFloat(),
-                    steps = gpuInfo.maxAvailablePowerLevel - 1,
-                    modifier = Modifier.weight(1f)
-                )
+            if (gpuInfo.availableFrequencies.isNotEmpty()) {
                 Text(
-                    text = selectedMinGpuPowerLevel.toString(),
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.width(20.dp)
+                    text = stringResource(R.string.power_control_gpu_freq),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Slider(
+                        value = gpuInfo.currentFreqIndex.toFloat(),
+                        onValueChange = { },
+                        enabled = false,
+                        valueRange = 0f..(gpuInfo.availableFrequencies.size - 1).toFloat(),
+                        steps = gpuInfo.availableFrequencies.size - 2,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = formatFrequency(gpuInfo.availableFrequencies[gpuInfo.currentFreqIndex]),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.width(80.dp)
+                    )
+                }
             }
 
-            Text(
-                text = stringResource(R.string.power_control_gpu_max_power),
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Slider(
-                    value = selectedMaxGpuPowerLevel.toFloat(),
-                    onValueChange = { newValue ->
-                        val newLevel = newValue.toInt()
-                        if (newLevel >= selectedMinGpuPowerLevel) {
-                            selectedMaxGpuPowerLevel = newLevel
-                        }
-                    },
-                    onValueChangeFinished = {
-                        onMaxGpuPowerChanged(selectedMaxGpuPowerLevel)
-                    },
-                    valueRange = 0f..gpuInfo.maxAvailablePowerLevel.toFloat(),
-                    steps = gpuInfo.maxAvailablePowerLevel - 1,
-                    modifier = Modifier.weight(1f)
-                )
+            if (gpuInfo.maxAvailablePowerLevel > 0) {
                 Text(
-                    text = selectedMaxGpuPowerLevel.toString(),
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.width(20.dp)
+                    text = stringResource(R.string.power_control_gpu_min_power),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Slider(
+                        value = selectedMinGpuPowerLevel.toFloat(),
+                        onValueChange = { newValue ->
+                            val newLevel = newValue.toInt()
+                            if (newLevel <= selectedMaxGpuPowerLevel) {
+                                selectedMinGpuPowerLevel = newLevel
+                            }
+                        },
+                        onValueChangeFinished = {
+                            onMinGpuPowerChanged(selectedMinGpuPowerLevel)
+                        },
+                        valueRange = 0f..gpuInfo.maxAvailablePowerLevel.toFloat(),
+                        steps = gpuInfo.maxAvailablePowerLevel - 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = selectedMinGpuPowerLevel.toString(),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.width(20.dp)
+                    )
+                }
+
+                Text(
+                    text = stringResource(R.string.power_control_gpu_max_power),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Slider(
+                        value = selectedMaxGpuPowerLevel.toFloat(),
+                        onValueChange = { newValue ->
+                            val newLevel = newValue.toInt()
+                            if (newLevel >= selectedMinGpuPowerLevel) {
+                                selectedMaxGpuPowerLevel = newLevel
+                            }
+                        },
+                        onValueChangeFinished = {
+                            onMaxGpuPowerChanged(selectedMaxGpuPowerLevel)
+                        },
+                        valueRange = 0f..gpuInfo.maxAvailablePowerLevel.toFloat(),
+                        steps = gpuInfo.maxAvailablePowerLevel - 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = selectedMaxGpuPowerLevel.toString(),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.width(20.dp)
+                    )
+                }
             }
         }
-    }
+    } // End of auto-tuning check
 
     state.ramInfo?.let { ramInfo ->
         if (ramInfo.maxAvailablePowerLevel > 0) {

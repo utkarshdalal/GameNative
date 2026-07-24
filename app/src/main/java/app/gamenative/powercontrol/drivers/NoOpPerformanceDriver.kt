@@ -17,13 +17,5 @@ class NoOpPerformanceDriver : PerformanceDriver() {
 
     override fun isDriverSupported(): Boolean = false
 
-    override fun isGovernorSupported(): Boolean = false
-
-    override fun isGpuSupported(): Boolean = false
-
-    override fun isBusSupported(): Boolean = false
-
-    override fun isFanSupported(): Boolean = false
-
     override fun getDisplayUnit(): DisplayUnit = DisplayUnit.INTEGER
 }

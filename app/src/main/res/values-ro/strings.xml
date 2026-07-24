@@ -2178,4 +2178,6 @@
     <string name="power_control_available_frequencies">Frecvențe disponibile</string>
     <string name="power_control_pserver_required">PServer indisponibil</string>
     <string name="power_control_pserver_required_desc">Această funcție necesită serviciul PServer (disponibil pe dispozitivele AYN și Retroid). Poți vizualiza setările curente, dar nu poți face modificări fără PServer.</string>
+    <string name="power_control_auto_tuning">Reglare automată</string>
+    <string name="power_control_auto_tuning_desc">Ajustează automat performanța în funcție de FPS</string>
 </resources>

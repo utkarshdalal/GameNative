@@ -33,22 +33,22 @@ abstract class PerformanceDriver {
     /**
      * Check if CPU governor control is supported
      */
-    abstract fun isGovernorSupported(): Boolean
+    open fun isGovernorSupported(): Boolean = false
 
     /**
      * Check if GPU control is supported
      */
-    abstract fun isGpuSupported(): Boolean
+    open fun isGpuSupported(): Boolean = false
 
     /**
      * Check if RAM bus control is supported
      */
-    abstract fun isBusSupported(): Boolean
+    open fun isBusSupported(): Boolean = false
 
     /**
      * Check if fan control is supported
      */
-    abstract fun isFanSupported(): Boolean
+    open fun isFanSupported(): Boolean = false
 
     /**
      * Get the display unit for frequency values

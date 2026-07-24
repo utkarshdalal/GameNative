@@ -72,6 +72,24 @@ fun PowerControlQuickMenuTab(
 
     PowerControlQuickMenuContent(
         uiState = uiState,
+        onAutoTuningToggled = { enabled ->
+            coroutineScope.launch(Dispatchers.IO) {
+                // Update current profile
+                PowerManager.currentProfile?.let { profile ->
+                    val updatedProfile = profile.copy(enableAutoTuning = enabled)
+                    PowerManager.setCurrentProfile(updatedProfile)
+                }
+
+                // Start or stop auto-tuning
+                if (enabled) {
+                    PowerManager.startAutoTuning()
+                } else {
+                    PowerManager.stopAutoTuning()
+                }
+
+                refreshTrigger++
+            }
+        },
         onProfileSelected = { profile ->
             coroutineScope.launch(Dispatchers.IO) {
                 Timber.d("Applying profile: $profile")
@@ -92,6 +110,13 @@ fun PowerControlQuickMenuTab(
                         minBusLevel(profile.minBusLevel)
                         maxBusLevel(profile.maxBusLevel)
                     }
+                }
+
+                // Handle auto-tuning based on profile setting
+                if (profile.enableAutoTuning) {
+                    PowerManager.startAutoTuning()
+                } else {
+                    PowerManager.stopAutoTuning()
                 }
 
                 Timber.d("Profile application result: $success")
@@ -260,7 +285,7 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
 
                     Timber.d("Matching profile: $matchingProfile")
 
-                    selectedProfile = matchingProfile ?: PowerProfile(
+                    selectedProfile = (matchingProfile ?: PowerProfile(
                         name = PerformancePreset.CUSTOM.displayName,
                         governor = currentGovernor ?: CpuGovernor.SCHEDUTIL,
                         minCpuFreq = cpuInfo.currentMinValue,
@@ -269,6 +294,9 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
                         maxGpuPowerLevel = gpuDisplayInfo?.maxPowerLevel ?: 0,
                         minBusLevel = ramDisplayInfo?.minPowerLevel ?: 0,
                         maxBusLevel = ramDisplayInfo?.maxPowerLevel ?: 0
+                    )).copy(
+                        // Preserve enableAutoTuning from PowerManager's current profile
+                        enableAutoTuning = PowerManager.currentProfile?.enableAutoTuning ?: true
                     )
 
                     if (!isInitialized) {
@@ -306,6 +334,7 @@ fun PowerControlLoadingPreview() {
     MaterialTheme {
         PowerControlQuickMenuContent(
             uiState = PowerControlUiState.Loading,
+            onAutoTuningToggled = {},
             onProfileSelected = {},
             onGovernorSelected = {},
             onMinFreqChanged = {},
@@ -313,7 +342,7 @@ fun PowerControlLoadingPreview() {
             onMinGpuPowerChanged = {},
             onMaxGpuPowerChanged = {},
             onMinRamPowerChanged = {},
-            onMaxRamPowerChanged = {}
+            onMaxRamPowerChanged = {},
         )
     }
 }
@@ -362,6 +391,7 @@ fun PowerControlSuccessCpuOnlyPreview() {
                 ),
                 ramInfo = null
             ),
+            onAutoTuningToggled = {},
             onProfileSelected = {},
             onGovernorSelected = {},
             onMinFreqChanged = {},
@@ -369,7 +399,7 @@ fun PowerControlSuccessCpuOnlyPreview() {
             onMinGpuPowerChanged = {},
             onMaxGpuPowerChanged = {},
             onMinRamPowerChanged = {},
-            onMaxRamPowerChanged = {}
+            onMaxRamPowerChanged = {},
         )
     }
 }
@@ -422,6 +452,7 @@ fun PowerControlSuccessWithGpuPreview() {
                     maxAvailablePowerLevel = 4
                 ),
             ),
+            onAutoTuningToggled = {},
             onProfileSelected = {},
             onGovernorSelected = {},
             onMinFreqChanged = {},
@@ -429,7 +460,7 @@ fun PowerControlSuccessWithGpuPreview() {
             onMinGpuPowerChanged = {},
             onMaxGpuPowerChanged = {},
             onMinRamPowerChanged = {},
-            onMaxRamPowerChanged = {}
+            onMaxRamPowerChanged = {},
         )
     }
 }

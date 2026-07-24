@@ -2130,4 +2130,6 @@
     <string name="power_control_available_frequencies">利用可能な周波数</string>
     <string name="power_control_pserver_required">PServerが利用できません</string>
     <string name="power_control_pserver_required_desc">この機能にはPServerサービスが必要です（AYNおよびRetroidデバイスで利用可能）。現在の設定を表示できますが、PServerなしでは変更できません。</string>
+    <string name="power_control_auto_tuning">自動調整</string>
+    <string name="power_control_auto_tuning_desc">FPSに基づいてパフォーマンスを自動調整</string>
 </resources>

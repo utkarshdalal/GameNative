@@ -2173,4 +2173,6 @@
     <string name="power_control_available_frequencies">Доступні частоти</string>
     <string name="power_control_pserver_required">PServer недоступний</string>
     <string name="power_control_pserver_required_desc">Ця функція потребує служби PServer (доступна на пристроях AYN та Retroid). Ви можете переглядати поточні налаштування, але не можете вносити зміни без PServer.</string>
+    <string name="power_control_auto_tuning">Автоналаштування</string>
+    <string name="power_control_auto_tuning_desc">Автоматичне налаштування продуктивності на основі FPS</string>
 </resources>

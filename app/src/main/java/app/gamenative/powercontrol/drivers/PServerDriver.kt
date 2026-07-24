@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.IBinder
 import android.os.Parcel
+import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.PowerProfile
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
@@ -213,7 +214,10 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             if (execResult.isFailure) {
                 Timber.tag(TAG).e("Failed to execute batch script: ${execResult.exceptionOrNull()?.message}")
             } else {
-                Timber.tag(TAG).d("Successfully executed ${batchCommands.size} batched commands")
+                // When using auto-tuning, this log can spam around, suppress it
+                if (PowerManager.currentProfile?.enableAutoTuning == false) {
+                    Timber.tag(TAG).d("Successfully executed ${batchCommands.size} batched commands")
+                }
             }
 
             batchCommands.clear()
