@@ -1326,7 +1326,7 @@ object NexusModManager {
             .filter { it.isFile }
             .sumOf { it.length() }
 
-    private fun hasUsableExtractedContent(dir: File): Boolean =
+    internal fun hasUsableExtractedContent(dir: File): Boolean =
         dir.isDirectory && dir.walkTopDown().any(File::isFile)
 
 }

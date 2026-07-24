@@ -496,12 +496,14 @@ object LocalModImporter {
         tempExtractDir: File,
     ) {
         importing.archiveSha256.takeIf(String::isNotBlank)?.let { fingerprint ->
-            dao.getLocalInstallByContentHash(
+            dao.getLocalInstallsByContentHash(
                 appId = importing.appId,
                 archiveSha256 = fingerprint,
                 excludingInstallId = importing.installId,
                 reusableStatuses = NexusImportState.reusableStatuses,
             )
+        }?.firstOrNull { existing ->
+            NexusModManager.hasUsableExtractedContent(File(existing.extractedPath))
         }?.let { existing ->
             if (restorablePreviousInstall != null) {
                 dao.upsertInstall(restorablePreviousInstall)

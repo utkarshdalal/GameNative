@@ -87,6 +87,7 @@ data class ModProfile(
     tableName = "mod_install",
     indices = [
         Index("app_id"),
+        Index(value = ["app_id", "source", "archive_sha256"]),
         Index(value = ["app_id", "source", "nexus_game_domain", "nexus_mod_id", "nexus_file_id"], unique = true),
     ],
 )

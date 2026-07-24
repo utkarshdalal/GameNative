@@ -174,9 +174,9 @@ internal fun LocalModReviewDialog(
                 NoExtractOutlinedTextField(
                     value = pending.modName,
                     onValueChange = {
-                        if (it.length <= LocalModImporter.MAX_MOD_NAME_LENGTH) {
-                            onPendingChange(pending.copy(modName = it))
-                        }
+                        onPendingChange(
+                            pending.copy(modName = it.take(LocalModImporter.MAX_MOD_NAME_LENGTH)),
+                        )
                     },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(R.string.local_mod_name)) },
@@ -185,9 +185,9 @@ internal fun LocalModReviewDialog(
                 NoExtractOutlinedTextField(
                     value = pending.version,
                     onValueChange = {
-                        if (it.length <= LocalModImporter.MAX_VERSION_LENGTH) {
-                            onPendingChange(pending.copy(version = it))
-                        }
+                        onPendingChange(
+                            pending.copy(version = it.take(LocalModImporter.MAX_VERSION_LENGTH)),
+                        )
                     },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(R.string.local_mod_version_optional)) },

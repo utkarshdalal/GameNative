@@ -233,6 +233,10 @@ private fun migrateManagedModSourcesToV25(connection: SQLiteConnection) {
 
     connection.execSQL("CREATE INDEX IF NOT EXISTS `index_mod_install_app_id` ON `mod_install` (`app_id`)")
     connection.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_mod_install_app_id_source_archive_sha256` " +
+            "ON `mod_install` (`app_id`, `source`, `archive_sha256`)",
+    )
+    connection.execSQL(
         """
         CREATE UNIQUE INDEX IF NOT EXISTS `index_mod_install_app_id_source_nexus_game_domain_nexus_mod_id_nexus_file_id`
         ON `mod_install` (`app_id`, `source`, `nexus_game_domain`, `nexus_mod_id`, `nexus_file_id`)

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 25,
-    "identityHash": "1993472f5f1772c914d1ba0a6ad23196",
+    "identityHash": "b8b97e8b046e85da8d255283b1ecad84",
     "entities": [
       {
         "tableName": "app_info",
@@ -1466,6 +1466,17 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_mod_install_app_id` ON `${TABLE_NAME}` (`app_id`)"
           },
           {
+            "name": "index_mod_install_app_id_source_archive_sha256",
+            "unique": false,
+            "columnNames": [
+              "app_id",
+              "source",
+              "archive_sha256"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_mod_install_app_id_source_archive_sha256` ON `${TABLE_NAME}` (`app_id`, `source`, `archive_sha256`)"
+          },
+          {
             "name": "index_mod_install_app_id_source_nexus_game_domain_nexus_mod_id_nexus_file_id",
             "unique": true,
             "columnNames": [
@@ -1857,7 +1868,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1993472f5f1772c914d1ba0a6ad23196')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b8b97e8b046e85da8d255283b1ecad84')"
     ]
   }
 }

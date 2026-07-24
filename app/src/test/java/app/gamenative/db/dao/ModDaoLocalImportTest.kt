@@ -44,14 +44,14 @@ class ModDaoLocalImportTest {
         dao.upsertInstall(localInstall("local_failed", ModInstallStatus.ERROR))
         dao.upsertInstall(localInstall("local_ready", ModInstallStatus.READY))
 
-        val duplicate = dao.getLocalInstallByContentHash(
+        val duplicates = dao.getLocalInstallsByContentHash(
             appId = APP_ID,
             archiveSha256 = CONTENT_HASH,
             excludingInstallId = "local_new",
             reusableStatuses = NexusImportState.reusableStatuses,
         )
 
-        assertEquals("local_ready", duplicate?.installId)
+        assertEquals(listOf("local_ready"), duplicates.map(ModInstall::installId))
     }
 
     @Test

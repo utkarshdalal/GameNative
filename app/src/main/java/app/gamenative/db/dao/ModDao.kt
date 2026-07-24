@@ -35,15 +35,14 @@ interface ModDao {
           AND archive_sha256 = :archiveSha256
           AND install_id != :excludingInstallId
           AND status IN (:reusableStatuses)
-        LIMIT 1
         """,
     )
-    suspend fun getLocalInstallByContentHash(
+    suspend fun getLocalInstallsByContentHash(
         appId: String,
         archiveSha256: String,
         excludingInstallId: String,
         reusableStatuses: Set<String>,
-    ): ModInstall?
+    ): List<ModInstall>
 
     @Query("SELECT * FROM mod_install WHERE status = :status ORDER BY updated_at")
     suspend fun getInstallsByStatus(status: String): List<ModInstall>

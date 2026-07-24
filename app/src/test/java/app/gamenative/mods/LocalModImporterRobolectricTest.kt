@@ -3,9 +3,11 @@ package app.gamenative.mods
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.content.Context
+import android.content.pm.ProviderInfo
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.R
@@ -17,6 +19,7 @@ import java.io.IOException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -34,6 +37,7 @@ class LocalModImporterRobolectricTest {
     @Before
     fun registerProvider() {
         provider = FakeModDocumentsProvider()
+        provider.attachInfo(context, ProviderInfo().apply { authority = AUTHORITY })
         ShadowContentResolver.registerProviderInternal(AUTHORITY, provider)
     }
 
@@ -276,6 +280,59 @@ class LocalModImporterRobolectricTest {
             }
         }
         assertNull(runBlocking { dao.getInstall(request.installId) })
+    }
+
+    @Test
+    fun staleDuplicate_doesNotBlockFreshImport() = runBlocking {
+        val appId = "stale-local-duplicate-test"
+        withCleanCacheRoot(appId) {
+            val dao = NexusModManager.dao(context)
+            val sourceUri = DocumentsContract.buildDocumentUri(AUTHORITY, SETTINGS_ID)
+            val source = LocalModImporter.inspectFiles(context, listOf(sourceUri))
+            val firstRequest = localFilesRequest("local_stale", appId, source)
+            val secondRequest = localFilesRequest("local_fresh", appId, source)
+            try {
+                val stale = LocalModImporter.importMod(context, firstRequest, source.uris)
+                File(stale.extractedPath).deleteRecursively()
+
+                val fresh = LocalModImporter.importMod(context, secondRequest, source.uris)
+
+                assertEquals(ModInstallStatus.READY.name, fresh.status)
+                assertTrue(File(fresh.extractedPath).resolve("settings.ini").isFile)
+                assertNotNull(dao.getInstall(stale.installId))
+            } finally {
+                dao.deleteInstall(firstRequest.installId)
+                dao.deleteInstall(secondRequest.installId)
+            }
+        }
+    }
+
+    @Test
+    fun usableDuplicate_stillRejectsFreshImport() = runBlocking {
+        val appId = "usable-local-duplicate-test"
+        withCleanCacheRoot(appId) {
+            val dao = NexusModManager.dao(context)
+            val sourceUri = DocumentsContract.buildDocumentUri(AUTHORITY, SETTINGS_ID)
+            val source = LocalModImporter.inspectFiles(context, listOf(sourceUri))
+            val firstRequest = localFilesRequest("local_existing", appId, source)
+            val secondRequest = localFilesRequest("local_duplicate", appId, source)
+            try {
+                val existing = LocalModImporter.importMod(context, firstRequest, source.uris)
+                val error = runCatching {
+                    LocalModImporter.importMod(context, secondRequest, source.uris)
+                }.exceptionOrNull()
+
+                assertTrue(error is DuplicateLocalModContentException)
+                assertEquals(
+                    existing.installId,
+                    (error as DuplicateLocalModContentException).existingInstall.installId,
+                )
+                assertNull(dao.getInstall(secondRequest.installId))
+            } finally {
+                dao.deleteInstall(firstRequest.installId)
+                dao.deleteInstall(secondRequest.installId)
+            }
+        }
     }
 
     @Test
@@ -719,6 +776,19 @@ class LocalModImporterRobolectricTest {
         status = status.name,
     )
 
+    private fun localFilesRequest(
+        installId: String,
+        appId: String,
+        source: LocalModSourceSelection,
+    ) = LocalModImportRequest(
+        installId = installId,
+        appId = appId,
+        sourceType = LocalModSourceType.FILES,
+        modName = "Local test",
+        sourceName = source.displayName,
+        sizeBytes = source.sizeBytes,
+    )
+
     private class FakeModDocumentsProvider : ContentProvider() {
         var rejectNestedQueries = false
         var failQueries = false
@@ -797,6 +867,20 @@ class LocalModImporterRobolectricTest {
         }
 
         override fun getType(uri: Uri): String? = null
+
+        override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
+            val documentId = uri.pathSegments.lastOrNull()
+                ?: throw IOException("Missing document ID")
+            val content = when (documentId) {
+                SETTINGS_ID, CASE_COLLISION_ID -> "data"
+                DLL_ID -> "plugin"
+                README_ID -> "ok"
+                else -> throw IOException("Unknown document ID")
+            }
+            val file = File(requireNotNull(context).cacheDir, "local-mod-$documentId".hashCode().toString())
+            file.writeText(content)
+            return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+        }
 
         override fun insert(uri: Uri, values: ContentValues?): Uri? = null
 

@@ -255,6 +255,7 @@ class NexusModImportService : Service() {
 
     private fun resumeOrStopIfIdle() {
         if (destroyed) return
+        drainDeferredStarts()
         if (resumeRequested.get()) resumeInterruptedImports() else scheduleStopIfIdle()
     }
 
