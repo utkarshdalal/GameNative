@@ -2,7 +2,7 @@
 
 ## Overview
 
-GameNative's performance control system provides CPU and GPU tuning capabilities for Android gaming devices. It supports multiple device types through an extensible driver architecture, including PServer-based devices (AYN Odin, Retroid Pocket) and Samsung Galaxy devices via the Samsung Performance SDK. The system allows users to adjust CPU governors, frequency scaling, and GPU performance levels to optimize game performance.
+GameNative's performance control system provides CPU and GPU tuning capabilities for Android gaming devices. It supports multiple device types through an extensible driver architecture, including PServer-based devices (AYN Odin, Retroid Pocket) and Samsung Galaxy devices via the Samsung Performance SDK. The system allows users to adjust CPU governors, frequency scaling, and GPU performance levels to optimize game performance. Additionally, it features an **automatic performance tuning system** that uses PID controllers to dynamically adjust CPU/GPU settings based on target FPS and real-time utilization metrics, maintaining optimal performance while minimizing resource consumption.
 
 ## Architecture
 
@@ -63,12 +63,18 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
    - **Profile Management**: Tracks `currentProfile` and synchronizes it with driver state
    - **Profile Persistence**: Saves/restores profiles via `PrefManager` using JSON serialization
    - **Automatic Sync**: All setter methods update both driver and `currentProfile` data
+   - **Auto-Tuning Management**:
+     - Tracks target FPS (from XServer frame rate limiter)
+     - Tracks current FPS, CPU usage, GPU usage (from Performance HUD)
+     - Manages `PerformanceAutoTuner` lifecycle (start/stop)
+     - Provides callbacks for auto-tuner to adjust CPU/GPU settings
    - Maintains backward compatibility with existing UI code
 
 5. **PowerProfile** (Data Class)
    - Location: `PowerProfile.kt`
    - Serializable data class representing a complete performance configuration
    - Fields (all mutable `var`):
+     - `enableAutoTuning: Boolean` - Enable automatic performance tuning (default: false)
      - `name: String` - Profile name (e.g., "Balanced", "Performance", "Custom")
      - `governor: CpuGovernor` - CPU governor enum
      - `minCpuFreq: Long` - Minimum CPU frequency/level
@@ -88,6 +94,38 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
      - **WALT**: Full range (0-100% CPU/GPU), walt governor
    - Dynamically calculates frequency tiers based on available frequencies
    - GPU power levels calculated as percentages of max GPU power level
+
+7. **PerformanceAutoTuner** (Auto-Tuning)
+   - Location: `autotuning/PerformanceAutoTuner.kt`
+   - Automatic performance tuner using PID controllers
+   - Dynamically adjusts CPU frequencies and GPU power levels based on:
+     - Target FPS (from XServer frame rate limiter)
+     - Current FPS (from Performance HUD)
+     - CPU usage percentage
+     - GPU usage percentage
+   - **Adaptive Performance Scaling**:
+     - Reduces performance when hitting target FPS with low utilization
+     - Increases performance when missing target FPS or high utilization
+     - Uses PID controllers for smooth, responsive adjustments
+   - **Configurable Thresholds**:
+     - FPS error threshold: 2.0 FPS (small), 5.0 FPS (large)
+     - Usage low threshold: 70% (reduce performance)
+     - Usage high threshold: 85% (increase performance)
+     - Performance range: 20-100%
+   - **Tuning Cycle**: Runs every 2 seconds on background thread
+   - **Integration**: Enabled via `PowerProfile.enableAutoTuning` flag
+
+8. **PidController** (Control Theory)
+   - Location: `autotuning/PidController.kt`
+   - Proportional-Integral-Derivative controller for smooth performance adjustments
+   - **Tuning Parameters**:
+     - Kp (Proportional gain): 0.5 - Immediate response to FPS error
+     - Ki (Integral gain): 0.2 - Eliminates steady-state error over time
+     - Kd (Derivative gain): 0.1 - Dampens oscillations for stability
+   - **Anti-Windup Protection**: Integral term limited to ±50.0
+   - **Output Clamping**: Constrains output to valid range (-100.0 to +100.0)
+   - **State Management**: Tracks integral, previous error, and time delta
+   - Separate controllers for CPU and GPU tuning
 
 ## Supported Features
 
@@ -114,16 +152,29 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
 - ✅ Sysfs file permission management (chmod 444 after write, restore to 644 on stop)
 - ❌ Direct GPU frequency setting (not supported by hardware)
 
+**Auto-Tuning:**
+- ✅ PID controller-based automatic performance tuning
+- ✅ Dynamic CPU frequency adjustment based on FPS and CPU usage
+- ✅ Dynamic GPU power level adjustment based on FPS and GPU usage
+- ✅ Adaptive performance scaling (reduce when over-performing, increase when under-performing)
+- ✅ Configurable thresholds for FPS error and resource utilization
+- ✅ Background tuning thread with 2-second cycle interval
+- ✅ Integration with XServer frame rate limiter for target FPS
+- ✅ Integration with Performance HUD for current metrics (FPS, CPU/GPU usage)
+- ✅ Separate PID controllers for CPU and GPU with anti-windup protection
+
 **Lifecycle:**
 - ✅ `start()` - Restores saved profile from preferences (or applies default Balanced profile)
   - **Automatically pins app process to efficiency cores**
   - **Automatically pins PulseAudio to first performance core**
+  - **Starts auto-tuning if enabled in profile**
 - ✅ `stop()` - **Critical performance restoration**:
-  1. Resets CPU frequencies to full range (min to max available)
-  2. Resets GPU power levels to full range (0 to max)
-  3. Restores CPU governor to first available governor
-  4. Restores all modified sysfs files to 644 permissions
-  5. **Resets app process CPU affinity to all cores**
+  1. **Stops auto-tuning thread and resets PID controllers**
+  2. Resets CPU frequencies to full range (min to max available)
+  3. Resets GPU power levels to full range (0 to max)
+  4. Restores CPU governor to first available governor
+  5. Restores all modified sysfs files to 644 permissions
+  6. **Resets app process CPU affinity to all cores**
   - Runs asynchronously on background thread
   - **Prevents device slowness** when exiting from Power Save mode
 
@@ -705,10 +756,112 @@ executeAsRoot("chmod 644 '$path1'; chmod 644 '$path2'; chmod 644 '$path3'")
 - Governor files are automatically added to restoration list after `setGovernor()` is called
 - Tracks modified files in `modifiedSysfsFiles` set to ensure proper cleanup
 
+### Auto-Tuning Implementation
+
+**Overview:**
+The auto-tuning system uses PID (Proportional-Integral-Derivative) controllers to automatically adjust CPU frequencies and GPU power levels based on real-time performance metrics. This maintains target FPS while optimizing resource consumption.
+
+**Architecture:**
+
+*PerformanceAutoTuner:*
+- Manages two independent PID controllers (CPU and GPU)
+- Runs on background thread with 2-second tuning cycles
+- Monitors: target FPS, current FPS, CPU usage, GPU usage
+- Adjusts performance levels between 20-100%
+- Maps performance percentages to actual hardware frequencies/levels
+
+*PidController:*
+- Implements classic PID control algorithm
+- **Proportional term (Kp=0.5)**: Immediate response to FPS error
+- **Integral term (Ki=0.2)**: Eliminates steady-state error over time
+- **Derivative term (Kd=0.1)**: Dampens oscillations for stability
+- **Anti-windup protection**: Integral term clamped to ±50.0
+- **Output clamping**: Constrains adjustments to ±100.0 range
+
+**Tuning Logic:**
+
+*Reduce Performance (Conservative):*
+```
+if (fpsError < 2.0 && usage < 70% && performance > 25%) {
+    performance -= 2.0%  // Gradual reduction
+    reset PID controller
+}
+```
+
+*Increase Performance (Aggressive):*
+```
+if (fpsError > 5.0 || usage > 85%) {
+    adjustment = PID.calculate(targetFps, currentFps)
+    performance += adjustment * 0.3  // Damped increase
+}
+```
+
+*Maintain Performance (Stable):*
+```
+else {
+    reset PID controller  // Clear integral/derivative state
+}
+```
+
+**Integration Points:**
+
+1. **XServerScreen** → Sets `PowerManager.targetFps` from frame rate limiter
+2. **PerformanceHudView** → Updates `PowerManager.currentFps`, `currentCpuUsage`, `currentGpuUsage`
+3. **PowerManager** → Creates `PerformanceAutoTuner` with callbacks:
+   - `onCpuFrequencyChange(freq)` → Calls `setMinCpuValue()` and `setMaxCpuValue()`
+   - `onGpuLevelChange(level)` → Calls `setMinGpuPowerLevel()` and `setMaxGpuPowerLevel()`
+4. **PowerProfile** → `enableAutoTuning` flag controls auto-tuner lifecycle
+
+**UI Behavior:**
+- When auto-tuning is enabled, manual CPU/GPU controls are hidden
+- Auto-tuning toggle is only shown when driver supports both CPU and GPU control
+- Profile name changes to "Custom" when auto-tuning is toggled
+
+**Performance Characteristics:**
+
+*Startup Phase (0-10 seconds):*
+- PID controllers initialize with zero state
+- Performance starts at 50% baseline
+- Rapid adjustments as integral term accumulates
+
+*Steady State (10+ seconds):*
+- Small oscillations around target FPS (±2 FPS)
+- Integral term compensates for steady-state error
+- Derivative term prevents overshoot
+
+*Load Changes:*
+- Scene complexity increase → FPS drops → PID increases performance
+- Scene complexity decrease → FPS stable, usage drops → Gradual performance reduction
+- Sudden FPS spike → Derivative term dampens response
+
+**Example Tuning Session:**
+```
+[0s]  Target: 60 FPS, Current: 45 FPS, CPU: 50%, GPU: 50%
+      → PID output: +15.0 → CPU: 65%, GPU: 65%
+
+[2s]  Target: 60 FPS, Current: 58 FPS, CPU: 80%, GPU: 75%
+      → PID output: +2.0 → CPU: 67%, GPU: 67%
+
+[4s]  Target: 60 FPS, Current: 60 FPS, CPU: 68%, GPU: 65%
+      → FPS stable, usage low → CPU: 65%, GPU: 63% (gradual reduction)
+
+[6s]  Target: 60 FPS, Current: 60 FPS, CPU: 65%, GPU: 60%
+      → Maintain current performance
+```
+
+**Logging:**
+- Enable verbose logging via `PerformanceAutoTuner(enableLogging = true)`
+- Logs PID calculations: error, P/I/D terms, output
+- Logs tuning decisions: FPS, usage, performance adjustments
+- Logs frequency/level changes applied to hardware
+
 ## File Structure
 
 ```
 powercontrol/
+├── autotuning/
+│   ├── PerformanceAutoTuner.kt        # Automatic performance tuner
+│   └── PidController.kt               # PID controller implementation
 ├── drivers/
 │   ├── PerformanceDriver.kt           # Abstract base class
 │   ├── PServerDriver.kt               # PServer implementation
