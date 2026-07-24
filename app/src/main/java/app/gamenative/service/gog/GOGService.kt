@@ -12,6 +12,8 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.data.GameSource
+import app.gamenative.service.GameDownloadQueue
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
@@ -354,6 +356,13 @@ class GOGService : Service() {
             instance.activeDownloads[gameId] = downloadInfo
             instance.notifierOrNull?.trackDownload(downloadInfo, "", NotificationHelper.NOTIFICATION_ID_GOG)
 
+            // Register with centralized queue and auto-pause other downloads
+            GameDownloadQueue.registerDownload(
+                gameSource = GameSource.GOG,
+                gameId = gameId,
+                downloadInfo = downloadInfo
+            )
+
             // Launch download in service scope so it runs independently
             val job = instance.scope.launch {
                 try {
@@ -408,6 +417,9 @@ class GOGService : Service() {
                         SnackbarManager.show("Download completed successfully!")
                         downloadInfo.setProgress(1.0f)
                         downloadInfo.setActive(false)
+
+                        // Unregister from queue (will auto-resume next paused download)
+                        GameDownloadQueue.unregisterDownload(GameSource.GOG, gameId)
                     }
                 } catch (e: CancellationException) {
                     downloadInfo.setPostInstallSyncing(false)
@@ -722,6 +734,25 @@ class GOGService : Service() {
         // Initialize notification helper for foreground service
         notificationHelper = NotificationHelper(applicationContext)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
+
+        // Register resume listener with GameDownloadQueue
+        GameDownloadQueue.registerResumeListener(GameSource.GOG, object : GameDownloadQueue.ResumeListener {
+            override fun onResumeRequested(gameSource: GameSource, gameId: String) {
+                Timber.i("[GOGService] Resume requested for game $gameId")
+                scope.launch {
+                    val game = gogManager.getGameFromDbById(gameId)
+                    if (game != null) {
+                        val installPath = game.installPath.ifBlank {
+                            GOGConstants.getGameInstallPath(game.title)
+                        }
+                        val container = ContainerUtils.getOrCreateContainer(applicationContext, "GOG_$gameId")
+                        val language = ContainerUtils.toContainerData(container).language
+                        downloadGame(applicationContext, gameId, installPath, language)
+                    }
+                }
+            }
+        })
+
         PluviaApp.events.emit(AndroidEvent.ServiceReady)
     }
 
@@ -820,6 +851,10 @@ class GOGService : Service() {
         scope.cancel() // Cancel any ongoing operations
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_GOG)
+
+        // Unregister resume listener from GameDownloadQueue
+        GameDownloadQueue.unregisterResumeListener(GameSource.GOG)
+
         instance = null
     }
 

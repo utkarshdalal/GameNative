@@ -35,8 +35,29 @@ data class DownloadInfo(
     private val statusMessage = MutableStateFlow<String?>(null)
     private val postInstallSyncing = MutableStateFlow(false)
 
+    private var wasAutoPaused: Boolean = false
+    private var autoResumeCallback: (() -> Unit)? = null
+
+    // For GameDownloadQueue integration
+    private var queueGameSource: GameSource? = null
+    private var queueGameId: String? = null
+
     fun cancel() {
         cancel("Cancelled by user")
+    }
+
+    fun pause(message: String = "Paused", autoPaused: Boolean = false) {
+        persistProgressSnapshot()
+        setActive(false)
+        setPostInstallSyncing(false)
+        resetSpeedTracking()
+        wasAutoPaused = autoPaused
+        downloadJob?.cancel(CancellationException(message))
+
+        // If user manually paused (not auto-paused), unregister from queue to resume next download
+        if (!autoPaused && queueGameSource != null && queueGameId != null) {
+            app.gamenative.service.GameDownloadQueue.unregisterDownload(queueGameSource!!, queueGameId!!)
+        }
     }
 
     fun failedToDownload() {
@@ -52,6 +73,11 @@ data class DownloadInfo(
         setPostInstallSyncing(false)
         resetSpeedTracking()
         downloadJob?.cancel(CancellationException(message))
+
+        // Unregister from queue to resume next download
+        if (queueGameSource != null && queueGameId != null) {
+            app.gamenative.service.GameDownloadQueue.unregisterDownload(queueGameSource!!, queueGameId!!)
+        }
     }
 
     fun setDownloadJob(job: Job) {
@@ -173,6 +199,29 @@ data class DownloadInfo(
         if (!active) {
             resetSpeedTracking()
         }
+    }
+
+    fun wasAutoPaused(): Boolean = wasAutoPaused
+
+    fun setAutoResumeCallback(callback: () -> Unit) {
+        autoResumeCallback = callback
+    }
+
+    fun triggerAutoResume() {
+        if (wasAutoPaused) {
+            wasAutoPaused = false
+            autoResumeCallback?.invoke()
+            autoResumeCallback = null
+        }
+    }
+
+    /**
+     * Set the queue identifiers for this download.
+     * This allows the DownloadInfo to unregister itself from the queue when paused/cancelled.
+     */
+    fun setQueueIdentifiers(gameSource: GameSource, gameId: String) {
+        queueGameSource = gameSource
+        queueGameId = gameId
     }
 
     fun isActive(): Boolean = isActive
