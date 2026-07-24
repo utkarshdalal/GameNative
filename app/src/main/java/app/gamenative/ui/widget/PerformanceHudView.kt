@@ -408,9 +408,9 @@ class PerformanceHudView(
         gpuMetric.compactGraph?.addSample(snapshot.gpuValue)
 
         // Update PowerManager with CPU/GPU usage for auto-tuning
-        snapshot.fpsValue.let { PowerManager.currentFps = it }
-        snapshot.cpuValue?.let { PowerManager.currentCpuUsage = it }
-        snapshot.gpuValue?.let { PowerManager.currentGpuUsage = it }
+        PowerManager.currentFps = snapshot.fpsValue
+        PowerManager.currentCpuUsage = snapshot.cpuValue ?: 0f
+        PowerManager.currentGpuUsage = snapshot.gpuValue ?: 0f
     }
 
     private fun applySnapshotText(snapshot: HudSnapshot) {

@@ -112,13 +112,6 @@ fun PowerControlQuickMenuTab(
                     }
                 }
 
-                // Handle auto-tuning based on profile setting
-                if (profile.enableAutoTuning) {
-                    PowerManager.startAutoTuning()
-                } else {
-                    PowerManager.stopAutoTuning()
-                }
-
                 Timber.d("Profile application result: $success")
                 refreshTrigger++
             }

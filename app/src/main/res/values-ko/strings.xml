@@ -2169,8 +2169,6 @@
     <string name="power_control_ram_min_power">최소 RAM 주파수</string>
     <string name="power_control_ram_max_power">최대 RAM 주파수</string>
     <string name="power_control_available_frequencies">사용 가능한 주파수</string>
-    <string name="power_control_pserver_required">PServer를 사용할 수 없음</string>
-    <string name="power_control_pserver_required_desc">이 기능을 사용하려면 PServer 서비스가 필요합니다(AYN 및 Retroid 기기에서 사용 가능). 현재 설정을 볼 수 있지만 PServer 없이는 변경할 수 없습니다.</string>
     <string name="power_control_auto_tuning">자동 튜닝</string>
     <string name="power_control_auto_tuning_desc">FPS에 따라 성능을 자동으로 조정</string>
 </resources>

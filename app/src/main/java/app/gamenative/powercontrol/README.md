@@ -12,13 +12,18 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
    - Location: `drivers/PerformanceDriver.kt`
    - Defines the interface for all device-specific performance drivers
    - Provides common functionality like frequency formatting
-   - Declares abstract methods for:
+   - **Abstract methods** (must be implemented):
      - `isDriverSupported()` - Driver availability detection
-     - `isGovernorSupported()` - CPU governor control support
-     - `isGpuSupported()` - GPU control support
-     - `isFanSupported()` - Fan control support (future)
-     - `start()` - Initialize driver when game starts
-     - `stop()` - Cleanup driver when game stops
+     - `getDisplayUnit()` - Returns display unit for frequency values (HZ or INTEGER)
+   - **Open methods with defaults** (can be overridden):
+     - `isGovernorSupported()` - CPU governor control support (default: false)
+     - `isGpuSupported()` - GPU control support (default: false)
+     - `isBusSupported()` - RAM bus control support (default: false)
+     - `isFanSupported()` - Fan control support (default: false)
+     - `start()` - Initialize driver when game starts (default: no-op)
+     - `stop()` - Cleanup driver when game stops (default: no-op)
+     - `beginUpdate()` - Begin batch update session (default: no-op)
+     - `commit()` - Commit pending updates (default: returns true)
      - `getDefaultProfile()` - Returns default Balanced profile for the device
      - CPU: `getCurrentMinCpuValue()`, `getCurrentMaxCpuValue()`, `getCurrentGovernor()`
      - CPU: `setMinCpuValue(value)`, `setMaxCpuValue(value)`, `setGovernor(governor)`
@@ -26,6 +31,8 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
      - GPU: `getCurrentGpuValue()`, `getAvailableGpuFrequencies()`
      - GPU: `getCurrentMinGpuPowerLevel()`, `getCurrentMaxGpuPowerLevel()`, `getNumGpuPowerLevels()`
      - GPU: `setMinGpuPowerLevel(level)`, `setMaxGpuPowerLevel(level)`
+     - Bus: `getCurrentMinBusLevel()`, `getCurrentMaxBusLevel()`, `getNumBusLevels()`
+     - Bus: `setMinBusLevel(level)`, `setMaxBusLevel(level)`
 
 2. **PServerDriver** (Implementation)
    - Location: `drivers/PServerDriver.kt`
@@ -834,20 +841,30 @@ else {
 - Scene complexity decrease → FPS stable, usage drops → Gradual performance reduction
 - Sudden FPS spike → Derivative term dampens response
 
-**Example Tuning Session:**
+**Example Tuning Session (Simplified/Illustrative):**
 ```
-[0s]  Target: 60 FPS, Current: 45 FPS, CPU: 50%, GPU: 50%
-      → PID output: +15.0 → CPU: 65%, GPU: 65%
+[0s]  Target: 60 FPS, Current: 45 FPS, CPU usage: 50%, GPU usage: 50%
+      → Large FPS error detected
+      → PID calculates adjustment, applies with decay factor (0.3)
+      → CPU perf: 50% → 52%, GPU perf: 50% → 52%
 
-[2s]  Target: 60 FPS, Current: 58 FPS, CPU: 80%, GPU: 75%
-      → PID output: +2.0 → CPU: 67%, GPU: 67%
+[2s]  Target: 60 FPS, Current: 58 FPS, CPU usage: 80%, GPU usage: 75%
+      → Small FPS error, high usage detected
+      → PID continues adjustment with integral accumulation
+      → CPU perf: 52% → 54%, GPU perf: 52% → 54%
 
-[4s]  Target: 60 FPS, Current: 60 FPS, CPU: 68%, GPU: 65%
-      → FPS stable, usage low → CPU: 65%, GPU: 63% (gradual reduction)
+[4s]  Target: 60 FPS, Current: 60 FPS, CPU usage: 68%, GPU usage: 65%
+      → FPS stable, usage below 70% threshold
+      → Gradual reduction (-2% step)
+      → CPU perf: 54% → 52%, GPU perf: 54% → 52%
 
-[6s]  Target: 60 FPS, Current: 60 FPS, CPU: 65%, GPU: 60%
-      → Maintain current performance
+[6s]  Target: 60 FPS, Current: 60 FPS, CPU usage: 65%, GPU usage: 60%
+      → FPS stable, usage below 70% threshold
+      → Continue gradual reduction
+      → CPU perf: 52% → 50%, GPU perf: 52% → 50%
 ```
+*Note: Actual PID calculations use Kp=0.5, Ki=0.2, Kd=0.1 with ADJUSTMENT_DECAY_FACTOR=0.3.
+Enable verbose logging to see exact P/I/D terms and outputs.*
 
 **Logging:**
 - Enable verbose logging via `PerformanceAutoTuner(enableLogging = true)`

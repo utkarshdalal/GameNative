@@ -2164,8 +2164,6 @@
     <string name="power_control_ram_min_power">Frequenza minima RAM</string>
     <string name="power_control_ram_max_power">Frequenza massima RAM</string>
     <string name="power_control_available_frequencies">Frequenze disponibili</string>
-    <string name="power_control_pserver_required">PServer non disponibile</string>
-    <string name="power_control_pserver_required_desc">Questa funzione richiede il servizio PServer (disponibile su dispositivi AYN e Retroid). Puoi visualizzare le impostazioni attuali ma non puoi apportare modifiche senza PServer.</string>
     <string name="power_control_auto_tuning">Regolazione automatica</string>
     <string name="power_control_auto_tuning_desc">Regola automaticamente le prestazioni in base agli FPS</string>
 </resources>

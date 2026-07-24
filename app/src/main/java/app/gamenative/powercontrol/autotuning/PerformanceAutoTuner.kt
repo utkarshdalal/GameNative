@@ -59,9 +59,7 @@ class PerformanceAutoTuner(
         val minCpuFreq = availableCpuFreqs.first().toDouble()
         val maxCpuFreq = availableCpuFreqs.last().toDouble()
 
-        if (enableLogging) {
-            Timber.tag(TAG).i("Starting auto-tuning (CPU: $minCpuFreq-$maxCpuFreq kHz, GPU levels: $numGpuLevels)")
-        }
+        Timber.tag(TAG).i("Starting auto-tuning (CPU: $minCpuFreq-$maxCpuFreq kHz, GPU levels: $numGpuLevels)")
 
         // Initialize CPU PID controller for incremental adjustments
         cpuPidController = PidController(
@@ -109,9 +107,7 @@ class PerformanceAutoTuner(
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Auto-tuning error")
             } finally {
-                if (enableLogging) {
-                    Timber.tag(TAG).i("Auto-tuning stopped")
-                }
+                Timber.tag(TAG).i("Auto-tuning stopped")
             }
         }.apply {
             name = "PerformanceAutoTuner"

@@ -201,6 +201,13 @@ object PowerManager {
      */
     fun setCurrentProfile(profile: PowerProfile) {
         currentProfile = profile
+
+        // Handle auto-tuning based on profile setting
+        if (profile.enableAutoTuning) {
+            startAutoTuning()
+        } else {
+            stopAutoTuning()
+        }
     }
 
     /**

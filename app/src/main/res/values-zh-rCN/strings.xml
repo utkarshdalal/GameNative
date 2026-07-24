@@ -2189,8 +2189,6 @@
     <string name="power_control_ram_min_power">最低RAM频率</string>
     <string name="power_control_ram_max_power">最高RAM频率</string>
     <string name="power_control_available_frequencies">可用频率</string>
-    <string name="power_control_pserver_required">PServer不可用</string>
-    <string name="power_control_pserver_required_desc">此功能需要PServer服务（适用于AYN和Retroid设备）。您可以查看当前设置，但无法在没有PServer的情况下进行更改。</string>
     <string name="power_control_auto_tuning">自动调整</string>
     <string name="power_control_auto_tuning_desc">根据帧率自动调整性能</string>
 </resources>

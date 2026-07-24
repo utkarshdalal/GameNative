@@ -2103,8 +2103,6 @@ https://gamenative.app
     <string name="power_control_ram_min_power">Минимальная частота ОЗУ</string>
     <string name="power_control_ram_max_power">Максимальная частота ОЗУ</string>
     <string name="power_control_available_frequencies">Доступные частоты</string>
-    <string name="power_control_pserver_required">PServer недоступен</string>
-    <string name="power_control_pserver_required_desc">Для этой функции требуется служба PServer (доступна на устройствах AYN и Retroid). Вы можете просматривать текущие настройки, но не можете вносить изменения без PServer.</string>
     <string name="power_control_auto_tuning">Автонастройка</string>
     <string name="power_control_auto_tuning_desc">Автоматическая настройка производительности на основе FPS</string>
 </resources>
