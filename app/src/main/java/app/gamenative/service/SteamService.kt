@@ -147,6 +147,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
+import okio.Path.Companion.toPath
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -479,9 +480,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return Paths.get(externalAppInstallRoot, "Steam", "steamapps", "staging").pathString
             }
 
-        // True when "use external storage" is on AND the resolved external root is usable.
-        // Modern flavor always has a usable primary-external app-scoped root, so this is
-        // effectively just useExternalStorage on modern.
         private val externalStorageReady: Boolean
             get() = PrefManager.useExternalStorage && File(externalAppInstallRoot).let {
                 it.path.isNotBlank() && it.exists()
@@ -1833,6 +1831,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 notifyDownloadStarted(appId)
                 instance?.notifierOrNull?.trackDownload(di, getAppInfoOf(appId)?.name.orEmpty(), NotificationHelper.NOTIFICATION_ID_STEAM)
 
+                val chunkStagingRedirectDir = File(DownloadService.baseCacheDirPath, "depot_chunks/$appId")
+                    .takeIf { !appDirPath.startsWith(DownloadService.baseDataDirPath) }
+
                 val downloadJob = instance!!.scope.launch {
                     try {
                         // Get licenses from database
@@ -1852,6 +1853,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                         Timber.i("maxDownloads: $maxDownloads")
                         Timber.i("maxDecompress: $maxDecompress")
 
+                        chunkStagingRedirectDir?.apply {
+                            deleteRecursively()
+                            mkdirs()
+                        }
+
                         // Create DepotDownloader instance
                         val depotDownloader = DepotDownloader(
                             instance!!.steamClient!!,
@@ -1862,7 +1868,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                             maxDecompress = maxDecompress,
                             parentJob = coroutineContext[Job],
                             autoStartDownload = false,
-                            filesystem = CaseInsensitiveFileSystem(showDebugLog = false),
+                            filesystem = CaseInsensitiveFileSystem(
+                                showDebugLog = false,
+                                chunkStagingRedirect = chunkStagingRedirectDir?.absolutePath?.toPath(),
+                            ),
                         )
 
                         // Create listeners for DLC apps
@@ -2105,6 +2114,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     // handlers, and cancellations thrown out of suspension points.
                     // second call is a no-op if the inline path already removed the entry.
                     removeDownloadJob(appId)
+                    chunkStagingRedirectDir?.deleteRecursively()
                     if (throwable is kotlinx.coroutines.CancellationException) {
                         Timber.d(throwable, "Download canceled for app $appId")
                     }
