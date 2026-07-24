@@ -1285,10 +1285,14 @@ fun XServerScreen(
             QuickMenuAction.EXIT_GAME -> {
                 PostHog.capture(
                     event = "game_closed",
-                    properties = mapOf(
-                        "game_name" to ContainerUtils.resolveGameName(appId),
-                        "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
-                    ),
+                    properties = buildMap {
+                        put("game_name", ContainerUtils.resolveGameName(appId))
+                        put("game_store", ContainerUtils.extractGameSourceFromContainerId(appId).name)
+                        if (PrefManager.usageAnalyticsEnabled) {
+                            put("max_controllers", ControllerManager.getInstance().sessionUsedControllerCount)
+                            put("external_controller_used", ControllerManager.getInstance().sessionUsedExternalController)
+                        }
+                    },
                 )
                 imeInputReceiver?.hideKeyboard()
                 // Resume processes before exiting so they can receive SIGTERM cleanly.
@@ -1371,6 +1375,7 @@ fun XServerScreen(
         }
 
         inputManager.registerInputDeviceListener(deviceListener, null)
+        ControllerManager.getInstance().resetSessionActivity()
         scanForExternalDevices()
 
         onDispose {
@@ -1452,6 +1457,11 @@ fun XServerScreen(
             var handled = false
             if (isGamepad) {
                 val winHandler = xServerView!!.getxServer().winHandler
+                if (it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0 &&
+                    ControllerManager.getInstance().noteGamepadButton(it.event.device.id)
+                ) {
+                    winHandler.refreshControllerMappingsForHotplug()
+                }
                 val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
                 if (assignedSlot > 0) {
                     handled = winHandler.onKeyEvent(it.event)
@@ -1504,6 +1514,7 @@ fun XServerScreen(
             var handled = false
             if (isGamepad && it.event != null) {
                 val winHandler = xServerView!!.getxServer().winHandler
+                ControllerManager.getInstance().noteGamepadActivity(it.event)
                 val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
                 if (assignedSlot > 0) {
                     handled = winHandler.onGenericMotionEvent(it.event)
