@@ -15,6 +15,12 @@ data class ModDownloadInfo(
     val totalBytes: Long = 0L,
 )
 
+internal enum class ModImportStartResult {
+    STARTED,
+    CANCELED_BEFORE_START,
+    ALREADY_ACTIVE,
+}
+
 object ModDownloadRegistry {
     private val downloads = MutableStateFlow<Map<String, ModDownloadInfo>>(emptyMap())
     private val canceledImports = mutableSetOf<String>()
@@ -22,6 +28,31 @@ object ModDownloadRegistry {
     fun observeDownloads(): StateFlow<Map<String, ModDownloadInfo>> = downloads.asStateFlow()
 
     fun get(installId: String): ModDownloadInfo? = downloads.value[installId]
+
+    /**
+     * Atomically acquires ownership of an import without disturbing an existing owner.
+     * Local document imports use this before reading or mutating their shared staging state.
+     */
+    internal fun tryStart(
+        installId: String,
+        appId: String,
+        displayName: String,
+    ): ModImportStartResult = synchronized(canceledImports) {
+        if (downloads.value.containsKey(installId)) {
+            return@synchronized ModImportStartResult.ALREADY_ACTIVE
+        }
+        if (canceledImports.remove(installId)) {
+            return@synchronized ModImportStartResult.CANCELED_BEFORE_START
+        }
+        val info = ModDownloadInfo(
+            installId = installId,
+            appId = appId,
+            displayName = displayName,
+            status = "Starting",
+        )
+        downloads.update { current -> current + (installId to info) }
+        ModImportStartResult.STARTED
+    }
 
     /** Returns false when cancellation arrived before the service registered the import. */
     fun start(installId: String, appId: String, displayName: String): Boolean =
@@ -57,8 +88,8 @@ object ModDownloadRegistry {
     }
 
     fun finish(installId: String) {
-        downloads.update { current -> current - installId }
         synchronized(canceledImports) {
+            downloads.update { current -> current - installId }
             canceledImports.remove(installId)
         }
     }

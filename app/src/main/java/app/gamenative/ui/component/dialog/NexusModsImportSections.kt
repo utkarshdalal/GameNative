@@ -10,11 +10,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -32,14 +37,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.mods.LocalModImporter
+import app.gamenative.mods.LocalModSourceType
 import app.gamenative.mods.NexusCollectionInstallClassification
 import app.gamenative.mods.NexusFileSelector
 import app.gamenative.mods.NexusModFile
+import app.gamenative.mods.truncateAtCodePointBoundary
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.utils.StorageUtils
 
@@ -49,6 +58,177 @@ private enum class CollectionDisplayFilter(@StringRes val labelRes: Int) {
     PLACEMENT(R.string.nexus_filter_placement),
     MANUAL(R.string.nexus_filter_manual),
     UNSUPPORTED(R.string.nexus_filter_unsupported),
+}
+
+@Composable
+internal fun LocalModImportSection(
+    onChooseArchive: () -> Unit,
+    onChooseFiles: () -> Unit,
+    onChooseFolder: () -> Unit,
+) {
+    Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Inventory2, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Text(
+                    stringResource(R.string.local_mod_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Text(
+                stringResource(R.string.local_mod_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                stringResource(R.string.local_mod_supported),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = onChooseArchive, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Inventory2, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.size(8.dp))
+                Text(stringResource(R.string.local_mod_choose_archive))
+            }
+            OutlinedButton(onClick = onChooseFiles, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.size(8.dp))
+                Text(stringResource(R.string.local_mod_choose_files))
+            }
+            OutlinedButton(onClick = onChooseFolder, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.size(8.dp))
+                Text(stringResource(R.string.local_mod_choose_folder))
+            }
+        }
+    }
+}
+
+@Composable
+internal fun LocalModReviewDialog(
+    pending: PendingLocalModImport,
+    onPendingChange: (PendingLocalModImport) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val archiveFormat = LocalModImporter.supportedArchiveLabel(pending.source.displayName)
+    val sourceTypeLabel = when (pending.source.type) {
+        LocalModSourceType.ARCHIVE -> if (archiveFormat.isNotEmpty()) {
+            stringResource(R.string.local_mod_archive_type, archiveFormat)
+        } else {
+            stringResource(R.string.local_mod_archive_generic_type)
+        }
+        LocalModSourceType.FILES -> stringResource(R.string.local_mod_files_type)
+        LocalModSourceType.FOLDER -> stringResource(R.string.local_mod_folder_type)
+    }
+    val fileCount = pluralStringResource(
+        R.plurals.local_mod_file_count,
+        pending.source.fileCount,
+        pending.source.fileCount,
+    )
+    val contentCount = if (
+        pending.source.type == LocalModSourceType.FOLDER &&
+        pending.source.directoryCount > 0
+    ) {
+        stringResource(
+            R.string.local_mod_folder_counts,
+            fileCount,
+            pluralStringResource(
+                R.plurals.local_mod_folder_count,
+                pending.source.directoryCount,
+                pending.source.directoryCount,
+            ),
+        )
+    } else {
+        fileCount
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.local_mod_review_title)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = pending.source.displayName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(
+                        R.string.local_mod_details,
+                        sourceTypeLabel,
+                        contentCount,
+                        if (pending.source.sizeBytes > 0L) {
+                            StorageUtils.formatBinarySize(pending.source.sizeBytes)
+                        } else {
+                            stringResource(R.string.nexus_progress_unknown)
+                        },
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                NoExtractOutlinedTextField(
+                    value = pending.modName,
+                    onValueChange = {
+                        onPendingChange(
+                            pending.copy(modName = it.truncateAtCodePointBoundary(LocalModImporter.MAX_MOD_NAME_LENGTH)),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.local_mod_name)) },
+                    singleLine = true,
+                )
+                NoExtractOutlinedTextField(
+                    value = pending.version,
+                    onValueChange = {
+                        onPendingChange(
+                            pending.copy(version = it.truncateAtCodePointBoundary(LocalModImporter.MAX_VERSION_LENGTH)),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.local_mod_version_optional)) },
+                    singleLine = true,
+                )
+                Text(
+                    text = stringResource(
+                        R.string.nexus_estimated_temp_space,
+                        StorageUtils.formatBinarySize(pending.estimatedRequiredBytes),
+                        StorageUtils.formatBinarySize(pending.availableBytes),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (pending.estimatedRequiredBytes <= pending.availableBytes) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
+                )
+                Text(
+                    stringResource(R.string.local_mod_snapshot_notice),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                // Confirmation runs orphan cleanup before the authoritative storage recheck.
+                enabled = pending.modName.isNotBlank(),
+            ) {
+                Text(stringResource(R.string.local_mod_import))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
 }
 
 @Composable

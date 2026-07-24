@@ -1,10 +1,12 @@
 package app.gamenative.mods
 
 import app.gamenative.data.ModInstall
+import app.gamenative.data.ModInstallSource
 import app.gamenative.data.ModInstallStatus
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
@@ -74,6 +76,33 @@ class NexusImportStateTest {
     }
 
     @Test
+    fun restorablePreviousInstall_preservesLocalArchiveIdentityAndHash() {
+        val previous = ModInstall(
+            installId = "local_previous",
+            appId = "app",
+            source = ModInstallSource.LOCAL_ARCHIVE.name,
+            modName = "Local mod",
+            fileName = "local.7z",
+            archivePath = "",
+            extractedPath = "/extracted/local_previous",
+            status = ModInstallStatus.APPLIED.name,
+            archiveSha256 = "abc123",
+        )
+        val interrupted = previous.copy(
+            status = ModInstallStatus.IMPORTING.name,
+            metadataJson = NexusImportState.importMetadata("", previous),
+        )
+
+        val restored = NexusImportState.restorablePreviousInstall(interrupted)
+
+        assertEquals(ModInstallSource.LOCAL_ARCHIVE.name, restored?.source)
+        assertEquals("abc123", restored?.archiveSha256)
+        assertNull(restored?.nexusGameDomain)
+        assertNull(restored?.nexusModId)
+        assertNull(restored?.nexusFileId)
+    }
+
+    @Test
     fun userMessage_classifiesCommonImportFailures() {
         assertEquals(
             "Nexus denied access to this resource for the current account.",
@@ -101,6 +130,36 @@ class NexusImportStateTest {
         assertTrue(NexusImportState.hasCompletedDownload(completed, archiveBytes = 4_096L))
         assertFalse(NexusImportState.hasCompletedDownload(completed, archiveBytes = 4_095L))
         assertFalse(NexusImportState.isWaitingForWebsiteAuthorization(completed))
+    }
+
+    @Test
+    fun completedLocalSnapshot_allowsAZeroByteFileSet() {
+        val completed = NexusImportState.markDownloadComplete(
+            install = install(status = ModInstallStatus.IMPORTING, fileId = 10L),
+            downloadedBytes = 0L,
+        )
+
+        assertTrue(NexusImportState.hasCompletedLocalSnapshot(completed, snapshotBytes = 0L))
+        assertFalse(NexusImportState.hasCompletedDownload(completed, archiveBytes = 0L))
+    }
+
+    @Test
+    fun terminalError_preservesACompletedTransferForRetry() {
+        val completed = NexusImportState.markDownloadComplete(
+            install = install(status = ModInstallStatus.IMPORTING, fileId = 10L),
+            downloadedBytes = 4_096L,
+        )
+
+        val failed = NexusImportState.terminalInstall(
+            importing = completed,
+            summary = "summary",
+            status = ModInstallStatus.ERROR,
+            message = "Extraction failed",
+            previousInstall = null,
+        )
+
+        assertEquals(ModInstallStatus.ERROR.name, failed.status)
+        assertTrue(NexusImportState.hasCompletedDownload(failed, archiveBytes = 4_096L))
     }
 
     @Test

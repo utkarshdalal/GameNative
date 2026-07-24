@@ -45,7 +45,13 @@ internal object NexusImportState {
             importing.copy(
                 status = status.name,
                 updatedAt = now,
-                metadataJson = errorMetadata(summary, message, previousInstall),
+                metadataJson = terminalErrorMetadata(
+                    importing = importing,
+                    summary = summary,
+                    error = message,
+                    previousInstall = previousInstall,
+                    preserveCompletedTransfer = status == ModInstallStatus.ERROR,
+                ),
             )
         }
 
@@ -65,6 +71,28 @@ internal object NexusImportState {
                 previousInstall?.let { put("previousInstall", it.toMetadataJson()) }
             }
             .toString()
+
+    private fun terminalErrorMetadata(
+        importing: ModInstall,
+        summary: String,
+        error: String,
+        previousInstall: ModInstall?,
+        preserveCompletedTransfer: Boolean,
+    ): String {
+        val terminal = JSONObject(errorMetadata(summary, error, previousInstall))
+        if (!preserveCompletedTransfer) return terminal.toString()
+        val active = runCatching { JSONObject(importing.metadataJson) }.getOrNull()
+            ?: return terminal.toString()
+        if (active.optBoolean(DOWNLOAD_COMPLETE_KEY, false)) {
+            terminal
+                .put(DOWNLOAD_COMPLETE_KEY, true)
+                .put(
+                    DOWNLOAD_COMPLETE_BYTES_KEY,
+                    active.optLong(DOWNLOAD_COMPLETE_BYTES_KEY, -1L),
+                )
+        }
+        return terminal.toString()
+    }
 
     fun pauseForWebsiteAuthorization(
         install: ModInstall,
@@ -126,12 +154,21 @@ internal object NexusImportState {
     }
 
     fun hasCompletedDownload(install: ModInstall?, archiveBytes: Long): Boolean =
-        install != null && runCatching {
-            val metadata = JSONObject(install.metadataJson)
-            metadata.optBoolean(DOWNLOAD_COMPLETE_KEY, false) &&
-                archiveBytes > 0L &&
-                metadata.optLong(DOWNLOAD_COMPLETE_BYTES_KEY, -1L) == archiveBytes
-        }.getOrDefault(false)
+        hasCompletedTransfer(install, archiveBytes, allowEmpty = false)
+
+    fun hasCompletedLocalSnapshot(install: ModInstall?, snapshotBytes: Long): Boolean =
+        hasCompletedTransfer(install, snapshotBytes, allowEmpty = true)
+
+    private fun hasCompletedTransfer(
+        install: ModInstall?,
+        transferredBytes: Long,
+        allowEmpty: Boolean,
+    ): Boolean = install != null && runCatching {
+        val metadata = JSONObject(install.metadataJson)
+        metadata.optBoolean(DOWNLOAD_COMPLETE_KEY, false) &&
+            (allowEmpty || transferredBytes > 0L) &&
+            metadata.optLong(DOWNLOAD_COMPLETE_BYTES_KEY, -1L) == transferredBytes
+    }.getOrDefault(false)
 
     fun userMessage(
         error: Throwable,
@@ -253,17 +290,20 @@ internal object NexusImportState {
             .put("updatedAt", updatedAt)
             .put("downloadedAt", downloadedAt)
             .put("metadataJson", metadataJson)
+            .put("archiveSha256", archiveSha256)
 
     private fun JSONObject.toModInstall(): ModInstall? {
         val installId = optString("installId").takeIf(String::isNotBlank) ?: return null
         val appId = optString("appId").takeIf(String::isNotBlank) ?: return null
-        val gameDomain = optString("nexusGameDomain").takeIf(String::isNotBlank) ?: return null
-        val modId = optLong("nexusModId", 0L).takeIf { it > 0L } ?: return null
-        val fileId = optLong("nexusFileId", 0L).takeIf { it > 0L } ?: return null
+        val source = optString("source", "NEXUS")
+        val gameDomain = optString("nexusGameDomain").takeIf(String::isNotBlank)
+        val modId = optLong("nexusModId", 0L).takeIf { it > 0L }
+        val fileId = optLong("nexusFileId", 0L).takeIf { it > 0L }
+        if (source == "NEXUS" && (gameDomain == null || modId == null || fileId == null)) return null
         return ModInstall(
             installId = installId,
             appId = appId,
-            source = optString("source", "NEXUS"),
+            source = source,
             nexusGameDomain = gameDomain,
             nexusModId = modId,
             nexusFileId = fileId,
@@ -279,6 +319,7 @@ internal object NexusImportState {
             updatedAt = optLong("updatedAt", System.currentTimeMillis()),
             downloadedAt = optLong("downloadedAt", 0L),
             metadataJson = optString("metadataJson"),
+            archiveSha256 = optString("archiveSha256"),
         )
     }
 }
