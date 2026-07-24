@@ -197,30 +197,10 @@ public class WinHandler implements ControllerManager.OnSlotsChangedListener {
         }
         setGamepadSlotConnected(0, currentController != null || isVirtualGamepadActive());
         // Initialize Extra Players (2, 3, 4)
-        java.util.HashSet<Integer> usedDeviceIds = new java.util.HashSet<>();
-        if (p1Device != null) {
-            usedDeviceIds.add(p1Device.getId());
-        }
-        InputDevice[] assignedExtras = new InputDevice[extraControllers.length];
-        for (int i = 0; i < extraControllers.length; i++) {
-            assignedExtras[i] = controllerManager.getAssignedDeviceForSlot(i + 1);
-            if (assignedExtras[i] != null) {
-                usedDeviceIds.add(assignedExtras[i].getId());
-            }
-        }
         for (int i = 0; i < extraControllers.length; i++) {
             // Player 2 is slot 1, which corresponds to extraControllers[0]
-            InputDevice extraDevice = assignedExtras[i];
-            if (extraDevice == null) {
-                for (InputDevice candidate : controllerManager.getDetectedDevices()) {
-                    if (!usedDeviceIds.contains(candidate.getId())) {
-                        extraDevice = candidate;
-                        break;
-                    }
-                }
-            }
+            InputDevice extraDevice = controllerManager.getAssignedDeviceForSlot(i + 1);
             if (extraDevice != null) {
-                usedDeviceIds.add(extraDevice.getId());
                 extraControllers[i] = ExternalController.getController(extraDevice.getId());
                 if (extraControllers[i] != null) {
                     extraControllers[i].setContext(activity);
