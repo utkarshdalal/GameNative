@@ -33,11 +33,6 @@ class PerformanceAutoTuner(
         private const val MAX_PERFORMANCE = 100.0
         private const val PERFORMANCE_REDUCTION_STEP = 2.0
         private const val ADJUSTMENT_DECAY_FACTOR = 0.3
-
-        // Tuning intervals
-        private const val TUNING_INTERVAL_FAST_MS = 500L
-        private const val TUNING_INTERVAL_STEADY_MS = 2000L
-        private const val STEADY_STATE_TOLERANCE = 2.0
     }
 
     private var cpuPidController: PidController? = null
@@ -103,14 +98,7 @@ class PerformanceAutoTuner(
             try {
                 while (isRunning && !Thread.currentThread().isInterrupted) {
                     performTuningCycle()
-
-                    // Use adaptive interval: fast when adjusting, slow when steady
-                    val interval = if (isInSteadyState()) {
-                        TUNING_INTERVAL_STEADY_MS
-                    } else {
-                        TUNING_INTERVAL_FAST_MS
-                    }
-                    Thread.sleep(interval)
+                    Thread.sleep(2000)
                 }
             } catch (e: InterruptedException) {
                 if (enableLogging) {
@@ -257,16 +245,6 @@ class PerformanceAutoTuner(
     private fun findClosestFrequency(availableFreqs: List<Long>, targetFreq: Long): Long {
         if (availableFreqs.isEmpty()) return targetFreq
         return availableFreqs.minByOrNull { abs(it - targetFreq) } ?: targetFreq
-    }
-
-    /**
-     * Check if all PID controllers are in steady state.
-     * Returns true if both CPU and GPU (if enabled) controllers have errors within tolerance.
-     */
-    private fun isInSteadyState(): Boolean {
-        val cpuSteady = cpuPidController?.isSteadyState(STEADY_STATE_TOLERANCE) ?: true
-        val gpuSteady = gpuPidController?.isSteadyState(STEADY_STATE_TOLERANCE) ?: true
-        return cpuSteady && gpuSteady
     }
 
     /**
