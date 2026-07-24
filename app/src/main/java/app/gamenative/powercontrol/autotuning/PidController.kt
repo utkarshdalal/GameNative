@@ -107,4 +107,14 @@ class PidController(
             Timber.tag(tag).d("PID controller reset")
         }
     }
+
+    /**
+     * Check if the system has reached steady state.
+     *
+     * @param tolerance Maximum acceptable error for steady state
+     * @return true if the absolute error is within tolerance
+     */
+    fun isSteadyState(tolerance: Double): Boolean {
+        return isInitialized && abs(previousError) <= tolerance
+    }
 }
