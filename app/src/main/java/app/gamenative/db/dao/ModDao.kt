@@ -35,6 +35,8 @@ interface ModDao {
           AND archive_sha256 = :archiveSha256
           AND install_id != :excludingInstallId
           AND status IN (:reusableStatuses)
+        ORDER BY updated_at DESC, install_id DESC
+        LIMIT 32
         """,
     )
     suspend fun getLocalInstallsByContentHash(

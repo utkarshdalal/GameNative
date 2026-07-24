@@ -48,6 +48,7 @@ import app.gamenative.mods.LocalModSourceType
 import app.gamenative.mods.NexusCollectionInstallClassification
 import app.gamenative.mods.NexusFileSelector
 import app.gamenative.mods.NexusModFile
+import app.gamenative.mods.truncateAtCodePointBoundary
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.utils.StorageUtils
 
@@ -175,7 +176,7 @@ internal fun LocalModReviewDialog(
                     value = pending.modName,
                     onValueChange = {
                         onPendingChange(
-                            pending.copy(modName = it.take(LocalModImporter.MAX_MOD_NAME_LENGTH)),
+                            pending.copy(modName = it.truncateAtCodePointBoundary(LocalModImporter.MAX_MOD_NAME_LENGTH)),
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -186,7 +187,7 @@ internal fun LocalModReviewDialog(
                     value = pending.version,
                     onValueChange = {
                         onPendingChange(
-                            pending.copy(version = it.take(LocalModImporter.MAX_VERSION_LENGTH)),
+                            pending.copy(version = it.truncateAtCodePointBoundary(LocalModImporter.MAX_VERSION_LENGTH)),
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),

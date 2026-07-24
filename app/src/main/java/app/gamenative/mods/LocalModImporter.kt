@@ -62,6 +62,14 @@ class LocalModSourceRequiredException(message: String) : IOException(message)
 internal class InvalidLocalModArchiveException(message: String, cause: Throwable? = null) :
     IOException(message, cause)
 
+internal fun String.truncateAtCodePointBoundary(maxLength: Int): String {
+    val endIndex = maxLength.coerceIn(0, length)
+    val splitsPair = endIndex in 1 until length &&
+        Character.isHighSurrogate(this[endIndex - 1]) &&
+        Character.isLowSurrogate(this[endIndex])
+    return substring(0, if (splitsPair) endIndex - 1 else endIndex)
+}
+
 object LocalModImporter {
     internal const val MAX_MOD_NAME_LENGTH = 200
     internal const val MAX_VERSION_LENGTH = 100

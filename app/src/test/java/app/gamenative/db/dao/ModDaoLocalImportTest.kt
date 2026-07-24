@@ -40,9 +40,14 @@ class ModDaoLocalImportTest {
     }
 
     @Test
-    fun contentHashLookup_skipsFailedRowAndReturnsReusableDuplicate() = runBlocking {
+    fun contentHashLookup_boundsReusableRowsAndSkipsFailedRow() = runBlocking {
         dao.upsertInstall(localInstall("local_failed", ModInstallStatus.ERROR))
-        dao.upsertInstall(localInstall("local_ready", ModInstallStatus.READY))
+        repeat(34) { index ->
+            dao.upsertInstall(
+                localInstall("local_ready_$index", ModInstallStatus.READY)
+                    .copy(updatedAt = index.toLong()),
+            )
+        }
 
         val duplicates = dao.getLocalInstallsByContentHash(
             appId = APP_ID,
@@ -51,7 +56,8 @@ class ModDaoLocalImportTest {
             reusableStatuses = NexusImportState.reusableStatuses,
         )
 
-        assertEquals(listOf("local_ready"), duplicates.map(ModInstall::installId))
+        assertEquals(32, duplicates.size)
+        assertEquals("local_ready_33", duplicates.first().installId)
     }
 
     @Test

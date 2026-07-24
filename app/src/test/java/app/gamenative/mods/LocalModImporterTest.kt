@@ -68,6 +68,15 @@ class LocalModImporterTest {
     }
 
     @Test
+    fun truncateAtCodePointBoundary_keepsSurrogatePairsIntact() {
+        val emoji = "\uD83D\uDE00"
+
+        assertEquals("aaaa", "aaaa${emoji}x".truncateAtCodePointBoundary(5))
+        assertEquals("aaa$emoji", "aaa${emoji}x".truncateAtCodePointBoundary(5))
+        assertEquals("abcde", "abcdef".truncateAtCodePointBoundary(5))
+    }
+
+    @Test
     fun normalizeRelativePath_preservesSafeFolderStructure() {
         assertEquals(
             "Data/SKSE/Plugins/settings.ini",

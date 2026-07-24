@@ -89,6 +89,7 @@ import app.gamenative.mods.DuplicateLocalModContentException
 import app.gamenative.mods.LocalModImporter
 import app.gamenative.mods.LocalModSourceSelection
 import app.gamenative.mods.LocalModSourceType
+import app.gamenative.mods.truncateAtCodePointBoundary
 import app.gamenative.mods.ModArchiveEntry
 import app.gamenative.mods.ModArchiveInstallAssessor
 import app.gamenative.mods.ModConflictAnalyzer
@@ -766,7 +767,7 @@ fun NexusModsDialog(
                                 context.getString(R.string.local_mod_default_name),
                             )
                         }
-                    ).take(LocalModImporter.MAX_MOD_NAME_LENGTH),
+                    ).truncateAtCodePointBoundary(LocalModImporter.MAX_MOD_NAME_LENGTH),
                     version = retryTarget?.version.orEmpty(),
                     estimatedRequiredBytes = storage.estimatedRequiredBytes,
                     availableBytes = storage.availableBytes,
