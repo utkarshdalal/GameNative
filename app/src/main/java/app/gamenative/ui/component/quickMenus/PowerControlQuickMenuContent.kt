@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,12 +47,12 @@ fun PowerControlQuickMenuContent(
     onAutoTuningToggled: (Boolean) -> Unit,
     onProfileSelected: (PowerProfile) -> Unit,
     onGovernorSelected: (String) -> Unit,
-    onMinFreqChanged: (Int) -> Unit,
-    onMaxFreqChanged: (Int) -> Unit,
+    onMinCpuValueChanged: (Int) -> Unit,
+    onMaxCpuValueChanged: (Int) -> Unit,
     onMinGpuPowerChanged: (Int) -> Unit,
     onMaxGpuPowerChanged: (Int) -> Unit,
-    onMinRamPowerChanged: (Int) -> Unit,
-    onMaxRamPowerChanged: (Int) -> Unit,
+    onMinRamValueChanged: (Int) -> Unit,
+    onMaxRamValueChanged: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -73,12 +74,12 @@ fun PowerControlQuickMenuContent(
                     onAutoTuningToggled = onAutoTuningToggled,
                     onProfileSelected = onProfileSelected,
                     onGovernorSelected = onGovernorSelected,
-                    onMinFreqChanged = onMinFreqChanged,
-                    onMaxFreqChanged = onMaxFreqChanged,
+                    onMinCpuValueChanged = onMinCpuValueChanged,
+                    onMaxCpuValueChanged = onMaxCpuValueChanged,
                     onMinGpuPowerChanged = onMinGpuPowerChanged,
                     onMaxGpuPowerChanged = onMaxGpuPowerChanged,
-                    onMinRamPowerChanged = onMinRamPowerChanged,
-                    onMaxRamPowerChanged = onMaxRamPowerChanged,
+                    onMinRamValueChanged = onMinRamValueChanged,
+                    onMaxRamValueChanged = onMaxRamValueChanged,
                 )
             }
         }
@@ -138,21 +139,21 @@ private fun SuccessView(
     onAutoTuningToggled: (Boolean) -> Unit,
     onProfileSelected: (PowerProfile) -> Unit,
     onGovernorSelected: (String) -> Unit,
-    onMinFreqChanged: (Int) -> Unit,
-    onMaxFreqChanged: (Int) -> Unit,
+    onMinCpuValueChanged: (Int) -> Unit,
+    onMaxCpuValueChanged: (Int) -> Unit,
     onMinGpuPowerChanged: (Int) -> Unit,
     onMaxGpuPowerChanged: (Int) -> Unit,
-    onMinRamPowerChanged: (Int) -> Unit,
-    onMaxRamPowerChanged: (Int) -> Unit,
+    onMinRamValueChanged: (Int) -> Unit,
+    onMaxRamValueChanged: (Int) -> Unit,
 ) {
     var isProfileDropdownExpanded by remember { mutableStateOf(false) }
     var isGovernorDropdownExpanded by remember { mutableStateOf(false) }
-    var selectedMinFreqIndex by remember { mutableStateOf(state.cpuInfo.selectedMinFreqIndex) }
-    var selectedMaxFreqIndex by remember { mutableStateOf(state.cpuInfo.selectedMaxFreqIndex) }
-    var selectedMinGpuPowerLevel by remember { mutableStateOf(state.gpuInfo?.minPowerLevel ?: 0) }
-    var selectedMaxGpuPowerLevel by remember { mutableStateOf(state.gpuInfo?.maxPowerLevel ?: 0) }
-    var selectedMinRamPowerLevel by remember { mutableStateOf(state.ramInfo?.minPowerLevel ?: 0) }
-    var selectedMaxRamPowerLevel by remember { mutableStateOf(state.ramInfo?.maxPowerLevel ?: 0) }
+    var selectedMinFreqIndex by remember { mutableIntStateOf(state.cpuInfo.selectedMinFreqIndex) }
+    var selectedMaxFreqIndex by remember { mutableIntStateOf(state.cpuInfo.selectedMaxFreqIndex) }
+    var selectedMinGpuPowerLevel by remember { mutableIntStateOf(state.gpuInfo?.minPowerLevel ?: 0) }
+    var selectedMaxGpuPowerLevel by remember { mutableIntStateOf(state.gpuInfo?.maxPowerLevel ?: 0) }
+    var selectedMinRamValue by remember { mutableIntStateOf(state.ramInfo?.minBusLevel ?: 0) }
+    var selectedMaxRamValue by remember { mutableIntStateOf(state.ramInfo?.maxBusLevel ?: 0) }
 
     LaunchedEffect(state.cpuInfo.selectedMinFreqIndex, state.cpuInfo.selectedMaxFreqIndex) {
         selectedMinFreqIndex = state.cpuInfo.selectedMinFreqIndex
@@ -164,9 +165,9 @@ private fun SuccessView(
         selectedMaxGpuPowerLevel = state.gpuInfo?.maxPowerLevel ?: 0
     }
 
-    LaunchedEffect(state.ramInfo?.minPowerLevel, state.ramInfo?.maxPowerLevel) {
-        selectedMinRamPowerLevel = state.ramInfo?.minPowerLevel ?: 0
-        selectedMaxRamPowerLevel = state.ramInfo?.maxPowerLevel ?: 0
+    LaunchedEffect(state.ramInfo?.minBusLevel, state.ramInfo?.maxBusLevel) {
+        selectedMinRamValue = state.ramInfo?.minBusLevel ?: 0
+        selectedMaxRamValue = state.ramInfo?.maxBusLevel ?: 0
     }
 
     @SuppressLint("DefaultLocale")
@@ -356,7 +357,7 @@ private fun SuccessView(
                         }
                     },
                     onValueChangeFinished = {
-                        onMinFreqChanged(selectedMinFreqIndex)
+                        onMinCpuValueChanged(selectedMinFreqIndex)
                     },
                     valueRange = 0f..(state.cpuInfo.availableFrequencies.size - 1).toFloat(),
                     steps = state.cpuInfo.availableFrequencies.size - 2,
@@ -390,7 +391,7 @@ private fun SuccessView(
                         }
                     },
                     onValueChangeFinished = {
-                        onMaxFreqChanged(selectedMaxFreqIndex)
+                        onMaxCpuValueChanged(selectedMaxFreqIndex)
                     },
                     valueRange = 0f..(state.cpuInfo.availableFrequencies.size - 1).toFloat(),
                     steps = state.cpuInfo.availableFrequencies.size - 2,
@@ -509,7 +510,7 @@ private fun SuccessView(
         }
 
         state.ramInfo?.let { ramInfo ->
-            if (ramInfo.maxAvailablePowerLevel > 0) {
+            if (ramInfo.maxAvailableBusLevel > 0) {
                 SectionHeader(title = "RAM")
 
                 Text(
@@ -526,24 +527,24 @@ private fun SuccessView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Slider(
-                        value = selectedMinRamPowerLevel.toFloat(),
+                        value = selectedMinRamValue.toFloat(),
                         onValueChange = { newValue ->
                             val newLevel = newValue.toInt()
 
-                            if (newLevel <= selectedMaxRamPowerLevel) {
-                                selectedMinRamPowerLevel = newLevel
+                            if (newLevel <= selectedMaxRamValue) {
+                                selectedMinRamValue = newLevel
                             }
                         },
                         onValueChangeFinished = {
-                            onMinRamPowerChanged(selectedMinRamPowerLevel)
+                            onMinRamValueChanged(selectedMinRamValue)
                         },
-                        valueRange = 0f..ramInfo.maxAvailablePowerLevel.toFloat(),
-                        steps = (ramInfo.maxAvailablePowerLevel - 1).coerceAtLeast(0),
+                        valueRange = 0f..ramInfo.maxAvailableBusLevel.toFloat(),
+                        steps = (ramInfo.maxAvailableBusLevel - 1).coerceAtLeast(0),
                         modifier = Modifier.weight(1f)
                     )
 
                     Text(
-                        text = selectedMinRamPowerLevel.toString(),
+                        text = selectedMinRamValue.toString(),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.Medium
                         ),
@@ -566,24 +567,24 @@ private fun SuccessView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Slider(
-                        value = selectedMaxRamPowerLevel.toFloat(),
+                        value = selectedMaxRamValue.toFloat(),
                         onValueChange = { newValue ->
                             val newLevel = newValue.toInt()
 
-                            if (newLevel >= selectedMinRamPowerLevel) {
-                                selectedMaxRamPowerLevel = newLevel
+                            if (newLevel >= selectedMinRamValue) {
+                                selectedMaxRamValue = newLevel
                             }
                         },
                         onValueChangeFinished = {
-                            onMaxRamPowerChanged(selectedMaxRamPowerLevel)
+                            onMaxRamValueChanged(selectedMaxRamValue)
                         },
-                        valueRange = 0f..ramInfo.maxAvailablePowerLevel.toFloat(),
-                        steps = (ramInfo.maxAvailablePowerLevel - 1).coerceAtLeast(0),
+                        valueRange = 0f..ramInfo.maxAvailableBusLevel.toFloat(),
+                        steps = (ramInfo.maxAvailableBusLevel - 1).coerceAtLeast(0),
                         modifier = Modifier.weight(1f)
                     )
 
                     Text(
-                        text = selectedMaxRamPowerLevel.toString(),
+                        text = selectedMaxRamValue.toString(),
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.Medium
                         ),

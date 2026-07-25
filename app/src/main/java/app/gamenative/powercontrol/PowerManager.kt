@@ -698,7 +698,7 @@ object PowerManager {
                 startAutoTuning()
             }
         } catch (e: Exception) {
-            Timber.tag("PowerManager").e(e, "Failed to restore power profile")
+            currentProfile = getDriver().getDefaultProfile()
         }
     }
 }

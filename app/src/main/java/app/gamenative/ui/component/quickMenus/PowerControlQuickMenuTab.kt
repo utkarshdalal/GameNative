@@ -56,9 +56,9 @@ data class GpuDisplayInfo(
 )
 
 data class RamDisplayInfo(
-    val minPowerLevel: Int,
-    val maxPowerLevel: Int,
-    val maxAvailablePowerLevel: Int
+    val minBusLevel: Int,
+    val maxBusLevel: Int,
+    val maxAvailableBusLevel: Int
 )
 
 @Composable
@@ -120,7 +120,7 @@ fun PowerControlQuickMenuTab(
                 refreshTrigger++
             }
         },
-        onMinFreqChanged = { freqIndex ->
+        onMinCpuValueChanged = { freqIndex ->
             if (uiState is PowerControlUiState.Success) {
                 val freq = (uiState as PowerControlUiState.Success).cpuInfo.availableFrequencies[freqIndex]
                 coroutineScope.launch(Dispatchers.IO) {
@@ -130,7 +130,7 @@ fun PowerControlQuickMenuTab(
                 }
             }
         },
-        onMaxFreqChanged = { freqIndex ->
+        onMaxCpuValueChanged = { freqIndex ->
             if (uiState is PowerControlUiState.Success) {
                 val freq = (uiState as PowerControlUiState.Success).cpuInfo.availableFrequencies[freqIndex]
                 coroutineScope.launch(Dispatchers.IO) {
@@ -154,14 +154,14 @@ fun PowerControlQuickMenuTab(
                 refreshTrigger++
             }
         },
-        onMinRamPowerChanged = { powerLevel ->
+        onMinRamValueChanged = { powerLevel ->
             coroutineScope.launch(Dispatchers.IO) {
                 PowerManager.setProfileName(PerformancePreset.CUSTOM.displayName)
                 PowerManager.setMinBusLevel(powerLevel)
                 refreshTrigger++
             }
         },
-        onMaxRamPowerChanged = { powerLevel ->
+        onMaxRamValueChanged = { powerLevel ->
             coroutineScope.launch(Dispatchers.IO) {
                 PowerManager.setProfileName(PerformancePreset.CUSTOM.displayName)
                 PowerManager.setMaxBusLevel(powerLevel)
@@ -239,9 +239,9 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
 
                         if (busInfo != null && busInfo.numBusLevels > 0) {
                             RamDisplayInfo(
-                                minPowerLevel = busInfo.minBusLevel,
-                                maxPowerLevel = busInfo.maxBusLevel,
-                                maxAvailablePowerLevel = busInfo.numBusLevels - 1
+                                minBusLevel = busInfo.minBusLevel,
+                                maxBusLevel = busInfo.maxBusLevel,
+                                maxAvailableBusLevel = busInfo.numBusLevels - 1
                             )
                         } else {
                             null
@@ -282,8 +282,8 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
                         maxCpuFreq = cpuInfo.currentMaxValue,
                         minGpuPowerLevel = gpuDisplayInfo?.minPowerLevel ?: 0,
                         maxGpuPowerLevel = gpuDisplayInfo?.maxPowerLevel ?: 0,
-                        minBusLevel = ramDisplayInfo?.minPowerLevel ?: 0,
-                        maxBusLevel = ramDisplayInfo?.maxPowerLevel ?: 0
+                        minBusLevel = ramDisplayInfo?.minBusLevel ?: 0,
+                        maxBusLevel = ramDisplayInfo?.maxBusLevel ?: 0
                     )).copy(
                         // Preserve enableAutoTuning from PowerManager's current profile
                         enableAutoTuning = PowerManager.currentProfile?.enableAutoTuning ?: true
@@ -327,12 +327,12 @@ fun PowerControlLoadingPreview() {
             onAutoTuningToggled = {},
             onProfileSelected = {},
             onGovernorSelected = {},
-            onMinFreqChanged = {},
-            onMaxFreqChanged = {},
+            onMinCpuValueChanged = {},
+            onMaxCpuValueChanged = {},
             onMinGpuPowerChanged = {},
             onMaxGpuPowerChanged = {},
-            onMinRamPowerChanged = {},
-            onMaxRamPowerChanged = {},
+            onMinRamValueChanged = {},
+            onMaxRamValueChanged = {},
         )
     }
 }
@@ -384,12 +384,12 @@ fun PowerControlSuccessCpuOnlyPreview() {
             onAutoTuningToggled = {},
             onProfileSelected = {},
             onGovernorSelected = {},
-            onMinFreqChanged = {},
-            onMaxFreqChanged = {},
+            onMinCpuValueChanged = {},
+            onMaxCpuValueChanged = {},
             onMinGpuPowerChanged = {},
             onMaxGpuPowerChanged = {},
-            onMinRamPowerChanged = {},
-            onMaxRamPowerChanged = {},
+            onMinRamValueChanged = {},
+            onMaxRamValueChanged = {},
         )
     }
 }
@@ -437,20 +437,20 @@ fun PowerControlSuccessWithGpuPreview() {
                     )
                 ),
                 ramInfo = RamDisplayInfo(
-                    minPowerLevel = 0,
-                    maxPowerLevel = 4,
-                    maxAvailablePowerLevel = 4
+                    minBusLevel = 0,
+                    maxBusLevel = 4,
+                    maxAvailableBusLevel = 4
                 ),
             ),
             onAutoTuningToggled = {},
             onProfileSelected = {},
             onGovernorSelected = {},
-            onMinFreqChanged = {},
-            onMaxFreqChanged = {},
+            onMinCpuValueChanged = {},
+            onMaxCpuValueChanged = {},
             onMinGpuPowerChanged = {},
             onMaxGpuPowerChanged = {},
-            onMinRamPowerChanged = {},
-            onMaxRamPowerChanged = {},
+            onMinRamValueChanged = {},
+            onMaxRamValueChanged = {},
         )
     }
 }
