@@ -67,7 +67,7 @@ public class ControllerManager {
     private final Map<String, Long> firstSeenByIdentifier = new HashMap<>();
     private final Handler settleHandler = new Handler(Looper.getMainLooper());
     private final Runnable settleAssignRunnable = this::autoAssignConnectedDevices;
-    private final Set<Integer> sessionActiveDeviceIds = new HashSet<>();
+    private final Set<String> sessionActiveIdentifiers = new HashSet<>();
     private boolean sessionUsedExternalController;
 
     public interface OnSlotsChangedListener {
@@ -484,12 +484,12 @@ public class ControllerManager {
     }
 
     public void resetSessionActivity() {
-        sessionActiveDeviceIds.clear();
+        sessionActiveIdentifiers.clear();
         sessionUsedExternalController = false;
     }
 
     public int getSessionUsedControllerCount() {
-        return sessionActiveDeviceIds.size();
+        return sessionActiveIdentifiers.size();
     }
 
     public boolean getSessionUsedExternalController() {
@@ -505,12 +505,13 @@ public class ControllerManager {
         int slot = getSlotForDevice(deviceId);
         if (slot == 0) return false;
         InputDevice occupant = getAssignedDeviceForSlot(0);
-        if (occupant != null && sessionActiveDeviceIds.contains(occupant.getId())) return false;
+        if (occupant == null) return false;
+        String occupantIdentifier = getDeviceIdentifier(occupant);
+        if (occupantIdentifier == null || sessionActiveIdentifiers.contains(occupantIdentifier)) return false;
         String deviceIdentifier = getDeviceIdentifierForDeviceId(deviceId);
         if (deviceIdentifier == null) return false;
-        String occupantIdentifier = occupant != null ? getDeviceIdentifier(occupant) : null;
         assignDeviceIdentifierToSlot(0, deviceIdentifier);
-        if (occupantIdentifier != null && slot > 0) {
+        if (slot > 0) {
             assignDeviceIdentifierToSlot(slot, occupantIdentifier);
         }
         saveAssignments();
@@ -520,7 +521,8 @@ public class ControllerManager {
     }
 
     private void markActive(int deviceId) {
-        if (!sessionActiveDeviceIds.add(deviceId)) return;
+        String identifier = getDeviceIdentifierForDeviceId(deviceId);
+        if (identifier == null || !sessionActiveIdentifiers.add(identifier)) return;
         InputDevice device = inputManager.getInputDevice(deviceId);
         if (device != null &&
                 (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q || device.isExternal())) {
