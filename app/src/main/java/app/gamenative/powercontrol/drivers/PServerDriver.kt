@@ -1060,6 +1060,16 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     /**
+     * Get the number of CPU clusters identified.
+     * Used to determine optimal pinning strategy.
+     *
+     * @return Number of clusters (1, 2, or 3+)
+     */
+    fun getCpuClusterCount(): Int {
+        return cpuClusters.size
+    }
+
+    /**
      * Pin the current app process to efficiency cores.
      * Frees up performance cores for game processes.
      *

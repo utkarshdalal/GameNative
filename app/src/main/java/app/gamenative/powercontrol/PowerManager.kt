@@ -517,8 +517,11 @@ object PowerManager {
     // ========================================
 
     /**
-     * Pin PulseAudio daemon to a dedicated performance core.
-     * Uses first performance core to ensure low-latency audio without game interference.
+     * Pin PulseAudio daemon to a dedicated core.
+     * Strategy varies by cluster count:
+     * - Dual-cluster (e.g., Odin 3): Pin to first efficiency/lower-frequency core
+     * - Tri-cluster: Pin to first efficiency core
+     * - Single-cluster: Pin to first available core
      */
     private fun pinPulseAudioToDedicatedCore() {
         val driver = getDriver()
@@ -531,12 +534,21 @@ object PowerManager {
 
                 val audioPid = driver.getProcessId("libpulseaudio.so")
                 if (audioPid != null) {
-                    // Pin to first performance core only (dedicated for audio)
+                    val clusterCount = driver.getCpuClusterCount()
+                    val effCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY)
                     val perfCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
-                    if (perfCores.isNotEmpty()) {
-                        val success = driver.setCpuAffinityByCores(audioPid, listOf(perfCores.first()))
+
+                    // Choose cores based on cluster configuration
+                    val audioCores = when {
+                        effCores.isNotEmpty() -> listOf(effCores.first())
+                        perfCores.isNotEmpty() -> listOf(perfCores.first())
+                        else -> emptyList()
+                    }
+
+                    if (audioCores.isNotEmpty()) {
+                        val success = driver.setCpuAffinityByCores(audioPid, audioCores)
                         if (success) {
-                            Timber.tag("PowerManager").i("Pinned PulseAudio (PID: $audioPid) to CPU ${perfCores.first()}")
+                            Timber.tag("PowerManager").i("Pinned PulseAudio (PID: $audioPid) to CPU ${audioCores.first()} ($clusterCount clusters)")
                         }
                     }
                 } else {
@@ -550,8 +562,10 @@ object PowerManager {
 
     /**
      * Pin Wine infrastructure processes for optimal game performance.
-     * Pins wineserver, winhandler, and services.exe to performance cores.
-     * Should be called after the game starts to ensure Wine is fully initialized.
+     * Strategy varies by cluster count:
+     * - Dual-cluster (e.g., Odin 3): Pin to efficiency/lower-frequency cores to free prime cores for game
+     * - Tri-cluster: Pin to efficiency + performance cores, leave prime for game
+     * - Single-cluster: Pin to all available cores
      */
     fun pinWineInfrastructure() {
         val driver = getDriver()
@@ -562,34 +576,41 @@ object PowerManager {
                 // Wait for Wine to fully initialize
                 Thread.sleep(2000)
 
+                val clusterCount = driver.getCpuClusterCount()
+                val effCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY)
                 val perfCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
-                val primeCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME)
-                val allPerfCores = perfCores + primeCores
 
-                if (perfCores.isEmpty()) {
-                    Timber.tag("PowerManager").w("No performance cores found, skipping Wine pinning")
+                // Determine Wine infrastructure cores based on cluster configuration
+                val wineCores = when (clusterCount) {
+                    1 -> perfCores // Single cluster: use all cores
+                    2 -> effCores  // Dual cluster: use lower-frequency cores, save prime for game
+                    else -> effCores + perfCores // Tri+ cluster: use eff + perf, save prime for game
+                }
+
+                if (wineCores.isEmpty()) {
+                    Timber.tag("PowerManager").w("No cores available for Wine pinning")
                     return@Thread
                 }
 
-                // Pin wineserver to all performance cores (critical for Wine IPC)
+                // Pin wineserver to Wine infrastructure cores (critical for Wine IPC)
                 driver.findWineProcessPid("wineserver")?.let { pid ->
-                    val success = driver.setCpuAffinityByCores(pid, perfCores)
+                    val success = driver.setCpuAffinityByCores(pid, wineCores)
                     if (success) {
-                        Timber.tag("PowerManager").i("Pinned wineserver (PID: $pid) to CPUs ${perfCores.joinToString()}")
+                        Timber.tag("PowerManager").i("Pinned wineserver (PID: $pid) to CPUs ${wineCores.joinToString()}")
                     }
                 }
 
-                // Pin winhandler to performance + prime cores (handles game window management)
+                // Pin winhandler to Wine infrastructure cores
                 driver.findWineProcessPid("winhandler.exe")?.let { pid ->
-                    val success = driver.setCpuAffinityByCores(pid, allPerfCores)
+                    val success = driver.setCpuAffinityByCores(pid, wineCores)
                     if (success) {
-                        Timber.tag("PowerManager").i("Pinned winhandler.exe (PID: $pid) to CPUs ${allPerfCores.joinToString()}")
+                        Timber.tag("PowerManager").i("Pinned winhandler.exe (PID: $pid) to CPUs ${wineCores.joinToString()}")
                     }
                 }
 
-                // Pin services.exe to first two performance cores
+                // Pin services.exe to first two Wine infrastructure cores
                 driver.findWineProcessPid("services.exe")?.let { pid ->
-                    val serviceCores = perfCores.take(2)
+                    val serviceCores = wineCores.take(2)
                     if (serviceCores.isNotEmpty()) {
                         val success = driver.setCpuAffinityByCores(pid, serviceCores)
                         if (success) {
@@ -606,7 +627,10 @@ object PowerManager {
 
     /**
      * Pin a game process with retry logic.
-     * Waits for the process to start before pinning.
+     * Strategy varies by cluster count:
+     * - Dual-cluster (e.g., Odin 3): Pin to prime cores only for maximum performance
+     * - Tri-cluster: Pin to performance + prime cores
+     * - Single-cluster: Pin to all available cores
      *
      * @param processName Process name or package name
      * @param maxRetries Maximum number of retry attempts (default: 10)
@@ -634,16 +658,22 @@ object PowerManager {
                     }
 
                     if (pid != null) {
-                        // Pin to performance + prime cores (Strategy A)
+                        val clusterCount = driver.getCpuClusterCount()
                         val perfCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
                         val primeCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME)
-                        val gameCores = perfCores + primeCores
+
+                        // Determine game cores based on cluster configuration
+                        val gameCores = when (clusterCount) {
+                            1 -> perfCores // Single cluster: use all cores
+                            2 -> primeCores.ifEmpty { perfCores } // Dual: prime only (or perf if no prime)
+                            else -> perfCores + primeCores // Tri+: perf + prime, leave efficiency for background
+                        }
 
                         if (gameCores.isNotEmpty()) {
                             val success = driver.setCpuAffinityByCores(pid, gameCores)
                             if (success) {
                                 Timber.tag("PowerManager").i(
-                                    "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} after ${maxRetries - retries + 1} attempts"
+                                    "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} ($clusterCount clusters) after ${maxRetries - retries + 1} attempts"
                                 )
                             }
                         }
