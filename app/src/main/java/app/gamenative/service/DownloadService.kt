@@ -2,6 +2,7 @@ package app.gamenative.service
 
 import android.content.Context
 import android.os.Environment
+import app.gamenative.PrefManager
 import app.gamenative.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,10 +38,59 @@ object DownloadService {
         baseExternalAppDirPath = extFiles?.parentFile?.path ?: ""
 
         val sm = context.getSystemService(android.os.storage.StorageManager::class.java)
-        externalVolumePaths = StorageUtils.getAllExternalFilesDirs(context)
+        val appFilesDirs = StorageUtils.getAllExternalFilesDirs(context)
             .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
             .filter { sm?.getStorageVolume(it)?.isPrimary != true }
-            .map { it.absolutePath }
+        // both layouts per volume: legacy Android/data (existing installs) + public root (new installs)
+        externalVolumePaths = appFilesDirs
+            .flatMap { dir -> listOfNotNull(dir.absolutePath, StorageUtils.publicInstallRoot(dir)?.absolutePath) }
+            .distinct()
+
+        migrateExternalStoragePath()
+    }
+
+    // Android/data paths pay a ~1000x FUSE metadata penalty (MediaProvider disables kernel
+    // caching there); repoint the install pref at the public root so new installs avoid it
+    private fun migrateExternalStoragePath() {
+        val pref = PrefManager.externalStoragePath
+        if (pref.isBlank()) return
+        val public: File
+        val legacy: File?
+        if (pref.contains("/Android/data/")) {
+            legacy = File(pref)
+            public = StorageUtils.publicInstallRoot(legacy) ?: return
+            if (!StorageUtils.ensureInstallRoot(public)) return
+            Timber.i("Migrating external install root from $pref to ${public.absolutePath}")
+            PrefManager.externalStoragePath = public.absolutePath
+        } else {
+            // pref already migrated; legacy content may still need moving
+            public = File(pref)
+            legacy = externalVolumePaths.map(::File).firstOrNull {
+                it.absolutePath.contains("/Android/data/") &&
+                    StorageUtils.publicInstallRoot(it)?.absolutePath == public.absolutePath
+            }
+            if (legacy == null || !StorageUtils.ensureInstallRoot(public)) return
+        }
+        moveExternalContent(legacy, public)
+    }
+
+    // rename(2) only — same-volume moves are instant metadata ops even for huge libraries;
+    // on failure the game stays in place and the dual-root scan keeps finding it
+    private fun moveExternalContent(legacyRoot: File, publicRoot: File) {
+        for (name in listOf("Steam", "GOG", "Epic", "Amazon")) {
+            val src = File(legacyRoot, name)
+            val dst = File(publicRoot, name)
+            if (!src.isDirectory) continue
+            if (dst.exists()) {
+                Timber.w("Not moving $src: $dst already exists")
+                continue
+            }
+            if (src.renameTo(dst)) {
+                Timber.i("Moved $src to $dst")
+            } else {
+                Timber.w("Could not move $src to $dst; leaving in place")
+            }
+        }
     }
 
     @Synchronized

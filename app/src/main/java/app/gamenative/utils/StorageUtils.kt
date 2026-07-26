@@ -98,6 +98,32 @@ object StorageUtils {
         return result
     }
 
+    private const val PUBLIC_INSTALL_DIR_NAME = "GameNative"
+
+    /**
+     * Maps an app-specific dir (<volume>/Android/data/<pkg>/files) to a public install root
+     * (<volume>/GameNative). MediaProvider disables FUSE kernel caching under Android/data,
+     * making per-open metadata ops ~1000x slower there; public dirs get normal dcache treatment.
+     */
+    fun publicInstallRoot(appFilesDir: File): File? {
+        val path = appFilesDir.absolutePath
+        val idx = path.indexOf("/Android/data/")
+        if (idx <= 0) return null
+        return File(path.substring(0, idx), PUBLIC_INSTALL_DIR_NAME)
+    }
+
+    fun ensureInstallRoot(dir: File): Boolean {
+        if (!dir.isDirectory && !dir.mkdirs()) return false
+        runCatching { File(dir, ".nomedia").createNewFile() }
+        return true
+    }
+
+    fun preferredInstallRoot(appFilesDir: File): String {
+        val public = publicInstallRoot(appFilesDir)
+        if (public != null && ensureInstallRoot(public)) return public.absolutePath
+        return appFilesDir.absolutePath
+    }
+
     /**
      * Gets all app-specific external files directories, using StorageManager as a fallback
      * for cases where context.getExternalFilesDirs(null) might return null or incomplete results
