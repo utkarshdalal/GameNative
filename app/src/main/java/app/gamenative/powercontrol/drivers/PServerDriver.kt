@@ -68,6 +68,14 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     // CPU cluster mapping for affinity control
     private var cpuClusters: Map<CpuCluster, List<Int>> = emptyMap()
 
+    // Taskset mask format (cached after first detection)
+    private var tasksetMaskFormat: TasksetMaskFormat? = null
+
+    enum class TasksetMaskFormat {
+        PLAIN_HEX,  // e.g., "f8"
+        HEX_PREFIX  // e.g., "0xf8"
+    }
+
     // Track current CPU settings (what was requested, not what policy0 has)
     private var currentMinCpuFreq: Long = 0L
     private var currentMaxCpuFreq: Long = 0L
@@ -1163,9 +1171,56 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         // Convert CPU list to bitmask
         // e.g., [3,4,5,6,7] -> 0xf8 (binary: 11111000)
         val mask = cpuList.fold(0) { acc, cpu -> acc or (1 shl cpu) }
-        val hexMask = "0x${mask.toString(16)}"
+        val hexMask = getTasksetMask(mask)
 
         return setCpuAffinity(pid, hexMask)
+    }
+
+    /**
+     * Get the correct taskset mask format for this system.
+     * Detects once and caches the result.
+     *
+     * @param mask Bitmask value (e.g., 0xf8 = 248)
+     * @return Formatted mask string (e.g., "f8" or "0xf8")
+     */
+    fun getTasksetMask(mask: Int): String {
+        // Return cached format if already detected
+        if (tasksetMaskFormat != null) {
+            return when (tasksetMaskFormat) {
+                TasksetMaskFormat.PLAIN_HEX -> mask.toString(16)
+                TasksetMaskFormat.HEX_PREFIX -> "0x${mask.toString(16)}"
+                else -> mask.toString(16)
+            }
+        }
+
+        // Detect format by testing with a simple command
+        try {
+            val testMask = "0x1"  // Test with 0x prefix
+            val command = arrayOf("sh", "-c", "taskset $testMask echo test 2>&1")
+            val process = Runtime.getRuntime().exec(command)
+            val output = process.inputStream.bufferedReader().use { it.readText() }
+            process.waitFor()
+
+            tasksetMaskFormat = if (output.contains("bad mask", ignoreCase = true)) {
+                // 0x prefix failed, use plain hex
+                Timber.tag(TAG).d("Detected taskset format: plain hex (no 0x prefix)")
+                TasksetMaskFormat.PLAIN_HEX
+            } else {
+                // 0x prefix works
+                Timber.tag(TAG).d("Detected taskset format: hex with 0x prefix")
+                TasksetMaskFormat.HEX_PREFIX
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Failed to detect taskset format, defaulting to plain hex")
+            tasksetMaskFormat = TasksetMaskFormat.PLAIN_HEX
+        }
+
+        // Return formatted mask
+        return when (tasksetMaskFormat) {
+            TasksetMaskFormat.PLAIN_HEX -> mask.toString(16)
+            TasksetMaskFormat.HEX_PREFIX -> "0x${mask.toString(16)}"
+            else -> mask.toString(16)
+        }
     }
 
     /**
@@ -1185,36 +1240,66 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     /**
-     * Find Wine process PID by searching for executable name in command line.
+     * Find Running processes searching command line.
      * This is more reliable for Wine processes than pidof.
      *
-     * @param executableName Executable name (e.g., "YookaLaylee64.exe")
-     * @return Process ID or null if not found
+     * @return List of pairs containing process ID and command line
      */
-    fun findWineProcessPid(executableName: String): Int? {
+    private fun findRunningProcesses(): List<Pair<Int, String>> {
         return try {
-            // Search /proc for processes with this executable in their cmdline
-            // Use grep -l to find matching files, then extract PID from path
-            val command = """
-                for pid in /proc/[0-9]*; do
-                    if [ -f "${'$'}pid/cmdline" ] && grep -q "$executableName" "${'$'}pid/cmdline" 2>/dev/null; then
-                        basename "${'$'}pid"
-                        break
-                    fi
-                done
-            """.trimIndent()
+            val command = arrayOf("sh", "-c", "ps -eo pid=,args= | awk '{ pid=\$1; \$1=\"\"; sub(/^ /, \"\"); print pid \"|\" \$0 }'")
+            val process = Runtime.getRuntime().exec(command)
+            val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
 
-            val result = executeAsRoot(command)
-            val pidStr = result.getOrNull()?.trim()
-            val pid = pidStr?.toIntOrNull()
-
-            if (pid != null) {
-                Timber.tag(TAG).d("Found Wine process PID $pid for $executableName")
+            if (output.isNullOrEmpty()) {
+                return emptyList()
             }
-            pid
+
+            val processes = output.lines().mapNotNull { line ->
+                val parts = line.split("|", limit = 2)
+                if (parts.size != 2) {
+                    return@mapNotNull null
+                }
+
+                val pid = parts[0].toIntOrNull() ?: return@mapNotNull null
+                val cmdline = parts[1]
+
+                if (cmdline.contains("ps -eo", ignoreCase = true)) {
+                    return@mapNotNull null
+                }
+
+                Pair(pid, cmdline)
+            }
+
+            processes
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to find Running processe")
+            emptyList()
+        }
+    }
+
+    /**
+     * Find Running processes by searching for executable name.
+     * This is more reliable for Wine processes than pidof.
+     *
+     * @param executableName x name (e.g., "YookaLaylee64.exe")
+     * @return List of pairs containing process ID and command line
+     */
+    fun findRunningProcesses(executableName: String): List<Pair<Int, String>> {
+        return try {
+            val allProcesses = findRunningProcesses()
+            val matchingProcesses = allProcesses.filter { (_, cmdline) ->
+                cmdline.contains(executableName, ignoreCase = false)
+            }
+
+            if (matchingProcesses.isNotEmpty()) {
+                Timber.tag(TAG).d("Found ${matchingProcesses.size} Wine process(es) for $executableName")
+            }
+
+            matchingProcesses
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to find Wine process for $executableName")
-            null
+            emptyList()
         }
     }
 

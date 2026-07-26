@@ -2201,8 +2201,8 @@ fun XServerScreen(
                                     Timber.tag("XServerScreen").i("Initiated CPU pinning for: $baseName.exe")
                                 }
 
-                            // Pin Wine infrastructure processes for better performance
-                            PowerManager.pinWineInfrastructure()
+                            // Pin Background processes for better performance
+                            PowerManager.pinBackgroundProcesses()
 
                             if (!PluviaApp.isActivityInForeground && !neverSuspend) {
                                 PluviaApp.xEnvironment?.onPause()

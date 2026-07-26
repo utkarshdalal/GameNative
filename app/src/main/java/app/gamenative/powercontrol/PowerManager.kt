@@ -561,13 +561,13 @@ object PowerManager {
     }
 
     /**
-     * Pin Wine infrastructure processes for optimal game performance.
+     * Pin Background processes for optimal game performance.
      * Strategy varies by cluster count:
      * - Dual-cluster (e.g., Odin 3): Pin to efficiency/lower-frequency cores to free prime cores for game
      * - Tri-cluster: Pin to efficiency + performance cores, leave prime for game
      * - Single-cluster: Pin to all available cores
      */
-    fun pinWineInfrastructure() {
+    fun pinBackgroundProcesses() {
         val driver = getDriver()
         if (driver !is PServerDriver) return
 
@@ -593,7 +593,9 @@ object PowerManager {
                 }
 
                 // Pin wineserver to Wine infrastructure cores (critical for Wine IPC)
-                driver.findWineProcessPid("wineserver")?.let { pid ->
+                driver.findRunningProcesses("wineserver")
+                    .firstOrNull { it.second.endsWith("wineserver") }?.let {
+                    val pid = it.first
                     val success = driver.setCpuAffinityByCores(pid, wineCores)
                     if (success) {
                         Timber.tag("PowerManager").i("Pinned wineserver (PID: $pid) to CPUs ${wineCores.joinToString()}")
@@ -601,7 +603,9 @@ object PowerManager {
                 }
 
                 // Pin winhandler to Wine infrastructure cores
-                driver.findWineProcessPid("winhandler.exe")?.let { pid ->
+                driver.findRunningProcesses("winhandler.exe")
+                    .firstOrNull { it.second.endsWith("winhandler.exe") }?.let {
+                    val pid = it.first
                     val success = driver.setCpuAffinityByCores(pid, wineCores)
                     if (success) {
                         Timber.tag("PowerManager").i("Pinned winhandler.exe (PID: $pid) to CPUs ${wineCores.joinToString()}")
@@ -609,7 +613,9 @@ object PowerManager {
                 }
 
                 // Pin services.exe to first two Wine infrastructure cores
-                driver.findWineProcessPid("services.exe")?.let { pid ->
+                driver.findRunningProcesses("services.exe")
+                    .firstOrNull { it.second.endsWith("services.exe") }?.let {
+                    val pid = it.first
                     val serviceCores = wineCores.take(2)
                     if (serviceCores.isNotEmpty()) {
                         val success = driver.setCpuAffinityByCores(pid, serviceCores)
@@ -618,6 +624,19 @@ object PowerManager {
                         }
                     }
                 }
+
+                // Pin libsteambootstrap.so to first two Wine infrastructure cores
+                driver.findRunningProcesses("libsteambootstrap.so")
+                    .firstOrNull { it.second.contains("libsteambootstrap.so") }?.let {
+                        val pid = it.first
+                        val serviceCores = wineCores.take(2)
+                        if (serviceCores.isNotEmpty()) {
+                            val success = driver.setCpuAffinityByCores(pid, serviceCores)
+                            if (success) {
+                                Timber.tag("PowerManager").i("Pinned libsteambootstrap.so (PID: $pid) to CPUs ${serviceCores.joinToString()}")
+                            }
+                        }
+                    }
 
             } catch (e: Exception) {
                 Timber.tag("PowerManager").e(e, "Failed to pin Wine infrastructure")
@@ -652,7 +671,10 @@ object PowerManager {
                 while (retries > 0) {
                     // Use Wine-specific search for .exe files, regular pidof for others
                     val pid = if (isWineExecutable) {
-                        driver.findWineProcessPid(processName)
+                        driver.findRunningProcesses(processName).find {
+                            it.second.endsWith(processName, ignoreCase = true) &&
+                            !it.second.contains("winhandler.exe")
+                        }?.first
                     } else {
                         driver.getProcessId(processName)
                     }
