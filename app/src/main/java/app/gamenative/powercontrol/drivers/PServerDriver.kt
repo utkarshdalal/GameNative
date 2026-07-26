@@ -1201,7 +1201,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             val output = process.inputStream.bufferedReader().use { it.readText() }
             process.waitFor()
 
-            tasksetMaskFormat = if (output.contains("bad mask", ignoreCase = true)) {
+            tasksetMaskFormat = if (process.exitValue() != 0) {
                 // 0x prefix failed, use plain hex
                 Timber.tag(TAG).d("Detected taskset format: plain hex (no 0x prefix)")
                 TasksetMaskFormat.PLAIN_HEX
