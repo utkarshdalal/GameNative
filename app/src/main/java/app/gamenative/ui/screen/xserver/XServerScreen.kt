@@ -118,6 +118,7 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ExecutableSelectionUtils
+import app.gamenative.utils.BionicFgQuickMenuHelper
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.ManifestComponentHelper
 import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
@@ -546,6 +547,13 @@ fun XServerScreen(
     var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
     var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
 
+    // bionic-fg tab in QuickMenu only visible when enabled in container settings
+    val isBfgAvailable = BionicFgQuickMenuHelper.isAvailable(container)
+    val initialBfgSettings = remember(container.id) { BionicFgQuickMenuHelper.readSettings(container) }
+    var bfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialBfgSettings.multiplier) }
+    var bfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialBfgSettings.flowScale) }
+    var bfgModel by rememberSaveable(container.id) { mutableIntStateOf(initialBfgSettings.model) }
+
     fun persistFpsLimiterState() {
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
         container.putExtra(FPS_LIMITER_TARGET_EXTRA, fpsLimiterTarget)
@@ -671,6 +679,28 @@ fun XServerScreen(
         applyLsfgSettings()
     }
 
+    fun applyBfgSettings() {
+        BionicFgQuickMenuHelper.applySettings(
+            container,
+            BionicFgQuickMenuHelper.Settings(bfgMultiplier, bfgFlowScale, bfgModel),
+        )
+    }
+
+    fun applyBfgMultiplier(mult: Int) {
+        bfgMultiplier = BionicFgQuickMenuHelper.sanitizeMultiplier(mult)
+        applyBfgSettings()
+    }
+
+    fun applyBfgFlowScale(scale: Float) {
+        bfgFlowScale = BionicFgQuickMenuHelper.sanitizeFlowScale(scale)
+        applyBfgSettings()
+    }
+
+    fun applyBfgModel(model: Int) {
+        bfgModel = BionicFgQuickMenuHelper.sanitizeModel(model)
+        applyBfgSettings()
+    }
+
     LaunchedEffect(xServerView) {
         val detectedMax = detectMaxRefreshRateHz(context, xServerView as? View)
         detectedMaxRefreshRateHz = detectedMax
@@ -753,7 +783,11 @@ fun XServerScreen(
             context = context,
             fpsProvider = {
                 val raw = frameRating?.currentFPS ?: 0f
-                val mult = if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
+                val mult = when {
+                    isLsfgAvailable && lsfgMultiplier >= 2 -> lsfgMultiplier
+                    isBfgAvailable && bfgMultiplier >= 2 -> bfgMultiplier
+                    else -> 1
+                }
                 raw * mult
             },
             initialConfig = performanceHudConfig,
@@ -2616,6 +2650,14 @@ fun XServerScreen(
             onLsfgMultiplierChanged = ::applyLsfgMultiplier,
             onLsfgFlowScaleChanged = ::applyLsfgFlowScale,
             onLsfgPerformanceModeChanged = ::applyLsfgPerformanceMode,
+            // bionic-fg hot-reload (tab only visible when enabled in container settings)
+            isBfgAvailable = isBfgAvailable,
+            bfgMultiplier = bfgMultiplier,
+            bfgFlowScale = bfgFlowScale,
+            bfgModel = bfgModel,
+            onBfgMultiplierChanged = ::applyBfgMultiplier,
+            onBfgFlowScaleChanged = ::applyBfgFlowScale,
+            onBfgModelChanged = ::applyBfgModel,
             onAnimationComplete = { isMenuVisible ->
                 if (isMenuVisible) {
                     pauseForOverlayIfAllowed()
