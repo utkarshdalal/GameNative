@@ -73,6 +73,7 @@ import app.gamenative.api.sortCommunityRuns
 import app.gamenative.utils.BestConfigService
 import com.winlator.core.GPUInformation
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
@@ -149,12 +150,11 @@ fun CommunityConfigsDialog(
 
             detectedGpu = gpu
             detectedDevices = devices
-            if (devices.isEmpty() && hardwareScope == CommunityHardwareScope.CURRENT_DEVICE) {
-                hardwareScope = if (detectedGpu.isNotBlank()) {
-                    CommunityHardwareScope.CURRENT_GPU
-                } else {
-                    CommunityHardwareScope.COMPATIBLE_GPUS
-                }
+            if (devices.isEmpty() &&
+                detectedGpu.isNotBlank() &&
+                hardwareScope == CommunityHardwareScope.CURRENT_DEVICE
+            ) {
+                hardwareScope = CommunityHardwareScope.CURRENT_GPU
             }
             if (game == null) {
                 errorMessage = context.getString(R.string.community_config_game_not_found, gameName)
@@ -194,6 +194,10 @@ fun CommunityConfigsDialog(
         total = 0
         hasMore = false
         currentPage = 0
+        if (detectedDevices.isEmpty() && detectedGpu.isBlank()) {
+            loading = false
+            return@LaunchedEffect
+        }
         try {
             val result = if (hardwareScope == CommunityHardwareScope.COMPATIBLE_GPUS) {
                 service.fetchCompatibleConfigs(game.id, detectedGpu, sort, page = 0)
@@ -679,15 +683,20 @@ private fun CommunityConfigEmptyState(
     ) {
         Text(
             text = stringResource(
-                when (hardwareScope) {
-                    CommunityHardwareScope.CURRENT_DEVICE -> R.string.community_config_no_device_results
-                    CommunityHardwareScope.CURRENT_GPU -> R.string.community_config_no_gpu_results
-                    CommunityHardwareScope.COMPATIBLE_GPUS -> R.string.community_config_no_compatible_results
+                when {
+                    !gpuAvailable -> R.string.community_config_gpu_unknown
+                    hardwareScope == CommunityHardwareScope.CURRENT_DEVICE -> {
+                        R.string.community_config_no_device_results
+                    }
+                    hardwareScope == CommunityHardwareScope.CURRENT_GPU -> {
+                        R.string.community_config_no_gpu_results
+                    }
+                    else -> R.string.community_config_no_compatible_results
                 },
             ),
             style = MaterialTheme.typography.bodyLarge,
         )
-        if (hardwareScope != CommunityHardwareScope.COMPATIBLE_GPUS) {
+        if (gpuAvailable && hardwareScope != CommunityHardwareScope.COMPATIBLE_GPUS) {
             Button(onClick = onBroaden) {
                 Text(
                     stringResource(
@@ -944,6 +953,7 @@ private fun formatCommunityConfigDate(value: String): String {
     if (value.isBlank()) return ""
     return runCatching {
         OffsetDateTime.parse(value)
+            .atZoneSameInstant(ZoneId.systemDefault())
             .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
     }.getOrDefault(value.substringBefore('T'))
 }

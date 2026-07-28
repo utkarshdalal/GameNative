@@ -31,6 +31,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 private const val MAX_CONCURRENT_DEVICE_REQUESTS = 4
+private const val MAX_DEVICE_SLICE_PAGES = 25
 private const val MAX_API_PAGE_SIZE = 200
 private const val MAX_CONFIG_VALUE_CHARS = 64 * 1024
 private const val MAX_METADATA_CHARS = 256
@@ -409,7 +410,9 @@ class CommunityConfigService internal constructor(
             total = maxOf(total, result.total)
             nextPage++
             val maximumPages = (total.toLong() + pageSize - 1) / pageSize
-            hasMore = result.hasMore && nextPage < maximumPages
+            hasMore = result.hasMore &&
+                nextPage < maximumPages &&
+                nextPage < MAX_DEVICE_SLICE_PAGES
         } while (runs.size < targetCount && hasMore)
 
         return DeviceConfigSlice(
@@ -427,20 +430,36 @@ class CommunityConfigService internal constructor(
         limit: Int,
         deviceId: Int?,
     ): CommunityConfigPage {
+        val normalizedPage = page.coerceAtLeast(0)
+        val normalizedLimit = limit.coerceIn(1, MAX_API_PAGE_SIZE)
+        val validDeviceId = deviceId?.takeIf { it > 0 }
+        val cacheKey = ConfigCacheKey(
+            gameId = gameId,
+            gpu = gpu.orEmpty().trim().lowercase(Locale.ENGLISH),
+            sort = sort,
+            page = normalizedPage,
+            limit = normalizedLimit,
+            deviceIds = listOfNotNull(validDeviceId),
+            compatibility = null,
+        )
+        configPageCache.get(cacheKey)?.let { return it }
+
         val urlBuilder = endpoint("api/compatibility")
             .addQueryParameter("gameId", gameId.toString())
             .addQueryParameter("sort", sort.apiValue)
             .addQueryParameter("dir", "desc")
-            .addQueryParameter("page", page.coerceAtLeast(0).toString())
-            .addQueryParameter("limit", limit.coerceIn(1, MAX_API_PAGE_SIZE).toString())
-        if (deviceId != null && deviceId > 0) {
-            urlBuilder.addQueryParameter("deviceId", deviceId.toString())
+            .addQueryParameter("page", normalizedPage.toString())
+            .addQueryParameter("limit", normalizedLimit.toString())
+        if (validDeviceId != null) {
+            urlBuilder.addQueryParameter("deviceId", validDeviceId.toString())
         } else {
             gpu?.trim()?.takeIf { it.isNotEmpty() }?.let {
                 urlBuilder.addQueryParameter("gpu", it)
             }
         }
-        return parseConfigPage(execute(urlBuilder.build().toString()))
+        return parseConfigPage(execute(urlBuilder.build().toString())).also {
+            configPageCache.put(cacheKey, it)
+        }
     }
 
     private fun endpoint(path: String) = baseUrl
@@ -623,7 +642,7 @@ class CommunityConfigService internal constructor(
                 is String -> error
                 else -> root.optString("message")
             }
-        }.getOrDefault("")
+        }.getOrDefault("").trim().take(MAX_METADATA_CHARS)
     }
 }
 

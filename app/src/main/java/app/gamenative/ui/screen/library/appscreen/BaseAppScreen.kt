@@ -1513,7 +1513,7 @@ abstract class BaseAppScreen {
             },
             onBack = onBack,
             optionsMenu = optionsMenu,
-            dialogOpen = showConfigDialog || manageModsRequested,
+            dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested,
         )
 
         if (showReadiness && launchActivity != null) {

@@ -272,6 +272,22 @@ class CommunityConfigServiceTest {
     }
 
     @Test
+    fun httpError_boundsServerControlledMessage() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(503).setBody(
+                """{ "error": { "message": "${"x".repeat(500)}" } }""",
+            ),
+        )
+
+        val error = runCatching {
+            service.fetchConfigs(10, null, CommunityConfigSort.NEWEST, 0)
+        }.exceptionOrNull()
+
+        assertTrue(error is CommunityConfigApiException)
+        assertEquals(256, error?.message?.length)
+    }
+
+    @Test
     fun configCache_reusesPagesAndCanRefreshWithoutDiscardingGameLookups() = runBlocking {
         server.enqueue(
             MockResponse().setBody("""{ "games": [{ "id": 10, "name": "Cached Game" }] }"""),
@@ -631,6 +647,40 @@ class CommunityConfigServiceTest {
         assertFalse(pages.last().hasMore)
         assertTrue(pages.all { it.runs.size == 1 })
         assertEquals(4, pages.last().total)
+        assertEquals(4, server.requestCount)
+    }
+
+    @Test
+    fun fetchConfigs_capsDuplicateHeavyDevicePagination() = runBlocking {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val deviceId = request.requestUrl?.queryParameter("deviceId")?.toIntOrNull() ?: 0
+                val page = request.requestUrl?.queryParameter("page")?.toIntOrNull() ?: 0
+                return MockResponse().setBody(
+                    configPage(
+                        runId = deviceId.toLong(),
+                        rating = 5,
+                        deviceId = deviceId,
+                        total = Int.MAX_VALUE,
+                        page = page,
+                        pageSize = 1,
+                    ),
+                )
+            }
+        }
+
+        val result = service.fetchConfigs(
+            gameId = 10,
+            gpu = null,
+            sort = CommunityConfigSort.HIGHEST_RATED,
+            page = 30,
+            limit = 1,
+            deviceIds = listOf(11, 12),
+        )
+
+        assertTrue(result.runs.isEmpty())
+        assertFalse(result.hasMore)
+        assertEquals(50, server.requestCount)
     }
 
     @Test
