@@ -349,10 +349,10 @@
     <string name="performance_hud_clock_time">Clock time</string>
     <string name="performance_hud_cpu_temperature">CPU temperature</string>
     <string name="performance_hud_gpu_temperature">GPU temperature</string>
-    <string name="performance_hud_battery_level_warning">Batteriestand Warnung</string>
-    <string name="performance_hud_battery_level_limit">Batteriestand Limit</string>
-    <string name="performance_hud_battery_temp_warning">Batterie Temp Warnung</string>
-    <string name="performance_hud_battery_temp_limit">Batterie Temp Limit</string>
+    <string name="performance_hud_battery_level_warning">Battery level warning</string>
+    <string name="performance_hud_battery_level_limit">Battery level limit</string>
+    <string name="performance_hud_battery_temp_warning">Battery temp warning</string>
+    <string name="performance_hud_battery_temp_limit">Battery temp limit</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
     <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
