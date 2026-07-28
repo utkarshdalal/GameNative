@@ -118,6 +118,7 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ExecutableSelectionUtils
+import app.gamenative.utils.BionicFgManager
 import app.gamenative.utils.BionicFgQuickMenuHelper
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.ManifestComponentHelper
@@ -547,12 +548,11 @@ fun XServerScreen(
     var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
     var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
 
-    // bionic-fg tab in QuickMenu only visible when enabled in container settings
+    // bionic-fg tab in QuickMenu only visible when enabled in container settings.
+    // State + callbacks live in one holder object: XServerScreen is at the dex
+    // verifier's register limit, and loose locals here trip a VerifyError.
     val isBfgAvailable = BionicFgQuickMenuHelper.isAvailable(container)
-    val initialBfgSettings = remember(container.id) { BionicFgQuickMenuHelper.readSettings(container) }
-    var bfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialBfgSettings.multiplier) }
-    var bfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialBfgSettings.flowScale) }
-    var bfgModel by rememberSaveable(container.id) { mutableIntStateOf(initialBfgSettings.model) }
+    val bfgMenu = remember(container.id) { BfgMenuState(container) }
 
     fun persistFpsLimiterState() {
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
@@ -679,28 +679,6 @@ fun XServerScreen(
         applyLsfgSettings()
     }
 
-    fun applyBfgSettings() {
-        BionicFgQuickMenuHelper.applySettings(
-            container,
-            BionicFgQuickMenuHelper.Settings(bfgMultiplier, bfgFlowScale, bfgModel),
-        )
-    }
-
-    fun applyBfgMultiplier(mult: Int) {
-        bfgMultiplier = BionicFgQuickMenuHelper.sanitizeMultiplier(mult)
-        applyBfgSettings()
-    }
-
-    fun applyBfgFlowScale(scale: Float) {
-        bfgFlowScale = BionicFgQuickMenuHelper.sanitizeFlowScale(scale)
-        applyBfgSettings()
-    }
-
-    fun applyBfgModel(model: Int) {
-        bfgModel = BionicFgQuickMenuHelper.sanitizeModel(model)
-        applyBfgSettings()
-    }
-
     LaunchedEffect(xServerView) {
         val detectedMax = detectMaxRefreshRateHz(context, xServerView as? View)
         detectedMaxRefreshRateHz = detectedMax
@@ -785,7 +763,7 @@ fun XServerScreen(
                 val raw = frameRating?.currentFPS ?: 0f
                 val mult = when {
                     isLsfgAvailable && lsfgMultiplier >= 2 -> lsfgMultiplier
-                    isBfgAvailable && bfgMultiplier >= 2 -> bfgMultiplier
+                    isBfgAvailable && bfgMenu.multiplier >= 2 -> bfgMenu.multiplier
                     else -> 1
                 }
                 raw * mult
@@ -2652,12 +2630,12 @@ fun XServerScreen(
             onLsfgPerformanceModeChanged = ::applyLsfgPerformanceMode,
             // bionic-fg hot-reload (tab only visible when enabled in container settings)
             isBfgAvailable = isBfgAvailable,
-            bfgMultiplier = bfgMultiplier,
-            bfgFlowScale = bfgFlowScale,
-            bfgModel = bfgModel,
-            onBfgMultiplierChanged = ::applyBfgMultiplier,
-            onBfgFlowScaleChanged = ::applyBfgFlowScale,
-            onBfgModelChanged = ::applyBfgModel,
+            bfgMultiplier = bfgMenu.multiplier,
+            bfgFlowScale = bfgMenu.flowScale,
+            bfgModel = bfgMenu.model,
+            onBfgMultiplierChanged = bfgMenu::applyMultiplier,
+            onBfgFlowScaleChanged = bfgMenu::applyFlowScale,
+            onBfgModelChanged = bfgMenu::applyModel,
             onAnimationComplete = { isMenuVisible ->
                 if (isMenuVisible) {
                     pauseForOverlayIfAllowed()
@@ -5866,4 +5844,40 @@ private fun setImagefsContainerVariant(context: Context, container: Container) {
     val imageFs = ImageFs.find(context)
     val containerVariant = container.containerVariant
     imageFs.createVariantFile(containerVariant)
+}
+
+/**
+ * Quick Menu state + hot-reload callbacks for bionic-fg. Kept out of the
+ * XServerScreen composable because that function sits at the dex verifier's
+ * register limit; adding these as locals produced a VerifyError at class load.
+ */
+private class BfgMenuState(private val container: Container) {
+    var multiplier by mutableIntStateOf(BionicFgManager.multiplier(container))
+        private set
+    var flowScale by mutableStateOf(BionicFgManager.flowScale(container))
+        private set
+    var model by mutableIntStateOf(BionicFgManager.model(container))
+        private set
+
+    private fun apply() {
+        BionicFgQuickMenuHelper.applySettings(
+            container,
+            BionicFgQuickMenuHelper.Settings(multiplier, flowScale, model),
+        )
+    }
+
+    fun applyMultiplier(value: Int) {
+        multiplier = BionicFgQuickMenuHelper.sanitizeMultiplier(value)
+        apply()
+    }
+
+    fun applyFlowScale(value: Float) {
+        flowScale = BionicFgQuickMenuHelper.sanitizeFlowScale(value)
+        apply()
+    }
+
+    fun applyModel(value: Int) {
+        model = BionicFgQuickMenuHelper.sanitizeModel(value)
+        apply()
+    }
 }
