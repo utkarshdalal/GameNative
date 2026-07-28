@@ -269,14 +269,6 @@ fun QuickMenu(
     onLsfgMultiplierChanged: (Int) -> Unit = {},
     onLsfgFlowScaleChanged: (Float) -> Unit = {},
     onLsfgPerformanceModeChanged: (Boolean) -> Unit = {},
-    // bionic-fg hot-reload state (tab only visible when isBfgAvailable)
-    isBfgAvailable: Boolean = false,
-    bfgMultiplier: Int = 2,
-    bfgFlowScale: Float = 0.60f,
-    bfgModel: Int = 0,
-    onBfgMultiplierChanged: (Int) -> Unit = {},
-    onBfgFlowScaleChanged: (Float) -> Unit = {},
-    onBfgModelChanged: (Int) -> Unit = {},
     onAnimationComplete: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -348,10 +340,16 @@ fun QuickMenu(
         )
     }
 
+    // Created here rather than plumbed through XServerScreen: that composable
+    // sits at the dex verifier's register limit and any extra locals there
+    // trip a VerifyError at class load (dex methods over 255 registers hit a
+    // broken D8 codegen path).
+    val bfgMenu = remember(container?.id) { container?.let { BfgMenuState.createIfAvailable(it) } }
+
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
             if ((PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable) ||
-                (PrefManager.quickMenuLastTab == QuickMenuTab.BFG && !isBfgAvailable)
+                (PrefManager.quickMenuLastTab == QuickMenuTab.BFG && bfgMenu == null)
             )
                 QuickMenuTab.HUD
             else PrefManager.quickMenuLastTab
@@ -509,7 +507,7 @@ fun QuickMenu(
                                         focusRequester = lsfgTabFocusRequester,
                                     )
                                 }
-                                if (isBfgAvailable) {
+                                if (bfgMenu != null) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.Speed,
                                         contentDescriptionResId = R.string.bfg_tab_title,
@@ -642,17 +640,19 @@ fun QuickMenu(
                                     }
 
                                     QuickMenuTab.BFG -> {
-                                        BionicFgQuickMenuTab(
-                                            multiplier = bfgMultiplier,
-                                            flowScale = bfgFlowScale,
-                                            model = bfgModel,
-                                            onMultiplierChanged = onBfgMultiplierChanged,
-                                            onFlowScaleChanged = onBfgFlowScaleChanged,
-                                            onModelChanged = onBfgModelChanged,
-                                            scrollState = bfgScrollState,
-                                            focusRequester = bfgItemFocusRequester,
-                                            modifier = Modifier.fillMaxSize(),
-                                        )
+                                        if (bfgMenu != null) {
+                                            BionicFgQuickMenuTab(
+                                                multiplier = bfgMenu.multiplier,
+                                                flowScale = bfgMenu.flowScale,
+                                                model = bfgMenu.model,
+                                                onMultiplierChanged = bfgMenu::applyMultiplier,
+                                                onFlowScaleChanged = bfgMenu::applyFlowScale,
+                                                onModelChanged = bfgMenu::applyModel,
+                                                scrollState = bfgScrollState,
+                                                focusRequester = bfgItemFocusRequester,
+                                                modifier = Modifier.fillMaxSize(),
+                                            )
+                                        }
                                     }
 
                                     QuickMenuTab.EFFECTS -> {

@@ -108,6 +108,7 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
 import app.gamenative.ui.component.parseBooleanExtra
+import app.gamenative.utils.BionicFgManager
 import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
@@ -118,8 +119,6 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ExecutableSelectionUtils
-import app.gamenative.utils.BionicFgManager
-import app.gamenative.utils.BionicFgQuickMenuHelper
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.ManifestComponentHelper
 import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
@@ -548,12 +547,6 @@ fun XServerScreen(
     var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
     var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
 
-    // bionic-fg tab in QuickMenu only visible when enabled in container settings.
-    // State + callbacks live in one holder object: XServerScreen is at the dex
-    // verifier's register limit, and loose locals here trip a VerifyError.
-    val isBfgAvailable = BionicFgQuickMenuHelper.isAvailable(container)
-    val bfgMenu = remember(container.id) { BfgMenuState(container) }
-
     fun persistFpsLimiterState() {
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
         container.putExtra(FPS_LIMITER_TARGET_EXTRA, fpsLimiterTarget)
@@ -761,9 +754,10 @@ fun XServerScreen(
             context = context,
             fpsProvider = {
                 val raw = frameRating?.currentFPS ?: 0f
+                val bfgMult = if (BionicFgManager.isArmed(container)) BionicFgManager.multiplier(container) else 0
                 val mult = when {
                     isLsfgAvailable && lsfgMultiplier >= 2 -> lsfgMultiplier
-                    isBfgAvailable && bfgMenu.multiplier >= 2 -> bfgMenu.multiplier
+                    bfgMult >= 2 -> bfgMult
                     else -> 1
                 }
                 raw * mult
@@ -2628,14 +2622,6 @@ fun XServerScreen(
             onLsfgMultiplierChanged = ::applyLsfgMultiplier,
             onLsfgFlowScaleChanged = ::applyLsfgFlowScale,
             onLsfgPerformanceModeChanged = ::applyLsfgPerformanceMode,
-            // bionic-fg hot-reload (tab only visible when enabled in container settings)
-            isBfgAvailable = isBfgAvailable,
-            bfgMultiplier = bfgMenu.multiplier,
-            bfgFlowScale = bfgMenu.flowScale,
-            bfgModel = bfgMenu.model,
-            onBfgMultiplierChanged = bfgMenu::applyMultiplier,
-            onBfgFlowScaleChanged = bfgMenu::applyFlowScale,
-            onBfgModelChanged = bfgMenu::applyModel,
             onAnimationComplete = { isMenuVisible ->
                 if (isMenuVisible) {
                     pauseForOverlayIfAllowed()
@@ -5844,40 +5830,4 @@ private fun setImagefsContainerVariant(context: Context, container: Container) {
     val imageFs = ImageFs.find(context)
     val containerVariant = container.containerVariant
     imageFs.createVariantFile(containerVariant)
-}
-
-/**
- * Quick Menu state + hot-reload callbacks for bionic-fg. Kept out of the
- * XServerScreen composable because that function sits at the dex verifier's
- * register limit; adding these as locals produced a VerifyError at class load.
- */
-private class BfgMenuState(private val container: Container) {
-    var multiplier by mutableIntStateOf(BionicFgManager.multiplier(container))
-        private set
-    var flowScale by mutableStateOf(BionicFgManager.flowScale(container))
-        private set
-    var model by mutableIntStateOf(BionicFgManager.model(container))
-        private set
-
-    private fun apply() {
-        BionicFgQuickMenuHelper.applySettings(
-            container,
-            BionicFgQuickMenuHelper.Settings(multiplier, flowScale, model),
-        )
-    }
-
-    fun applyMultiplier(value: Int) {
-        multiplier = BionicFgQuickMenuHelper.sanitizeMultiplier(value)
-        apply()
-    }
-
-    fun applyFlowScale(value: Float) {
-        flowScale = BionicFgQuickMenuHelper.sanitizeFlowScale(value)
-        apply()
-    }
-
-    fun applyModel(value: Int) {
-        model = BionicFgQuickMenuHelper.sanitizeModel(value)
-        apply()
-    }
 }
