@@ -1,6 +1,5 @@
 package app.gamenative.ui.widget
 
-import android.R.attr.opacity
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
@@ -124,13 +123,13 @@ class PerformanceHudView(
 
     private val backupBackgroundColor = currentBackgroundColor
     private val batteryLevelBackgroundColor = Color.argb(
-        (opacity * 255f).roundToInt(),
+        102,
         128,
         0,
         0)
 
     private val batteryTempBackgroundColor = Color.argb(
-        (opacity * 255f).roundToInt(),
+        102,
         128,
         0,
         128)
