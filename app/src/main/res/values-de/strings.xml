@@ -345,7 +345,7 @@
     <string name="performance_hud_gpu_temperature">GPU-Temperatur</string>
     <string name="performance_hud_battery_level_warning">Batteriestand Warnung</string>
     <string name="performance_hud_battery_level_limit">Batteriestand Limit</string>
-    <string name="performance_hud_battery_temp_warning">Batterie Temp Warnung</string>
+    <string name="performance_hud_battery_temp_warning">Akkutemperatur-Warnung</string>
     <string name="performance_hud_battery_temp_limit">Batterie Temp Limit</string>
     <string name="touchpad_help">Touchpad-Hilfe</string>
     <string name="hide_controls_with_controller">On-Screen-Controller bei Gamepad ausblenden</string>
