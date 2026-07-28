@@ -257,9 +257,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             cpuPolicies = discoverCpuPolicies()
             cpuClusters = identifyCpuClusters()
         }
-
-        // Pin app process to efficiency cores to free up performance cores
-        pinAppToEfficiencyCores()
     }
 
     /**
@@ -1075,28 +1072,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      */
     fun getCpuClusterCount(): Int {
         return cpuClusters.size
-    }
-
-    /**
-     * Pin the current app process to efficiency cores.
-     * Frees up performance cores for game processes.
-     *
-     * @return true if successful
-     */
-    fun pinAppToEfficiencyCores(): Boolean {
-        val appPid = android.os.Process.myPid()
-        val effCores = getCpuCoresByCluster(CpuCluster.EFFICIENCY)
-
-        if (effCores.isEmpty()) {
-            Timber.tag(TAG).d("No efficiency cores found, skipping app pinning")
-            return false
-        }
-
-        val success = setCpuAffinityByCores(appPid, effCores)
-        if (success) {
-            Timber.tag(TAG).i("Pinned app process (PID: $appPid) to efficiency CPUs ${effCores.joinToString()}")
-        }
-        return success
     }
 
     /**
