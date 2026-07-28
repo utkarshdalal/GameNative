@@ -161,6 +161,16 @@ class PerformanceHudView(
     private var thermalZonesCache: List<Pair<String, String>>? = null
     private var gpuUsageDiscoveryLogged = false
     private var gpuUsagePathsCache: List<String>? = null
+    
+    private var toneGenerator: ToneGenerator? = null
+
+    private fun getToneGenerator(): ToneGenerator =
+        toneGenerator ?: ToneGenerator(AudioManager.STREAM_ALARM, 100).also { toneGenerator = it }
+
+    private fun releaseToneGenerator() {
+        toneGenerator?.release()
+        toneGenerator = null
+    }
 
     init {
         background = backgroundDrawable
@@ -219,6 +229,7 @@ class PerformanceHudView(
 
     override fun onDetachedFromWindow() {
         stopUpdates()
+        releaseToneGenerator()
         super.onDetachedFromWindow()
     }
 
@@ -248,10 +259,10 @@ class PerformanceHudView(
                         snapshot.batteryTempValue > (config.batteryTemperatureWarningLimit * 100)
 
                 if (levelWarning) {
-                    ToneGenerator(AudioManager.STREAM_ALARM, 100).startTone(ToneGenerator.TONE_PROP_ACK, 150)
+                    getToneGenerator().startTone(ToneGenerator.TONE_PROP_ACK, 150)
                 }
                 if (tempWarning) {
-                    ToneGenerator(AudioManager.STREAM_ALARM, 100).startTone(ToneGenerator.TONE_CDMA_PIP, 150)
+                    getToneGenerator().startTone(ToneGenerator.TONE_CDMA_PIP, 150)
                 }
 
                 val warningColor = when {
