@@ -2196,7 +2196,7 @@
     <string name="power_control_strategy_balanced_desc">均衡调整所有组件以获得最佳整体性能</string>
     <string name="power_control_strategy_power_efficient">节能</string>
     <string name="power_control_strategy_power_efficient_desc">降低非瓶颈组件以节省电量</string>
-    <string name="power_control_strategy_aggressive">激进</string>
+    <string name="power_control_strategy_aggressive">积极</string>
     <string name="power_control_strategy_aggressive_desc">最大化检测到的瓶颈性能</string>
     <string name="power_control_strategy_conservative">保守</string>
     <string name="power_control_strategy_conservative_desc">渐进式调整，注重稳定性</string>
