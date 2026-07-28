@@ -35,8 +35,13 @@ data class ModArchiveExtractionProgress(
 class UnsupportedModArchiveException(message: String) : IOException(message)
 
 object ModArchiveExtractor {
-    private const val MAX_ENTRIES = 50_000
-    private const val MAX_EXPANDED_BYTES = 20L * 1024L * 1024L * 1024L
+    // Hard ceilings prevent archive bombs and bound memory, disk, and path handling costs.
+    // Keep these aligned with LocalModImporter so switching source types cannot bypass them.
+    private const val MAX_ENTRIES = ModImportSafetyLimits.MAX_ENTRIES
+    private const val MAX_EXPANDED_BYTES = ModImportSafetyLimits.MAX_CONTENT_BYTES
+    private const val MAX_RELATIVE_PATH_LENGTH = ModImportSafetyLimits.MAX_RELATIVE_PATH_LENGTH
+    private const val MAX_PATH_SEGMENTS =
+        ModImportSafetyLimits.MAX_DIRECTORY_DEPTH + 1 // Directory levels plus a file name.
     private const val ARCHIVE_READ_BLOCK_SIZE = 1024 * 1024
     private val supportedArchiveExtensions = setOf("zip", "7z", "rar", "exe")
 
@@ -71,7 +76,7 @@ object ModArchiveExtractor {
             }
             val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000L
             Timber.i(
-                "Extracted Nexus mod archive format=%s archiveBytes=%d extractedBytes=%d entries=%d elapsedMs=%d",
+                "Extracted mod archive format=%s archiveBytes=%d extractedBytes=%d entries=%d elapsedMs=%d",
                 archiveExtension,
                 archiveFile.length(),
                 entries.sumOf { it.sizeBytes },
@@ -375,11 +380,20 @@ object ModArchiveExtractor {
     }
 
     private fun safeDestination(destination: File, rawName: String): File {
-        if (isUnsafeArchivePath(rawName)) {
+        if (
+            rawName.length > MAX_RELATIVE_PATH_LENGTH ||
+            isUnsafeArchivePath(rawName)
+        ) {
             throw IOException("Unsafe archive path: $rawName")
         }
         val normalized = normalizeArchivePath(rawName)
-        if (normalized.isBlank() || normalized.split('/').any { it == ".." }) {
+        val segments = normalized.split('/')
+        if (
+            normalized.isBlank() ||
+            normalized.length > MAX_RELATIVE_PATH_LENGTH ||
+            segments.size > MAX_PATH_SEGMENTS ||
+            segments.any { it == ".." }
+        ) {
             throw IOException("Unsafe archive path: $rawName")
         }
         val outFile = File(destination, normalized).canonicalFile

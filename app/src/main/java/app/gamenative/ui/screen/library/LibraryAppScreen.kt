@@ -570,6 +570,7 @@ internal fun AppScreenContent(
     onUpdateClick: () -> Unit,
     onBack: () -> Unit = {},
     optionsMenu: List<AppMenuOption>,
+    dialogOpen: Boolean = false,
 ) {
     val context = LocalContext.current
     // reactive — recomposes when network state changes
@@ -596,6 +597,18 @@ internal fun AppScreenContent(
 
     LaunchedEffect(Unit) {
         playButtonFocusRequester.requestFocus()
+    }
+
+    // Restore focus when options menu, dialogs
+    LaunchedEffect(optionsMenuVisible, dialogOpen) {
+        if (!optionsMenuVisible && !dialogOpen) {
+            kotlinx.coroutines.delay(100) // Brief delay for menu/dialog animation
+            try {
+                playButtonFocusRequester.requestFocus()
+            } catch (_: IllegalStateException) {
+                // FocusRequester not attached
+            }
+        }
     }
 
     // Button state calculations (needed by key event handler)

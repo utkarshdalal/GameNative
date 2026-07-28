@@ -1359,6 +1359,7 @@ abstract class BaseAppScreen {
             },
             onBack = onBack,
             optionsMenu = optionsMenu,
+            dialogOpen = showConfigDialog || manageModsRequested,
         )
 
         if (showReadiness && launchActivity != null) {

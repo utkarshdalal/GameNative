@@ -253,7 +253,7 @@ object SteamAutoCloud {
         }
 
         val getFilePrefix: (AppFileInfo, AppFileChangeList) -> String = { file, fileList ->
-            if (file.pathPrefixIndex < fileList.pathPrefixes.size) {
+            if (file.hasPathPrefixIndex && file.pathPrefixIndex < fileList.pathPrefixes.size) {
                 Paths.get(fileList.pathPrefixes[file.pathPrefixIndex]).pathString
             } else {
                 ""
@@ -287,7 +287,7 @@ object SteamAutoCloud {
 
             val convertedPrefixes = convertPrefixes(fileList)
 
-            if (file.pathPrefixIndex < fileList.pathPrefixes.size) {
+            if (file.hasPathPrefixIndex && file.pathPrefixIndex < fileList.pathPrefixes.size) {
                 Paths.get(convertedPrefixes[file.pathPrefixIndex], file.filename)
             } else {
                 // if the file does not reference any prefix then we need to set it to the default path
@@ -466,12 +466,12 @@ object SteamAutoCloud {
 
             appFileListChange.files.map {
                 UserFileInfo(
-                    root = if (it.pathPrefixIndex < pathTypePairs.size) {
+                    root = if (it.hasPathPrefixIndex && it.pathPrefixIndex < pathTypePairs.size) {
                         PathType.from(pathTypePairs[it.pathPrefixIndex].first)
                     } else {
-                        PathType.GameInstall
+                        PathType.DEFAULT
                     },
-                    path = if (it.pathPrefixIndex < pathTypePairs.size) {
+                    path = if (it.hasPathPrefixIndex && it.pathPrefixIndex < pathTypePairs.size) {
                         appFileListChange.pathPrefixes[it.pathPrefixIndex]
                     } else {
                         ""
@@ -1365,8 +1365,8 @@ object SteamAutoCloud {
                             "\n\t\trawFileSize: ${it.rawFileSize}" +
                             "\n\t\tpersistState: ${it.persistState}" +
                             "\n\t\tplatformsToSync: ${it.platformsToSync}" +
-                            "\n\t\tpathPrefixIndex: ${it.pathPrefixIndex}" +
-                            "\n\t\tmachineNameIndex: ${it.machineNameIndex}"
+                            "\n\t\tpathPrefixIndex: ${if (it.hasPathPrefixIndex) it.pathPrefixIndex.toString() else "<none>"}" +
+                            "\n\t\tmachineNameIndex: ${if (it.hasMachineNameIndex) it.machineNameIndex.toString() else "<none>"}"
                     },
             )
         }

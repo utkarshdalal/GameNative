@@ -131,12 +131,15 @@ object SteamUtils {
         }
 
         // Base-game depots only, so an owned in-app DLC's language can't steer the base game.
-        // Untagged depots are the neutral build and pass the language filter regardless.
-        val availableLanguages = depots.values
-            .filter { it.dlcAppId == SteamService.INVALID_APP_ID && it.language.isNotEmpty() && it.installableInItsLanguage() }
+        val installableBaseGameDepots = depots.values
+            .filter { it.dlcAppId == SteamService.INVALID_APP_ID && it.installableInItsLanguage() }
+        val availableLanguages = installableBaseGameDepots
+            .filter { it.language.isNotEmpty() }
             .mapTo(mutableSetOf()) { it.language }
+        val hasNeutralDepot = installableBaseGameDepots.any { it.language.isEmpty() }
         return when {
             preferredLanguage in availableLanguages -> preferredLanguage
+            hasNeutralDepot -> preferredLanguage
             "english" in availableLanguages -> "english"
             else -> availableLanguages.firstOrNull() ?: preferredLanguage
         }

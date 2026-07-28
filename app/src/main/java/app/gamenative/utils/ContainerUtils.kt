@@ -86,7 +86,8 @@ object ContainerUtils {
         } else {
             DefaultVersion.VARIANT = Container.BIONIC
             DefaultVersion.WINE_VERSION = "proton-10.0-arm64ec-2"
-            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
+            DefaultVersion.DEFAULT_GRAPHICS_DRIVER =
+                if (GPUInformation.isAdrenoGPU(context)) "Wrapper" else "Wrapper-gamenative"
             DefaultVersion.DXVK = "async-1.10.3"
             DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_LIGHT

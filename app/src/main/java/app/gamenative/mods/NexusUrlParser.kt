@@ -8,7 +8,33 @@ data class NexusModReference(
     val gameDomain: String,
     val modId: Long,
     val fileId: Long? = null,
+    val downloadAuthorization: NexusDownloadAuthorization? = null,
 )
+
+/**
+ * Short-lived, file-specific authorization issued by nexusmods.com in an NXM link.
+ *
+ * This is deliberately separate from Nexus account authentication. Free Nexus accounts must
+ * visit the website for each file and return these values to the mod manager.
+ */
+data class NexusDownloadAuthorization(
+    val key: String,
+    val expires: Long,
+    val userId: Long? = null,
+) {
+    init {
+        require(key.isNotBlank()) { "Nexus download authorization key cannot be blank" }
+        require(key.length <= 2048) { "Nexus download authorization key is too long" }
+        require(expires > 0L) { "Nexus download authorization expiry must be positive" }
+    }
+
+    fun isExpired(nowEpochSeconds: Long = System.currentTimeMillis() / 1000L): Boolean =
+        expires <= nowEpochSeconds
+
+    // Never expose the signed key through logs or an enclosing data class's toString().
+    override fun toString(): String =
+        "NexusDownloadAuthorization(expires=$expires, userId=$userId, key=<redacted>)"
+}
 
 data class NexusCollectionReference(
     val gameDomain: String,
@@ -22,11 +48,13 @@ object NexusUrlParser {
         if (trimmed.isEmpty()) return null
 
         val uri = runCatching { URI(trimmed) }.getOrNull() ?: return null
-        return when (uri.scheme?.lowercase()) {
-            "http", "https" -> parseWebUrl(uri)
-            "nxm" -> parseNxmUrl(uri)
-            else -> null
-        }
+        return runCatching {
+            when (uri.scheme?.lowercase()) {
+                "http", "https" -> parseWebUrl(uri)
+                "nxm" -> parseNxmUrl(uri)
+                else -> null
+            }
+        }.getOrNull()
     }
 
     private fun parseWebUrl(uri: URI): NexusModReference? {
@@ -41,13 +69,13 @@ object NexusUrlParser {
         if (modsIndex <= 0 || modsIndex + 1 >= segments.size) return null
 
         val gameDomain = segments[modsIndex - 1].lowercase()
-        val modId = segments[modsIndex + 1].toLongOrNull() ?: return null
+        val modId = segments[modsIndex + 1].toLongOrNull()?.takeIf { it > 0L } ?: return null
         val fileIdFromPath = if (modsIndex + 3 < segments.size && segments[modsIndex + 2].equals("files", true)) {
-            segments[modsIndex + 3].toLongOrNull()
+            segments[modsIndex + 3].toLongOrNull()?.takeIf { it > 0L }
         } else {
             null
         }
-        val fileId = fileIdFromPath ?: parseQuery(uri.rawQuery)["file_id"]?.toLongOrNull()
+        val fileId = fileIdFromPath ?: parseQuery(uri.rawQuery)["file_id"]?.toLongOrNull()?.takeIf { it > 0L }
         return NexusModReference(gameDomain, modId, fileId)
     }
 
@@ -59,13 +87,24 @@ object NexusUrlParser {
             ?: return null
         val modsIndex = segments.indexOfFirst { it.equals("mods", ignoreCase = true) }
         if (modsIndex < 0 || modsIndex + 1 >= segments.size) return null
-        val modId = segments[modsIndex + 1].toLongOrNull() ?: return null
+        val modId = segments[modsIndex + 1].toLongOrNull()?.takeIf { it > 0L } ?: return null
         val fileId = if (modsIndex + 3 < segments.size && segments[modsIndex + 2].equals("files", true)) {
-            segments[modsIndex + 3].toLongOrNull()
+            segments[modsIndex + 3].toLongOrNull()?.takeIf { it > 0L }
         } else {
-            parseQuery(uri.rawQuery)["file_id"]?.toLongOrNull()
+            parseQuery(uri.rawQuery)["file_id"]?.toLongOrNull()?.takeIf { it > 0L }
         }
-        return NexusModReference(gameDomain, modId, fileId)
+        val query = parseQuery(uri.rawQuery)
+        val downloadAuthorization = query["key"]
+            ?.takeIf { it.isNotBlank() && it.length <= 2048 }
+            ?.let { key ->
+                val expires = query["expires"]?.toLongOrNull()?.takeIf { it > 0L } ?: return@let null
+                NexusDownloadAuthorization(
+                    key = key,
+                    expires = expires,
+                    userId = query["user_id"]?.toLongOrNull()?.takeIf { it > 0L },
+                )
+            }
+        return NexusModReference(gameDomain, modId, fileId, downloadAuthorization)
     }
 
     internal fun parseQuery(rawQuery: String?): Map<String, String> {
@@ -110,7 +149,7 @@ object NexusCollectionUrlParser {
             .firstOrNull { it.first().equals("revisions", ignoreCase = true) || it.first().equals("revision", ignoreCase = true) }
             ?.getOrNull(1)
             ?.toIntOrNull()
-        val query = NexusUrlParser.parseQuery(uri.rawQuery)
+        val query = runCatching { NexusUrlParser.parseQuery(uri.rawQuery) }.getOrNull() ?: return null
         val revisionFromQuery = query["revision"]?.toIntOrNull()
             ?: query["revision_id"]?.toIntOrNull()
             ?: query["rev"]?.toIntOrNull()
