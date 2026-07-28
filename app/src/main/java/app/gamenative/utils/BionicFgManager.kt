@@ -90,9 +90,14 @@ object BionicFgManager {
     fun flowScale(container: Container): Float =
         container.getExtra(EXTRA_FLOW_SCALE, "0.60").toFloatOrNull()?.coerceIn(0.2f, 1.0f) ?: 0.60f
 
-    /** Get the interpolation model (0=Standard, 1=Clear, default 0). */
+    /**
+     * Get the interpolation model (0=Standard, 1=Clear). Clear is the default:
+     * it is the runtime-traced GameHub graph (flow stages at 1/5 scale and
+     * below), while the reconstructed Standard graph dispatches its flow chain
+     * at full resolution and costs ~25x as much GPU time.
+     */
     fun model(container: Container): Int =
-        (container.getExtra(EXTRA_MODEL, "0").toIntOrNull() ?: 0).coerceIn(0, 1)
+        (container.getExtra(EXTRA_MODEL, "1").toIntOrNull() ?: 1).coerceIn(0, 1)
 
     /** The app fps limiter target, or 0 when the limiter is off (layer semantics). */
     private fun fpsLimit(container: Container): Int {
