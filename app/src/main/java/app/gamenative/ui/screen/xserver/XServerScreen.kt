@@ -551,6 +551,8 @@ fun XServerScreen(
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
         container.putExtra(FPS_LIMITER_TARGET_EXTRA, fpsLimiterTarget)
         container.saveData()
+        // The limiter also drives the bionic-fg layer's frame pacing
+        BionicFgManager.updateConfigAtRuntime(container)
     }
 
     fun loadPerformanceHudConfig(): PerformanceHudConfig {

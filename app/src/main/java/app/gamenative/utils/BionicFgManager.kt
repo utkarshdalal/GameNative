@@ -43,13 +43,20 @@ object BionicFgManager {
     const val EXTRA_FLOW_SCALE = "bfgFlowScale"
     const val EXTRA_MODEL = "bfgModel"
 
+    // App fps limiter extras (owned by XServerScreen); mirrored into the layer
+    // config so its pacing engine (cadence deadlines, even spacing of generated
+    // presents) engages instead of presenting frames in bursts
+    private const val FPS_LIMITER_ENABLED_EXTRA = "fpsLimiterEnabled"
+    private const val FPS_LIMITER_TARGET_EXTRA = "fpsLimiterTarget"
+    private const val DEFAULT_FPS_LIMITER_TARGET_HZ = 60
+
     // Environment variables consumed by the Vulkan loader / layer
     private const val ENV_ENABLE = "BIONIC_FG_ENABLE"
     private const val ENV_DISABLE = "BIONIC_FG_DISABLE"
     private const val ENV_CONFIG = "BIONIC_FG_CONFIG"
 
     // Current runtime version (bumped when the bundled .so changes)
-    private const val RUNTIME_VERSION = "68497bf-arm64-v8a"
+    private const val RUNTIME_VERSION = "3ef3eb9-arm64-v8a"
 
     // Asset paths
     private const val ASSET_DIR = "bionic_fg/android_arm64_v8a"
@@ -86,6 +93,14 @@ object BionicFgManager {
     /** Get the interpolation model (0=Standard, 1=Clear, default 0). */
     fun model(container: Container): Int =
         (container.getExtra(EXTRA_MODEL, "0").toIntOrNull() ?: 0).coerceIn(0, 1)
+
+    /** The app fps limiter target, or 0 when the limiter is off (layer semantics). */
+    private fun fpsLimit(container: Container): Int {
+        val enabled = parseBool(container.getExtra(FPS_LIMITER_ENABLED_EXTRA, "true"))
+        if (!enabled) return 0
+        return container.getExtra(FPS_LIMITER_TARGET_EXTRA, "").toIntOrNull()
+            ?.coerceIn(10, 200) ?: DEFAULT_FPS_LIMITER_TARGET_HZ
+    }
 
     /**
      * Install the layer runtime into the container's filesystem.
@@ -161,6 +176,7 @@ object BionicFgManager {
                 multiplier = if (armed && savedMultiplier >= 2) savedMultiplier else 0,
                 flowScale = flowScale(container),
                 model = model(container),
+                fpsLimit = fpsLimit(container),
             )
             val ok = FileUtils.writeString(configFile, configText)
             if (ok && configFile.exists()) {
@@ -229,20 +245,17 @@ object BionicFgManager {
     // ---- Runtime hot-reload -----------------------------------------------
 
     /**
-     * Update conf.toml while the container is running. The layer polls the
-     * file timestamp during presentation: flow_scale reloads in place,
-     * multiplier/model rebuild the framegen context, and multiplier = 0
-     * turns frame generation off without recreating the app swapchain.
+     * Update conf.toml from the current container extras while the container
+     * is running. The layer polls the file timestamp during presentation:
+     * flow_scale and fps_limit reload in place, multiplier/model rebuild the
+     * framegen context, and multiplier = 0 turns frame generation off without
+     * recreating the app swapchain. Called after quick-menu framegen changes
+     * and after fps-limiter changes (the limiter feeds the layer's pacing).
      *
      * @return true if the config was updated successfully
      */
     @JvmStatic
-    fun updateConfigAtRuntime(
-        container: Container,
-        multiplier: Int,
-        flowScale: Float,
-        model: Int,
-    ): Boolean {
+    fun updateConfigAtRuntime(container: Container): Boolean {
         if (!isSupported(container)) return false
 
         val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
@@ -252,11 +265,15 @@ object BionicFgManager {
         }
 
         return try {
-            val effectiveMultiplier = if (multiplier >= 2) multiplier.coerceIn(2, 4) else 0
+            val armed = isArmed(container)
+            val savedMultiplier = multiplier(container)
+            val effectiveMultiplier = if (armed && savedMultiplier >= 2) savedMultiplier else 0
+            val fpsLimit = fpsLimit(container)
             val configText = buildConfigToml(
                 multiplier = effectiveMultiplier,
-                flowScale = flowScale.coerceIn(0.2f, 1.0f),
-                model = model.coerceIn(0, 1),
+                flowScale = flowScale(container),
+                model = model(container),
+                fpsLimit = fpsLimit,
             )
             val ok = FileUtils.writeString(configFile, configText)
             if (ok && configFile.exists()) {
@@ -264,8 +281,8 @@ object BionicFgManager {
             }
             if (ok) {
                 Timber.tag(TAG).i(
-                    "Hot-reloaded conf.toml: multiplier=%d, flowScale=%.2f, model=%d",
-                    effectiveMultiplier, flowScale, model,
+                    "Hot-reloaded conf.toml: multiplier=%d, flowScale=%.2f, model=%d, fpsLimit=%d",
+                    effectiveMultiplier, flowScale(container), model(container), fpsLimit,
                 )
             }
             ok
@@ -282,11 +299,14 @@ object BionicFgManager {
 
     // `enabled` stays true and on/off is expressed via multiplier = 0: the
     // layer treats an enabled flip as a swapchain-recreate event, while a
-    // multiplier change hot-reloads against the existing swapchain
+    // multiplier change hot-reloads against the existing swapchain.
+    // fps_limit > 0 activates the layer's base pacer, generated-frame cadence
+    // deadlines, and (with even_pace) even spacing of generated presents.
     private fun buildConfigToml(
         multiplier: Int,
         flowScale: Float,
         model: Int,
+        fpsLimit: Int,
     ): String = buildString {
         appendLine("version = 1")
         appendLine()
@@ -295,6 +315,8 @@ object BionicFgManager {
         appendLine("multiplier = $multiplier")
         appendLine("flow_scale = ${String.format(Locale.US, "%.2f", flowScale)}")
         appendLine("model = $model")
+        appendLine("fps_limit = $fpsLimit")
+        appendLine("even_pace = true")
     }
 
     /** Parse boolean from container extra (handles "true"/"false" and "1"/"0"). */

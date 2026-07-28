@@ -39,6 +39,6 @@ object BionicFgQuickMenuHelper {
         container.putExtra(BionicFgManager.EXTRA_MODEL, model.toString())
         container.saveData()
 
-        BionicFgManager.updateConfigAtRuntime(container, multiplier, flowScale, model)
+        BionicFgManager.updateConfigAtRuntime(container)
     }
 }
