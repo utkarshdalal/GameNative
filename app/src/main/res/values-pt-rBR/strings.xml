@@ -282,7 +282,7 @@
     <string name="performance_hud_battery_level_warning">Aviso nível bateria</string>
     <string name="performance_hud_battery_level_limit">Limite nível bateria</string>
     <string name="performance_hud_battery_temp_warning">Aviso temp. bateria</string>
-    <string name="performance_hud_battery_temp_limit">Limite temp. bateria</string>
+    <string name="performance_hud_battery_temp_limit">Limite de temperatura da bateria</string>
     <string name="touchpad_help">Ajuda Touchpad</string>
     <string name="hide_controls_with_controller">Ocultar controles on-screen com controle</string>
     <string name="hide_controls_with_controller_description">Ocultar automaticamente controles on-screen quando um controle físico estiver conectado</string>
