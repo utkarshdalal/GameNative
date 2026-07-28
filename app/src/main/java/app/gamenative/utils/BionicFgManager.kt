@@ -56,7 +56,7 @@ object BionicFgManager {
     private const val ENV_CONFIG = "BIONIC_FG_CONFIG"
 
     // Current runtime version (bumped when the bundled .so changes)
-    private const val RUNTIME_VERSION = "a491284-clean-arm64-v8a"
+    private const val RUNTIME_VERSION = "40192e4-clean-arm64-v8a"
 
     // Asset paths
     private const val ASSET_DIR = "bionic_fg/android_arm64_v8a"
