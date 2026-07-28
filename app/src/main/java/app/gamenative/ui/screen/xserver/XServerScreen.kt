@@ -629,6 +629,9 @@ fun XServerScreen(
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
             ?.setFrameRateLimit(limit)
+        xServerView?.getxServer()
+            ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
+            ?.setEagerIdleRelease(BionicFgManager.isArmed(container))
     }
 
     fun effectiveFpsLimit(): Int =
