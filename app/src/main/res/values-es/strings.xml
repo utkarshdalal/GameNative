@@ -361,7 +361,7 @@
     <string name="performance_hud_clock_time">Hora</string>
     <string name="performance_hud_cpu_temperature">Temperatura de CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura de GPU</string>
-    <string name="performance_hud_battery_level_warning">Aviso nivel batería</string>
+    <string name="performance_hud_battery_level_warning">Aviso de nivel de batería</string>
     <string name="performance_hud_battery_level_limit">Límite nivel batería</string>
     <string name="performance_hud_battery_temp_warning">Aviso temp. batería</string>
     <string name="performance_hud_battery_temp_limit">Límite temp. batería</string>
