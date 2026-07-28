@@ -948,6 +948,10 @@ https://gamenative.app
     <string name="performance_hud_clock_time">Время</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>
+    <string name="performance_hud_battery_level_warning">Предупр. об уровне батареи</string>
+    <string name="performance_hud_battery_level_limit">Лимит уровня батареи</string>
+    <string name="performance_hud_battery_temp_warning">Предупр. о темп. батареи</string>
+    <string name="performance_hud_battery_temp_limit">Лимит темп. батареи</string>
     <string name="quick_presets">Быстрые предустановки</string>
     <string name="range_1_to_0">1 – 0</string>
     <string name="range_a_to_z">A – Z</string>

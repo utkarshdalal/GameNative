@@ -348,6 +348,10 @@
     <string name="performance_hud_clock_time">Ora</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
+    <string name="performance_hud_battery_level_warning">Avert. nivel baterie</string>
+    <string name="performance_hud_battery_level_limit">Limită nivel baterie</string>
+    <string name="performance_hud_battery_temp_warning">Avert. temp. baterie</string>
+    <string name="performance_hud_battery_temp_limit">Limită temp. baterie</string>
     <string name="touchpad_help">Ajutor touchpad</string>
     <string name="hide_controls_with_controller">Ascunde controalele pe ecran când există controller</string>
     <string name="hide_controls_with_controller_description">Ascunde automat controalele pe ecran când un controller fizic este conectat</string>

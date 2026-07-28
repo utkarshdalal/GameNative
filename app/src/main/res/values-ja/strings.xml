@@ -338,6 +338,10 @@
     <string name="performance_hud_clock_time">時計の時間</string>
     <string name="performance_hud_cpu_temperature">CPU温度</string>
     <string name="performance_hud_gpu_temperature">GPU温度</string>
+    <string name="performance_hud_battery_level_warning">バッテリー残量警告</string>
+    <string name="performance_hud_battery_level_limit">バッテリー残量制限</string>
+    <string name="performance_hud_battery_temp_warning">バッテリー温度警告</string>
+    <string name="performance_hud_battery_temp_limit">バッテリー温度制限</string>
     <string name="touchpad_help">タッチパッドのヘルプ</string>
     <string name="hide_controls_with_controller">コントローラーを使用して画面上のコントロールを非表示にする</string>
     <string name="hide_controls_with_controller_description">物理コントローラーが接続されている場合、画面上のコントロールを自動的に非表示にします</string>

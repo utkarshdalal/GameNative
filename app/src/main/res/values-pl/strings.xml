@@ -358,6 +358,10 @@
     <string name="performance_hud_clock_time">Czas</string>
     <string name="performance_hud_cpu_temperature">Temperatura CPU</string>
     <string name="performance_hud_gpu_temperature">Temperatura GPU</string>
+    <string name="performance_hud_battery_level_warning">Ostrz. poziomu baterii</string>
+    <string name="performance_hud_battery_level_limit">Limit poziomu baterii</string>
+    <string name="performance_hud_battery_temp_warning">Ostrz. temp. baterii</string>
+    <string name="performance_hud_battery_temp_limit">Limit temp. baterii</string>
     <string name="touchpad_help">Pomoc touchpada</string>
     <string name="hide_controls_with_controller">Ukryj kontroler ekranowy przy podłączonym kontrolerze</string>
     <string name="hide_controls_with_controller_description">Automatycznie ukrywa kontroler ekranowy, gdy podłączony jest kontroler fizyczny</string>

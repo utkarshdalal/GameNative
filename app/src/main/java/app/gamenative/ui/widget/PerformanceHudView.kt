@@ -1,5 +1,6 @@
 package app.gamenative.ui.widget
 
+import android.R.attr.opacity
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
@@ -9,8 +10,10 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
+import android.os.Build
 import android.text.TextUtils
 import android.text.format.DateFormat
 import android.util.TypedValue
@@ -40,6 +43,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.hardware.BatteryState
+import android.view.InputDevice
+import androidx.annotation.RequiresApi
+import kotlin.math.roundToInt
+import android.media.AudioManager
+import android.media.ToneGenerator
+
 
 /**
  * Lightweight floating HUD shown above the in-game surface.
@@ -109,6 +119,21 @@ class PerformanceHudView(
     private val gpuTempMetric = createMetricViews(MetricId.GPU_TEMP, 0xFFBDBDBD.toInt())
     private val batteryTempMetric = createMetricViews(MetricId.BATTERY_TEMP, 0xFFBDBDBD.toInt())
 
+    private var currentBackgroundColor = (backgroundDrawable as? GradientDrawable)
+        ?.color?.defaultColor ?: Color.BLACK
+
+    private val backupBackgroundColor = currentBackgroundColor
+    private val batteryLevelBackgroundColor = Color.argb(
+        (opacity * 255f).roundToInt(),
+        128,
+        0,
+        0)
+
+    private val batteryTempBackgroundColor = Color.argb(
+        (opacity * 255f).roundToInt(),
+        128,
+        0,
+        128)
     private val allMetrics = listOf(
         fpsMetric,
         cpuMetric,
@@ -216,6 +241,32 @@ class PerformanceHudView(
                     collectSnapshot(currentFps)
                 }
                 renderSnapshot(snapshot)
+
+                val levelWarning = config.batteryLevelWarningEnabled &&
+                        snapshot.batteryPercent < (config.batteryLevelWarningLimit * 100)
+                val tempWarning = config.batteryTemperatureWarningEnabled &&
+                        snapshot.batteryTempValue > (config.batteryTemperatureWarningLimit * 100)
+
+                if (levelWarning) {
+                    ToneGenerator(AudioManager.STREAM_ALARM, 100).startTone(ToneGenerator.TONE_PROP_ACK, 150)
+                }
+                if (tempWarning) {
+                    ToneGenerator(AudioManager.STREAM_ALARM, 100).startTone(ToneGenerator.TONE_CDMA_PIP, 150)
+                }
+
+                val warningColor = when {
+                    tempWarning -> batteryTempBackgroundColor
+                    levelWarning -> batteryLevelBackgroundColor
+                    else -> null
+                }
+
+                currentBackgroundColor = if (warningColor != null) {
+                    if (currentBackgroundColor == backupBackgroundColor) warningColor else backupBackgroundColor
+                } else {
+                    backupBackgroundColor
+                }
+                backgroundDrawable.setColor(currentBackgroundColor)
+
                 delay(UPDATE_INTERVAL_MS)
             }
         }
@@ -321,11 +372,13 @@ class PerformanceHudView(
             gpu = gpuPercent?.let { "GPU $it%" },
             ram = "RAM ${readUsedRamText()}",
             battery = batterySnapshot.percent?.let { "BAT $it%" },
+            batteryPercent = batterySnapshot.percent ?: -1 ,
             power = batterySnapshot.powerWatts?.let { watts ->
                 String.format(Locale.US, "PWR %.1fW", watts)
             },
             runtime = batterySnapshot.runtimeText,
             batteryTemp = batterySnapshot.temperatureC?.let { "BAT TEMP ${it}°C" },
+            batteryTempValue = batterySnapshot.temperatureC ?: 0,
             clock = readClockText(),
             cpuTemp = readCpuTempC()?.let { "CPU TEMP ${it}°C" },
             gpuTemp = readGpuTempC()?.let { "GPU TEMP ${it}°C" },

@@ -341,6 +341,10 @@
     <string name="performance_hud_clock_time">時間</string>
     <string name="performance_hud_cpu_temperature">CPU 溫度</string>
     <string name="performance_hud_gpu_temperature">GPU 溫度</string>
+    <string name="performance_hud_battery_level_warning">電量警告</string>
+    <string name="performance_hud_battery_level_limit">電量限制</string>
+    <string name="performance_hud_battery_temp_warning">電池溫度警告</string>
+    <string name="performance_hud_battery_temp_limit">電池溫度限制</string>
     <string name="touchpad_help">觸摸板支援</string>
     <string name="hide_controls_with_controller">使用控制器時隱藏螢幕控制器</string>
     <string name="hide_controls_with_controller_description">當實體控制器連接時自動隱藏螢幕控制器</string>

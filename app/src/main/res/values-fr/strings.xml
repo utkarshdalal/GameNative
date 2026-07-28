@@ -350,6 +350,10 @@
     <string name="performance_hud_clock_time">Heure</string>
     <string name="performance_hud_cpu_temperature">Température CPU</string>
     <string name="performance_hud_gpu_temperature">Température GPU</string>
+    <string name="performance_hud_battery_level_warning">Alerte niveau batterie</string>
+    <string name="performance_hud_battery_level_limit">Limite niveau batterie</string>
+    <string name="performance_hud_battery_temp_warning">Alerte temp. batterie</string>
+    <string name="performance_hud_battery_temp_limit">Limite temp. batterie</string>
     <string name="touchpad_help">Aide du pavé tactile</string>
     <string name="hide_controls_with_controller">Masquer les contrôles à l\'écran avec manette</string>
     <string name="hide_controls_with_controller_description">Masquer automatiquement les contrôles à l\'écran lorsqu\'un contrôleur physique est connecté</string>
