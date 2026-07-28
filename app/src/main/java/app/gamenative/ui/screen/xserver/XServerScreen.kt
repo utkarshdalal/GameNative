@@ -759,10 +759,8 @@ fun XServerScreen(
             context = context,
             fpsProvider = {
                 val raw = frameRating?.currentFPS ?: 0f
-                val bfgMult = if (BionicFgManager.isArmed(container)) BionicFgManager.multiplier(container) else 0
                 val mult = when {
                     isLsfgAvailable && lsfgMultiplier >= 2 -> lsfgMultiplier
-                    bfgMult >= 2 -> bfgMult
                     else -> 1
                 }
                 raw * mult
