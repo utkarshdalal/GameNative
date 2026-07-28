@@ -1,5 +1,9 @@
 package app.gamenative.api
 
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -29,6 +33,7 @@ class CommunityConfigServiceTest {
         service = CommunityConfigService(
             client = httpClient,
             baseUrl = server.url("/").toString().trimEnd('/'),
+            requestThrottle = CommunityRequestThrottle(maxRequests = 1_000),
         )
     }
 
@@ -264,6 +269,119 @@ class CommunityConfigServiceTest {
         assertTrue(error is CommunityConfigApiException)
         assertEquals(503, (error as CommunityConfigApiException).statusCode)
         assertEquals("Try later", error.message)
+    }
+
+    @Test
+    fun configCache_reusesPagesAndCanRefreshWithoutDiscardingGameLookups() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody("""{ "games": [{ "id": 10, "name": "Cached Game" }] }"""),
+        )
+        server.enqueue(
+            MockResponse().setBody("""{ "runs": [], "total": 0, "page": 0, "pageSize": 20 }"""),
+        )
+        server.enqueue(
+            MockResponse().setBody("""{ "runs": [], "total": 0, "page": 0, "pageSize": 20 }"""),
+        )
+
+        service.searchGames("Cached Game")
+        service.searchGames("Cached Game")
+        service.fetchConfigs(10, null, CommunityConfigSort.NEWEST, 0)
+        service.fetchConfigs(10, null, CommunityConfigSort.NEWEST, 0)
+        assertEquals(2, server.requestCount)
+
+        service.clearConfigCache()
+        service.searchGames("Cached Game")
+        service.fetchConfigs(10, null, CommunityConfigSort.NEWEST, 0)
+
+        assertEquals(3, server.requestCount)
+        assertEquals("/api/games/search?q=Cached%20Game", server.takeRequest().path)
+        assertTrue(server.takeRequest().path.orEmpty().startsWith("/api/compatibility?"))
+        assertTrue(server.takeRequest().path.orEmpty().startsWith("/api/compatibility?"))
+    }
+
+    @Test
+    fun requestThrottle_reservesHeadroomWithinRollingWindow() {
+        var nowNanos = 0L
+        val sleeps = mutableListOf<Long>()
+        val throttle = CommunityRequestThrottle(
+            maxRequests = 4,
+            windowMillis = 10_000L,
+            nanoTime = { nowNanos },
+            sleepNanos = {
+                sleeps += it
+                nowNanos += it
+            },
+        )
+
+        repeat(5) { throttle.awaitPermit() }
+
+        assertEquals(listOf(TimeUnit.SECONDS.toNanos(10)), sleeps)
+    }
+
+    @Test
+    fun requestThrottle_honorsServerCooldown() {
+        var nowNanos = 0L
+        val sleeps = mutableListOf<Long>()
+        val throttle = CommunityRequestThrottle(
+            maxRequests = 4,
+            windowMillis = 10_000L,
+            nanoTime = { nowNanos },
+            sleepNanos = {
+                sleeps += it
+                nowNanos += it
+            },
+        )
+
+        throttle.awaitPermit()
+        throttle.postpone(7_000L)
+        throttle.awaitPermit()
+
+        assertEquals(listOf(TimeUnit.SECONDS.toNanos(7)), sleeps)
+    }
+
+    @Test
+    fun rateLimitWithoutRetryAfter_usesFullWindowCooldown() = runBlocking {
+        var nowNanos = 0L
+        val sleeps = mutableListOf<Long>()
+        val throttle = CommunityRequestThrottle(
+            maxRequests = 4,
+            windowMillis = 10_000L,
+            nanoTime = { nowNanos },
+            sleepNanos = {
+                sleeps += it
+                nowNanos += it
+            },
+        )
+        val rateLimitedService = CommunityConfigService(
+            client = httpClient,
+            baseUrl = server.url("/").toString().trimEnd('/'),
+            requestThrottle = throttle,
+        )
+        server.enqueue(MockResponse().setResponseCode(429).setBody("""{ "error": "Slow down" }"""))
+        server.enqueue(MockResponse().setBody("""{ "games": [] }"""))
+
+        val error = runCatching {
+            rateLimitedService.searchGames("First")
+        }.exceptionOrNull()
+        rateLimitedService.searchGames("Second")
+
+        assertTrue(error is CommunityConfigApiException)
+        assertEquals(429, (error as CommunityConfigApiException).statusCode)
+        assertEquals(listOf(TimeUnit.SECONDS.toNanos(10)), sleeps)
+    }
+
+    @Test
+    fun retryAfterParser_supportsSecondsAndHttpDates() {
+        val retryAt = DateTimeFormatter.RFC_1123_DATE_TIME.format(
+            Instant.ofEpochSecond(20).atZone(ZoneOffset.UTC),
+        )
+
+        assertEquals(3_000L, parseCommunityRetryAfterMillis("3", nowEpochMillis = 0L))
+        assertEquals(60_000L, parseCommunityRetryAfterMillis("999", nowEpochMillis = 0L))
+        assertEquals(15_000L, parseCommunityRetryAfterMillis(retryAt, nowEpochMillis = 5_000L))
+        assertNull(parseCommunityRetryAfterMillis(retryAt, nowEpochMillis = 21_000L))
+        assertNull(parseCommunityRetryAfterMillis("-1", nowEpochMillis = 0L))
+        assertNull(parseCommunityRetryAfterMillis("not-a-delay", nowEpochMillis = 0L))
     }
 
     @Test

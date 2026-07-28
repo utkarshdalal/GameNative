@@ -5,6 +5,9 @@ import app.gamenative.utils.Net
 import com.winlator.container.Container
 import java.io.IOException
 import java.time.OffsetDateTime
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.ArrayDeque
 import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -35,8 +38,10 @@ private const val MAX_NOTES_CHARS = 4 * 1024
 private const val MAX_TAGS = 20
 private const val MAX_TAG_CHARS = 64
 private const val CACHE_TTL_MILLIS = 2 * 60 * 1000L
-private const val MIN_REQUEST_INTERVAL_MILLIS = 250L
-private const val DEFAULT_RATE_LIMIT_COOLDOWN_MILLIS = 5_000L
+private const val MAX_REQUESTS_PER_WINDOW = 4
+private const val REQUEST_WINDOW_MILLIS = 10_000L
+private const val DEFAULT_RATE_LIMIT_COOLDOWN_MILLIS = REQUEST_WINDOW_MILLIS
+private const val MAX_RATE_LIMIT_COOLDOWN_MILLIS = 60_000L
 
 enum class CommunityConfigSort(val apiValue: String) {
     HIGHEST_RATED("rating"),
@@ -126,9 +131,64 @@ private class ExpiringCache<K, V>(
     fun clear() = entries.clear()
 }
 
-class CommunityConfigService(
+internal class CommunityRequestThrottle(
+    private val maxRequests: Int = MAX_REQUESTS_PER_WINDOW,
+    windowMillis: Long = REQUEST_WINDOW_MILLIS,
+    private val nanoTime: () -> Long = System::nanoTime,
+    private val sleepNanos: (Long) -> Unit = { TimeUnit.NANOSECONDS.sleep(it) },
+) {
+    private val windowNanos = TimeUnit.MILLISECONDS.toNanos(windowMillis)
+    private val requestStarts = ArrayDeque<Long>(maxRequests)
+    private var blockedUntilNanos = 0L
+
+    init {
+        require(maxRequests > 0)
+        require(windowMillis > 0)
+    }
+
+    @Synchronized
+    fun awaitPermit() {
+        while (true) {
+            val now = nanoTime()
+            val expiredAt = now - windowNanos
+            while (requestStarts.isNotEmpty() && requestStarts.first() <= expiredAt) {
+                requestStarts.removeFirst()
+            }
+
+            val quotaWaitNanos = if (requestStarts.size >= maxRequests) {
+                requestStarts.first() + windowNanos - now
+            } else {
+                0L
+            }
+            val cooldownWaitNanos = blockedUntilNanos - now
+            val waitNanos = maxOf(quotaWaitNanos, cooldownWaitNanos)
+            if (waitNanos <= 0L) {
+                requestStarts.addLast(now)
+                return
+            }
+
+            try {
+                sleepNanos(waitNanos)
+            } catch (error: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw CommunityConfigApiException("Compatibility request was interrupted", cause = error)
+            }
+        }
+    }
+
+    @Synchronized
+    fun postpone(delayMillis: Long) {
+        blockedUntilNanos = maxOf(
+            blockedUntilNanos,
+            nanoTime() + TimeUnit.MILLISECONDS.toNanos(delayMillis.coerceAtLeast(0L)),
+        )
+    }
+}
+
+class CommunityConfigService internal constructor(
     private val client: OkHttpClient = Net.http,
     private val baseUrl: String = DEFAULT_BASE_URL,
+    private val requestThrottle: CommunityRequestThrottle = CommunityRequestThrottle(),
 ) {
     companion object {
         private const val DEFAULT_BASE_URL = "https://api.gamenative.app"
@@ -151,11 +211,8 @@ class CommunityConfigService(
     private val deviceSearchCache = ExpiringCache<String, List<CommunityConfigDevice>>(12, CACHE_TTL_MILLIS)
     private val configPageCache = ExpiringCache<ConfigCacheKey, CommunityConfigPage>(24, CACHE_TTL_MILLIS)
     private val requestGate = Any()
-    private var nextRequestAtNanos = 0L
 
-    fun clearCache() {
-        gameSearchCache.clear()
-        deviceSearchCache.clear()
+    fun clearConfigCache() {
         configPageCache.clear()
     }
 
@@ -395,19 +452,17 @@ class CommunityConfigService(
     private fun execute(url: String): String {
         val request = Request.Builder().url(url).get().build()
         return synchronized(requestGate) {
-            waitForRequestWindow()
+            requestThrottle.awaitPermit()
             try {
                 client.newCall(request).execute().use { response ->
                     val body = readBoundedBody(response.body)
                     if (!response.isSuccessful) {
                         if (response.code == 429) {
-                            val retryAfterMillis = response.header("Retry-After")
-                                ?.trim()
-                                ?.toLongOrNull()
-                                ?.coerceIn(1L, 60L)
-                                ?.times(1_000L)
+                            val retryAfterMillis = parseCommunityRetryAfterMillis(
+                                response.header("Retry-After"),
+                            )
                                 ?: DEFAULT_RATE_LIMIT_COOLDOWN_MILLIS
-                            postponeRequests(retryAfterMillis)
+                            requestThrottle.postpone(retryAfterMillis)
                         }
                         throw CommunityConfigApiException(
                             message = parseErrorMessage(body)
@@ -425,26 +480,6 @@ class CommunityConfigService(
                 throw CommunityConfigApiException("Unable to reach the compatibility service", cause = error)
             }
         }
-    }
-
-    private fun waitForRequestWindow() {
-        val waitNanos = nextRequestAtNanos - System.nanoTime()
-        if (waitNanos > 0) {
-            try {
-                TimeUnit.NANOSECONDS.sleep(waitNanos)
-            } catch (error: InterruptedException) {
-                Thread.currentThread().interrupt()
-                throw CommunityConfigApiException("Compatibility request was interrupted", cause = error)
-            }
-        }
-        nextRequestAtNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(MIN_REQUEST_INTERVAL_MILLIS)
-    }
-
-    private fun postponeRequests(delayMillis: Long) {
-        nextRequestAtNanos = maxOf(
-            nextRequestAtNanos,
-            System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(delayMillis),
-        )
     }
 
     private fun readBoundedBody(body: okhttp3.ResponseBody?): String {
@@ -590,6 +625,27 @@ class CommunityConfigService(
             }
         }.getOrDefault("")
     }
+}
+
+internal fun parseCommunityRetryAfterMillis(
+    value: String?,
+    nowEpochMillis: Long = System.currentTimeMillis(),
+): Long? {
+    val normalized = value?.trim().orEmpty()
+    if (normalized.isEmpty()) return null
+
+    normalized.toLongOrNull()?.takeIf { it > 0L }?.let { seconds ->
+        return TimeUnit.SECONDS.toMillis(seconds.coerceAtMost(60L))
+    }
+
+    val retryAtMillis = runCatching {
+        ZonedDateTime.parse(normalized, DateTimeFormatter.RFC_1123_DATE_TIME)
+            .toInstant()
+            .toEpochMilli()
+    }.getOrNull() ?: return null
+    return (retryAtMillis - nowEpochMillis)
+        .takeIf { it > 0L }
+        ?.coerceIn(1_000L, MAX_RATE_LIMIT_COOLDOWN_MILLIS)
 }
 
 internal fun selectCommunityGame(query: String, games: List<CommunityGame>): CommunityGame? {

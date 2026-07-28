@@ -114,6 +114,7 @@ fun CommunityConfigsDialog(
     var errorMessage by remember(gameName) { mutableStateOf<String?>(null) }
     var selectedRun by remember(gameName) { mutableStateOf<CommunityConfigRun?>(null) }
     var lookupKey by remember(gameName) { mutableIntStateOf(0) }
+    var configRefreshKey by remember(gameName) { mutableIntStateOf(0) }
     var requestGeneration by remember(gameName) { mutableIntStateOf(0) }
 
     LaunchedEffect(visible, gameName, lookupKey) {
@@ -182,6 +183,7 @@ fun CommunityConfigsDialog(
         sort,
         hardwareScope,
         lookupKey,
+        configRefreshKey,
     ) {
         val game = resolvedGame ?: return@LaunchedEffect
         val generation = ++requestGeneration
@@ -305,9 +307,8 @@ fun CommunityConfigsDialog(
                     actions = {
                         IconButton(
                             onClick = {
-                                service.clearCache()
-                                resolvedGame = null
-                                lookupKey++
+                                service.clearConfigCache()
+                                configRefreshKey++
                             },
                             enabled = !loading && !loadingMore,
                         ) {
@@ -346,8 +347,12 @@ fun CommunityConfigsDialog(
                         errorMessage != null && runs.isEmpty() -> CommunityConfigError(
                             message = errorMessage.orEmpty(),
                             onRetry = {
-                                resolvedGame = null
-                                lookupKey++
+                                if (resolvedGame == null) {
+                                    lookupKey++
+                                } else {
+                                    service.clearConfigCache()
+                                    configRefreshKey++
+                                }
                             },
                             modifier = Modifier.align(Alignment.Center),
                         )
