@@ -1,6 +1,7 @@
 package app.gamenative.powercontrol
 
 import android.content.Context
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
@@ -182,7 +183,7 @@ object PowerManager {
                 }
             },
             getTuningStrategy = { currentProfile?.tuningStrategy ?: AutoTuningStrategy.BALANCED },
-            enableLogging = true
+            enableLogging = BuildConfig.DEBUG
         )
 
         autoTuner?.start()

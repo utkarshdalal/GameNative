@@ -2190,5 +2190,5 @@
     <string name="power_control_strategy_aggressive">激進</string>
     <string name="power_control_strategy_aggressive_desc">最大化檢測到的瓶頸效能</string>
     <string name="power_control_strategy_conservative">保守</string>
-    <string name="power_control_strategy_conservative_desc">漸進式調整，註重穩定性</string>
+    <string name="power_control_strategy_conservative_desc">漸進式調整，注重穩定性</string>
 </resources>

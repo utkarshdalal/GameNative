@@ -2181,7 +2181,7 @@
     <string name="power_control_strategy_balanced">Zrównoważona</string>
     <string name="power_control_strategy_balanced_desc">Dostosowuje wszystkie komponenty równomiernie dla najlepszej ogólnej wydajności</string>
     <string name="power_control_strategy_power_efficient">Energooszczędna</string>
-    <string name="power_control_strategy_power_efficient_desc">Zmniejsza komponenty nieblokujące, aby oszczędzać energię</string>
+    <string name="power_control_strategy_power_efficient_desc">Zmniejsza komponenty niebędące wąskim gardłem, aby oszczędzać energię</string>
     <string name="power_control_strategy_aggressive">Agresywna</string>
     <string name="power_control_strategy_aggressive_desc">Maksymalizuje wydajność wykrytych wąskich gardeł</string>
     <string name="power_control_strategy_conservative">Konserwatywna</string>

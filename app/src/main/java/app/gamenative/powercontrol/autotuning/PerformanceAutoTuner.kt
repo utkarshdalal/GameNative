@@ -38,10 +38,11 @@ class PerformanceAutoTuner(
     companion object {
         private const val TAG = "PerformanceAutoTuner"
 
+        private const val WARMUP_CYCLES = 10 // Around 20 seconds
+
         // Tuning thresholds
         private const val FPS_ERROR_THRESHOLD = 2.0
         private const val FPS_ERROR_LARGE = 5.0
-        private const val START_TUNING_FPS_COUNT = 5.0
         private const val USAGE_LOW_THRESHOLD = 70.0
         private const val USAGE_HIGH_THRESHOLD = 85.0
         private const val MIN_PERFORMANCE = 20.0
@@ -80,6 +81,7 @@ class PerformanceAutoTuner(
     private var currentCpuPerformance: Double = 50.0
     private var currentGpuPerformance: Double = 50.0
     private var currentBusPerformance: Double = 50.0
+    private var warmUpCycles = 0
     private var isRunning: Boolean = false
     private var tuningThread: Thread? = null
     private var currentBottleneck: BottleneckType = BottleneckType.NONE
@@ -200,11 +202,14 @@ class PerformanceAutoTuner(
      * Perform one tuning cycle
      */
     private fun performTuningCycle() {
+        // Skip first ${WARMUP_CYCLES} cycles regardless of FPS to allow game to start
+        if (++warmUpCycles < WARMUP_CYCLES) return
+
         val targetFps = PowerManager.targetFps.toDouble()
         val currentFps = PowerManager.currentFps.toDouble()
 
         // Skip tuning when targetFps is 0 (FPS limiter disabled) or currentFps is 0
-        if (targetFps == 0.0 || currentFps <= START_TUNING_FPS_COUNT) {
+        if (targetFps == 0.0 || currentFps == 0.0) {
             return
         }
 

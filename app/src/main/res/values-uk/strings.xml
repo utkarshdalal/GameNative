@@ -2181,5 +2181,5 @@
     <string name="power_control_strategy_aggressive">Агресивна</string>
     <string name="power_control_strategy_aggressive_desc">Максимізує продуктивність на виявлених вузьких місцях</string>
     <string name="power_control_strategy_conservative">Консервативна</string>
-    <string name="power_control_strategy_conservative_desc">Поступові налаштування з акцентом на стабільності</string>
+    <string name="power_control_strategy_conservative_desc">Поступові налаштування з акцентом на стабільність</string>
 </resources>

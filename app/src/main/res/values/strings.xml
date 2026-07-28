@@ -2181,5 +2181,5 @@
     <string name="power_control_strategy_aggressive">Aggressive</string>
     <string name="power_control_strategy_aggressive_desc">Maximizes performance on detected bottlenecks</string>
     <string name="power_control_strategy_conservative">Conservative</string>
-    <string name="power_control_strategy_conservative_desc">Gradual adjustments with stability focus</string>
+    <string name="power_control_strategy_conservative_desc">AdjustsGradual gradually with a focus on stability</string>
 </resources>

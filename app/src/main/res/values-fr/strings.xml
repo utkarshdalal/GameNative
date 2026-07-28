@@ -2179,7 +2179,7 @@
     <string name="power_control_strategy_balanced">Équilibré</string>
     <string name="power_control_strategy_balanced_desc">Ajuste tous les composants de manière égale pour de meilleures performances globales</string>
     <string name="power_control_strategy_power_efficient">Économie d\'énergie</string>
-    <string name="power_control_strategy_power_efficient_desc">Réduit les composants non-goulots d\'étranglement pour économiser l\'énergie</string>
+    <string name="power_control_strategy_power_efficient_desc">Réduit les composants non limitants pour économiser l\'énergie</string>
     <string name="power_control_strategy_aggressive">Agressif</string>
     <string name="power_control_strategy_aggressive_desc">Maximise les performances sur les goulots d\'étranglement détectés</string>
     <string name="power_control_strategy_conservative">Conservateur</string>
