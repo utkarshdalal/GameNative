@@ -144,7 +144,7 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
 - ✅ Multiple governor support (schedutil, performance, powersave, etc.)
 - ✅ Sysfs file permission management (chmod 444 after write, restore to 644 on stop)
 - ✅ **CPU Pinning / Process Affinity Control**:
-  - Automatic app process pinning to efficiency cores
+  - ~Automatic app process pinning to efficiency cores~ (Removed due to possible ANR happening)
   - Automatic PulseAudio pinning to dedicated performance core
   - Wine game process pinning with retry logic
   - Wine infrastructure pinning (wineserver, winhandler, services.exe)

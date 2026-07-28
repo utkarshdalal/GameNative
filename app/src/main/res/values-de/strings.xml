@@ -2115,4 +2115,13 @@
     <string name="power_control_available_frequencies">Verfügbare Frequenzen</string>
     <string name="power_control_auto_tuning">Automatische Anpassung</string>
     <string name="power_control_auto_tuning_desc">Leistung automatisch basierend auf FPS anpassen</string>
+    <string name="power_control_tuning_strategy">Tuning-Strategie</string>
+    <string name="power_control_strategy_balanced">Ausgewogen</string>
+    <string name="power_control_strategy_balanced_desc">Alle Komponenten gleichmäßig anpassen für beste Gesamtleistung</string>
+    <string name="power_control_strategy_power_efficient">Energieeffizient</string>
+    <string name="power_control_strategy_power_efficient_desc">Nicht-Engpass-Komponenten reduzieren, um Energie zu sparen</string>
+    <string name="power_control_strategy_aggressive">Aggressiv</string>
+    <string name="power_control_strategy_aggressive_desc">Leistung bei erkannten Engpässen maximieren</string>
+    <string name="power_control_strategy_conservative">Konservativ</string>
+    <string name="power_control_strategy_conservative_desc">Schrittweise Anpassungen mit Fokus auf Stabilität</string>
 </resources>

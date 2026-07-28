@@ -2105,4 +2105,13 @@ https://gamenative.app
     <string name="power_control_available_frequencies">Доступные частоты</string>
     <string name="power_control_auto_tuning">Автонастройка</string>
     <string name="power_control_auto_tuning_desc">Автоматическая настройка производительности на основе FPS</string>
+    <string name="power_control_tuning_strategy">Стратегия настройки</string>
+    <string name="power_control_strategy_balanced">Сбалансированная</string>
+    <string name="power_control_strategy_balanced_desc">Равномерно настраивает все компоненты для лучшей общей производительности</string>
+    <string name="power_control_strategy_power_efficient">Энергоэффективная</string>
+    <string name="power_control_strategy_power_efficient_desc">Снижает неблокирующие компоненты для экономии энергии</string>
+    <string name="power_control_strategy_aggressive">Агрессивная</string>
+    <string name="power_control_strategy_aggressive_desc">Максимизирует производительность на обнаруженных узких местах</string>
+    <string name="power_control_strategy_conservative">Консервативная</string>
+    <string name="power_control_strategy_conservative_desc">Постепенные настройки с акцентом на стабильность</string>
 </resources>

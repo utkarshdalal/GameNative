@@ -2045,4 +2045,13 @@
     <string name="power_control_available_frequencies">Tilgængelige frekvenser</string>
     <string name="power_control_auto_tuning">Automatisk justering</string>
     <string name="power_control_auto_tuning_desc">Juster automatisk ydeevnen baseret på FPS</string>
+    <string name="power_control_tuning_strategy">Justeringsstrategi</string>
+    <string name="power_control_strategy_balanced">Afbalanceret</string>
+    <string name="power_control_strategy_balanced_desc">Justerer alle komponenter lige meget for bedste samlede ydeevne</string>
+    <string name="power_control_strategy_power_efficient">Strømbesparende</string>
+    <string name="power_control_strategy_power_efficient_desc">Reducerer ikke-flaskehals komponenter for at spare strøm</string>
+    <string name="power_control_strategy_aggressive">Aggressiv</string>
+    <string name="power_control_strategy_aggressive_desc">Maksimerer ydeevnen på opdagede flaskehalse</string>
+    <string name="power_control_strategy_conservative">Konservativ</string>
+    <string name="power_control_strategy_conservative_desc">Gradvise justeringer med fokus på stabilitet</string>
 </resources>

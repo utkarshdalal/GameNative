@@ -2173,4 +2173,13 @@
     <string name="power_control_available_frequencies">Доступні частоти</string>
     <string name="power_control_auto_tuning">Автоналаштування</string>
     <string name="power_control_auto_tuning_desc">Автоматичне налаштування продуктивності на основі FPS</string>
+    <string name="power_control_tuning_strategy">Стратегія налаштування</string>
+    <string name="power_control_strategy_balanced">Збалансована</string>
+    <string name="power_control_strategy_balanced_desc">Рівномірно налаштовує всі компоненти для кращої загальної продуктивності</string>
+    <string name="power_control_strategy_power_efficient">Енергоефективна</string>
+    <string name="power_control_strategy_power_efficient_desc">Знижує неблокуючі компоненти для економії енергії</string>
+    <string name="power_control_strategy_aggressive">Агресивна</string>
+    <string name="power_control_strategy_aggressive_desc">Максимізує продуктивність на виявлених вузьких місцях</string>
+    <string name="power_control_strategy_conservative">Консервативна</string>
+    <string name="power_control_strategy_conservative_desc">Поступові налаштування з акцентом на стабільності</string>
 </resources>

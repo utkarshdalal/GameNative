@@ -1,12 +1,22 @@
 package app.gamenative.powercontrol
 
+import androidx.annotation.StringRes
+import app.gamenative.R
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
 import kotlinx.serialization.Serializable
 
+enum class AutoTuningStrategy(@param:StringRes val displayNameRes: Int, @param:StringRes val descriptionRes: Int) {
+    POWER_EFFICIENT(R.string.power_control_strategy_power_efficient, R.string.power_control_strategy_power_efficient_desc),
+    BALANCED(R.string.power_control_strategy_balanced, R.string.power_control_strategy_balanced_desc),
+    AGGRESSIVE(R.string.power_control_strategy_aggressive, R.string.power_control_strategy_aggressive_desc),
+    CONSERVATIVE(R.string.power_control_strategy_conservative, R.string.power_control_strategy_conservative_desc)
+}
+
 @Serializable
 data class PowerProfile(
     var enableAutoTuning: Boolean = true,
+    var tuningStrategy: AutoTuningStrategy = AutoTuningStrategy.POWER_EFFICIENT,
     var name: String,
     var governor: CpuGovernor,
     var minCpuFreq: Long,

@@ -2130,4 +2130,13 @@
     <string name="power_control_available_frequencies">利用可能な周波数</string>
     <string name="power_control_auto_tuning">自動調整</string>
     <string name="power_control_auto_tuning_desc">FPSに基づいてパフォーマンスを自動調整</string>
+    <string name="power_control_tuning_strategy">調整ストラテジー</string>
+    <string name="power_control_strategy_balanced">バランス</string>
+    <string name="power_control_strategy_balanced_desc">すべてのコンポーネントを均等に調整して最高の総合パフォーマンスを実現</string>
+    <string name="power_control_strategy_power_efficient">省電力</string>
+    <string name="power_control_strategy_power_efficient_desc">ボトルネック以外のコンポーネントを低減して電力を節約</string>
+    <string name="power_control_strategy_aggressive">アグレッシブ</string>
+    <string name="power_control_strategy_aggressive_desc">検出されたボトルネックのパフォーマンスを最大化</string>
+    <string name="power_control_strategy_conservative">保守的</string>
+    <string name="power_control_strategy_conservative_desc">安定性を重視した漸進的な調整</string>
 </resources>

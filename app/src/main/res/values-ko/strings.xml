@@ -2171,4 +2171,13 @@
     <string name="power_control_available_frequencies">사용 가능한 주파수</string>
     <string name="power_control_auto_tuning">자동 튜닝</string>
     <string name="power_control_auto_tuning_desc">FPS에 따라 성능을 자동으로 조정</string>
+    <string name="power_control_tuning_strategy">튜닝 전략</string>
+    <string name="power_control_strategy_balanced">균형</string>
+    <string name="power_control_strategy_balanced_desc">모든 구성 요소를 균등하게 조정하여 최고의 전체 성능 달성</string>
+    <string name="power_control_strategy_power_efficient">전력 효율</string>
+    <string name="power_control_strategy_power_efficient_desc">병목 현상이 아닌 구성 요소를 줄여 전력 절약</string>
+    <string name="power_control_strategy_aggressive">공격적</string>
+    <string name="power_control_strategy_aggressive_desc">감지된 병목 현상의 성능을 최대화</string>
+    <string name="power_control_strategy_conservative">보수적</string>
+    <string name="power_control_strategy_conservative_desc">안정성에 중점을 둔 점진적 조정</string>
 </resources>

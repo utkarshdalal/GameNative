@@ -2177,4 +2177,13 @@
     <string name="power_control_available_frequencies">Dostępne częstotliwości</string>
     <string name="power_control_auto_tuning">Automatyczne dostrajanie</string>
     <string name="power_control_auto_tuning_desc">Automatycznie dostosowuj wydajność na podstawie FPS</string>
+    <string name="power_control_tuning_strategy">Strategia dostrajania</string>
+    <string name="power_control_strategy_balanced">Zrównoważona</string>
+    <string name="power_control_strategy_balanced_desc">Dostosowuje wszystkie komponenty równomiernie dla najlepszej ogólnej wydajności</string>
+    <string name="power_control_strategy_power_efficient">Energooszczędna</string>
+    <string name="power_control_strategy_power_efficient_desc">Zmniejsza komponenty nieblokujące, aby oszczędzać energię</string>
+    <string name="power_control_strategy_aggressive">Agresywna</string>
+    <string name="power_control_strategy_aggressive_desc">Maksymalizuje wydajność wykrytych wąskich gardeł</string>
+    <string name="power_control_strategy_conservative">Konserwatywna</string>
+    <string name="power_control_strategy_conservative_desc">Stopniowe dostosowania z naciskiem na stabilność</string>
 </resources>

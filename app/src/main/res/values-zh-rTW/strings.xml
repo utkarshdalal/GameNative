@@ -2182,4 +2182,13 @@
     <string name="power_control_available_frequencies">可用頻率</string>
     <string name="power_control_auto_tuning">自動調整</string>
     <string name="power_control_auto_tuning_desc">根據幀率自動調整效能</string>
+    <string name="power_control_tuning_strategy">調整策略</string>
+    <string name="power_control_strategy_balanced">平衡</string>
+    <string name="power_control_strategy_balanced_desc">均衡調整所有元件以獲得最佳整體效能</string>
+    <string name="power_control_strategy_power_efficient">節能</string>
+    <string name="power_control_strategy_power_efficient_desc">降低非瓶頸元件以節省電量</string>
+    <string name="power_control_strategy_aggressive">激進</string>
+    <string name="power_control_strategy_aggressive_desc">最大化檢測到的瓶頸效能</string>
+    <string name="power_control_strategy_conservative">保守</string>
+    <string name="power_control_strategy_conservative_desc">漸進式調整，註重穩定性</string>
 </resources>

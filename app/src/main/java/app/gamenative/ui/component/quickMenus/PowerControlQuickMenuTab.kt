@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.tooling.preview.Preview
+import app.gamenative.powercontrol.AutoTuningStrategy
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.PowerProfile
 import app.gamenative.powercontrol.profiles.CpuGovernor
@@ -78,6 +79,20 @@ fun PowerControlQuickMenuTab(
                 PowerManager.currentProfile?.let { profile ->
                     val updatedProfile = profile.copy(
                         enableAutoTuning = enabled,
+                        name = PerformancePreset.CUSTOM.displayName
+                    )
+                    PowerManager.setCurrentProfile(updatedProfile)
+                }
+
+                refreshTrigger++
+            }
+        },
+        onTuningStrategySelected = { strategy ->
+            coroutineScope.launch(Dispatchers.IO) {
+                // Update current profile with new tuning strategy
+                PowerManager.currentProfile?.let { profile ->
+                    val updatedProfile = profile.copy(
+                        tuningStrategy = strategy,
                         name = PerformancePreset.CUSTOM.displayName
                     )
                     PowerManager.setCurrentProfile(updatedProfile)
@@ -285,8 +300,9 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
                         minBusLevel = ramDisplayInfo?.minBusLevel ?: 0,
                         maxBusLevel = ramDisplayInfo?.maxBusLevel ?: 0
                     )).copy(
-                        // Preserve enableAutoTuning from PowerManager's current profile
-                        enableAutoTuning = PowerManager.currentProfile?.enableAutoTuning ?: true
+                        // Preserve enableAutoTuning and tuningStrategy from PowerManager's current profile
+                        enableAutoTuning = PowerManager.currentProfile?.enableAutoTuning ?: true,
+                        tuningStrategy = PowerManager.currentProfile?.tuningStrategy ?: AutoTuningStrategy.POWER_EFFICIENT
                     )
 
                     if (!isInitialized) {
@@ -325,6 +341,7 @@ fun PowerControlLoadingPreview() {
         PowerControlQuickMenuContent(
             uiState = PowerControlUiState.Loading,
             onAutoTuningToggled = {},
+            onTuningStrategySelected = {},
             onProfileSelected = {},
             onGovernorSelected = {},
             onMinCpuValueChanged = {},
@@ -382,6 +399,7 @@ fun PowerControlSuccessCpuOnlyPreview() {
                 ramInfo = null
             ),
             onAutoTuningToggled = {},
+            onTuningStrategySelected = {},
             onProfileSelected = {},
             onGovernorSelected = {},
             onMinCpuValueChanged = {},
@@ -443,6 +461,7 @@ fun PowerControlSuccessWithGpuPreview() {
                 ),
             ),
             onAutoTuningToggled = {},
+            onTuningStrategySelected = {},
             onProfileSelected = {},
             onGovernorSelected = {},
             onMinCpuValueChanged = {},

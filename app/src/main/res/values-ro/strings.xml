@@ -2178,4 +2178,13 @@
     <string name="power_control_available_frequencies">Frecvențe disponibile</string>
     <string name="power_control_auto_tuning">Reglare automată</string>
     <string name="power_control_auto_tuning_desc">Ajustează automat performanța în funcție de FPS</string>
+    <string name="power_control_tuning_strategy">Strategie de reglare</string>
+    <string name="power_control_strategy_balanced">Echilibrat</string>
+    <string name="power_control_strategy_balanced_desc">Ajustează toate componentele uniform pentru cea mai bună performanță generală</string>
+    <string name="power_control_strategy_power_efficient">Eficiență energetică</string>
+    <string name="power_control_strategy_power_efficient_desc">Reduce componentele care nu sunt blocaje pentru a economisi energie</string>
+    <string name="power_control_strategy_aggressive">Agresiv</string>
+    <string name="power_control_strategy_aggressive_desc">Maximizează performanța la blocajele detectate</string>
+    <string name="power_control_strategy_conservative">Conservator</string>
+    <string name="power_control_strategy_conservative_desc">Ajustări graduale cu accent pe stabilitate</string>
 </resources>

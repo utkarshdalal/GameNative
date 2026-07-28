@@ -181,7 +181,8 @@ object PowerManager {
                     setMaxBusLevel(level)
                 }
             },
-            enableLogging = false
+            getTuningStrategy = { currentProfile?.tuningStrategy ?: AutoTuningStrategy.BALANCED },
+            enableLogging = true
         )
 
         autoTuner?.start()

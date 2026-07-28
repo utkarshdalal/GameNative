@@ -37,6 +37,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.powercontrol.AutoTuningStrategy
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.PowerProfile
 import app.gamenative.powercontrol.drivers.PerformanceDriver
@@ -45,6 +46,7 @@ import app.gamenative.powercontrol.drivers.PerformanceDriver
 fun PowerControlQuickMenuContent(
     uiState: PowerControlUiState,
     onAutoTuningToggled: (Boolean) -> Unit,
+    onTuningStrategySelected: (AutoTuningStrategy) -> Unit,
     onProfileSelected: (PowerProfile) -> Unit,
     onGovernorSelected: (String) -> Unit,
     onMinCpuValueChanged: (Int) -> Unit,
@@ -72,6 +74,7 @@ fun PowerControlQuickMenuContent(
                 SuccessView(
                     state = uiState,
                     onAutoTuningToggled = onAutoTuningToggled,
+                    onTuningStrategySelected = onTuningStrategySelected,
                     onProfileSelected = onProfileSelected,
                     onGovernorSelected = onGovernorSelected,
                     onMinCpuValueChanged = onMinCpuValueChanged,
@@ -137,6 +140,7 @@ private fun LoadingView() {
 private fun SuccessView(
     state: PowerControlUiState.Success,
     onAutoTuningToggled: (Boolean) -> Unit,
+    onTuningStrategySelected: (AutoTuningStrategy) -> Unit,
     onProfileSelected: (PowerProfile) -> Unit,
     onGovernorSelected: (String) -> Unit,
     onMinCpuValueChanged: (Int) -> Unit,
@@ -148,6 +152,7 @@ private fun SuccessView(
 ) {
     var isProfileDropdownExpanded by remember { mutableStateOf(false) }
     var isGovernorDropdownExpanded by remember { mutableStateOf(false) }
+    var isTuningStrategyDropdownExpanded by remember { mutableStateOf(false) }
     var selectedMinFreqIndex by remember { mutableIntStateOf(state.cpuInfo.selectedMinFreqIndex) }
     var selectedMaxFreqIndex by remember { mutableIntStateOf(state.cpuInfo.selectedMaxFreqIndex) }
     var selectedMinGpuPowerLevel by remember { mutableIntStateOf(state.gpuInfo?.minPowerLevel ?: 0) }
@@ -214,6 +219,84 @@ private fun SuccessView(
             checked = state.selectedProfile.enableAutoTuning,
             onCheckedChange = onAutoTuningToggled
         )
+    }
+
+    // Tuning Strategy Dropdown (only shown when auto-tuning is enabled)
+    if (state.selectedProfile.enableAutoTuning) {
+        Text(
+            text = stringResource(R.string.power_control_tuning_strategy),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        Box {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickable { isTuningStrategyDropdownExpanded = true }
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = stringResource(state.selectedProfile.tuningStrategy.displayNameRes),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(state.selectedProfile.tuningStrategy.descriptionRes),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            DropdownMenu(
+                expanded = isTuningStrategyDropdownExpanded,
+                onDismissRequest = { isTuningStrategyDropdownExpanded = false }
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    AutoTuningStrategy.entries.forEach { strategy ->
+                        DropdownMenuItem(
+                            text = {
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(strategy.displayNameRes),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = stringResource(strategy.descriptionRes),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            onClick = {
+                                isTuningStrategyDropdownExpanded = false
+                                onTuningStrategySelected(strategy)
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 
     // Only show manual controls when auto-tuning is disabled

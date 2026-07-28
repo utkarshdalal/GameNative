@@ -2191,4 +2191,13 @@
     <string name="power_control_available_frequencies">可用频率</string>
     <string name="power_control_auto_tuning">自动调整</string>
     <string name="power_control_auto_tuning_desc">根据帧率自动调整性能</string>
+    <string name="power_control_tuning_strategy">调整策略</string>
+    <string name="power_control_strategy_balanced">平衡</string>
+    <string name="power_control_strategy_balanced_desc">均衡调整所有组件以获得最佳整体性能</string>
+    <string name="power_control_strategy_power_efficient">节能</string>
+    <string name="power_control_strategy_power_efficient_desc">降低非瓶颈组件以节省电量</string>
+    <string name="power_control_strategy_aggressive">激进</string>
+    <string name="power_control_strategy_aggressive_desc">最大化检测到的瓶颈性能</string>
+    <string name="power_control_strategy_conservative">保守</string>
+    <string name="power_control_strategy_conservative_desc">渐进式调整，注重稳定性</string>
 </resources>

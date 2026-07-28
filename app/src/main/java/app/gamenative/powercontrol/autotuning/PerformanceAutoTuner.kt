@@ -1,5 +1,6 @@
 package app.gamenative.powercontrol.autotuning
 
+import app.gamenative.powercontrol.AutoTuningStrategy
 import app.gamenative.powercontrol.PowerManager
 import timber.log.Timber
 import kotlin.math.abs
@@ -23,20 +24,54 @@ class PerformanceAutoTuner(
     private val onCpuFrequencyChange: (Long) -> Unit,
     private val onGpuLevelChange: (Int) -> Unit,
     private val onBusLevelChange: (Int) -> Unit,
+    private val getTuningStrategy: () -> AutoTuningStrategy,
     private val enableLogging: Boolean = false
 ) {
+    enum class BottleneckType {
+        CPU_BOUND,
+        GPU_BOUND,
+        BOTH_BOUND,
+        MEMORY_BOUND,
+        NONE
+    }
+
     companion object {
         private const val TAG = "PerformanceAutoTuner"
 
         // Tuning thresholds
         private const val FPS_ERROR_THRESHOLD = 2.0
         private const val FPS_ERROR_LARGE = 5.0
+        private const val START_TUNING_FPS_COUNT = 5.0
         private const val USAGE_LOW_THRESHOLD = 70.0
         private const val USAGE_HIGH_THRESHOLD = 85.0
         private const val MIN_PERFORMANCE = 20.0
         private const val MAX_PERFORMANCE = 100.0
         private const val PERFORMANCE_REDUCTION_STEP = 2.0
         private const val ADJUSTMENT_DECAY_FACTOR = 0.3
+    }
+
+    /**
+     * Get adjustment aggressiveness based on tuning strategy and bottleneck status
+     */
+    private fun getAdjustmentFactor(isBottleneck: Boolean): Double {
+        return when (getTuningStrategy()) {
+            AutoTuningStrategy.POWER_EFFICIENT -> if (isBottleneck) 0.5 else ADJUSTMENT_DECAY_FACTOR
+            AutoTuningStrategy.BALANCED -> ADJUSTMENT_DECAY_FACTOR
+            AutoTuningStrategy.AGGRESSIVE -> if (isBottleneck) 0.7 else ADJUSTMENT_DECAY_FACTOR
+            AutoTuningStrategy.CONSERVATIVE -> if (isBottleneck) 0.2 else 0.1
+        }
+    }
+
+    /**
+     * Check if we should reduce non-bottleneck components
+     */
+    private fun shouldReduceNonBottleneck(): Boolean {
+        return when (getTuningStrategy()) {
+            AutoTuningStrategy.POWER_EFFICIENT -> true
+            AutoTuningStrategy.BALANCED -> false
+            AutoTuningStrategy.AGGRESSIVE -> false
+            AutoTuningStrategy.CONSERVATIVE -> false
+        }
     }
 
     private var cpuPidController: PidController? = null
@@ -47,6 +82,7 @@ class PerformanceAutoTuner(
     private var currentBusPerformance: Double = 50.0
     private var isRunning: Boolean = false
     private var tuningThread: Thread? = null
+    private var currentBottleneck: BottleneckType = BottleneckType.NONE
 
     /**
      * Start the auto-tuning process
@@ -168,12 +204,18 @@ class PerformanceAutoTuner(
         val currentFps = PowerManager.currentFps.toDouble()
 
         // Skip tuning when targetFps is 0 (FPS limiter disabled) or currentFps is 0
-        if (targetFps == 0.0 || currentFps == 0.0) {
+        if (targetFps == 0.0 || currentFps <= START_TUNING_FPS_COUNT) {
             return
         }
 
+        val cpuUsage = PowerManager.currentCpuUsage.toDouble()
+        val gpuUsage = PowerManager.currentGpuUsage.toDouble()
+        val fpsError = abs(targetFps - currentFps)
+
+        currentBottleneck = detectBottleneck(cpuUsage, gpuUsage, fpsError)
+
         if (enableLogging) {
-            Timber.tag(TAG).i("Auto-tuning cycle (target: $targetFps, current: $currentFps)")
+            Timber.tag(TAG).i("Auto-tuning cycle (target: $targetFps, current: $currentFps, bottleneck: $currentBottleneck, strategy: ${getTuningStrategy()})")
         }
 
         tuneCpu(targetFps, currentFps)
@@ -189,15 +231,33 @@ class PerformanceAutoTuner(
             val fpsError = abs(targetFps - currentFps)
             val cpuUsage = PowerManager.currentCpuUsage.toDouble()
 
+            // Check if CPU is the bottleneck
+            val isCpuBottleneck = currentBottleneck == BottleneckType.CPU_BOUND ||
+                                  currentBottleneck == BottleneckType.BOTH_BOUND
+            val isNotCpuBottleneck = currentBottleneck == BottleneckType.GPU_BOUND ||
+                                     currentBottleneck == BottleneckType.MEMORY_BOUND
+
             // If we're hitting target FPS with low CPU usage, reduce performance
             if (fpsError < FPS_ERROR_THRESHOLD && cpuUsage < USAGE_LOW_THRESHOLD && currentCpuPerformance > MIN_PERFORMANCE + 5.0) {
                 currentCpuPerformance = (currentCpuPerformance - PERFORMANCE_REDUCTION_STEP).coerceAtLeast(MIN_PERFORMANCE)
                 controller.reset()
             }
+            // If CPU is clearly not the bottleneck, reduce it to save power (only for POWER_EFFICIENT)
+            else if (shouldReduceNonBottleneck() && isNotCpuBottleneck && fpsError > FPS_ERROR_THRESHOLD && currentCpuPerformance > MIN_PERFORMANCE + 10.0) {
+                currentCpuPerformance = (currentCpuPerformance - PERFORMANCE_REDUCTION_STEP * 0.5).coerceAtLeast(MIN_PERFORMANCE)
+                controller.reset()
+            }
+            // If CPU is the bottleneck, increase performance based on strategy
+            else if (isCpuBottleneck && fpsError > FPS_ERROR_THRESHOLD) {
+                val adjustment = controller.calculate(targetFps, currentFps)
+                val aggressiveness = getAdjustmentFactor(isBottleneck = true)
+                currentCpuPerformance = (currentCpuPerformance + adjustment * aggressiveness).coerceIn(MIN_PERFORMANCE, MAX_PERFORMANCE)
+            }
             // If CPU usage is high but not hitting target, increase performance
             else if (fpsError > FPS_ERROR_LARGE || cpuUsage > USAGE_HIGH_THRESHOLD) {
                 val adjustment = controller.calculate(targetFps, currentFps)
-                currentCpuPerformance = (currentCpuPerformance + adjustment * ADJUSTMENT_DECAY_FACTOR).coerceIn(MIN_PERFORMANCE, MAX_PERFORMANCE)
+                val aggressiveness = getAdjustmentFactor(isBottleneck = false)
+                currentCpuPerformance = (currentCpuPerformance + adjustment * aggressiveness).coerceIn(MIN_PERFORMANCE, MAX_PERFORMANCE)
             }
             // Otherwise maintain current performance
             else {
@@ -232,15 +292,33 @@ class PerformanceAutoTuner(
             val fpsError = abs(targetFps - currentFps)
             val gpuUsage = PowerManager.currentGpuUsage.toDouble()
 
+            // Check if GPU is the bottleneck
+            val isGpuBottleneck = currentBottleneck == BottleneckType.GPU_BOUND ||
+                                  currentBottleneck == BottleneckType.BOTH_BOUND
+            val isNotGpuBottleneck = currentBottleneck == BottleneckType.CPU_BOUND ||
+                                     currentBottleneck == BottleneckType.MEMORY_BOUND
+
             // If we're hitting target FPS with low GPU usage, reduce performance
             if (fpsError < FPS_ERROR_THRESHOLD && gpuUsage < USAGE_LOW_THRESHOLD && currentGpuPerformance > MIN_PERFORMANCE + 5.0) {
                 currentGpuPerformance = (currentGpuPerformance - PERFORMANCE_REDUCTION_STEP).coerceAtLeast(MIN_PERFORMANCE)
                 controller.reset()
             }
+            // If GPU is clearly not the bottleneck, reduce it to save power (only for POWER_EFFICIENT)
+            else if (shouldReduceNonBottleneck() && isNotGpuBottleneck && fpsError > FPS_ERROR_THRESHOLD && currentGpuPerformance > MIN_PERFORMANCE + 10.0) {
+                currentGpuPerformance = (currentGpuPerformance - PERFORMANCE_REDUCTION_STEP * 0.5).coerceAtLeast(MIN_PERFORMANCE)
+                controller.reset()
+            }
+            // If GPU is the bottleneck, increase performance based on strategy
+            else if (isGpuBottleneck && fpsError > FPS_ERROR_THRESHOLD) {
+                val adjustment = controller.calculate(targetFps, currentFps)
+                val aggressiveness = getAdjustmentFactor(isBottleneck = true)
+                currentGpuPerformance = (currentGpuPerformance + adjustment * aggressiveness).coerceIn(MIN_PERFORMANCE, MAX_PERFORMANCE)
+            }
             // If GPU usage is high but not hitting target, increase performance
             else if (fpsError > FPS_ERROR_LARGE || gpuUsage > USAGE_HIGH_THRESHOLD) {
                 val adjustment = controller.calculate(targetFps, currentFps)
-                currentGpuPerformance = (currentGpuPerformance + adjustment * ADJUSTMENT_DECAY_FACTOR).coerceIn(MIN_PERFORMANCE, MAX_PERFORMANCE)
+                val aggressiveness = getAdjustmentFactor(isBottleneck = false)
+                currentGpuPerformance = (currentGpuPerformance + adjustment * aggressiveness).coerceIn(MIN_PERFORMANCE, MAX_PERFORMANCE)
             }
             // Otherwise maintain current performance
             else {
@@ -272,15 +350,25 @@ class PerformanceAutoTuner(
         busPidController?.let { controller ->
             val fpsError = abs(targetFps - currentFps)
 
+            // Check if memory/bus is the bottleneck
+            val isMemoryBottleneck = currentBottleneck == BottleneckType.MEMORY_BOUND
+
             // If we're hitting target FPS, reduce bus performance to save power
             if (fpsError < FPS_ERROR_THRESHOLD && currentBusPerformance > MIN_PERFORMANCE + 5.0) {
                 currentBusPerformance = (currentBusPerformance - PERFORMANCE_REDUCTION_STEP).coerceAtLeast(MIN_PERFORMANCE)
                 controller.reset()
             }
+            // If memory is the bottleneck, increase bus performance based on strategy
+            else if (isMemoryBottleneck && fpsError > FPS_ERROR_THRESHOLD) {
+                val adjustment = controller.calculate(targetFps, currentFps)
+                val aggressiveness = getAdjustmentFactor(isBottleneck = true)
+                currentBusPerformance = (currentBusPerformance + adjustment * aggressiveness).coerceIn(MIN_PERFORMANCE, MAX_PERFORMANCE)
+            }
             // If we're missing target FPS, increase bus performance
             else if (fpsError > FPS_ERROR_LARGE) {
                 val adjustment = controller.calculate(targetFps, currentFps)
-                currentBusPerformance = (currentBusPerformance + adjustment * ADJUSTMENT_DECAY_FACTOR).coerceIn(MIN_PERFORMANCE, MAX_PERFORMANCE)
+                val aggressiveness = getAdjustmentFactor(isBottleneck = false)
+                currentBusPerformance = (currentBusPerformance + adjustment * aggressiveness).coerceIn(MIN_PERFORMANCE, MAX_PERFORMANCE)
             }
             // Otherwise maintain current performance
             else {
@@ -309,6 +397,41 @@ class PerformanceAutoTuner(
     private fun findClosestFrequency(availableFreqs: List<Long>, targetFreq: Long): Long {
         if (availableFreqs.isEmpty()) return targetFreq
         return availableFreqs.minByOrNull { abs(it - targetFreq) } ?: targetFreq
+    }
+
+    /**
+     * Detect performance bottleneck based on CPU/GPU usage and FPS error
+     * Takes into account which components are supported by the driver
+     */
+    private fun detectBottleneck(cpuUsage: Double, gpuUsage: Double, fpsError: Double): BottleneckType {
+        val isMissingTarget = fpsError > FPS_ERROR_THRESHOLD
+
+        if (!isMissingTarget) return BottleneckType.NONE
+
+        val hasGpuSupport = numGpuLevels > 0
+        val hasBusSupport = numBusLevels > 0
+
+        val cpuHigh = cpuUsage > USAGE_HIGH_THRESHOLD
+        val gpuHigh = gpuUsage > USAGE_HIGH_THRESHOLD
+        val cpuLow = cpuUsage < USAGE_LOW_THRESHOLD
+        val gpuLow = gpuUsage < USAGE_LOW_THRESHOLD
+
+        return when {
+            // Both CPU and GPU are bottlenecks (only if GPU is supported)
+            hasGpuSupport && cpuHigh && gpuHigh -> BottleneckType.BOTH_BOUND
+
+            // CPU is the bottleneck
+            cpuHigh && (!hasGpuSupport || gpuLow) -> BottleneckType.CPU_BOUND
+
+            // GPU is the bottleneck (only if GPU is supported)
+            hasGpuSupport && gpuHigh && cpuLow -> BottleneckType.GPU_BOUND
+
+            // Memory/Bus bottleneck - both CPU and GPU have headroom (only if bus is supported)
+            hasBusSupport && cpuLow && (!hasGpuSupport || gpuLow) -> BottleneckType.MEMORY_BOUND
+
+            // Unknown bottleneck or no clear pattern
+            else -> BottleneckType.NONE
+        }
     }
 
     /**

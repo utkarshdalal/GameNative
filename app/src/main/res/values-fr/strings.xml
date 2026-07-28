@@ -2175,4 +2175,13 @@
     <string name="power_control_available_frequencies">Fréquences disponibles</string>
     <string name="power_control_auto_tuning">Réglage automatique</string>
     <string name="power_control_auto_tuning_desc">Ajuster automatiquement les performances en fonction des FPS</string>
+    <string name="power_control_tuning_strategy">Stratégie de réglage</string>
+    <string name="power_control_strategy_balanced">Équilibré</string>
+    <string name="power_control_strategy_balanced_desc">Ajuste tous les composants de manière égale pour de meilleures performances globales</string>
+    <string name="power_control_strategy_power_efficient">Économie d\'énergie</string>
+    <string name="power_control_strategy_power_efficient_desc">Réduit les composants non-goulots d\'étranglement pour économiser l\'énergie</string>
+    <string name="power_control_strategy_aggressive">Agressif</string>
+    <string name="power_control_strategy_aggressive_desc">Maximise les performances sur les goulots d\'étranglement détectés</string>
+    <string name="power_control_strategy_conservative">Conservateur</string>
+    <string name="power_control_strategy_conservative_desc">Ajustements progressifs avec accent sur la stabilité</string>
 </resources>
