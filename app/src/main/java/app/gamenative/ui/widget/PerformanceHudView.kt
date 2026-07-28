@@ -241,9 +241,10 @@ class PerformanceHudView(
                 }
                 renderSnapshot(snapshot)
 
-                val levelWarning = config.batteryLevelWarningEnabled &&
+                val levelWarning =  snapshot.batteryPercent != null && config.batteryLevelWarningEnabled &&
                         snapshot.batteryPercent < (config.batteryLevelWarningLimit * 100)
-                val tempWarning = config.batteryTemperatureWarningEnabled &&
+
+                val tempWarning = snapshot.batteryTempValue != null && config.batteryTemperatureWarningEnabled &&
                         snapshot.batteryTempValue > (config.batteryTemperatureWarningLimit * 100)
 
                 if (levelWarning) {
@@ -371,7 +372,7 @@ class PerformanceHudView(
             gpu = gpuPercent?.let { "GPU $it%" },
             ram = "RAM ${readUsedRamText()}",
             battery = batterySnapshot.percent?.let { "BAT $it%" },
-            batteryPercent = batterySnapshot.percent ?: -1 ,
+            batteryPercent = batterySnapshot.percent,
             power = batterySnapshot.powerWatts?.let { watts ->
                 String.format(Locale.US, "PWR %.1fW", watts)
             },
