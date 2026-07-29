@@ -2026,4 +2026,15 @@
     <string name="local_mod_copied_progress">Kopieret %1$s af %2$s</string>
     <string name="nexus_invalid_source_metadata">Dette administrerede mod har ufuldstændige kildeoplysninger og kan ikke prøves igen.</string>
     <string name="nexus_archive_memory_error">Arkivet kræver mere hukommelse, end Android tillader. Prøv igen efter en opdatering af GameNative, eller vælg en mindre fil.</string>
+    <!-- Bionic FG (AI) Frame Generation -->
+    <string name="bfg_tab_title">AI-billedgen.</string>
+    <string name="bfg_enable">Aktivér AI-billedgenerering</string>
+    <string name="bfg_description">Indbygget AI-billedinterpolation. Intet ekstra køb nødvendigt.</string>
+    <string name="bfg_multiplier">Billedmultiplikator</string>
+    <string name="bfg_flow_scale">Flowskala</string>
+    <string name="bfg_flow_scale_desc">Lavere er hurtigere; højere følger bevægelser bedre, men koster mere GPU.</string>
+    <string name="bfg_model">Model</string>
+    <string name="bfg_model_desc">Clear er skarpere, men tungere</string>
+    <string name="bfg_model_standard">Standard</string>
+    <string name="bfg_model_clear">Clear</string>
 </resources>

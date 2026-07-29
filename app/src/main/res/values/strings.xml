@@ -2034,7 +2034,7 @@
     <!-- Bionic FG (AI) Frame Generation -->
     <string name="bfg_tab_title">AI FrameGen</string>
     <string name="bfg_enable">Enable AI frame generation</string>
-    <string name="bfg_description">Built-in AI frame interpolation. No extra purchase needed. Only known to work on Adreno 6xx and above.</string>
+    <string name="bfg_description">Built-in AI frame interpolation. No extra purchase needed.</string>
     <string name="bfg_multiplier">Frame multiplier</string>
     <string name="bfg_flow_scale">Flow scale</string>
     <string name="bfg_flow_scale_desc">Lower is faster; higher tracks motion better but costs more GPU.</string>

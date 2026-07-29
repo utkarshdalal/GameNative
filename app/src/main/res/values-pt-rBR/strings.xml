@@ -2026,4 +2026,15 @@
     <string name="local_mod_copied_progress">Copiados %1$s de %2$s</string>
     <string name="nexus_invalid_source_metadata">Este mod gerenciado tem informações de origem incompletas e não pode ser tentado novamente.</string>
     <string name="nexus_archive_memory_error">O arquivo compactado precisa de mais memória do que o Android permite. Tente novamente após atualizar o GameNative ou escolha um arquivo menor.</string>
+    <!-- Bionic FG (AI) Frame Generation -->
+    <string name="bfg_tab_title">GerQuadros IA</string>
+    <string name="bfg_enable">Ativar geração de quadros por IA</string>
+    <string name="bfg_description">Interpolação de quadros por IA integrada. Sem compras adicionais.</string>
+    <string name="bfg_multiplier">Multiplicador de quadros</string>
+    <string name="bfg_flow_scale">Escala de fluxo</string>
+    <string name="bfg_flow_scale_desc">Menor é mais rápido; maior acompanha melhor o movimento, mas consome mais GPU.</string>
+    <string name="bfg_model">Modelo</string>
+    <string name="bfg_model_desc">Clear é mais nítido, porém mais pesado</string>
+    <string name="bfg_model_standard">Padrão</string>
+    <string name="bfg_model_clear">Clear</string>
 </resources>
