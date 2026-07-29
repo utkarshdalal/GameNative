@@ -1043,7 +1043,24 @@ object ContainerUtils {
             }
         }
 
-        val resolvedGameFolderPath = StorageUtils.migrateLegacyGameDir(gameFolderPath)
+        val resolvedGameFolderPath = if (gameSource == GameSource.CUSTOM_GAME) {
+            gameFolderPath
+        } else {
+            StorageUtils.resolveLegacyGameDir(gameFolderPath)
+        }
+
+        if (resolvedGameFolderPath != null && resolvedGameFolderPath != gameFolderPath) {
+            when (gameSource) {
+                GameSource.GOG ->
+                    GOGService.updateInstallPath(extractGameIdFromContainerId(appId).toString(), resolvedGameFolderPath)
+                GameSource.EPIC ->
+                    EpicService.updateInstallPath(extractGameIdFromContainerId(appId), resolvedGameFolderPath)
+                GameSource.AMAZON ->
+                    runCatching { extractGameIdFromContainerId(appId) }.getOrNull()
+                        ?.let { AmazonService.updateInstallPath(it, resolvedGameFolderPath) }
+                else -> {}
+            }
+        }
 
         if (resolvedGameFolderPath != null) {
             // Check if A: drive is already mapped to the correct path

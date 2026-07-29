@@ -567,7 +567,7 @@ fun SettingsGroupInterface(
         )
         if (useExternalStorage) {
             // Currently selected item
-            var selectedIndex by rememberSaveable {
+            var selectedIndex by rememberSaveable(dirs) {
                 mutableStateOf(
                     dirs.indexOfFirst { dir ->
                         dir.absolutePath == PrefManager.externalStoragePath ||

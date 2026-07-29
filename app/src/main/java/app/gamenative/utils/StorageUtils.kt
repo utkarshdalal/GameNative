@@ -124,7 +124,7 @@ object StorageUtils {
         return appFilesDir.absolutePath
     }
 
-    fun migrateLegacyGameDir(path: String?): String? {
+    fun resolveLegacyGameDir(path: String?): String? {
         if (path.isNullOrBlank()) return path
         val idx = path.indexOf("/Android/data/")
         if (idx <= 0) return path
@@ -133,9 +133,9 @@ object StorageUtils {
         val legacyRoot = File(path.substring(0, filesIdx + "/files".length))
         val rel = path.substring(filesIdx + "/files/".length)
         val src = File(path)
-        if (!src.isDirectory) return path
         val publicRoot = publicInstallRoot(legacyRoot) ?: return path
         val dst = File(publicRoot, rel)
+        if (!src.isDirectory) return if (dst.isDirectory) dst.absolutePath else path
         if (dst.exists() || !ensureInstallRoot(publicRoot)) return path
         dst.parentFile?.mkdirs()
         return if (src.renameTo(dst)) {

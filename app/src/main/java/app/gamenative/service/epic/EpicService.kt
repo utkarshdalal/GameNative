@@ -366,6 +366,15 @@ class EpicService : Service() {
             }
         }
 
+        fun updateInstallPath(appId: Int, path: String) {
+            runBlocking(Dispatchers.IO) {
+                val game = getInstance()?.epicManager?.getGameById(appId) ?: return@runBlocking
+                if (game.installPath != path) {
+                    getInstance()?.epicManager?.updateGame(game.copy(installPath = path))
+                }
+            }
+        }
+
         suspend fun getInstalledExe(appId: Int): String {
             return getInstance()?.epicManager?.getInstalledExe(appId) ?: ""
         }
