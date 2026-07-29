@@ -109,6 +109,7 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
 import app.gamenative.ui.component.parseBooleanExtra
+import app.gamenative.utils.BionicFgManager
 import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
@@ -551,6 +552,8 @@ fun XServerScreen(
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
         container.putExtra(FPS_LIMITER_TARGET_EXTRA, fpsLimiterTarget)
         container.saveData()
+        // The limiter also drives the bionic-fg layer's frame pacing
+        BionicFgManager.updateConfigAtRuntime(container)
     }
 
     fun loadPerformanceHudConfig(): PerformanceHudConfig {
@@ -627,6 +630,9 @@ fun XServerScreen(
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
             ?.setFrameRateLimit(limit)
+        xServerView?.getxServer()
+            ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
+            ?.setEagerIdleRelease(BionicFgManager.isArmed(container))
         PowerManager.targetFps = limit
     }
 
@@ -755,7 +761,10 @@ fun XServerScreen(
             context = context,
             fpsProvider = {
                 val raw = frameRating?.currentFPS ?: 0f
-                val mult = if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
+                val mult = when {
+                    isLsfgAvailable && lsfgMultiplier >= 2 -> lsfgMultiplier
+                    else -> 1
+                }
                 raw * mult
             },
             initialConfig = performanceHudConfig,
