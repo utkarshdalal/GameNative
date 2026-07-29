@@ -1043,13 +1043,11 @@ object ContainerUtils {
             }
         }
 
-        val resolvedGameFolderPath = StorageUtils.migrateLegacyGameDir(gameFolderPath)
-
-        if (resolvedGameFolderPath != null) {
+        if (gameFolderPath != null) {
             // Check if A: drive is already mapped to the correct path
             var hasCorrectADrive = false
             for (drive in Container.drivesIterator(container.drives)) {
-                if (drive[0] == "A" && drive[1] == resolvedGameFolderPath) {
+                if (drive[0] == "A" && drive[1] == gameFolderPath) {
                     hasCorrectADrive = true
                     break
                 }
@@ -1060,7 +1058,7 @@ object ContainerUtils {
                 val currentDrives = container.drives
                 // Rebuild drives string, excluding existing A: drive and adding new one
                 val drivesBuilder = StringBuilder()
-                drivesBuilder.append("A:$resolvedGameFolderPath")
+                drivesBuilder.append("A:$gameFolderPath")
 
                 // Add all other drives (excluding A:)
                 for (drive in Container.drivesIterator(currentDrives)) {
