@@ -352,13 +352,9 @@ fun QuickMenu(
 
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
-            if ((PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable) ||
-                (PrefManager.quickMenuLastTab == QuickMenuTab.BFG && bfgMenu == null)
-            )
-                QuickMenuTab.HUD
-            else PrefManager.quickMenuLastTab
             when {
                 PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.BFG && bfgMenu == null -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.POWER && !isPowerControlAvailable -> QuickMenuTab.HUD
                 else -> PrefManager.quickMenuLastTab
             }
