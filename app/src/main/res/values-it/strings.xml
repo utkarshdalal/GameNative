@@ -2147,4 +2147,15 @@
     <string name="local_mod_copied_progress">Copiati %1$s di %2$s</string>
     <string name="nexus_invalid_source_metadata">Questa mod gestita contiene informazioni di origine incomplete e non può essere riprovata.</string>
     <string name="nexus_archive_memory_error">L’archivio richiede più memoria di quella consentita da Android. Riprova dopo aver aggiornato GameNative o scegli un file più piccolo.</string>
+    <!-- Bionic FG (AI) Frame Generation -->
+    <string name="bfg_tab_title">GenFotogrammi IA</string>
+    <string name="bfg_enable">Attiva la generazione di fotogrammi con IA</string>
+    <string name="bfg_description">Interpolazione dei fotogrammi con IA integrata. Nessun acquisto aggiuntivo necessario.</string>
+    <string name="bfg_multiplier">Moltiplicatore di fotogrammi</string>
+    <string name="bfg_flow_scale">Scala del flusso</string>
+    <string name="bfg_flow_scale_desc">Più basso è più veloce; più alto segue meglio il movimento ma consuma più GPU.</string>
+    <string name="bfg_model">Modello</string>
+    <string name="bfg_model_desc">Clear è più nitido ma più pesante</string>
+    <string name="bfg_model_standard">Standard</string>
+    <string name="bfg_model_clear">Clear</string>
 </resources>

@@ -2086,4 +2086,15 @@ https://gamenative.app
     <string name="local_mod_copied_progress">Скопировано %1$s из %2$s</string>
     <string name="nexus_invalid_source_metadata">У этого управляемого мода неполные сведения об источнике, поэтому повторить операцию невозможно.</string>
     <string name="nexus_archive_memory_error">Архиву требуется больше памяти, чем разрешено Android. Повторите попытку после обновления GameNative или выберите файл меньшего размера.</string>
+    <!-- Bionic FG (AI) Frame Generation -->
+    <string name="bfg_tab_title">ИИ-генерация кадров</string>
+    <string name="bfg_enable">Включить ИИ-генерацию кадров</string>
+    <string name="bfg_description">Встроенная ИИ-интерполяция кадров. Дополнительных покупок не требуется.</string>
+    <string name="bfg_multiplier">Множитель кадров</string>
+    <string name="bfg_flow_scale">Масштаб потока</string>
+    <string name="bfg_flow_scale_desc">Меньше — быстрее; больше — точнее отслеживает движение, но сильнее нагружает GPU.</string>
+    <string name="bfg_model">Модель</string>
+    <string name="bfg_model_desc">Clear чётче, но требовательнее</string>
+    <string name="bfg_model_standard">Стандартная</string>
+    <string name="bfg_model_clear">Clear</string>
 </resources>

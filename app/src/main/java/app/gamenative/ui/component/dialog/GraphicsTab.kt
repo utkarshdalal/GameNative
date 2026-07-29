@@ -365,10 +365,11 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             }
         }
 
-        // Frame Generation (LSFG) — hooks the Vulkan swapchain for
+        // Frame Generation (LSFG / bionic-fg) — hooks the Vulkan swapchain for
         // transparent frame generation. Only effective on Bionic containers
         // with a Vortek/Adreno graphics driver.
         if (!default) LsfgSection(state)
+        if (!default) BionicFgSection(state)
 
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
@@ -540,7 +541,11 @@ private fun LsfgSection(state: ContainerConfigState) {
                     subtitle = { Text(text = stringResource(R.string.lsfg_description)) },
                     state = config.lsfgEnabled,
                     onCheckedChange = {
-                        state.config.value = config.copy(lsfgEnabled = it)
+                        state.config.value = if (it) {
+                            config.copy(lsfgEnabled = true, bionicFgEnabled = false)
+                        } else {
+                            config.copy(lsfgEnabled = false)
+                        }
                     },
                 )
             }
@@ -558,7 +563,7 @@ private fun LsfgSection(state: ContainerConfigState) {
                         ) {
                             dllAvailable = LsfgVkManager.isDllAvailable()
                             if (dllAvailable) {
-                                state.config.value = state.config.value.copy(lsfgEnabled = true)
+                                state.config.value = state.config.value.copy(lsfgEnabled = true, bionicFgEnabled = false)
                             }
                         }
                     },
@@ -575,5 +580,27 @@ private fun LsfgSection(state: ContainerConfigState) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun BionicFgSection(state: ContainerConfigState) {
+    val config = state.config.value
+    if (!config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) return
+
+    SettingsGroup {
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.bfg_enable)) },
+            subtitle = { Text(text = stringResource(R.string.bfg_description)) },
+            state = config.bionicFgEnabled,
+            onCheckedChange = {
+                state.config.value = if (it) {
+                    config.copy(bionicFgEnabled = true, lsfgEnabled = false)
+                } else {
+                    config.copy(bionicFgEnabled = false)
+                }
+            },
+        )
     }
 }

@@ -2096,4 +2096,15 @@
     <string name="local_mod_copied_progress">%1$s von %2$s kopiert</string>
     <string name="nexus_invalid_source_metadata">Diese verwaltete Mod enthält unvollständige Quellinformationen und kann nicht erneut versucht werden.</string>
     <string name="nexus_archive_memory_error">Das Archiv benötigt mehr Speicher, als Android zulässt. Versuche es nach einer Aktualisierung von GameNative erneut oder wähle eine kleinere Datei.</string>
+    <!-- Bionic FG (AI) Frame Generation -->
+    <string name="bfg_tab_title">KI-Bildgen.</string>
+    <string name="bfg_enable">KI-Bildgenerierung aktivieren</string>
+    <string name="bfg_description">Integrierte KI-Bildinterpolation. Kein zusätzlicher Kauf nötig.</string>
+    <string name="bfg_multiplier">Bildmultiplikator</string>
+    <string name="bfg_flow_scale">Flussskalierung</string>
+    <string name="bfg_flow_scale_desc">Niedriger ist schneller; höher folgt Bewegungen besser, kostet aber mehr GPU-Leistung.</string>
+    <string name="bfg_model">Modell</string>
+    <string name="bfg_model_desc">Clear ist schärfer, aber aufwendiger</string>
+    <string name="bfg_model_standard">Standard</string>
+    <string name="bfg_model_clear">Clear</string>
 </resources>
