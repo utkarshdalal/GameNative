@@ -3672,7 +3672,10 @@ private fun setupXEnvironment(
             Container.drivesIterator(container.drives).asSequence()
                 .firstOrNull { it[0] == "A" }?.let { File(it[1]).canonicalFile.path }
         }.getOrNull() ?: ""
-        if (ffpGameDir.startsWith("/storage/")) envVars.put("FFP_ENABLE", "1")
+        if (ffpGameDir.startsWith("/storage/")) {
+            envVars.put("FFP_ENABLE", "1")
+            envVars.put("FFP_MARKERS", "/steamapps/common/;/dosdevices/a:")
+        }
 
         val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
         if (graphicsDriverConfig.get("version").lowercase(Locale.getDefault()).contains("gen8")) {
