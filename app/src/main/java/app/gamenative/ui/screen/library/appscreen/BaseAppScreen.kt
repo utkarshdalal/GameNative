@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.library.appscreen
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -20,6 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
@@ -526,6 +529,29 @@ abstract class BaseAppScreen {
         )
     }
 
+    @Composable
+    protected open fun getCopyWebUriOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        val gameId = getGameId(libraryItem)
+        val gameSource = getGameSource(libraryItem)
+        val uri = "gamenative://run?appid=$gameId&gamesource=$gameSource"
+        val clipboardManager = LocalClipboard.current
+        val scope = rememberCoroutineScope()
+        LaunchedEffect(Unit) { }
+        return AppMenuOption(
+            optionType = AppOptionMenuType.CopyURI,
+            onClick = {
+                scope.launch {
+                    clipboardManager.setClipEntry(
+                        ClipEntry(ClipData.newPlainText("GameNative URI", uri))
+                    )
+                }
+            },
+        )
+    }
+
     /**
      * Get "Use known config" menu option. Subclasses can override to customize behavior
      * or disable it entirely by returning null.
@@ -957,6 +983,7 @@ abstract class BaseAppScreen {
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
+            getCopyWebUriOption(context, libraryItem)?.let { menuOptions.add(it) }
         }
 
         // Always available options
@@ -1102,6 +1129,11 @@ abstract class BaseAppScreen {
                 }
             },
         )
+
+        // Export for web URI
+        val copyWebUri = {
+            val content = getGameId(libraryItem).toString()
+        }
 
         var exportConfigRequested by remember(appId) {
             mutableStateOf(shouldExportConfig(appId))
