@@ -316,6 +316,16 @@ class AmazonService : Service() {
             return if (game.isInstalled && game.installPath.isNotEmpty()) game.installPath else null
         }
 
+        /** Persist a new install path for [appId] after an on-disk migration. */
+        fun updateInstallPath(appId: Int, path: String) {
+            runBlocking(Dispatchers.IO) {
+                val game = instance?.amazonManager?.getGameByAppId(appId) ?: return@runBlocking
+                if (game.isInstalled && game.installPath != path) {
+                    instance?.amazonManager?.markInstalled(game.productId, path, game.installSize, game.versionId)
+                }
+            }
+        }
+
         /** Convert appId to productId via DB lookup. */
         fun getProductIdByAppId(appId: Int): String? {
             return getAmazonGameByAppId(appId)?.productId

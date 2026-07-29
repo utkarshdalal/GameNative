@@ -1043,11 +1043,30 @@ object ContainerUtils {
             }
         }
 
-        if (gameFolderPath != null) {
+        val resolvedGameFolderPath = if (gameSource == GameSource.CUSTOM_GAME) {
+            gameFolderPath
+        } else {
+            StorageUtils.resolveLegacyGameDir(gameFolderPath)
+        }
+
+        if (resolvedGameFolderPath != null && resolvedGameFolderPath != gameFolderPath) {
+            when (gameSource) {
+                GameSource.GOG ->
+                    GOGService.updateInstallPath(extractGameIdFromContainerId(appId).toString(), resolvedGameFolderPath)
+                GameSource.EPIC ->
+                    EpicService.updateInstallPath(extractGameIdFromContainerId(appId), resolvedGameFolderPath)
+                GameSource.AMAZON ->
+                    runCatching { extractGameIdFromContainerId(appId) }.getOrNull()
+                        ?.let { AmazonService.updateInstallPath(it, resolvedGameFolderPath) }
+                else -> {}
+            }
+        }
+
+        if (resolvedGameFolderPath != null) {
             // Check if A: drive is already mapped to the correct path
             var hasCorrectADrive = false
             for (drive in Container.drivesIterator(container.drives)) {
-                if (drive[0] == "A" && drive[1] == gameFolderPath) {
+                if (drive[0] == "A" && drive[1] == resolvedGameFolderPath) {
                     hasCorrectADrive = true
                     break
                 }
@@ -1058,7 +1077,7 @@ object ContainerUtils {
                 val currentDrives = container.drives
                 // Rebuild drives string, excluding existing A: drive and adding new one
                 val drivesBuilder = StringBuilder()
-                drivesBuilder.append("A:$gameFolderPath")
+                drivesBuilder.append("A:$resolvedGameFolderPath")
 
                 // Add all other drives (excluding A:)
                 for (drive in Container.drivesIterator(currentDrives)) {

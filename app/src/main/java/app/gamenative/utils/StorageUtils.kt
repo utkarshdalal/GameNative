@@ -98,6 +98,55 @@ object StorageUtils {
         return result
     }
 
+    private const val PUBLIC_INSTALL_DIR_NAME = "GameNative"
+
+    /**
+     * Maps an app-specific dir (<volume>/Android/data/<pkg>/files) to a public install root
+     * (<volume>/GameNative). MediaProvider disables FUSE kernel caching under Android/data,
+     * making per-open metadata ops ~1000x slower there; public dirs get normal dcache treatment.
+     */
+    fun publicInstallRoot(appFilesDir: File): File? {
+        val path = appFilesDir.absolutePath
+        val idx = path.indexOf("/Android/data/")
+        if (idx <= 0) return null
+        return File(path.substring(0, idx), PUBLIC_INSTALL_DIR_NAME)
+    }
+
+    fun ensureInstallRoot(dir: File): Boolean {
+        if (!dir.isDirectory && !dir.mkdirs()) return false
+        runCatching { File(dir, ".nomedia").createNewFile() }
+        return true
+    }
+
+    fun preferredInstallRoot(appFilesDir: File): String {
+        val public = publicInstallRoot(appFilesDir)
+        if (public != null && ensureInstallRoot(public)) return public.absolutePath
+        return appFilesDir.absolutePath
+    }
+
+    fun resolveLegacyGameDir(path: String?): String? {
+        if (path.isNullOrBlank()) return path
+        val idx = path.indexOf("/Android/data/")
+        if (idx <= 0) return path
+        val filesIdx = path.indexOf("/files/", idx)
+        if (filesIdx < 0) return path
+        val legacyRoot = File(path.substring(0, filesIdx + "/files".length))
+        val rel = path.substring(filesIdx + "/files/".length)
+        val src = File(path)
+        val publicRoot = publicInstallRoot(legacyRoot) ?: return path
+        val dst = File(publicRoot, rel)
+        if (!src.isDirectory) return if (dst.isDirectory) dst.absolutePath else path
+        if (dst.exists() || !ensureInstallRoot(publicRoot)) return path
+        dst.parentFile?.mkdirs()
+        return if (src.renameTo(dst)) {
+            Timber.i("Migrated game dir $path to ${dst.absolutePath}")
+            dst.absolutePath
+        } else {
+            Timber.w("Could not migrate $path; leaving in place")
+            path
+        }
+    }
+
     /**
      * Gets all app-specific external files directories, using StorageManager as a fallback
      * for cases where context.getExternalFilesDirs(null) might return null or incomplete results
