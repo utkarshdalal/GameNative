@@ -3660,8 +3660,9 @@ private fun setupXEnvironment(
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
 
         val ffpGameDir = runCatching {
-            File(SteamService.getAppDirPath(ContainerUtils.extractGameIdFromContainerId(appId))).canonicalFile.path
-        }.getOrDefault("")
+            Container.drivesIterator(container.drives).asSequence()
+                .firstOrNull { it[0] == "A" }?.let { File(it[1]).canonicalFile.path }
+        }.getOrNull() ?: ""
         if (ffpGameDir.startsWith("/storage/")) envVars.put("FFP_ENABLE", "1")
 
         val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
