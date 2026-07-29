@@ -103,7 +103,15 @@ object BionicFgManager {
         val versionFile = File(layerDir, VERSION_FILENAME)
 
         val installedVersion = versionFile.takeIf { it.exists() }?.readText()?.trim().orEmpty()
-        if (installedVersion == RUNTIME_VERSION && libFile.isFile && manifestFile.isFile) {
+        if (installedVersion == RUNTIME_VERSION && libFile.isFile) {
+            // applyLaunchEnv deletes the manifest whenever framegen is off, so a
+            // missing manifest must not force a full reinstall of the
+            // multi-megabyte layer on every launch. Restore just the manifest,
+            // and only when it will actually be used.
+            if (isArmed(container) && !manifestFile.isFile) {
+                FileUtils.copy(context, ASSET_MANIFEST, manifestFile)
+                if (manifestFile.exists()) FileUtils.chmod(manifestFile, 0b110100100)
+            }
             return true
         }
 
