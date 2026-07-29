@@ -674,8 +674,11 @@ object PowerManager {
                     // Use Wine-specific search for .exe files, regular pidof for others
                     val pid = if (isWineExecutable) {
                         driver.findRunningProcesses(processName).find {
-                            it.second.endsWith(processName, ignoreCase = true) &&
-                            !it.second.contains("winhandler.exe")
+                            !it.second.contains("winhandler.exe") &&
+                            (
+                                it.second.endsWith(processName, ignoreCase = true) ||
+                                it.second.startsWith("A:\\$processName", ignoreCase = true)
+                            )
                         }?.first
                     } else {
                         driver.getProcessId(processName)
