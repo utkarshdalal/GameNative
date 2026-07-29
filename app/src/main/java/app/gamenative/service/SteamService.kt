@@ -366,7 +366,11 @@ class SteamService : Service(), IChallengeUrlChanged {
         // Depot-key acquisition progress, keyed by appId. Useful for games with many depots like Borderlands 2
         private val depotKeyPrep = ConcurrentHashMap<Int, DepotKeyPrep>()
 
-        private class DepotKeyPrep(val total: Int) {
+        // owner pins the phase to one specific download attempt. A cancelled DepotDownloader can
+        // still deliver a chunk while it unwinds, and depot keys arrive on the callback thread, so
+        // callbacks belonging to a previous download of the same app must not touch a newer
+        // attempt's state — nor may its messages go to a DownloadInfo that has since been replaced.
+        private class DepotKeyPrep(val owner: DownloadInfo, val total: Int) {
             val resolved = AtomicInteger(0)
         }
 
@@ -379,7 +383,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         // Begins the depot key prep phase, seeding a status message so the UI never shows a bare 0%
         private fun beginDepotKeyPrep(appId: Int, depotIds: Set<Int>, downloadInfo: DownloadInfo) {
             synchronized(depotKeyPrepLock) {
-                depotKeyPrep[appId] = DepotKeyPrep(depotIds.size)
+                depotKeyPrep[appId] = DepotKeyPrep(downloadInfo, depotIds.size)
                 depotIds.forEach { depotId -> depotKeyOwner[depotId] = appId }
                 instance?.let { downloadInfo.updateStatusMessage(it.getString(R.string.download_preparing)) }
             }
@@ -392,21 +396,25 @@ class SteamService : Service(), IChallengeUrlChanged {
             synchronized(depotKeyPrepLock) {
                 val prep = depotKeyPrep[appId] ?: return
                 val done = prep.resolved.incrementAndGet().coerceAtMost(prep.total)
-                downloadJobs[appId]?.updateStatusMessage(
+                prep.owner.updateStatusMessage(
                     svc.getString(R.string.download_preparing_depots, done, prep.total),
                 )
             }
         }
 
         // Ends the depot key prep phase and clears its status message, once the actual download
-        // begins or the job goes away. Must run before the DownloadInfo leaves downloadJobs.
-        private fun clearDepotKeyPrep(appId: Int) {
+        // begins or the job goes away. Callers that can outlive their own download (the progress
+        // callbacks) must pass [owner]: the phase is then only ended if it still belongs to that
+        // download, so a late callback cannot wipe the message a newer attempt just posted. Omit
+        // [owner] to end the phase whoever owns it, e.g. when tearing the job down.
+        private fun clearDepotKeyPrep(appId: Int, owner: DownloadInfo? = null) {
             if (!depotKeyPrep.containsKey(appId)) return
             synchronized(depotKeyPrepLock) {
+                val prep = depotKeyPrep[appId] ?: return
+                if (owner != null && prep.owner !== owner) return
                 depotKeyOwner.entries.removeIf { it.value == appId }
-                if (depotKeyPrep.remove(appId) != null) {
-                    downloadJobs[appId]?.updateStatusMessage(null)
-                }
+                depotKeyPrep.remove(appId)
+                prep.owner.updateStatusMessage(null)
             }
         }
 
@@ -2333,7 +2341,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             ) {
                 val isFirstCallForDepot = !depotCumulativeCompressedBytes.containsKey(depotId)
 
-                clearDepotKeyPrep(downloadInfo.gameId)
+                clearDepotKeyPrep(downloadInfo.gameId, owner = downloadInfo)
 
                 val previousBytes = depotCumulativeCompressedBytes[depotId] ?: 0L
                 val deltaBytes = compressedBytes - previousBytes
