@@ -3667,6 +3667,12 @@ private fun setupXEnvironment(
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
+
+        val ffpGameDir = runCatching {
+            File(SteamService.getAppDirPath(ContainerUtils.extractGameIdFromContainerId(appId))).canonicalFile.path
+        }.getOrDefault("")
+        if (ffpGameDir.startsWith("/storage/")) envVars.put("FFP_ENABLE", "1")
+
         val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
         if (graphicsDriverConfig.get("version").lowercase(Locale.getDefault()).contains("gen8")) {
             var tuDebug = envVars.get("TU_DEBUG")
