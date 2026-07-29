@@ -536,7 +536,9 @@ abstract class BaseAppScreen {
     ): AppMenuOption? {
         val gameId = getGameId(libraryItem)
         val gameSource = getGameSource(libraryItem)
+        val gameName = getGameName(context, libraryItem)
         val uri = "gamenative://run?appid=$gameId&gamesource=$gameSource"
+        val labelText = context.getString(R.string.app_name) + " $gameName URI"
         val clipboardManager = LocalClipboard.current
         val scope = rememberCoroutineScope()
         LaunchedEffect(Unit) { }
@@ -545,7 +547,7 @@ abstract class BaseAppScreen {
             onClick = {
                 scope.launch {
                     clipboardManager.setClipEntry(
-                        ClipEntry(ClipData.newPlainText("GameNative URI", uri))
+                        ClipEntry(ClipData.newPlainText(labelText, uri))
                     )
                 }
             },

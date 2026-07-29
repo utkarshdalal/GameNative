@@ -39,6 +39,21 @@ object IntentLaunchManager {
         }
         var gameId: Int? = 0
         var gameSource: String? = ""
+        val containerConfigJson = if (intent.action == ACTION_LAUNCH_GAME) {
+           intent.getStringExtra(EXTRA_CONTAINER_CONFIG)
+        } else {
+            null
+        }
+        val containerConfig = if (containerConfigJson != null) {
+            try {
+                parseContainerConfig(containerConfigJson)
+            } catch (e: Exception) {
+                Timber.e(e, "[IntentLaunchManager]: Failed to parse container configuration JSON")
+                null
+            }
+        } else {
+            null
+        }
 
         if (intent.action == ACTION_VIEW) {
             if (intent.data?.scheme != URI_SCHEME || intent.data?.host != URI_HOST) {
@@ -48,7 +63,7 @@ object IntentLaunchManager {
             val data = intent.data
             Timber.d(data?.getQueryParameterNames().toString())
             gameId = data?.getQueryParameter("appid")?.toIntOrNull() ?:0
-            gameSource = data?.getQueryParameter("gamesource")
+            gameSource = data?.getQueryParameter("gamesource")?.uppercase(java.util.Locale.ROOT)
         }
 
         if (intent.action == ACTION_LAUNCH_GAME) {
@@ -65,23 +80,12 @@ object IntentLaunchManager {
 
         val isValidGameSource = GameSource.entries.any { it.name == gameSource }
         if (!isValidGameSource) {
-            gameSource = GameSource.STEAM.name
+            Timber.w("[IntentLaunchManager]: Invalid or missing game source in launch intent: $gameSource")
+            return null
         }
 
         val appId = "${gameSource}_$gameId"
         Timber.d("[IntentLaunchManager]: Converted to appId: $appId")
-
-        val containerConfigJson = intent.getStringExtra(EXTRA_CONTAINER_CONFIG)
-        val containerConfig = if (containerConfigJson != null) {
-            try {
-                parseContainerConfig(containerConfigJson)
-            } catch (e: Exception) {
-                Timber.e(e, "[IntentLaunchManager]: Failed to parse container configuration JSON")
-                null
-            }
-        } else {
-            null
-        }
 
         return LaunchRequest(appId, containerConfig)
     }
