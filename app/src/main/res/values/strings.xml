@@ -2032,6 +2032,12 @@
     <string name="lsfg_installing">Downloading Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Reduces quality for higher throughput</string>
     <!-- Bionic FG (AI) Frame Generation -->
+    <string name="steam_invite_tab_title">Invite</string>
+    <string name="steam_invite_header">%1$d friends — tap to invite</string>
+    <string name="steam_invite_unavailable">Steam client not ready</string>
+    <string name="steam_invite_failed">Invite failed — the game may not be in a joinable session</string>
+    <string name="steam_invite_online">Online</string>
+    <string name="steam_invite_offline">Offline</string>
     <string name="bfg_tab_title">AI FrameGen</string>
     <string name="bfg_enable">Enable AI frame generation</string>
     <string name="bfg_description">Built-in AI frame interpolation. No extra purchase needed.</string>
