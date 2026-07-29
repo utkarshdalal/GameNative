@@ -44,6 +44,19 @@ public class PresentExtension implements Extension {
     // immediately). Set from XServerScreen when the user toggles the FPS cap.
     private volatile int frameRateLimit = 0;
 
+    // Mailbox semantics for the pacing scheduler: when a new present supersedes a
+    // still-pending pixmap on the same window, release the superseded one
+    // immediately instead of holding it to the schedule. Armed only while
+    // bionic-fg is active — the layer owns base pacing then, and it presents at
+    // multiplier x the cap, so releases must track presents or its generated
+    // frames starve the swapchain.
+    private volatile boolean eagerIdleRelease = false;
+    private int supersededDrops = 0;
+
+    public void setEagerIdleRelease(boolean eager) {
+        this.eagerIdleRelease = eager;
+    }
+
     private static class PendingIdle {
         Window window; Pixmap pixmap; int serial; int idleFence;
         long targetNs;
@@ -108,9 +121,9 @@ public class PresentExtension implements Extension {
                 }
                 long now = System.nanoTime();
                 if (now >= p.targetNs) {
-                    cpuQueue.poll();
-                    pendingIdles.remove(p.window.id, p);
-                    sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
+                    if (cpuQueue.remove(p)) {
+                        sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
+                    }
                 } else {
                     long diff = p.targetNs - now;
                     if (diff > 2_000_000L)
@@ -136,8 +149,7 @@ public class PresentExtension implements Extension {
                 if (p.vsyncSkips > 0) {
                     p.vsyncSkips--;
                     anyRemaining = true;
-                } else {
-                    it.remove();
+                } else if (pendingIdles.remove(p.window.id, p)) {
                     sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
                 }
             } else {
@@ -177,10 +189,27 @@ public class PresentExtension implements Extension {
 
         android.view.Choreographer ch = tryGetChoreographer(renderer);
         if (ch != null) {
-            pendingIdles.put(window.id,
+            PendingIdle superseded = pendingIdles.put(window.id,
                     new PendingIdle(window, pixmap, serial, idleFence, fireTime, 0));
+            if (superseded != null) {
+                if (eagerIdleRelease) {
+                    sendIdleNotify(superseded.window, superseded.pixmap,
+                            superseded.serial, superseded.idleFence);
+                } else if (supersededDrops++ < 8) {
+                    android.util.Log.w("PresentExtension", "pending idle superseded and dropped"
+                            + " for window 0x" + Integer.toHexString(window.id)
+                            + " serial " + superseded.serial);
+                }
+            }
             postChoreographerCallback();
         } else {
+            if (eagerIdleRelease) {
+                for (PendingIdle q : cpuQueue) {
+                    if (q.window == window && cpuQueue.remove(q)) {
+                        sendIdleNotify(q.window, q.pixmap, q.serial, q.idleFence);
+                    }
+                }
+            }
             cpuQueue.offer(new PendingIdle(window, pixmap, serial, idleFence, fireTime, 0));
         }
     }

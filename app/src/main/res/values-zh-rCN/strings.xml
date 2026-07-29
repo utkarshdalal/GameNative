@@ -2172,4 +2172,15 @@
     <string name="local_mod_copied_progress">已复制 %1$s，共 %2$s</string>
     <string name="nexus_invalid_source_metadata">此受管理模组的来源信息不完整，无法重试。</string>
     <string name="nexus_archive_memory_error">此压缩包需要的内存超过 Android 允许的上限。请在更新 GameNative 后重试，或选择较小的文件。</string>
+    <!-- Bionic FG (AI) Frame Generation -->
+    <string name="bfg_tab_title">AI 补帧</string>
+    <string name="bfg_enable">启用 AI 补帧</string>
+    <string name="bfg_description">内置 AI 补帧。无需额外购买。</string>
+    <string name="bfg_multiplier">帧倍率</string>
+    <string name="bfg_flow_scale">光流缩放</string>
+    <string name="bfg_flow_scale_desc">数值越低速度越快；越高对运动的跟踪越准确，但更耗 GPU。</string>
+    <string name="bfg_model">模型</string>
+    <string name="bfg_model_desc">Clear 更清晰，但开销更大</string>
+    <string name="bfg_model_standard">标准</string>
+    <string name="bfg_model_clear">Clear</string>
 </resources>
