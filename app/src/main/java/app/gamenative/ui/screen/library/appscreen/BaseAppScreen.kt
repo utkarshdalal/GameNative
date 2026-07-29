@@ -27,7 +27,7 @@ import androidx.core.net.toUri
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.api.isValidCommunityConfig
-import app.gamenative.api.sanitizeCommunityConfig
+import app.gamenative.api.prepareCommunityConfigForApply
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
@@ -945,11 +945,17 @@ abstract class BaseAppScreen {
         configJson: kotlinx.serialization.json.JsonObject,
         matchType: String,
         matchedGpu: String,
+        applyLaunchArguments: Boolean,
+        applyEnvironmentVariables: Boolean,
     ): Boolean {
         val appId = libraryItem.appId
         val gameId = libraryItem.gameId
         val uiScope = CoroutineScope(Dispatchers.Main.immediate)
-        val safeConfig = sanitizeCommunityConfig(configJson)
+        val safeConfig = prepareCommunityConfigForApply(
+            config = configJson,
+            applyLaunchArguments = applyLaunchArguments,
+            applyEnvironmentVariables = applyEnvironmentVariables,
+        )
 
         if (!isValidCommunityConfig(safeConfig)) {
             SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
@@ -1548,11 +1554,18 @@ abstract class BaseAppScreen {
         }
 
         if (communityConfigsRequested) {
+            LaunchedEffect(appId, communityConfigsRequested) {
+                containerData = withContext(Dispatchers.IO) {
+                    loadContainerData(context, libraryItem)
+                }
+            }
             CommunityConfigsDialog(
                 visible = true,
                 gameName = displayInfo.name,
+                currentLaunchArguments = containerData.execArgs,
+                currentEnvironmentVariables = containerData.envVars,
                 onDismissRequest = { clearCommunityConfigsRequest(appId) },
-                onApply = { run, matchType ->
+                onApply = { run, matchType, options ->
                     clearCommunityConfigsRequest(appId)
                     uiScope.launch(Dispatchers.IO) {
                         applyCommunityConfigForLibraryItem(
@@ -1561,6 +1574,8 @@ abstract class BaseAppScreen {
                             configJson = run.config,
                             matchType = matchType,
                             matchedGpu = run.device.gpu,
+                            applyLaunchArguments = options.applyLaunchArguments,
+                            applyEnvironmentVariables = options.applyEnvironmentVariables,
                         )
                     }
                 },

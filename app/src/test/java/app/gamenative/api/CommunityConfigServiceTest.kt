@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
@@ -132,8 +133,8 @@ class CommunityConfigServiceTest {
         assertEquals("bionic", run.configString("containerVariant"))
         assertFalse(run.config.containsKey("id"))
         assertFalse(run.config.containsKey("executablePath"))
-        assertFalse(run.config.containsKey("execArgs"))
-        assertFalse(run.config.containsKey("envVars"))
+        assertEquals("/c dangerous-command", run.configString("execArgs"))
+        assertEquals("UNSAFE=1", run.configString("envVars"))
         assertEquals("Snapdragon 8 Gen 1", run.device.soc)
         val request = server.takeRequest()
         assertEquals("3405", request.requestUrl?.queryParameter("gameId"))
@@ -779,6 +780,47 @@ class CommunityConfigServiceTest {
         ).jsonObject
         assertFalse(isValidCommunityConfig(glibc, allowGlibc = false))
         assertTrue(isValidCommunityConfig(glibc, allowGlibc = true))
+    }
+
+    @Test
+    fun communityConfigSanitizer_keepsGameVariablesAndRejectsProcessControl() {
+        val config = kotlinx.serialization.json.Json.parseToJsonElement(
+            """{
+                "containerVariant":"bionic",
+                "wineVersion":"wine",
+                "dxwrapper":"dxvk",
+                "dxwrapperConfig":"version=2.6",
+                "execArgs":"-dx11 -windowed",
+                "envVars":"GAME_FIX=1 WINEDLLOVERRIDES=xaudio2_7=n,b LD_PRELOAD=evil PATH=/tmp GUEST_PROGRAM_LAUNCHER_COMMAND=evil"
+            }""",
+        ).jsonObject
+
+        val sanitized = sanitizeCommunityConfig(config)
+
+        assertEquals("-dx11 -windowed", sanitized["execArgs"]?.jsonPrimitive?.content)
+        assertEquals(
+            "GAME_FIX=1 WINEDLLOVERRIDES=xaudio2_7=n,b",
+            sanitized["envVars"]?.jsonPrimitive?.content,
+        )
+    }
+
+    @Test
+    fun communityConfigSanitizer_rejectsMalformedLaunchSettings() {
+        val config = kotlinx.serialization.json.Json.parseToJsonElement(
+            """{
+                "containerVariant":"bionic",
+                "wineVersion":"wine",
+                "dxwrapper":"dxvk",
+                "dxwrapperConfig":"version=2.6",
+                "execArgs":"-dx11\n--unexpected",
+                "envVars":"GOOD=1 BAD-NAME=2 MULTILINE=line\nvalue"
+            }""",
+        ).jsonObject
+
+        val sanitized = sanitizeCommunityConfig(config)
+
+        assertFalse(sanitized.containsKey("execArgs"))
+        assertEquals("GOOD=1", sanitized["envVars"]?.jsonPrimitive?.content)
     }
 
     private fun configPage(

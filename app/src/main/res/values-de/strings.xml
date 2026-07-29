@@ -1187,6 +1187,10 @@
     <string name="community_config_game_store">Spiele-Shop</string>
     <string name="community_config_custom_game">Benutzerdefiniertes Spiel</string>
     <string name="community_config_settings">Einstellungen</string>
+    <string name="community_config_additional_launch_settings">Zusätzliche Starteinstellungen</string>
+    <string name="community_config_apply_launch_arguments">Startargumente anwenden</string>
+    <string name="community_config_apply_environment_variables">Umgebungsvariablen anwenden</string>
+    <string name="community_config_replaces_existing_value">Ersetzt den aktuellen Wert</string>
     <string name="community_config_dependencies">Abhängigkeiten</string>
     <string name="community_config_dependencies_apply_check">Die Abhängigkeiten werden beim Anwenden der Konfiguration überprüft.</string>
     <string name="community_config_no_downloads">Derzeit sind keine Manifest-Downloads erforderlich.</string>

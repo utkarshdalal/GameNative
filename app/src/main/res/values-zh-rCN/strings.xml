@@ -1220,6 +1220,10 @@
     <string name="community_config_game_store">游戏商店</string>
     <string name="community_config_custom_game">自定义游戏</string>
     <string name="community_config_settings">设置</string>
+    <string name="community_config_additional_launch_settings">其他启动设置</string>
+    <string name="community_config_apply_launch_arguments">应用启动参数</string>
+    <string name="community_config_apply_environment_variables">应用环境变量</string>
+    <string name="community_config_replaces_existing_value">替换当前值</string>
     <string name="community_config_dependencies">依赖项</string>
     <string name="community_config_dependencies_apply_check">应用配置时将检查依赖项。</string>
     <string name="community_config_no_downloads">目前无需从清单下载任何内容。</string>

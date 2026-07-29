@@ -1403,6 +1403,10 @@
     <string name="community_config_game_store">Game store</string>
     <string name="community_config_custom_game">Custom game</string>
     <string name="community_config_settings">Settings</string>
+    <string name="community_config_additional_launch_settings">Additional launch settings</string>
+    <string name="community_config_apply_launch_arguments">Apply launch arguments</string>
+    <string name="community_config_apply_environment_variables">Apply environment variables</string>
+    <string name="community_config_replaces_existing_value">Replaces the current value</string>
     <string name="community_config_dependencies">Dependencies</string>
     <string name="community_config_dependencies_apply_check">Dependencies will be checked when the config is applied.</string>
     <string name="community_config_no_downloads">No manifest downloads are currently required.</string>

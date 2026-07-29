@@ -1239,6 +1239,10 @@
     <string name="community_config_game_store">게임 스토어</string>
     <string name="community_config_custom_game">사용자 지정 게임</string>
     <string name="community_config_settings">설정</string>
+    <string name="community_config_additional_launch_settings">추가 실행 설정</string>
+    <string name="community_config_apply_launch_arguments">실행 인수 적용</string>
+    <string name="community_config_apply_environment_variables">환경 변수 적용</string>
+    <string name="community_config_replaces_existing_value">현재 값을 대체합니다</string>
     <string name="community_config_dependencies">종속 항목</string>
     <string name="community_config_dependencies_apply_check">구성을 적용할 때 종속 항목을 확인합니다.</string>
     <string name="community_config_no_downloads">현재 필요한 매니페스트 다운로드가 없습니다.</string>

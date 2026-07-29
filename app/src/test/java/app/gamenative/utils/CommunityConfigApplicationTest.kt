@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.PrefManager
+import app.gamenative.api.prepareCommunityConfigForApply
 import app.gamenative.api.sanitizeCommunityConfig
 import com.winlator.container.ContainerData
 import java.io.File
@@ -44,8 +45,9 @@ class CommunityConfigApplicationTest {
           "audioDriver": "alsa",
           "wincomponents": "direct3d=0,directsound=0",
           "videoMemorySize": "4096",
+          "execArgs": "-dx11 -windowed",
           "screenSize": "640x480",
-          "envVars": "UNSAFE=1"
+          "envVars": "GAME_FIX=1 WINEDLLOVERRIDES=xaudio2_7=n,b"
         }
         """.trimIndent(),
     ).jsonObject
@@ -71,6 +73,8 @@ class CommunityConfigApplicationTest {
         "audioDriver",
         "wincomponents",
         "videoMemorySize",
+        "execArgs",
+        "envVars",
     )
 
     @Before
@@ -135,6 +139,30 @@ class CommunityConfigApplicationTest {
         assertEquals("alsa", updated.audioDriver)
         assertEquals("direct3d=0,directsound=0", updated.wincomponents)
         assertEquals("4096", updated.videoMemorySize)
+        assertEquals("-dx11 -windowed", updated.execArgs)
+        assertEquals("GAME_FIX=1 WINEDLLOVERRIDES=xaudio2_7=n,b", updated.envVars)
+    }
+
+    @Test
+    fun optionalLaunchSettingsRequireExplicitSelection() {
+        val excluded = prepareCommunityConfigForApply(
+            config = config,
+            applyLaunchArguments = false,
+            applyEnvironmentVariables = false,
+        )
+        assertFalse(excluded.containsKey("execArgs"))
+        assertFalse(excluded.containsKey("envVars"))
+
+        val included = prepareCommunityConfigForApply(
+            config = config,
+            applyLaunchArguments = true,
+            applyEnvironmentVariables = true,
+        )
+        assertEquals("-dx11 -windowed", included["execArgs"]?.toString()?.trim('"'))
+        assertEquals(
+            "GAME_FIX=1 WINEDLLOVERRIDES=xaudio2_7=n,b",
+            included["envVars"]?.toString()?.trim('"'),
+        )
     }
 
     @Test

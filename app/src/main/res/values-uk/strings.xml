@@ -1241,6 +1241,10 @@
     <string name="community_config_game_store">Магазин гри</string>
     <string name="community_config_custom_game">Користувацька гра</string>
     <string name="community_config_settings">Налаштування</string>
+    <string name="community_config_additional_launch_settings">Додаткові параметри запуску</string>
+    <string name="community_config_apply_launch_arguments">Застосувати аргументи запуску</string>
+    <string name="community_config_apply_environment_variables">Застосувати змінні середовища</string>
+    <string name="community_config_replaces_existing_value">Замінює поточне значення</string>
     <string name="community_config_dependencies">Залежності</string>
     <string name="community_config_dependencies_apply_check">Залежності буде перевірено під час застосування конфігурації.</string>
     <string name="community_config_no_downloads">Зараз завантаження компонентів із маніфесту не потрібне.</string>

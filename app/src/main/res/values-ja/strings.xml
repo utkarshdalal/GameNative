@@ -1272,6 +1272,10 @@
     <string name="community_config_game_store">ゲームストア</string>
     <string name="community_config_custom_game">カスタムゲーム</string>
     <string name="community_config_settings">設定</string>
+    <string name="community_config_additional_launch_settings">追加の起動設定</string>
+    <string name="community_config_apply_launch_arguments">起動引数を適用</string>
+    <string name="community_config_apply_environment_variables">環境変数を適用</string>
+    <string name="community_config_replaces_existing_value">現在の値を置き換えます</string>
     <string name="community_config_dependencies">依存関係</string>
     <string name="community_config_dependencies_apply_check">設定を適用するときに依存関係を確認します。</string>
     <string name="community_config_no_downloads">現在、マニフェストからのダウンロードは必要ありません。</string>

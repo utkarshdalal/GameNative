@@ -3,6 +3,7 @@ package app.gamenative.api
 import app.gamenative.BuildConfig
 import app.gamenative.utils.Net
 import com.winlator.container.Container
+import com.winlator.core.envvars.EnvVars
 import java.io.IOException
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
@@ -34,6 +35,10 @@ private const val MAX_CONCURRENT_DEVICE_REQUESTS = 4
 private const val MAX_DEVICE_SLICE_PAGES = 25
 private const val MAX_API_PAGE_SIZE = 200
 private const val MAX_CONFIG_VALUE_CHARS = 64 * 1024
+private const val MAX_LAUNCH_ARGUMENT_CHARS = 4 * 1024
+private const val MAX_ENVIRONMENT_VARIABLES = 64
+private const val MAX_ENVIRONMENT_NAME_CHARS = 128
+private const val MAX_ENVIRONMENT_VALUE_CHARS = 4 * 1024
 private const val MAX_METADATA_CHARS = 256
 private const val MAX_NOTES_CHARS = 4 * 1024
 private const val MAX_TAGS = 20
@@ -821,13 +826,96 @@ private val communityConfigAllowedKeys = setOf(
     "audioDriver",
     "wincomponents",
     "videoMemorySize",
+    "execArgs",
+    "envVars",
 )
 
+private val communityEnvironmentNamePattern = Regex("[A-Za-z_][A-Za-z0-9_]*")
+
+private val protectedCommunityEnvironmentNames = setOf(
+    "ANDROID_ALSA_SERVER",
+    "ANDROID_SYSVSHM_SERVER",
+    "BOX64_BASH",
+    "BOX64_PATH",
+    "BOX86_BASH",
+    "BOX86_PATH",
+    "GUEST_PROGRAM_LAUNCHER_COMMAND",
+    "HOME",
+    "PATH",
+    "PREFIX",
+    "PROOT_LOADER",
+    "PROOT_TMP_DIR",
+    "TMPDIR",
+    "WINELOADER",
+    "WINEDLLPATH",
+    "WINEPATH",
+    "WINEPREFIX",
+    "WINESERVER",
+)
+
+private fun isProtectedCommunityEnvironmentName(name: String): Boolean {
+    val normalized = name.uppercase(Locale.ENGLISH)
+    return normalized in protectedCommunityEnvironmentNames ||
+        normalized.startsWith("LD_") ||
+        normalized.startsWith("DYLD_") ||
+        normalized.startsWith("BOX64_LD_") ||
+        normalized.startsWith("BOX86_LD_")
+}
+
+internal fun sanitizeCommunityEnvironmentVariables(value: String): String {
+    val environmentVariables = EnvVars(value)
+    val sanitized = EnvVars()
+    var accepted = 0
+    for (name in environmentVariables) {
+        val variableValue = environmentVariables.get(name)
+        if (accepted >= MAX_ENVIRONMENT_VARIABLES) break
+        if (!communityEnvironmentNamePattern.matches(name) ||
+            name.length > MAX_ENVIRONMENT_NAME_CHARS ||
+            variableValue.length > MAX_ENVIRONMENT_VALUE_CHARS ||
+            variableValue.any { it == '\u0000' || it == '\r' || it == '\n' } ||
+            isProtectedCommunityEnvironmentName(name)
+        ) {
+            continue
+        }
+        sanitized.put(name, variableValue)
+        accepted++
+    }
+    return sanitized.toString()
+}
+
 internal fun sanitizeCommunityConfig(config: JsonObject): JsonObject = JsonObject(
-    config.filter { (key, value) ->
-        key in communityConfigAllowedKeys &&
-            value is JsonPrimitive &&
-            value.contentOrNull?.length?.let { it <= MAX_CONFIG_VALUE_CHARS } == true
+    buildMap {
+        config.forEach { (key, value) ->
+            if (key !in communityConfigAllowedKeys || value !is JsonPrimitive) return@forEach
+            val content = value.contentOrNull ?: return@forEach
+            if (content.length > MAX_CONFIG_VALUE_CHARS) return@forEach
+
+            when (key) {
+                "execArgs" -> content
+                    .takeIf {
+                        it.length <= MAX_LAUNCH_ARGUMENT_CHARS &&
+                            it.none { char -> char == '\u0000' || char == '\r' || char == '\n' }
+                    }
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { put(key, JsonPrimitive(it)) }
+                "envVars" -> sanitizeCommunityEnvironmentVariables(content)
+                    .takeIf { it.isNotEmpty() }
+                    ?.let { put(key, JsonPrimitive(it)) }
+                else -> put(key, value)
+            }
+        }
+    },
+)
+
+internal fun prepareCommunityConfigForApply(
+    config: JsonObject,
+    applyLaunchArguments: Boolean,
+    applyEnvironmentVariables: Boolean,
+): JsonObject = JsonObject(
+    sanitizeCommunityConfig(config).filterKeys { key ->
+        (key != "execArgs" || applyLaunchArguments) &&
+            (key != "envVars" || applyEnvironmentVariables)
     },
 )
 

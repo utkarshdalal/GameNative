@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -88,13 +89,20 @@ private enum class CommunityHardwareScope {
     COMPATIBLE_GPUS,
 }
 
+data class CommunityConfigApplyOptions(
+    val applyLaunchArguments: Boolean,
+    val applyEnvironmentVariables: Boolean,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunityConfigsDialog(
     visible: Boolean,
     gameName: String,
+    currentLaunchArguments: String,
+    currentEnvironmentVariables: String,
     onDismissRequest: () -> Unit,
-    onApply: (CommunityConfigRun, String) -> Unit,
+    onApply: (CommunityConfigRun, String, CommunityConfigApplyOptions) -> Unit,
     service: CommunityConfigService = CommunityConfigService.shared,
 ) {
     if (!visible) return
@@ -432,10 +440,12 @@ fun CommunityConfigsDialog(
         CommunityConfigPreviewDialog(
             run = run,
             matchType = matchType,
+            currentLaunchArguments = currentLaunchArguments,
+            currentEnvironmentVariables = currentEnvironmentVariables,
             onDismissRequest = { selectedRun = null },
-            onApply = {
+            onApply = { options ->
                 selectedRun = null
-                onApply(run, matchType)
+                onApply(run, matchType, options)
             },
         )
     }
@@ -730,12 +740,18 @@ private fun CommunityConfigEmptyState(
 private fun CommunityConfigPreviewDialog(
     run: CommunityConfigRun,
     matchType: String,
+    currentLaunchArguments: String,
+    currentEnvironmentVariables: String,
     onDismissRequest: () -> Unit,
-    onApply: () -> Unit,
+    onApply: (CommunityConfigApplyOptions) -> Unit,
 ) {
     val context = LocalContext.current
+    val launchArguments = run.configString("execArgs")
+    val environmentVariables = run.configString("envVars")
     var dependencyNames by remember(run.id) { mutableStateOf<List<String>?>(null) }
     var dependencyCheckFailed by remember(run.id) { mutableStateOf(false) }
+    var applyLaunchArguments by remember(run.id) { mutableStateOf(false) }
+    var applyEnvironmentVariables by remember(run.id) { mutableStateOf(false) }
 
     LaunchedEffect(run.id, matchType) {
         dependencyNames = null
@@ -833,6 +849,32 @@ private fun CommunityConfigPreviewDialog(
                     CommunityConfigDetailRow(label, value)
                 }
 
+                if (launchArguments.isNotBlank() || environmentVariables.isNotBlank()) {
+                    CommunityConfigSectionTitle(
+                        stringResource(R.string.community_config_additional_launch_settings),
+                    )
+                    if (launchArguments.isNotBlank()) {
+                        CommunityConfigApplyOption(
+                            label = stringResource(R.string.community_config_apply_launch_arguments),
+                            value = launchArguments,
+                            checked = applyLaunchArguments,
+                            replacesCurrentValue = currentLaunchArguments.isNotBlank() &&
+                                currentLaunchArguments != launchArguments,
+                            onCheckedChange = { applyLaunchArguments = it },
+                        )
+                    }
+                    if (environmentVariables.isNotBlank()) {
+                        CommunityConfigApplyOption(
+                            label = stringResource(R.string.community_config_apply_environment_variables),
+                            value = environmentVariables,
+                            checked = applyEnvironmentVariables,
+                            replacesCurrentValue = currentEnvironmentVariables.isNotBlank() &&
+                                currentEnvironmentVariables != environmentVariables,
+                            onCheckedChange = { applyEnvironmentVariables = it },
+                        )
+                    }
+                }
+
                 CommunityConfigSectionTitle(stringResource(R.string.community_config_dependencies))
                 when {
                     dependencyNames == null -> CircularProgressIndicator(
@@ -867,7 +909,16 @@ private fun CommunityConfigPreviewDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onApply) {
+            Button(
+                onClick = {
+                    onApply(
+                        CommunityConfigApplyOptions(
+                            applyLaunchArguments = applyLaunchArguments,
+                            applyEnvironmentVariables = applyEnvironmentVariables,
+                        ),
+                    )
+                },
+            ) {
                 Text(stringResource(R.string.community_config_apply))
             }
         },
@@ -877,6 +928,50 @@ private fun CommunityConfigPreviewDialog(
             }
         },
     )
+}
+
+@Composable
+private fun CommunityConfigApplyOption(
+    label: String,
+    value: String,
+    checked: Boolean,
+    replacesCurrentValue: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
+        Column(
+            modifier = Modifier.padding(top = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (replacesCurrentValue) {
+                Text(
+                    text = stringResource(R.string.community_config_replaces_existing_value),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                )
+            }
+        }
+    }
 }
 
 @Composable

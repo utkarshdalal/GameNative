@@ -1246,6 +1246,10 @@
     <string name="community_config_game_store">Magazinul jocului</string>
     <string name="community_config_custom_game">Joc personalizat</string>
     <string name="community_config_settings">Setări</string>
+    <string name="community_config_additional_launch_settings">Setări suplimentare de lansare</string>
+    <string name="community_config_apply_launch_arguments">Aplică argumentele de lansare</string>
+    <string name="community_config_apply_environment_variables">Aplică variabilele de mediu</string>
+    <string name="community_config_replaces_existing_value">Înlocuiește valoarea curentă</string>
     <string name="community_config_dependencies">Dependențe</string>
     <string name="community_config_dependencies_apply_check">Dependențele vor fi verificate la aplicarea configurației.</string>
     <string name="community_config_no_downloads">Momentan nu sunt necesare descărcări din manifest.</string>

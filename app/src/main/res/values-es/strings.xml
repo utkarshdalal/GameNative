@@ -1253,6 +1253,10 @@
     <string name="community_config_game_store">Tienda del juego</string>
     <string name="community_config_custom_game">Juego personalizado</string>
     <string name="community_config_settings">Ajustes</string>
+    <string name="community_config_additional_launch_settings">Ajustes de inicio adicionales</string>
+    <string name="community_config_apply_launch_arguments">Aplicar argumentos de inicio</string>
+    <string name="community_config_apply_environment_variables">Aplicar variables de entorno</string>
+    <string name="community_config_replaces_existing_value">Reemplaza el valor actual</string>
     <string name="community_config_dependencies">Dependencias</string>
     <string name="community_config_dependencies_apply_check">Las dependencias se comprobarán al aplicar la configuración.</string>
     <string name="community_config_no_downloads">No se requiere actualmente ninguna descarga del manifiesto.</string>

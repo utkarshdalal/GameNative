@@ -1236,6 +1236,10 @@
     <string name="community_config_game_store">Negozio del gioco</string>
     <string name="community_config_custom_game">Gioco personalizzato</string>
     <string name="community_config_settings">Impostazioni</string>
+    <string name="community_config_additional_launch_settings">Impostazioni di avvio aggiuntive</string>
+    <string name="community_config_apply_launch_arguments">Applica argomenti di avvio</string>
+    <string name="community_config_apply_environment_variables">Applica variabili d\'ambiente</string>
+    <string name="community_config_replaces_existing_value">Sostituisce il valore corrente</string>
     <string name="community_config_dependencies">Dipendenze</string>
     <string name="community_config_dependencies_apply_check">Le dipendenze verranno controllate quando viene applicata la configurazione.</string>
     <string name="community_config_no_downloads">Al momento non è richiesto alcun download dal manifesto.</string>

@@ -1068,6 +1068,10 @@
     <string name="community_config_game_store">Loja do jogo</string>
     <string name="community_config_custom_game">Jogo personalizado</string>
     <string name="community_config_settings">Configurações</string>
+    <string name="community_config_additional_launch_settings">Configurações adicionais de inicialização</string>
+    <string name="community_config_apply_launch_arguments">Aplicar argumentos de inicialização</string>
+    <string name="community_config_apply_environment_variables">Aplicar variáveis de ambiente</string>
+    <string name="community_config_replaces_existing_value">Substitui o valor atual</string>
     <string name="community_config_dependencies">Dependências</string>
     <string name="community_config_dependencies_apply_check">As dependências serão verificadas quando a configuração for aplicada.</string>
     <string name="community_config_no_downloads">Nenhum download do manifesto é necessário no momento.</string>

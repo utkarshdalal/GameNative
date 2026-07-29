@@ -1222,6 +1222,10 @@
     <string name="community_config_game_store">遊戲商店</string>
     <string name="community_config_custom_game">自訂遊戲</string>
     <string name="community_config_settings">設定</string>
+    <string name="community_config_additional_launch_settings">其他啟動設定</string>
+    <string name="community_config_apply_launch_arguments">套用啟動參數</string>
+    <string name="community_config_apply_environment_variables">套用環境變數</string>
+    <string name="community_config_replaces_existing_value">取代目前的值</string>
     <string name="community_config_dependencies">相依性</string>
     <string name="community_config_dependencies_apply_check">套用設定時將檢查相依性。</string>
     <string name="community_config_no_downloads">目前不需要從資訊清單下載任何內容。</string>

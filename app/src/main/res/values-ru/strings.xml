@@ -155,6 +155,10 @@
     <string name="community_config_game_store">Магазин игры</string>
     <string name="community_config_custom_game">Пользовательская игра</string>
     <string name="community_config_settings">Настройки</string>
+    <string name="community_config_additional_launch_settings">Дополнительные параметры запуска</string>
+    <string name="community_config_apply_launch_arguments">Применить аргументы запуска</string>
+    <string name="community_config_apply_environment_variables">Применить переменные окружения</string>
+    <string name="community_config_replaces_existing_value">Заменяет текущее значение</string>
     <string name="community_config_dependencies">Зависимости</string>
     <string name="community_config_dependencies_apply_check">Зависимости будут проверены при применении конфигурации.</string>
     <string name="community_config_no_downloads">Сейчас загрузка компонентов из манифеста не требуется.</string>

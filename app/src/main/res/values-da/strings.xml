@@ -1068,6 +1068,10 @@
     <string name="community_config_game_store">Spilbutik</string>
     <string name="community_config_custom_game">Brugerdefineret spil</string>
     <string name="community_config_settings">Indstillinger</string>
+    <string name="community_config_additional_launch_settings">Yderligere startindstillinger</string>
+    <string name="community_config_apply_launch_arguments">Anvend startargumenter</string>
+    <string name="community_config_apply_environment_variables">Anvend miljøvariabler</string>
+    <string name="community_config_replaces_existing_value">Erstatter den aktuelle værdi</string>
     <string name="community_config_dependencies">Afhængigheder</string>
     <string name="community_config_dependencies_apply_check">Afhængighederne kontrolleres, når konfigurationen anvendes.</string>
     <string name="community_config_no_downloads">Der kræves i øjeblikket ingen downloads fra manifestet.</string>
