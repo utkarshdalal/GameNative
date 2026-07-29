@@ -81,12 +81,14 @@ internal suspend fun installMissingComponentsForConfig(
     configJson: kotlinx.serialization.json.JsonObject,
     matchType: String,
     matchedGpu: String = "",
+    preserveConfigValues: Boolean = false,
 ): Boolean {
     val missingRequests = BestConfigService.resolveMissingManifestInstallRequests(
-        context,
-        configJson,
-        matchType,
-        matchedGpu,
+        context = context,
+        configJson = configJson,
+        matchType = matchType,
+        matchedGpu = matchedGpu,
+        preserveConfigValues = preserveConfigValues,
     )
     if (missingRequests.isEmpty()) return true
     val parentContext = currentCoroutineContext()
@@ -961,6 +963,7 @@ abstract class BaseAppScreen {
                 configJson = safeConfig,
                 matchType = matchType,
                 matchedGpu = matchedGpu,
+                preserveConfigValues = true,
             )
             if (!installsOk) return false
 
@@ -971,6 +974,7 @@ abstract class BaseAppScreen {
                 applyKnownConfig = true,
                 storeMatch = false,
                 matchedGpu = matchedGpu,
+                preserveConfigValues = true,
             )
             val parsedConfig = parsedResult.config
             val missingComponents = parsedResult.missingComponents
@@ -988,6 +992,7 @@ abstract class BaseAppScreen {
                                     storeMatch = false,
                                     forceApply = true,
                                     matchedGpu = matchedGpu,
+                                    preserveConfigValues = true,
                                 )
                                 if (!forced.isNullOrEmpty()) {
                                     val container = ContainerUtils.getOrCreateContainer(context, appId)

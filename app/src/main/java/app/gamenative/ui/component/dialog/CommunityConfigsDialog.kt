@@ -747,6 +747,7 @@ private fun CommunityConfigPreviewDialog(
                     configJson = run.config,
                     matchType = matchType,
                     matchedGpu = run.device.gpu,
+                    preserveConfigValues = true,
                 ).map { it.entry.name }.distinct()
             }
         } catch (error: CancellationException) {

@@ -268,6 +268,24 @@ object BestConfigService {
         return filteredJson
     }
 
+    private fun prepareConfigForApplication(
+        context: Context,
+        configJson: JsonObject,
+        matchType: String,
+        storeMatch: Boolean = true,
+        matchedGpu: String = "",
+        preserveConfigValues: Boolean = false,
+    ): JSONObject {
+        val effectiveMatchType = if (preserveConfigValues) "exact_gpu_match" else matchType
+        val filteredConfig = filterConfigByMatchType(configJson, effectiveMatchType, storeMatch)
+        val filteredJson = JSONObject(filteredConfig.toString())
+        return if (preserveConfigValues) {
+            filteredJson
+        } else {
+            applyGpuFamilyOverrides(context, filteredJson, matchedGpu)
+        }
+    }
+
     /**
      * Validates component versions in the filtered JSON.
      * Returns list of human-readable descriptions of missing/unavailable components.
@@ -494,10 +512,16 @@ object BestConfigService {
         configJson: JsonObject,
         matchType: String,
         matchedGpu: String = "",
+        preserveConfigValues: Boolean = false,
     ): List<ManifestInstallRequest> {
         val updatedConfigJson = Json.parseToJsonElement(configJson.toString()).jsonObject
-        val filteredConfig = filterConfigByMatchType(updatedConfigJson, matchType)
-        val filteredJson = applyGpuFamilyOverrides(context, JSONObject(filteredConfig.toString()), matchedGpu)
+        val filteredJson = prepareConfigForApplication(
+            context = context,
+            configJson = updatedConfigJson,
+            matchType = matchType,
+            matchedGpu = matchedGpu,
+            preserveConfigValues = preserveConfigValues,
+        )
         val installed = ManifestComponentHelper.loadInstalledContentLists(context)
         val manifest = ManifestRepository.loadManifest(context)
         val installedContent = installed.installed
@@ -748,6 +772,7 @@ object BestConfigService {
      * First parses values (using PrefManager defaults for validation), then validates component versions.
      * Returns map with only fields present in config (no defaults), or empty map if validation fails.
      * When forceApply is true, missing components are replaced with defaults instead of rejecting.
+     * When preserveConfigValues is true, match filtering and device-specific substitutions are skipped.
      */
     suspend fun parseConfigToContainerData(
         context: Context,
@@ -757,6 +782,7 @@ object BestConfigService {
         storeMatch: Boolean = true,
         forceApply: Boolean = false,
         matchedGpu: String = "",
+        preserveConfigValues: Boolean = false,
     ): Map<String, Any?>? = parseConfigResult(
         context = context,
         configJson = configJson,
@@ -765,6 +791,7 @@ object BestConfigService {
         storeMatch = storeMatch,
         forceApply = forceApply,
         matchedGpu = matchedGpu,
+        preserveConfigValues = preserveConfigValues,
     ).config
 
     suspend fun parseConfigResult(
@@ -775,6 +802,7 @@ object BestConfigService {
         storeMatch: Boolean = true,
         forceApply: Boolean = false,
         matchedGpu: String = "",
+        preserveConfigValues: Boolean = false,
     ): ParsedConfigResult {
         try {
             val originalJson = JSONObject(configJson.toString())
@@ -845,10 +873,16 @@ object BestConfigService {
                     return ParsedConfigResult(emptyMap())
                 }
 
-                // Step 1: Filter config based on match type, then apply GPU-family overrides
+                // Step 1: Prepare the config using either device-adapted or value-preserving behavior
                 val updatedConfigJson = Json.parseToJsonElement(originalJson.toString()).jsonObject
-                val filteredConfig = filterConfigByMatchType(updatedConfigJson, matchType, storeMatch)
-                val filteredJson = applyGpuFamilyOverrides(context, JSONObject(filteredConfig.toString()), matchedGpu)
+                val filteredJson = prepareConfigForApplication(
+                    context = context,
+                    configJson = updatedConfigJson,
+                    matchType = matchType,
+                    storeMatch = storeMatch,
+                    matchedGpu = matchedGpu,
+                    preserveConfigValues = preserveConfigValues,
+                )
 
                 // Step 2: check for unavailable component versions
                 val missingComponents = validateComponentVersions(context, filteredJson)
@@ -885,7 +919,12 @@ object BestConfigService {
                     resultMap["execArgs"] = filteredJson.optString("execArgs", "")
                 }
                 if (filteredJson.has("startupSelection") && !filteredJson.isNull("startupSelection")) {
-                    resultMap["startupSelection"] = filteredJson.optInt("startupSelection", PrefManager.startupSelection).toByte()
+                    val startupSelection = filteredJson.optInt("startupSelection", PrefManager.startupSelection)
+                    resultMap["startupSelection"] = if (preserveConfigValues) {
+                        startupSelection
+                    } else {
+                        startupSelection.toByte()
+                    }
                 }
                 if (filteredJson.has("box64Version") && !filteredJson.isNull("box64Version")) {
                     resultMap["box64Version"] = filteredJson.optString("box64Version", "")
