@@ -144,6 +144,7 @@ object PowerManager {
      * Pause the performance driver and auto-tuning when app goes to background
      */
     fun pause() {
+        saveProfile()
         stopAutoTuning()
         getDriver().stop()
     }
@@ -153,9 +154,7 @@ object PowerManager {
      */
     fun resume() {
         getDriver().start()
-        if (currentProfile?.enableAutoTuning == true) {
-            startAutoTuning()
-        }
+        restoreSavedProfile()
     }
 
     /**
