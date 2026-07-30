@@ -93,15 +93,9 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
         if (pulseAudioComponent != null) pulseAudioComponent.pause();
         ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
         if (alsaServerComponent != null) alsaServerComponent.pause();
-
-        // Finally pause power management
-        PowerManager.INSTANCE.pause();
     }
 
     public void onResume() {
-        // Resume power management FIRST
-        PowerManager.INSTANCE.resume();
-
         // Resume audio so it's ready when game processes wake up
         PulseAudioComponent pulseAudioComponent = getComponent(PulseAudioComponent.class);
         if (pulseAudioComponent != null) pulseAudioComponent.resume();
