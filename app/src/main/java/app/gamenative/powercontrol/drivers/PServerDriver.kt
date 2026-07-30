@@ -260,11 +260,19 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     /**
-     * Stop the performance driver
+     * Stop the performance driver.
+     * Validates CPU frequency scaling support and discovers CPU policies.
+     */
+    override fun stop() {
+        reset()
+    }
+
+    /**
+     * Reset the performance driver
      * Restores CPU governor to first available governor and all modified sysfs files to 644 permissions
      * Runs asynchronously on a background thread
      */
-    override fun stop() {
+    override fun reset() {
         if (!isPServerAvailable) {
             Timber.tag(TAG).w("PServer not available to restore settings")
             return

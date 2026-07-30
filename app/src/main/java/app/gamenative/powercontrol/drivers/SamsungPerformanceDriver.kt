@@ -92,6 +92,10 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         }
     }
 
+    override fun reset() {
+        stop()
+    }
+
     override fun getCurrentMinCpuValue(): Long {
         return currentCpuMinLevel.toLong()
     }

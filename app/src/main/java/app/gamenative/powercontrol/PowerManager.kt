@@ -84,6 +84,9 @@ object PowerManager {
                 NoOpPerformanceDriver()
             }
         }
+
+        // Reset the driver on initialize
+        driver?.reset()
     }
 
     private fun getDriver(): PerformanceDriver {
