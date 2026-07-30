@@ -528,6 +528,20 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = hudTabFocusRequester,
                                 )
+                                if (isPowerControlAvailable) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.BatteryChargingFull,
+                                        contentDescriptionResId = R.string.power_control,
+                                        selected = selectedTab == QuickMenuTab.POWER,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.POWER
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = powerTabFocusRequester,
+                                    )
+                                }
                                 if (isLsfgAvailable) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.Speed,
@@ -596,20 +610,6 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = controllerTabFocusRequester,
                                 )
-                                if (isPowerControlAvailable) {
-                                    QuickMenuTabButton(
-                                        icon = Icons.Default.BatteryChargingFull,
-                                        contentDescriptionResId = R.string.power_control,
-                                        selected = selectedTab == QuickMenuTab.POWER,
-                                        accentColor = PluviaTheme.colors.accentPurple,
-                                        onSelected = {
-                                            selectedTab = QuickMenuTab.POWER
-                                            PrefManager.quickMenuLastTab = selectedTab
-                                        },
-                                        modifier = Modifier.width(56.dp),
-                                        focusRequester = powerTabFocusRequester,
-                                    )
-                                }
                                 QuickMenuTabButton(
                                     icon = Icons.Default.BarChart,
                                     contentDescriptionResId = R.string.task_manager,
