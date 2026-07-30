@@ -108,6 +108,7 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
+import app.gamenative.ui.component.SteamInviteState
 import app.gamenative.ui.component.parseBooleanExtra
 import app.gamenative.utils.BionicFgManager
 import app.gamenative.ui.component.parsePositiveFpsLimit
@@ -2650,10 +2651,14 @@ fun XServerScreen(
             onLsfgMultiplierChanged = ::applyLsfgMultiplier,
             onLsfgFlowScaleChanged = ::applyLsfgFlowScale,
             onLsfgPerformanceModeChanged = ::applyLsfgPerformanceMode,
+            onRequestOpen = { showQuickMenu = true },
             onAnimationComplete = { isMenuVisible ->
                 if (isMenuVisible) {
-                    pauseForOverlayIfAllowed()
+                    // An invite dialog the game asked for must not suspend it -- the game has to
+                    // keep running to receive the peer that's joining.
+                    if (!SteamInviteState.openedForGameRequest) pauseForOverlayIfAllowed()
                 } else {
+                    SteamInviteState.openedForGameRequest = false
                     if (shouldForceResumeOnMenuClose) {
                         forceResumeIfSuspended()
                         shouldForceResumeOnMenuClose = false

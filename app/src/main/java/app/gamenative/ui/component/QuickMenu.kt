@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Mouse
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
@@ -67,6 +68,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -99,6 +101,7 @@ import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.VulkanRenderer
 import com.winlator.winhandler.ProcessInfo
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 object QuickMenuAction {
@@ -120,7 +123,8 @@ private object QuickMenuTab {
     const val CONTROLLER = 3
     const val TOOLS = 4
     const val BFG = 5
-    const val POWER = 6
+    const val INVITE = 6
+    const val POWER = 7
 }
 
 data class QuickMenuItem(
@@ -272,6 +276,8 @@ fun QuickMenu(
     onLsfgFlowScaleChanged: (Float) -> Unit = {},
     onLsfgPerformanceModeChanged: (Boolean) -> Unit = {},
     onAnimationComplete: (Boolean) -> Unit = {},
+    /** Lets the menu open itself when the running game asks for its Steam invite dialog. */
+    onRequestOpen: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val exitGameItem = QuickMenuItem(
@@ -347,7 +353,7 @@ fun QuickMenu(
     // trip a VerifyError at class load (dex methods over 255 registers hit a
     // broken D8 codegen path).
     val bfgMenu = remember(container?.id) { container?.let { BfgMenuState.createIfAvailable(it) } }
-
+    val inviteMenu = remember(container?.id) { SteamInviteState.createIfAvailable(container) }
     val isPowerControlAvailable = remember { PowerManager.isPServerAvailable() }
 
     var selectedTab by rememberSaveable {
@@ -355,6 +361,7 @@ fun QuickMenu(
             when {
                 PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.BFG && bfgMenu == null -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.POWER && !isPowerControlAvailable -> QuickMenuTab.HUD
                 else -> PrefManager.quickMenuLastTab
             }
@@ -366,6 +373,7 @@ fun QuickMenu(
         QuickMenuTab.BFG -> R.string.bfg_tab_title
         QuickMenuTab.EFFECTS -> R.string.screen_effects
         QuickMenuTab.TOOLS -> R.string.task_manager
+        QuickMenuTab.INVITE -> R.string.steam_invite_tab_title
         QuickMenuTab.POWER -> R.string.power_control
         else -> R.string.quick_menu_tab_controller
     }
@@ -388,6 +396,25 @@ fun QuickMenu(
     val bfgScrollState = rememberScrollState()
     val bfgTabFocusRequester = remember { FocusRequester() }
     val bfgItemFocusRequester = remember { FocusRequester() }
+    val inviteTabFocusRequester = remember { FocusRequester() }
+    val inviteItemFocusRequester = remember { FocusRequester() }
+
+    // The game's own "Invite friends" button reaches us as an engine callback the bionic host
+    // captures. Open on the invite tab rather than drawing a separate panel, so controller focus
+    // and back-to-dismiss behave like the rest of the menu.
+    if (inviteMenu != null) {
+        LaunchedEffect(inviteMenu) {
+            while (true) {
+                if (!isVisible && inviteMenu.consumeGameInviteRequest()) {
+                    selectedTab = QuickMenuTab.INVITE
+                    PrefManager.quickMenuLastTab = selectedTab
+                    SteamInviteState.openedForGameRequest = true
+                    onRequestOpen()
+                }
+                delay(1000)
+            }
+        }
+    }
     val powerItemFocusRequester = remember { FocusRequester() }
 
     val visibleState = remember { MutableTransitionState(false) }
@@ -527,6 +554,20 @@ fun QuickMenu(
                                         },
                                         modifier = Modifier.width(56.dp),
                                         focusRequester = bfgTabFocusRequester,
+                                    )
+                                }
+                                if (inviteMenu != null) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.PersonAdd,
+                                        contentDescriptionResId = R.string.steam_invite_tab_title,
+                                        selected = selectedTab == QuickMenuTab.INVITE,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.INVITE
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = inviteTabFocusRequester,
                                     )
                                 }
                                 if (renderer != null || glRenderer != null) {
@@ -677,6 +718,16 @@ fun QuickMenu(
                                         }
                                     }
 
+                                    QuickMenuTab.INVITE -> {
+                                        if (inviteMenu != null) {
+                                            SteamInviteQuickMenuTab(
+                                                state = inviteMenu,
+                                                focusRequester = inviteItemFocusRequester,
+                                                modifier = Modifier.fillMaxSize(),
+                                            )
+                                        }
+                                    }
+
                                     QuickMenuTab.EFFECTS -> {
                                         if (renderer != null) {
                                             ScreenEffectsTabContent(
@@ -785,6 +836,7 @@ fun QuickMenu(
                         QuickMenuTab.HUD -> hudItemFocusRequester.requestFocus()
                         QuickMenuTab.LSFG -> lsfgItemFocusRequester.requestFocus()
                         QuickMenuTab.BFG -> bfgItemFocusRequester.requestFocus()
+                        QuickMenuTab.INVITE -> inviteItemFocusRequester.requestFocus()
                         QuickMenuTab.EFFECTS -> effectsItemFocusRequester.requestFocus()
                         QuickMenuTab.POWER -> powerItemFocusRequester.requestFocus()
                         QuickMenuTab.TOOLS -> toolsItemFocusRequester.requestFocus()
@@ -795,6 +847,66 @@ fun QuickMenu(
                     delay(80)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SteamInviteQuickMenuTab(
+    state: SteamInviteState,
+    focusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier,
+) {
+    val scrollState = rememberScrollState()
+    val accentColor = PluviaTheme.colors.accentPurple
+    val scope = rememberCoroutineScope()
+
+    // Keep polling while the tab is up: a friend joining our lobby is the only signal Steam
+    // gives us that an invite was acted on, so the rows would otherwise go stale.
+    LaunchedEffect(Unit) {
+        state.refresh()
+        while (true) {
+            delay(3000)
+            state.refreshQuietly()
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .verticalScroll(scrollState)
+            .focusGroup(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        QuickMenuSectionHeader(
+            title = when {
+                state.isLoading -> stringResource(R.string.main_loading)
+                state.hostUnavailable -> stringResource(R.string.steam_invite_unavailable)
+                else -> stringResource(R.string.steam_invite_header, state.friends.size)
+            },
+            subtitle = state.lastError?.let { stringResource(it) },
+        )
+
+        state.friends.forEachIndexed { index, friend ->
+            QuickMenuDetailRow(
+                title = friend.name,
+                subtitle = stringResource(
+                    when {
+                        friend.inOurLobby -> R.string.steam_invite_joined
+                        friend.isJoinable -> R.string.steam_invite_joinable
+                        friend.steamId in state.inviteSent -> R.string.steam_invite_sent
+                        friend.isOnline -> R.string.steam_invite_online
+                        else -> R.string.steam_invite_offline
+                    },
+                ),
+                accentColor = accentColor,
+                onActivate = {
+                    scope.launch {
+                        // Someone already in this game gets joined, not invited.
+                        if (friend.isJoinable) state.join(friend) else state.invite(friend.steamId)
+                    }
+                },
+                focusRequester = if (index == 0) focusRequester else null,
+            )
         }
     }
 }
@@ -833,11 +945,11 @@ private fun ToolsQuickMenuTab(
             )
         } else {
             processes.forEachIndexed { index, process ->
-                QuickMenuProcessRow(
+                QuickMenuDetailRow(
                     title = process.name + if (process.wow64Process) " *32" else "",
                     subtitle = process.formattedMemoryUsage,
                     accentColor = accentColor,
-                    onEndProcess = {
+                    onActivate = {
                         onEndProcess(process)
                     },
                     focusRequester = if (index == 0) firstItemFocusRequester else null,
@@ -2003,11 +2115,11 @@ private fun QuickMenuSwitch(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun QuickMenuProcessRow(
+private fun QuickMenuDetailRow(
     title: String,
     subtitle: String,
     accentColor: Color,
-    onEndProcess: () -> Unit,
+    onActivate: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
 ) {
@@ -2062,7 +2174,7 @@ private fun QuickMenuProcessRow(
                         KeyEvent.KEYCODE_BUTTON_A,
                         KeyEvent.KEYCODE_DPAD_CENTER,
                         KeyEvent.KEYCODE_ENTER -> {
-                            onEndProcess()
+                            onActivate()
                             true
                         }
 
@@ -2076,7 +2188,7 @@ private fun QuickMenuProcessRow(
                 selected = isFocused,
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onEndProcess,
+                onClick = onActivate,
             )
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
