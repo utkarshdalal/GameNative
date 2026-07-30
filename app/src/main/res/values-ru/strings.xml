@@ -2097,4 +2097,14 @@ https://gamenative.app
     <string name="bfg_model_desc">Clear чётче, но требовательнее</string>
     <string name="bfg_model_standard">Стандартная</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">Пригласить</string>
+    <string name="steam_invite_header">Друзей: %1$d</string>
+    <string name="steam_invite_joinable">В этой игре — нажмите, чтобы присоединиться</string>
+    <string name="steam_invite_unavailable">Клиент Steam не готов</string>
+    <string name="steam_invite_failed">Не удалось пригласить — ваша игра не в сессии, к которой можно присоединиться</string>
+    <string name="steam_join_failed">Не удалось присоединиться — сессия могла закрыться</string>
+    <string name="steam_invite_sent">Приглашение отправлено</string>
+    <string name="steam_invite_joined">В вашей игре</string>
+    <string name="steam_invite_online">В сети</string>
+    <string name="steam_invite_offline">Не в сети</string>
 </resources>

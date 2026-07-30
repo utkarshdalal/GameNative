@@ -25,8 +25,17 @@ object SteamOverlayClient {
         val steamId: Long,
         val personaState: Int,
         val playingAppId: Int,
+        /** See [REL_NONE] / [REL_IN_OUR_LOBBY] / [REL_JOINABLE]; decided by the host. */
+        val relation: Int,
+        val lobbyId: Long,
         val name: String,
     ) {
+        /** They've turned up in our lobby -- the only join signal Steam gives the inviter. */
+        val inOurLobby: Boolean get() = relation == REL_IN_OUR_LOBBY
+
+        /** They're in this same game in their own lobby, so we can join them. */
+        val isJoinable: Boolean get() = relation == REL_JOINABLE && lobbyId != 0L
+
         val isOnline: Boolean get() = personaState != PERSONA_OFFLINE
         fun isPlaying(appId: Int): Boolean = playingAppId != 0 && playingAppId == appId
     }
@@ -37,6 +46,10 @@ object SteamOverlayClient {
     }
 
     const val PERSONA_OFFLINE = 0
+
+    const val REL_NONE = 0
+    const val REL_IN_OUR_LOBBY = 1
+    const val REL_JOINABLE = 2
 
     /** Whether the host process is up and serving. Cheap enough to poll before showing UI. */
     suspend fun isAvailable(): Boolean = request("PING")?.firstOrNull() == "PONG"
@@ -84,16 +97,35 @@ object SteamOverlayClient {
     suspend fun acceptRichPresenceJoin(fromSteamId: Long, connectString: String): Boolean =
         request("RPJOIN $fromSteamId ${connectString.replace('\n', ' ')}")?.firstOrNull() == "OK"
 
+    data class OverlayRequest(val dialog: String, val lobbyId: Long) {
+        /** The engine names the dialog it wants; an invite request carries "lobbyinvite". */
+        val isInviteRequest: Boolean get() = dialog.contains("invite", ignoreCase = true)
+    }
+
+    /**
+     * Consumes a pending overlay request raised by the game itself -- its in-game "Invite
+     * friends" button. Returns null when the game hasn't asked for anything.
+     */
+    suspend fun pollOverlayRequest(): OverlayRequest? {
+        val line = request("POLL")?.firstOrNull() ?: return null
+        if (!line.startsWith("A ")) return null
+        val parts = line.removePrefix("A ").trim().split(' ')
+        val dialog = parts.getOrNull(0)?.takeIf { it != "-" } ?: return null
+        return OverlayRequest(dialog, parts.getOrNull(1)?.toLongOrNull() ?: 0L)
+    }
+
     private fun parseFriend(line: String): Friend? {
-        // "F <steamid> <personaState> <playingAppId> <name...>"
+        // "F <steamid> <personaState> <playingAppId> <rel> <lobbyId> <name...>"
         if (!line.startsWith("F ")) return null
-        val parts = line.removePrefix("F ").split(' ', limit = 4)
-        if (parts.size < 4) return null
+        val parts = line.removePrefix("F ").split(' ', limit = 6)
+        if (parts.size < 6) return null
         return Friend(
             steamId = parts[0].toLongOrNull() ?: return null,
             personaState = parts[1].toIntOrNull() ?: return null,
             playingAppId = parts[2].toIntOrNull() ?: 0,
-            name = parts[3],
+            relation = parts[3].toIntOrNull() ?: REL_NONE,
+            lobbyId = parts[4].toLongOrNull() ?: 0L,
+            name = parts[5],
         )
     }
 

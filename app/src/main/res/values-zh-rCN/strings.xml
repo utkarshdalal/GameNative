@@ -2183,4 +2183,14 @@
     <string name="bfg_model_desc">Clear 更清晰，但开销更大</string>
     <string name="bfg_model_standard">标准</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">邀请</string>
+    <string name="steam_invite_header">%1$d 位好友</string>
+    <string name="steam_invite_joinable">正在玩此游戏 — 点按加入</string>
+    <string name="steam_invite_unavailable">Steam 客户端未就绪</string>
+    <string name="steam_invite_failed">邀请失败 — 你的游戏不在可加入的会话中</string>
+    <string name="steam_join_failed">无法加入 — 对方的会话可能已关闭</string>
+    <string name="steam_invite_sent">已发送邀请</string>
+    <string name="steam_invite_joined">在你的游戏中</string>
+    <string name="steam_invite_online">在线</string>
+    <string name="steam_invite_offline">离线</string>
 </resources>

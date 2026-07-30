@@ -2169,4 +2169,14 @@
     <string name="bfg_model_desc">Clear jest ostrzejszy, ale bardziej wymagający</string>
     <string name="bfg_model_standard">Standardowy</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">Zaproś</string>
+    <string name="steam_invite_header">Znajomi: %1$d</string>
+    <string name="steam_invite_joinable">W tej grze — dotknij, aby dołączyć</string>
+    <string name="steam_invite_unavailable">Klient Steam nie jest gotowy</string>
+    <string name="steam_invite_failed">Nie udało się zaprosić — twoja gra nie jest w sesji, do której można dołączyć</string>
+    <string name="steam_join_failed">Nie można dołączyć — sesja mogła zostać zamknięta</string>
+    <string name="steam_invite_sent">Wysłano zaproszenie</string>
+    <string name="steam_invite_joined">W twojej grze</string>
+    <string name="steam_invite_online">Online</string>
+    <string name="steam_invite_offline">Offline</string>
 </resources>

@@ -2165,4 +2165,14 @@
     <string name="bfg_model_desc">Clear чіткіший, але важчий</string>
     <string name="bfg_model_standard">Стандартна</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">Запросити</string>
+    <string name="steam_invite_header">Друзів: %1$d</string>
+    <string name="steam_invite_joinable">У цій грі — торкніться, щоб приєднатися</string>
+    <string name="steam_invite_unavailable">Клієнт Steam не готовий</string>
+    <string name="steam_invite_failed">Не вдалося запросити — ваша гра не в сесії, до якої можна приєднатися</string>
+    <string name="steam_join_failed">Не вдалося приєднатися — сесію могло бути закрито</string>
+    <string name="steam_invite_sent">Запрошення надіслано</string>
+    <string name="steam_invite_joined">У вашій грі</string>
+    <string name="steam_invite_online">У мережі</string>
+    <string name="steam_invite_offline">Не в мережі</string>
 </resources>

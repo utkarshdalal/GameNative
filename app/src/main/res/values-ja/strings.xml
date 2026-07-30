@@ -2122,4 +2122,14 @@
     <string name="bfg_model_desc">Clear はより鮮明ですが負荷が高くなります</string>
     <string name="bfg_model_standard">標準</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">招待</string>
+    <string name="steam_invite_header">フレンド %1$d 人</string>
+    <string name="steam_invite_joinable">このゲームをプレイ中 — タップして参加</string>
+    <string name="steam_invite_unavailable">Steam クライアントの準備ができていません</string>
+    <string name="steam_invite_failed">招待に失敗しました — 参加可能なセッションではありません</string>
+    <string name="steam_join_failed">参加できません — セッションが終了した可能性があります</string>
+    <string name="steam_invite_sent">招待を送信しました</string>
+    <string name="steam_invite_joined">あなたのゲームに参加中</string>
+    <string name="steam_invite_online">オンライン</string>
+    <string name="steam_invite_offline">オフライン</string>
 </resources>

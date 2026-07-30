@@ -274,6 +274,8 @@ fun QuickMenu(
     onLsfgFlowScaleChanged: (Float) -> Unit = {},
     onLsfgPerformanceModeChanged: (Boolean) -> Unit = {},
     onAnimationComplete: (Boolean) -> Unit = {},
+    /** Lets the menu open itself when the running game asks for its Steam invite dialog. */
+    onRequestOpen: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val exitGameItem = QuickMenuItem(
@@ -354,7 +356,8 @@ fun QuickMenu(
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
             if ((PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable) ||
-                (PrefManager.quickMenuLastTab == QuickMenuTab.BFG && bfgMenu == null)
+                (PrefManager.quickMenuLastTab == QuickMenuTab.BFG && bfgMenu == null) ||
+                (PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null)
             )
                 QuickMenuTab.HUD
             else PrefManager.quickMenuLastTab
@@ -389,6 +392,23 @@ fun QuickMenu(
     val bfgItemFocusRequester = remember { FocusRequester() }
     val inviteTabFocusRequester = remember { FocusRequester() }
     val inviteItemFocusRequester = remember { FocusRequester() }
+
+    // The game's own "Invite friends" button reaches us as an engine callback the bionic host
+    // captures. Open on the invite tab rather than drawing a separate panel, so controller focus
+    // and back-to-dismiss behave like the rest of the menu.
+    if (inviteMenu != null) {
+        LaunchedEffect(inviteMenu) {
+            while (true) {
+                if (!isVisible && inviteMenu.consumeGameInviteRequest()) {
+                    selectedTab = QuickMenuTab.INVITE
+                    PrefManager.quickMenuLastTab = selectedTab
+                    SteamInviteState.openedForGameRequest = true
+                    onRequestOpen()
+                }
+                delay(1000)
+            }
+        }
+    }
 
     val visibleState = remember { MutableTransitionState(false) }
     visibleState.targetState = isVisible
@@ -812,7 +832,15 @@ private fun SteamInviteQuickMenuTab(
     val accentColor = PluviaTheme.colors.accentPurple
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) { state.refresh() }
+    // Keep polling while the tab is up: a friend joining our lobby is the only signal Steam
+    // gives us that an invite was acted on, so the rows would otherwise go stale.
+    LaunchedEffect(Unit) {
+        state.refresh()
+        while (true) {
+            delay(3000)
+            state.refreshQuietly()
+        }
+    }
 
     Column(
         modifier = modifier
@@ -826,17 +854,28 @@ private fun SteamInviteQuickMenuTab(
                 state.hostUnavailable -> stringResource(R.string.steam_invite_unavailable)
                 else -> stringResource(R.string.steam_invite_header, state.friends.size)
             },
-            subtitle = if (state.lastInviteFailed) stringResource(R.string.steam_invite_failed) else null,
+            subtitle = state.lastError?.let { stringResource(it) },
         )
 
         state.friends.forEachIndexed { index, friend ->
             QuickMenuDetailRow(
                 title = friend.name,
                 subtitle = stringResource(
-                    if (friend.isOnline) R.string.steam_invite_online else R.string.steam_invite_offline,
+                    when {
+                        friend.inOurLobby -> R.string.steam_invite_joined
+                        friend.isJoinable -> R.string.steam_invite_joinable
+                        friend.steamId in state.inviteSent -> R.string.steam_invite_sent
+                        friend.isOnline -> R.string.steam_invite_online
+                        else -> R.string.steam_invite_offline
+                    },
                 ),
                 accentColor = accentColor,
-                onActivate = { scope.launch { state.invite(friend.steamId) } },
+                onActivate = {
+                    scope.launch {
+                        // Someone already in this game gets joined, not invited.
+                        if (friend.isJoinable) state.join(friend) else state.invite(friend.steamId)
+                    }
+                },
                 focusRequester = if (index == 0) focusRequester else null,
             )
         }

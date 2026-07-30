@@ -2170,4 +2170,14 @@
     <string name="bfg_model_desc">Clear este mai clar, dar mai solicitant</string>
     <string name="bfg_model_standard">Standard</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">Invită</string>
+    <string name="steam_invite_header">%1$d prieteni</string>
+    <string name="steam_invite_joinable">În acest joc — atinge pentru a te alătura</string>
+    <string name="steam_invite_unavailable">Clientul Steam nu este pregătit</string>
+    <string name="steam_invite_failed">Invitația a eșuat — jocul tău nu este într-o sesiune la care se poate alătura cineva</string>
+    <string name="steam_join_failed">Nu s-a putut alătura — sesiunea lor ar putea fi închisă</string>
+    <string name="steam_invite_sent">Invitație trimisă</string>
+    <string name="steam_invite_joined">În jocul tău</string>
+    <string name="steam_invite_online">Online</string>
+    <string name="steam_invite_offline">Offline</string>
 </resources>
