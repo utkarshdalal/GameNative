@@ -1043,8 +1043,16 @@ class GOGManager @Inject constructor(
 
                 val locationsArray = cloudStorage.optJSONArray("locations")
                 if (locationsArray == null || locationsArray.length() == 0) {
-                    Timber.tag("GOG").d("[Cloud Saves] No save locations configured for game $gameId")
-                    return@withContext null
+                    // Cloud is enabled but GOG declares no filesystem locations: the game syncs saves
+                    // through the Galaxy SDK IStorage API, which mirrors them to a fixed local path.
+                    // gogdl/Heroic skip these games; fall back to that path and let the existing sync
+                    // (conflict prompt included) run. Empty name => list the whole bucket unfiltered.
+                    Timber.tag("GOG").i("[Cloud Saves] Enabled with no locations for game $gameId — using Galaxy SDK storage fallback")
+                    val fallback = GOGCloudSavesLocationTemplate(
+                        "",
+                        "%LOCALAPPDATA%/GOG.com/Galaxy/Applications/$clientId/Storage/Shared/Files",
+                    )
+                    return@withContext Triple(clientId, clientSecret, listOf(fallback))
                 }
                 Timber.tag("GOG").d("[Cloud Saves] Found ${locationsArray.length()} location(s) in config")
 

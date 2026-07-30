@@ -41,6 +41,11 @@ fun RecommendedTabPane(
     onNavigate: (LibraryItem) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: GogRecommendationsViewModel = hiltViewModel(),
+    firstCarouselItemFocusRequester: androidx.compose.ui.focus.FocusRequester? = null,
+    firstGridItemFocusRequester: androidx.compose.ui.focus.FocusRequester? = null,
+    focusTargetListIndex: Int = 0,
+    onFocusedIndexChanged: (Int) -> Unit = {},
+    onItemCountChanged: (Int) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -56,6 +61,10 @@ fun RecommendedTabPane(
 
     val items = remember(state.cards) {
         state.cards.mapIndexed { index, card -> card.toLibraryItem(index) }
+    }
+
+    LaunchedEffect(items.size) {
+        onItemCountChanged(items.size)
     }
 
     // Batched impression tracking: accumulate which cards actually scrolled into view and
@@ -124,6 +133,9 @@ fun RecommendedTabPane(
                     onNavigate = { appId -> items.find { it.appId == appId }?.let(onNavigate) },
                     onRefresh = { viewModel.refresh() },
                     modifier = Modifier.fillMaxSize(),
+                    firstCarouselItemFocusRequester = firstCarouselItemFocusRequester,
+                    focusTargetListIndex = focusTargetListIndex,
+                    onFocusedIndexChanged = onFocusedIndexChanged,
                 )
             }
 
@@ -136,6 +148,8 @@ fun RecommendedTabPane(
                     onNavigate = { appId -> items.find { it.appId == appId }?.let(onNavigate) },
                     onRefresh = { viewModel.refresh() },
                     modifier = Modifier.fillMaxSize(),
+                    firstGridItemFocusRequester = firstGridItemFocusRequester,
+                    focusTargetListIndex = focusTargetListIndex,
                 )
             }
         }

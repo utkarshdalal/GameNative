@@ -11,7 +11,10 @@ import android.net.NetworkRequest
 import android.os.IBinder
 import android.util.Base64
 import app.gamenative.ui.data.Achievement
+import app.gamenative.ui.util.GameInviteNotificationManager
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.service.callback.GameInviteCallback
+import app.gamenative.service.handler.GameInviteHandler
 import androidx.room.withTransaction
 import app.gamenative.BuildConfig
 import app.gamenative.NetworkMonitor
@@ -148,6 +151,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
+import okio.Path.Companion.toPath
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -450,19 +454,8 @@ class SteamService : Service(), IChallengeUrlChanged {
         val internalAppInstallPath: String
             get() = Paths.get(DownloadService.baseDataDirPath, "Steam", "steamapps", "common").pathString
 
-        /**
-         * Root used when "use external storage" is enabled. On legacy this is whatever the
-         * user picked in settings (SD card / USB). On modern we force the primary external
-         * app-scoped dir (/storage/emulated/0/Android/data/<pkg>/files) so no permission
-         * is needed. Falls back to the configured path if for some reason the primary
-         * external app dir isn't available yet (e.g. before populateDownloadService runs).
-         */
         private val externalAppInstallRoot: String
-            get() = if (BuildConfig.MODERN_ANDROID && DownloadService.baseExternalAppDirPath.isNotBlank()) {
-                DownloadService.baseExternalAppDirPath + "/files"
-            } else {
-                PrefManager.externalStoragePath
-            }
+            get() = PrefManager.externalStoragePath
 
         val externalAppInstallPath: String
             get() = Paths.get(externalAppInstallRoot, "Steam", "steamapps", "common").pathString
@@ -492,9 +485,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return Paths.get(externalAppInstallRoot, "Steam", "steamapps", "staging").pathString
             }
 
-        // True when "use external storage" is on AND the resolved external root is usable.
-        // Modern flavor always has a usable primary-external app-scoped root, so this is
-        // effectively just useExternalStorage on modern.
         private val externalStorageReady: Boolean
             get() = PrefManager.useExternalStorage && File(externalAppInstallRoot).let {
                 it.path.isNotBlank() && it.exists()
@@ -1846,6 +1836,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                 notifyDownloadStarted(appId)
                 instance?.notifierOrNull?.trackDownload(di, getAppInfoOf(appId)?.name.orEmpty(), NotificationHelper.NOTIFICATION_ID_STEAM)
 
+                val chunkStagingRedirectDir = File(DownloadService.baseCacheDirPath, "depot_chunks/$appId")
+                    .takeIf { !appDirPath.startsWith(DownloadService.baseDataDirPath) }
+
                 val downloadJob = instance!!.scope.launch {
                     try {
                         // Get licenses from database
@@ -1865,6 +1858,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                         Timber.i("maxDownloads: $maxDownloads")
                         Timber.i("maxDecompress: $maxDecompress")
 
+                        chunkStagingRedirectDir?.apply {
+                            deleteRecursively()
+                            mkdirs()
+                        }
+
                         // Create DepotDownloader instance
                         val depotDownloader = DepotDownloader(
                             instance!!.steamClient!!,
@@ -1875,7 +1873,10 @@ class SteamService : Service(), IChallengeUrlChanged {
                             maxDecompress = maxDecompress,
                             parentJob = coroutineContext[Job],
                             autoStartDownload = false,
-                            filesystem = CaseInsensitiveFileSystem(showDebugLog = false),
+                            filesystem = CaseInsensitiveFileSystem(
+                                showDebugLog = false,
+                                chunkStagingRedirect = chunkStagingRedirectDir?.absolutePath?.toPath(),
+                            ),
                         )
 
                         // Create listeners for DLC apps
@@ -2118,6 +2119,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     // handlers, and cancellations thrown out of suspension points.
                     // second call is a no-op if the inline path already removed the entry.
                     removeDownloadJob(appId)
+                    chunkStagingRedirectDir?.deleteRecursively()
                     if (throwable is kotlinx.coroutines.CancellationException) {
                         Timber.d(throwable, "Download canceled for app $appId")
                     }
@@ -3539,6 +3541,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 removeHandler(SteamMasterServer::class.java)
                 removeHandler(SteamWorkshop::class.java)
                 removeHandler(SteamScreenshots::class.java)
+                // JavaSteam has the protobuf for game invites but no handler for them.
+                addHandler(GameInviteHandler())
             }
 
             // create the callback manager which will route callbacks to function calls
@@ -3564,6 +3568,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     add(subscribe(PersonaStateCallback::class.java, ::onPersonaStateReceived))
                     add(subscribe(LicenseListCallback::class.java, ::onLicenseList))
                     add(subscribe(PlayingSessionStateCallback::class.java, ::onPlayingSessionState))
+                    add(subscribe(GameInviteCallback::class.java, ::onGameInvite))
                 }
             }
 
@@ -3868,7 +3873,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             else -> {
                 if (shouldClearUserDataForLoggedOnFailure(callback.result)) {
-                    clearUserData()
+                    PrefManager.clearSteamSessionPreferences()
                 }
 
                 _loginResult = LoginResult.Failed
@@ -4059,6 +4064,18 @@ class SteamService : Service(), IChallengeUrlChanged {
         if (_isHandlingConflict.compareAndSet(false, true)) {
             PluviaApp.events.emit(SteamEvent.PlayingBlocked(remoteAppName = knownApp.name))
         }
+    }
+
+    /**
+     * Steam fans a game invite out to every session on the account, so this arrives here even
+     * though the running game is served by the separate bionic Steam client. Acting on it is the
+     * overlay's job -- this only surfaces the prompt.
+     */
+    private fun onGameInvite(callback: GameInviteCallback) {
+        Timber.i("onGameInvite: from=${callback.inviterSteamId} connect=${callback.connectString}")
+        if (callback.connectString.isEmpty()) return
+
+        GameInviteNotificationManager.show(callback.inviterSteamId, callback.connectString)
     }
 
     @OptIn(ExperimentalStdlibApi::class)

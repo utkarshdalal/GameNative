@@ -86,7 +86,8 @@ object ContainerUtils {
         } else {
             DefaultVersion.VARIANT = Container.BIONIC
             DefaultVersion.WINE_VERSION = "proton-10.0-arm64ec-2"
-            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
+            DefaultVersion.DEFAULT_GRAPHICS_DRIVER =
+                if (GPUInformation.isAdrenoGPU(context)) "Wrapper" else "Wrapper-gamenative"
             DefaultVersion.DXVK = "async-1.10.3"
             DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_LIGHT
@@ -364,6 +365,7 @@ object ContainerUtils {
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
             // LSFG Vulkan frame generation
             lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean(),
+            bionicFgEnabled = container.getExtra(BionicFgManager.EXTRA_ARMED, "false").toBoolean(),
         )
     }
 
@@ -547,6 +549,7 @@ object ContainerUtils {
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
         // LSFG Vulkan frame generation
         container.putExtra(LsfgVkManager.EXTRA_ARMED, containerData.lsfgEnabled.toString())
+        container.putExtra(BionicFgManager.EXTRA_ARMED, containerData.bionicFgEnabled.toString())
         try {
             container.language = containerData.language
         } catch (e: Exception) {
@@ -1040,11 +1043,30 @@ object ContainerUtils {
             }
         }
 
-        if (gameFolderPath != null) {
+        val resolvedGameFolderPath = if (gameSource == GameSource.CUSTOM_GAME) {
+            gameFolderPath
+        } else {
+            StorageUtils.resolveLegacyGameDir(gameFolderPath)
+        }
+
+        if (resolvedGameFolderPath != null && resolvedGameFolderPath != gameFolderPath) {
+            when (gameSource) {
+                GameSource.GOG ->
+                    GOGService.updateInstallPath(extractGameIdFromContainerId(appId).toString(), resolvedGameFolderPath)
+                GameSource.EPIC ->
+                    EpicService.updateInstallPath(extractGameIdFromContainerId(appId), resolvedGameFolderPath)
+                GameSource.AMAZON ->
+                    runCatching { extractGameIdFromContainerId(appId) }.getOrNull()
+                        ?.let { AmazonService.updateInstallPath(it, resolvedGameFolderPath) }
+                else -> {}
+            }
+        }
+
+        if (resolvedGameFolderPath != null) {
             // Check if A: drive is already mapped to the correct path
             var hasCorrectADrive = false
             for (drive in Container.drivesIterator(container.drives)) {
-                if (drive[0] == "A" && drive[1] == gameFolderPath) {
+                if (drive[0] == "A" && drive[1] == resolvedGameFolderPath) {
                     hasCorrectADrive = true
                     break
                 }
@@ -1055,7 +1077,7 @@ object ContainerUtils {
                 val currentDrives = container.drives
                 // Rebuild drives string, excluding existing A: drive and adding new one
                 val drivesBuilder = StringBuilder()
-                drivesBuilder.append("A:$gameFolderPath")
+                drivesBuilder.append("A:$resolvedGameFolderPath")
 
                 // Add all other drives (excluding A:)
                 for (drive in Container.drivesIterator(currentDrives)) {

@@ -523,6 +523,7 @@ internal fun AppScreenContent(
     onBack: () -> Unit = {},
     achievements: List<Achievement>? = null,
     optionsMenu: List<AppMenuOption>,
+    dialogOpen: Boolean = false,
 ) {
     // Unpacked so the body below is unchanged; bundling the params avoids a Compose VerifyError.
     val isInstalled = downloadDisplayDetails.isInstalled
@@ -557,6 +558,18 @@ internal fun AppScreenContent(
 
     LaunchedEffect(Unit) {
         playButtonFocusRequester.requestFocus()
+    }
+
+    // Restore focus when options menu, dialogs
+    LaunchedEffect(optionsMenuVisible, dialogOpen) {
+        if (!optionsMenuVisible && !dialogOpen) {
+            kotlinx.coroutines.delay(100) // Brief delay for menu/dialog animation
+            try {
+                playButtonFocusRequester.requestFocus()
+            } catch (_: IllegalStateException) {
+                // FocusRequester not attached
+            }
+        }
     }
 
     // Button state calculations (needed by key event handler)

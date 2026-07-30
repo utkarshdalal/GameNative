@@ -301,6 +301,14 @@ class GOGService : Service() {
             }
         }
 
+        fun updateInstallPath(gameId: String, path: String) {
+            runBlocking(Dispatchers.IO) {
+                val manager = getInstance()?.gogManager ?: return@runBlocking
+                val game = manager.getGameFromDbById(gameId) ?: return@runBlocking
+                if (game.installPath != path) manager.updateGame(game.copy(installPath = path))
+            }
+        }
+
         fun verifyInstallation(gameId: String): Pair<Boolean, String?> {
             return getInstance()?.gogManager?.verifyInstallation(gameId)
                 ?: Pair(false, "Service not available")

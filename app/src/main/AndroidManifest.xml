@@ -69,6 +69,15 @@
                     android:scheme="home" />
             </intent-filter>
             <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- Nexus issues signed nxm:// links after a free user authorizes a file on the website. -->
+                <data android:scheme="nxm" />
+            </intent-filter>
+            <intent-filter>
                 <action android:name="app.gamenative.LAUNCH_GAME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>

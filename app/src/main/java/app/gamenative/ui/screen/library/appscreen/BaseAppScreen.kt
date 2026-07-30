@@ -1390,6 +1390,7 @@ abstract class BaseAppScreen {
             onBack = onBack,
             achievements = achievementsState,
             optionsMenu = optionsMenu,
+            dialogOpen = showConfigDialog || manageModsRequested,
         )
 
         if (showReadiness && launchActivity != null) {
