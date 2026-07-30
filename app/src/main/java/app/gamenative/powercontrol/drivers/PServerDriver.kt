@@ -250,7 +250,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Reset the performance driver.
      */
     override fun reset() {
-    override fun reset() {
         Thread {
             try {
                 start()
