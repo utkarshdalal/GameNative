@@ -3,7 +3,9 @@ package app.gamenative.api
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -604,6 +606,52 @@ class CommunityConfigServiceTest {
             .mapNotNull { it.requestUrl?.queryParameter("deviceId") }
             .toSet()
         assertEquals(setOf("11", "12"), requestedIds)
+    }
+
+    @Test
+    fun fetchConfigs_keepsCollidingRunIdsFromDifferentDevices() = runBlocking {
+        server.enqueue(MockResponse().setBody(configPage(runId = 1, rating = 3, deviceId = 11, total = 1)))
+        server.enqueue(MockResponse().setBody(configPage(runId = 1, rating = 5, deviceId = 12, total = 1)))
+
+        val result = service.fetchConfigs(
+            gameId = 10,
+            gpu = null,
+            sort = CommunityConfigSort.HIGHEST_RATED,
+            page = 0,
+            deviceIds = listOf(11, 12),
+        )
+
+        assertEquals(listOf(12, 11), result.runs.map { it.device.id })
+        assertEquals(2, result.runs.size)
+    }
+
+    @Test
+    fun fetchConfigs_runsPermittedDeviceRequestsConcurrently() = runBlocking {
+        val requestsStarted = CountDownLatch(2)
+        val timedOutWaitingForConcurrency = AtomicBoolean(false)
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                requestsStarted.countDown()
+                if (!requestsStarted.await(2, TimeUnit.SECONDS)) {
+                    timedOutWaitingForConcurrency.set(true)
+                }
+                val deviceId = request.requestUrl?.queryParameter("deviceId")?.toIntOrNull() ?: 0
+                return MockResponse().setBody(
+                    configPage(runId = deviceId.toLong(), rating = 5, deviceId = deviceId, total = 1),
+                )
+            }
+        }
+
+        val result = service.fetchConfigs(
+            gameId = 10,
+            gpu = null,
+            sort = CommunityConfigSort.HIGHEST_RATED,
+            page = 0,
+            deviceIds = listOf(11, 12),
+        )
+
+        assertEquals(2, result.runs.size)
+        assertFalse("Device requests should execute concurrently", timedOutWaitingForConcurrency.get())
     }
 
     @Test

@@ -1230,6 +1230,9 @@ abstract class BaseAppScreen {
         var containerData by androidx.compose.runtime.remember {
             androidx.compose.runtime.mutableStateOf(ContainerData())
         }
+        var communityContainerData by remember(appId) {
+            mutableStateOf<ContainerData?>(null)
+        }
 
         val onEditContainer: () -> Unit = {
             containerData = loadContainerData(context, libraryItem)
@@ -1553,33 +1556,48 @@ abstract class BaseAppScreen {
             )
         }
 
-        if (communityConfigsRequested) {
-            LaunchedEffect(appId, communityConfigsRequested) {
-                containerData = withContext(Dispatchers.IO) {
+        LaunchedEffect(appId, communityConfigsRequested) {
+            communityContainerData = if (communityConfigsRequested) {
+                withContext(Dispatchers.IO) {
                     loadContainerData(context, libraryItem)
                 }
+            } else {
+                null
             }
-            CommunityConfigsDialog(
-                visible = true,
-                gameName = displayInfo.name,
-                currentLaunchArguments = containerData.execArgs,
-                currentEnvironmentVariables = containerData.envVars,
-                onDismissRequest = { clearCommunityConfigsRequest(appId) },
-                onApply = { run, matchType, options ->
-                    clearCommunityConfigsRequest(appId)
-                    uiScope.launch(Dispatchers.IO) {
-                        applyCommunityConfigForLibraryItem(
-                            context = context,
-                            libraryItem = libraryItem,
-                            configJson = run.config,
-                            matchType = matchType,
-                            matchedGpu = run.device.gpu,
-                            applyLaunchArguments = options.applyLaunchArguments,
-                            applyEnvironmentVariables = options.applyEnvironmentVariables,
-                        )
-                    }
-                },
-            )
+        }
+
+        if (communityConfigsRequested) {
+            val currentContainerData = communityContainerData
+            if (currentContainerData == null) {
+                LoadingDialog(
+                    visible = true,
+                    onDismissRequest = { clearCommunityConfigsRequest(appId) },
+                    progress = -1f,
+                    message = stringResource(R.string.working),
+                )
+            } else {
+                CommunityConfigsDialog(
+                    visible = true,
+                    gameName = displayInfo.name,
+                    currentLaunchArguments = currentContainerData.execArgs,
+                    currentEnvironmentVariables = currentContainerData.envVars,
+                    onDismissRequest = { clearCommunityConfigsRequest(appId) },
+                    onApply = { run, matchType, options ->
+                        clearCommunityConfigsRequest(appId)
+                        uiScope.launch(Dispatchers.IO) {
+                            applyCommunityConfigForLibraryItem(
+                                context = context,
+                                libraryItem = libraryItem,
+                                configJson = run.config,
+                                matchType = matchType,
+                                matchedGpu = run.device.gpu,
+                                applyLaunchArguments = options.applyLaunchArguments,
+                                applyEnvironmentVariables = options.applyEnvironmentVariables,
+                            )
+                        }
+                    },
+                )
+            }
         }
 
         if (manageModsRequested) {

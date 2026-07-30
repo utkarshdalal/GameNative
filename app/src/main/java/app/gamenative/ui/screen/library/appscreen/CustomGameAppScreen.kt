@@ -431,8 +431,8 @@ class CustomGameAppScreen : BaseAppScreen() {
     }
 
     /**
-     * For Custom games, only show Export/Import config in the Container section.
-     * We intentionally omit the generic "Use known config" here.
+     * Custom games omit the generic "Use known config" action but retain the
+     * community browser and config transfer actions.
      */
     @Composable
     override fun getConfigMenuOptions(
@@ -440,6 +440,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
     ): List<AppMenuOption> {
         return listOfNotNull(
+            getBrowseCommunityConfigsOption(context, libraryItem),
             getExportConfigOption(context, libraryItem),
             getImportConfigOption(context, libraryItem),
         )

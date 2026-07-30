@@ -127,7 +127,7 @@
         <item quantity="many">%1$d конфигураций</item>
         <item quantity="other">%1$d конфигурации</item>
     </plurals>
-    <string name="community_config_highest_rated">По рейтингу</string>
+    <string name="community_config_highest_rated">Высший рейтинг</string>
     <string name="community_config_newest">Сначала новые</string>
     <string name="community_config_same_device">То же устройство</string>
     <string name="community_config_this_gpu">Тот же GPU</string>

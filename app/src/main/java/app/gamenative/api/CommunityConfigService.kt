@@ -93,6 +93,8 @@ data class CommunityConfigRun(
     }
 }
 
+internal fun CommunityConfigRun.communityIdentityKey(): String = "$id:${device.id}:$createdAt"
+
 data class CommunityConfigPage(
     val runs: List<CommunityConfigRun>,
     val total: Int,
@@ -216,7 +218,6 @@ class CommunityConfigService internal constructor(
     private val gameSearchCache = ExpiringCache<String, List<CommunityGame>>(12, CACHE_TTL_MILLIS)
     private val deviceSearchCache = ExpiringCache<String, List<CommunityConfigDevice>>(12, CACHE_TTL_MILLIS)
     private val configPageCache = ExpiringCache<ConfigCacheKey, CommunityConfigPage>(24, CACHE_TTL_MILLIS)
-    private val requestGate = Any()
 
     fun clearConfigCache() {
         configPageCache.clear()
@@ -325,7 +326,7 @@ class CommunityConfigService internal constructor(
                 }.awaitAll()
             }
             val mergedRuns = sortCommunityRuns(
-                slices.flatMap { it.runs }.distinctBy { it.id },
+                slices.flatMap { it.runs }.distinctBy { it.communityIdentityKey() },
                 sort,
             )
             val startIndex = (normalizedPage.toLong() * normalizedLimit).toInt()
@@ -398,7 +399,7 @@ class CommunityConfigService internal constructor(
         targetCount: Int,
         pageSize: Int,
     ): DeviceConfigSlice {
-        val runs = LinkedHashMap<Long, CommunityConfigRun>()
+        val runs = LinkedHashMap<String, CommunityConfigRun>()
         var nextPage = 0
         var total = 0
         var hasMore: Boolean
@@ -411,7 +412,7 @@ class CommunityConfigService internal constructor(
                 limit = pageSize,
                 deviceId = deviceId,
             )
-            result.runs.forEach { runs.putIfAbsent(it.id, it) }
+            result.runs.forEach { runs.putIfAbsent(it.communityIdentityKey(), it) }
             total = maxOf(total, result.total)
             nextPage++
             val maximumPages = (total.toLong() + pageSize - 1) / pageSize
@@ -475,34 +476,32 @@ class CommunityConfigService internal constructor(
 
     private fun execute(url: String): String {
         val request = Request.Builder().url(url).get().build()
-        return synchronized(requestGate) {
-            requestThrottle.awaitPermit()
-            try {
-                client.newCall(request).execute().use { response ->
-                    val body = readBoundedBody(response.body)
-                    if (!response.isSuccessful) {
-                        if (response.code == 429) {
-                            val retryAfterMillis = parseCommunityRetryAfterMillis(
-                                response.header("Retry-After"),
-                            )
-                                ?: DEFAULT_RATE_LIMIT_COOLDOWN_MILLIS
-                            requestThrottle.postpone(retryAfterMillis)
-                        }
-                        throw CommunityConfigApiException(
-                            message = parseErrorMessage(body)
-                                .ifBlank { "Compatibility service returned HTTP ${response.code}" },
-                            statusCode = response.code,
+        requestThrottle.awaitPermit()
+        try {
+            return client.newCall(request).execute().use { response ->
+                val body = readBoundedBody(response.body)
+                if (!response.isSuccessful) {
+                    if (response.code == 429) {
+                        val retryAfterMillis = parseCommunityRetryAfterMillis(
+                            response.header("Retry-After"),
                         )
+                            ?: DEFAULT_RATE_LIMIT_COOLDOWN_MILLIS
+                        requestThrottle.postpone(retryAfterMillis)
                     }
-                    body
+                    throw CommunityConfigApiException(
+                        message = parseErrorMessage(body)
+                            .ifBlank { "Compatibility service returned HTTP ${response.code}" },
+                        statusCode = response.code,
+                    )
                 }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: CommunityConfigApiException) {
-                throw error
-            } catch (error: IOException) {
-                throw CommunityConfigApiException("Unable to reach the compatibility service", cause = error)
+                body
             }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: CommunityConfigApiException) {
+            throw error
+        } catch (error: IOException) {
+            throw CommunityConfigApiException("Unable to reach the compatibility service", cause = error)
         }
     }
 

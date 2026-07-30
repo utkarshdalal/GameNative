@@ -70,6 +70,7 @@ import app.gamenative.api.CommunityConfigSort
 import app.gamenative.api.CommunityGame
 import app.gamenative.api.canonicalCommunityGpu
 import app.gamenative.api.communityConfigMatchType
+import app.gamenative.api.communityIdentityKey
 import app.gamenative.api.sortCommunityRuns
 import app.gamenative.utils.BestConfigService
 import com.winlator.core.GPUInformation
@@ -274,7 +275,10 @@ fun CommunityConfigsDialog(
                     )
                 }
                 if (requestIsCurrent()) {
-                    val mergedRuns = sortCommunityRuns((runs + result.runs).distinctBy { it.id }, requestedSort)
+                    val mergedRuns = sortCommunityRuns(
+                        (runs + result.runs).distinctBy { it.communityIdentityKey() },
+                        requestedSort,
+                    )
                     runs = mergedRuns
                     total = if (requestedScope == CommunityHardwareScope.COMPATIBLE_GPUS) {
                         mergedRuns.size
@@ -389,7 +393,7 @@ fun CommunityConfigsDialog(
                         else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(
                                 items = runs,
-                                key = { "${it.id}:${it.device.id}:${it.createdAt}" },
+                                key = { it.communityIdentityKey() },
                             ) { run ->
                                 CommunityConfigListItem(
                                     run = run,
