@@ -30,6 +30,7 @@ object PowerManager {
      * Flag to track if a game has been started.
      * Used to guard pause/resume operations.
      */
+    @Volatile
     var isGameStarted: Boolean = false
 
     /**
