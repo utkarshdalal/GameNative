@@ -250,8 +250,13 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Reset the performance driver.
      */
     override fun reset() {
+    override fun reset() {
         Thread {
-            start()
+            try {
+                start()
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Failed to start PServerDriver during reset")
+            }
             stop()
         }.start()
     }
