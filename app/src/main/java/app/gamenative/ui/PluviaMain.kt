@@ -69,6 +69,7 @@ import app.gamenative.service.amazon.AmazonService
 import com.posthog.PostHog
 import app.gamenative.ui.component.AchievementOverlay
 import app.gamenative.ui.component.ConnectionStatusBanner
+import app.gamenative.ui.component.GameInviteOverlay
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
@@ -1578,6 +1579,7 @@ fun PluviaMain(
             }
 
             AchievementOverlay()
+            GameInviteOverlay()
         }
     }
 }

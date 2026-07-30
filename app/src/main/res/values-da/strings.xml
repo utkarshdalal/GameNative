@@ -2037,4 +2037,14 @@
     <string name="bfg_model_desc">Clear er skarpere, men tungere</string>
     <string name="bfg_model_standard">Standard</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">Inviter</string>
+    <string name="steam_invite_header">%1$d venner</string>
+    <string name="steam_invite_joinable">I dette spil — tryk for at deltage</string>
+    <string name="steam_invite_unavailable">Steam-klienten er ikke klar</string>
+    <string name="steam_invite_failed">Invitationen mislykkedes — dit spil er ikke i en session, man kan deltage i</string>
+    <string name="steam_join_failed">Kunne ikke deltage — deres session er måske lukket</string>
+    <string name="steam_invite_sent">Invitation sendt</string>
+    <string name="steam_invite_joined">I dit spil</string>
+    <string name="steam_invite_online">Online</string>
+    <string name="steam_invite_offline">Offline</string>
 </resources>

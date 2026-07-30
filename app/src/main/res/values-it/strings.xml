@@ -2158,4 +2158,14 @@
     <string name="bfg_model_desc">Clear è più nitido ma più pesante</string>
     <string name="bfg_model_standard">Standard</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">Invita</string>
+    <string name="steam_invite_header">%1$d amici</string>
+    <string name="steam_invite_joinable">In questo gioco: tocca per unirti</string>
+    <string name="steam_invite_unavailable">Client Steam non pronto</string>
+    <string name="steam_invite_failed">Invito non riuscito: la tua partita non è in una sessione a cui ci si possa unire</string>
+    <string name="steam_join_failed">Impossibile unirsi: la loro sessione potrebbe essere chiusa</string>
+    <string name="steam_invite_sent">Invito inviato</string>
+    <string name="steam_invite_joined">Nella tua partita</string>
+    <string name="steam_invite_online">Online</string>
+    <string name="steam_invite_offline">Offline</string>
 </resources>
