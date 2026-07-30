@@ -352,9 +352,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
                 modifiedSysfsFiles.clear()
 
-                // Reset app process CPU affinity to all cores
-                resetAppCpuAffinity()
-
                 // Clear CPU policies and clusters to force re-discovery on next start()
                 cpuPolicies = emptyList()
                 cpuClusters = emptyMap()
@@ -1086,32 +1083,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      */
     fun getCpuClusterCount(): Int {
         return cpuClusters.size
-    }
-
-    /**
-     * Reset the current app process to use all available CPU cores.
-     *
-     * @return true if successful
-     */
-    fun resetAppCpuAffinity(): Boolean {
-        val appPid = android.os.Process.myPid()
-
-        // Get all available cores from all clusters
-        val effCores = getCpuCoresByCluster(CpuCluster.EFFICIENCY)
-        val perfCores = getCpuCoresByCluster(CpuCluster.PERFORMANCE)
-        val primeCores = getCpuCoresByCluster(CpuCluster.PRIME)
-        val allCores = (effCores + perfCores + primeCores).sorted()
-
-        if (allCores.isEmpty()) {
-            Timber.tag(TAG).w("No CPU cores found for reset")
-            return false
-        }
-
-        val success = setCpuAffinityByCores(appPid, allCores)
-        if (success) {
-            Timber.tag(TAG).i("Reset app process (PID: $appPid) to all CPUs ${allCores.joinToString()}")
-        }
-        return success
     }
 
     /**
