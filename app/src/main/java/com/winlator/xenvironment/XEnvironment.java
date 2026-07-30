@@ -19,6 +19,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 
+import app.gamenative.powercontrol.PowerManager;
+
 public class XEnvironment implements Iterable<EnvironmentComponent> {
     private final Context context;
     private final ImageFs imageFs;
@@ -91,10 +93,16 @@ public class XEnvironment implements Iterable<EnvironmentComponent> {
         if (pulseAudioComponent != null) pulseAudioComponent.pause();
         ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);
         if (alsaServerComponent != null) alsaServerComponent.pause();
+
+        // Finally pause power management
+        PowerManager.INSTANCE.pause();
     }
 
     public void onResume() {
-        // Resume audio FIRST so it's ready when game processes wake up
+        // Resume power management FIRST
+        PowerManager.INSTANCE.resume();
+
+        // Resume audio so it's ready when game processes wake up
         PulseAudioComponent pulseAudioComponent = getComponent(PulseAudioComponent.class);
         if (pulseAudioComponent != null) pulseAudioComponent.resume();
         ALSAServerComponent alsaServerComponent = getComponent(ALSAServerComponent.class);

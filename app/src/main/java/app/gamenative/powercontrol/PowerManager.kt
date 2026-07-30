@@ -141,6 +141,24 @@ object PowerManager {
     }
 
     /**
+     * Pause the performance driver and auto-tuning when app goes to background
+     */
+    fun pause() {
+        stopAutoTuning()
+        getDriver().stop()
+    }
+
+    /**
+     * Resume the performance driver and auto-tuning when app comes to foreground
+     */
+    fun resume() {
+        getDriver().start()
+        if (currentProfile?.enableAutoTuning == true) {
+            startAutoTuning()
+        }
+    }
+
+    /**
      * Start automatic performance tuning.
      * Uses PID controller to adjust CPU/GPU/Bus frequencies based on targetFps and utilization.
      * Works with any driver that supports CPU frequency and GPU power level control.
