@@ -27,6 +27,12 @@ object PowerManager {
     private var autoTuner: PerformanceAutoTuner? = null
 
     /**
+     * Flag to track if a game has been started.
+     * Used to guard pause/resume operations.
+     */
+    var isGameStarted: Boolean = false
+
+    /**
      * The currently active power profile.
      * Updated when settings change, used for saving on stop.
      */
@@ -128,6 +134,7 @@ object PowerManager {
 
         // Pin PulseAudio to dedicated performance core if PServer is available
         pinPulseAudioToDedicatedCore()
+        isGameStarted = true
     }
 
     /**
@@ -138,12 +145,14 @@ object PowerManager {
         saveProfile()
         stopAutoTuning()
         getDriver().stop()
+        isGameStarted = false
     }
 
     /**
      * Pause the performance driver and auto-tuning when app goes to background
      */
     fun pause() {
+        if (!isGameStarted) return
         saveProfile()
         stopAutoTuning()
         getDriver().stop()
@@ -153,6 +162,7 @@ object PowerManager {
      * Resume the performance driver and auto-tuning when app comes to foreground
      */
     fun resume() {
+        if (!isGameStarted) return
         getDriver().start()
         restoreSavedProfile()
     }
