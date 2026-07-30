@@ -154,24 +154,26 @@ internal class CommunityRequestThrottle(
         require(windowMillis > 0)
     }
 
-    @Synchronized
     fun awaitPermit() {
         while (true) {
-            val now = nanoTime()
-            val expiredAt = now - windowNanos
-            while (requestStarts.isNotEmpty() && requestStarts.first() <= expiredAt) {
-                requestStarts.removeFirst()
-            }
+            val waitNanos = synchronized(this) {
+                val now = nanoTime()
+                val expiredAt = now - windowNanos
+                while (requestStarts.isNotEmpty() && requestStarts.first() <= expiredAt) {
+                    requestStarts.removeFirst()
+                }
 
-            val quotaWaitNanos = if (requestStarts.size >= maxRequests) {
-                requestStarts.first() + windowNanos - now
-            } else {
-                0L
+                val quotaWaitNanos = if (requestStarts.size >= maxRequests) {
+                    requestStarts.first() + windowNanos - now
+                } else {
+                    0L
+                }
+                val cooldownWaitNanos = blockedUntilNanos - now
+                maxOf(quotaWaitNanos, cooldownWaitNanos).also {
+                    if (it <= 0L) requestStarts.addLast(now)
+                }
             }
-            val cooldownWaitNanos = blockedUntilNanos - now
-            val waitNanos = maxOf(quotaWaitNanos, cooldownWaitNanos)
             if (waitNanos <= 0L) {
-                requestStarts.addLast(now)
                 return
             }
 

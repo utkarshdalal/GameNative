@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -356,6 +357,46 @@ class CommunityConfigServiceTest {
         throttle.awaitPermit()
 
         assertEquals(listOf(TimeUnit.SECONDS.toNanos(7)), sleeps)
+    }
+
+    @Test
+    fun requestThrottle_allowsCooldownUpdatesWhileAnotherRequestWaits() {
+        val now = AtomicLong(0L)
+        val waitStarted = CountDownLatch(1)
+        val allowWake = CountDownLatch(1)
+        val cooldownRecorded = CountDownLatch(1)
+        val throttle = CommunityRequestThrottle(
+            maxRequests = 1,
+            windowMillis = 10,
+            nanoTime = now::get,
+            sleepNanos = { duration ->
+                waitStarted.countDown()
+                allowWake.await(2, TimeUnit.SECONDS)
+                now.addAndGet(duration)
+            },
+        )
+        throttle.awaitPermit()
+
+        val waitingRequest = Thread { throttle.awaitPermit() }.apply { start() }
+        assertTrue(waitStarted.await(2, TimeUnit.SECONDS))
+        val cooldownUpdate = Thread {
+            throttle.postpone(20)
+            cooldownRecorded.countDown()
+        }.apply { start() }
+
+        try {
+            assertTrue(
+                "Cooldown updates should not wait for a sleeping request",
+                cooldownRecorded.await(2, TimeUnit.SECONDS),
+            )
+        } finally {
+            allowWake.countDown()
+            waitingRequest.join(2_000)
+            cooldownUpdate.join(2_000)
+        }
+        assertFalse(waitingRequest.isAlive)
+        assertFalse(cooldownUpdate.isAlive)
+        assertEquals(TimeUnit.MILLISECONDS.toNanos(20), now.get())
     }
 
     @Test
