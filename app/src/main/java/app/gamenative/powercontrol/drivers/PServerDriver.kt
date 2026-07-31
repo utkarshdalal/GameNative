@@ -157,10 +157,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     /**
-     * Commit all pending updates from the batch session.
+     * Internal function, Commit all pending updates from the batch session.
+     * @param Boolean skipPermissionLock
      * Writes commands to a temporary shell script and executes it to avoid Binder size limits.
      */
-    override fun commit(): Boolean {
+    fun commitInternal(skipPermissionLock: Boolean = false): Boolean {
         if (!isBatchMode || batchCommands.isEmpty()) {
             isBatchMode = false
             return true
@@ -191,9 +192,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 }
 
                 // Finally, make all files read-only in a single chmod command
-                if (batchFilePaths.isNotEmpty()) {
-                    val paths = batchFilePaths.joinToString(" ") { "'$it'" }
-                    appendLine("chmod 444 $paths")
+                if (!skipPermissionLock) {
+                    if (batchFilePaths.isNotEmpty()) {
+                        val paths = batchFilePaths.joinToString(" ") { "'$it'" }
+                        appendLine("chmod 444 $paths")
+                    }
                 }
             }
 
@@ -244,6 +247,12 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             }
         }
     }
+
+    /**
+     * Commit all pending updates from the batch session.
+     * Writes commands to a temporary shell script and executes it to avoid Binder size limits.
+     */
+    override fun commit(): Boolean = commitInternal()
 
     /**
      * Reset the performance driver.
@@ -303,6 +312,9 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         // Run restoration on background thread to avoid blocking
         val cleanupThread = Thread {
             try {
+                // Batch all restoration commands for efficient execution
+                beginUpdate()
+
                 // Reset CPU frequencies to maximum before changing governor
                 // This prevents device from staying slow if it was in Power Save mode
                 try {
@@ -349,21 +361,19 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                     Timber.tag(TAG).e(e, "Failed to restore governor")
                 }
 
-                // Restore file permissions - concatenate all chmod commands for faster execution
+                // Add chmod 644 commands for all modified files to restore permissions
                 if (modifiedSysfsFiles.isNotEmpty()) {
-                    try {
-                        val chmodCommands = modifiedSysfsFiles.joinToString("; ") { path ->
-                            "chmod 644 '$path'"
-                        }
-                        val result = executeAsRoot(chmodCommands)
-                        if (result.isSuccess) {
-                            Timber.tag(TAG).d("Restored permissions for ${modifiedSysfsFiles.size} files")
-                        } else {
-                            Timber.tag(TAG).e("Failed to restore permissions: ${result.exceptionOrNull()?.message}")
-                        }
-                    } catch (e: Exception) {
-                        Timber.tag(TAG).e(e, "Failed to restore permissions")
+                    for (path in modifiedSysfsFiles) {
+                        batchCommands.add("chmod 644 '$path'")
                     }
+                }
+
+                // Execute all batched commands in a single root call
+                val commitSuccess = commitInternal(true)
+                if (commitSuccess) {
+                    Timber.tag(TAG).d("Successfully restored settings and permissions")
+                } else {
+                    Timber.tag(TAG).e("Failed to commit restoration batch")
                 }
 
                 modifiedSysfsFiles.clear()
