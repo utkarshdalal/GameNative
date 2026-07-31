@@ -382,9 +382,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 } else {
                     Timber.tag(TAG).d("Stop cleanup interrupted - skipping executor shutdown")
                 }
-            } catch (e: InterruptedException) {
-                Timber.tag(TAG).d("Stop cleanup interrupted")
-                Thread.currentThread().interrupt()
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Failed to stop PServerDriver")
             }
