@@ -12,7 +12,6 @@ import app.gamenative.powercontrol.profiles.PerformancePreset
 import timber.log.Timber
 import java.io.File
 import java.nio.charset.Charset
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 
 /**
@@ -59,6 +58,9 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     // Single-thread executor for PServer operations to avoid blocking
     // Created in start(), shutdown in stop()
     private var pserverExecutor: java.util.concurrent.ExecutorService? = null
+
+    // Track the stop cleanup thread to prevent race conditions
+    private var stopThread: Thread? = null
 
     // Track modified sysfs files for permission restoration
     private val modifiedSysfsFiles = mutableSetOf<String>()
@@ -262,6 +264,15 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Validates CPU frequency scaling support and discovers CPU policies.
      */
     override fun start() {
+        // Interrupt any ongoing stop() cleanup to prevent executor shutdown race
+        stopThread?.let { thread ->
+            if (thread.isAlive) {
+                Timber.tag(TAG).d("Interrupting previous stop() cleanup thread")
+                thread.interrupt()
+            }
+        }
+        stopThread = null
+
         // Create executor for PServer operations
         if (pserverExecutor == null) {
             pserverExecutor = Executors.newSingleThreadExecutor { r ->
@@ -290,7 +301,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
 
         // Run restoration on background thread to avoid blocking
-        Thread {
+        val cleanupThread = Thread {
             try {
                 // Reset CPU frequencies to maximum before changing governor
                 // This prevents device from staying slow if it was in Power Save mode
@@ -361,16 +372,25 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 cpuPolicies = emptyList()
                 cpuClusters = emptyMap()
 
-                // Shutdown executor
-                pserverExecutor?.let { executor ->
-                    executor.shutdown()
-                    Timber.tag(TAG).d("Shutdown PServer executor")
+                // Shutdown executor only if not interrupted by start()
+                if (!Thread.currentThread().isInterrupted) {
+                    pserverExecutor?.let { executor ->
+                        executor.shutdown()
+                        Timber.tag(TAG).d("Shutdown PServer executor")
+                    }
+                    pserverExecutor = null
+                } else {
+                    Timber.tag(TAG).d("Stop cleanup interrupted - skipping executor shutdown")
                 }
-                pserverExecutor = null
+            } catch (e: InterruptedException) {
+                Timber.tag(TAG).d("Stop cleanup interrupted")
+                Thread.currentThread().interrupt()
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Failed to stop PServerDriver")
             }
-        }.start()
+        }
+        stopThread = cleanupThread
+        cleanupThread.start()
     }
 
     // ========================================
@@ -1339,9 +1359,16 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             ?: return Result.failure(IllegalStateException("PServer executor not initialized. Call start() first."))
 
         return try {
-            CompletableFuture.supplyAsync({
+            val future = executor.submit<Result<String?>> {
                 executeAsRootInternal(cmd)
-            }, executor).get()
+            }
+            future.get()
+        } catch (e: InterruptedException) {
+            // Thread interrupted (e.g., during stop() cleanup when start() is called)
+            // Restore interrupt status and return failure
+            Thread.currentThread().interrupt()
+            Timber.tag(TAG).d("Command execution interrupted: $cmd")
+            Result.failure(e)
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to execute command on executor: $cmd")
             Result.failure(e)
