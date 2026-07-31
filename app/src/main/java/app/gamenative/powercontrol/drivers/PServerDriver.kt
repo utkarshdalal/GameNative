@@ -2,6 +2,7 @@ package app.gamenative.powercontrol.drivers
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.Parcel
 import app.gamenative.powercontrol.PowerManager
@@ -11,6 +12,8 @@ import app.gamenative.powercontrol.profiles.PerformancePreset
 import timber.log.Timber
 import java.io.File
 import java.nio.charset.Charset
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
 
 /**
  * Performance driver implementation for devices with PServer support
@@ -50,9 +53,12 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     // PServer binder interface
-    private val binder: IBinder?
     private var isPServerAvailable: Boolean = false
     private val isGpuAvailable: Boolean
+
+    // Single-thread executor for PServer operations to avoid blocking
+    // Created in start(), shutdown in stop()
+    private var pserverExecutor: java.util.concurrent.ExecutorService? = null
 
     // Track modified sysfs files for permission restoration
     private val modifiedSysfsFiles = mutableSetOf<String>()
@@ -82,17 +88,8 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     private var currentGovernor: String = ""
 
     init {
-        binder = runCatching {
-            val serviceManager = Class.forName("android.os.ServiceManager")
-            val getService = serviceManager.getDeclaredMethod("getService", String::class.java)
-            val rawBinder = getService.invoke(serviceManager, "PServerBinder") as IBinder
-            isPServerAvailable = true
-            Timber.tag(TAG).i("PServer service found and available")
-            rawBinder
-        }.getOrElse {
-            Timber.tag(TAG).w("Root service not available: ${it.message}")
-            null
-        }
+        // Check if PServer is available without maintaining connection
+        isPServerAvailable = checkPServerAvailability()
 
         // Check GPU support once during initialization
         isGpuAvailable = try {
@@ -265,6 +262,14 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Validates CPU frequency scaling support and discovers CPU policies.
      */
     override fun start() {
+        // Create executor for PServer operations
+        if (pserverExecutor == null) {
+            pserverExecutor = Executors.newSingleThreadExecutor { r ->
+                Thread(r, "PServerDriver-Worker")
+            }
+            Timber.tag(TAG).d("Created PServer executor")
+        }
+
         // Discover CPU policies if not already done
         if (cpuPolicies.isEmpty()) {
             validateCpuFreqSupport()
@@ -355,6 +360,13 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 // Clear CPU policies and clusters to force re-discovery on next start()
                 cpuPolicies = emptyList()
                 cpuClusters = emptyMap()
+
+                // Shutdown executor
+                pserverExecutor?.let { executor ->
+                    executor.shutdown()
+                    Timber.tag(TAG).d("Shutdown PServer executor")
+                }
+                pserverExecutor = null
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Failed to stop PServerDriver")
             }
@@ -1285,10 +1297,68 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
     }
 
+    /**
+     * Check if PServer service is available without maintaining connection
+     */
+    private fun checkPServerAvailability(): Boolean {
+        return runCatching {
+            val serviceManager = Class.forName("android.os.ServiceManager")
+            val getService = serviceManager.getDeclaredMethod("getService", String::class.java)
+            val rawBinder = getService.invoke(serviceManager, "PServerBinder") as IBinder?
+
+            if (rawBinder != null && rawBinder.isBinderAlive) {
+                Timber.tag(TAG).i("PServer service is available")
+                true
+            } else {
+                Timber.tag(TAG).w("PServer service not found or not alive")
+                false
+            }
+        }.getOrElse {
+            Timber.tag(TAG).w("Failed to check PServer availability: ${it.message}")
+            false
+        }
+    }
+
+    /**
+     * Get a fresh binder connection to PServer
+     */
+    private fun getPServerBinder(): IBinder? {
+        return runCatching {
+            val serviceManager = Class.forName("android.os.ServiceManager")
+            val getService = serviceManager.getDeclaredMethod("getService", String::class.java)
+            getService.invoke(serviceManager, "PServerBinder") as IBinder
+        }.getOrNull()
+    }
+
+    /**
+     * Execute command as root via PServer binder.
+     * Runs on dedicated single-thread executor to avoid blocking caller.
+     */
     private fun executeAsRoot(cmd: String): Result<String?> {
-        if (binder == null) {
+        val executor = pserverExecutor
+            ?: return Result.failure(IllegalStateException("PServer executor not initialized. Call start() first."))
+
+        return try {
+            CompletableFuture.supplyAsync({
+                executeAsRootInternal(cmd)
+            }, executor).get()
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to execute command on executor: $cmd")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Internal implementation of executeAsRoot that runs on the executor thread
+     */
+    private fun executeAsRootInternal(cmd: String): Result<String?> {
+        if (!isPServerAvailable) {
             return Result.failure(IllegalStateException("PServer not available"))
         }
+
+        // Get fresh binder for each operation
+        val binder = getPServerBinder()
+            ?: return Result.failure(IllegalStateException("Failed to get PServer binder"))
 
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
@@ -1296,6 +1366,23 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             data.writeStringArray(arrayOf(cmd, "1"))
             binder.transact(0, data, reply, 0)
             Result.success(decodeReply(reply))
+        } catch (e: DeadObjectException) {
+            Timber.tag(TAG).e(e, "PServer binder died during transaction, retrying once")
+
+            // Retry once with fresh binder
+            val retryBinder = getPServerBinder()
+            if (retryBinder != null) {
+                try {
+                    data.writeStringArray(arrayOf(cmd, "1"))
+                    retryBinder.transact(0, data, reply, 0)
+                    Result.success(decodeReply(reply))
+                } catch (retryException: Throwable) {
+                    Timber.tag(TAG).e(retryException, "Retry after getting fresh binder failed")
+                    Result.failure(retryException)
+                }
+            } else {
+                Result.failure(e)
+            }
         } catch (throwable: Throwable) {
             Timber.tag(TAG).e(throwable, "Failed to execute command via PServer: $cmd")
             Result.failure(throwable)
