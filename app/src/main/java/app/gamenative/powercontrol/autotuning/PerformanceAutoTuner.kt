@@ -25,7 +25,8 @@ class PerformanceAutoTuner(
     private val onGpuLevelChange: (Int) -> Unit,
     private val onBusLevelChange: (Int) -> Unit,
     private val getTuningStrategy: () -> AutoTuningStrategy,
-    private val enableLogging: Boolean = false
+    private val enableLogging: Boolean = false,
+    private val skipWarmupCycles: Boolean = false,
 ) {
     enum class BottleneckType {
         CPU_BOUND,
@@ -203,7 +204,7 @@ class PerformanceAutoTuner(
      */
     private fun performTuningCycle() {
         // Skip first ${WARMUP_CYCLES} cycles regardless of FPS to allow game to start
-        if (++warmUpCycles < WARMUP_CYCLES) return
+        if (!skipWarmupCycles && ++warmUpCycles < WARMUP_CYCLES) return
 
         val targetFps = PowerManager.targetFps.toDouble()
         val currentFps = PowerManager.currentFps.toDouble()

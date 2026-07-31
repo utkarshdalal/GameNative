@@ -214,7 +214,8 @@ object PowerManager {
                 }
             },
             getTuningStrategy = { currentProfile?.tuningStrategy ?: AutoTuningStrategy.BALANCED },
-            enableLogging = BuildConfig.DEBUG
+            enableLogging = BuildConfig.DEBUG,
+            skipWarmupCycles = isGameStarted
         )
 
         autoTuner?.start()

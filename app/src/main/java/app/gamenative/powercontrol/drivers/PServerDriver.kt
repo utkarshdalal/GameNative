@@ -312,6 +312,12 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         // Run restoration on background thread to avoid blocking
         val cleanupThread = Thread {
             try {
+                // Check if already interrupted before starting
+                if (Thread.currentThread().isInterrupted) {
+                    Timber.tag(TAG).d("Stop cleanup interrupted before starting - skipping restoration")
+                    return@Thread
+                }
+
                 // Batch all restoration commands for efficient execution
                 beginUpdate()
 
@@ -368,12 +374,21 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                     }
                 }
 
-                // Execute all batched commands in a single root call
-                val commitSuccess = commitInternal(true)
-                if (commitSuccess) {
-                    Timber.tag(TAG).d("Successfully restored settings and permissions")
+                // Check if interrupted before committing to avoid corrupting batch state
+                if (!Thread.currentThread().isInterrupted) {
+                    // Execute all batched commands in a single root call
+                    val commitSuccess = commitInternal(true)
+                    if (commitSuccess) {
+                        Timber.tag(TAG).d("Successfully restored settings and permissions")
+                    } else {
+                        Timber.tag(TAG).e("Failed to commit restoration batch")
+                    }
                 } else {
-                    Timber.tag(TAG).e("Failed to commit restoration batch")
+                    Timber.tag(TAG).d("Stop cleanup interrupted before commit - skipping restoration")
+                    // Clear batch mode to avoid corrupting state
+                    isBatchMode = false
+                    batchCommands.clear()
+                    batchFilePaths.clear()
                 }
 
                 modifiedSysfsFiles.clear()
