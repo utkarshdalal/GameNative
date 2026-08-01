@@ -27,6 +27,7 @@ import app.gamenative.data.FeaturedCta
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamWishlistService
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
 import kotlinx.coroutines.launch
 
@@ -73,6 +74,12 @@ internal fun FeaturedCtaButton(action: FeaturedCta, campaignId: String, recSourc
                 busy = false
                 if (ok) {
                     done = true
+                    ConversionTracker.featuredConversion(
+                        campaignId = campaignId,
+                        actionType = action.type,
+                        appId = action.appId,
+                        source = recSource,
+                    )
                 } else {
                     SnackbarManager.show(context.getString(cta.failedTextRes))
                     openUrl()
