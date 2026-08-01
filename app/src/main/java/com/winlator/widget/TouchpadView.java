@@ -496,6 +496,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                                 handleFingerUp(fingers[i]);
                                 fingers[i] = null;
                                 numFingers--;
+                                if (numFingers == 0) cancelSimulatedTouchPress();
                             }
                         }
                     }
@@ -508,6 +509,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                     handleFingerUp(fingers[pointerId]);
                     fingers[pointerId] = null;
                     numFingers--;
+                    if (numFingers == 0) cancelSimulatedTouchPress();
                 }
                 break;
         }
@@ -516,6 +518,20 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     void cancelTouchInput() {
+        cancelSimulatedTouchPress();
+        cancelPointerButtonLeft(fingerPointerButtonLeft);
+        cancelPointerButtonRight(fingerPointerButtonRight);
+        for (byte i = 0; i < MAX_FINGERS; i++) {
+            fingers[i] = null;
+        }
+        numFingers = 0;
+        scrollAccumY = 0;
+        scrolling = false;
+        suppressNextLeftTap = false;
+        handleTsCancel();
+    }
+
+    private void cancelSimulatedTouchPress() {
         continueClick = false;
         if (simulatedTouchPressRunnable != null) {
             removeCallbacks(simulatedTouchPressRunnable);
@@ -527,16 +543,6 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             }
             simulatedTouchButtonDown = false;
         }
-        cancelPointerButtonLeft(fingerPointerButtonLeft);
-        cancelPointerButtonRight(fingerPointerButtonRight);
-        for (byte i = 0; i < MAX_FINGERS; i++) {
-            fingers[i] = null;
-        }
-        numFingers = 0;
-        scrollAccumY = 0;
-        scrolling = false;
-        suppressNextLeftTap = false;
-        handleTsCancel();
     }
 
     private void scheduleSimulatedTouchPress() {
