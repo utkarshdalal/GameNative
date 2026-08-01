@@ -30,15 +30,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -56,11 +50,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import app.gamenative.R
 import app.gamenative.data.RecommendedGame
-import app.gamenative.service.SteamWishlistService
 import app.gamenative.ui.screen.library.components.VideoHero
-import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.PrefManager
-import kotlinx.coroutines.launch
 import com.posthog.PostHog
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
@@ -74,7 +65,6 @@ internal fun RecommendedGameScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
     val media = remember(game) {
@@ -353,73 +343,9 @@ internal fun RecommendedGameScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                // Featured actions (wishlist / pre-order / etc.)
+                // Featured actions (wishlist / demo / pre-order / etc.)
                 game.featuredCtas.forEach { action ->
-                    val wishlistAppId = action.appId?.takeIf { action.type == "WISHLIST" }
-                    var wishlisted by remember(wishlistAppId) { mutableStateOf<Boolean?>(null) }
-                    var busy by remember(wishlistAppId) { mutableStateOf(false) }
-
-                    LaunchedEffect(wishlistAppId) {
-                        if (wishlistAppId != null) {
-                            wishlisted = SteamWishlistService.isWishlisted(wishlistAppId)
-                        }
-                    }
-
-                    val onClick: () -> Unit = {
-                        if (PrefManager.usageAnalyticsEnabled) {
-                            PostHog.capture(
-                                event = "featured_action_clicked",
-                                properties = mapOf(
-                                    "campaign_id" to game.id,
-                                    "action_label" to action.label,
-                                    "url" to action.url,
-                                    "source" to recSource,
-                                ),
-                            )
-                        }
-                        if (wishlistAppId == null) {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, action.url.toUri()))
-                        } else {
-                            busy = true
-                            scope.launch {
-                                val outcome = SteamWishlistService.addToWishlist(wishlistAppId)
-                                busy = false
-                                if (outcome is SteamWishlistService.Outcome.Success) {
-                                    wishlisted = true
-                                } else {
-                                    SnackbarManager.show(context.getString(R.string.featured_wishlist_failed))
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, action.url.toUri()))
-                                }
-                            }
-                        }
-                    }
-
-                    val label = if (wishlistAppId != null && wishlisted == true) {
-                        stringResource(R.string.featured_action_wishlisted)
-                    } else {
-                        action.label
-                    }
-                    val enabled = wishlistAppId == null || (!busy && wishlisted != true)
-
-                    if (action.primary) {
-                        Button(
-                            onClick = onClick,
-                            enabled = enabled,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Text(text = label, fontWeight = FontWeight.SemiBold)
-                        }
-                    } else {
-                        OutlinedButton(
-                            onClick = onClick,
-                            enabled = enabled,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Text(text = label, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
+                    FeaturedCtaButton(action = action, campaignId = game.id, recSource = recSource)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             } else {

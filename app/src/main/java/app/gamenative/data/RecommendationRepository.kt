@@ -49,6 +49,13 @@ object RecommendationRepository {
                 store = "Steam",
                 style = "primary",
             ),
+            // Whisk has no demo; borrows BZZZT Demo to exercise the GET_DEMO path. Swap the
+            // appid for any other demo if this one is already in the test account's library.
+            FeaturedAction(
+                type = "GET_DEMO",
+                url = "https://store.steampowered.com/app/1293170/",
+                appId = 1294400,
+            ),
             FeaturedAction(
                 type = "VISIT",
                 url = "https://store.steampowered.com/app/$WHISK_APP_ID/",

@@ -1998,6 +1998,10 @@
     <string name="featured_action_wishlist_on">Wishlist on %1$s</string>
     <string name="featured_action_wishlisted">Wishlisted</string>
     <string name="featured_wishlist_failed">Couldn\'t update your wishlist — opening Steam</string>
+    <string name="featured_action_get_demo">Get the Demo</string>
+    <string name="featured_action_in_library">In Library</string>
+    <string name="featured_demo_added">Demo added to your library</string>
+    <string name="featured_demo_failed">Couldn\'t get the demo — opening Steam</string>
     <string name="featured_action_preorder">Pre-order</string>
     <string name="featured_action_preorder_on">Pre-order on %1$s</string>
     <string name="featured_action_buy">Buy</string>
