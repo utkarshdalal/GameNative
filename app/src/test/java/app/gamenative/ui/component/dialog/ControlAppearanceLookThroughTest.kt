@@ -9,6 +9,7 @@ class ControlAppearanceLookThroughTest {
     @Test
     fun `copying a legacy appearance preserves its shooter fallback`() {
         val source = ControlElement(null).apply {
+            lookThroughSetting = null
             setShooterLookThrough(false)
         }
         val target = ControlElement(null).apply {

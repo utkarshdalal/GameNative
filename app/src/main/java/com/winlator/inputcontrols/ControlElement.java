@@ -35,6 +35,7 @@ public class ControlElement {
     public static final int DEFAULT_BUTTON_ACTIVE_COLOR = 0x00ffffff;
     public static final float INHERIT_BUTTON_OPACITY = -1.0f;
     public static final float DEFAULT_BUTTON_STROKE_SCALE = 1.0f;
+    public static final boolean DEFAULT_LOOK_THROUGH = false;
     public enum Type {
         BUTTON, D_PAD, RANGE_BUTTON, STICK, TRACKPAD, SHOOTER_MODE;
 
@@ -102,11 +103,9 @@ public class ControlElement {
     private boolean buttonActiveColorCustom = false;
     private float buttonOpacity = INHERIT_BUTTON_OPACITY;
     private float buttonStrokeScale = DEFAULT_BUTTON_STROKE_SCALE;
-    // General touch-area look-through is separate from the legacy shooter-only
-    // setting so loading an existing profile does not change its behavior.
-    // Null means this profile predates general look-through and should keep the
-    // legacy shooter-only setting. Once edited, true/false controls both modes.
-    private Boolean lookThrough = null;
+    // Null is reserved for buttons loaded from profiles that predate general
+    // look-through. Those buttons retain their legacy shooter-only setting.
+    private Boolean lookThrough = DEFAULT_LOOK_THROUGH;
     private boolean shooterLookThrough = true;
 
     public ControlElement(InputControlsView inputControlsView) {
@@ -116,6 +115,7 @@ public class ControlElement {
     private void reset() {
         setBinding(Binding.NONE);
         scroller = null;
+        lookThrough = DEFAULT_LOOK_THROUGH;
 
         if (type == Type.STICK) {
             bindings[0] = Binding.GAMEPAD_LEFT_THUMB_UP;

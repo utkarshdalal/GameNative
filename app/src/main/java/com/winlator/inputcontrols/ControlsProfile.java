@@ -263,6 +263,12 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     Log.w("ControlsProfile", "Skipping element with unknown type: " + elementJSONObject.getString("type"));
                     continue;
                 }
+                if (elementJSONObject.has("lookThrough")) {
+                    element.setLookThroughSetting(elementJSONObject.getBoolean("lookThrough"));
+                }
+                else {
+                    element.setLookThroughSetting(null);
+                }
                 element.setShape(ControlElement.Shape.valueOf(elementJSONObject.getString("shape")));
                 element.setToggleSwitch(elementJSONObject.getBoolean("toggleSwitch"));
                 element.setX((int)(elementJSONObject.getDouble("x") * inputControlsView.getMaxWidth()));
@@ -286,7 +292,6 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 }
                 if (elementJSONObject.has("buttonOpacity")) element.setButtonOpacity((float)elementJSONObject.getDouble("buttonOpacity"));
                 if (elementJSONObject.has("buttonStrokeScale")) element.setButtonStrokeScale((float)elementJSONObject.getDouble("buttonStrokeScale"));
-                if (elementJSONObject.has("lookThrough")) element.setLookThroughSetting(elementJSONObject.getBoolean("lookThrough"));
                 if (elementJSONObject.has("shooterLookThrough")) element.setShooterLookThrough(elementJSONObject.getBoolean("shooterLookThrough"));
 
                 boolean hasGamepadBinding = true;
