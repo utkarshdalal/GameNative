@@ -44,5 +44,6 @@ internal fun startAchievementWatcherForHtml5(
         displayNameMap = displayNameMap,
         iconUrlMap = iconUrlMap,
         configDirectory = configDirectory,
+        context = context,
     ).also { it.start() }
 }
