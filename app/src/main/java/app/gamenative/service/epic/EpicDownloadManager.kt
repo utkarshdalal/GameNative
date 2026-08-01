@@ -50,8 +50,6 @@ import java.io.RandomAccessFile
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentHashMap.newKeySet
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.deleteRecursively
 
 /**
  * EpicDownloadManager handles downloading Epic games
@@ -62,7 +60,6 @@ import kotlin.io.path.deleteRecursively
  * - file_manifest_list: List of files and their chunk composition
  */
 @Singleton
-@OptIn(ExperimentalPathApi::class)
 class EpicDownloadManager @Inject constructor(
     private val epicManager: EpicManager,
 ) {
@@ -264,7 +261,7 @@ class EpicDownloadManager @Inject constructor(
                 return@withContext downloadResult
             }
 
-            chunkCacheDir.toPath().deleteRecursively()
+            chunkCacheDir.deleteRecursively()
 
             // Log final directory structure
             Timber.tag("Epic").i("Download completed successfully for ${game.title}")
@@ -408,7 +405,7 @@ class EpicDownloadManager @Inject constructor(
             )
             if (dlcDownloadResult.isFailure) return@withContext dlcDownloadResult
 
-            chunkCacheDir.toPath().deleteRecursively()
+            chunkCacheDir.deleteRecursively()
 
             // Update database
             try {
@@ -477,7 +474,7 @@ class EpicDownloadManager @Inject constructor(
                 }.awaitAll()
 
                 results.firstOrNull { it.isFailure }?.let { failure ->
-                    chunkCacheDir.toPath().deleteRecursively()
+                    chunkCacheDir.deleteRecursively()
                     return@withContext Result.failure(
                         failure.exceptionOrNull() ?: Exception("Chunk download failed"),
                     )
@@ -493,14 +490,14 @@ class EpicDownloadManager @Inject constructor(
                 }.awaitAll()
 
                 results.firstOrNull { it.isFailure }?.let { failure ->
-                    chunkCacheDir.toPath().deleteRecursively()
+                    chunkCacheDir.deleteRecursively()
                     return@withContext Result.failure(
                         failure.exceptionOrNull() ?: Exception("File assembly failed"),
                     )
                 }
             }
 
-            chunkCacheDir.toPath().deleteRecursively()
+            chunkCacheDir.deleteRecursively()
             Timber.tag("Epic").i("downloadOverlay completed: $installPath")
             Result.success(Unit)
         } catch (e: Exception) {

@@ -52,8 +52,6 @@ import java.io.RandomAccessFile
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentHashMap.newKeySet
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.deleteRecursively
 
 /**
  * Custom exception for HTTP status errors with typed status code
@@ -79,7 +77,6 @@ class HttpStatusException(val statusCode: Int, message: String) : Exception(mess
  * - Multiple chunks assemble into single files
  */
 @Singleton
-@OptIn(ExperimentalPathApi::class)
 class GOGDownloadManager @Inject constructor(
     private val apiClient: GOGApiClient,
     private val parser: GOGManifestParser,
@@ -481,7 +478,7 @@ class GOGDownloadManager @Inject constructor(
             }
 
             // Step 11: Cleanup
-            chunkCacheDir.toPath().deleteRecursively()
+            chunkCacheDir.deleteRecursively()
 
             saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLang)
 
@@ -1252,7 +1249,7 @@ class GOGDownloadManager @Inject constructor(
                     continue
                 }
 
-                depotCacheDir.toPath().deleteRecursively()
+                depotCacheDir.deleteRecursively()
 
                 Timber.tag("GOG").i("Successfully downloaded dependency: ${depot.readableName} to ${depotInstallDir.absolutePath}")
             }

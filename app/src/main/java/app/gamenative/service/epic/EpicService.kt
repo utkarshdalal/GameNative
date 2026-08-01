@@ -26,8 +26,6 @@ import javax.inject.Inject
 import kotlinx.coroutines.*
 import app.gamenative.ui.util.SnackbarManager
 import timber.log.Timber
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.deleteRecursively
 
 /**
  * Epic Games Service - thin coordinator that delegates to other Epic managers.
@@ -226,7 +224,6 @@ class EpicService : Service() {
                 .toList()
         }
 
-        @OptIn(ExperimentalPathApi::class)
         suspend fun deleteGame(context: Context, appId: Int): Result<Unit> {
             val instance = getInstance()
             if (instance == null) {
@@ -243,8 +240,12 @@ class EpicService : Service() {
                 val path = if (game.installPath.isNotEmpty()) game.installPath else EpicConstants.getGameInstallPath(context, game.appName)
                 if (File(path).exists()) {
                     Timber.tag("Epic").i("Deleting installation folder: $path")
-                    File(path).toPath().deleteRecursively()
-                    Timber.tag("Epic").i("Successfully deleted installation folder")
+                    val deleted = File(path).deleteRecursively()
+                    if (deleted) {
+                        Timber.tag("Epic").i("Successfully deleted installation folder")
+                    } else {
+                        Timber.tag("Epic").w("Failed to delete some files in installation folder")
+                    }
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 }
