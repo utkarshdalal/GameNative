@@ -1,120 +1,74 @@
 package app.gamenative.service
 
-import app.gamenative.PrefManager
+import app.gamenative.steam.WishlistService
 import app.gamenative.utils.Net
+import `in`.dragonbra.javasteam.enums.EResult
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesWishlistSteamclient.CWishlist_AddToWishlist_Request
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesWishlistSteamclient.CWishlist_RemoveFromWishlist_Request
+import `in`.dragonbra.javasteam.steam.handlers.steamunifiedmessages.SteamUnifiedMessages
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
-import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import org.json.JSONObject
 import timber.log.Timber
 
 /**
- * Steam wishlist over the public IWishlistService endpoints.
+ * Wishlist add/remove over the logged-in JavaSteam session.
  *
- * The stored session token comes from a client login, so it may not carry the audience the web
- * endpoints require. Writes therefore try the stored token first and fall back to minting a
- * web-audience token from the stored refresh token; [addToWishlist] reports which path succeeded
- * so the working route can be confirmed from logcat.
+ * Writes go out on the authenticated CM connection, so no web token is involved. The read still
+ * uses the public web endpoint because it only needs a steamid; a wishlist set to private is
+ * therefore unreadable and reports null rather than "not wishlisted".
  */
 object SteamWishlistService {
 
     private const val TAG = "SteamWishlist"
-
-    private const val ADD_URL = "https://api.steampowered.com/IWishlistService/AddToWishlist/v1/"
-    private const val REMOVE_URL = "https://api.steampowered.com/IWishlistService/RemoveFromWishlist/v1/"
+    private const val JOB_TIMEOUT_MS = 15_000L
     private const val GET_URL = "https://api.steampowered.com/IWishlistService/GetWishlist/v1/"
-    private const val MINT_URL = "https://api.steampowered.com/IAuthenticationService/GenerateAccessTokenForApp/v1/"
-
-    @Volatile private var mintedToken: String? = null
 
     sealed interface Outcome {
         data object Success : Outcome
         data object NoSession : Outcome
-        data class Failed(val code: Int, val body: String) : Outcome
+        data class Failed(val result: EResult?) : Outcome
+    }
+
+    suspend fun addToWishlist(appId: Int): Outcome = withContext(Dispatchers.IO) {
+        val service = service() ?: return@withContext Outcome.NoSession
+        val request = CWishlist_AddToWishlist_Request.newBuilder().setAppid(appId).build()
+        runJob("AddToWishlist") {
+            service.addToWishlist(request).also { it.timeout = JOB_TIMEOUT_MS }.toFuture().await().result
+        }
+    }
+
+    suspend fun removeFromWishlist(appId: Int): Outcome = withContext(Dispatchers.IO) {
+        val service = service() ?: return@withContext Outcome.NoSession
+        val request = CWishlist_RemoveFromWishlist_Request.newBuilder().setAppid(appId).build()
+        runJob("RemoveFromWishlist") {
+            service.removeFromWishlist(request).also { it.timeout = JOB_TIMEOUT_MS }.toFuture().await().result
+        }
     }
 
     /** True/false when the wishlist could be read, null when it could not be determined. */
     suspend fun isWishlisted(appId: Int): Boolean? = withContext(Dispatchers.IO) {
-        val steamId = PrefManager.steamUserSteamId64
-        if (steamId == 0L) {
-            Timber.tag(TAG).w("no steamId, cannot read wishlist")
+        val steamId = SteamService.userSteamId?.convertToUInt64()
+        if (steamId == null || steamId == 0L) {
+            Timber.tag(TAG).w("no live steam session, cannot read wishlist")
             return@withContext null
         }
-        val ids = readWishlist(steamId, PrefManager.accessToken.ifEmpty { null })
-            ?: readWishlist(steamId, mintWebToken())
-        if (ids == null) {
-            Timber.tag(TAG).w("wishlist read failed for $steamId")
-            return@withContext null
-        }
-        appId in ids
-    }
-
-    suspend fun addToWishlist(appId: Int): Outcome = write(ADD_URL, appId)
-
-    suspend fun removeFromWishlist(appId: Int): Outcome = write(REMOVE_URL, appId)
-
-    private suspend fun write(url: String, appId: Int): Outcome = withContext(Dispatchers.IO) {
-        val stored = PrefManager.accessToken
-        if (stored.isNotEmpty()) {
-            when (val first = post(url, appId, stored)) {
-                is Outcome.Success -> {
-                    Timber.tag(TAG).i("$url ok with stored client token")
-                    return@withContext first
-                }
-                is Outcome.Failed -> Timber.tag(TAG)
-                    .w("stored client token rejected (${first.code}): ${first.body.take(200)}")
-                else -> Unit
-            }
-        } else {
-            Timber.tag(TAG).w("no stored access token")
-        }
-
-        val minted = mintWebToken() ?: return@withContext Outcome.NoSession
-        val second = post(url, appId, minted)
-        Timber.tag(TAG).i("$url with minted web token -> $second")
-        second
-    }
-
-    private fun post(url: String, appId: Int, token: String): Outcome {
-        val body = FormBody.Builder()
-            .add("access_token", token)
-            .add("appid", appId.toString())
-            .build()
-        return try {
-            Net.http.newCall(Request.Builder().url(url).post(body).build()).execute().use { res ->
-                val text = res.body?.string().orEmpty()
-                if (res.isSuccessful) Outcome.Success else Outcome.Failed(res.code, text)
-            }
-        } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "wishlist write failed")
-            Outcome.Failed(-1, e.message.orEmpty())
-        }
-    }
-
-    /**
-     * A public wishlist reads fine unauthenticated; a private one needs the token, and Steam only
-     * accepts it as a query parameter here, so it lands in Steam's access logs.
-     */
-    private fun readWishlist(steamId: Long, token: String?): Set<Int>? {
         val url = GET_URL.toHttpUrl().newBuilder()
             .addQueryParameter("steamid", steamId.toString())
-            .apply { token?.let { addQueryParameter("access_token", it) } }
             .build()
-        val request = Request.Builder().url(url).build()
-        return try {
-            Net.http.newCall(request).execute().use { res ->
-                if (!res.isSuccessful) return null
-                val response = JSONObject(res.body?.string().orEmpty()).optJSONObject("response")
-                    ?: return null
-                // Absent (rather than empty) items means private or unreadable, not "nothing wishlisted".
-                val items = response.optJSONArray("items") ?: return null
-                buildSet {
-                    for (i in 0 until items.length()) {
-                        items.optJSONObject(i)?.optInt("appid")?.let(::add)
-                    }
+        try {
+            Net.http.newCall(Request.Builder().url(url).build()).execute().use { res ->
+                if (!res.isSuccessful) {
+                    Timber.tag(TAG).w("wishlist read failed ${res.code}")
+                    return@use null
                 }
+                val response = JSONObject(res.body?.string().orEmpty()).optJSONObject("response")
+                // Absent (rather than empty) items means private or unreadable, not "nothing wishlisted".
+                val items = response?.optJSONArray("items") ?: return@use null
+                (0 until items.length()).any { items.optJSONObject(it)?.optInt("appid") == appId }
             }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "wishlist read failed")
@@ -122,40 +76,32 @@ object SteamWishlistService {
         }
     }
 
-    /** Exchanges the stored refresh token for a web-audience access token. */
-    private fun mintWebToken(): String? {
-        mintedToken?.let { return it }
-        val refresh = PrefManager.refreshToken
-        val steamId = PrefManager.steamUserSteamId64
-        if (refresh.isEmpty() || steamId == 0L) {
-            Timber.tag(TAG).w("cannot mint web token: refresh=${refresh.isNotEmpty()} steamId=$steamId")
+    private fun service(): WishlistService? {
+        val client = SteamService.instance?.steamClient
+        if (client == null) {
+            Timber.tag(TAG).w("no steam client")
             return null
         }
-        val body = FormBody.Builder()
-            .add("steamid", steamId.toString())
-            .add("refresh_token", refresh)
-            .add("renewal_type", "0")
-            .build()
+        val unifiedMessages = client.getHandler<SteamUnifiedMessages>()
+        if (unifiedMessages == null) {
+            Timber.tag(TAG).e("SteamUnifiedMessages handler not available")
+            return null
+        }
+        // Replies are routed by service name, so the service must be registered via createService.
         return try {
-            Net.http.newCall(Request.Builder().url(MINT_URL).post(body).build()).execute().use { res ->
-                if (!res.isSuccessful) {
-                    Timber.tag(TAG).w("mint failed ${res.code}")
-                    return null
-                }
-                val token = JSONObject(res.body?.string().orEmpty())
-                    .optJSONObject("response")?.optString("access_token").orEmpty()
-                if (token.isEmpty()) {
-                    Timber.tag(TAG).w("mint returned no access_token")
-                    null
-                } else {
-                    mintedToken = token
-                    Timber.tag(TAG).i("minted web-audience token")
-                    token
-                }
-            }
-        } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "mint request failed")
+            unifiedMessages.createService(WishlistService::class.java)
+        } catch (t: Throwable) {
+            Timber.tag(TAG).e(t, "cannot create Wishlist service")
             null
         }
+    }
+
+    private suspend fun runJob(method: String, block: suspend () -> EResult?): Outcome = try {
+        val result = block()
+        Timber.tag(TAG).i("$method -> $result")
+        if (result == EResult.OK) Outcome.Success else Outcome.Failed(result)
+    } catch (e: Exception) {
+        Timber.tag(TAG).e(e, "$method failed")
+        Outcome.Failed(null)
     }
 }
