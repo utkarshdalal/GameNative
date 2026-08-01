@@ -1607,8 +1607,7 @@ class GOGDownloadManager @Inject constructor(
                         while (input.read(buffer).also { bytesRead = it } != -1) {
                             md5Digest.update(buffer, 0, bytesRead)
                             byteBuffer.clear()
-                            byteBuffer.put(buffer, 0, bytesRead)
-                            byteBuffer.flip()
+                            byteBuffer.limit(bytesRead)
                             while (byteBuffer.hasRemaining()) {
                                 channel.write(byteBuffer)
                             }
@@ -1633,8 +1632,7 @@ class GOGDownloadManager @Inject constructor(
                                     if (count > 0) {
                                         md5Digest.update(outputBuffer, 0, count)
                                         byteBuffer.clear()
-                                        byteBuffer.put(outputBuffer, 0, count)
-                                        byteBuffer.flip()
+                                        byteBuffer.limit(count)
                                         while (byteBuffer.hasRemaining()) {
                                             channel.write(byteBuffer)
                                         }
@@ -1656,8 +1654,7 @@ class GOGDownloadManager @Inject constructor(
                                 if (count > 0) {
                                     md5Digest.update(outputBuffer, 0, count)
                                     byteBuffer.clear()
-                                    byteBuffer.put(outputBuffer, 0, count)
-                                    byteBuffer.flip()
+                                    byteBuffer.limit(count)
                                     while (byteBuffer.hasRemaining()) {
                                         channel.write(byteBuffer)
                                     }

@@ -1230,12 +1230,10 @@ class EpicDownloadManager @Inject constructor(
                     while (remaining > 0) {
                         val toRead = minOf(remaining, buffer.size.toLong()).toInt()
                         val bytesRead = input.read(buffer, 0, toRead)
-
                         if (bytesRead == -1) break
 
                         byteBuffer.clear()
-                        byteBuffer.put(buffer, 0, bytesRead)
-                        byteBuffer.flip()
+                        byteBuffer.limit(bytesRead)
                         while (byteBuffer.hasRemaining()) {
                             channel.write(byteBuffer)
                         }

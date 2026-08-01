@@ -1874,7 +1874,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             maxDecompress = maxDecompress,
                             parentJob = coroutineContext[Job],
                             autoStartDownload = false,
-                            skipLargeFileAllocation = !Paths.get(appDirPath).startsWith(Paths.get(DownloadService.baseDataDirPath)),
+                            skipLargeFileAllocation = chunkStagingRedirectDir != null,
                             filesystem = CaseInsensitiveFileSystem(
                                 showDebugLog = false,
                                 chunkStagingRedirect = chunkStagingRedirectDir?.absolutePath?.toPath(),
