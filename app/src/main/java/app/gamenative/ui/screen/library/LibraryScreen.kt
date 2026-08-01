@@ -154,6 +154,8 @@ fun HomeLibraryScreen(
         onSortOptionChanged = viewModel::onSortOptionChanged,
         onSteamCollectionToggle = viewModel::onSteamCollectionToggle,
         onClearSteamCollections = viewModel::onClearSteamCollections,
+        onCuratedListToggle = viewModel::onCuratedListToggle,
+        onClearCuratedLists = viewModel::onClearCuratedLists,
         onOptionsPanelToggle = viewModel::onOptionsPanelToggle,
         onTabChanged = viewModel::onTabChanged,
         onPreviousTab = viewModel::onPreviousTab,
@@ -195,6 +197,8 @@ private fun LibraryScreenContent(
     onSortOptionChanged: (SortOption) -> Unit,
     onSteamCollectionToggle: (String) -> Unit,
     onClearSteamCollections: () -> Unit,
+    onCuratedListToggle: (String) -> Unit,
+    onClearCuratedLists: () -> Unit,
     onOptionsPanelToggle: (Boolean) -> Unit,
     onTabChanged: (LibraryTab) -> Unit,
     onPreviousTab: () -> Unit,
@@ -1186,6 +1190,11 @@ private fun LibraryScreenContent(
                 isOffline = isOffline,
                 onSteamCollectionToggle = onSteamCollectionToggle,
                 onClearSteamCollections = onClearSteamCollections,
+                curatedLists = state.curatedLists,
+                selectedCuratedListIds = state.selectedCuratedListIds,
+                curatedListCounts = state.curatedListCounts,
+                onCuratedListToggle = onCuratedListToggle,
+                onClearCuratedLists = onClearCuratedLists,
             )
 
             // System menu (START) - renders on top of everything
@@ -1357,6 +1366,8 @@ private fun Preview_LibraryScreenContent() {
             onSortOptionChanged = {},
             onSteamCollectionToggle = {},
             onClearSteamCollections = {},
+            onCuratedListToggle = {},
+            onClearCuratedLists = {},
             onOptionsPanelToggle = { isOpen ->
                 state = state.copy(isOptionsPanelOpen = isOpen)
             },

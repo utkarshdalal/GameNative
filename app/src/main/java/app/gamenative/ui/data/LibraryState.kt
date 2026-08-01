@@ -39,6 +39,10 @@ data class LibraryState(
     val skippedDynamicCollections: Boolean = false,
     val steamCollectionCounts: Map<String, Int> = emptyMap(),
 
+    val curatedLists: List<SteamCollection>? = null,
+    val selectedCuratedListIds: Set<String> = PrefManager.libraryCuratedLists,
+    val curatedListCounts: Map<String, Int> = emptyMap(),
+
     // Loading state for skeleton loaders
     val isLoading: Boolean = false,
 

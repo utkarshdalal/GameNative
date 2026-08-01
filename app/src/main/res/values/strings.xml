@@ -123,6 +123,13 @@
     <string name="steam_collections_offline">Showing last synced collections. Connect to update.</string>
     <string name="steam_collections_clear">Clear</string>
     <string name="steam_collections_smart_unsupported">Only standard collections are shown. Smart collections aren\'t supported yet.</string>
+
+    <string name="curated_lists_title">Steam curated lists</string>
+    <string name="curated_lists_loading">Loading curated lists…</string>
+    <string name="curated_lists_offline">Using the saved list. Connect to update.</string>
+    <string name="curated_lists_clear">Clear</string>
+    <string name="curated_lists_empty">No curated lists available right now.</string>
+    <string name="curated_list_4_3_name">Does it 4:3?</string>
     <string name="default_user_name">User</string>
 
     <!-- Custom Games -->
