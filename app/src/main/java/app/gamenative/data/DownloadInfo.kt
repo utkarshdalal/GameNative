@@ -14,6 +14,8 @@ import timber.log.Timber
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 data class DownloadInfo(
     val jobCount: Int = 1,
@@ -25,10 +27,10 @@ data class DownloadInfo(
     private val downloadProgressListeners = CopyOnWriteArrayList<(Float) -> Unit>()
     private val progresses: Array<Float> = Array(jobCount) { 0f }
 
-    // Debounced persistence state
-    private var lastPersistTime: Long = 0L
+    // Reservation-based persistence scheduler
+    private val nextWriteTime = AtomicLong(0L)
     private var persistenceJob: Job? = null
-    private val hasPendingPersist = AtomicBoolean(false)
+    private val persistenceGeneration = AtomicInteger(0)
 
     private val weights    = FloatArray(jobCount) { 1f }     // ⇐ new
     private var weightSum  = jobCount.toFloat()
@@ -291,24 +293,26 @@ data class DownloadInfo(
      */
     fun persistBytesDownloaded(appDirPath: String) {
         val now = System.currentTimeMillis()
-        val timeSinceLastPersist = now - lastPersistTime
+        val reserved = nextWriteTime.get()
+        val delayMs = reserved - now
 
-        // If we wrote recently, schedule a delayed write
-        if (timeSinceLastPersist < PERSIST_DEBOUNCE_MS) {
-            if (hasPendingPersist.compareAndSet(false, true)) {
-                persistenceJob?.cancel()
-                persistenceJob = ioScope.launch {
-                    delay(PERSIST_DEBOUNCE_MS - timeSinceLastPersist)
-                    hasPendingPersist.set(false)
+        // If we need to wait, schedule a delayed write
+        if (delayMs > 0) {
+            val currentGen = persistenceGeneration.get()
+            persistenceJob?.cancel()
+            persistenceJob = ioScope.launch {
+                delay(delayMs)
+                // Only write if generation hasn't been invalidated
+                if (persistenceGeneration.get() == currentGen) {
                     writePersistedBytes(appDirPath)
                 }
             }
             return
         }
 
-        // Write immediately if enough time has passed
+        // Reserve the next write time and write immediately
+        nextWriteTime.set(now + PERSIST_DEBOUNCE_MS)
         persistenceJob?.cancel()
-        hasPendingPersist.set(false)
         ioScope.launch {
             writePersistedBytes(appDirPath)
         }
@@ -325,7 +329,8 @@ data class DownloadInfo(
             }
             val file = File(dir, PERSISTENCE_FILE)
             file.writeText(bytesDownloaded.toString())
-            lastPersistTime = System.currentTimeMillis()
+            val now = System.currentTimeMillis()
+            nextWriteTime.set(now + PERSIST_DEBOUNCE_MS)
         } catch (e: Exception) {
             Timber.e(e, "Failed to persist bytes downloaded to $appDirPath")
         }
@@ -353,6 +358,9 @@ data class DownloadInfo(
      * Delete the persisted bytes file (called on download completion).
      */
     fun clearPersistedBytesDownloaded(appDirPath: String) {
+        // Invalidate any pending persistence to prevent recreating the file
+        persistenceGeneration.incrementAndGet()
+        persistenceJob?.cancel()
         try {
             val file = File(File(appDirPath, PERSISTENCE_DIR), PERSISTENCE_FILE)
             if (file.exists()) {
