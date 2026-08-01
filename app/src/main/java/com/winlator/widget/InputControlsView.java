@@ -146,9 +146,15 @@ public class InputControlsView extends View {
     }
 
     public void setEditMode(boolean editMode) {
-        if (editMode) lookThroughPointerState.clear();
+        if (this.editMode != editMode) cancelTouchRouting();
         this.editMode = editMode;
         invalidate(); // Trigger redraw to show/hide grid background immediately
+    }
+
+    private void cancelTouchRouting() {
+        if (touchpadView != null) touchpadView.cancelTouchInput();
+        touchpadPointers.clear();
+        lookThroughPointerState.clear();
     }
 
     public void setOverlayOpacity(float overlayOpacity) {
@@ -310,7 +316,7 @@ public class InputControlsView extends View {
     }
 
     public synchronized void setProfile(ControlsProfile profile) {
-        lookThroughPointerState.clear();
+        cancelTouchRouting();
         if (profile != null) {
             this.profile = profile;
             deselectAllElements();
@@ -378,8 +384,7 @@ public class InputControlsView extends View {
 
     @Override
     protected void onDetachedFromWindow() {
-        lookThroughPointerState.clear();
-        touchpadPointers.clear();
+        cancelTouchRouting();
         if (mouseMoveTimer != null)
             mouseMoveTimer.cancel();
         super.onDetachedFromWindow();
@@ -428,7 +433,7 @@ public class InputControlsView extends View {
     }
 
     public void setShooterModeActive(boolean active) {
-        if (active) lookThroughPointerState.clear();
+        if (shooterModeActive != active) cancelTouchRouting();
         if (!active) {
             releaseAllShooterInputs();
         }
@@ -438,7 +443,9 @@ public class InputControlsView extends View {
     }
 
     public void setContainerShooterMode(boolean enabled) {
-        if (enabled) lookThroughPointerState.clear();
+        if (containerShooterMode != enabled || containerShooterModeRuntime != enabled) {
+            cancelTouchRouting();
+        }
         this.containerShooterMode = enabled;
         this.containerShooterModeRuntime = enabled;
         if (!enabled && !shooterModeActive) {
@@ -1013,6 +1020,7 @@ public class InputControlsView extends View {
         if (containerShooterMode && isRuntimeToggleVisible()) {
             android.graphics.RectF toggleRect = getToggleButtonRect();
             if (toggleRect.contains(x, y)) {
+                cancelTouchRouting();
                 containerShooterModeRuntime = !containerShooterModeRuntime;
                 if (!containerShooterModeRuntime) {
                     releaseAllShooterInputs();

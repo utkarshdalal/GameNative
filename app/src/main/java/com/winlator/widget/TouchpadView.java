@@ -510,12 +510,28 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 }
                 break;
             case MotionEvent.ACTION_CANCEL:
-                for (byte i = 0; i < MAX_FINGERS; i++) fingers[i] = null;
-                numFingers = 0;
+                cancelTouchInput();
                 break;
         }
 
         return true;
+    }
+
+    void cancelTouchInput() {
+        continueClick = false;
+        for (byte i = 0; i < MAX_FINGERS; i++) {
+            Finger finger = fingers[i];
+            if (finger != null) {
+                releasePointerButtonLeft(finger);
+                releasePointerButtonRight(finger);
+                fingers[i] = null;
+            }
+        }
+        numFingers = 0;
+        scrollAccumY = 0;
+        scrolling = false;
+        suppressNextLeftTap = false;
+        handleTsCancel();
     }
 
     private boolean handleTouchscreenEvent(MotionEvent event) {
