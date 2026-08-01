@@ -1,10 +1,10 @@
 package app.gamenative.service
 
-import app.gamenative.steam.WishlistService
 import app.gamenative.utils.Net
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesWishlistSteamclient.CWishlist_AddToWishlist_Request
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesWishlistSteamclient.CWishlist_RemoveFromWishlist_Request
+import `in`.dragonbra.javasteam.rpc.service.Wishlist
 import `in`.dragonbra.javasteam.steam.handlers.steamunifiedmessages.SteamUnifiedMessages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.await
@@ -76,7 +76,7 @@ object SteamWishlistService {
         }
     }
 
-    private fun service(): WishlistService? {
+    private fun service(): Wishlist? {
         val client = SteamService.instance?.steamClient
         if (client == null) {
             Timber.tag(TAG).w("no steam client")
@@ -89,7 +89,7 @@ object SteamWishlistService {
         }
         // Replies are routed by service name, so the service must be registered via createService.
         return try {
-            unifiedMessages.createService(WishlistService::class.java)
+            unifiedMessages.createService(Wishlist::class.java)
         } catch (t: Throwable) {
             Timber.tag(TAG).e(t, "cannot create Wishlist service")
             null
