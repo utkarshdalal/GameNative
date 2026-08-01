@@ -1996,6 +1996,8 @@
     <string name="featured_badge">Sponsored</string>
     <string name="featured_action_wishlist">Wishlist</string>
     <string name="featured_action_wishlist_on">Wishlist on %1$s</string>
+    <string name="featured_action_wishlisted">Wishlisted</string>
+    <string name="featured_wishlist_failed">Couldn\'t update your wishlist — opening Steam</string>
     <string name="featured_action_preorder">Pre-order</string>
     <string name="featured_action_preorder_on">Pre-order on %1$s</string>
     <string name="featured_action_buy">Buy</string>

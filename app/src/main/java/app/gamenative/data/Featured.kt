@@ -15,6 +15,8 @@ data class HeroResponse(
 data class FeaturedItem(
     val campaignId: String,
     val title: String,
+    // Steam appid the campaign points at; required for in-app actions such as WISHLIST.
+    val appId: Int? = null,
     val developer: String? = null,
     val heroImageUrl: String = "",
     val capsuleImageUrl: String? = null,
@@ -91,6 +93,8 @@ fun FeaturedItem.toRecommendedGame(context: Context): RecommendedGame = Recommen
             label = a.localizedLabel(context),
             url = a.url,
             primary = a.style?.equals("primary", ignoreCase = true) ?: (index == 0),
+            type = a.type.uppercase(),
+            appId = appId,
         )
     },
 )
