@@ -13,9 +13,9 @@ import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.concurrent.Volatile
 
 data class DownloadInfo(
     val jobCount: Int = 1,
@@ -46,6 +46,7 @@ data class DownloadInfo(
     private var emaSpeedBytesPerSec: Double = 0.0
     private var hasEmaSpeed: Boolean = false
     private var isActive: Boolean = true
+    @Volatile
     private var currentStatusMessage: String = ""
     private val postInstallSyncing = MutableStateFlow(false)
 
