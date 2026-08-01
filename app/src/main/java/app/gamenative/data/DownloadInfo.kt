@@ -1,13 +1,19 @@
 package app.gamenative.data
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
 
 data class DownloadInfo(
     val jobCount: Int = 1,
@@ -15,8 +21,14 @@ data class DownloadInfo(
     var downloadingAppIds: CopyOnWriteArrayList<Int>,
 ) {
     private var downloadJob: Job? = null
-    private val downloadProgressListeners = mutableListOf<((Float) -> Unit)>()
+    private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val downloadProgressListeners = CopyOnWriteArrayList<(Float) -> Unit>()
     private val progresses: Array<Float> = Array(jobCount) { 0f }
+
+    // Debounced persistence state
+    private var lastPersistTime: Long = 0L
+    private var persistenceJob: Job? = null
+    private val hasPendingPersist = AtomicBoolean(false)
 
     private val weights    = FloatArray(jobCount) { 1f }     // ⇐ new
     private var weightSum  = jobCount.toFloat()
@@ -32,7 +44,7 @@ data class DownloadInfo(
     private var emaSpeedBytesPerSec: Double = 0.0
     private var hasEmaSpeed: Boolean = false
     private var isActive: Boolean = true
-    private val statusMessage = MutableStateFlow<String?>(null)
+    private var currentStatusMessage: String = ""
     private val postInstallSyncing = MutableStateFlow(false)
 
     fun cancel() {
@@ -137,10 +149,11 @@ data class DownloadInfo(
     }
 
     fun updateStatusMessage(message: String?) {
-        statusMessage.value = message
+        currentStatusMessage = message ?: ""
+        emitProgressChange()
     }
 
-    fun getStatusMessageFlow(): StateFlow<String?> = statusMessage
+    fun getCurrentStatusMessage(): String = currentStatusMessage
 
     fun setPostInstallSyncing(syncing: Boolean) {
         postInstallSyncing.value = syncing
@@ -269,12 +282,42 @@ data class DownloadInfo(
     companion object {
         private const val PERSISTENCE_DIR = ".DownloadInfo"
         private const val PERSISTENCE_FILE = "bytes_downloaded.txt"
+        private const val PERSIST_DEBOUNCE_MS = 10_000L // 10 seconds
     }
 
     /**
      * Persist bytesDownloaded to a file in the app directory.
+     * Debounced to write at most once every 10 seconds to reduce I/O overhead.
      */
     fun persistBytesDownloaded(appDirPath: String) {
+        val now = System.currentTimeMillis()
+        val timeSinceLastPersist = now - lastPersistTime
+
+        // If we wrote recently, schedule a delayed write
+        if (timeSinceLastPersist < PERSIST_DEBOUNCE_MS) {
+            if (hasPendingPersist.compareAndSet(false, true)) {
+                persistenceJob?.cancel()
+                persistenceJob = ioScope.launch {
+                    delay(PERSIST_DEBOUNCE_MS - timeSinceLastPersist)
+                    hasPendingPersist.set(false)
+                    writePersistedBytes(appDirPath)
+                }
+            }
+            return
+        }
+
+        // Write immediately if enough time has passed
+        persistenceJob?.cancel()
+        hasPendingPersist.set(false)
+        ioScope.launch {
+            writePersistedBytes(appDirPath)
+        }
+    }
+
+    /**
+     * Internal method to actually write the bytes to disk.
+     */
+    private fun writePersistedBytes(appDirPath: String) {
         try {
             val dir = File(appDirPath, PERSISTENCE_DIR)
             if (!dir.exists()) {
@@ -282,6 +325,7 @@ data class DownloadInfo(
             }
             val file = File(dir, PERSISTENCE_FILE)
             file.writeText(bytesDownloaded.toString())
+            lastPersistTime = System.currentTimeMillis()
         } catch (e: Exception) {
             Timber.e(e, "Failed to persist bytes downloaded to $appDirPath")
         }

@@ -30,6 +30,8 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONObject
 import timber.log.Timber
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.deleteRecursively
 
 /**
  * Data class to hold size information from gogdl info command
@@ -479,6 +481,7 @@ class GOGManager @Inject constructor(
         }
     }
 
+    @OptIn(ExperimentalPathApi::class)
     suspend fun deleteGame(context: Context, libraryItem: LibraryItem): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
@@ -499,12 +502,8 @@ class GOGManager @Inject constructor(
                 for (path in pathsToClean) {
                     val dir = File(path)
                     if (dir.exists()) {
-                        if (dir.deleteRecursively()) {
-                            Timber.i("Successfully deleted game directory: $path")
-                        } else {
-                            Timber.w("Failed to delete some game files at $path")
-                            failedPaths.add(path)
-                        }
+                        dir.toPath().deleteRecursively()
+                        Timber.i("Successfully deleted game directory: $path")
                     } else {
                         Timber.w("GOG game directory doesn't exist: $path")
                     }

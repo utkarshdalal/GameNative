@@ -186,6 +186,8 @@ import app.gamenative.utils.DownloadSpeedConfig
 import app.gamenative.utils.CustomGameScanner
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.deleteRecursively
 
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
@@ -1319,6 +1321,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             return container.executablePath.ifEmpty { getInstalledExe(gameId) }
         }
 
+        @OptIn(ExperimentalPathApi::class)
         suspend fun deleteApp(appId: Int): Boolean = withContext(Dispatchers.IO) {
             // snapshot path before marker removal (removing the marker changes resolution)
             val appInfo = getInstalledApp(appId)
@@ -1342,7 +1345,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                     MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
                 }
 
-                File(appDirPath).deleteRecursively()
+                File(appDirPath).toPath().deleteRecursively()
+
+                true
             }
 
             // Remove from DB
@@ -1871,6 +1876,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             maxDecompress = maxDecompress,
                             parentJob = coroutineContext[Job],
                             autoStartDownload = false,
+                            skipLargeFileAllocation = PrefManager.useExternalStorage,
                             filesystem = CaseInsensitiveFileSystem(
                                 showDebugLog = false,
                                 chunkStagingRedirect = chunkStagingRedirectDir?.absolutePath?.toPath(),

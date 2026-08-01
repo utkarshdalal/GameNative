@@ -21,6 +21,8 @@ import java.io.File
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.channels.FileChannel
+import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
 import java.util.zip.Inflater
 import javax.inject.Inject
@@ -48,6 +50,8 @@ import java.io.RandomAccessFile
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentHashMap.newKeySet
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.deleteRecursively
 
 /**
  * EpicDownloadManager handles downloading Epic games
@@ -58,6 +62,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * - file_manifest_list: List of files and their chunk composition
  */
 @Singleton
+@OptIn(ExperimentalPathApi::class)
 class EpicDownloadManager @Inject constructor(
     private val epicManager: EpicManager,
 ) {
@@ -259,7 +264,7 @@ class EpicDownloadManager @Inject constructor(
                 return@withContext downloadResult
             }
 
-            chunkCacheDir.deleteRecursively()
+            chunkCacheDir.toPath().deleteRecursively()
 
             // Log final directory structure
             Timber.tag("Epic").i("Download completed successfully for ${game.title}")
@@ -403,7 +408,7 @@ class EpicDownloadManager @Inject constructor(
             )
             if (dlcDownloadResult.isFailure) return@withContext dlcDownloadResult
 
-            chunkCacheDir.deleteRecursively()
+            chunkCacheDir.toPath().deleteRecursively()
 
             // Update database
             try {
@@ -472,7 +477,7 @@ class EpicDownloadManager @Inject constructor(
                 }.awaitAll()
 
                 results.firstOrNull { it.isFailure }?.let { failure ->
-                    chunkCacheDir.deleteRecursively()
+                    chunkCacheDir.toPath().deleteRecursively()
                     return@withContext Result.failure(
                         failure.exceptionOrNull() ?: Exception("Chunk download failed"),
                     )
@@ -488,14 +493,14 @@ class EpicDownloadManager @Inject constructor(
                 }.awaitAll()
 
                 results.firstOrNull { it.isFailure }?.let { failure ->
-                    chunkCacheDir.deleteRecursively()
+                    chunkCacheDir.toPath().deleteRecursively()
                     return@withContext Result.failure(
                         failure.exceptionOrNull() ?: Exception("File assembly failed"),
                     )
                 }
             }
 
-            chunkCacheDir.deleteRecursively()
+            chunkCacheDir.toPath().deleteRecursively()
             Timber.tag("Epic").i("downloadOverlay completed: $installPath")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -1214,10 +1219,15 @@ class EpicDownloadManager @Inject constructor(
             chunkFile.inputStream().use { input ->
                 input.skip(chunk.offset.toLong())
 
-                RandomAccessFile(outputFile.path, "rw").use { randomAccessFile ->
-                    randomAccessFile.seek(chunk.fileOffset)
+                FileChannel.open(
+                    outputFile.toPath(),
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.CREATE
+                ).use { channel ->
+                    channel.position(chunk.fileOffset)
 
                     val buffer = ByteArray(65536) // 64KB buffer for memory efficiency
+                    val byteBuffer = ByteBuffer.wrap(buffer)
                     var remaining = chunk.size.toLong()
 
                     while (remaining > 0) {
@@ -1226,7 +1236,10 @@ class EpicDownloadManager @Inject constructor(
 
                         if (bytesRead == -1) break
 
-                        randomAccessFile.write(buffer, 0, bytesRead)
+                        byteBuffer.clear()
+                        byteBuffer.put(buffer, 0, bytesRead)
+                        byteBuffer.flip()
+                        channel.write(byteBuffer)
                         remaining -= bytesRead
                     }
                 }

@@ -23,7 +23,10 @@ import java.io.ByteArrayOutputStream
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
 import java.nio.file.Files
+import java.nio.file.StandardOpenOption
 import java.security.DigestOutputStream
 import java.security.MessageDigest
 import java.util.zip.Inflater
@@ -49,6 +52,8 @@ import java.io.RandomAccessFile
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentHashMap.newKeySet
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.deleteRecursively
 
 /**
  * Custom exception for HTTP status errors with typed status code
@@ -74,6 +79,7 @@ class HttpStatusException(val statusCode: Int, message: String) : Exception(mess
  * - Multiple chunks assemble into single files
  */
 @Singleton
+@OptIn(ExperimentalPathApi::class)
 class GOGDownloadManager @Inject constructor(
     private val apiClient: GOGApiClient,
     private val parser: GOGManifestParser,
@@ -475,7 +481,7 @@ class GOGDownloadManager @Inject constructor(
             }
 
             // Step 11: Cleanup
-            chunkCacheDir.deleteRecursively()
+            chunkCacheDir.toPath().deleteRecursively()
 
             saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLang)
 
@@ -1246,7 +1252,7 @@ class GOGDownloadManager @Inject constructor(
                     continue
                 }
 
-                depotCacheDir.deleteRecursively()
+                depotCacheDir.toPath().deleteRecursively()
 
                 Timber.tag("GOG").i("Successfully downloaded dependency: ${depot.readableName} to ${depotInstallDir.absolutePath}")
             }
@@ -1587,17 +1593,26 @@ class GOGDownloadManager @Inject constructor(
             val md5Digest = MessageDigest.getInstance("MD5")
             var totalBytesWritten = 0L
 
-            RandomAccessFile(outputFile.path, "rw").use { raf ->
-                raf.seek(writeOffset)
+            FileChannel.open(
+                outputFile.toPath(),
+                StandardOpenOption.WRITE,
+                StandardOpenOption.CREATE
+            ).use { channel ->
+                channel.position(writeOffset)
 
                 // If no compressed size specified, data is already uncompressed
                 if (chunk.compressedSize == null) {
                     chunkFile.inputStream().use { input ->
                         val buffer = ByteArray(8192)
+                        val byteBuffer = ByteBuffer.wrap(buffer)
                         var bytesRead: Int
+
                         while (input.read(buffer).also { bytesRead = it } != -1) {
                             md5Digest.update(buffer, 0, bytesRead)
-                            raf.write(buffer, 0, bytesRead)
+                            byteBuffer.clear()
+                            byteBuffer.put(buffer, 0, bytesRead)
+                            byteBuffer.flip()
+                            channel.write(byteBuffer)
                             totalBytesWritten += bytesRead
                         }
                     }
@@ -1608,6 +1623,7 @@ class GOGDownloadManager @Inject constructor(
                         chunkFile.inputStream().buffered().use { input ->
                             val inputBuffer = ByteArray(8192)
                             val outputBuffer = ByteArray(8192)
+                            val byteBuffer = ByteBuffer.wrap(outputBuffer)
                             var inputBytesRead: Int
 
                             while (input.read(inputBuffer).also { inputBytesRead = it } != -1) {
@@ -1617,7 +1633,10 @@ class GOGDownloadManager @Inject constructor(
                                     val count = inflater.inflate(outputBuffer)
                                     if (count > 0) {
                                         md5Digest.update(outputBuffer, 0, count)
-                                        raf.write(outputBuffer, 0, count)
+                                        byteBuffer.clear()
+                                        byteBuffer.put(outputBuffer, 0, count)
+                                        byteBuffer.flip()
+                                        channel.write(byteBuffer)
                                         totalBytesWritten += count
                                     } else {
                                         if (inflater.needsDictionary()) {
@@ -1635,7 +1654,10 @@ class GOGDownloadManager @Inject constructor(
                                 val count = inflater.inflate(outputBuffer)
                                 if (count > 0) {
                                     md5Digest.update(outputBuffer, 0, count)
-                                    raf.write(outputBuffer, 0, count)
+                                    byteBuffer.clear()
+                                    byteBuffer.put(outputBuffer, 0, count)
+                                    byteBuffer.flip()
+                                    channel.write(byteBuffer)
                                     totalBytesWritten += count
                                 } else {
                                     if (inflater.needsInput()) {
