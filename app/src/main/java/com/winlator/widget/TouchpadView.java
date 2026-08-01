@@ -434,9 +434,14 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private boolean handleTouchpadEvent(MotionEvent event) {
+        int actionMasked = event.getActionMasked();
+        if (actionMasked == MotionEvent.ACTION_CANCEL) {
+            cancelTouchInput();
+            return true;
+        }
+
         int actionIndex = event.getActionIndex();
         int pointerId = event.getPointerId(actionIndex);
-        int actionMasked = event.getActionMasked();
         if (pointerId >= MAX_FINGERS) return true;
 
         switch (actionMasked) {
@@ -509,9 +514,6 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                     numFingers--;
                 }
                 break;
-            case MotionEvent.ACTION_CANCEL:
-                cancelTouchInput();
-                break;
         }
 
         return true;
@@ -519,19 +521,38 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     void cancelTouchInput() {
         continueClick = false;
+        cancelPointerButtonLeft(fingerPointerButtonLeft);
+        cancelPointerButtonRight(fingerPointerButtonRight);
         for (byte i = 0; i < MAX_FINGERS; i++) {
-            Finger finger = fingers[i];
-            if (finger != null) {
-                releasePointerButtonLeft(finger);
-                releasePointerButtonRight(finger);
-                fingers[i] = null;
-            }
+            fingers[i] = null;
         }
         numFingers = 0;
         scrollAccumY = 0;
         scrolling = false;
         suppressNextLeftTap = false;
         handleTsCancel();
+    }
+
+    private void cancelPointerButtonLeft(Finger finger) {
+        if (finger == null || finger != fingerPointerButtonLeft) return;
+        fingerPointerButtonLeft = null;
+        if (xServer.isRelativeMouseMovement()) {
+            xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTUP, 0, 0, 0);
+        }
+        else if (xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
+            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+        }
+    }
+
+    private void cancelPointerButtonRight(Finger finger) {
+        if (finger == null || finger != fingerPointerButtonRight) return;
+        fingerPointerButtonRight = null;
+        if (xServer.isRelativeMouseMovement()) {
+            xServer.getWinHandler().mouseEvent(MouseEventFlags.RIGHTUP, 0, 0, 0);
+        }
+        else if (xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_RIGHT)) {
+            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT);
+        }
     }
 
     private boolean handleTouchscreenEvent(MotionEvent event) {

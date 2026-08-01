@@ -81,6 +81,7 @@ public class ControlElement {
     private boolean toggleSwitch = false;
     private boolean scrollLocked = false;
     private int currentPointerId = -1;
+    private boolean currentPointerActivatedButtonBindings = false;
     private final Rect boundingBox = new Rect();
     private boolean[] states = new boolean[4];
     private boolean boundingBoxNeedsUpdate = true;
@@ -1089,10 +1090,12 @@ public class ControlElement {
     public boolean handleTouchDown(int pointerId, float x, float y) {
         if (currentPointerId == -1 && containsPoint(x, y)) {
             currentPointerId = pointerId;
+            currentPointerActivatedButtonBindings = false;
             inputControlsView.invalidate();
             if (type == Type.BUTTON) {
                 if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
                 if (!toggleSwitch || !selected) {
+                    currentPointerActivatedButtonBindings = !selected;
                     inputControlsView.handleInputEvent(getBindingAt(0), true);
                     inputControlsView.handleInputEvent(getBindingAt(1), true);
                 }
@@ -1256,6 +1259,7 @@ public class ControlElement {
                 else {
                     inputControlsView.invalidate();
                 }
+                currentPointerActivatedButtonBindings = false;
             }
             else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
                 for (byte i = 0; i < states.length; i++) {
@@ -1282,5 +1286,30 @@ public class ControlElement {
             return true;
         }
         return false;
+    }
+
+    public boolean cancelTouch() {
+        if (currentPointerId == -1) return false;
+
+        if (type == Type.BUTTON) {
+            if (currentPointerActivatedButtonBindings) {
+                inputControlsView.handleInputEvent(getBindingAt(0), false);
+                inputControlsView.handleInputEvent(getBindingAt(1), false);
+            }
+            currentPointerActivatedButtonBindings = false;
+            touchTime = null;
+        }
+        else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
+            for (byte i = 0; i < states.length; i++) {
+                if (states[i]) inputControlsView.handleInputEvent(getBindingAt(i), false);
+                states[i] = false;
+            }
+            if (type == Type.RANGE_BUTTON) scroller.handleTouchUp();
+            currentPosition = null;
+        }
+
+        currentPointerId = -1;
+        inputControlsView.invalidate();
+        return true;
     }
 }
