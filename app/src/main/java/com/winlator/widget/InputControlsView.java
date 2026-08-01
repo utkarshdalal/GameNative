@@ -20,6 +20,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.util.Log;
 import android.util.SparseArray;
 
 import androidx.compose.ui.input.pointer.PointerIcon;
@@ -786,17 +787,24 @@ public class InputControlsView extends View {
 
         float deadzone = getLookJoystickDeadzone();
         float sensitivity = getLookStickSensitivity();
+        float digitalDeadzone = ControlElement.STICK_DEAD_ZONE;
+        boolean[] newStates = {
+            deltaY <= -digitalDeadzone,   // up
+            deltaX >= digitalDeadzone,    // right
+            deltaY >= digitalDeadzone,    // down
+            deltaX <= -digitalDeadzone    // left
+        };
 
         // dispatch only the directions actually past the dead-zone, and release the others.
         // prior code fired isDown=true for ALL 4 directions every tick, saturating the virtual
         // gamepad's axis (whichever direction is dispatched LAST wins) and pinning all four
-        // KEY_* bindings keydown — which on the html5 path showed up as "stick stuck DOWN" +
+        // KEY_* bindings keydown -- which on the html5 path showed up as "stick stuck DOWN" +
         // on-screen joystick "inert" (every direction already pressed).
         for (int i = 0; i < 4; i++) {
             if (newStates[i]) {
-            float value = (i == 1 || i == 3) ? deltaX : deltaY;
-            value = getStickOutputValue(value, deadzone, sensitivity);
-            handleInputEvent(bindings[i], true, value);
+                float value = (i == 1 || i == 3) ? deltaX : deltaY;
+                value = getStickOutputValue(value, deadzone, sensitivity);
+                handleInputEvent(bindings[i], true, value);
                 rightJoystickStates[i] = true;
             } else if (rightJoystickStates[i]) {
                 handleInputEvent(bindings[i], false, 0f);
@@ -1497,7 +1505,7 @@ public class InputControlsView extends View {
                     html5BindingSink.onBinding(binding, isActionDown, offset);
                 }
                 else {
-                    Log.w("InputControlsView", "no xServer or Html5BindingSink — dropping " +
+                    Log.w("InputControlsView", "no xServer or Html5BindingSink -- dropping " +
                             binding.name() + " " + (isActionDown ? "down" : "up"));
                 }
             }
