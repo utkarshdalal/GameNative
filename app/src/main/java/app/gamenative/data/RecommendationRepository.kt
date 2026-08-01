@@ -21,6 +21,7 @@ object RecommendationRepository {
     private const val USE_LOCAL_FEATURED = true
 
     private const val WHISK_APP_ID = 3602270
+    private const val WHISK_DEMO_APP_ID = 4320000
     private const val WHISK_ASSETS =
         "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270"
 
@@ -49,12 +50,10 @@ object RecommendationRepository {
                 store = "Steam",
                 style = "primary",
             ),
-            // Whisk has no demo; borrows BZZZT Demo to exercise the GET_DEMO path. Swap the
-            // appid for any other demo if this one is already in the test account's library.
             FeaturedAction(
                 type = "GET_DEMO",
-                url = "https://store.steampowered.com/app/1293170/",
-                appId = 1294400,
+                url = "https://store.steampowered.com/app/$WHISK_APP_ID/",
+                appId = WHISK_DEMO_APP_ID,
             ),
             FeaturedAction(
                 type = "VISIT",
