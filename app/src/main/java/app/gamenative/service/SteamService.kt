@@ -1343,8 +1343,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
 
                 File(appDirPath).deleteRecursively()
-
-                true
             }
 
             // Remove from DB
