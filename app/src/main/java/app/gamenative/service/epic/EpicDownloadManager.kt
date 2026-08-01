@@ -1236,7 +1236,9 @@ class EpicDownloadManager @Inject constructor(
                         byteBuffer.clear()
                         byteBuffer.put(buffer, 0, bytesRead)
                         byteBuffer.flip()
-                        channel.write(byteBuffer)
+                        while (byteBuffer.hasRemaining()) {
+                            channel.write(byteBuffer)
+                        }
                         remaining -= bytesRead
                     }
                 }

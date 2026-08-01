@@ -1609,7 +1609,9 @@ class GOGDownloadManager @Inject constructor(
                             byteBuffer.clear()
                             byteBuffer.put(buffer, 0, bytesRead)
                             byteBuffer.flip()
-                            channel.write(byteBuffer)
+                            while (byteBuffer.hasRemaining()) {
+                                channel.write(byteBuffer)
+                            }
                             totalBytesWritten += bytesRead
                         }
                     }
@@ -1633,7 +1635,9 @@ class GOGDownloadManager @Inject constructor(
                                         byteBuffer.clear()
                                         byteBuffer.put(outputBuffer, 0, count)
                                         byteBuffer.flip()
-                                        channel.write(byteBuffer)
+                                        while (byteBuffer.hasRemaining()) {
+                                            channel.write(byteBuffer)
+                                        }
                                         totalBytesWritten += count
                                     } else {
                                         if (inflater.needsDictionary()) {
@@ -1654,7 +1658,9 @@ class GOGDownloadManager @Inject constructor(
                                     byteBuffer.clear()
                                     byteBuffer.put(outputBuffer, 0, count)
                                     byteBuffer.flip()
-                                    channel.write(byteBuffer)
+                                    while (byteBuffer.hasRemaining()) {
+                                        channel.write(byteBuffer)
+                                    }
                                     totalBytesWritten += count
                                 } else {
                                     if (inflater.needsInput()) {
