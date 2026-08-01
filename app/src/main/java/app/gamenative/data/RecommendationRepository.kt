@@ -18,7 +18,7 @@ object RecommendationRepository {
     private const val CACHE_TTL_MS = 24L * 60L * 60L * 1000L
 
     // Serves a local campaign instead of the server one, to exercise the in-app wishlist CTA.
-    private const val USE_LOCAL_FEATURED = true
+    private const val USE_LOCAL_FEATURED = false
 
     private const val WHISK_APP_ID = 3602270
     private const val WHISK_DEMO_APP_ID = 4320000
