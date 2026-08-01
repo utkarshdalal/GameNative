@@ -333,6 +333,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         internal var instance: SteamService? = null
 
+        // Kept in memory for the session only, never persisted: PrefManager stores tokens just when
+        // rememberSession is set, but minting a web token needs one regardless.
+        @Volatile
+        internal var sessionRefreshToken: String? = null
+
         var cachedAchievements: List<app.gamenative.statsgen.Achievement>? = null
             private set
         var cachedAchievementsAppId: Int? = null
@@ -2676,6 +2681,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 //            }
 
             PrefManager.username = username
+
+            refreshToken?.let { sessionRefreshToken = it }
 
             if ((password != null && rememberSession) || refreshToken != null) {
                 if (accessToken != null) {

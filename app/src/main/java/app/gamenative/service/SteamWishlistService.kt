@@ -1,14 +1,19 @@
 package app.gamenative.service
 
+import app.gamenative.PrefManager
 import app.gamenative.steam.WishlistService
 import app.gamenative.utils.Net
 import `in`.dragonbra.javasteam.enums.EResult
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesAuthSteamclient.CAuthentication_AccessToken_GenerateForApp_Request
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesAuthSteamclient.ETokenRenewalType
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesWishlistSteamclient.CWishlist_AddToWishlist_Request
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesWishlistSteamclient.CWishlist_RemoveFromWishlist_Request
+import `in`.dragonbra.javasteam.rpc.service.Authentication
 import `in`.dragonbra.javasteam.steam.handlers.steamunifiedmessages.SteamUnifiedMessages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
+import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import org.json.JSONObject
@@ -26,6 +31,7 @@ object SteamWishlistService {
     private const val TAG = "SteamWishlist"
     private const val JOB_TIMEOUT_MS = 15_000L
     private const val GET_URL = "https://api.steampowered.com/IWishlistService/GetWishlist/v1/"
+    private const val ADD_URL = "https://api.steampowered.com/IWishlistService/AddToWishlist/v1/"
 
     sealed interface Outcome {
         data object Success : Outcome
@@ -36,8 +42,57 @@ object SteamWishlistService {
     suspend fun addToWishlist(appId: Int): Outcome = withContext(Dispatchers.IO) {
         val service = service() ?: return@withContext Outcome.NoSession
         val request = CWishlist_AddToWishlist_Request.newBuilder().setAppid(appId).build()
-        runJob("AddToWishlist") {
+        val viaCm = runJob("AddToWishlist") {
             service.addToWishlist(request).also { it.timeout = JOB_TIMEOUT_MS }.toFuture().await().result
+        }
+        if (viaCm is Outcome.Success) return@withContext viaCm
+
+        // The CM routes Wishlist but denies a plain client session, so retry the web endpoint with a
+        // token minted from the session's refresh token.
+        val token = mintWebToken() ?: return@withContext viaCm
+        val body = FormBody.Builder().add("access_token", token).add("appid", appId.toString()).build()
+        try {
+            Net.http.newCall(Request.Builder().url(ADD_URL).post(body).build()).execute().use { res ->
+                val text = res.body?.string().orEmpty()
+                Timber.tag(TAG).i("AddToWishlist via minted token -> ${res.code} ${text.take(200)}")
+                if (res.isSuccessful) Outcome.Success else viaCm
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "wishlist web write failed")
+            viaCm
+        }
+    }
+
+    /** Exchanges the session refresh token for an access token, over the CM connection. */
+    private suspend fun mintWebToken(): String? {
+        val client = SteamService.instance?.steamClient ?: return null
+        val unifiedMessages = client.getHandler<SteamUnifiedMessages>() ?: return null
+        val steamId = SteamService.userSteamId?.convertToUInt64() ?: return null
+        val refresh = SteamService.sessionRefreshToken
+            ?: PrefManager.refreshToken.ifEmpty { null }
+        if (refresh == null) {
+            Timber.tag(TAG).w("no refresh token available to mint with")
+            return null
+        }
+        return try {
+            val auth = unifiedMessages.createService(Authentication::class.java)
+            val request = CAuthentication_AccessToken_GenerateForApp_Request.newBuilder()
+                .setRefreshToken(refresh)
+                .setSteamid(steamId)
+                .setRenewalType(ETokenRenewalType.k_ETokenRenewalType_None)
+                .build()
+            val response = auth.generateAccessTokenForApp(request)
+                .also { it.timeout = JOB_TIMEOUT_MS }
+                .toFuture().await()
+            if (response.result != EResult.OK) {
+                Timber.tag(TAG).w("mint failed: ${response.result}")
+                return null
+            }
+            response.body.build().accessToken.ifEmpty { null }
+                .also { Timber.tag(TAG).i("minted token: ${it != null}") }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "mint failed")
+            null
         }
     }
 
