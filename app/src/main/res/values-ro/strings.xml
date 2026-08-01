@@ -2159,4 +2159,25 @@
     <string name="local_mod_copied_progress">S-au copiat %1$s din %2$s</string>
     <string name="nexus_invalid_source_metadata">Acest mod gestionat are informații incomplete despre sursă și operația nu poate fi reîncercată.</string>
     <string name="nexus_archive_memory_error">Arhiva necesită mai multă memorie decât permite Android. Încearcă din nou după actualizarea GameNative sau alege un fișier mai mic.</string>
+    <!-- Bionic FG (AI) Frame Generation -->
+    <string name="bfg_tab_title">GenCadre IA</string>
+    <string name="bfg_enable">Activează generarea de cadre cu IA</string>
+    <string name="bfg_description">Interpolare de cadre cu IA, integrată. Fără achiziții suplimentare.</string>
+    <string name="bfg_multiplier">Multiplicator de cadre</string>
+    <string name="bfg_flow_scale">Scara fluxului</string>
+    <string name="bfg_flow_scale_desc">Mai mic este mai rapid; mai mare urmărește mișcarea mai bine, dar consumă mai mult GPU.</string>
+    <string name="bfg_model">Model</string>
+    <string name="bfg_model_desc">Clear este mai clar, dar mai solicitant</string>
+    <string name="bfg_model_standard">Standard</string>
+    <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">Invită</string>
+    <string name="steam_invite_header">%1$d prieteni</string>
+    <string name="steam_invite_joinable">În acest joc — atinge pentru a te alătura</string>
+    <string name="steam_invite_unavailable">Clientul Steam nu este pregătit</string>
+    <string name="steam_invite_failed">Invitația a eșuat — jocul tău nu este într-o sesiune la care se poate alătura cineva</string>
+    <string name="steam_join_failed">Nu s-a putut alătura — sesiunea lor ar putea fi închisă</string>
+    <string name="steam_invite_sent">Invitație trimisă</string>
+    <string name="steam_invite_joined">În jocul tău</string>
+    <string name="steam_invite_online">Online</string>
+    <string name="steam_invite_offline">Offline</string>
 </resources>

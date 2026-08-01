@@ -2111,4 +2111,25 @@
     <string name="local_mod_copied_progress">%2$s 中 %1$s をコピー済み</string>
     <string name="nexus_invalid_source_metadata">この管理対象 Mod はソース情報が不完全なため、再試行できません。</string>
     <string name="nexus_archive_memory_error">このアーカイブには Android の上限を超えるメモリが必要です。GameNative を更新してから再試行するか、より小さいファイルを選択してください。</string>
+    <!-- Bionic FG (AI) Frame Generation -->
+    <string name="bfg_tab_title">AIフレーム生成</string>
+    <string name="bfg_enable">AIフレーム生成を有効にする</string>
+    <string name="bfg_description">内蔵のAIフレーム補間。追加購入は不要です。</string>
+    <string name="bfg_multiplier">フレーム倍率</string>
+    <string name="bfg_flow_scale">フロースケール</string>
+    <string name="bfg_flow_scale_desc">低いほど高速です。高いほど動きを正確に追跡しますが、GPU負荷が増えます。</string>
+    <string name="bfg_model">モデル</string>
+    <string name="bfg_model_desc">Clear はより鮮明ですが負荷が高くなります</string>
+    <string name="bfg_model_standard">標準</string>
+    <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">招待</string>
+    <string name="steam_invite_header">フレンド %1$d 人</string>
+    <string name="steam_invite_joinable">このゲームをプレイ中 — タップして参加</string>
+    <string name="steam_invite_unavailable">Steam クライアントの準備ができていません</string>
+    <string name="steam_invite_failed">招待に失敗しました — 参加可能なセッションではありません</string>
+    <string name="steam_join_failed">参加できません — セッションが終了した可能性があります</string>
+    <string name="steam_invite_sent">招待を送信しました</string>
+    <string name="steam_invite_joined">あなたのゲームに参加中</string>
+    <string name="steam_invite_online">オンライン</string>
+    <string name="steam_invite_offline">オフライン</string>
 </resources>

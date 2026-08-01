@@ -561,16 +561,18 @@ fun SettingsGroupInterface(
                 useExternalStorage = it
                 PrefManager.useExternalStorage = it
                 if (it && dirs.isNotEmpty()) {
-                    PrefManager.externalStoragePath = dirs[0].absolutePath
+                    PrefManager.externalStoragePath = StorageUtils.preferredInstallRoot(dirs[0])
                 }
             },
         )
         if (useExternalStorage) {
             // Currently selected item
-            var selectedIndex by rememberSaveable {
+            var selectedIndex by rememberSaveable(dirs) {
                 mutableStateOf(
-                    dirs.indexOfFirst { it.absolutePath == PrefManager.externalStoragePath }
-                        .takeIf { it >= 0 } ?: 0,
+                    dirs.indexOfFirst { dir ->
+                        dir.absolutePath == PrefManager.externalStoragePath ||
+                            StorageUtils.publicInstallRoot(dir)?.absolutePath == PrefManager.externalStoragePath
+                    }.takeIf { it >= 0 } ?: 0,
                 )
             }
             SettingsListDropdown(
@@ -579,7 +581,7 @@ fun SettingsGroupInterface(
                 value = selectedIndex,
                 onItemSelected = { idx ->
                     selectedIndex = idx
-                    PrefManager.externalStoragePath = dirs[idx].absolutePath
+                    PrefManager.externalStoragePath = StorageUtils.preferredInstallRoot(dirs[idx])
                 },
                 colors = settingsTileColorsAlt(),
             )

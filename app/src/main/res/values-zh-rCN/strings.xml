@@ -2172,4 +2172,25 @@
     <string name="local_mod_copied_progress">已复制 %1$s，共 %2$s</string>
     <string name="nexus_invalid_source_metadata">此受管理模组的来源信息不完整，无法重试。</string>
     <string name="nexus_archive_memory_error">此压缩包需要的内存超过 Android 允许的上限。请在更新 GameNative 后重试，或选择较小的文件。</string>
+    <!-- Bionic FG (AI) Frame Generation -->
+    <string name="bfg_tab_title">AI 补帧</string>
+    <string name="bfg_enable">启用 AI 补帧</string>
+    <string name="bfg_description">内置 AI 补帧。无需额外购买。</string>
+    <string name="bfg_multiplier">帧倍率</string>
+    <string name="bfg_flow_scale">光流缩放</string>
+    <string name="bfg_flow_scale_desc">数值越低速度越快；越高对运动的跟踪越准确，但更耗 GPU。</string>
+    <string name="bfg_model">模型</string>
+    <string name="bfg_model_desc">Clear 更清晰，但开销更大</string>
+    <string name="bfg_model_standard">标准</string>
+    <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">邀请</string>
+    <string name="steam_invite_header">%1$d 位好友</string>
+    <string name="steam_invite_joinable">正在玩此游戏 — 点按加入</string>
+    <string name="steam_invite_unavailable">Steam 客户端未就绪</string>
+    <string name="steam_invite_failed">邀请失败 — 你的游戏不在可加入的会话中</string>
+    <string name="steam_join_failed">无法加入 — 对方的会话可能已关闭</string>
+    <string name="steam_invite_sent">已发送邀请</string>
+    <string name="steam_invite_joined">在你的游戏中</string>
+    <string name="steam_invite_online">在线</string>
+    <string name="steam_invite_offline">离线</string>
 </resources>

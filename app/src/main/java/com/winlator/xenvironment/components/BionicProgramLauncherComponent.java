@@ -17,6 +17,7 @@ import androidx.annotation.NonNull;
 
 import com.winlator.PrefManager;
 
+import app.gamenative.utils.BionicFgManager;
 import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
@@ -347,6 +348,12 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             LsfgVkManager.applyLaunchEnv(container, envVars);
         }
 
+        if (BionicFgManager.isSupported(container)) {
+            BionicFgManager.ensureRuntimeInstalled(environment.getContext(), container);
+            BionicFgManager.writeConfig(container);
+            BionicFgManager.applyLaunchEnv(container, envVars);
+        }
+
         Log.d("BionicProgramLauncherComponent", "env vars are " + envVars.toString());
 
         String emulator = container.getEmulator();
@@ -508,6 +515,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("BREAKPAD_DUMP_LOCATION", breakpadDir);
         envVars.put("STEAM_BASE_FOLDER", steamRootLinux);
         envVars.put("ENABLE_VK_LAYER_VALVE_steam_overlay_1", "0");
+        // ISteamUtils::IsOverlayEnabled() is not engine state -- it resolves in-process to
+        // `getenv("SteamOS") ? true : dlsym(RTLD_DEFAULT, "IsOverlayEnabled")`. No overlay
+        // module is loaded here (the bionic asset set ships none), so without this it returns
+        // false and games that gate their invite/host UI on it refuse to open it.
+        envVars.put("SteamOS", "1");
         envVars.put("STEAMVIDEOTOKEN", "1");
 
         // IPC endpoints; override defaults if the MCP-hosted .so listens elsewhere
@@ -578,6 +590,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 "ENABLE_VK_LAYER_VALVE_steam_overlay_1",
                 "STEAMVIDEOTOKEN",
                 "SteamUser",
+                "SteamOS",
         };
         for (String key : passthrough) {
             String val = envVars.get(key);
