@@ -293,6 +293,7 @@ class EpicService : Service() {
                 Timber.tag("EPIC").i("Cancelling download for Epic game: $appId")
                 downloadInfo.cancel()
                 instance.activeDownloads.remove(appId)
+                downloadInfo.shutdown()
                 Timber.tag("EPIC").d("Download cancelled for Epic game: $appId")
                 true
             } else {
@@ -506,6 +507,7 @@ class EpicService : Service() {
                     SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
                 } finally {
                     instance.activeDownloads.remove(appId)
+                    downloadInfo.shutdown()
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
             }

@@ -503,6 +503,7 @@ class AmazonService : Service() {
                 } finally {
                     instance.activeDownloads.remove(productId)
                     instance.activeDownloadPaths.remove(productId)
+                    downloadInfo.shutdown()
                     PluviaApp.events.emitJava(
                         AndroidEvent.DownloadStatusChanged(game.appId, false)
                     )

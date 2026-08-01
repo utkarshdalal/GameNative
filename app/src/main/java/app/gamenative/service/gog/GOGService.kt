@@ -255,6 +255,7 @@ class GOGService : Service() {
                 Timber.i("Cancelling download for game: $gameId")
                 downloadInfo.cancel()
                 instance.activeDownloads.remove(gameId)
+                downloadInfo.shutdown()
                 Timber.d("Download cancelled for game: $gameId")
                 true
             } else {
@@ -435,6 +436,7 @@ class GOGService : Service() {
                     // Remove from activeDownloads for both success and failure
                     // so UI knows download is complete and to prevent stale entries
                     instance.activeDownloads.remove(gameId)
+                    downloadInfo.shutdown()
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
             }
