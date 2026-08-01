@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.library
 
 import android.content.Intent
 import androidx.annotation.StringRes
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -15,6 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -25,6 +28,7 @@ import app.gamenative.R
 import app.gamenative.data.FeaturedCta
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamWishlistService
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
@@ -36,9 +40,15 @@ import kotlinx.coroutines.launch
  * in-app handler fails. New in-app types only need a new [InAppCta] entry.
  */
 @Composable
-internal fun FeaturedCtaButton(action: FeaturedCta, campaignId: String, recSource: String) {
+internal fun FeaturedCtaButton(
+    action: FeaturedCta,
+    campaignId: String,
+    recSource: String,
+    focusRequester: FocusRequester? = null,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val interactionSource = remember { MutableInteractionSource() }
     val cta = remember(action) { InAppCta.forAction(action) }
     // null = unknown (e.g. wishlist private); the button then stays in its idle state.
     var done by remember(action) { mutableStateOf<Boolean?>(null) }
@@ -89,13 +99,19 @@ internal fun FeaturedCtaButton(action: FeaturedCta, campaignId: String, recSourc
 
     val label = if (cta != null && done == true) stringResource(cta.doneLabelRes) else action.label
     val enabled = cta == null || (!busy && done != true)
+    val shape = RoundedCornerShape(12.dp)
+    val buttonModifier = Modifier
+        .fillMaxWidth()
+        .focusRing(interactionSource, shape, width = 2.dp)
+        .let { if (focusRequester != null) it.focusRequester(focusRequester) else it }
 
     if (action.primary) {
         Button(
             onClick = onClick,
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            modifier = buttonModifier,
+            shape = shape,
+            interactionSource = interactionSource,
         ) {
             Text(text = label, fontWeight = FontWeight.SemiBold)
         }
@@ -103,8 +119,9 @@ internal fun FeaturedCtaButton(action: FeaturedCta, campaignId: String, recSourc
         OutlinedButton(
             onClick = onClick,
             enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            modifier = buttonModifier,
+            shape = shape,
+            interactionSource = interactionSource,
         ) {
             Text(text = label, fontWeight = FontWeight.SemiBold)
         }
