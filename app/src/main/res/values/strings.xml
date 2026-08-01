@@ -416,8 +416,8 @@
     <string name="control_stroke_width_default">Default</string>
     <string name="control_stroke_width_thick">Thick</string>
     <string name="control_stroke_width_extra_thick">Extra thick</string>
-    <string name="button_shooter_look_through">Shooter Look-through</string>
-    <string name="button_shooter_look_through_subtitle">Allow this button touch to also control dynamic shooter movement/look</string>
+    <string name="button_look_through">Look-through</string>
+    <string name="button_look_through_subtitle">Press and drag from this button to also control movement or camera look. Not available in touchscreen mode.</string>
     <string name="preview">Preview</string>
     <string name="active">Active</string>
     <string name="apply_all">Apply All</string>

@@ -2002,6 +2002,28 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         this.moveCursorToTouchpoint = moveCursorToTouchpoint;
     }
 
+    /**
+     * Moves the pointer for a drag owned by an on-screen look-through button.
+     * This deliberately bypasses tap, hold, scroll, pinch, and multi-finger recognition.
+     */
+    public void movePointerFromLookThrough(float deltaX, float deltaY) {
+        if (touchscreenMouseDisabled) return;
+
+        float[] delta = computeDeltaPoint(0, 0, deltaX, deltaY);
+        float moveX = delta[0] * sensitivity;
+        float moveY = delta[1] * sensitivity;
+        if (Math.abs(moveX) > CURSOR_ACCELERATION_THRESHOLD) moveX *= CURSOR_ACCELERATION;
+        if (Math.abs(moveY) > CURSOR_ACCELERATION_THRESHOLD) moveY *= CURSOR_ACCELERATION;
+
+        int dx = Mathf.roundPoint(moveX);
+        int dy = Mathf.roundPoint(moveY);
+        if (xServer.isRelativeMouseMovement()) {
+            xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
+        } else {
+            xServer.injectPointerMoveDelta(dx, dy);
+        }
+    }
+
     public boolean onExternalMouseEvent(MotionEvent event) {
         boolean handled = false;
         if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {

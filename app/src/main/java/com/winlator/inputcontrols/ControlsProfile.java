@@ -286,6 +286,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 }
                 if (elementJSONObject.has("buttonOpacity")) element.setButtonOpacity((float)elementJSONObject.getDouble("buttonOpacity"));
                 if (elementJSONObject.has("buttonStrokeScale")) element.setButtonStrokeScale((float)elementJSONObject.getDouble("buttonStrokeScale"));
+                if (elementJSONObject.has("lookThrough")) element.setLookThroughSetting(elementJSONObject.getBoolean("lookThrough"));
                 if (elementJSONObject.has("shooterLookThrough")) element.setShooterLookThrough(elementJSONObject.getBoolean("shooterLookThrough"));
 
                 boolean hasGamepadBinding = true;

@@ -101,6 +101,11 @@ public class ControlElement {
     private boolean buttonActiveColorCustom = false;
     private float buttonOpacity = INHERIT_BUTTON_OPACITY;
     private float buttonStrokeScale = DEFAULT_BUTTON_STROKE_SCALE;
+    // General touch-area look-through is separate from the legacy shooter-only
+    // setting so loading an existing profile does not change its behavior.
+    // Null means this profile predates general look-through and should keep the
+    // legacy shooter-only setting. Once edited, true/false controls both modes.
+    private Boolean lookThrough = null;
     private boolean shooterLookThrough = true;
 
     public ControlElement(InputControlsView inputControlsView) {
@@ -314,12 +319,28 @@ public class ControlElement {
         this.buttonStrokeScale = Mathf.clamp(buttonStrokeScale, 0.5f, 2.0f);
     }
 
+    public boolean isLookThrough() {
+        return Boolean.TRUE.equals(lookThrough);
+    }
+
+    public Boolean getLookThroughSetting() {
+        return lookThrough;
+    }
+
+    public void setLookThroughSetting(Boolean lookThrough) {
+        this.lookThrough = lookThrough;
+    }
+
     public boolean isShooterLookThrough() {
-        return shooterLookThrough;
+        return lookThrough != null ? lookThrough : shooterLookThrough;
     }
 
     public void setShooterLookThrough(boolean shooterLookThrough) {
         this.shooterLookThrough = shooterLookThrough;
+    }
+
+    public boolean getShooterLookThroughSetting() {
+        return shooterLookThrough;
     }
 
     public void copyButtonAppearanceFrom(ControlElement element) {
@@ -328,6 +349,7 @@ public class ControlElement {
         buttonActiveColorCustom = element.buttonActiveColorCustom;
         buttonOpacity = element.buttonOpacity;
         buttonStrokeScale = element.buttonStrokeScale;
+        lookThrough = element.lookThrough;
         shooterLookThrough = element.shooterLookThrough;
     }
 
@@ -1045,6 +1067,7 @@ public class ControlElement {
             if (buttonActiveColorCustom || buttonActiveColor != DEFAULT_BUTTON_ACTIVE_COLOR) elementJSONObject.put("buttonActiveColor", formatRgbColor(buttonActiveColor));
             if (buttonOpacity >= 0) elementJSONObject.put("buttonOpacity", (double)buttonOpacity);
             if (buttonStrokeScale != DEFAULT_BUTTON_STROKE_SCALE) elementJSONObject.put("buttonStrokeScale", (double)buttonStrokeScale);
+            if (type == Type.BUTTON && lookThrough != null) elementJSONObject.put("lookThrough", lookThrough);
             if (type == Type.BUTTON && !shooterLookThrough) elementJSONObject.put("shooterLookThrough", false);
 
             return elementJSONObject;
