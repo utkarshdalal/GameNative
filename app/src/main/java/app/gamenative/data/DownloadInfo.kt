@@ -1,18 +1,21 @@
 package app.gamenative.data
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
-import kotlin.concurrent.Volatile
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 data class DownloadInfo(
     val jobCount: Int = 1,
@@ -20,14 +23,14 @@ data class DownloadInfo(
     var downloadingAppIds: CopyOnWriteArrayList<Int>,
 ) {
     private var downloadJob: Job? = null
+    private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val downloadProgressListeners = CopyOnWriteArrayList<(Float) -> Unit>()
     private val progresses: Array<Float> = Array(jobCount) { 0f }
 
-    // Single-thread executor for persistence with 10-second delay
-    private val persistenceExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { r ->
-        Thread(r, "DownloadInfo-Persistence-$gameId").apply { isDaemon = true }
-    }
-    private var persistenceFuture: ScheduledFuture<*>? = null
+    // Reservation-based persistence scheduler
+    private val nextWriteTime = AtomicLong(0L)
+    private var persistenceJob: Job? = null
+    private val persistenceGeneration = AtomicInteger(0)
 
     private val weights    = FloatArray(jobCount) { 1f }     // ⇐ new
     private var weightSum  = jobCount.toFloat()
@@ -43,7 +46,6 @@ data class DownloadInfo(
     private var emaSpeedBytesPerSec: Double = 0.0
     private var hasEmaSpeed: Boolean = false
     private var isActive: Boolean = true
-    @Volatile
     private var currentStatusMessage: String = ""
     private val postInstallSyncing = MutableStateFlow(false)
 
@@ -282,7 +284,7 @@ data class DownloadInfo(
     companion object {
         private const val PERSISTENCE_DIR = ".DownloadInfo"
         private const val PERSISTENCE_FILE = "bytes_downloaded.txt"
-        private const val PERSIST_DELAY_MS = 10_000L // 10 seconds
+        private const val PERSIST_DEBOUNCE_MS = 10_000L // 10 seconds
     }
 
     /**
@@ -290,14 +292,30 @@ data class DownloadInfo(
      * Debounced to write at most once every 10 seconds to reduce I/O overhead.
      */
     fun persistBytesDownloaded(appDirPath: String) {
-        // Cancel any pending write
-        persistenceFuture?.cancel(false)
+        val now = System.currentTimeMillis()
+        val reserved = nextWriteTime.get()
+        val delayMs = reserved - now
 
-        // Schedule a new write with 10-second delay
-        persistenceFuture = persistenceExecutor.schedule({
-            // Only write if generation hasn't been invalidated
+        // If we need to wait, schedule a delayed write
+        if (delayMs > 0) {
+            val currentGen = persistenceGeneration.get()
+            persistenceJob?.cancel()
+            persistenceJob = ioScope.launch {
+                delay(delayMs)
+                // Only write if generation hasn't been invalidated
+                if (persistenceGeneration.get() == currentGen) {
+                    writePersistedBytes(appDirPath)
+                }
+            }
+            return
+        }
+
+        // Reserve the next write time and write immediately
+        nextWriteTime.set(now + PERSIST_DEBOUNCE_MS)
+        persistenceJob?.cancel()
+        ioScope.launch {
             writePersistedBytes(appDirPath)
-        }, PERSIST_DELAY_MS, TimeUnit.MILLISECONDS)
+        }
     }
 
     /**
@@ -311,6 +329,8 @@ data class DownloadInfo(
             }
             val file = File(dir, PERSISTENCE_FILE)
             file.writeText(bytesDownloaded.toString())
+            val now = System.currentTimeMillis()
+            nextWriteTime.set(now + PERSIST_DEBOUNCE_MS)
         } catch (e: Exception) {
             Timber.e(e, "Failed to persist bytes downloaded to $appDirPath")
         }
@@ -338,7 +358,9 @@ data class DownloadInfo(
      * Delete the persisted bytes file (called on download completion).
      */
     fun clearPersistedBytesDownloaded(appDirPath: String) {
-        persistenceFuture?.cancel(false)
+        // Invalidate any pending persistence to prevent recreating the file
+        persistenceGeneration.incrementAndGet()
+        persistenceJob?.cancel()
         try {
             val file = File(File(appDirPath, PERSISTENCE_DIR), PERSISTENCE_FILE)
             if (file.exists()) {
@@ -347,13 +369,5 @@ data class DownloadInfo(
         } catch (e: Exception) {
             Timber.e(e, "Failed to clear persisted bytes downloaded from $appDirPath")
         }
-    }
-
-    /**
-     * Shutdown the persistence executor. Should be called when the download is complete or cancelled.
-     */
-    fun shutdown() {
-        persistenceFuture?.cancel(false)
-        persistenceExecutor.shutdown()
     }
 }

@@ -4,7 +4,6 @@ import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,27 +24,17 @@ class DownloadInfoTest {
         testDir = tempFolder.newFolder()
     }
 
-    private val testInfos = mutableListOf<DownloadInfo>()
-
     @After
     fun cleanup() {
-        testInfos.forEach { it.shutdown() }
-        testInfos.clear()
         testDir.deleteRecursively()
     }
-
-    private fun createTestInfo(): DownloadInfo {
+    @Test
+    fun `post install sync state is tracked independently`() {
         val info = DownloadInfo(
             jobCount = 1,
             gameId = 123,
             downloadingAppIds = CopyOnWriteArrayList(),
         )
-        testInfos.add(info)
-        return info
-    }
-    @Test
-    fun `post install sync state is tracked independently`() {
-        val info = createTestInfo()
 
         assertFalse(info.isPostInstallSyncing())
 
@@ -56,7 +45,11 @@ class DownloadInfoTest {
 
     @Test
     fun `cancel clears post install sync state`() {
-        val info = createTestInfo()
+        val info = DownloadInfo(
+            jobCount = 1,
+            gameId = 123,
+            downloadingAppIds = CopyOnWriteArrayList(),
+        )
 
         info.setPostInstallSyncing(true)
         info.cancel()
@@ -67,19 +60,23 @@ class DownloadInfoTest {
 
     @Test
     fun `rapid persistence calls do not trigger multiple immediate writes`() = runBlocking {
-        val info = createTestInfo()
+        val info = DownloadInfo(
+            jobCount = 1,
+            gameId = 123,
+            downloadingAppIds = CopyOnWriteArrayList(),
+        )
 
         info.setTotalExpectedBytes(1000L)
         info.updateBytesDownloaded(100L)
 
-        // Schedule first write
+        // First call should write immediately
         info.persistBytesDownloaded(testDir.absolutePath)
+        delay(100)
 
-        // File should not exist yet (10 second delay)
-        val initialValue = info.loadPersistedBytesDownloaded(testDir.absolutePath)
-        assertEquals(0L, initialValue)
+        val firstValue = info.loadPersistedBytesDownloaded(testDir.absolutePath)
+        assertEquals(100L, firstValue)
 
-        // Rapid subsequent calls within debounce window - each cancels the previous
+        // Rapid subsequent calls within debounce window
         info.updateBytesDownloaded(50L)
         info.persistBytesDownloaded(testDir.absolutePath)
         info.updateBytesDownloaded(50L)
@@ -87,28 +84,32 @@ class DownloadInfoTest {
         info.updateBytesDownloaded(50L)
         info.persistBytesDownloaded(testDir.absolutePath)
 
-        // Still no file (all writes were cancelled and rescheduled)
+        // Should still show first write value immediately
         val secondValue = info.loadPersistedBytesDownloaded(testDir.absolutePath)
-        assertEquals(0L, secondValue)
+        assertEquals(100L, secondValue)
 
-        // Wait for final debounced write to complete
-        TimeUnit.SECONDS.sleep(11)
+        // Wait for debounced write to complete
+        delay(11_000)
 
-        // Now should show final updated value
+        // Now should show updated value
         val finalValue = info.loadPersistedBytesDownloaded(testDir.absolutePath)
         assertEquals(250L, finalValue)
     }
 
     @Test
     fun `clearPersistedBytesDownloaded cancels pending writes`() = runBlocking {
-        val info = createTestInfo()
+        val info = DownloadInfo(
+            jobCount = 1,
+            gameId = 123,
+            downloadingAppIds = CopyOnWriteArrayList(),
+        )
 
         info.setTotalExpectedBytes(1000L)
         info.updateBytesDownloaded(100L)
 
-        // Schedule initial write and wait for it
+        // Write initial value
         info.persistBytesDownloaded(testDir.absolutePath)
-        TimeUnit.SECONDS.sleep(11)
+        delay(100)
 
         val firstValue = info.loadPersistedBytesDownloaded(testDir.absolutePath)
         assertEquals(100L, firstValue)
@@ -125,7 +126,7 @@ class DownloadInfoTest {
         assertEquals(0L, clearedValue)
 
         // Wait for what would have been the delayed write
-        TimeUnit.SECONDS.sleep(11)
+        delay(11_000)
 
         // File should still be deleted (pending write was invalidated)
         val finalValue = info.loadPersistedBytesDownloaded(testDir.absolutePath)
@@ -134,14 +135,18 @@ class DownloadInfoTest {
 
     @Test
     fun `completion during debounce interval prevents file recreation`() = runBlocking {
-        val info = createTestInfo()
+        val info = DownloadInfo(
+            jobCount = 1,
+            gameId = 123,
+            downloadingAppIds = CopyOnWriteArrayList(),
+        )
 
         info.setTotalExpectedBytes(1000L)
         info.updateBytesDownloaded(500L)
 
-        // Write initial progress and wait
+        // Write initial progress
         info.persistBytesDownloaded(testDir.absolutePath)
-        TimeUnit.SECONDS.sleep(11)
+        delay(100)
 
         assertEquals(500L, info.loadPersistedBytesDownloaded(testDir.absolutePath))
 
@@ -154,7 +159,7 @@ class DownloadInfoTest {
         assertEquals(0L, info.loadPersistedBytesDownloaded(testDir.absolutePath))
 
         // Wait for the scheduled write delay
-        TimeUnit.SECONDS.sleep(11)
+        delay(11_000)
 
         // File should remain deleted
         assertEquals(0L, info.loadPersistedBytesDownloaded(testDir.absolutePath))

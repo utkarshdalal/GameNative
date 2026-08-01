@@ -375,7 +375,6 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun removeDownloadJob(appId: Int) {
             val removed = downloadJobs.remove(appId)
             if (removed != null) {
-                removed.shutdown()
                 notifyDownloadStopped(appId)
             }
         }
