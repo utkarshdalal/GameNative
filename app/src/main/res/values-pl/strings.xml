@@ -2068,6 +2068,10 @@
     <string name="featured_badge">Sponsorowane</string>
     <string name="featured_action_wishlist">Lista życzeń</string>
     <string name="featured_action_wishlist_on">Dodaj do listy życzeń na %1$s</string>
+    <string name="featured_action_wishlisted">Na liście życzeń</string>
+    <string name="featured_action_get_demo">Pobierz demo</string>
+    <string name="featured_action_in_library">W bibliotece</string>
+    <string name="featured_action_failed">Nie udało się w aplikacji – otwieranie strony sklepu</string>
     <string name="featured_action_preorder">Zamów przedpremierowo</string>
     <string name="featured_action_preorder_on">Zamów przedpremierowo na %1$s</string>
     <string name="featured_action_buy">Kup</string>

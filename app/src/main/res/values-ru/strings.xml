@@ -1996,6 +1996,10 @@ https://gamenative.app
     <string name="featured_badge">Спонсировано</string>
     <string name="featured_action_wishlist">Список желаемого</string>
     <string name="featured_action_wishlist_on">В список желаемого в %1$s</string>
+    <string name="featured_action_wishlisted">В списке желаемого</string>
+    <string name="featured_action_get_demo">Получить демо</string>
+    <string name="featured_action_in_library">В библиотеке</string>
+    <string name="featured_action_failed">Не удалось выполнить в приложении — открывается страница магазина</string>
     <string name="featured_action_preorder">Предзаказ</string>
     <string name="featured_action_preorder_on">Предзаказ в %1$s</string>
     <string name="featured_action_buy">Купить</string>

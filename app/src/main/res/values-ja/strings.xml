@@ -2027,6 +2027,10 @@
     <string name="featured_badge">スポンサー</string>
     <string name="featured_action_wishlist">ウィッシュリスト</string>
     <string name="featured_action_wishlist_on">%1$s でウィッシュリストに追加</string>
+    <string name="featured_action_wishlisted">ウィッシュリスト追加済み</string>
+    <string name="featured_action_get_demo">デモを入手</string>
+    <string name="featured_action_in_library">ライブラリにあります</string>
+    <string name="featured_action_failed">アプリ内で完了できませんでした。ストアページを開きます</string>
     <string name="featured_action_preorder">予約購入</string>
     <string name="featured_action_preorder_on">%1$s で予約購入</string>
     <string name="featured_action_buy">購入</string>

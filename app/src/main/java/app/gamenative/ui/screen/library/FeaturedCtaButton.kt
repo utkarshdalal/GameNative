@@ -1,6 +1,5 @@
 package app.gamenative.ui.screen.library
 
-import android.content.Context
 import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -70,7 +69,7 @@ internal fun FeaturedCtaButton(action: FeaturedCta, campaignId: String, recSourc
         } else {
             busy = true
             scope.launch {
-                val ok = cta.run(context)
+                val ok = cta.run()
                 busy = false
                 if (ok) {
                     done = true
@@ -81,7 +80,7 @@ internal fun FeaturedCtaButton(action: FeaturedCta, campaignId: String, recSourc
                         source = recSource,
                     )
                 } else {
-                    SnackbarManager.show(context.getString(cta.failedTextRes))
+                    SnackbarManager.show(context.getString(R.string.featured_action_failed))
                     openUrl()
                 }
             }
@@ -116,38 +115,24 @@ internal fun FeaturedCtaButton(action: FeaturedCta, campaignId: String, recSourc
 private sealed class InAppCta(
     val appId: Int,
     @StringRes val doneLabelRes: Int,
-    @StringRes val failedTextRes: Int,
 ) {
     /** True/false when the state is known, null when it cannot be determined. */
     abstract suspend fun isDone(): Boolean?
 
     /** Runs the action; true on success. */
-    abstract suspend fun run(context: Context): Boolean
+    abstract suspend fun run(): Boolean
 
-    private class Wishlist(appId: Int) : InAppCta(
-        appId,
-        R.string.featured_action_wishlisted,
-        R.string.featured_wishlist_failed,
-    ) {
+    private class Wishlist(appId: Int) : InAppCta(appId, R.string.featured_action_wishlisted) {
         override suspend fun isDone(): Boolean? = SteamWishlistService.isWishlisted(appId)
 
-        override suspend fun run(context: Context): Boolean =
+        override suspend fun run(): Boolean =
             SteamWishlistService.addToWishlist(appId) is SteamWishlistService.Outcome.Success
     }
 
-    private class GetDemo(appId: Int) : InAppCta(
-        appId,
-        R.string.featured_action_in_library,
-        R.string.featured_demo_failed,
-    ) {
+    private class GetDemo(appId: Int) : InAppCta(appId, R.string.featured_action_in_library) {
         override suspend fun isDone(): Boolean = SteamService.isAppInLibrary(appId)
 
-        override suspend fun run(context: Context): Boolean =
-            SteamService.requestFreeLicense(appId).also { granted ->
-                if (granted) {
-                    SnackbarManager.show(context.getString(R.string.featured_demo_added))
-                }
-            }
+        override suspend fun run(): Boolean = SteamService.requestFreeLicense(appId)
     }
 
     companion object {

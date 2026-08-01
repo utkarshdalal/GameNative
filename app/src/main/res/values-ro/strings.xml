@@ -2071,6 +2071,10 @@
     <string name="featured_badge">Sponsorizat</string>
     <string name="featured_action_wishlist">Listă de dorințe</string>
     <string name="featured_action_wishlist_on">Adaugă în listă pe %1$s</string>
+    <string name="featured_action_wishlisted">În lista de dorințe</string>
+    <string name="featured_action_get_demo">Obține demo-ul</string>
+    <string name="featured_action_in_library">În bibliotecă</string>
+    <string name="featured_action_failed">Nu s-a putut finaliza în aplicație – se deschide pagina magazinului</string>
     <string name="featured_action_preorder">Precomandă</string>
     <string name="featured_action_preorder_on">Precomandă pe %1$s</string>
     <string name="featured_action_buy">Cumpără</string>
