@@ -22,7 +22,7 @@ object RecommendationRepository {
 
     // Verbatim /api/games/hero payload for a sponsored campaign with in-app CTAs; goes through
     // parseHero like a real response, so it exercises deserialization, not just the UI.
-    private val MOCK_HERO_JSON = """
+    internal val MOCK_HERO_JSON = """
         {
           "recommendation": null,
           "featured": {
