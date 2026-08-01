@@ -208,6 +208,8 @@ class SteamAutoCloudConflictDetectionTest {
         val m = mock<AppFileInfo>()
         whenever(m.filename).thenReturn(name)
         whenever(m.shaFile).thenReturn(sha)
+        // upstream #1729 gates prefix lookup on the proto presence bit; mocks must set it.
+        whenever(m.hasPathPrefixIndex).thenReturn(true)
         whenever(m.pathPrefixIndex).thenReturn(prefixIndex)
         whenever(m.timestamp).thenReturn(Date())
         whenever(m.rawFileSize).thenReturn(sizeBytes)
