@@ -30,8 +30,8 @@ object RecommendationRepository {
             "title": "Whisk",
             "appId": 3602270,
             "developer": "Double Dusk Inc.",
-            "heroImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/04f63f73ec6aefcb4efc26a7c4049aebffb99368/header.jpg",
-            "capsuleImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/8746d0c28b68abd78cdc7b9c6ad651af33381827/capsule_231x87.jpg",
+            "heroImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/92fb97a2832c9c075165c43d14d974c730ca716b/library_hero.jpg",
+            "capsuleImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/435512f90bdf39498f17fcbd103b19fa1223a430/library_capsule.jpg",
             "screenshots": [
               "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/e0a52a09cd85472aecfb430ad086aae040cb100c/ss_e0a52a09cd85472aecfb430ad086aae040cb100c.1920x1080.jpg",
               "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/77719570b08d1b46facf8477df20aa5b97b54573/ss_77719570b08d1b46facf8477df20aa5b97b54573.1920x1080.jpg",
