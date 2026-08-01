@@ -996,7 +996,7 @@ fun ElementEditorDialog(
                                 currentScale = 1.0f
                                 element.setScale(1.0f)
                                 currentButtonStrokeScale = ControlElement.DEFAULT_BUTTON_STROKE_SCALE
-                                currentLookThrough = null
+                                currentLookThrough = ControlElement.DEFAULT_LOOK_THROUGH
                                 currentLegacyShooterLookThrough = true
                                 view.invalidate()
                                 hasUnsavedChanges = true

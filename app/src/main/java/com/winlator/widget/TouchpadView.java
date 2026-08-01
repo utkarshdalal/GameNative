@@ -49,6 +49,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private final float[] xform;
     private boolean simTouchScreen = false;
     private boolean continueClick = true;
+    private Runnable simulatedTouchPressRunnable;
+    private boolean simulatedTouchButtonDown;
     private int lastTouchedPosX;
     private int lastTouchedPosY;
     private static final Byte CLICK_DELAYED_TIME = 50;
@@ -454,19 +456,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 fingers[pointerId] = new Finger(event.getX(actionIndex), event.getY(actionIndex));
                 numFingers++;
                 if (simTouchScreen) {
-                    final Runnable clickDelay = () -> {
-                        if (continueClick) {
-                            xServer.injectPointerMove(lastTouchedPosX, lastTouchedPosY);
-                            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
-                        }
-                    };
                     if (pointerId == 0) {
                         continueClick = true;
                         if (Math.hypot(fingers[0].x - lastTouchedPosX, fingers[0].y - lastTouchedPosY) * resolutionScale > EFFECTIVE_TOUCH_DISTANCE) {
                             lastTouchedPosX = fingers[0].x;
                             lastTouchedPosY = fingers[0].y;
                         }
-                        postDelayed(clickDelay, CLICK_DELAYED_TIME);
+                        scheduleSimulatedTouchPress();
                     } else if (pointerId == 1) {
                         // When put a finger on InputControl, such as a button.
                         // The pointerId that TouchPadView got won't increase from 1, so map 1 as 0 here.
@@ -476,7 +472,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                                 lastTouchedPosX = fingers[1].x;
                                 lastTouchedPosY = fingers[1].y;
                             }
-                            postDelayed(clickDelay, CLICK_DELAYED_TIME);
+                            scheduleSimulatedTouchPress();
                         } else
                             continueClick = System.currentTimeMillis() - fingers[0].touchTime > CLICK_DELAYED_TIME;
                     }
@@ -521,6 +517,16 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     void cancelTouchInput() {
         continueClick = false;
+        if (simulatedTouchPressRunnable != null) {
+            removeCallbacks(simulatedTouchPressRunnable);
+            simulatedTouchPressRunnable = null;
+        }
+        if (simulatedTouchButtonDown) {
+            if (xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
+                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+            }
+            simulatedTouchButtonDown = false;
+        }
         cancelPointerButtonLeft(fingerPointerButtonLeft);
         cancelPointerButtonRight(fingerPointerButtonRight);
         for (byte i = 0; i < MAX_FINGERS; i++) {
@@ -531,6 +537,25 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         scrolling = false;
         suppressNextLeftTap = false;
         handleTsCancel();
+    }
+
+    private void scheduleSimulatedTouchPress() {
+        if (simulatedTouchPressRunnable != null) {
+            removeCallbacks(simulatedTouchPressRunnable);
+        }
+        simulatedTouchPressRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (simulatedTouchPressRunnable != this) return;
+                simulatedTouchPressRunnable = null;
+                if (continueClick) {
+                    xServer.injectPointerMove(lastTouchedPosX, lastTouchedPosY);
+                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+                    simulatedTouchButtonDown = true;
+                }
+            }
+        };
+        postDelayed(simulatedTouchPressRunnable, CLICK_DELAYED_TIME);
     }
 
     private void cancelPointerButtonLeft(Finger finger) {
@@ -1953,6 +1978,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             Pointer.Button button = Pointer.Button.BUTTON_LEFT;
             if (pointer.isButtonPressed(button)) {
                 this.xServer.injectPointerButtonRelease(button);
+                simulatedTouchButtonDown = false;
             }
             this.xServer.injectPointerButtonPress(button);
             this.fingerPointerButtonLeft = finger;
