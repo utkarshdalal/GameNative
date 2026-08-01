@@ -1312,6 +1312,7 @@ class SteamAutoCloudTest {
         val mockFile = mock<AppFileInfo>()
         whenever(mockFile.filename).thenReturn("System.save")
         whenever(mockFile.shaFile).thenReturn(fileHash)
+        whenever(mockFile.hasPathPrefixIndex).thenReturn(true)
         whenever(mockFile.pathPrefixIndex).thenReturn(0)
         whenever(mockFile.timestamp).thenReturn(Date())
         whenever(mockFile.rawFileSize).thenReturn(fileContent.size)
