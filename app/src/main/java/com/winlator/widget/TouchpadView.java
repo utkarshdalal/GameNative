@@ -209,7 +209,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         // any held drag/long-press/2F/3F-hold injections, and resets gesture
         // state. Avoids leaking pressed buttons/keys when the view is removed
         // mid-gesture (e.g., game exit while a hold is active).
-        handleTsCancel();
+        cancelTouchInput();
         super.onDetachedFromWindow();
     }
 
