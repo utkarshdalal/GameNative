@@ -9,6 +9,9 @@ import java.io.File
 import java.time.Instant
 import java.util.zip.GZIPInputStream
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -39,6 +42,9 @@ object EpicCloudSavesManager {
     )
 
     private val baseCloudSyncUrl = "https://datastorage-public-service-liveegs.live.use1a.on.epicgames.com"
+
+    // Number of chunk downloads to run concurrently.
+    private const val MAX_PARALLEL_CHUNK_DOWNLOADS = 16
 
     private val httpClient = Net.http
 
@@ -159,8 +165,9 @@ object EpicCloudSavesManager {
             val saveDir = resolveSaveDirectory(context, game, accountId)
             val hasLocalFiles = saveDir?.exists() == true && (saveDir.listFiles()?.isNotEmpty() == true)
 
-            // Check cloud saves
-            val cloudSavesResult = listCloudSaves(game.appName, context)
+            // Check cloud saves (manifests only - presence of a manifest indicates cloud saves exist,
+            // and this avoids the 1000-entry listing cap)
+            val cloudSavesResult = listCloudSaves(game.appName, context, manifestsOnly = true)
             if (cloudSavesResult.isFailure) {
                 Timber.tag("Epic").w("[Cloud Saves] Failed to list cloud saves, will try upload if local files exist")
                 return@withContext if (hasLocalFiles) SyncAction.UPLOAD else SyncAction.NONE
@@ -234,7 +241,15 @@ object EpicCloudSavesManager {
     }
 
     // List available cloud saves
-    private suspend fun listCloudSaves(appName: String, context: Context): Result<CloudSaveFiles> = withContext(Dispatchers.IO) {
+    // The EGS metadata listing is capped at 1000 entries, so for save-heavy games the chunk
+    // files needed to reconstruct saves can be pushed out of the response entirely. When only
+    // the manifest is needed, pass manifestsOnly = true to hit the "/manifests/" sub-path, which
+    // returns just the manifest files and never hits the cap.
+    private suspend fun listCloudSaves(
+        appName: String,
+        context: Context,
+        manifestsOnly: Boolean = false,
+    ): Result<CloudSaveFiles> = withContext(Dispatchers.IO) {
         try {
             // Get global Epic credentials (will auto-refresh if expired)
             val credentialsResult = EpicAuthManager.getStoredCredentials(context)
@@ -246,10 +261,11 @@ object EpicCloudSavesManager {
             val accountId = credentials.accountId
             val accessToken = credentials.accessToken
 
-            Timber.tag("Epic").d("[Cloud Saves] Listing saves for $appName (account: $accountId)")
+            Timber.tag("Epic").d("[Cloud Saves] Listing saves for $appName (account: $accountId, manifestsOnly: $manifestsOnly)")
 
+            val pathSuffix = if (manifestsOnly) "manifests/" else ""
             val request = Request.Builder()
-                .url("$baseCloudSyncUrl/api/v1/access/egstore/savesync/$accountId/$appName/")
+                .url("$baseCloudSyncUrl/api/v1/access/egstore/savesync/$accountId/$appName/$pathSuffix")
                 .header("Authorization", "Bearer $accessToken")
                 .get()
                 .build()
@@ -347,8 +363,9 @@ object EpicCloudSavesManager {
 
             Timber.tag("Epic").i("[Cloud Saves] Found ${localFiles.size} local files")
 
-            // 2. Get cloud files and their timestamps
-            val cloudSavesResult = listCloudSaves(game.appName, context)
+            // 2. Get cloud files and their timestamps (manifests only - chunk read links are
+            //    requested separately to bypass the 1000-entry listing cap)
+            val cloudSavesResult = listCloudSaves(game.appName, context, manifestsOnly = true)
             if (cloudSavesResult.isFailure) {
                 Timber.tag("Epic").e("[Cloud Saves] Failed to list cloud saves")
                 return@withContext false
@@ -438,36 +455,12 @@ object EpicCloudSavesManager {
             if (toDownload.isNotEmpty()) {
                 Timber.tag("Epic").i("[Cloud Saves] Downloading ${toDownload.size} files based on timestamp comparison")
 
-                // Download the required chunks and reconstruct files
-                val chunks = mutableMapOf<String, ByteArray>()
-                val pathPrefix = manifestPath.split("/", limit = 4).take(3).joinToString("/")
-
+                // Download the required chunks (parallel, with explicit read-link request) and
+                // reconstruct files
                 Timber.tag("Epic").d("[Cloud Saves] Manifest path: $manifestPath")
-                Timber.tag("Epic").d("[Cloud Saves] Path prefix: $pathPrefix")
-                Timber.tag("Epic").d("[Cloud Saves] Available cloud files: ${cloudSaves.files.keys.take(10)}")
-
-                manifest.chunkDataList?.elements?.forEach { chunkInfo ->
-                    try {
-                        val chunkPath = "$pathPrefix/${chunkInfo.getPath()}"
-                        Timber.tag("Epic").d("[Cloud Saves] Looking for chunk at: $chunkPath")
-                        val chunkFile = cloudSaves.files[chunkPath]
-
-                        if (chunkFile?.readLink == null) {
-                            Timber.tag("Epic").w("[Cloud Saves] Chunk not found in cloud: $chunkPath")
-                            downloadSuccess = false
-                            return@forEach
-                        }
-
-                        Timber.tag("Epic").d("[Cloud Saves] Downloading chunk: ${chunkInfo.getPath()}")
-                        val chunkData = downloadFile(chunkFile.readLink)
-                        if (chunkData.isSuccess) {
-                            val chunkBytes = chunkData.getOrNull()!!
-                            val decompressedData = decompressChunk(chunkBytes)
-                            chunks[chunkInfo.guidStr] = decompressedData
-                        }
-                    } catch (e: Exception) {
-                        Timber.tag("Epic").e(e, "[Cloud Saves] Error processing chunk: ${chunkInfo.getPath()}")
-                    }
+                val chunks = downloadChunksParallel(context, game.appName, manifest)
+                if (chunks.size < (manifest.chunkDataList?.elements?.size ?: 0)) {
+                    downloadSuccess = false
                 }
 
                 // Reconstruct only the files we need to download
@@ -543,8 +536,9 @@ object EpicCloudSavesManager {
                 return@withContext false
             }
 
-            // 2. List cloud saves
-            val cloudSavesResult = listCloudSaves(game.appName, context)
+            // 2. List cloud saves (manifests only - chunk read links are requested separately to
+            //    bypass the 1000-entry listing cap that breaks save-heavy games)
+            val cloudSavesResult = listCloudSaves(game.appName, context, manifestsOnly = true)
             if (cloudSavesResult.isFailure) {
                 Timber.tag("Epic").e("[Cloud Saves] Failed to list saves: ${cloudSavesResult.exceptionOrNull()?.message}")
                 return@withContext false
@@ -596,36 +590,8 @@ object EpicCloudSavesManager {
 
             Timber.tag("Epic").i("[Cloud Saves] Manifest parsed: ${manifest.fileManifestList?.elements?.size ?: 0} files")
 
-            // 7. Download chunks referenced in manifest
-            val chunks = mutableMapOf<String, ByteArray>()
-            val pathPrefix = manifestPath.split("/", limit = 4).take(3).joinToString("/")
-
-            manifest.chunkDataList?.elements?.forEach { chunkInfo ->
-                try {
-                    // Get chunk path using ChunkInfo's getPath method
-                    val chunkPath = "$pathPrefix/${chunkInfo.getPath()}"
-                    val chunkFile = cloudSaves.files[chunkPath]
-
-                    if (chunkFile?.readLink == null) {
-                        Timber.tag("Epic").w("[Cloud Saves] Chunk not found in cloud: $chunkPath")
-                        return@forEach
-                    }
-
-                    Timber.tag("Epic").d("[Cloud Saves] Downloading chunk: ${chunkInfo.getPath()}")
-                    val chunkData = downloadFile(chunkFile.readLink)
-                    if (chunkData.isSuccess) {
-                        // Decompress and extract chunk data
-                        val chunkBytes = chunkData.getOrNull()!!
-                        val decompressedData = decompressChunk(chunkBytes)
-                        chunks[chunkInfo.guidStr] = decompressedData
-                        Timber.tag("Epic").d("[Cloud Saves] Chunk downloaded: ${chunkInfo.guidStr} (${decompressedData.size} bytes)")
-                    } else {
-                        Timber.tag("Epic").e("[Cloud Saves] Failed to download chunk: ${chunkInfo.getPath()}")
-                    }
-                } catch (e: Exception) {
-                    Timber.tag("Epic").e(e, "[Cloud Saves] Error processing chunk: ${chunkInfo.getPath()}")
-                }
-            }
+            // 7. Download chunks referenced in manifest (parallel, with explicit read-link request)
+            val chunks = downloadChunksParallel(context, game.appName, manifest)
 
             if (chunks.isEmpty()) {
                 Timber.tag("Epic").e("[Cloud Saves] No chunks were downloaded, aborting")
@@ -871,6 +837,170 @@ object EpicCloudSavesManager {
         }
     }
 
+    // Request read links for specific files
+    //
+    // Uses the same POST endpoint as requestWriteLinks, but reads the "readLink" field. This lets
+    // us fetch download links for an explicit list of chunk paths, bypassing the 1000-entry cap on
+    // the GET listing. File names must be the relative chunk paths (ChunkInfo.getPath()), matching
+    // the keys used on the upload side.
+    private suspend fun requestReadLinks(
+        context: Context,
+        appName: String,
+        fileNames: List<String>,
+    ): Map<String, String> = withContext(Dispatchers.IO) {
+        try {
+            val credentialsResult = EpicAuthManager.getStoredCredentials(context)
+            if (credentialsResult.isFailure) {
+                return@withContext emptyMap()
+            }
+
+            val credentials = credentialsResult.getOrNull()!!
+            val accountId = credentials.accountId
+            val accessToken = credentials.accessToken
+
+            Timber.tag("Epic").d("[Cloud Saves] Requesting read links for ${fileNames.size} files")
+
+            val requestJson = JSONObject().apply {
+                put("files", JSONArray(fileNames))
+            }
+            val requestBody = requestJson.toString()
+
+            val request = Request.Builder()
+                .url("$baseCloudSyncUrl/api/v1/access/egstore/savesync/$accountId/$appName/")
+                .header("Authorization", "Bearer $accessToken")
+                .header("Content-Type", "application/json")
+                .post(requestBody.toRequestBody("application/json".toMediaType()))
+                .build()
+
+            val response = httpClient.newCall(request).execute()
+
+            val responseBody = try {
+                response.body?.string() ?: ""
+            } catch (e: Exception) {
+                Timber.tag("Epic").e(e, "[Cloud Saves] Failed to read read-links response body")
+                ""
+            }
+
+            response.close()
+
+            if (!response.isSuccessful) {
+                Timber.tag("Epic").e("[Cloud Saves] Failed to request read links: ${response.code}")
+                Timber.tag("Epic").e("[Cloud Saves] Response body: $responseBody")
+                return@withContext emptyMap()
+            }
+
+            try {
+                val json = JSONObject(responseBody.ifEmpty { "{}" })
+                val filesJson = json.optJSONObject("files") ?: JSONObject()
+
+                val readLinks = mutableMapOf<String, String>()
+                filesJson.keys().forEach { key ->
+                    val fileJson = filesJson.getJSONObject(key)
+                    val readLink = fileJson.optString("readLink")
+                    if (readLink.isNotEmpty()) {
+                        readLinks[key] = readLink
+                    }
+                }
+
+                Timber.tag("Epic").i("[Cloud Saves] Received ${readLinks.size} read links")
+                readLinks
+            } catch (e: Exception) {
+                Timber.tag("Epic").e(e, "[Cloud Saves] Failed to parse read links response")
+                Timber.tag("Epic").e("[Cloud Saves] Response was: $responseBody")
+                emptyMap()
+            }
+        } catch (e: Exception) {
+            Timber.tag("Epic").e(e, "[Cloud Saves] Failed to request read links")
+            emptyMap()
+        }
+    }
+
+    /**
+     * Download and decompress all chunks referenced by [manifest], returning a map of
+     * chunk GUID (guidStr) -> decompressed chunk bytes.
+     *
+     * Read links are requested explicitly for the manifest's chunk paths (bypassing the
+     * 1000-entry listing cap), then downloaded in parallel with per-chunk retry on transient
+     * failures.
+     */
+    private suspend fun downloadChunksParallel(
+        context: Context,
+        appName: String,
+        manifest: EpicManifest,
+    ): Map<String, ByteArray> = withContext(Dispatchers.IO) {
+        val chunkInfos = manifest.chunkDataList?.elements ?: return@withContext emptyMap()
+        if (chunkInfos.isEmpty()) return@withContext emptyMap()
+
+        // Request read links for the exact chunk paths the manifest references.
+        val chunkPaths = chunkInfos.map { it.getPath() }
+        val readLinks = requestReadLinks(context, appName, chunkPaths)
+
+        if (readLinks.size < chunkPaths.size) {
+            Timber.tag("Epic").w(
+                "[Cloud Saves] Expected ${chunkPaths.size} chunk links, found ${readLinks.size} - save may be incomplete",
+            )
+        }
+
+        // Download in parallel with a bounded per-host dispatcher; default client throttles to 5/host.
+        val parallelClient = Net.httpForParallelDownloads(MAX_PARALLEL_CHUNK_DOWNLOADS)
+
+        val results = coroutineScope {
+            chunkInfos.map { chunkInfo ->
+                async {
+                    val readLink = readLinks[chunkInfo.getPath()]
+                    if (readLink == null) {
+                        Timber.tag("Epic").w("[Cloud Saves] No read link for chunk: ${chunkInfo.getPath()}")
+                        return@async null
+                    }
+                    val data = downloadChunkWithRetry(parallelClient, readLink)
+                    if (data == null) {
+                        Timber.tag("Epic").e("[Cloud Saves] Failed to download chunk after retries: ${chunkInfo.getPath()}")
+                        null
+                    } else {
+                        chunkInfo.guidStr to decompressChunk(data)
+                    }
+                }
+            }.awaitAll()
+        }
+
+        val chunks = results.filterNotNull().toMap()
+        Timber.tag("Epic").i("[Cloud Saves] Downloaded ${chunks.size}/${chunkInfos.size} chunks")
+        chunks
+    }
+
+    // Download a single chunk with retry on transient failures.
+    private suspend fun downloadChunkWithRetry(
+        client: okhttp3.OkHttpClient,
+        readLink: String,
+        maxAttempts: Int = 3,
+    ): ByteArray? = withContext(Dispatchers.IO) {
+        var attempt = 0
+        while (attempt < maxAttempts) {
+            attempt++
+            try {
+                val request = Request.Builder().url(readLink).get().build()
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val data = response.body?.bytes()
+                        if (data != null && data.isNotEmpty()) {
+                            return@withContext data
+                        }
+                        Timber.tag("Epic").w("[Cloud Saves] Empty chunk response (attempt $attempt/$maxAttempts)")
+                    } else {
+                        Timber.tag("Epic").w("[Cloud Saves] Chunk download failed: ${response.code} (attempt $attempt/$maxAttempts)")
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag("Epic").w(e, "[Cloud Saves] Chunk download error (attempt $attempt/$maxAttempts)")
+            }
+            if (attempt < maxAttempts) {
+                // Small linear backoff before retrying.
+                kotlinx.coroutines.delay(100L * attempt)
+            }
+        }
+        null
+    }
+
     // Upload a single file
     private suspend fun uploadFile(writeLink: String, data: ByteArray): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -1043,8 +1173,7 @@ object EpicCloudSavesManager {
         val shaHash = java.security.MessageDigest.getInstance("SHA-1").digest(paddedData)
         val rollingHash = calculateRollingHash(paddedData)
 
-        // Compute groupNum exactly as Legendary does:
-        // group_num = crc32(struct.pack('<IIII', *guid)) & 0xffffffff) % 100
+        // groupNum = crc32(little-endian guid bytes) % 100
         val guidBytes = ByteArray(16)
         val guidBuf = java.nio.ByteBuffer.wrap(guidBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
         guid.forEach { guidBuf.putInt(it) }
@@ -1122,11 +1251,8 @@ object EpicCloudSavesManager {
     }
 
     /**
-     * CRC-64-ECMA variant lookup table
-     * Polynomial: 0xC96C5795D7870F42
-     * Table built identically to Legendary's _init():
-     *   for i in 0..255:
-     *     for _ in 0..7: if i&1 -> i = (i>>1) ^ poly  else i >>= 1
+     * CRC-64-ECMA variant lookup table, polynomial 0xC96C5795D7870F42.
+     * For each seed byte, 8 rounds of: if bit 0 set -> (v >> 1) ^ poly, else v >> 1.
      */
     private val ROLLING_HASH_TABLE: LongArray = run {
         val poly = 0xC96C5795D7870F42uL
@@ -1140,9 +1266,7 @@ object EpicCloudSavesManager {
     }
 
     /**
-     * Epic Games rolling hash — exact port of Legendary's get_hash() in rolling_hash.py:
-     *   h = 0
-     *   for each byte i: h = ((h << 1 | h >> 63) ^ table[data[i]]) & 0xffffffffffffffff
+     * Epic Games' rolling hash: h = ((h << 1) | (h >> 63)) ^ table[byte], folded over the data.
      */
     internal fun calculateRollingHash(data: ByteArray): ULong {
         var h = 0uL
@@ -1354,7 +1478,7 @@ object EpicCloudSavesManager {
     }
 
     /**
-     * Decompress a binary chunk file — matches Legendary's Chunk.read() + Chunk.data property.
+     * Decompress a binary chunk file.
      *
      * Header layout (little-endian):
      *   magic(4) + headerVersion(4) + headerSize(4) + compressedSize(4)
