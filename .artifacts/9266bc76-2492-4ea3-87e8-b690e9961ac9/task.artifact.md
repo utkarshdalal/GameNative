@@ -1,0 +1,19 @@
+- [x] Step 1: Thread Safety and Singleton Enforcement
+    - [x] Add synchronization to `CustomGameCache.kt`
+    - [x] Make `ContainerManager.java` final
+- [x] Step 2: UI Polish
+    - [x] Fix horizontal dividers in `LibraryListPane.kt`
+- [x] Step 3: Documentation and Path Cleanup
+    - [x] Add KDoc to `CustomGameScanner.kt`
+    - [x] Add KDoc to `CustomGameCache.kt`
+    - [x] Add Javadoc to `ContainerManager.java`
+    - [x] Add KDoc to `LibraryListCard.kt`
+    - [x] Add KDoc to `LibraryAppItem.kt`
+    - [x] Add KDoc to `LibraryListPane.kt`
+    - [x] Replace absolute paths with relative repo links in all docs/comments
+- [x] Step 4: Robustness for External Storage
+    - [x] Add exists() checks and try-catch in `CustomGameScanner.kt`
+- [x] Step 5: Verification
+    - [x] Build project and check for errors
+    - [x] Verify UI changes (dividers)
+    - [x] Verify Singleton usage

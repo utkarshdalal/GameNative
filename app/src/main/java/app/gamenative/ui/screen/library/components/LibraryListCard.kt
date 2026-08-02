@@ -55,9 +55,22 @@ import kotlinx.coroutines.withContext
 
 /**
  * List view card with compact layout.
+ *
+ * @param modifier The modifier to be applied to the layout.
+ * @param appInfo Information about the library item (game/app).
+ * @param onClick Callback when the card is clicked.
+ * @param onFocus Callback when the card receives focus.
+ * @param isFocused Whether the card is currently focused.
+ * @param onFocusChanged Callback when focus state changes.
+ * @param isRefreshing Whether the library is currently refreshing.
+ * @param imageRefreshCounter Counter to trigger icon reloads.
+ * @param compatibilityStatus The compatibility status of the game.
+ * @param gameStats Statistics for the game (e.g., play time).
+ * @param context The Android context.
  */
 @Composable
 internal fun ListViewCard(
+
     modifier: Modifier,
     appInfo: LibraryItem,
     onClick: () -> Unit,
@@ -65,6 +78,7 @@ internal fun ListViewCard(
     isFocused: Boolean,
     onFocusChanged: (Boolean) -> Unit,
     isRefreshing: Boolean,
+    imageRefreshCounter: Long,
     compatibilityStatus: GameCompatibilityStatus?,
     gameStats: GameCardStats?,
     context: Context,
@@ -115,11 +129,12 @@ internal fun ListViewCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Game icon
+            // Game icon - start with empty to avoid synchronous LibraryItem getter
             val iconUrl by produceState(
-                initialValue = appInfo.clientIconUrl,
+                initialValue = "",
                 key1 = appInfo.appId,
                 key2 = appInfo.clientIconUrl,
+                key3 = imageRefreshCounter,
             ) {
                 value = withContext(Dispatchers.IO) {
                     getListIconUrl(context, appInfo)
@@ -205,6 +220,10 @@ internal fun ListViewCard(
 
 /**
  * Compact install status badge for list view.
+ * Displays a small dot and status text (Ready, Installed, Not Installed, or progress).
+ *
+ * @param appInfo The library item to show status for.
+ * @param isRefreshing Whether the library is currently refreshing.
  */
 @Composable
 private fun InstallStatusBadge(
@@ -220,13 +239,7 @@ private fun InstallStatusBadge(
     }
     val isDownloading = downloadInfo != null && downloadProgress < 1f
     var isInstalled by remember(appInfo.appId) {
-        mutableStateOf(
-            if (isSteam) {
-                SteamService.isAppInstalled(appInfo.gameId)
-            } else {
-                true // Custom Games always installed
-            },
-        )
+        mutableStateOf(appInfo.isInstalled)
     }
 
     LaunchedEffect(isRefreshing) {
@@ -272,6 +285,11 @@ private fun InstallStatusBadge(
 
 /**
  * Gets the icon URL for a game in list view.
+ * For custom games, it attempts to resolve a local icon path; otherwise, it falls back to the client icon URL.
+ *
+ * @param context The Android context.
+ * @param appInfo The library item to resolve the icon for.
+ * @return A URL string (can be file:// or http://).
  */
 private fun getListIconUrl(context: Context, appInfo: LibraryItem): String {
     if (appInfo.isRecommended) return appInfo.iconHash

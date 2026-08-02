@@ -46,7 +46,7 @@ public abstract class ImageFsInstaller {
     public static final byte LATEST_VERSION = 30;
 
     private static void resetContainerImgVersions(Context context) {
-        ContainerManager manager = new ContainerManager(context);
+        ContainerManager manager = ContainerManager.getInstance(context);
         for (Container container : manager.getContainers()) {
             String imgVersion = container.getExtra("imgVersion");
             String wineVersion = container.getWineVersion();
@@ -164,7 +164,7 @@ public abstract class ImageFsInstaller {
 
             if (success) {
                 Log.d("ImageFsInstaller", "Successfully installed system files");
-                ContainerManager containerManager = new ContainerManager(context);
+                ContainerManager containerManager = ContainerManager.getInstance(context);
 
                 installWineFromDownloads(context);
                 installGuestLibs(context);

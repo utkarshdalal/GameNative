@@ -641,12 +641,12 @@ object ContainerUtils {
     }
 
     fun hasContainer(context: Context, appId: String): Boolean {
-        val containerManager = ContainerManager(context)
+        val containerManager = ContainerManager.getInstance(context)
         return containerManager.hasContainer(appId)
     }
 
     fun getContainer(context: Context, appId: String): Container {
-        val containerManager = ContainerManager(context)
+        val containerManager = ContainerManager.getInstance(context)
         return if (containerManager.hasContainer(appId)) {
             containerManager.getContainerById(appId)
         } else {
@@ -1004,8 +1004,16 @@ object ContainerUtils {
         return container
     }
 
+    /**
+     * Retrieves an existing container or creates a new one if it doesn't exist.
+     * Handles drive mapping for various game sources.
+     *
+     * @param context The Android context.
+     * @param appId The ID of the app.
+     * @return The existing or newly created Container.
+     */
     fun getOrCreateContainer(context: Context, appId: String): Container {
-        val containerManager = ContainerManager(context)
+        val containerManager = ContainerManager.getInstance(context)
 
         val container = if (containerManager.hasContainer(appId)) {
             containerManager.getContainerById(appId)
@@ -1097,8 +1105,15 @@ object ContainerUtils {
         return container
     }
 
+    /**
+     * Retrieves an existing container or creates a new one, applying temporary configuration overrides if they exist.
+     *
+     * @param context The Android context.
+     * @param appId The ID of the app.
+     * @return The Container object.
+     */
     fun getOrCreateContainerWithOverride(context: Context, appId: String): Container {
-        val containerManager = ContainerManager(context)
+        val containerManager = ContainerManager.getInstance(context)
 
         return if (containerManager.hasContainer(appId)) {
             val container = containerManager.getContainerById(appId)
@@ -1137,10 +1152,13 @@ object ContainerUtils {
 
     /**
      * Deletes the container associated with the given appId, if it exists.
+     *
+     * @param context The Android context.
+     * @param appId The ID of the app.
      */
     fun deleteContainer(context: Context, appId: String) {
         Timber.i("[ContainerDeletion] Attempting to delete container for appId=$appId")
-        val manager = ContainerManager(context)
+        val manager = ContainerManager.getInstance(context)
         val hasContainer = manager.hasContainer(appId)
         Timber.i("[ContainerDeletion] hasContainer($appId) = $hasContainer")
         if (hasContainer) {
@@ -1173,6 +1191,7 @@ object ContainerUtils {
             }
         }
     }
+
 
     /**
      * Extracts the game ID from a container ID string

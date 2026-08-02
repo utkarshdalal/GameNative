@@ -2062,7 +2062,7 @@ fun XServerScreen(
 
                     setupExecutor.submit {
                         try {
-                            val containerManager = ContainerManager(context)
+                            val containerManager = ContainerManager.getInstance(context)
                             // Configure WinHandler with container's input API settings
                             val handler = getxServer().winHandler
                             if (container.inputType !in 0..3) {

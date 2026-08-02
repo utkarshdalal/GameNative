@@ -7,6 +7,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -65,10 +67,12 @@ import kotlinx.coroutines.flow.filterNotNull
 import timber.log.Timber
 
 /**
- * Calculates the installed games count based on the current filter state.
+ * Calculates the total number of installed games across all sources.
+ * It iterates through active sources (Steam, Custom, GOG, Epic, Amazon) and sums their counts.
  *
- * @param state The current library state containing filters and visibility settings
- * @return The number of installed games, respecting current filters and source visibility
+ * @param context The Android context.
+ * @param state The current library state containing visibility filters.
+ * @return Total count of installed apps.
  */
 private fun calculateInstalledCount(context: android.content.Context, state: LibraryState): Int {
     if (state.appInfoSortType.contains(AppFilter.INSTALLED)) {
@@ -110,18 +114,31 @@ private fun calculateInstalledCount(context: android.content.Context, state: Lib
     return steamCount + customGameCount + gogCount + epicCount + amazonCount
 }
 
+/**
+ * Composable that displays the library items in a scrollable list or grid.
+ *
+ * @param state The current state of the library.
+ * @param listState The state of the scrollable grid.
+ * @param currentLayout The current layout type (list, hero grid, etc.).
+ * @param firstGridItemFocusRequester Focus requester for the first item in the grid.
+ * @param focusTargetListIndex The index of the item that should receive focus.
+ * @param onPageChange Callback for pagination.
+ * @param onNavigate Callback for navigating to a game's detail screen.
+ * @param onRefresh Callback for manual library refresh.
+ * @param modifier The modifier to be applied to the layout.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LibraryListPane(
     state: LibraryState,
     listState: LazyGridState,
     currentLayout: PaneType,
-    firstGridItemFocusRequester: FocusRequester? = null,
-    focusTargetListIndex: Int? = null,
     onPageChange: (Int) -> Unit,
     onNavigate: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    firstGridItemFocusRequester: FocusRequester? = null,
+    focusTargetListIndex: Int? = null,
 ) {
     val context = LocalContext.current
     val snackBarHost = remember { SnackbarHostState() }
@@ -275,29 +292,35 @@ internal fun LibraryListPane(
                                     }
                                 }
 
-                                Box(modifier = Modifier.graphicsLayer { this.alpha = alpha }) {
-                                    val appItemModifier = if (firstGridItemFocusRequester != null &&
-                                        focusTargetListIndex != null &&
-                                        listIndex == focusTargetListIndex
-                                    ) {
-                                        Modifier.focusRequester(firstGridItemFocusRequester)
-                                    } else {
-                                        Modifier
+                                Column {
+                                    if (listIndex > 0 && currentLayout == PaneType.LIST) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = horizontalPadding),
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                        )
                                     }
 
-                                    if (item.index > 0 && currentLayout == PaneType.LIST) {
-                                        HorizontalDivider()
+                                    Box(modifier = Modifier.graphicsLayer { this.alpha = alpha }) {
+                                        val appItemModifier = if (firstGridItemFocusRequester != null &&
+                                            focusTargetListIndex != null &&
+                                            listIndex == focusTargetListIndex
+                                        ) {
+                                            Modifier.focusRequester(firstGridItemFocusRequester)
+                                        } else {
+                                            Modifier
+                                        }
+
+                                        AppItem(
+                                            modifier = appItemModifier,
+                                            appInfo = item,
+                                            onClick = { onNavigate(item.appId) },
+                                            paneType = currentLayout,
+                                            onFocus = { targetOfScroll = item.index },
+                                            imageRefreshCounter = state.imageRefreshCounter,
+                                            compatibilityStatus = state.compatibilityMap[item.name],
+                                            gameStats = state.statsFor(item),
+                                        )
                                     }
-                                    AppItem(
-                                        modifier = appItemModifier,
-                                        appInfo = item,
-                                        onClick = { onNavigate(item.appId) },
-                                        paneType = currentLayout,
-                                        onFocus = { targetOfScroll = item.index },
-                                        imageRefreshCounter = state.imageRefreshCounter,
-                                        compatibilityStatus = state.compatibilityMap[item.name],
-                                        gameStats = state.statsFor(item),
-                                    )
                                 }
                             }
                             if (state.appInfoList.size < state.totalAppsInFilter) {
@@ -338,12 +361,17 @@ internal fun LibraryListPane(
                         ),
                     ) {
                         items(totalSkeletonCount) { index ->
-                            if (index > 0 && currentLayout == PaneType.LIST) {
-                                HorizontalDivider()
+                            Column {
+                                if (index > 0 && currentLayout == PaneType.LIST) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = horizontalPadding),
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                                    )
+                                }
+                                GameSkeletonLoader(
+                                    paneType = currentLayout,
+                                )
                             }
-                            GameSkeletonLoader(
-                                paneType = currentLayout,
-                            )
                         }
                     }
                 }
