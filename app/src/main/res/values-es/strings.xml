@@ -2068,6 +2068,10 @@
     <string name="featured_badge">Patrocinado</string>
     <string name="featured_action_wishlist">Lista de deseos</string>
     <string name="featured_action_wishlist_on">Añadir a la lista en %1$s</string>
+    <string name="featured_action_wishlisted">En la lista de deseados</string>
+    <string name="featured_action_get_demo">Obtener la demo</string>
+    <string name="featured_action_in_library">En la biblioteca</string>
+    <string name="featured_action_failed">No se pudo completar en la aplicación: abriendo la página de la tienda</string>
     <string name="featured_action_preorder">Reservar</string>
     <string name="featured_action_preorder_on">Reservar en %1$s</string>
     <string name="featured_action_buy">Comprar</string>

@@ -2061,6 +2061,10 @@
     <string name="featured_badge">Sponsorizzato</string>
     <string name="featured_action_wishlist">Lista dei desideri</string>
     <string name="featured_action_wishlist_on">Aggiungi ai desideri su %1$s</string>
+    <string name="featured_action_wishlisted">Nella lista dei desideri</string>
+    <string name="featured_action_get_demo">Ottieni la demo</string>
+    <string name="featured_action_in_library">Nella libreria</string>
+    <string name="featured_action_failed">Impossibile completare nell\'app: apertura della pagina del negozio</string>
     <string name="featured_action_preorder">Preordina</string>
     <string name="featured_action_preorder_on">Preordina su %1$s</string>
     <string name="featured_action_buy">Acquista</string>
