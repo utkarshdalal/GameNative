@@ -7,10 +7,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * MOCK_HERO_JSON stands in for the /api/games/hero response and doubles as the payload contract
- * for the backend campaign schema, so it must decode with the same Json settings production uses.
- */
 class MockHeroResponseTest {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -32,12 +28,11 @@ class MockHeroResponseTest {
 
         val wishlist = featured.actions[0]
         assertEquals("primary", wishlist.style)
-        assertNull(wishlist.appId) // falls back to the campaign appId
+        assertNull(wishlist.appId)
 
         val demo = featured.actions[1]
-        assertEquals(4320000, demo.appId) // the demo is its own app
+        assertEquals(4320000, demo.appId)
 
-        // Every action must carry a fallback url for clients that don't know its type.
         assertTrue(featured.actions.all { it.url.startsWith("https://") })
     }
 

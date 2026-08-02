@@ -15,7 +15,6 @@ data class HeroResponse(
 data class FeaturedItem(
     val campaignId: String,
     val title: String,
-    // Steam appid the campaign points at; required for in-app actions such as WISHLIST.
     val appId: Int? = null,
     val developer: String? = null,
     val heroImageUrl: String = "",
@@ -36,8 +35,6 @@ data class FeaturedItem(
 data class FeaturedAction(
     val type: String,
     val url: String,
-    // Steam appid this action targets when it differs from the campaign's (e.g. GET_DEMO,
-    // where the demo is its own app). Falls back to the campaign appId.
     val appId: Int? = null,
     val store: String? = null,
     val style: String? = null,

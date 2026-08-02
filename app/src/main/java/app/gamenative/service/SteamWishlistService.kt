@@ -14,13 +14,6 @@ import okhttp3.Request
 import org.json.JSONObject
 import timber.log.Timber
 
-/**
- * Wishlist add/remove over the logged-in JavaSteam session.
- *
- * Writes go out on the authenticated CM connection, so no web token is involved. The read still
- * uses the public web endpoint because it only needs a steamid; a wishlist set to private is
- * therefore unreadable and reports null rather than "not wishlisted".
- */
 object SteamWishlistService {
 
     private const val TAG = "SteamWishlist"
@@ -49,7 +42,6 @@ object SteamWishlistService {
         }
     }
 
-    /** True/false when the wishlist could be read, null when it could not be determined. */
     suspend fun isWishlisted(appId: Int): Boolean? = withContext(Dispatchers.IO) {
         val steamId = SteamService.userSteamId?.convertToUInt64()
         if (steamId == null || steamId == 0L) {
@@ -66,7 +58,6 @@ object SteamWishlistService {
                     return@use null
                 }
                 val response = JSONObject(res.body?.string().orEmpty()).optJSONObject("response")
-                // Absent (rather than empty) items means private or unreadable, not "nothing wishlisted".
                 val items = response?.optJSONArray("items") ?: return@use null
                 (0 until items.length()).any { items.optJSONObject(it)?.optInt("appid") == appId }
             }
@@ -87,7 +78,6 @@ object SteamWishlistService {
             Timber.tag(TAG).e("SteamUnifiedMessages handler not available")
             return null
         }
-        // Replies are routed by service name, so the service must be registered via createService.
         return try {
             unifiedMessages.createService(Wishlist::class.java)
         } catch (t: Throwable) {

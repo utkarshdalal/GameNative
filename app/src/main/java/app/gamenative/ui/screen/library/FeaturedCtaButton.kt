@@ -36,11 +36,6 @@ import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
 import kotlinx.coroutines.launch
 
-/**
- * One featured call-to-action. Types with an in-app handler ([InAppCta]) run on-device and render
- * a done state; every other type deep-links to the action URL, which is also the fallback when an
- * in-app handler fails. New in-app types only need a new [InAppCta] entry.
- */
 @Composable
 internal fun FeaturedCtaButton(
     action: FeaturedCta,
@@ -52,7 +47,6 @@ internal fun FeaturedCtaButton(
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val cta = remember(action) { InAppCta.forAction(action) }
-    // null = unknown (e.g. wishlist private); the button then stays in its idle state.
     var done by remember(action) { mutableStateOf<Boolean?>(null) }
     var busy by remember(action) { mutableStateOf(false) }
 
@@ -66,7 +60,6 @@ internal fun FeaturedCtaButton(
 
     val inert = cta != null && (busy || done == true)
 
-    // Inert taps are swallowed rather than disabling the button, which would make it unfocusable.
     val onClick: () -> Unit = onClick@{
         if (inert) return@onClick
 
@@ -111,8 +104,6 @@ internal fun FeaturedCtaButton(
         .focusRing(interactionSource, shape, width = 2.dp)
         .let { if (focusRequester != null) it.focusRequester(focusRequester) else it }
 
-    // Kept enabled even when inert: a disabled button is not focusable, so completing an action
-    // would drop controller focus with nothing to fall back to. Dimmed instead.
     val contentAlpha = if (inert) 0.6f else 1f
 
     if (action.primary) {
@@ -142,15 +133,12 @@ internal fun FeaturedCtaButton(
     }
 }
 
-/** An action type the app can complete itself instead of deep-linking. */
 private sealed class InAppCta(
     val appId: Int,
     @StringRes val doneLabelRes: Int,
 ) {
-    /** True/false when the state is known, null when it cannot be determined. */
     abstract suspend fun isDone(): Boolean?
 
-    /** Runs the action; true on success. */
     abstract suspend fun run(): Boolean
 
     private class Wishlist(appId: Int) : InAppCta(appId, R.string.featured_action_wishlisted) {

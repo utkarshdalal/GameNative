@@ -73,14 +73,11 @@ internal fun RecommendedGameScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    // Controller navigation: land focus on the primary action so D-pad input has an anchor,
-    // matching LibraryAppScreen's play-button behavior.
     val firstActionFocusRequester = remember { FocusRequester() }
     LaunchedEffect(game) {
         try {
             firstActionFocusRequester.requestFocus()
         } catch (_: IllegalStateException) {
-            // No focusable action attached (e.g. featured campaign with no CTAs).
         }
     }
 
@@ -363,7 +360,7 @@ internal fun RecommendedGameScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                // Featured actions (wishlist / demo / pre-order / etc.)
+                // Featured actions (wishlist / pre-order / etc.)
                 game.featuredCtas.forEachIndexed { index, action ->
                     FeaturedCtaButton(
                         action = action,

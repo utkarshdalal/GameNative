@@ -17,11 +17,8 @@ object RecommendationRepository {
     private const val API_URL = "https://api.gamenative.app/api/games/hero"
     private const val CACHE_TTL_MS = 24L * 60L * 60L * 1000L
 
-    // Serves MOCK_HERO_JSON through the production parse path instead of calling the server.
     private const val MOCK_HERO_RESPONSE = false
 
-    // Verbatim /api/games/hero payload for a sponsored campaign with in-app CTAs; goes through
-    // parseHero like a real response, so it exercises deserialization, not just the UI.
     internal val MOCK_HERO_JSON = """
         {
           "recommendation": null,
