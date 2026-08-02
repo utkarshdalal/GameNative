@@ -99,7 +99,7 @@ class ControlElementDPadRemapTest {
     }
 
     @Test
-    fun `mouse movement activates only the touched direction`() {
+    fun `mouse movement activates only the touched direction and reverses release first`() {
         val events = mutableListOf<Pair<Binding, Boolean>>()
         val view = mock<InputControlsView>()
         whenever(view.snappingSize).thenReturn(10)
@@ -119,5 +119,12 @@ class ControlElementDPadRemapTest {
         assertTrue(element.handleTouchDown(1, 100f, 160f))
         assertTrue(events.contains(Binding.MOUSE_MOVE_DOWN to true))
         assertTrue(events.none { it == Binding.MOUSE_MOVE_UP to true })
+
+        events.clear()
+        assertTrue(element.handleTouchMove(1, 100f, 40f))
+        assertEquals(
+            listOf(Binding.MOUSE_MOVE_DOWN to false, Binding.MOUSE_MOVE_UP to true),
+            events,
+        )
     }
 }
