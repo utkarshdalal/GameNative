@@ -2064,6 +2064,10 @@
     <string name="featured_badge">Спонсовано</string>
     <string name="featured_action_wishlist">Список бажань</string>
     <string name="featured_action_wishlist_on">До списку бажань у %1$s</string>
+    <string name="featured_action_wishlisted">У списку бажаного</string>
+    <string name="featured_action_get_demo">Отримати демо</string>
+    <string name="featured_action_in_library">У бібліотеці</string>
+    <string name="featured_action_failed">Не вдалося виконати в застосунку — відкривається сторінка крамниці</string>
     <string name="featured_action_preorder">Передзамовити</string>
     <string name="featured_action_preorder_on">Передзамовити у %1$s</string>
     <string name="featured_action_buy">Придбати</string>

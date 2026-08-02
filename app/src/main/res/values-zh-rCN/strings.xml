@@ -2088,6 +2088,10 @@
     <string name="featured_badge">赞助</string>
     <string name="featured_action_wishlist">愿望单</string>
     <string name="featured_action_wishlist_on">在 %1$s 加入愿望单</string>
+    <string name="featured_action_wishlisted">已加入愿望单</string>
+    <string name="featured_action_get_demo">获取试玩版</string>
+    <string name="featured_action_in_library">已在库中</string>
+    <string name="featured_action_failed">无法在应用内完成，正在打开商店页面</string>
     <string name="featured_action_preorder">预购</string>
     <string name="featured_action_preorder_on">在 %1$s 预购</string>
     <string name="featured_action_buy">购买</string>

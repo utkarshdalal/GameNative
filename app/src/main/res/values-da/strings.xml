@@ -1940,6 +1940,10 @@
     <string name="featured_badge">Sponsoreret</string>
     <string name="featured_action_wishlist">Ønskeliste</string>
     <string name="featured_action_wishlist_on">Føj til ønskeliste på %1$s</string>
+    <string name="featured_action_wishlisted">På ønskelisten</string>
+    <string name="featured_action_get_demo">Hent demoen</string>
+    <string name="featured_action_in_library">I biblioteket</string>
+    <string name="featured_action_failed">Kunne ikke fuldføres i appen – åbner butikssiden</string>
     <string name="featured_action_preorder">Forudbestil</string>
     <string name="featured_action_preorder_on">Forudbestil på %1$s</string>
     <string name="featured_action_buy">Køb</string>

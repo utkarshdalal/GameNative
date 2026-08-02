@@ -2068,6 +2068,10 @@
     <string name="featured_badge">스폰서</string>
     <string name="featured_action_wishlist">위시리스트</string>
     <string name="featured_action_wishlist_on">%1$s에서 위시리스트에 추가</string>
+    <string name="featured_action_wishlisted">위시리스트에 추가됨</string>
+    <string name="featured_action_get_demo">데모 받기</string>
+    <string name="featured_action_in_library">라이브러리에 있음</string>
+    <string name="featured_action_failed">앱에서 완료할 수 없어 상점 페이지를 엽니다</string>
     <string name="featured_action_preorder">예약 구매</string>
     <string name="featured_action_preorder_on">%1$s에서 예약 구매</string>
     <string name="featured_action_buy">구매</string>

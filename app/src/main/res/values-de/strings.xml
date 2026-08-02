@@ -2010,6 +2010,10 @@
     <string name="featured_badge">Gesponsert</string>
     <string name="featured_action_wishlist">Wunschliste</string>
     <string name="featured_action_wishlist_on">Auf %1$s auf die Wunschliste</string>
+    <string name="featured_action_wishlisted">Auf der Wunschliste</string>
+    <string name="featured_action_get_demo">Demo holen</string>
+    <string name="featured_action_in_library">In der Bibliothek</string>
+    <string name="featured_action_failed">In der App nicht möglich – Store-Seite wird geöffnet</string>
     <string name="featured_action_preorder">Vorbestellen</string>
     <string name="featured_action_preorder_on">Auf %1$s vorbestellen</string>
     <string name="featured_action_buy">Kaufen</string>

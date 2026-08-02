@@ -2079,6 +2079,10 @@
     <string name="featured_badge">贊助</string>
     <string name="featured_action_wishlist">願望清單</string>
     <string name="featured_action_wishlist_on">在 %1$s 加入願望清單</string>
+    <string name="featured_action_wishlisted">已加入願望清單</string>
+    <string name="featured_action_get_demo">取得試玩版</string>
+    <string name="featured_action_in_library">已在收藏庫中</string>
+    <string name="featured_action_failed">無法在應用程式內完成，正在開啟商店頁面</string>
     <string name="featured_action_preorder">預購</string>
     <string name="featured_action_preorder_on">在 %1$s 預購</string>
     <string name="featured_action_buy">購買</string>
