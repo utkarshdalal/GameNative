@@ -6,6 +6,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,7 +64,12 @@ internal fun FeaturedCtaButton(
 
     val openUrl = { context.startActivity(Intent(Intent.ACTION_VIEW, action.url.toUri())) }
 
-    val onClick: () -> Unit = {
+    val inert = cta != null && (busy || done == true)
+
+    // Inert taps are swallowed rather than disabling the button, which would make it unfocusable.
+    val onClick: () -> Unit = onClick@{
+        if (inert) return@onClick
+
         if (PrefManager.usageAnalyticsEnabled) {
             PostHog.capture(
                 event = "featured_action_clicked",
@@ -98,30 +105,37 @@ internal fun FeaturedCtaButton(
     }
 
     val label = if (cta != null && done == true) stringResource(cta.doneLabelRes) else action.label
-    val enabled = cta == null || (!busy && done != true)
     val shape = RoundedCornerShape(12.dp)
     val buttonModifier = Modifier
         .fillMaxWidth()
         .focusRing(interactionSource, shape, width = 2.dp)
         .let { if (focusRequester != null) it.focusRequester(focusRequester) else it }
 
+    // Kept enabled even when inert: a disabled button is not focusable, so completing an action
+    // would drop controller focus with nothing to fall back to. Dimmed instead.
+    val contentAlpha = if (inert) 0.6f else 1f
+
     if (action.primary) {
         Button(
             onClick = onClick,
-            enabled = enabled,
             modifier = buttonModifier,
             shape = shape,
             interactionSource = interactionSource,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = contentAlpha),
+            ),
         ) {
             Text(text = label, fontWeight = FontWeight.SemiBold)
         }
     } else {
         OutlinedButton(
             onClick = onClick,
-            enabled = enabled,
             modifier = buttonModifier,
             shape = shape,
             interactionSource = interactionSource,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.primary.copy(alpha = contentAlpha),
+            ),
         ) {
             Text(text = label, fontWeight = FontWeight.SemiBold)
         }
