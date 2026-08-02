@@ -126,6 +126,7 @@ class LibraryViewModel @Inject constructor(
     @Volatile private var steamCollections: List<SteamCollection>? = null
 
     @Volatile private var curatedLists: List<SteamCollection>? = null
+    private val curatedSelectionLock = Any()
 
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
@@ -281,16 +282,20 @@ class LibraryViewModel @Inject constructor(
             CuratedListRepository.curatedLists.filterNotNull().collect { raw ->
                 val resolved = buildCuratedCollections(raw)
                 curatedLists = resolved
-                val current = _state.value.selectedCuratedListIds
-                val recon = SteamCollectionFilter.reconcile(current, resolved)
-                if (recon.removedAny) {
-                    PrefManager.libraryCuratedLists = recon.cleaned
-                }
-                _state.update {
-                    it.copy(
-                        curatedLists = resolved,
-                        selectedCuratedListIds = recon.cleaned,
-                    )
+                synchronized(curatedSelectionLock) {
+                    var cleanedSelection: Set<String>? = null
+                    _state.update { currentState ->
+                        val recon = SteamCollectionFilter.reconcile(
+                            currentState.selectedCuratedListIds,
+                            resolved,
+                        )
+                        cleanedSelection = if (recon.removedAny) recon.cleaned else null
+                        currentState.copy(
+                            curatedLists = resolved,
+                            selectedCuratedListIds = recon.cleaned,
+                        )
+                    }
+                    cleanedSelection?.let { PrefManager.libraryCuratedLists = it }
                 }
                 onFilterApps(paginationCurrentPage)
             }
@@ -482,19 +487,25 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun onCuratedListToggle(id: String) {
-        _state.update { currentState ->
-            val updated = currentState.selectedCuratedListIds.toMutableSet()
-            if (!updated.add(id)) updated.remove(id)
-            PrefManager.libraryCuratedLists = updated
-            currentState.copy(selectedCuratedListIds = updated)
+        synchronized(curatedSelectionLock) {
+            var updatedSelection: Set<String> = emptySet()
+            _state.update { currentState ->
+                val updated = currentState.selectedCuratedListIds.toMutableSet()
+                if (!updated.add(id)) updated.remove(id)
+                updatedSelection = updated
+                currentState.copy(selectedCuratedListIds = updated)
+            }
+            PrefManager.libraryCuratedLists = updatedSelection
         }
         onFilterApps()
     }
 
     fun onClearCuratedLists() {
-        _state.update { currentState ->
+        synchronized(curatedSelectionLock) {
             PrefManager.libraryCuratedLists = emptySet()
-            currentState.copy(selectedCuratedListIds = emptySet())
+            _state.update { currentState ->
+                currentState.copy(selectedCuratedListIds = emptySet())
+            }
         }
         onFilterApps()
     }

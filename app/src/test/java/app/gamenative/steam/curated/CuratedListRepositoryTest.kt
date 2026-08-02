@@ -72,6 +72,23 @@ class CuratedListRepositoryTest {
     }
 
     @Test
+    fun seedOnlyCacheDoesNotOverrideBundledSnapshot() = runBlocking {
+        storedCache = CuratedListRepository.encodeCache(
+            lists = mapOf(CuratedListDescriptor.FOUR_THREE.id to setOf(999)),
+            refreshedAtMs = 0L,
+        )
+
+        CuratedListRepository.loadFromCache(context)
+
+        val appIds = CuratedListRepository.curatedLists.value
+            ?.get(CuratedListDescriptor.FOUR_THREE.id)
+            .orEmpty()
+        assertEquals(364, appIds.size)
+        assertTrue(730 in appIds)
+        assertFalse(999 in appIds)
+    }
+
+    @Test
     fun oldAndMalformedCacheFormatsAreRejected() {
         assertNull(CuratedListRepository.decodeCache("{\"curated:4-3\":[1,2]}"))
         assertNull(CuratedListRepository.decodeCache("{not valid json"))
@@ -95,6 +112,19 @@ class CuratedListRepositoryTest {
         assertEquals(before, CuratedListRepository.curatedLists.value)
         assertFalse(CuratedListRepository.isRefreshDue(nowMs = 1_000L))
         assertTrue(CuratedListRepository.isRefreshDue(nowMs = 1_000L + 24L * 60L * 60L * 1000L))
+    }
+
+    @Test
+    fun loadingCacheDoesNotClearFailedRefreshBackoff() = runBlocking {
+        CuratedListRepository.loadFromCache(context)
+        CuratedListRepository.refreshFourThreeIfNeeded(
+            fetch = { null },
+            nowMs = { 1_000L },
+        )
+
+        CuratedListRepository.loadFromCache(context)
+
+        assertFalse(CuratedListRepository.isRefreshDue(nowMs = 1_000L))
     }
 
     @Test

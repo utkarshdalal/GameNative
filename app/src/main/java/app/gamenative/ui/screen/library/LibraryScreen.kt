@@ -1187,6 +1187,7 @@ private fun LibraryScreenContent(
                 steamCollectionCounts = state.steamCollectionCounts,
                 skippedDynamicCollections = state.skippedDynamicCollections,
                 isSteamConnected = isSteamConnected,
+                hasSteamCredentials = SteamUtils.hasStoredCredentials(),
                 isOffline = isOffline,
                 onSteamCollectionToggle = onSteamCollectionToggle,
                 onClearSteamCollections = onClearSteamCollections,

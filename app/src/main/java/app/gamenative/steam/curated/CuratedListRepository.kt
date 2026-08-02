@@ -37,10 +37,11 @@ internal object CuratedListRepository {
     suspend fun loadFromCache(context: Context) = withContext(Dispatchers.IO) {
         refreshMutex.withLock {
             val cached = decodeCache(PrefManager.libraryCuratedListsCache)
-            val lists = loadAllSeeds(context) + cached?.lists.orEmpty()
+            val seeds = loadAllSeeds(context)
+            val refreshedCache = cached?.takeIf { it.refreshedAtMs > 0L }
+            val lists = seeds + refreshedCache?.lists.orEmpty()
 
             lastRefreshMs = cached?.refreshedAtMs ?: 0L
-            lastAttemptMs = 0L
             _curatedLists.value = lists
 
             if (cached == null || cached.lists != lists) {

@@ -103,6 +103,7 @@ fun LibraryOptionsPanel(
     steamCollectionCounts: Map<String, Int>,
     skippedDynamicCollections: Boolean,
     isSteamConnected: Boolean,
+    hasSteamCredentials: Boolean,
     isOffline: Boolean,
     onSteamCollectionToggle: (String) -> Unit,
     onClearSteamCollections: () -> Unit,
@@ -348,6 +349,8 @@ fun LibraryOptionsPanel(
                                 onToggle = onSteamCollectionToggle,
                                 onClear = onClearSteamCollections,
                             )
+                        }
+                        if (isSteamConnected || hasSteamCredentials) {
                             CollectionFilterSection(
                                 collections = curatedLists,
                                 selectedIds = selectedCuratedListIds,
@@ -526,6 +529,7 @@ private fun Preview_LibraryOptionsPanel() {
                     steamCollectionCounts = mapOf("fav" to 2, "rpg" to 1),
                     skippedDynamicCollections = true,
                     isSteamConnected = true,
+                    hasSteamCredentials = true,
                     isOffline = false,
                     onSteamCollectionToggle = { },
                     onClearSteamCollections = { },
