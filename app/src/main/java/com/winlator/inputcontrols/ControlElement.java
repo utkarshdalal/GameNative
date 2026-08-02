@@ -1189,12 +1189,20 @@ public class ControlElement {
             else {
                 final boolean[] states = {deltaY <= -DPAD_DEAD_ZONE, deltaX >= DPAD_DEAD_ZONE, deltaY >= DPAD_DEAD_ZONE, deltaX <= -DPAD_DEAD_ZONE};
 
+                // Release transitions first because opposing stick and mouse-move
+                // bindings share an axis. An inactive direction must not clear an
+                // active direction later in the same update.
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
-                    Binding binding = getBindingAt(i);
-                    boolean state = binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i];
-                    inputControlsView.handleInputEvent(binding, state, value);
-                    this.states[i] = state;
+                    if (this.states[i] && !states[i]) {
+                        inputControlsView.handleInputEvent(getBindingAt(i), false, value);
+                    }
+                }
+
+                for (byte i = 0; i < 4; i++) {
+                    float value = i == 1 || i == 3 ? deltaX : deltaY;
+                    if (states[i]) inputControlsView.handleInputEvent(getBindingAt(i), true, value);
+                    this.states[i] = states[i];
                 }
 
                 inputControlsView.invalidate();
