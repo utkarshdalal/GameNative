@@ -34,18 +34,9 @@ object PowerManager {
     var isGameStarted: Boolean = false
 
     /**
-     * Flag to track if a start/stop operation is in progress.
-     * Used to prevent concurrent lifecycle operations.
-     */
-    @Volatile
-    private var isOperationInProgress: Boolean = false
-
-    /**
      * The currently active power profile.
      * Updated when settings change, used for saving on stop.
-     * Marked @Volatile for safe visibility across threads (e.g., auto-tuner thread).
      */
-    @Volatile
     var currentProfile: PowerProfile? = null
         private set
 
@@ -139,67 +130,23 @@ object PowerManager {
      * Start the performance driver and restore saved profile if available
      */
     fun start() {
-        // Guard: Prevent concurrent start operations
-        if (isOperationInProgress) {
-            Timber.tag("PowerManager").w("Start operation already in progress")
-            return
-        }
-        if (isGameStarted) {
-            Timber.tag("PowerManager").w("Game already started")
-            return
-        }
+        getDriver().start()
+        restoreSavedProfile()
 
-        isOperationInProgress = true
-        try {
-            getDriver().start()
-            restoreSavedProfile()
-
-            // Pin PulseAudio to dedicated performance core if PServer is available
-            pinPulseAudioToDedicatedCore()
-            isGameStarted = true
-        } catch (e: Exception) {
-            Timber.tag("PowerManager").e(e, "Failed to start PowerManager, performing cleanup")
-            // Cleanup on failure: stop auto-tuner and driver
-            try {
-                stopAutoTuning()
-                getDriver().stop()
-            } catch (cleanupException: Exception) {
-                Timber.tag("PowerManager").e(cleanupException, "Error during cleanup after failed start")
-            }
-            isGameStarted = false
-            throw e
-        } finally {
-            isOperationInProgress = false
-        }
+        // Pin PulseAudio to dedicated performance core if PServer is available
+        pinPulseAudioToDedicatedCore()
+        isGameStarted = true
     }
 
     /**
      * Stop the performance driver and save current profile
      */
     fun stop() {
-        // Guard: Prevent concurrent stop operations
-        if (isOperationInProgress) {
-            Timber.tag("PowerManager").w("Stop operation already in progress")
-            return
-        }
-        if (!isGameStarted) {
-            Timber.tag("PowerManager").w("Game not started, nothing to stop")
-            return
-        }
-
-        isOperationInProgress = true
-        try {
-            // Save the current profile if available, otherwise read from driver
-            saveProfile()
-            stopAutoTuning()
-            getDriver().stop()
-        } catch (e: Exception) {
-            Timber.tag("PowerManager").e(e, "Error during stop operation")
-            throw e
-        } finally {
-            isGameStarted = false
-            isOperationInProgress = false
-        }
+        // Save the current profile if available, otherwise read from driver
+        saveProfile()
+        stopAutoTuning()
+        getDriver().stop()
+        isGameStarted = false
     }
 
     /**
@@ -296,12 +243,6 @@ object PowerManager {
      * Should be called when the UI changes the active profile.
      */
     fun setCurrentProfile(profile: PowerProfile) {
-        // Guard: Prevent profile changes during lifecycle operations
-        if (isOperationInProgress) {
-            Timber.tag("PowerManager").w("Cannot change profile during start/stop operation")
-            return
-        }
-
         currentProfile = profile
 
         // Handle auto-tuning based on profile setting
