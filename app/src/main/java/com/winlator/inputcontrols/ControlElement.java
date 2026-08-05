@@ -76,6 +76,7 @@ public class ControlElement {
     private Type type = Type.BUTTON;
     private Shape shape = Shape.CIRCLE;
     private BindingCombo[] bindings = {BindingCombo.none(), BindingCombo.none(), BindingCombo.none(), BindingCombo.none()};
+    private Object[] bindingSources = createBindingSources(bindings.length);
     private float scale = 1.0f;
     private short x;
     private short y;
@@ -113,6 +114,12 @@ public class ControlElement {
 
     public ControlElement(InputControlsView inputControlsView) {
         this.inputControlsView = inputControlsView;
+    }
+
+    private static Object[] createBindingSources(int count) {
+        Object[] sources = new Object[count];
+        for (int i = 0; i < count; i++) sources[i] = new Object();
+        return sources;
     }
 
     private void reset() {
@@ -179,6 +186,7 @@ public class ControlElement {
 
     public void setBindingCount(int bindingCount) {
         bindings = new BindingCombo[bindingCount];
+        bindingSources = createBindingSources(bindingCount);
         setBinding(Binding.NONE);
         states = new boolean[bindingCount];
         gamepadAxisActive = new boolean[bindingCount];
@@ -244,6 +252,8 @@ public class ControlElement {
             int oldLength = bindings.length;
             bindings = Arrays.copyOf(bindings, index+1);
             Arrays.fill(bindings, oldLength, bindings.length, BindingCombo.none());
+            bindingSources = Arrays.copyOf(bindingSources, bindings.length);
+            for (int i = oldLength; i < bindingSources.length; i++) bindingSources[i] = new Object();
             states = new boolean[bindings.length];
             gamepadAxisActive = new boolean[bindings.length];
             boundingBoxNeedsUpdate = true;
@@ -258,7 +268,14 @@ public class ControlElement {
     private void handleBindingInputEvent(int index, boolean isActionDown) {
         BindingCombo bindingCombo = getBindingComboAt(index);
         if (bindingCombo.isSingleBinding()) {
-            inputControlsView.handleInputEvent(bindingCombo.getPrimaryBinding(), isActionDown);
+            Binding binding = bindingCombo.getPrimaryBinding();
+            if (binding == Binding.GYRO_MODIFIER) {
+                inputControlsView.handleInputEvent(binding, isActionDown, 0f, bindingSources[index]);
+            }
+            else inputControlsView.handleInputEvent(binding, isActionDown);
+        }
+        else if (bindingCombo.contains(Binding.GYRO_MODIFIER)) {
+            inputControlsView.handleInputEvent(bindingCombo, isActionDown, 0f, bindingSources[index]);
         }
         else inputControlsView.handleInputEvent(bindingCombo, isActionDown);
     }
@@ -266,26 +283,44 @@ public class ControlElement {
     private void handleBindingInputEvent(int index, boolean isActionDown, float offset) {
         BindingCombo bindingCombo = getBindingComboAt(index);
         if (bindingCombo.isSingleBinding()) {
-            inputControlsView.handleInputEvent(bindingCombo.getPrimaryBinding(), isActionDown, offset);
+            Binding binding = bindingCombo.getPrimaryBinding();
+            if (binding == Binding.GYRO_MODIFIER) {
+                inputControlsView.handleInputEvent(binding, isActionDown, offset, bindingSources[index]);
+            }
+            else inputControlsView.handleInputEvent(binding, isActionDown, offset);
+        }
+        else if (bindingCombo.contains(Binding.GYRO_MODIFIER)) {
+            inputControlsView.handleInputEvent(bindingCombo, isActionDown, offset, bindingSources[index]);
         }
         else inputControlsView.handleInputEvent(bindingCombo, isActionDown, offset);
     }
 
     private void handleSimultaneousBindingMembers(
-            BindingCombo bindingCombo,
+            int bindingIndex,
             Binding excludedBinding,
             boolean isActionDown,
             float offset) {
+        BindingCombo bindingCombo = getBindingComboAt(bindingIndex);
         List<Binding> comboBindings = bindingCombo.getBindings();
         if (isActionDown) {
             for (Binding binding : comboBindings) {
-                if (binding != excludedBinding) inputControlsView.handleInputEvent(binding, true, offset);
+                if (binding != excludedBinding) {
+                    if (binding == Binding.GYRO_MODIFIER) {
+                        inputControlsView.handleInputEvent(binding, true, offset, bindingSources[bindingIndex]);
+                    }
+                    else inputControlsView.handleInputEvent(binding, true, offset);
+                }
             }
         }
         else {
             for (int i = comboBindings.size() - 1; i >= 0; i--) {
                 Binding binding = comboBindings.get(i);
-                if (binding != excludedBinding) inputControlsView.handleInputEvent(binding, false, offset);
+                if (binding != excludedBinding) {
+                    if (binding == Binding.GYRO_MODIFIER) {
+                        inputControlsView.handleInputEvent(binding, false, offset, bindingSources[bindingIndex]);
+                    }
+                    else inputControlsView.handleInputEvent(binding, false, offset);
+                }
             }
         }
     }
@@ -790,13 +825,17 @@ public class ControlElement {
     public void draw(Canvas canvas) {
         int snappingSize = inputControlsView.getSnappingSize();
         Paint paint = inputControlsView.getPaint();
-        boolean active = selected || currentPointerId != -1;
+        boolean showGyroState = !inputControlsView.isEditMode()
+                && inputControlsView.isGyroEnabled() && isGyroModifierControl();
+        boolean gyroActive = showGyroState && inputControlsView.isGyroActive();
+        boolean active = selected || (showGyroState ? gyroActive : currentPointerId != -1);
         boolean editSelected = selected && inputControlsView.isEditMode();
         int normalColor = getAppearanceDrawColor(false);
         int activeColor = editSelected ? getEditorSelectionDrawColor() : getAppearanceDrawColor(true);
-        if (selected && !editSelected) activeColor = getRuntimeSelectedDrawColor();
+        boolean runtimeSelected = (selected || gyroActive) && !editSelected;
+        if (runtimeSelected) activeColor = getRuntimeSelectedDrawColor();
         int primaryColor = active ? activeColor : normalColor;
-        int contentColor = selected && !buttonActiveColorCustom ? normalColor : primaryColor;
+        int contentColor = runtimeSelected && !buttonActiveColorCustom ? normalColor : primaryColor;
 
         paint.setColor(primaryColor);
         paint.setStyle(Paint.Style.STROKE);
@@ -1150,8 +1189,19 @@ public class ControlElement {
 
     private boolean isKeepButtonPressedAfterMinTime() {
         BindingCombo bindingCombo = getBindingComboAt(0);
-        return !toggleSwitch &&
+        return !usesToggleSwitch() &&
                 (bindingCombo.contains(Binding.GAMEPAD_BUTTON_L3) || bindingCombo.contains(Binding.GAMEPAD_BUTTON_R3));
+    }
+
+    private boolean isGyroModifierControl() {
+        for (BindingCombo bindingCombo : bindings) {
+            if (bindingCombo.contains(Binding.GYRO_MODIFIER)) return true;
+        }
+        return false;
+    }
+
+    private boolean usesToggleSwitch() {
+        return toggleSwitch && !isGyroModifierControl();
     }
 
     private boolean isRadialMenuButton() {
@@ -1206,7 +1256,7 @@ public class ControlElement {
                     return true;
                 }
                 if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
-                if (!toggleSwitch || !selected) {
+                if (!usesToggleSwitch() || !selected) {
                     currentPointerActivatedButtonBindings = !selected;
                     handleBindingInputEvent(0, true);
                     handleBindingInputEvent(1, true);
@@ -1292,7 +1342,7 @@ public class ControlElement {
                         boolean nextState = states[i];
                         if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
                             handleSimultaneousBindingMembers(
-                                    bindingCombo,
+                                    i,
                                     gamepadAxisBinding,
                                     nextState,
                                     value);
@@ -1334,7 +1384,7 @@ public class ControlElement {
                         boolean nextState = states[i];
                         if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
                             handleSimultaneousBindingMembers(
-                                    bindingCombo,
+                                    i,
                                     mouseMoveBinding,
                                     nextState,
                                     Mathf.clamp(value, -1, 1));
@@ -1354,7 +1404,7 @@ public class ControlElement {
                             boolean nextState = states[i];
                             if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
                                 handleSimultaneousBindingMembers(
-                                        bindingCombo,
+                                        i,
                                         gamepadAxisBinding,
                                         nextState,
                                         gamepadOffset);
@@ -1430,12 +1480,12 @@ public class ControlElement {
                     touchTime = null;
                     inputControlsView.invalidate();
                 }
-                else if (!toggleSwitch || selected) {
+                else if (!usesToggleSwitch() || selected) {
                     handleBindingInputEvent(0, false);
                     handleBindingInputEvent(1, false);
                 }
 
-                if (toggleSwitch) {
+                if (usesToggleSwitch()) {
                     selected = !selected;
                     inputControlsView.invalidate();
                 }
@@ -1487,7 +1537,7 @@ public class ControlElement {
         }
         else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
             releaseActiveDirectionalStates();
-            if (type == Type.RANGE_BUTTON) scroller.handleTouchUp();
+            if (type == Type.RANGE_BUTTON) scroller.cancelTouch();
             currentPosition = null;
         }
 

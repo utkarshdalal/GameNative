@@ -149,4 +149,15 @@ public class RangeScroller {
         activeIndex = -1;
         inputControlsView.invalidate();
     }
+
+    public void cancelTouch() {
+        if (isActionDown) {
+            destroyTimer();
+            inputControlsView.handleInputEvent(binding, false);
+        }
+        isActionDown = false;
+        activeIndex = -1;
+        scrolling = false;
+        inputControlsView.invalidate();
+    }
 }
