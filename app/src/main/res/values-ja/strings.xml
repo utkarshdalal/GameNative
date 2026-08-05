@@ -2144,7 +2144,7 @@
     <string name="steam_invite_offline">オフライン</string>
     <string name="tab_favorites">お気に入り</string>
     <string name="favorites_empty_title">お気に入りはまだありません</string>
-    <string name="favorites_empty_message">ゲームの星アイコンをタップすると、ここに追加してすぐにアクセスできます。</string>
+    <string name="favorites_empty_message">星アイコンをタップするか、ゲームにフォーカスした状態でコントローラーのアクションバーに表示されるお気に入りボタンを押すと、ここに追加してすぐにアクセスできます。</string>
     <string name="favorites_empty_action">すべてのゲームを見る</string>
     <string name="favorites_empty_filtered_title">表示するお気に入りがありません</string>
     <string name="favorites_empty_filtered_message">現在の検索やフィルターに一致するお気に入りのゲームはありません。</string>

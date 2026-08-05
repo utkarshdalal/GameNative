@@ -2187,7 +2187,7 @@
     <string name="steam_invite_offline">Не в мережі</string>
     <string name="tab_favorites">Вибране</string>
     <string name="favorites_empty_title">Ще немає вибраного</string>
-    <string name="favorites_empty_message">Натисніть зірочку на будь-якій грі, щоб додати її сюди для швидкого доступу.</string>
+    <string name="favorites_empty_message">Натисніть зірочку або кнопку вибраного, показану на панелі дій контролера, коли гру виділено, щоб додати її сюди для швидкого доступу.</string>
     <string name="favorites_empty_action">Переглянути всі ігри</string>
     <string name="favorites_empty_filtered_title">Немає вибраного для показу</string>
     <string name="favorites_empty_filtered_message">Немає вибраних ігор, що відповідають поточному пошуку або фільтрам.</string>

@@ -2191,7 +2191,7 @@
     <string name="steam_invite_offline">Offline</string>
     <string name="tab_favorites">Ulubione</string>
     <string name="favorites_empty_title">Brak ulubionych</string>
-    <string name="favorites_empty_message">Dotknij gwiazdki przy grze, aby dodać ją tutaj i mieć szybki dostęp.</string>
+    <string name="favorites_empty_message">Dotknij gwiazdki albo naciśnij przycisk ulubionych widoczny na pasku akcji kontrolera, gdy gra jest zaznaczona, aby dodać ją tutaj i mieć szybki dostęp.</string>
     <string name="favorites_empty_action">Przeglądaj wszystkie gry</string>
     <string name="favorites_empty_filtered_title">Brak ulubionych do wyświetlenia</string>
     <string name="favorites_empty_filtered_message">Żadna ulubiona gra nie pasuje do bieżącego wyszukiwania ani filtrów.</string>

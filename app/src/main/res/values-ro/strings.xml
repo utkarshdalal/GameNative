@@ -2192,7 +2192,7 @@
     <string name="steam_invite_offline">Offline</string>
     <string name="tab_favorites">Favorite</string>
     <string name="favorites_empty_title">Încă nu ai favorite</string>
-    <string name="favorites_empty_message">Atinge steaua de pe orice joc pentru a-l adăuga aici pentru acces rapid.</string>
+    <string name="favorites_empty_message">Atinge steaua sau apasă butonul de favorite afișat în bara de acțiuni a controlerului când jocul este focalizat pentru a-l adăuga aici și a-l accesa rapid.</string>
     <string name="favorites_empty_action">Răsfoiește toate jocurile</string>
     <string name="favorites_empty_filtered_title">Nicio favorită de afișat</string>
     <string name="favorites_empty_filtered_message">Niciun joc favorit nu corespunde căutării sau filtrelor curente.</string>

@@ -2180,7 +2180,7 @@
     <string name="steam_invite_offline">Offline</string>
     <string name="tab_favorites">Preferiti</string>
     <string name="favorites_empty_title">Ancora nessun preferito</string>
-    <string name="favorites_empty_message">Tocca la stella su un gioco per aggiungerlo qui e accedervi rapidamente.</string>
+    <string name="favorites_empty_message">Tocca la stella oppure premi il pulsante dei preferiti mostrato nella barra delle azioni del controller mentre il gioco è selezionato per aggiungerlo qui e accedervi rapidamente.</string>
     <string name="favorites_empty_action">Sfoglia tutti i giochi</string>
     <string name="favorites_empty_filtered_title">Nessun preferito da mostrare</string>
     <string name="favorites_empty_filtered_message">Nessun gioco preferito corrisponde alla ricerca o ai filtri attuali.</string>

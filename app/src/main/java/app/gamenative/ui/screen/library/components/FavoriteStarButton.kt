@@ -5,7 +5,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.R
 import app.gamenative.data.FavoritesManager
-import app.gamenative.ui.component.focusRing
 
 /**
  * A star button that shows whether a game is a favorite and toggles it when tapped.
@@ -96,18 +95,13 @@ internal fun FavoriteStarButton(
         }
     }
 
-    // Own the interaction source so a D-pad / controller focus draws a visible ring on the button
-    // (the star is often the only focusable overlay on a cover, so it needs its own affordance).
-    val interactionSource = remember { MutableInteractionSource() }
-
     IconButton(
         onClick = {
             // A light context-click tick suits a quick toggle; LongPress would feel too heavy.
             view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
             toggleFavoriteWithUndo(context, appId, gameName)
         },
-        modifier = modifier.focusRing(interactionSource, CircleShape),
-        interactionSource = interactionSource,
+        modifier = modifier.focusProperties { canFocus = false },
     ) {
         val icon = @Composable {
             Icon(

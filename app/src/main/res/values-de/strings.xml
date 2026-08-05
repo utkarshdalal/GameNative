@@ -2129,7 +2129,7 @@
     <string name="steam_invite_offline">Offline</string>
     <string name="tab_favorites">Favoriten</string>
     <string name="favorites_empty_title">Noch keine Favoriten</string>
-    <string name="favorites_empty_message">Tippe bei einem Spiel auf den Stern, um es für den schnellen Zugriff hier hinzuzufügen.</string>
+    <string name="favorites_empty_message">Tippe auf den Stern oder drücke die in der Controller-Aktionsleiste angezeigte Favoritentaste, während ein Spiel fokussiert ist, um es für den schnellen Zugriff hier hinzuzufügen.</string>
     <string name="favorites_empty_action">Alle Spiele durchsuchen</string>
     <string name="favorites_empty_filtered_title">Keine Favoriten anzuzeigen</string>
     <string name="favorites_empty_filtered_message">Keine Favoriten-Spiele entsprechen der aktuellen Suche oder den Filtern.</string>
