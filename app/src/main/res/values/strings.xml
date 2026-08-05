@@ -111,7 +111,7 @@
     <string name="tab_all">All</string>
     <string name="tab_favorites">Favorites</string>
     <string name="favorites_empty_title">No favorites yet</string>
-    <string name="favorites_empty_message">Tap the star, or press the favorite button shown in the controller action bar while a game is focused, to add it here for quick access.</string>
+    <string name="favorites_empty_message">Tap the star, or press the controller’s west face button while a game is focused (X on Xbox, Square on PlayStation, or Y on Nintendo-style layouts).</string>
     <string name="favorites_empty_action">Browse all games</string>
     <string name="favorites_empty_filtered_title">No favorites to show</string>
     <string name="favorites_empty_filtered_message">No favorite games match the current search or filters.</string>
