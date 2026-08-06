@@ -3,6 +3,7 @@ package app.gamenative.steamcontroller
 import android.content.Context
 import android.os.Handler
 import android.util.Log
+import com.winlator.inputcontrols.ControllerManager
 import com.winlator.winhandler.WinHandler
 import com.winlator.xserver.XServer
 
@@ -38,9 +39,18 @@ class TritonMapper(
         // The controller stops rumbling ~50ms after the last report (firmware safety), so refresh a held
         // rumble faster than that — matches SDL's TRITON_RUMBLE_RESEND_INTERVAL_MS.
         private const val RUMBLE_RESEND_MS = 40L
-        /** Gamepad slot the SC's virtual XInput pad occupies (see [ScOutputSink]) — the only slot we own rumble for. */
-        const val SC_GAMEPAD_SLOT = 0
+        /** Slot used when every player slot is already taken — matches the pre-reservation behaviour. */
+        private const val FALLBACK_GAMEPAD_SLOT = 0
     }
+
+    /**
+     * Player slot this session drives, reserved from [ControllerManager] in [start]. The Triton is not an
+     * Android input device, so the auto-assigner can't see it; without the reservation it would hand this
+     * slot to the next physical pad, and the two would then share one gamepad state and one rumble channel
+     * (an Xbox pad's rumble came out of the Steam Controller's motors). Released in [stop].
+     */
+    @Volatile private var gamepadSlot = FALLBACK_GAMEPAD_SLOT
+    private var reservedSlot = -1
 
     // ble is read from the BLE binder thread (via the haptics writeOut lambda) but written on the main thread;
     // interpreter/bleRetries are touched from both BLE callbacks and the main handler — mark volatile for visibility.
@@ -65,15 +75,15 @@ class TritonMapper(
         }
     }
 
-    /** Claim/release the game's rumble output for [SC_GAMEPAD_SLOT] — the slot [ScOutputSink] feeds. */
+    /** Claim/release the game's rumble output for [gamepadSlot] — the slot [XServerOutputSink] feeds. */
     private fun setRumbleForwarder(claim: Boolean) {
         if (claim) {
             // Forward game rumble (poller thread) onto the main looper so motor writes serialize with the rest.
-            WinHandler.setScRumbleForwarder(SC_GAMEPAD_SLOT) { low, high ->
+            WinHandler.setScRumbleForwarder(gamepadSlot) { low, high ->
                 bleHandler.post { onGameRumble(low.toInt() and 0xFFFF, high.toInt() and 0xFFFF) }
             }
         } else {
-            WinHandler.setScRumbleForwarder(SC_GAMEPAD_SLOT, null)
+            WinHandler.setScRumbleForwarder(gamepadSlot, null)
             rumbleLow = 0; rumbleHigh = 0
         }
     }
@@ -93,6 +103,11 @@ class TritonMapper(
     /** Start the BLE transport (the only transport). Feeds the [ProfileInterpreter] so action sets / layers /
      *  mode-shift / overlays / keyboard run in-game. */
     fun start() {
+        // Take a player slot BEFORE any output can reach WinHandler, so a pad plugged in later is auto-assigned
+        // a different one instead of colliding with us.
+        reservedSlot = runCatching { ControllerManager.getInstance().reserveVirtualSlot() }.getOrDefault(-1)
+        gamepadSlot = if (reservedSlot >= 0) reservedSlot else FALLBACK_GAMEPAD_SLOT
+        Log.i(TAG, "using gamepad slot ${gamepadSlot + 1} (reserved=${reservedSlot >= 0})")
         startBle()
     }
 
@@ -148,7 +163,7 @@ class TritonMapper(
     private fun buildInterpreter(haptics: TritonHaptics?): ProfileInterpreter {
         val cfg = config
         return ProfileInterpreter(
-            XServerOutputSink(xServer),
+            XServerOutputSink(xServer, gamepadSlot),
             cfg?.defaultProfile() ?: ScProfile.default(),
             haptics,
             menuOverlay = menuOverlay,
@@ -189,6 +204,8 @@ class TritonMapper(
         transportReady = false
         running = false
         setRumbleForwarder(false)
+        runCatching { ControllerManager.getInstance().releaseVirtualSlot(reservedSlot) }
+        reservedSlot = -1
         bleHandler.removeCallbacksAndMessages(null)
         ble?.close(); ble = null
         haptics = null

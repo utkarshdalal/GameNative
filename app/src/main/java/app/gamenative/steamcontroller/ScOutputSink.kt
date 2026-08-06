@@ -23,12 +23,20 @@ interface ScOutputSink {
     fun key(key: XKeycode, pressed: Boolean)
 }
 
-/** Real sink: forwards to GameNative's injection API (virtual pad via WinHandler, mouse/keys via XServer). */
-class XServerOutputSink(private val xServer: XServer) : ScOutputSink {
+/**
+ * Real sink: forwards to GameNative's injection API (virtual pad via WinHandler, mouse/keys via XServer).
+ *
+ * [gamepadSlot] is the player slot TritonMapper reserved for this session — the same slot it claims rumble
+ * for. It is NOT hardcoded to player 1: a physical pad may already own slot 0, and writing there anyway
+ * would make both controllers share one gamepad state.
+ */
+class XServerOutputSink(
+    private val xServer: XServer,
+    private val gamepadSlot: Int = 0,
+) : ScOutputSink {
     override fun gamepad(state: GamepadState) {
         val wh = xServer.winHandler
-        // Same slot TritonMapper claims rumble for — keep the two together if this ever stops being player 1.
-        wh?.sendVirtualGamepadState(state, TritonMapper.SC_GAMEPAD_SLOT)
+        wh?.sendVirtualGamepadState(state, gamepadSlot)
         wh?.currentController?.state?.copy(state)
     }
 
