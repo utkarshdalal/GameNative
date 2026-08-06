@@ -34,6 +34,7 @@ import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.BootProgress
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.IntentLaunchManager
@@ -259,6 +260,7 @@ class MainViewModel @Inject constructor(
 
     private val onSetBootingSplashText: (AndroidEvent.SetBootingSplashText) -> Unit = {
         setBootingSplashText(it.text)
+        _state.update { state -> state.copy(bootingSplashProgress = it.progress) }
         setShowBootingSplash(true)
     }
 
@@ -369,6 +371,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun setShowBootingSplash(value: Boolean) {
+        // Single choke point for every dismissal path, so boot reporting can never outlive the splash.
+        if (!value) BootProgress.stop()
         val wasShowing = _state.value.showBootingSplash
         if (value && !wasShowing) {
             // The splash hides and re-shows between boot phases; a quick re-show is the same

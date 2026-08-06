@@ -25,6 +25,7 @@ data class MainState(
     val debugRun: Boolean = false,
     val showBootingSplash: Boolean = false,
     val bootingSplashText: String = "Booting...",
+    val bootingSplashProgress: Float = -1f,
     val bootingSplashHeroImageUrl: String = "",
     val bootAd: BootAdItem? = null,
 
