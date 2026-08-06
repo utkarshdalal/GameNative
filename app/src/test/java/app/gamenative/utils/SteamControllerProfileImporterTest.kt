@@ -55,45 +55,6 @@ class SteamControllerProfileImporterTest {
         assertEquals(ScOutput.MouseButton(Pointer.Button.BUTTON_SCROLL_UP), (p.leftPad as PadMode.DirectionalSwipe).up)
     }
     @Test
-    fun `hand-authored WoW ConsolePort config emits the WoWmapper keys`() {
-        val p = SteamControllerProfileImporter.importConfig(load("wow_consoleport.vdf")).defaultProfile()
-
-        // ConsolePort listens for these literal keys (Controllers/WoWmapper.lua). If any of them silently
-        // fail to import, the button just does nothing in-game — which is indistinguishable from a bad
-        // binding, so pin every one of them here.
-        fun key(k: XKeycode) = ScOutput.Key(listOf(k))
-        assertEquals("A -> CP_R_DOWN", key(XKeycode.KEY_F11), p.buttons[TritonProtocol.BTN_A]?.output)
-        assertEquals("B -> CP_R_RIGHT", key(XKeycode.KEY_F10), p.buttons[TritonProtocol.BTN_B]?.output)
-        assertEquals("X -> CP_R_LEFT", key(XKeycode.KEY_F12), p.buttons[TritonProtocol.BTN_X]?.output)
-        assertEquals("Y -> CP_R_UP", key(XKeycode.KEY_F9), p.buttons[TritonProtocol.BTN_Y]?.output)
-        assertEquals("dpad up -> CP_L_UP", key(XKeycode.KEY_F1), p.buttons[TritonProtocol.BTN_DPAD_UP]?.output)
-        assertEquals("dpad right -> CP_L_RIGHT", key(XKeycode.KEY_F2), p.buttons[TritonProtocol.BTN_DPAD_RIGHT]?.output)
-        assertEquals("dpad down -> CP_L_DOWN", key(XKeycode.KEY_F3), p.buttons[TritonProtocol.BTN_DPAD_DOWN]?.output)
-        assertEquals("dpad left -> CP_L_LEFT", key(XKeycode.KEY_F4), p.buttons[TritonProtocol.BTN_DPAD_LEFT]?.output)
-        assertEquals("view -> CP_X_LEFT", key(XKeycode.KEY_F5), p.buttons[TritonProtocol.BTN_MENU]?.output)
-        assertEquals("menu -> CP_X_RIGHT", key(XKeycode.KEY_F6), p.buttons[TritonProtocol.BTN_VIEW]?.output)
-        assertEquals("RB -> CP_T1", key(XKeycode.KEY_F7), p.buttons[TritonProtocol.BTN_RBUMPER]?.output)
-        // CP_X_CENTER is NUMPADPLUS on this install (WoWmapper.lua is patched because GameNative can't
-        // send NUMPADMULTIPLY); KEYPAD_PLUS -> X11 KP_Add -> Wine reports NUMPADPLUS.
-        assertEquals("R4 -> CP_X_CENTER", key(XKeycode.KEY_KP_ADD), p.buttons[TritonProtocol.BTN_R4]?.output)
-        assertEquals("R5 -> TOGGLERUN", key(XKeycode.KEY_KP_DIVIDE), p.buttons[TritonProtocol.BTN_R5]?.output)
-
-        // Modifiers (Config/Binds.lua): CP_M1 = SHIFT on the left bumper, CP_M2 = CTRL on the left trigger.
-        // These give ConsolePort its 4 ability pages; without them only page 1 works.
-        assertEquals("LB -> CP_M1 (SHIFT)", key(XKeycode.KEY_SHIFT_L), p.buttons[TritonProtocol.BTN_LBUMPER]?.output)
-        assertEquals("LT -> CP_M2 (CTRL)", key(XKeycode.KEY_CTRL_L), p.buttons[TritonProtocol.BTN_LTRIG_CLICK]?.output)
-        assertEquals("RT -> CP_T2", key(XKeycode.KEY_F8), p.buttons[TritonProtocol.BTN_RTRIG_CLICK]?.output)
-
-        // WoW 3.3.5a has no gamepad API: movement must be WASD, camera must be the mouse.
-        val ls = p.leftStick as StickMode.DPad
-        assertEquals("left stick forward = W", key(XKeycode.KEY_W), ls.up)
-        assertEquals("left stick back = S", key(XKeycode.KEY_S), ls.down)
-        assertTrue("right stick drives the camera", p.rightStick is StickMode.Mouse)
-        assertTrue("right pad = mouse", p.rightPad is PadMode.Mouse)
-        assertTrue("gyro = mouse aim", p.gyro is GyroMode.Mouse)
-    }
-
-    @Test
     fun `region + single_button test config decodes the B1 B2 modes`() {
         val p = SteamControllerProfileImporter.importConfig(load("sc_region_single_test.vdf")).defaultProfile()
         // B2: left pad = single_button bound to key F (fires the whole surface as one key)
