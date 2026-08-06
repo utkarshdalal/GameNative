@@ -6,9 +6,6 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanResult
-import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.os.Build
 import android.os.Handler
@@ -18,7 +15,7 @@ import java.util.UUID
 
 /**
  * Direct Bluetooth-LE transport for the 2026 Steam Controller — the no-dongle, no-root path
- * (docs/BLE-GATT-PATH.md). Finds the controller (bonded first, else scan by service UUID), connects GATT,
+ * (docs/BLE-GATT-PATH.md). Finds the controller among BONDED devices only (never scans — see [start]), connects GATT,
  * **un-lizards it by writing settings to the control characteristic** (the BLE analog of USB's lizard-off —
  * required because Android grabs the controller as a system HID, leaving it in lizard mode), subscribes to
  * the input characteristic(s), and emits decoded [TritonState]s. A 2 s heartbeat re-sends lizard-off
@@ -41,7 +38,6 @@ class TritonBle(private val context: Context) {
         val INPUT_TRITON_45: UUID = UUID.fromString("100F6C7A-1735-4313-B402-38567131E5F3")
         val INPUT_TRITON_47: UUID = UUID.fromString("100F6C7C-1735-4313-B402-38567131E5F3")
         private val CCCD_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
-        private const val SCAN_TIMEOUT_MS = 6000L
         // The 45-byte Triton report exceeds the default 23-byte BLE MTU, so it can't be delivered until we
         // request a large MTU (Data Length Extensions). 517 is Android's "enable DLE" magic value (per SDL).
         private const val TRITON_MTU = 517
@@ -51,17 +47,15 @@ class TritonBle(private val context: Context) {
         /** Runtime permissions this transport needs. API 31+ split BT perms; <=30 needs neither (manifest-only). */
         val REQUIRED_PERMISSIONS: Array<String> =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                arrayOf(
-                    android.Manifest.permission.BLUETOOTH_CONNECT,
-                    android.Manifest.permission.BLUETOOTH_SCAN,
-                )
+                // CONNECT only: we never scan, so BLUETOOTH_SCAN would be a permission we ask for and never use.
+                arrayOf(android.Manifest.permission.BLUETOOTH_CONNECT)
             } else {
                 emptyArray()
             }
 
         /**
          * True when every [REQUIRED_PERMISSIONS] entry is granted. Declaring them in the manifest is NOT enough on
-         * API 31+: without the grant, `bondedDevices` / `startScan` / `connectGatt` all throw SecurityException.
+         * API 31+: without the grant, `bondedDevices` and `connectGatt` both throw SecurityException.
          * The Steam-Controller setting requests them; the launch path refuses to start the transport without them.
          */
         fun hasPermissions(context: Context): Boolean = REQUIRED_PERMISSIONS.all {
@@ -79,8 +73,6 @@ class TritonBle(private val context: Context) {
     // Used to route USB-style output reports (haptics 0x82, etc.) to the right BLE char.
     private val outputReportChars = HashMap<Int, BluetoothGattCharacteristic>()
     @Volatile private var inputUuid: UUID? = null
-    private var scanner: android.bluetooth.le.BluetoothLeScanner? = null
-    private var scanCb: ScanCallback? = null
     @Volatile private var closed = false
 
     private val opQueue = ArrayDeque<() -> Unit>()
@@ -107,6 +99,11 @@ class TritonBle(private val context: Context) {
         // API 31+, and this runs off the game-launch path where an uncaught throw kills the launch.
         if (!hasPermissions(context)) { fail("Bluetooth permission not granted (Nearby devices)."); return }
 
+        // Bonded devices ONLY. An advertised name or service UUID is not authentication — both are trivially
+        // spoofable, so scanning and connecting to whatever claims to be a Steam Controller would let any
+        // nearby device inject keystrokes and mouse movement into the game. A bond is a real, user-driven
+        // trust decision, so we require one and never scan. Pair the controller in Android's Bluetooth
+        // settings first; that is the normal flow for a Bluetooth device anyway.
         val bonded = runCatching {
             adapter.bondedDevices?.firstOrNull { d ->
                 val n = d.name ?: ""
@@ -114,49 +111,12 @@ class TritonBle(private val context: Context) {
                 n.contains("Steam", true) || n.contains("Valve", true)
             }
         }.getOrNull()
-        if (bonded != null) {
-            Log.i(TAG, "found bonded controller: ${bonded.name} ${bonded.address}")
-            connect(bonded)
-        } else {
-            Log.i(TAG, "no bonded controller; scanning for service $SERVICE_UUID")
-            scan()
+        if (bonded == null) {
+            fail("No paired Steam Controller. Pair it in Android's Bluetooth settings, then try again.")
+            return
         }
-    }
-
-    private fun scan() {
-        val s = adapter.bluetoothLeScanner ?: run { fail("BLE scanner unavailable."); return }
-        scanner = s
-        // No service filter: some devices don't advertise the custom service UUID. Match by name OR
-        // advertised service in the callback (more robust for the unbonded/GATT-only connect).
-        val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
-        val cb = object : ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: ScanResult) {
-                val dev = result.device ?: return
-                val name = dev.name ?: result.scanRecord?.deviceName ?: ""
-                val advertisesService = result.scanRecord?.serviceUuids?.any { it.uuid == SERVICE_UUID } == true
-                val nameMatch = name.contains("Steam", true) || name.contains("Valve", true)
-                if (!advertisesService && !nameMatch) return
-                Log.i(TAG, "scan hit: '$name' ${dev.address} (service=$advertisesService)")
-                stopScan(); connect(dev)
-            }
-            override fun onScanFailed(errorCode: Int) { fail("BLE scan failed (code $errorCode).") }
-        }
-        scanCb = cb
-        // Permissions can be revoked between the gate above and here (the user can toggle "Nearby devices" while a
-        // game runs), so treat the throw as a transport failure rather than letting it escape to the caller.
-        runCatching { s.startScan(null, settings, cb) }
-            .onFailure { fail("BLE scan could not start: ${it.message}"); return }
-        handler.postDelayed({
-            if (gatt == null && !closed) {
-                stopScan()
-                fail("No controller found over BLE in ${SCAN_TIMEOUT_MS / 1000}s. Is it in Bluetooth mode and connected?")
-            }
-        }, SCAN_TIMEOUT_MS)
-    }
-
-    private fun stopScan() {
-        runCatching { scanCb?.let { scanner?.stopScan(it) } }
-        scanCb = null
+        Log.i(TAG, "found bonded controller: ${bonded.name} ${bonded.address}")
+        connect(bonded)
     }
 
     private fun connect(device: BluetoothDevice) {
@@ -388,7 +348,6 @@ class TritonBle(private val context: Context) {
 
     fun close() {
         closed = true
-        stopScan()
         handler.removeCallbacksAndMessages(null) // stop the lizard heartbeat + any pending discover
         // Tear down the ACL link before releasing the client, or the controller stays connected at the OS level
         // ("not released" after a game exits). disconnect() then close() is the documented clean teardown.

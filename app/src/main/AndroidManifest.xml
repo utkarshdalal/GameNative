@@ -20,10 +20,9 @@
     <uses-permission android:name="android.permission.READ_LOGS" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
-    <!-- Bluetooth LE for the Steam Controller direct-BLE path (no Puck dongle). API 31+ split perms;
-         legacy perms + location gated to <=30. neverForLocation: we only use BLE for the controller. -->
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
-        android:usesPermissionFlags="neverForLocation" />
+    <!-- Bluetooth LE for the Steam Controller direct-BLE path (no Puck dongle). CONNECT only: the transport
+         talks exclusively to a BONDED controller and never scans, so BLUETOOTH_SCAN isn't needed. Legacy
+         perms + location gated to <=30. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />

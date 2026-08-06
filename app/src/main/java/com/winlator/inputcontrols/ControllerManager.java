@@ -573,13 +573,21 @@ public class ControllerManager {
      * @return the reserved slot, or -1 if no slot could be freed (caller should carry on unreserved).
      */
     public synchronized int reserveVirtualSlot() {
-        if (!isSlotAvailable(0)) {
-            String occupant = slotAssignments.get(0);
+        if (reservedSlots[0]) return -1;
+        // Test the PERSISTED assignment, not isSlotAvailable(0): that resolves the slot against currently
+        // connected InputDevices, so a pad assigned to Player 1 but switched off reads as "available". We
+        // would then reserve Player 1 while its name is still in slotAssignments, and when the pad powers on
+        // mid-session onDeviceConnected() sees an existing assignment, leaves it alone, and lands it right
+        // back on top of the virtual controller.
+        String occupant = slotAssignments.get(0);
+        if (occupant != null) {
+            // The displacement target must be free of a persisted assignment too, or we would overwrite some
+            // other pad's saved slot.
             int target = -1;
             for (int slot = 1; slot < MAX_SLOTS; slot++) {
-                if (isSlotAvailable(slot)) { target = slot; break; }
+                if (!reservedSlots[slot] && slotAssignments.get(slot) == null) { target = slot; break; }
             }
-            if (occupant == null || target < 0) {
+            if (target < 0) {
                 Log.w(TAG, "Player 1 is taken and cannot be freed; virtual controller stays unreserved");
                 return -1;
             }
