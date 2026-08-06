@@ -1089,6 +1089,7 @@
     <string name="settings_interface_steam_controller_title">Steam Controller (2026)</string>
     <string name="settings_interface_steam_controller_subtitle">Connect a paired Steam Controller over Bluetooth when a game starts. Off unless you own one.</string>
     <string name="settings_interface_steam_controller_denied">Steam Controller support needs the Bluetooth (Nearby devices) permission.</string>
+    <string name="settings_interface_steam_controller_denied_forever">Android won\'t ask again — turn on "Nearby devices" for GameNative in app permissions.</string>
     <string name="settings_interface_warn_before_exit_title">Warn before exiting</string>
     <string name="settings_interface_warn_before_exit_subtitle">Require double back press to exit — first press shows a warning</string>
     <string name="settings_interface_show_gamepad_hints_title">Show controller hints</string>
