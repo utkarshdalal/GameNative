@@ -133,7 +133,7 @@ object XAudioUtils {
                 return
             }
 
-            BootProgress.detail("extracting XAudio DLLs")
+            BootProgress.detail("extracting XAudio DLLs", legacy = "Extracting XAudio DLLs...")
 
             val batFile = File(tempDir, "extract_dx_audio_dlls.bat")
             val batContent = buildCabarcBatchScript(
