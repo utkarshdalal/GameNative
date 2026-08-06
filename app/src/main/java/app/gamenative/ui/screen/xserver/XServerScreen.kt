@@ -5012,6 +5012,7 @@ private fun unpackExecutableFile(
                     BootProgress.update(
                         index.toFloat() / exePaths.size,
                         "${index + 1}/${exePaths.size}: ${extractExecutableBasename(executablePath)}",
+                        legacy = "Handling DRM (${index + 1}/${exePaths.size})".takeIf { exePaths.size > 1 },
                     )
                     var batchFile: File? = null
                     try {

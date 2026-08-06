@@ -1073,6 +1073,8 @@ https://gamenative.app
     <string name="settings">Настройки</string>
     <string name="settings_debug_box_logs_subtitle">Записать вывод отладки Box86 &amp; Box64 в файл</string>
     <string name="settings_debug_box_logs_title">Включить логи Box86/64</string>
+    <string name="settings_debug_verbose_boot_title">Подробный прогресс</string>
+    <string name="settings_debug_verbose_boot_subtitle">Показывать текущий шаг и реальный прогресс при запуске контейнера</string>
     <string name="settings_debug_clear_cache_subtitle">Удалить все загруженные изображения.</string>
     <string name="settings_debug_clear_cache_title">Очистить кэш изображений</string>
     <string name="settings_debug_clear_db_subtitle">[Закрывает приложение] Может помочь исправить проблемы с элементами библиотеки или сообщениями.</string>

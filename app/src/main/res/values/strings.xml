@@ -1099,6 +1099,8 @@
     <string name="settings_debug_wine_channels_title">Select Wine Debug Channels</string>
     <string name="settings_debug_wine_logs_title">Enable Wine Debug Logs</string>
     <string name="settings_debug_wine_logs_subtitle">Write Wine debug output to file</string>
+    <string name="settings_debug_verbose_boot_title">Detailed launch progress</string>
+    <string name="settings_debug_verbose_boot_subtitle">Show the current step and a real progress bar while a container boots</string>
     <string name="settings_debug_box_logs_title">Enable Box86/64 Logs</string>
     <string name="settings_debug_box_logs_subtitle">Write Box86 &amp; Box64 debug output to file</string>
     <string name="settings_debug_view_crash_title">View latest crash</string>
