@@ -53,6 +53,37 @@ class GOGCloudSavesManagerTest {
         assertEquals(1_775_162_040L, files.single().updateTimestamp)
     }
 
+    @Test
+    fun parseCloudFilesResponse_empty_dirname_returns_all_files_without_prefix_stripping() {
+        // Galaxy SDK fallback (e.g. Tainted Grail): remote-config declares no locations, so the
+        // fallback location syncs with an empty dirname — the whole bucket is ours and each object
+        // name is already the path relative to Storage/Shared/Files, with no namespace prefix.
+        val files = manager.parseCloudFilesResponse(
+            """
+            [
+              {
+                "name": "Saved/AutoSave_0/Gameplay.data",
+                "hash": "abc123",
+                "last_modified": "2026-04-02T20:34:00.123456+00:00"
+              },
+              {
+                "name": "Saved/PlayerPrefs.data",
+                "hash": "def456",
+                "last_modified": "2026-04-02T21:00:00+00:00"
+              }
+            ]
+            """.trimIndent(),
+            "",
+        )
+
+        assertNotNull(files)
+        assertEquals(2, files!!.size)
+        assertEquals(
+            setOf("Saved/AutoSave_0/Gameplay.data", "Saved/PlayerPrefs.data"),
+            files.map { it.relativePath }.toSet(),
+        )
+    }
+
     // Helper to access private classifyFiles method
     private fun classifyFiles(
         localFiles: List<GOGCloudSavesManager.SyncFile>,

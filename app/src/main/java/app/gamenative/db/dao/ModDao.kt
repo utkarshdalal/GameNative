@@ -5,6 +5,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
+import androidx.room.Upsert
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModOverwriteManifest
 import app.gamenative.data.ModPlacementRecipe
@@ -24,11 +26,34 @@ interface ModDao {
     @Query("SELECT * FROM mod_install WHERE install_id = :installId")
     suspend fun getInstall(installId: String): ModInstall?
 
+    @Query(
+        """
+        SELECT * FROM mod_install
+        WHERE app_id = :appId
+          AND source IN ('LOCAL_ARCHIVE', 'LOCAL_FILES', 'LOCAL_FOLDER')
+          AND archive_sha256 != ''
+          AND archive_sha256 = :archiveSha256
+          AND install_id != :excludingInstallId
+          AND status IN (:reusableStatuses)
+        ORDER BY updated_at DESC, install_id DESC
+        LIMIT 32
+        """,
+    )
+    suspend fun getLocalInstallsByContentHash(
+        appId: String,
+        archiveSha256: String,
+        excludingInstallId: String,
+        reusableStatuses: Set<String>,
+    ): List<ModInstall>
+
     @Query("SELECT * FROM mod_install WHERE status = :status ORDER BY updated_at")
     suspend fun getInstallsByStatus(status: String): List<ModInstall>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun upsertInstall(install: ModInstall)
+
+    @Update
+    suspend fun updateInstall(install: ModInstall): Int
 
     @Query("UPDATE mod_install SET enabled = :enabled, status = :status, updated_at = :updatedAt WHERE install_id = :installId")
     suspend fun updateInstallEnabled(

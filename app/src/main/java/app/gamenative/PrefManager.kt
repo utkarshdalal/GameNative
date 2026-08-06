@@ -8,10 +8,10 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.byteArrayPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.gamenative.data.GameSource
 import app.gamenative.enums.AppTheme
@@ -345,7 +345,7 @@ object PrefManager {
     var quickMenuLastTab: Int
         get() = getPref(QUICK_MENU_LAST_TAB, 0)
         set(value) {
-            setPref(QUICK_MENU_LAST_TAB, value.coerceIn(0, 2))
+            setPref(QUICK_MENU_LAST_TAB, value.coerceIn(0, 6))
         }
 
     private val SHOW_FPS = booleanPreferencesKey("show_fps")
@@ -1423,34 +1423,6 @@ object PrefManager {
     var usageAnalyticsEnabled: Boolean
         get() = getPref(USAGE_ANALYTICS_ENABLED, true)
         set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
-
-    private val NEXUS_API_KEY_ENC = byteArrayPreferencesKey("nexus_api_key_enc")
-    var nexusApiKey: String
-        get() {
-            val encryptedBytes = getPref(NEXUS_API_KEY_ENC, ByteArray(0))
-            return if (encryptedBytes.isEmpty()) {
-                ""
-            } else {
-                runCatching { String(Crypto.decrypt(encryptedBytes)) }
-                    .onFailure {
-                        Timber.w(it, "Failed to decrypt Nexus API key; clearing saved key")
-                        removePref(NEXUS_API_KEY_ENC)
-                    }
-                    .getOrDefault("")
-            }
-        }
-        set(value) {
-            if (value.isBlank()) {
-                removePref(NEXUS_API_KEY_ENC)
-            } else {
-                runCatching { Crypto.encrypt(value.toByteArray()) }
-                    .onSuccess { setPref(NEXUS_API_KEY_ENC, it) }
-                    .onFailure {
-                        Timber.w(it, "Failed to encrypt Nexus API key; clearing saved key")
-                        removePref(NEXUS_API_KEY_ENC)
-                    }
-            }
-        }
 
     private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")
     var nexusLastPlacementJson: String

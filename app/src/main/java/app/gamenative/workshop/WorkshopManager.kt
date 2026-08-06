@@ -76,6 +76,7 @@ object WorkshopManager {
     private const val RAIN_WORLD_MODS_PATH = "RainWorld_Data/StreamingAssets/mods"
     private const val RAIN_WORLD_ENABLED_MODS_PATH = "RainWorld_Data/StreamingAssets/enabledMods.txt"
     private const val ONI_APP_ID = 457140
+    private const val YOMI_HUSTLE_APP_ID = 2212330
     private const val MAX_PAGES = 50
     private const val PAGE_SIZE = 100
     private var workshopTypesPatched = false
@@ -90,7 +91,10 @@ object WorkshopManager {
         1942280, // Brotato
         SlayTheSpireModTheSpireCompatibility.APP_ID,  // Slay the Spire - Workshop items include Java/JAR payloads
         564310,  // Serious Sam Fusion 2017 - .gro files are ZIP payloads read by the game
+        YOMI_HUSTLE_APP_ID, // YOMI HUSTLE loads Workshop mod ZIPs without extracting them
     )
+
+    private val YOMI_HUSTLE_FLAT_FILE_EXTENSIONS = setOf("zip")
 
     private val ZIP_PAYLOAD_EXTENSIONS_BY_APP_ID = mapOf(
         SlayTheSpireModTheSpireCompatibility.APP_ID to setOf("jar"),
@@ -290,6 +294,14 @@ object WorkshopManager {
     private const val MIN_SIZE_VALIDATION_BYTES = 8L * 1024L * 1024L
     private const val SUSPICIOUS_SIZE_RATIO_DIVISOR = 20L
 
+    private fun needsYomiWorkshopZipRestore(item: WorkshopItem, itemDir: File): Boolean {
+        return item.appId == YOMI_HUSTLE_APP_ID &&
+            File(itemDir, ".zip_extracted").isFile &&
+            itemDir.listFiles()?.none {
+                it.isFile && it.extension.equals("zip", ignoreCase = true)
+            } != false
+    }
+
     /**
      * Filters items that need downloading. An item needs sync if:
      * - It has downloadable content (fileUrl or manifestId)
@@ -319,6 +331,17 @@ object WorkshopManager {
             val itemDir = File(workshopContentDir, item.publishedFileId.toString())
             val partialDir = File(workshopContentDir, "${item.publishedFileId}.partial")
             val completeMarker = File(itemDir, COMPLETE_MARKER)
+
+            // Older builds extracted YOMI's Workshop ZIPs and deleted the archives.
+            // Re-download those items once so the original archive (and therefore
+            // its multiplayer hash) is restored instead of rebuilding a different ZIP.
+            if (needsYomiWorkshopZipRestore(item, itemDir)) {
+                Timber.tag(TAG).i(
+                    "Item ${item.publishedFileId} '${item.title}' needs sync: " +
+                        "restoring YOMI Workshop ZIP removed by an older build"
+                )
+                return@filter true
+            }
 
             // DepotDownloader leaves .partial sibling dirs after completing.
             // If the complete marker exists, the download finished — clean up
@@ -2560,6 +2583,7 @@ object WorkshopManager {
     ) {
         val appId = workshopContentDir.name.toIntOrNull() ?: -1
         val isSlayTheSpire = appId == SlayTheSpireModTheSpireCompatibility.APP_ID
+        val isYomiHustle = appId == YOMI_HUSTLE_APP_ID
 
         if (isSlayTheSpire) {
             SlayTheSpireModTheSpireCompatibility.cleanupManagedWorkshopFiles(gameRootDir)
@@ -2785,6 +2809,21 @@ object WorkshopManager {
                             .sortedBy { id -> orderByRainWorldId[id] ?: Int.MAX_VALUE },
                         previousRainWorldWorkshopIds,
                     )
+                } else if (isYomiHustle) {
+                    val activeItemDirs = modDirs.associate { itemDir ->
+                        (itemDir.name.toLongOrNull() ?: 0L) to itemDir
+                    }
+                    val result = WorkshopSymlinker().sync(
+                        WorkshopModPathStrategy.SymlinkIntoDir(listOf(targetDir)),
+                        activeItemDirs,
+                        workshopContentDir,
+                        flatFileExtensions = YOMI_HUSTLE_FLAT_FILE_EXTENSIONS,
+                    )
+                    if (result.hasErrors) {
+                        result.errors.forEach { (key, value) ->
+                            Timber.tag(TAG).w("YOMI manual-path symlinker error [$key]: $value")
+                        }
+                    }
                 } else {
                     modDirs.forEach { itemDir ->
                         val linkPath = targetDir.toPath().resolve(itemDir.name)
@@ -3707,7 +3746,15 @@ object WorkshopManager {
                         val itemsForSync = if (mirrorItemIds.isEmpty()) activeItemDirs else regularItems
                         val symlinker = WorkshopSymlinker()
                         val result = symlinker.sync(
-                            effectiveStrategy, itemsForSync, workshopContentDir, titlesByItemId,
+                            effectiveStrategy,
+                            itemsForSync,
+                            workshopContentDir,
+                            titlesByItemId,
+                            flatFileExtensions = if (isYomiHustle) {
+                                YOMI_HUSTLE_FLAT_FILE_EXTENSIONS
+                            } else {
+                                emptySet()
+                            },
                         )
                         if (result.hasErrors) {
                             result.errors.forEach { (k, v) ->
@@ -4401,10 +4448,12 @@ object WorkshopManager {
             val marker = File(itemDir, COMPLETE_MARKER)
             val markerExists = marker.exists()
             val hasContent = itemDir.listFiles()?.any { !it.name.startsWith(".") } == true
-            val isMissing = !markerExists || !hasContent
+            val needsYomiZipRestore = needsYomiWorkshopZipRestore(item, itemDir)
+            val isMissing = !markerExists || !hasContent || needsYomiZipRestore
             Timber.tag(TAG).d(
                 "[UpdateCheck] Item ${item.publishedFileId} '${item.title}': " +
                     "marker=$markerExists, hasContent=$hasContent, " +
+                    "needsYomiZipRestore=$needsYomiZipRestore, " +
                     "dirExists=${itemDir.exists()}, isMissing=$isMissing"
             )
             isMissing

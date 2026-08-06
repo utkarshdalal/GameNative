@@ -51,6 +51,43 @@ class ModArchiveExtractorTest {
     }
 
     @Test
+    fun extractZip_rejectsPathBeyondImportDepthLimit() = runBlocking {
+        val archive = File(tempDir, "too-deep.zip")
+        val tooDeep = List(66) { "d$it" }.joinToString("/") + "/file.txt"
+        zip(archive, tooDeep to "data")
+
+        val result = runCatching {
+            ModArchiveExtractor.extract(archive, File(tempDir, "out-too-deep"))
+        }
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun extractZip_rejectsOverlongRelativePath() = runBlocking {
+        val archive = File(tempDir, "too-long.zip")
+        zip(archive, "d/${"x".repeat(1_024)}.txt" to "data")
+
+        val result = runCatching {
+            ModArchiveExtractor.extract(archive, File(tempDir, "out-too-long"))
+        }
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun extractZip_rejectsOverlongRawPathBeforeNormalization() = runBlocking {
+        val archive = File(tempDir, "too-long-raw.zip")
+        zip(archive, "${"./".repeat(513)}file.txt" to "data")
+
+        val result = runCatching {
+            ModArchiveExtractor.extract(archive, File(tempDir, "out-too-long-raw"))
+        }
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
     fun extractZip_listsEntries() = runBlocking {
         val archive = File(tempDir, "mod.zip")
         zip(

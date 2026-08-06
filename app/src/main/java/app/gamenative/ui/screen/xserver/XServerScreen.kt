@@ -109,11 +109,13 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
+import app.gamenative.ui.component.SteamInviteState
 import app.gamenative.ui.component.dialog.ScConfigManagerDialog
 import app.gamenative.ui.component.dialog.ScOverlayEditorDialog
 import app.gamenative.ui.component.dialog.ScOverlayTarget
 import app.gamenative.ui.component.dialog.SteamControllerBindingEditorDialog
 import app.gamenative.ui.component.parseBooleanExtra
+import app.gamenative.utils.BionicFgManager
 import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
@@ -571,6 +573,8 @@ fun XServerScreen(
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
         container.putExtra(FPS_LIMITER_TARGET_EXTRA, fpsLimiterTarget)
         container.saveData()
+        // The limiter also drives the bionic-fg layer's frame pacing
+        BionicFgManager.updateConfigAtRuntime(container)
     }
 
     fun loadPerformanceHudConfig(): PerformanceHudConfig {
@@ -647,6 +651,9 @@ fun XServerScreen(
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
             ?.setFrameRateLimit(limit)
+        xServerView?.getxServer()
+            ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
+            ?.setEagerIdleRelease(BionicFgManager.isArmed(container))
     }
 
     fun effectiveFpsLimit(): Int =
@@ -774,7 +781,10 @@ fun XServerScreen(
             context = context,
             fpsProvider = {
                 val raw = frameRating?.currentFPS ?: 0f
-                val mult = if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
+                val mult = when {
+                    isLsfgAvailable && lsfgMultiplier >= 2 -> lsfgMultiplier
+                    else -> 1
+                }
                 raw * mult
             },
             initialConfig = performanceHudConfig,
@@ -1316,10 +1326,14 @@ fun XServerScreen(
             QuickMenuAction.EXIT_GAME -> {
                 PostHog.capture(
                     event = "game_closed",
-                    properties = mapOf(
-                        "game_name" to ContainerUtils.resolveGameName(appId),
-                        "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
-                    ),
+                    properties = buildMap {
+                        put("game_name", ContainerUtils.resolveGameName(appId))
+                        put("game_store", ContainerUtils.extractGameSourceFromContainerId(appId).name)
+                        if (PrefManager.usageAnalyticsEnabled) {
+                            put("max_controllers", ControllerManager.getInstance().sessionUsedControllerCount)
+                            put("external_controller_used", ControllerManager.getInstance().sessionUsedExternalController)
+                        }
+                    },
                 )
                 imeInputReceiver?.hideKeyboard()
                 // Resume processes before exiting so they can receive SIGTERM cleanly.
@@ -1402,6 +1416,7 @@ fun XServerScreen(
         }
 
         inputManager.registerInputDeviceListener(deviceListener, null)
+        ControllerManager.getInstance().resetSessionActivity()
         scanForExternalDevices()
 
         onDispose {
@@ -1483,8 +1498,13 @@ fun XServerScreen(
             var handled = false
             if (isGamepad) {
                 val winHandler = xServerView!!.getxServer().winHandler
+                if (it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0 &&
+                    ControllerManager.getInstance().noteGamepadButton(it.event.device.id)
+                ) {
+                    winHandler.refreshControllerMappingsForHotplug()
+                }
                 val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
-                if (assignedSlot >= 0) {
+                if (assignedSlot > 0) {
                     handled = winHandler.onKeyEvent(it.event)
                 } else {
                     winHandler.setCurrentController(it.event.device.id)
@@ -1535,8 +1555,9 @@ fun XServerScreen(
             var handled = false
             if (isGamepad && it.event != null) {
                 val winHandler = xServerView!!.getxServer().winHandler
+                ControllerManager.getInstance().noteGamepadActivity(it.event)
                 val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
-                if (assignedSlot >= 0) {
+                if (assignedSlot > 0) {
                     handled = winHandler.onGenericMotionEvent(it.event)
                 } else {
                     winHandler.setCurrentController(it.event.device.id)
@@ -2754,10 +2775,14 @@ fun XServerScreen(
             onLsfgMultiplierChanged = ::applyLsfgMultiplier,
             onLsfgFlowScaleChanged = ::applyLsfgFlowScale,
             onLsfgPerformanceModeChanged = ::applyLsfgPerformanceMode,
+            onRequestOpen = { showQuickMenu = true },
             onAnimationComplete = { isMenuVisible ->
                 if (isMenuVisible) {
-                    pauseForOverlayIfAllowed()
+                    // An invite dialog the game asked for must not suspend it -- the game has to
+                    // keep running to receive the peer that's joining.
+                    if (!SteamInviteState.openedForGameRequest) pauseForOverlayIfAllowed()
                 } else {
+                    SteamInviteState.openedForGameRequest = false
                     if (shouldForceResumeOnMenuClose) {
                         forceResumeIfSuspended()
                         shouldForceResumeOnMenuClose = false
@@ -3910,6 +3935,16 @@ private fun setupXEnvironment(
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
+
+        val ffpGameDir = runCatching {
+            Container.drivesIterator(container.drives).asSequence()
+                .firstOrNull { it[0] == "A" }?.let { File(it[1]).canonicalFile.path }
+        }.getOrNull() ?: ""
+        if (ffpGameDir.startsWith("/storage/")) {
+            envVars.put("FFP_ENABLE", "1")
+            envVars.put("FFP_MARKERS", "/steamapps/common/;/dosdevices/a:")
+        }
+
         val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
         if (graphicsDriverConfig.get("version").lowercase(Locale.getDefault()).contains("gen8")) {
             var tuDebug = envVars.get("TU_DEBUG")
@@ -5519,7 +5554,8 @@ private suspend fun extractWinComponentFiles(
 
             if (!container.wineVersion.contains("arm64ec") && identifier.contains("opengl") && useNative) continue
 
-            if (useNative) {
+            // Note: GameNative do not bundle directinput and directinput8 dlls, need to skip them and use wine/proton dll instead
+            if (useNative && (identifier != "directinput8" && identifier != "directinput")) {
                 // Download or use cached/bundled wincomponent
                 val componentFile = WinComponentDownloader.ensureWinComponentAvailable(
                     context, identifier
@@ -5795,7 +5831,15 @@ private suspend fun extractGraphicsDriverFiles(
                 val wrapperComponentId = mainWrapperSelection.lowercase(Locale.getDefault())
                 Log.d("GraphicsDriverExtraction", "WRAPPER selection changed or first boot. Extracting: $wrapperComponentId")
                 try {
-                    extractGraphicsDriverComponent(context, wrapperComponentId, rootDir!!)
+                    val wrapperContentsManager = ContentsManager(context)
+                    val wrapperProfile: ContentProfile? =
+                        wrapperContentsManager.getProfileByEntryName(wrapperComponentId)
+                    if (wrapperProfile != null) {
+                        Timber.d("Applying user-defined wrapper content profile: $wrapperComponentId")
+                        wrapperContentsManager.applyContent(wrapperProfile)
+                    } else {
+                        extractGraphicsDriverComponent(context, wrapperComponentId, rootDir!!)
+                    }
                     // After success, save the new version so we don't re-extract next time.
                     container.putExtra("lastInstalledMainWrapper", mainWrapperSelection)
                     container.saveData()

@@ -3,12 +3,15 @@ package app.gamenative.mods
 import android.content.Context
 import app.gamenative.NetworkMonitor
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.ModInstall
+import app.gamenative.data.ModInstallSource
 import app.gamenative.data.ModInstallStatus
 import app.gamenative.data.ModOverwriteManifest
 import app.gamenative.data.ModPlacementMode
 import app.gamenative.data.ModPlacementRecipe
 import app.gamenative.data.ModTargetRoot
+import app.gamenative.db.PluviaDatabase
 import app.gamenative.db.dao.ModDao
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -87,6 +90,7 @@ object NexusModManager {
     @InstallIn(SingletonComponent::class)
     interface ModDaoEntryPoint {
         fun modDao(): ModDao
+        fun database(): PluviaDatabase
     }
 
     private val downloadClient = OkHttpClient()
@@ -97,6 +101,12 @@ object NexusModManager {
             ModDaoEntryPoint::class.java,
         ).modDao()
 
+    internal fun database(context: Context): PluviaDatabase =
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            ModDaoEntryPoint::class.java,
+        ).database()
+
     fun cacheRoot(context: Context, appId: String): File =
         File(context.filesDir, "mods/$appId/nexus")
 
@@ -105,6 +115,121 @@ object NexusModManager {
 
     fun installIdFor(appId: String, gameDomain: String, modId: Long, fileId: Long): String =
         installId(appId, gameDomain, modId, fileId)
+
+    fun hasCompletePendingArchive(context: Context, install: ModInstall): Boolean {
+        val tempArchiveFile = pendingArchiveFile(context, install)
+        return tempArchiveFile.isFile &&
+            (
+                (install.sizeBytes > 0L && tempArchiveFile.length() == install.sizeBytes) ||
+                    NexusImportState.hasCompletedDownload(install, tempArchiveFile.length())
+            )
+    }
+
+    fun hasCompletePendingLocalContent(context: Context, install: ModInstall): Boolean {
+        if (!ModInstallSource.isLocal(install.source)) return false
+        val content = localContentPaths(context, install)
+        val previousContentRequired = NexusImportState.restorablePreviousInstall(install) != null
+        val previousContentAvailable = verifiedPreviousLocalInstall(context, install) != null
+        if (install.source == ModInstallSource.LOCAL_ARCHIVE.name) {
+            val tempArchiveFile = pendingArchiveFile(context, install)
+            return tempArchiveFile.isFile &&
+                NexusImportState.hasCompletedDownload(install, tempArchiveFile.length()) &&
+                (!previousContentRequired || previousContentAvailable)
+        }
+        fun isComplete(content: File): Boolean =
+            hasUsableExtractedContent(content) &&
+                NexusImportState.hasCompletedLocalSnapshot(install, directorySize(content))
+
+        if (isComplete(content.staged)) {
+            return !previousContentRequired || previousContentAvailable
+        }
+        // When the completed snapshot is already promoted, only .previous can be the
+        // old install; promotedContent itself must not satisfy both sides of the check.
+        return (!previousContentRequired || hasUsableExtractedContent(content.previous)) &&
+            isComplete(content.promoted)
+    }
+
+    internal fun verifiedPreviousLocalInstall(
+        context: Context,
+        install: ModInstall?,
+    ): ModInstall? {
+        if (install == null || !ModInstallSource.isLocal(install.source)) return null
+        val previousInstall = NexusImportState.restorablePreviousInstall(install) ?: return null
+        val content = localContentPaths(context, install)
+        return previousInstall.takeIf {
+            hasUsableExtractedContent(content.promoted) ||
+                hasUsableExtractedContent(content.previous)
+        }
+    }
+
+    internal fun restorePreviousLocalInstall(
+        context: Context,
+        install: ModInstall?,
+        failureMessage: String,
+    ): ModInstall? {
+        if (install == null || !ModInstallSource.isLocal(install.source)) return null
+        val previousInstall = NexusImportState.restorablePreviousInstall(install) ?: return null
+        val content = localContentPaths(context, install)
+
+        if (content.previous.exists()) {
+            if (!hasUsableExtractedContent(content.previous)) throw IOException(failureMessage)
+            if (content.promoted.exists() && !content.promoted.deleteRecursively()) {
+                throw IOException(failureMessage)
+            }
+            if (!content.previous.renameTo(content.promoted)) throw IOException(failureMessage)
+        }
+        if (hasUsableExtractedContent(content.promoted)) return previousInstall
+        if (content.promoted.exists() && !content.promoted.deleteRecursively()) {
+            throw IOException(failureMessage)
+        }
+        return null
+    }
+
+    internal fun discardIncompletePendingLocalContent(
+        context: Context,
+        install: ModInstall,
+        failureMessage: String,
+    ): Boolean {
+        if (!ModInstallSource.isLocal(install.source)) return false
+        val content = localContentPaths(context, install)
+
+        fun deleteOrThrow(file: File) {
+            if (file.exists() && !file.deleteRecursively()) {
+                throw IOException(failureMessage)
+            }
+        }
+
+        deleteOrThrow(content.staged)
+        if (install.source == ModInstallSource.LOCAL_ARCHIVE.name) {
+            deleteOrThrow(pendingArchiveFile(context, install))
+        }
+
+        if (NexusImportState.restorablePreviousInstall(install) == null) {
+            deleteOrThrow(content.promoted)
+            deleteOrThrow(content.previous)
+            return false
+        }
+        return restorePreviousLocalInstall(context, install, failureMessage) != null
+    }
+
+    private fun pendingArchiveFile(context: Context, install: ModInstall): File {
+        val archiveFile = install.archivePath
+            .takeIf(String::isNotBlank)
+            ?.let(::File)
+            ?: File(
+                cacheRoot(context, install.appId),
+                "archives/${sanitizeFileName("${install.installId}_${install.fileName}")}",
+            )
+        return File(archiveFile.parentFile, "${archiveFile.name}.part")
+    }
+
+    private data class LocalContentPaths(val promoted: File) {
+        val staged = File("${promoted.absolutePath}.tmp")
+        val previous = File("${promoted.absolutePath}.previous")
+    }
+
+    private fun localContentPaths(context: Context, install: ModInstall) =
+        LocalContentPaths(File(cacheRoot(context, install.appId), "extracted/${install.installId}"))
 
     fun estimateImportScratchBytes(files: List<NexusModFile>): Long =
         files.fold(0L) { total, file ->
@@ -148,6 +273,23 @@ object NexusModManager {
         )
     }
 
+    suspend fun checkLocalImportStorage(
+        context: Context,
+        appId: String,
+        sourceBytes: Long,
+        requiresExtraction: Boolean = true,
+    ): ModStoragePreflight = withContext(Dispatchers.IO) {
+        val root = cacheRoot(context, appId).apply { mkdirs() }
+        ModStoragePreflight(
+            estimatedRequiredBytes = if (requiresExtraction) {
+                estimateImportScratchBytes(sourceBytes)
+            } else {
+                sourceBytes.takeIf { it > 0L } ?: UNKNOWN_IMPORT_BYTES
+            },
+            availableBytes = root.usableSpace,
+        )
+    }
+
     suspend fun importNexusFile(
         context: Context,
         appId: String,
@@ -155,8 +297,12 @@ object NexusModManager {
         modInfo: NexusModInfo,
         file: NexusModFile,
         apiClient: NexusApiClient = NexusApiClient(),
+        isPremiumAccount: Boolean? = null,
         onDetailedProgress: (ModImportProgress) -> Unit = {},
     ): ModInstall = withContext(Dispatchers.IO) {
+        if (reference.fileId != null && reference.fileId != file.fileId) {
+            throw IOException("The Nexus authorization does not match the selected file")
+        }
         val dao = dao(context)
         val installId = installId(appId, reference.gameDomain, reference.modId, file.fileId)
         val root = cacheRoot(context, appId)
@@ -168,6 +314,10 @@ object NexusModManager {
         val archiveFile = File(archiveDir, sanitizeFileName("${installId}_${file.fileName}"))
         val tempArchiveFile = File(archiveDir, "${archiveFile.name}.part")
         val previousInstall = dao.getInstall(installId)
+        val previousDownloadCompleted = NexusImportState.hasCompletedDownload(
+            previousInstall,
+            tempArchiveFile.length(),
+        )
         val restorablePreviousInstall = NexusImportState.restorablePreviousInstall(previousInstall)
         val importing = ModInstall(
             installId = installId,
@@ -199,24 +349,65 @@ object NexusModManager {
             )
         }
 
-        ModDownloadRegistry.start(installId, appId, modInfo.name)
+        val startAllowed = ModDownloadRegistry.start(installId, appId, modInfo.name)
         var downloadCompleted = false
         var extractionCompleted = false
         try {
-            ensureDownloadNetworkAllowed()
-            val links = apiClient.getDownloadLinks(reference.gameDomain, reference.modId, file.fileId)
-            val downloadUrl = links.firstOrNull()?.uri ?: throw IOException("Nexus did not return a download link")
-            download(installId, downloadUrl, tempArchiveFile, file.sizeBytes) {
+            if (!startAllowed || ModDownloadRegistry.isCancelRequested(installId)) {
+                throw ModImportCanceledException("Import canceled")
+            }
+            val archiveAlreadyDownloaded = tempArchiveFile.isFile &&
+                (
+                    (file.sizeBytes > 0L && tempArchiveFile.length() == file.sizeBytes) ||
+                        previousDownloadCompleted
+                )
+            if (archiveAlreadyDownloaded) {
+                val completedBytes = tempArchiveFile.length()
+                val expectedBytes = file.sizeBytes.takeIf { it > 0L } ?: completedBytes
+                val complete = ModImportProgress(
+                    status = "Downloading",
+                    progress = 1f,
+                    downloadedBytes = completedBytes,
+                    totalBytes = expectedBytes,
+                )
                 ModDownloadRegistry.update(
                     installId = installId,
-                    progress = it.progress,
-                    status = it.status,
-                    downloadedBytes = it.downloadedBytes,
-                    totalBytes = it.totalBytes,
+                    progress = complete.progress,
+                    status = complete.status,
+                    downloadedBytes = complete.downloadedBytes,
+                    totalBytes = complete.totalBytes,
                 )
-                onDetailedProgress(it)
+                onDetailedProgress(complete)
+            } else {
+                if (reference.downloadAuthorization?.isExpired() == true) {
+                    throw NexusApiException(
+                        message = context.getString(R.string.nexus_authorization_expired),
+                        statusCode = 410,
+                        reason = NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_EXPIRED,
+                    )
+                }
+                ensureDownloadNetworkAllowed()
+                val links = apiClient.getDownloadLinks(
+                    gameDomain = reference.gameDomain,
+                    modId = reference.modId,
+                    fileId = file.fileId,
+                    downloadAuthorization = reference.downloadAuthorization,
+                    isPremiumAccount = isPremiumAccount,
+                )
+                val downloadUrl = links.firstOrNull()?.uri ?: throw IOException("Nexus did not return a download link")
+                download(installId, downloadUrl, tempArchiveFile, file.sizeBytes) {
+                    ModDownloadRegistry.update(
+                        installId = installId,
+                        progress = it.progress,
+                        status = it.status,
+                        downloadedBytes = it.downloadedBytes,
+                        totalBytes = it.totalBytes,
+                    )
+                    onDetailedProgress(it)
+                }
             }
             downloadCompleted = true
+            dao.upsertInstall(NexusImportState.markDownloadComplete(importing, tempArchiveFile.length()))
             val unpacking = ModImportProgress("Unpacking", progress = 0f)
             ModDownloadRegistry.update(installId, 0f, unpacking.status)
             onDetailedProgress(unpacking)
@@ -279,7 +470,7 @@ object NexusModManager {
         } catch (e: OutOfMemoryError) {
             tempExtractDir.deleteRecursively()
             val failure = IOException(
-                "Archive needs more memory than Android allows. Retry after updating GameNative or choose a smaller file.",
+                context.getString(R.string.nexus_archive_memory_error),
                 e,
             )
             recordTerminalImport(ModInstallStatus.ERROR, NexusImportState.userMessage(failure))
@@ -300,8 +491,13 @@ object NexusModManager {
                 tempArchiveFile.delete()
             }
             tempExtractDir.deleteRecursively()
-            val message = NexusImportState.userMessage(e)
+            val message = NexusImportState.userMessage(
+                error = e,
+                expiredAuthorizationMessage = context.getString(R.string.nexus_authorization_expired),
+                authenticationMessage = context.getString(R.string.nexus_integration_temporarily_unavailable),
+            )
             recordTerminalImport(ModInstallStatus.ERROR, message)
+            if (e is NexusApiException) throw e
             throw IOException(message, e)
         } finally {
             ModDownloadRegistry.finish(installId)
@@ -531,6 +727,8 @@ object NexusModManager {
             archiveFile.parentFile?.let { File(it, "${archiveFile.name}.part").delete() }
         }
         File(install.extractedPath).deleteRecursively()
+        File("${install.extractedPath}.tmp").deleteRecursively()
+        File("${install.extractedPath}.previous").deleteRecursively()
         File(backupRoot(context, install.appId), install.installId).deleteRecursively()
         skipped
     }
@@ -558,16 +756,15 @@ object NexusModManager {
     }
 
     suspend fun cleanupOrphanedFilesForApp(context: Context, appId: String): ModCleanupResult = withContext(Dispatchers.IO) {
+        val root = cacheRoot(context, appId)
+        val archiveFiles = File(root, "archives").listFiles().orEmpty()
+        val extractedFiles = File(root, "extracted").listFiles().orEmpty()
+        val backupFiles = backupRoot(context, appId).listFiles().orEmpty()
         val installs = dao(context).getInstallsForApp(appId)
         val installIds = installs.map { it.installId }.toSet()
-        val activeImportIds = installs
-            .filter { it.status in resumableImportStatuses }
-            .map { it.installId }
-            .toSet()
+        val protectedImportIds = protectedExtractedImportIds(context, installs)
         var reclaimedBytes = 0L
 
-        val root = cacheRoot(context, appId)
-        val archiveDir = File(root, "archives")
         val referencedArchives = installs
             .filter { it.status in resumableImportStatuses || (KEEP_IMPORTED_ARCHIVES && it.status in reusableStatuses) }
             .mapNotNull { it.archivePath.takeIf(String::isNotBlank)?.let(::File) }
@@ -577,22 +774,40 @@ object NexusModManager {
             .mapNotNull { it.archivePath.takeIf(String::isNotBlank)?.let(::File) }
             .map { File(it.parentFile, "${it.name}.part") }
             .toSet()
-        archiveDir.listFiles().orEmpty().forEach { file ->
+        fun ownedByActiveImport(file: File): Boolean =
+            ModDownloadRegistry.observeDownloads().value.values.any {
+                it.appId == appId &&
+                    (file.name == it.installId || file.name.startsWith("${it.installId}_"))
+            }
+        archiveFiles.forEach { file ->
             when {
-                file.extension.equals("part", ignoreCase = true) && file !in referencedPartials -> reclaimedBytes += deleteFileBytes(file)
-                file.isFile && file !in referencedArchives -> reclaimedBytes += deleteFileBytes(file)
+                ownedByActiveImport(file) -> Unit
+                file.extension.equals("part", ignoreCase = true) && file !in referencedPartials ->
+                    reclaimedBytes += deleteFileBytes(file)
+                file.isFile && file !in referencedArchives ->
+                    reclaimedBytes += deleteFileBytes(file)
             }
         }
 
-        val extractedDir = File(root, "extracted")
-        extractedDir.listFiles().orEmpty().forEach { file ->
+        extractedFiles.forEach { file ->
+            val transientImportId = transientExtractedImportId(file)
             when {
-                file.name.endsWith(".tmp") && file.name.removeSuffix(".tmp") !in activeImportIds -> reclaimedBytes += deleteDirectoryBytes(file)
-                file.isDirectory && !file.name.endsWith(".tmp") && file.name !in installIds -> reclaimedBytes += deleteDirectoryBytes(file)
+                transientImportId != null -> {
+                    if (
+                        transientImportId !in protectedImportIds &&
+                        ModDownloadRegistry.get(transientImportId) == null
+                    ) {
+                        reclaimedBytes += deleteDirectoryBytes(file)
+                    }
+                }
+                file.isDirectory &&
+                    file.name !in installIds &&
+                    ModDownloadRegistry.get(file.name) == null ->
+                    reclaimedBytes += deleteDirectoryBytes(file)
             }
         }
 
-        backupRoot(context, appId).listFiles().orEmpty().forEach { backup ->
+        backupFiles.forEach { backup ->
             if (backup.isDirectory && backup.name !in installIds) {
                 reclaimedBytes += deleteDirectoryBytes(backup)
             }
@@ -602,10 +817,20 @@ object NexusModManager {
     }
 
     suspend fun cleanupFailedArchivesForApp(context: Context, appId: String): ModCleanupResult = withContext(Dispatchers.IO) {
-        val installs = dao(context).getInstallsForApp(appId)
+        val dao = dao(context)
+        val installs = dao.getInstallsForApp(appId)
         val reclaimedBytes = installs
             .filter { it.status == ModInstallStatus.ERROR.name }
             .sumOf { install ->
+                val importActiveBeforeRefresh =
+                    ModDownloadRegistry.get(install.installId) != null
+                val stillFailed =
+                    dao.getInstall(install.installId)?.status == ModInstallStatus.ERROR.name
+                val importActiveAfterRefresh =
+                    ModDownloadRegistry.get(install.installId) != null
+                if (importActiveBeforeRefresh || !stillFailed || importActiveAfterRefresh) {
+                    return@sumOf 0L
+                }
                 val archive = install.archivePath.takeIf(String::isNotBlank)?.let(::File)
                 deleteFileBytes(archive) + deleteFileBytes(archive?.let(::partialFileFor))
             }
@@ -634,7 +859,15 @@ object NexusModManager {
         val safeRedundantBackupPaths = safeBackupPaths(backupRoot(context, appId), redundantBackupManifests.map { it.backupPath })
         val redundantBackups = safeRedundantBackupPaths.sumOf { File(it).takeIf(File::isFile)?.length() ?: 0L }
         val installIds = installs.map { it.installId }.toSet()
-        val activeImportIds = installs.filter { it.status in resumableImportStatuses }.map { it.installId }.toSet()
+        val activeImportIds = protectedExtractedImportIds(context, installs)
+            .toMutableSet()
+            .apply {
+                addAll(
+                    ModDownloadRegistry.observeDownloads().value.values
+                        .filter { it.appId == appId }
+                        .map { it.installId },
+                )
+            }
         val failedArchives = installs
             .filter { it.status == ModInstallStatus.ERROR.name }
             .mapNotNull { it.archivePath.takeIf(String::isNotBlank)?.let(::File) }
@@ -659,9 +892,20 @@ object NexusModManager {
         }
         var extractedCache = 0L
         File(cacheRoot(context, appId), "extracted").listFiles().orEmpty().forEach { file ->
+            val transientImportId = transientExtractedImportId(file)
             when {
-                file.name.endsWith(".tmp") && file.name.removeSuffix(".tmp") !in activeImportIds -> cleanable += directorySize(file)
-                file.isDirectory && !file.name.endsWith(".tmp") && file.name !in installIds -> cleanable += directorySize(file)
+                transientImportId != null -> {
+                    val size = directorySize(file)
+                    if (transientImportId !in activeImportIds) {
+                        cleanable += size
+                    } else {
+                        extractedCache += size
+                    }
+                }
+                file.isDirectory &&
+                    file.name !in installIds &&
+                    file.name !in activeImportIds ->
+                    cleanable += directorySize(file)
                 file.isDirectory && !file.name.endsWith(".tmp") -> extractedCache += directorySize(file)
             }
         }
@@ -671,6 +915,27 @@ object NexusModManager {
         }
         ModStorageBreakdown(cleanable, failedArchiveBytes, extractedCache, backups, redundantBackups, safeRedundantBackupPaths.size)
     }
+
+    private fun transientExtractedImportId(file: File): String? =
+        listOf(".tmp", ".previous")
+            .firstOrNull { file.name.endsWith(it) }
+            ?.let { file.name.removeSuffix(it) }
+
+    private fun protectedExtractedImportIds(
+        context: Context,
+        installs: List<ModInstall>,
+    ): Set<String> = installs
+        .filter { install ->
+            when {
+                install.status in resumableImportStatuses -> true
+                install.status != ModInstallStatus.ERROR.name ||
+                    !ModInstallSource.isLocal(install.source) -> false
+                hasCompletePendingLocalContent(context, install) -> true
+                else -> NexusImportState.restorablePreviousInstall(install) != null &&
+                    hasUsableExtractedContent(localContentPaths(context, install).previous)
+            }
+        }
+        .mapTo(mutableSetOf()) { it.installId }
 
     suspend fun checkInstallHealthForApp(
         context: Context,
@@ -1056,9 +1321,12 @@ object NexusModManager {
         if (root.listFiles()?.isEmpty() == true) root.delete()
     }
 
-    private fun directorySize(dir: File): Long =
+    internal fun directorySize(dir: File): Long =
         dir.walkTopDown()
             .filter { it.isFile }
             .sumOf { it.length() }
+
+    internal fun hasUsableExtractedContent(dir: File): Boolean =
+        dir.isDirectory && dir.walkTopDown().any(File::isFile)
 
 }

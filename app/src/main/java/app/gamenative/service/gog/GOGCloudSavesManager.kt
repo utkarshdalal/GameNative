@@ -516,8 +516,10 @@ class GOGCloudSavesManager(
 
             Timber.tag("GOG").d("[Cloud Saves]   Examining item $i: name='$name', dirname='$dirname'")
 
-            if (name.isNotEmpty() && hash.isNotEmpty() && name.startsWith("$dirname/")) {
-                val relativePath = name.removePrefix("$dirname/")
+            // Empty dirname (Galaxy SDK fallback) => no namespace prefix; every object is ours.
+            val matchesDir = dirname.isEmpty() || name.startsWith("$dirname/")
+            if (name.isNotEmpty() && hash.isNotEmpty() && matchesDir) {
+                val relativePath = if (dirname.isEmpty()) name else name.removePrefix("$dirname/")
                 files.add(
                     CloudFile(
                         relativePath = relativePath,
@@ -559,7 +561,8 @@ class GOGCloudSavesManager(
 
             Timber.tag("GOG-CloudSaves").i("Uploading: ${file.relativePath} (${fileSize} bytes)")
 
-            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$dirname/${file.relativePath}"
+            val objectPath = if (dirname.isEmpty()) file.relativePath else "$dirname/${file.relativePath}"
+            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$objectPath"
 
             // GOG stores saves gzip-compressed. Match the Galaxy/gogdl protocol: send the gzipped
             // bytes with Content-Encoding: gzip and an Etag of the compressed MD5, otherwise other
@@ -615,7 +618,8 @@ class GOGCloudSavesManager(
         try {
             Timber.tag("GOG-CloudSaves").i("Downloading: ${file.relativePath}")
 
-            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$dirname/${file.relativePath}"
+            val objectPath = if (dirname.isEmpty()) file.relativePath else "$dirname/${file.relativePath}"
+            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$objectPath"
 
             val request = Request.Builder()
                 .url(url)

@@ -180,5 +180,5 @@ jobs:
           --arg modern "$MODERN_URL" \
           --arg legacyXr "$LEGACY_XR_URL" \
           --arg changes "$CHANGELOG" \
-          '{content: "**New Android build**\nStandard Build (Recommended): \($legacy)\nPlay Store Build (Android 11+ — built for the latest Android, so **no security warning** about an outdated target. No D drive access and no custom game support; glibc not supported, external storage location moved.): \($modern)\nQuest/VR Build (sideload only — legacy storage with all-files access and D drive support, forced landscape): \($legacyXr)\n\nChanges:\n\($changes)"}')
+          '{content: "**New Android build**\nRegular Build (Recommended): \($legacy)\nModern Build (Play Store, features stripped): \($modern)\nXR Build (for Quest): \($legacyXr)\n\nChanges:\n\($changes)"}')
         curl -H 'Content-Type: application/json' -d "$payload" "$DISCORD_WEBHOOK_URL"
