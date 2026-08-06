@@ -38,6 +38,8 @@ class TritonMapper(
         // The controller stops rumbling ~50ms after the last report (firmware safety), so refresh a held
         // rumble faster than that — matches SDL's TRITON_RUMBLE_RESEND_INTERVAL_MS.
         private const val RUMBLE_RESEND_MS = 40L
+        /** Gamepad slot the SC's virtual XInput pad occupies (see [ScOutputSink]) — the only slot we own rumble for. */
+        const val SC_GAMEPAD_SLOT = 0
     }
 
     // ble is read from the BLE binder thread (via the haptics writeOut lambda) but written on the main thread;
@@ -60,6 +62,19 @@ class TritonMapper(
             if (!running || (rumbleLow == 0 && rumbleHigh == 0)) return
             haptics?.rumble(rumbleLow, rumbleHigh)
             bleHandler.postDelayed(this, RUMBLE_RESEND_MS)
+        }
+    }
+
+    /** Claim/release the game's rumble output for [SC_GAMEPAD_SLOT] — the slot [ScOutputSink] feeds. */
+    private fun setRumbleForwarder(claim: Boolean) {
+        if (claim) {
+            // Forward game rumble (poller thread) onto the main looper so motor writes serialize with the rest.
+            WinHandler.setScRumbleForwarder(SC_GAMEPAD_SLOT) { low, high ->
+                bleHandler.post { onGameRumble(low.toInt() and 0xFFFF, high.toInt() and 0xFFFF) }
+            }
+        } else {
+            WinHandler.setScRumbleForwarder(SC_GAMEPAD_SLOT, null)
+            rumbleLow = 0; rumbleHigh = 0
         }
     }
 
@@ -96,10 +111,6 @@ class TritonMapper(
         interpreter = interp
         running = true
         bleRetries = 0
-        // Forward game rumble (poller thread) onto the main looper so motor writes serialize with the rest.
-        WinHandler.scRumbleForwarder = WinHandler.RumbleForwarder { low, high ->
-            bleHandler.post { onGameRumble(low.toInt() and 0xFFFF, high.toInt() and 0xFFFF) }
-        }
         connectBle(interp)
     }
 
@@ -108,10 +119,18 @@ class TritonMapper(
         ble = b
         b.start(
             onState = { state -> if (running) interp.apply(state) },
-            onReady = { bleRetries = 0; transportReady = true; Log.i(TAG, "started (BLE) — transport live") },
+            onReady = {
+                bleRetries = 0; transportReady = true
+                // Only claim the game's rumble output once a controller is REALLY there. Claiming it up-front (at
+                // start) would silently kill rumble for everyone whose transport never connects, since the tap
+                // makes WinHandler skip the device/phone path. Released again on any error below.
+                setRumbleForwarder(true)
+                Log.i(TAG, "started (BLE) — transport live")
+            },
             onError = { reason ->
                 Log.w(TAG, "BLE transport: $reason")
                 transportReady = false
+                setRumbleForwarder(false)
                 runCatching { b.close() }
                 if (ble === b) ble = null
                 if (running && bleRetries < MAX_BLE_RETRIES) {
@@ -169,8 +188,7 @@ class TritonMapper(
     fun stop() {
         transportReady = false
         running = false
-        if (WinHandler.scRumbleForwarder != null) WinHandler.scRumbleForwarder = null
-        rumbleLow = 0; rumbleHigh = 0
+        setRumbleForwarder(false)
         bleHandler.removeCallbacksAndMessages(null)
         ble?.close(); ble = null
         haptics = null

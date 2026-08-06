@@ -1308,6 +1308,14 @@ object PrefManager {
         get() = getPref(WRAPPER_DIAGNOSTICS, false)
         set(value) = setPref(WRAPPER_DIAGNOSTICS, value)
 
+    // Steam Controller (2026 "Triton") BLE support. OFF by default: enabling it makes every game launch connect to
+    // the controller over BLE, which is pure overhead (and a runtime BT-permission prompt) for anyone without the
+    // hardware. The settings switch requests the Bluetooth permissions before it can be turned on.
+    private val STEAM_CONTROLLER_ENABLED = booleanPreferencesKey("steam_controller_enabled")
+    var steamControllerEnabled: Boolean
+        get() = getPref(STEAM_CONTROLLER_ENABLED, false)
+        set(value) = setPref(STEAM_CONTROLLER_ENABLED, value)
+
     // Add new setting for Wine debug logging
     private val ENABLE_WINE_DEBUG = booleanPreferencesKey("enable_wine_debug")
     var enableWineDebug: Boolean

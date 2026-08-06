@@ -27,7 +27,8 @@ interface ScOutputSink {
 class XServerOutputSink(private val xServer: XServer) : ScOutputSink {
     override fun gamepad(state: GamepadState) {
         val wh = xServer.winHandler
-        wh?.sendVirtualGamepadState(state)
+        // Same slot TritonMapper claims rumble for — keep the two together if this ever stops being player 1.
+        wh?.sendVirtualGamepadState(state, TritonMapper.SC_GAMEPAD_SLOT)
         wh?.currentController?.state?.copy(state)
     }
 

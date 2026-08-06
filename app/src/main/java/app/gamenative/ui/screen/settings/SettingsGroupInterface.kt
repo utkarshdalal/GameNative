@@ -326,6 +326,38 @@ fun SettingsGroupInterface(
             },
         )
 
+        // Steam Controller (2026 "Triton") support is opt-in: when on, every game launch connects to the controller
+        // over BLE, which needs the runtime Bluetooth permissions (manifest entries alone don't grant them on API
+        // 31+). Turning the switch on requests them and only sticks if they're granted — so the launch path can
+        // never reach a Bluetooth call ungranted, and users without the hardware run exactly as before.
+        var steamControllerEnabled by rememberSaveable { mutableStateOf(PrefManager.steamControllerEnabled) }
+        val setSteamControllerEnabled: (Boolean) -> Unit = { enabled ->
+            steamControllerEnabled = enabled
+            PrefManager.steamControllerEnabled = enabled
+        }
+        val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+        ) { result ->
+            val granted = result.values.all { it }
+            setSteamControllerEnabled(granted)
+            if (!granted) {
+                SnackbarManager.show(context.getString(R.string.settings_interface_steam_controller_denied))
+            }
+        }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_steam_controller_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_steam_controller_subtitle)) },
+            state = steamControllerEnabled,
+            onCheckedChange = { enabled ->
+                if (!enabled || app.gamenative.steamcontroller.TritonBle.hasPermissions(context)) {
+                    setSteamControllerEnabled(enabled)
+                } else {
+                    bluetoothPermissionLauncher.launch(app.gamenative.steamcontroller.TritonBle.REQUIRED_PERMISSIONS)
+                }
+            },
+        )
+
         var warnBeforeExit by rememberSaveable { mutableStateOf(PrefManager.warnBeforeExit) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),

@@ -2292,116 +2292,122 @@ fun XServerScreen(
                         },
                     )
 
-                    // Steam Controller (Puck over USB-C, no root) driver — starts if a Puck is connected.
-                    // Loads this container's per-game ScConfig (action sets / layers / mode-shift) if one exists,
-                    // else falls back to the hardcoded default profile inside TritonMapper.
+                    // Steam Controller (2026 "Triton") driver over BLE. Opt-in (Settings) and only once the
+                    // Bluetooth permissions are actually granted, so anyone without the hardware pays nothing: no
+                    // BLE scan, no overlay views, no rumble tap — and no chance of a permission throw reaching this
+                    // block, which sits outside the launch try. Loads this container's per-game ScConfig (action
+                    // sets / layers / mode-shift) if one exists, else TritonMapper's default profile.
                     tritonMapper?.stop()
-                    val scConfig = app.gamenative.steamcontroller.ScConfigStore.forKey(
-                        context, appId,
-                    )
-                    // Step-6 menu HUD overlay (radial/touch ring/grid). Added above the game render; fail-safe so a
-                    // UI issue can't block the controller. Falls back to a no-op overlay if attach fails.
-                    val scMenuOverlay = runCatching {
-                        app.gamenative.steamcontroller.ScMenuOverlayView(context).also { ov ->
-                            // Resolve each menu's placement/size at draw time, per-menu (keyed by appId + menuId),
-                            // falling back to the whole-HUD per-game/global placement. reload() refreshes it live.
-                            ov.gameKey = appId
-                            gameHost.addView(
-                                ov,
-                                FrameLayout.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                ),
-                            )
-                        }
-                    }.getOrNull() ?: app.gamenative.steamcontroller.NoOpScMenuOverlay
-                    // Split-trackpad on-screen keyboard overlay (toggled by SHOW_KEYBOARD / the Steam button).
-                    val scKeyboardOverlay = runCatching {
-                        app.gamenative.steamcontroller.ScKeyboardOverlayView(context).also { kv ->
-                            kv.setLayout(app.gamenative.steamcontroller.ScOverlayStore.forKeyboard(context, appId))
-                            gameHost.addView(
-                                kv,
-                                FrameLayout.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                ),
-                            )
-                        }
-                    }.getOrNull() ?: app.gamenative.steamcontroller.NoOpScKeyboardOverlay
-                    // Bridge: lets the BLE controller open + navigate the QuickMenu / in-game editors. The Triton
-                    // isn't an Android input device, so we open the menu via the same back action physical pads use
-                    // and inject focus-nav keys (DPAD/CENTER) / a back-press into Compose on the main thread.
-                    val scMainHandler = android.os.Handler(android.os.Looper.getMainLooper())
-                    val scCursor = app.gamenative.ui.component.dialog.ScCursorController(context)
-                    val scUiBridge = object : app.gamenative.steamcontroller.ScUiBridge {
-                        override fun isMenuCapturing(): Boolean =
-                            showQuickMenu || keepPausedForEditor || showElementEditor || isEditMode
-                        override fun openQuickMenu() {
-                            scMainHandler.post { if (!showQuickMenu) gameBack() }
-                        }
-                        override fun moveCursor(dx: Int, dy: Int) {
-                            scMainHandler.post {
-                                // Only draw the nav cursor while a menu/editor is capturing; otherwise a stray move
-                                // (or a leftover dot) must not attach to the game view. Detach on any out-of-capture move.
-                                if (!isMenuCapturing()) { scCursor.detach(); return@post }
-                                scCursor.move(app.gamenative.ui.component.dialog.ScNavDialogStack.topView() ?: view, dx, dy)
+                    if (PrefManager.steamControllerEnabled &&
+                        app.gamenative.steamcontroller.TritonBle.hasPermissions(context)
+                    ) runCatching {
+                        val scConfig = app.gamenative.steamcontroller.ScConfigStore.forKey(
+                            context, appId,
+                        )
+                        // Step-6 menu HUD overlay (radial/touch ring/grid). Added above the game render; fail-safe so a
+                        // UI issue can't block the controller. Falls back to a no-op overlay if attach fails.
+                        val scMenuOverlay = runCatching {
+                            app.gamenative.steamcontroller.ScMenuOverlayView(context).also { ov ->
+                                // Resolve each menu's placement/size at draw time, per-menu (keyed by appId + menuId),
+                                // falling back to the whole-HUD per-game/global placement. reload() refreshes it live.
+                                ov.gameKey = appId
+                                gameHost.addView(
+                                    ov,
+                                    FrameLayout.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ),
+                                )
                             }
-                        }
-                        override fun cursorTap() {
-                            scMainHandler.post {
-                                if (!isMenuCapturing()) { scCursor.detach(); return@post }
-                                scCursor.tap(app.gamenative.ui.component.dialog.ScNavDialogStack.topView() ?: view)
+                        }.getOrNull() ?: app.gamenative.steamcontroller.NoOpScMenuOverlay
+                        // Split-trackpad on-screen keyboard overlay (toggled by SHOW_KEYBOARD / the Steam button).
+                        val scKeyboardOverlay = runCatching {
+                            app.gamenative.steamcontroller.ScKeyboardOverlayView(context).also { kv ->
+                                kv.setLayout(app.gamenative.steamcontroller.ScOverlayStore.forKeyboard(context, appId))
+                                gameHost.addView(
+                                    kv,
+                                    FrameLayout.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ),
+                                )
                             }
-                        }
-                        override fun hideCursor() { scMainHandler.post { scCursor.detach() } }
-                        override fun nav(key: app.gamenative.steamcontroller.ScNavKey) {
-                            scMainHandler.post {
-                                val act = context as? ComponentActivity ?: return@post
-                                val now = android.os.SystemClock.uptimeMillis()
-                                // SC settings dialogs each live in their OWN window (Compose Dialog/AlertDialog), so
-                                // nav events must go to the top open dialog's view, not the main Compose view. Falls
-                                // back to the main view (`view`) for the QuickMenu, which is in the main window.
-                                val target = app.gamenative.ui.component.dialog.ScNavDialogStack.topView() ?: view
-                                if (key == app.gamenative.steamcontroller.ScNavKey.BACK) {
-                                    // Close the top dialog via its own dismiss (a synthetic KEYCODE_BACK does NOT reach
-                                    // a Compose dialog's onDismissRequest); fall back to the activity back for the menu.
-                                    if (!app.gamenative.ui.component.dialog.ScNavDialogStack.back()) {
-                                        act.onBackPressedDispatcher.onBackPressed()
+                        }.getOrNull() ?: app.gamenative.steamcontroller.NoOpScKeyboardOverlay
+                        // Bridge: lets the BLE controller open + navigate the QuickMenu / in-game editors. The Triton
+                        // isn't an Android input device, so we open the menu via the same back action physical pads use
+                        // and inject focus-nav keys (DPAD/CENTER) / a back-press into Compose on the main thread.
+                        val scMainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+                        val scCursor = app.gamenative.ui.component.dialog.ScCursorController(context)
+                        val scUiBridge = object : app.gamenative.steamcontroller.ScUiBridge {
+                            override fun isMenuCapturing(): Boolean =
+                                showQuickMenu || keepPausedForEditor || showElementEditor || isEditMode
+                            override fun openQuickMenu() {
+                                scMainHandler.post { if (!showQuickMenu) gameBack() }
+                            }
+                            override fun moveCursor(dx: Int, dy: Int) {
+                                scMainHandler.post {
+                                    // Only draw the nav cursor while a menu/editor is capturing; otherwise a stray move
+                                    // (or a leftover dot) must not attach to the game view. Detach on any out-of-capture move.
+                                    if (!isMenuCapturing()) { scCursor.detach(); return@post }
+                                    scCursor.move(app.gamenative.ui.component.dialog.ScNavDialogStack.topView() ?: view, dx, dy)
+                                }
+                            }
+                            override fun cursorTap() {
+                                scMainHandler.post {
+                                    if (!isMenuCapturing()) { scCursor.detach(); return@post }
+                                    scCursor.tap(app.gamenative.ui.component.dialog.ScNavDialogStack.topView() ?: view)
+                                }
+                            }
+                            override fun hideCursor() { scMainHandler.post { scCursor.detach() } }
+                            override fun nav(key: app.gamenative.steamcontroller.ScNavKey) {
+                                scMainHandler.post {
+                                    val act = context as? ComponentActivity ?: return@post
+                                    val now = android.os.SystemClock.uptimeMillis()
+                                    // SC settings dialogs each live in their OWN window (Compose Dialog/AlertDialog), so
+                                    // nav events must go to the top open dialog's view, not the main Compose view. Falls
+                                    // back to the main view (`view`) for the QuickMenu, which is in the main window.
+                                    val target = app.gamenative.ui.component.dialog.ScNavDialogStack.topView() ?: view
+                                    if (key == app.gamenative.steamcontroller.ScNavKey.BACK) {
+                                        // Close the top dialog via its own dismiss (a synthetic KEYCODE_BACK does NOT reach
+                                        // a Compose dialog's onDismissRequest); fall back to the activity back for the menu.
+                                        if (!app.gamenative.ui.component.dialog.ScNavDialogStack.back()) {
+                                            act.onBackPressedDispatcher.onBackPressed()
+                                        }
+                                        return@post
                                     }
-                                    return@post
+                                    val code = when (key) {
+                                        app.gamenative.steamcontroller.ScNavKey.UP -> KeyEvent.KEYCODE_DPAD_UP
+                                        app.gamenative.steamcontroller.ScNavKey.DOWN -> KeyEvent.KEYCODE_DPAD_DOWN
+                                        app.gamenative.steamcontroller.ScNavKey.LEFT -> KeyEvent.KEYCODE_DPAD_LEFT
+                                        app.gamenative.steamcontroller.ScNavKey.RIGHT -> KeyEvent.KEYCODE_DPAD_RIGHT
+                                        // Bumpers -> tab prev/next; the command picker listens for L1/R1 to flip tabs.
+                                        app.gamenative.steamcontroller.ScNavKey.TAB_PREV -> KeyEvent.KEYCODE_BUTTON_L1
+                                        app.gamenative.steamcontroller.ScNavKey.TAB_NEXT -> KeyEvent.KEYCODE_BUTTON_R1
+                                        app.gamenative.steamcontroller.ScNavKey.HELP -> KeyEvent.KEYCODE_BUTTON_Y // Y = Help
+                                        app.gamenative.steamcontroller.ScNavKey.CLOSE -> KeyEvent.KEYCODE_BUTTON_START // Start = close editor
+                                        // Triggers -> zoom in/out; the overlay placement editor listens for these to resize.
+                                        app.gamenative.steamcontroller.ScNavKey.ZOOM_IN -> KeyEvent.KEYCODE_ZOOM_IN
+                                        app.gamenative.steamcontroller.ScNavKey.ZOOM_OUT -> KeyEvent.KEYCODE_ZOOM_OUT
+                                        else -> KeyEvent.KEYCODE_DPAD_CENTER  // SELECT
+                                    }
+                                    // Compose's focus system does its own DPAD focus traversal + DPAD_CENTER activation,
+                                    // independent of Android View focus (unlike Activity.dispatchKeyEvent, which routes to
+                                    // the focused game SurfaceView and never reaches Compose).
+                                    target.dispatchKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0))
+                                    target.dispatchKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0))
                                 }
-                                val code = when (key) {
-                                    app.gamenative.steamcontroller.ScNavKey.UP -> KeyEvent.KEYCODE_DPAD_UP
-                                    app.gamenative.steamcontroller.ScNavKey.DOWN -> KeyEvent.KEYCODE_DPAD_DOWN
-                                    app.gamenative.steamcontroller.ScNavKey.LEFT -> KeyEvent.KEYCODE_DPAD_LEFT
-                                    app.gamenative.steamcontroller.ScNavKey.RIGHT -> KeyEvent.KEYCODE_DPAD_RIGHT
-                                    // Bumpers -> tab prev/next; the command picker listens for L1/R1 to flip tabs.
-                                    app.gamenative.steamcontroller.ScNavKey.TAB_PREV -> KeyEvent.KEYCODE_BUTTON_L1
-                                    app.gamenative.steamcontroller.ScNavKey.TAB_NEXT -> KeyEvent.KEYCODE_BUTTON_R1
-                                    app.gamenative.steamcontroller.ScNavKey.HELP -> KeyEvent.KEYCODE_BUTTON_Y // Y = Help
-                                    app.gamenative.steamcontroller.ScNavKey.CLOSE -> KeyEvent.KEYCODE_BUTTON_START // Start = close editor
-                                    // Triggers -> zoom in/out; the overlay placement editor listens for these to resize.
-                                    app.gamenative.steamcontroller.ScNavKey.ZOOM_IN -> KeyEvent.KEYCODE_ZOOM_IN
-                                    app.gamenative.steamcontroller.ScNavKey.ZOOM_OUT -> KeyEvent.KEYCODE_ZOOM_OUT
-                                    else -> KeyEvent.KEYCODE_DPAD_CENTER  // SELECT
-                                }
-                                // Compose's focus system does its own DPAD focus traversal + DPAD_CENTER activation,
-                                // independent of Android View focus (unlike Activity.dispatchKeyEvent, which routes to
-                                // the focused game SurfaceView and never reaches Compose).
-                                target.dispatchKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0))
-                                target.dispatchKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0))
                             }
                         }
-                    }
-                    tritonMapper = app.gamenative.steamcontroller.TritonMapper(
-                        context,
-                        xServerView.getxServer(),
-                        scConfig,
-                        scMenuOverlay,
-                        scKeyboardOverlay,
-                        configKey = appId,
-                        uiBridge = scUiBridge,
-                    ).also { it.start() }
+                        tritonMapper = app.gamenative.steamcontroller.TritonMapper(
+                            context,
+                            xServerView.getxServer(),
+                            scConfig,
+                            scMenuOverlay,
+                            scKeyboardOverlay,
+                            configKey = appId,
+                            uiBridge = scUiBridge,
+                        ).also { it.start() }
+                    }.onFailure { Timber.e(it, "Steam Controller startup failed; continuing without it") }
 
                     // Store profile for auto-show logic
                     loadedProfile = targetProfile

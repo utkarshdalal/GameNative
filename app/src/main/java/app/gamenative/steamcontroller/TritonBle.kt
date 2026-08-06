@@ -22,10 +22,13 @@ import java.util.UUID
  * **un-lizards it by writing settings to the control characteristic** (the BLE analog of USB's lizard-off —
  * required because Android grabs the controller as a system HID, leaving it in lizard mode), subscribes to
  * the input characteristic(s), and emits decoded [TritonState]s. A 2 s heartbeat re-sends lizard-off
- * (firmware watchdog re-enables it). Requires runtime BLUETOOTH_CONNECT (+ SCAN if scanning).
+ * (firmware watchdog re-enables it). Requires the runtime BT permissions
+ * ([REQUIRED_PERMISSIONS]): [start] refuses to touch a Bluetooth API without them, and the calls that can still
+ * throw if the grant is revoked mid-session are contained locally instead of escaping to the game-launch path.
  *
  * GATT ops are serialized through [opQueue] because Android allows only one outstanding op at a time.
  */
+// Lint can't see through the hasPermissions() gate in start(), so every BT call below reads as unguarded to it.
 @SuppressLint("MissingPermission")
 class TritonBle(private val context: Context) {
 
@@ -44,6 +47,26 @@ class TritonBle(private val context: Context) {
         private const val TRITON_MTU = 517
         // Resend lizard-off this often; the firmware watchdog re-enables it within ~3 s.
         private const val LIZARD_HEARTBEAT_MS = 2000L
+
+        /** Runtime permissions this transport needs. API 31+ split BT perms; <=30 needs neither (manifest-only). */
+        val REQUIRED_PERMISSIONS: Array<String> =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                arrayOf(
+                    android.Manifest.permission.BLUETOOTH_CONNECT,
+                    android.Manifest.permission.BLUETOOTH_SCAN,
+                )
+            } else {
+                emptyArray()
+            }
+
+        /**
+         * True when every [REQUIRED_PERMISSIONS] entry is granted. Declaring them in the manifest is NOT enough on
+         * API 31+: without the grant, `bondedDevices` / `startScan` / `connectGatt` all throw SecurityException.
+         * The Steam-Controller setting requests them; the launch path refuses to start the transport without them.
+         */
+        fun hasPermissions(context: Context): Boolean = REQUIRED_PERMISSIONS.all {
+            context.checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
     }
 
     private val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -80,6 +103,9 @@ class TritonBle(private val context: Context) {
 
         if (adapter == null) { fail("This device has no Bluetooth adapter."); return }
         if (!adapter.isEnabled) { fail("Bluetooth is OFF — turn it on and retry."); return }
+        // Never reach the BluetoothAdapter/GATT APIs ungranted: every one of them throws SecurityException on
+        // API 31+, and this runs off the game-launch path where an uncaught throw kills the launch.
+        if (!hasPermissions(context)) { fail("Bluetooth permission not granted (Nearby devices)."); return }
 
         val bonded = runCatching {
             adapter.bondedDevices?.firstOrNull { d ->
@@ -116,7 +142,10 @@ class TritonBle(private val context: Context) {
             override fun onScanFailed(errorCode: Int) { fail("BLE scan failed (code $errorCode).") }
         }
         scanCb = cb
-        s.startScan(null, settings, cb)
+        // Permissions can be revoked between the gate above and here (the user can toggle "Nearby devices" while a
+        // game runs), so treat the throw as a transport failure rather than letting it escape to the caller.
+        runCatching { s.startScan(null, settings, cb) }
+            .onFailure { fail("BLE scan could not start: ${it.message}"); return }
         handler.postDelayed({
             if (gatt == null && !closed) {
                 stopScan()
@@ -131,7 +160,9 @@ class TritonBle(private val context: Context) {
     }
 
     private fun connect(device: BluetoothDevice) {
-        gatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        gatt = runCatching { device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE) }
+            .onFailure { fail("BLE connect failed: ${it.message}") }
+            .getOrNull()
     }
 
     @Volatile private var discoverStarted = false
