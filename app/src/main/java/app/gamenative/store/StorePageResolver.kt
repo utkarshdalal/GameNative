@@ -7,7 +7,7 @@ object StorePageResolver {
     private const val STEAM_PACKAGE = "com.valvesoftware.android.steam.community"
     private const val STEAM_NAME = "Steam"
     private const val GOG_NAME = "GOG"
-    private const val EPIC_NAME = "Epic Games Store"
+    private const val EPIC_NAME = "Epic"
     private val gogSlugPattern = Regex("[a-z0-9][a-z0-9_-]*")
     private val epicSlugPattern = Regex("[a-z0-9][a-z0-9_-]*")
 

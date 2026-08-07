@@ -42,7 +42,7 @@ class StorePageResolverTest {
     fun `epic target uses explicit validated slug`() {
         val target = StorePageResolver.epic("sol-cesto-e9b803") as StorePageTarget.WebOnly
 
-        assertEquals("Epic Games Store", target.storeName)
+        assertEquals("Epic", target.storeName)
         assertEquals("https://store.epicgames.com/p/sol-cesto-e9b803", target.canonicalWebUrl)
     }
 
