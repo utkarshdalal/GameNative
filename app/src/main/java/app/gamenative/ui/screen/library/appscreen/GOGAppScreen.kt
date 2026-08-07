@@ -23,6 +23,8 @@ import app.gamenative.service.DownloadService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.MarkerUtils
+import app.gamenative.store.StorePageResolver
+import app.gamenative.store.StorePageTarget
 import java.io.File
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
@@ -125,6 +127,14 @@ class GOGAppScreen : BaseAppScreen() {
                 )
             }
         }
+    }
+
+    override fun getStorePageTarget(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): StorePageTarget? {
+        val game = GOGService.getGOGGameOf(libraryItem.gameId.toString()) ?: return null
+        return StorePageResolver.gog(game.slug)
     }
 
     @Composable

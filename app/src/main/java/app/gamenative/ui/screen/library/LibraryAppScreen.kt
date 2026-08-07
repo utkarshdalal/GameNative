@@ -116,6 +116,7 @@ import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.data.StorePageAction
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.screen.library.appscreen.AmazonAppScreen
@@ -570,6 +571,7 @@ internal fun AppScreenContent(
     onUpdateClick: () -> Unit,
     onBack: () -> Unit = {},
     optionsMenu: List<AppMenuOption>,
+    storePageAction: StorePageAction? = null,
     dialogOpen: Boolean = false,
 ) {
     val context = LocalContext.current
@@ -956,6 +958,14 @@ internal fun AppScreenContent(
                         }
 
                         // Secondary action icons (right-aligned)
+                        if (storePageAction != null) {
+                            ActionIconButton(
+                                icon = Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = storePageAction.label,
+                                onClick = storePageAction.onClick,
+                            )
+                        }
+
                         ActionIconButton(
                             icon = Icons.Default.Settings,
                             contentDescription = stringResource(R.string.options),

@@ -1,5 +1,7 @@
 package app.gamenative.ui.screen.library.appscreen
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
@@ -35,6 +38,7 @@ import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.data.StorePageAction
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
@@ -46,9 +50,13 @@ import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
+import app.gamenative.store.StorePageLaunchResult
+import app.gamenative.store.StorePageLauncher
+import app.gamenative.store.StorePageTarget
 import kotlinx.coroutines.CancellationException
 import com.winlator.container.ContainerData
 import com.winlator.core.GPUInformation
+import com.posthog.PostHog
 import java.io.File
 import kotlin.text.Charsets
 import kotlinx.coroutines.CoroutineScope
@@ -472,6 +480,11 @@ abstract class BaseAppScreen {
             onClick = { onPlayWithDiagnostics() },
         )
     }
+
+    protected open fun getStorePageTarget(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): StorePageTarget? = null
 
     @Composable
     protected open fun getShareDiagnosticsOption(
@@ -941,6 +954,7 @@ abstract class BaseAppScreen {
         onTestGraphics: () -> Unit,
         onPlayWithDiagnostics: () -> Unit,
         exportFrontendLauncher: ActivityResultLauncher<String>,
+        storePageAction: StorePageAction?,
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
         val menuOptions = mutableListOf<AppMenuOption>()
@@ -957,6 +971,16 @@ abstract class BaseAppScreen {
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
+        }
+
+        storePageAction?.let { action ->
+            menuOptions.add(
+                AppMenuOption(
+                    optionType = AppOptionMenuType.StorePage,
+                    onClick = action.onClick,
+                    title = action.label,
+                ),
+            )
         }
 
         // Always available options
@@ -1289,7 +1313,50 @@ abstract class BaseAppScreen {
                 }
         }
 
-        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, onPlayWithDiagnostics, exportFrontendLauncher)
+        val storePageTarget = remember(libraryItem.appId) {
+            getStorePageTarget(context, libraryItem)
+        }
+        var failedStorePageUrl by remember(libraryItem.appId) {
+            mutableStateOf<String?>(null)
+        }
+        val storePageAction = storePageTarget?.let { target ->
+            StorePageAction(
+                label = context.getString(target.labelRes),
+                onClick = {
+                    val result = StorePageLauncher.launch(context, target)
+                    if (PrefManager.usageAnalyticsEnabled) {
+                        PostHog.capture(
+                            event = "store_page_opened",
+                            properties = mapOf(
+                                "store" to target.source.name.lowercase(),
+                                "route" to when (result) {
+                                    StorePageLaunchResult.NativeLaunched -> "native"
+                                    StorePageLaunchResult.WebLaunched -> "web"
+                                    is StorePageLaunchResult.Failed -> "failed"
+                                },
+                            ),
+                        )
+                    }
+                    when (result) {
+                        StorePageLaunchResult.NativeLaunched,
+                        StorePageLaunchResult.WebLaunched,
+                        -> Unit
+                        is StorePageLaunchResult.Failed -> failedStorePageUrl = result.canonicalWebUrl
+                    }
+                },
+            )
+        }
+        val optionsMenu = getOptionsMenu(
+            context,
+            libraryItem,
+            onEditContainer,
+            onBack,
+            onClickPlay,
+            onTestGraphics,
+            onPlayWithDiagnostics,
+            exportFrontendLauncher,
+            storePageAction,
+        )
 
         // Get download info based on game source for progress tracking
         val downloadInfo = when (libraryItem.gameSource) {
@@ -1359,8 +1426,41 @@ abstract class BaseAppScreen {
             },
             onBack = onBack,
             optionsMenu = optionsMenu,
-            dialogOpen = showConfigDialog || manageModsRequested,
+            storePageAction = storePageAction,
+            dialogOpen = showConfigDialog || manageModsRequested || failedStorePageUrl != null,
         )
+
+        failedStorePageUrl?.let { url ->
+            AlertDialog(
+                onDismissRequest = { failedStorePageUrl = null },
+                title = { Text(stringResource(R.string.store_page_open_failed_title)) },
+                text = { Text(stringResource(R.string.store_page_open_failed_message)) },
+                confirmButton = {
+                    TextButton(onClick = { failedStorePageUrl = null }) {
+                        Text(stringResource(R.string.ok))
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(ClipboardManager::class.java)
+                            if (clipboard != null) {
+                                clipboard.setPrimaryClip(
+                                    ClipData.newPlainText(
+                                        context.getString(R.string.store_page_link_clipboard_label),
+                                        url,
+                                    ),
+                                )
+                                SnackbarManager.show(context.getString(R.string.store_page_link_copied))
+                            }
+                            failedStorePageUrl = null
+                        },
+                    ) {
+                        Text(stringResource(R.string.copy_link))
+                    }
+                },
+            )
+        }
 
         if (showReadiness && launchActivity != null) {
             app.gamenative.launch.LaunchReadiness.Prompt(launchActivity) {

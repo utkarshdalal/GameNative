@@ -1616,6 +1616,14 @@
 
     <!-- App option menu labels -->
     <string name="option_open_store_page">Open store page</string>
+    <string name="view_on_steam">View on Steam</string>
+    <string name="view_on_gog">View on GOG</string>
+    <string name="view_on_epic_games_store">View on Epic Games Store</string>
+    <string name="store_page_open_failed_title">Couldn’t open store page</string>
+    <string name="store_page_open_failed_message">GameNative couldn’t open the store page for this game.</string>
+    <string name="store_page_link_clipboard_label">Store page link</string>
+    <string name="store_page_link_copied">Store page link copied</string>
+    <string name="copy_link">Copy link</string>
     <string name="option_export_for_frontend">Export for frontend</string>
     <string name="option_open_container">Open container</string>
     <string name="option_edit_container">Edit container</string>
