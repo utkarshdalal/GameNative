@@ -52,7 +52,6 @@ import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
 import app.gamenative.store.StorePageLaunchResult
 import app.gamenative.store.StorePageLauncher
-import app.gamenative.store.StorePageTarget
 import kotlinx.coroutines.CancellationException
 import com.winlator.container.ContainerData
 import com.winlator.core.GPUInformation
@@ -480,11 +479,6 @@ abstract class BaseAppScreen {
             onClick = { onPlayWithDiagnostics() },
         )
     }
-
-    protected open fun getStorePageTarget(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): StorePageTarget? = null
 
     @Composable
     protected open fun getShareDiagnosticsOption(
@@ -1313,14 +1307,7 @@ abstract class BaseAppScreen {
                 }
         }
 
-        var storePageTarget by remember(libraryItem.appId) {
-            mutableStateOf<StorePageTarget?>(null)
-        }
-        LaunchedEffect(libraryItem.appId) {
-            storePageTarget = withContext(Dispatchers.IO) {
-                getStorePageTarget(context, libraryItem)
-            }
-        }
+        val storePageTarget = displayInfoBase.storePageTarget
         var failedStorePageUrl by remember(libraryItem.appId) {
             mutableStateOf<String?>(null)
         }

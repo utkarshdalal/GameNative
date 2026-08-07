@@ -72,6 +72,24 @@ class StorePageLauncherTest {
     }
 
     @Test
+    fun `browser security rejection returns copyable canonical url`() {
+        val target = steamTarget()
+
+        val result = StorePageLauncher.launch(context, target) { intent ->
+            if (intent.data?.scheme == "steam") {
+                throw ActivityNotFoundException()
+            }
+            throw SecurityException()
+        }
+
+        assertTrue(result is StorePageLaunchResult.Failed)
+        assertEquals(
+            target.canonicalWebUrl,
+            (result as StorePageLaunchResult.Failed).canonicalWebUrl,
+        )
+    }
+
+    @Test
     fun `web only target skips native route`() {
         val intents = mutableListOf<Intent>()
         val target = StorePageTarget.WebOnly(

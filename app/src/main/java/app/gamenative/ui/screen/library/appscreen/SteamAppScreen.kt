@@ -62,7 +62,6 @@ import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.StorageUtils
 import app.gamenative.store.StorePageResolver
-import app.gamenative.store.StorePageTarget
 import app.gamenative.workshop.WorkshopManager
 import app.gamenative.NetworkMonitor
 import app.gamenative.service.SteamService.Companion.getInstalledApp
@@ -232,11 +231,6 @@ class SteamAppScreen : BaseAppScreen() {
         var showDeletingDialog by mutableStateOf(false)
     }
 
-    override fun getStorePageTarget(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): StorePageTarget? = StorePageResolver.steam(libraryItem.gameId)
-
     @Composable
     override fun getGameDisplayInfo(
         context: Context,
@@ -253,6 +247,7 @@ class SteamAppScreen : BaseAppScreen() {
             iconUrl = null,
             gameId = gameId,
             appId = libraryItem.appId,
+            storePageTarget = StorePageResolver.steam(gameId),
         )
 
         var isInstalled by remember(libraryItem.appId) {
@@ -370,6 +365,7 @@ class SteamAppScreen : BaseAppScreen() {
             playtimeText = playtimeText,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            storePageTarget = StorePageResolver.steam(gameId),
         )
     }
 
