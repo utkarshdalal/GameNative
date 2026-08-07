@@ -2,6 +2,7 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.PluviaApp
+import app.gamenative.data.GogHiddenRepository
 import app.gamenative.data.GOGCloudSavesLocation
 import app.gamenative.data.GOGCloudSavesLocationTemplate
 import app.gamenative.data.GOGGame
@@ -153,6 +154,25 @@ class GOGManager @Inject constructor(
     }
 
     /**
+     * Fetches hidden-product IDs and publishes them via [GogHiddenRepository].
+     *
+     * Failures keep the previous cache (or the unloaded fail-open state) and are logged; this
+     * never throws and never fails the caller.
+     */
+    suspend fun refreshHiddenIds() {
+        if (!GOGAuthManager.hasStoredCredentials(context)) return
+        val hiddenIdsResult = GOGApiClient.getHiddenGameIds(context)
+        if (hiddenIdsResult.isSuccess) {
+            GogHiddenRepository.update(hiddenIdsResult.getOrNull() ?: emptySet())
+        } else {
+            Timber.tag("GOG").w(
+                hiddenIdsResult.exceptionOrNull(),
+                "Failed to fetch hidden GOG game IDs; keeping cached hidden list",
+            )
+        }
+    }
+
+    /**
      * Refresh the entire library (called manually by user)
      * Fetches all games from GOG API and updates the database
      * ! Note: If someone wants to improve this logic, I'd recommend seeing
@@ -179,6 +199,10 @@ class GOGManager @Inject constructor(
 
             val gameIds = gameIdList.getOrNull() ?: emptyList()
             Timber.tag("GOG").i("Successfully fetched ${gameIds.size} game IDs from GOG")
+
+            // Refresh hidden-game metadata even when the owned library itself is unchanged.
+            // A failure here keeps the previous cache and must not fail the library refresh.
+            refreshHiddenIds()
 
             if (gameIds.isEmpty()) {
                 Timber.w("No games found in GOG library")

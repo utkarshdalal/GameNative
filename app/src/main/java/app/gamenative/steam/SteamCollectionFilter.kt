@@ -23,6 +23,16 @@ object SteamCollectionFilter {
         return buildSet { selected.forEach { addAll(it.appIds) } }
     }
 
+    /**
+     * Per-collection counts computed from a pre-hidden app-id set (e.g. the owner/type/search
+     * filtered list before default hidden filtering). This keeps the Hidden collection's count
+     * visible even when hidden games are excluded from the main library list.
+     */
+    fun collectionCounts(collections: List<SteamCollection>?, appIds: Collection<Int>): Map<String, Int> =
+        collections?.associate { collection ->
+            collection.id to appIds.count { it in collection.appIds }
+        } ?: emptyMap()
+
     data class Reconciliation(val cleaned: Set<String>, val removedAny: Boolean)
 
     /** Drop selected ids no longer present. No-op while collections are not loaded (null). */

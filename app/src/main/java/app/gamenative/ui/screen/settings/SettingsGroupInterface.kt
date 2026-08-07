@@ -371,6 +371,19 @@ fun SettingsGroupInterface(
             },
         )
 
+        var showHiddenGamesByDefault by rememberSaveable { mutableStateOf(PrefManager.showHiddenGamesByDefault) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_show_hidden_games_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_show_hidden_games_subtitle)) },
+            state = showHiddenGamesByDefault,
+            onCheckedChange = {
+                showHiddenGamesByDefault = it
+                PrefManager.showHiddenGamesByDefault = it
+                PluviaApp.events.emit(AndroidEvent.HiddenGamesSettingChanged)
+            },
+        )
+
         if (!BuildConfig.MODERN_ANDROID) {
             val anyFrontendSyncConfigured by FrontendSyncManager.anyConfigured.collectAsState()
             SettingsMenuLink(
@@ -804,4 +817,3 @@ private fun Preview_SettingsScreen() {
         )
     }
 }
-

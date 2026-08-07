@@ -8,6 +8,7 @@ import android.os.IBinder
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GOGCredentials
 import app.gamenative.data.GOGGame
+import app.gamenative.data.GogHiddenRepository
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
@@ -150,6 +151,9 @@ class GOGService : Service() {
                     // Clear all non-installed GOG games from database
                     instance.gogManager.deleteAllNonInstalledGames()
                     Timber.i("[GOGService] All non-installed GOG games removed from database")
+
+                    // Hidden-game metadata belongs to the logged-out account.
+                    GogHiddenRepository.clear()
 
                     // Stop the service
                     stop()

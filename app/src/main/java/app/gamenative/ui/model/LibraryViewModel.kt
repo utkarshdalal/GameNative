@@ -13,6 +13,8 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
+import app.gamenative.data.GogHiddenRepository
+import app.gamenative.data.HiddenGameFilter
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.data.gog.GogSeedCollector
@@ -35,9 +37,11 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonArtwork
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGManager
 import app.gamenative.service.gog.GOGService
 import app.gamenative.steam.SteamCollectionFilter
 import app.gamenative.ui.data.LibraryState
+import app.gamenative.ui.data.LibraryCounts
 import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.LibraryTab
@@ -86,6 +90,7 @@ class LibraryViewModel @Inject constructor(
     private val gogGameDao: GOGGameDao,
     private val epicGameDao: EpicGameDao,
     private val amazonGameDao: AmazonGameDao,
+    private val gogManager: GOGManager,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -109,6 +114,10 @@ class LibraryViewModel @Inject constructor(
         refreshRecommendationHero()
     }
 
+    private val onHiddenGamesSettingChanged: (AndroidEvent.HiddenGamesSettingChanged) -> Unit = {
+        onFilterApps(paginationCurrentPage)
+    }
+
     // How many items loaded on one page of results
     @Volatile private var paginationCurrentPage: Int = 0
     @Volatile private var lastPageInCurrentFilter: Int = 0
@@ -121,6 +130,9 @@ class LibraryViewModel @Inject constructor(
     private var playHistoryByAppId: Map<String, Long> = emptyMap()
 
     @Volatile private var steamCollections: List<SteamCollection>? = null
+
+    // null = not loaded yet (fail open); empty = loaded with no hidden games
+    @Volatile private var gogHiddenIds: Set<String>? = null
 
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
@@ -272,9 +284,24 @@ class LibraryViewModel @Inject constructor(
             }
         }
 
+        // Load cached hidden GOG IDs immediately, then observe live updates.
+        GogHiddenRepository.loadFromCache()
+        viewModelScope.launch(Dispatchers.IO) {
+            GogHiddenRepository.hiddenIds.collect { ids ->
+                gogHiddenIds = ids
+                onFilterApps(paginationCurrentPage)
+            }
+        }
+        // Keep hidden metadata fresh even if the GOG background sync is throttled or has not run
+        // since this feature was added; failures keep the previous cache (fail open) and are logged.
+        viewModelScope.launch(Dispatchers.IO) {
+            gogManager.refreshHiddenIds()
+        }
+
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
         PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         PluviaApp.events.on<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
+        PluviaApp.events.on<AndroidEvent.HiddenGamesSettingChanged, Unit>(onHiddenGamesSettingChanged)
 
         refreshRecommendationHero()
     }
@@ -310,6 +337,7 @@ class LibraryViewModel @Inject constructor(
         PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
         PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         PluviaApp.events.off<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
+        PluviaApp.events.off<AndroidEvent.HiddenGamesSettingChanged, Unit>(onHiddenGamesSettingChanged)
         super.onCleared()
     }
 
@@ -630,9 +658,12 @@ class LibraryViewModel @Inject constructor(
 
             // Per-collection counts: computed from the owner/type/search-filtered set (independent of the
             // current collection selection) so each collection shows how many games it would contribute.
-            val steamCollectionCounts: Map<String, Int> = steamCollections?.associate { collection ->
-                collection.id to steamOwnerTypeFiltered.count { it.id in collection.appIds }
-            } ?: emptyMap()
+            // Kept pre-hidden so the Hidden collection keeps its full count while hidden games are
+            // excluded from the visible list.
+            val steamCollectionCounts: Map<String, Int> = SteamCollectionFilter.collectionCounts(
+                collections = steamCollections,
+                appIds = steamOwnerTypeFiltered.map { it.id },
+            )
 
             // Apply the Steam collection filter — union/OR, fail-open (see SteamCollectionFilter).
             // Resolve the allowed app-id set once for the whole pass instead of per app.
@@ -640,6 +671,14 @@ class LibraryViewModel @Inject constructor(
                 selectedIds = currentState.selectedSteamCollectionIds,
                 collections = steamCollections,
             )
+            // Default hidden filtering: hidden Steam games stay out unless the setting is on or the
+            // Hidden collection is explicitly selected. Unloaded collections fail open (empty set).
+            val hiddenSteamAppIds = steamCollections
+                ?.firstOrNull { it.id == SteamCollection.ID_HIDDEN }
+                ?.appIds
+                ?: emptySet()
+            val showHiddenGamesByDefault = PrefManager.showHiddenGamesByDefault
+            val hiddenCollectionSelected = currentState.selectedSteamCollectionIds.contains(SteamCollection.ID_HIDDEN)
             val steamFilteredBeforeCompatibility: List<SteamApp> =
                 (
                     if (allowedSteamAppIds == null) {
@@ -647,7 +686,14 @@ class LibraryViewModel @Inject constructor(
                     } else {
                         steamOwnerTypeFiltered.filter { it.id in allowedSteamAppIds }
                     }
-                )
+                ).filter { item ->
+                    HiddenGameFilter.passesSteam(
+                        appId = item.id,
+                        hiddenAppIds = hiddenSteamAppIds,
+                        showHiddenByDefault = showHiddenGamesByDefault,
+                        hiddenCollectionSelected = hiddenCollectionSelected,
+                    )
+                }
 
             // Filter Steam apps first (no pagination yet)
             // Note: Don't sort individual lists - we'll sort the combined list for consistent ordering
@@ -739,6 +785,15 @@ class LibraryViewModel @Inject constructor(
                     } else {
                         true
                     }
+                }
+                .filter { game ->
+                    // Hidden GOG games stay out of every library view unless the user opted to
+                    // show them by default. Null/unloaded hidden metadata fails open.
+                    HiddenGameFilter.passesGog(
+                        gameId = game.id,
+                        hiddenIds = gogHiddenIds,
+                        showHiddenByDefault = PrefManager.showHiddenGamesByDefault,
+                    )
                 }
                 .toList()
 
@@ -860,13 +915,17 @@ class LibraryViewModel @Inject constructor(
             // Save game counts for skeleton loaders (only when not searching, to get accurate counts)
             // This needs to happen before filtering by source, so we save the total counts
             if (currentState.searchQuery.isEmpty()) {
-                PrefManager.customGamesCount = customGameItems.size
-                PrefManager.steamGamesCount = steamFilteredBeforeCompatibility.size
-                PrefManager.gogGamesCount = filteredGOGGames.size
-                PrefManager.gogInstalledGamesCount = gogInstalledCount
-                PrefManager.epicGamesCount = filteredEpicGames.size
-                PrefManager.epicInstalledGamesCount = epicInstalledCount
-                PrefManager.amazonInstalledGamesCount = amazonInstalledCount
+                // The lists passed here are already post-hidden, so persisted counts never include
+                // games hidden by default.
+                LibraryCounts.persist(
+                    customGames = customGameItems.size,
+                    steamGames = steamFilteredBeforeCompatibility.size,
+                    gogGames = filteredGOGGames.size,
+                    gogInstalledGames = gogInstalledCount,
+                    epicGames = filteredEpicGames.size,
+                    epicInstalledGames = epicInstalledCount,
+                    amazonInstalledGames = amazonInstalledCount,
+                )
                 Timber.tag("LibraryViewModel").d("Saved counts - Custom: ${customGameItems.size}, Steam: ${steamFilteredBeforeCompatibility.size}, GOG: ${filteredGOGGames.size}, GOG installed: $gogInstalledCount, Epic: ${filteredEpicGames.size}, Epic installed: $epicInstalledCount, Amazon installed: $amazonInstalledCount")
             }
 

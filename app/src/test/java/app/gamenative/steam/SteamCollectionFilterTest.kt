@@ -59,4 +59,23 @@ class SteamCollectionFilterTest {
         assertEquals(setOf(440, 570), SteamCollectionFilter.allowedAppIds(setOf("fav"), all))
         assertEquals(setOf(440, 570, 730), SteamCollectionFilter.allowedAppIds(setOf("fav", "sht"), all))
     }
+
+    @Test fun collectionCountsIncludeHiddenGamesForHiddenCollection() {
+        val hidden = SteamCollection(SteamCollection.ID_HIDDEN, "Hidden", setOf(440, 570))
+        val favorites = SteamCollection("fav", "Favorites", setOf(440, 730))
+
+        val counts = SteamCollectionFilter.collectionCounts(
+            collections = listOf(hidden, favorites),
+            appIds = listOf(440, 570, 730),
+        )
+
+        // Counts come from the pre-hidden set, so the Hidden collection keeps its full count even
+        // when hidden games are excluded from the visible library list.
+        assertEquals(2, counts[SteamCollection.ID_HIDDEN])
+        assertEquals(2, counts["fav"])
+    }
+
+    @Test fun collectionCountsAreEmptyWhenCollectionsNotLoaded() {
+        assertEquals(emptyMap<String, Int>(), SteamCollectionFilter.collectionCounts(null, listOf(440)))
+    }
 }
