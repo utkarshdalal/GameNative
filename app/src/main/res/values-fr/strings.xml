@@ -1465,6 +1465,7 @@
     <string name="workshop_failed_count">%1$d mod(s) Workshop n\'ont pas pu être mis à jour</string>
     <string name="workshop_download_failed">Échec du téléchargement</string>
     <string name="option_open_store_page">Ouvrir la page de la boutique</string>
+    <string name="view_on_store">Voir sur %1$s</string>
     <string name="option_export_for_frontend">Exporter pour le frontend</string>
     <string name="option_open_container">Ouvrir le conteneur</string>
     <string name="option_edit_container">Modifier le conteneur</string>

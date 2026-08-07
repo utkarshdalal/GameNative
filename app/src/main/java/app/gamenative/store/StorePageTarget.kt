@@ -1,24 +1,22 @@
 package app.gamenative.store
 
-import androidx.annotation.StringRes
 import app.gamenative.data.GameSource
 
 sealed interface StorePageTarget {
     val source: GameSource
     val canonicalWebUrl: String
-    @get:StringRes
-    val labelRes: Int
+    val storeName: String
 
     data class WebOnly(
         override val source: GameSource,
         override val canonicalWebUrl: String,
-        @param:StringRes override val labelRes: Int,
+        override val storeName: String,
     ) : StorePageTarget
 
     data class NativeWithWebFallback(
         override val source: GameSource,
         override val canonicalWebUrl: String,
-        @param:StringRes override val labelRes: Int,
+        override val storeName: String,
         val nativeCandidates: List<NativeStoreTarget>,
     ) : StorePageTarget
 }

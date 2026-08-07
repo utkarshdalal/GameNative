@@ -1,11 +1,13 @@
 package app.gamenative.store
 
-import app.gamenative.R
 import app.gamenative.data.GameSource
 import java.util.Locale
 
 object StorePageResolver {
     private const val STEAM_PACKAGE = "com.valvesoftware.android.steam.community"
+    private const val STEAM_NAME = "Steam"
+    private const val GOG_NAME = "GOG"
+    private const val EPIC_NAME = "Epic Games Store"
     private val gogSlugPattern = Regex("[a-z0-9][a-z0-9_-]*")
     private val epicSlugPattern = Regex("[a-z0-9][a-z0-9_-]*")
 
@@ -16,7 +18,7 @@ object StorePageResolver {
         return StorePageTarget.NativeWithWebFallback(
             source = GameSource.STEAM,
             canonicalWebUrl = webUrl,
-            labelRes = R.string.view_on_steam,
+            storeName = STEAM_NAME,
             nativeCandidates = listOf(
                 NativeStoreTarget(
                     uri = "steam://store/$appId",
@@ -37,7 +39,7 @@ object StorePageResolver {
         return StorePageTarget.WebOnly(
             source = GameSource.GOG,
             canonicalWebUrl = "https://www.gog.com/en/game/$normalizedSlug",
-            labelRes = R.string.view_on_gog,
+            storeName = GOG_NAME,
         )
     }
 
@@ -48,7 +50,7 @@ object StorePageResolver {
         return StorePageTarget.WebOnly(
             source = GameSource.EPIC,
             canonicalWebUrl = "https://store.epicgames.com/p/$normalizedSlug",
-            labelRes = R.string.view_on_epic_games_store,
+            storeName = EPIC_NAME,
         )
     }
 }

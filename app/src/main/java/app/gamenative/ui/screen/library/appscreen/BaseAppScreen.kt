@@ -1313,7 +1313,7 @@ abstract class BaseAppScreen {
         }
         val storePageAction = storePageTarget?.let { target ->
             StorePageAction(
-                label = context.getString(target.labelRes),
+                label = context.getString(R.string.view_on_store, target.storeName),
                 onClick = {
                     val result = StorePageLauncher.launch(context, target)
                     if (PrefManager.usageAnalyticsEnabled) {

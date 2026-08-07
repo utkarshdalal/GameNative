@@ -3,9 +3,11 @@ package app.gamenative.store
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.R
 import app.gamenative.data.GameSource
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -95,7 +97,7 @@ class StorePageLauncherTest {
         val target = StorePageTarget.WebOnly(
             source = GameSource.GOG,
             canonicalWebUrl = "https://www.gog.com/en/game/baldurs_gate_iii",
-            labelRes = R.string.view_on_gog,
+            storeName = "GOG",
         )
 
         val result = StorePageLauncher.launch(context, target) { intents += it }
@@ -103,6 +105,19 @@ class StorePageLauncherTest {
         assertEquals(StorePageLaunchResult.WebLaunched, result)
         assertEquals(1, intents.size)
         assertEquals("https", intents.single().data?.scheme)
+    }
+
+    @Test
+    fun `localized label keeps store brand unchanged`() {
+        val configuration = Configuration(context.resources.configuration).apply {
+            setLocale(Locale.forLanguageTag("es"))
+        }
+        val localizedContext = context.createConfigurationContext(configuration)
+
+        assertEquals(
+            "Ver en Steam",
+            localizedContext.getString(R.string.view_on_store, "Steam"),
+        )
     }
 
     @Test
