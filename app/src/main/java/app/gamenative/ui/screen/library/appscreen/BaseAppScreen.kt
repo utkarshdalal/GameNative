@@ -1313,8 +1313,13 @@ abstract class BaseAppScreen {
                 }
         }
 
-        val storePageTarget = remember(libraryItem.appId) {
-            getStorePageTarget(context, libraryItem)
+        var storePageTarget by remember(libraryItem.appId) {
+            mutableStateOf<StorePageTarget?>(null)
+        }
+        LaunchedEffect(libraryItem.appId) {
+            storePageTarget = withContext(Dispatchers.IO) {
+                getStorePageTarget(context, libraryItem)
+            }
         }
         var failedStorePageUrl by remember(libraryItem.appId) {
             mutableStateOf<String?>(null)
