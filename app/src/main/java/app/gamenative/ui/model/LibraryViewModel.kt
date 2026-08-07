@@ -114,7 +114,10 @@ class LibraryViewModel @Inject constructor(
         refreshRecommendationHero()
     }
 
-    private val onHiddenGamesSettingChanged: (AndroidEvent.HiddenGamesSettingChanged) -> Unit = {
+    private val onHiddenGamesSettingChanged: (AndroidEvent.HiddenGamesSettingChanged) -> Unit = { event ->
+        // Use the value from the event rather than re-reading PrefManager: its DataStore write is
+        // asynchronous, so reading it here can race and re-filter with the old value.
+        showHiddenGamesByDefault = event.showHiddenGamesByDefault
         onFilterApps(paginationCurrentPage)
     }
 
@@ -133,6 +136,9 @@ class LibraryViewModel @Inject constructor(
 
     // null = not loaded yet (fail open); empty = loaded with no hidden games
     @Volatile private var gogHiddenIds: Set<String>? = null
+
+    // Mirrors PrefManager.showHiddenGamesByDefault without the async DataStore write race.
+    @Volatile private var showHiddenGamesByDefault: Boolean = PrefManager.showHiddenGamesByDefault
 
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
@@ -677,7 +683,6 @@ class LibraryViewModel @Inject constructor(
                 ?.firstOrNull { it.id == SteamCollection.ID_HIDDEN }
                 ?.appIds
                 ?: emptySet()
-            val showHiddenGamesByDefault = PrefManager.showHiddenGamesByDefault
             val hiddenCollectionSelected = currentState.selectedSteamCollectionIds.contains(SteamCollection.ID_HIDDEN)
             val steamFilteredBeforeCompatibility: List<SteamApp> =
                 (
@@ -792,7 +797,7 @@ class LibraryViewModel @Inject constructor(
                     HiddenGameFilter.passesGog(
                         gameId = game.id,
                         hiddenIds = gogHiddenIds,
-                        showHiddenByDefault = PrefManager.showHiddenGamesByDefault,
+                        showHiddenByDefault = showHiddenGamesByDefault,
                     )
                 }
                 .toList()

@@ -380,7 +380,7 @@ fun SettingsGroupInterface(
             onCheckedChange = {
                 showHiddenGamesByDefault = it
                 PrefManager.showHiddenGamesByDefault = it
-                PluviaApp.events.emit(AndroidEvent.HiddenGamesSettingChanged)
+                PluviaApp.events.emit(AndroidEvent.HiddenGamesSettingChanged(showHiddenGamesByDefault = it))
             },
         )
 
