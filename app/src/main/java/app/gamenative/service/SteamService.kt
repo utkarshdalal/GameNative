@@ -57,6 +57,7 @@ import app.gamenative.utils.CaseInsensitiveFileSystem
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.LicenseSerializer
+import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
@@ -2279,33 +2280,40 @@ class SteamService : Service(), IChallengeUrlChanged {
                     val appId = downloadInfo.gameId
                     val steamId = userSteamId
                     val containerId = "${GameSource.STEAM.name}_$appId"
-                    if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, containerId)) {
-                        downloadInfo.setPostInstallSyncing(true)
-                        downloadInfo.updateStatusMessage("Syncing saves...")
-                        PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, true))
-                        try {
-                            val container = ContainerUtils.getOrCreateContainer(svc.applicationContext, containerId)
-                            val prefixToPath: (String) -> String = { prefix ->
-                                PathType.from(prefix).toAbsPath(container, appId, steamId.accountID)
+                    // Skip post-install sync for utility apps (e.g., Lossless Scaling)
+                    val isUtilityApp = appId == LsfgVkManager.LOSSLESS_SCALING_APP_ID
+                    if (!isUtilityApp) {
+                        if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, containerId)) {
+                            downloadInfo.setPostInstallSyncing(true)
+                            downloadInfo.updateStatusMessage("Syncing saves...")
+                            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, true))
+                            try {
+                                val container = ContainerUtils.getOrCreateContainer(svc.applicationContext, containerId)
+                                val prefixToPath: (String) -> String = { prefix ->
+                                    PathType.from(prefix).toAbsPath(container, appId, steamId.accountID)
+                                }
+                                val postSyncInfo = forceSyncUserFiles(
+                                    appId = appId,
+                                    prefixToPath = prefixToPath,
+                                    preferredSave = SaveLocation.Remote,
+                                    parentScope = parentScope,
+                                ).await()
+                                if (postSyncInfo.syncResult !in setOf(SyncResult.Success, SyncResult.UpToDate)) {
+                                    Timber.w("[PostInstallSync] Cloud save sync finished with ${postSyncInfo.syncResult} for app $appId")
+                                }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Timber.e(e, "[PostInstallSync] Cloud save sync failed for app $appId")
+                            } finally {
+                                downloadInfo.setPostInstallSyncing(false)
+                                downloadInfo.updateStatusMessage(null)
+                                PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
                             }
-                            val postSyncInfo = forceSyncUserFiles(
-                                appId = appId,
-                                prefixToPath = prefixToPath,
-                                preferredSave = SaveLocation.Remote,
-                                parentScope = parentScope,
-                            ).await()
-                            if (postSyncInfo.syncResult !in setOf(SyncResult.Success, SyncResult.UpToDate)) {
-                                Timber.w("[PostInstallSync] Cloud save sync finished with ${postSyncInfo.syncResult} for app $appId")
-                            }
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            Timber.e(e, "[PostInstallSync] Cloud save sync failed for app $appId")
-                        } finally {
-                            downloadInfo.setPostInstallSyncing(false)
-                            downloadInfo.updateStatusMessage(null)
-                            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
                         }
+                    } else {
+                        Timber.d("Skipped container creation Lossless Scaling")
+                        PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
                     }
                 }
             }
