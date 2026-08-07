@@ -5,18 +5,15 @@ import app.gamenative.data.GameSource
 sealed interface StorePageTarget {
     val source: GameSource
     val canonicalWebUrl: String
-    val storeName: String
 
     data class WebOnly(
         override val source: GameSource,
         override val canonicalWebUrl: String,
-        override val storeName: String,
     ) : StorePageTarget
 
     data class NativeWithWebFallback(
         override val source: GameSource,
         override val canonicalWebUrl: String,
-        override val storeName: String,
         val nativeCandidates: List<NativeStoreTarget>,
     ) : StorePageTarget
 }

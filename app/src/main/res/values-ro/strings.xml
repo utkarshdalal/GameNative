@@ -1466,7 +1466,6 @@
     <string name="workshop_failed_count">%1$d mod(uri) Workshop nu au putut fi actualizate</string>
     <string name="workshop_download_failed">Descărcarea a eșuat</string>
     <string name="option_open_store_page">Deschide pagina din magazin</string>
-    <string name="view_on_store">Vezi pe %1$s</string>
     <string name="option_export_for_frontend">Exportă pentru frontend</string>
     <string name="option_open_container">Deschide containerul</string>
     <string name="option_edit_container">Editează containerul</string>

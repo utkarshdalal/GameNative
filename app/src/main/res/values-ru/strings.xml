@@ -1391,7 +1391,6 @@ https://gamenative.app
     <string name="workshop_failed_count">Не удалось обновить %1$d мод(ов) Мастерской</string>
     <string name="workshop_download_failed">Ошибка загрузки</string>
     <string name="option_open_store_page">Открыть страницу в магазине</string>
-    <string name="view_on_store">Посмотреть в %1$s</string>
     <string name="option_export_for_frontend">Экспортировать для фронтенда</string>
     <string name="option_open_container">Открыть контейнер</string>
     <string name="option_edit_container">Редактировать контейнер</string>

@@ -1463,7 +1463,6 @@
     <string name="workshop_failed_count">Nie udało się zaktualizować %1$d modów z Warsztatu</string>
     <string name="workshop_download_failed">Pobieranie nie powiodło się</string>
     <string name="option_open_store_page">Otwórz stronę sklepu</string>
-    <string name="view_on_store">Zobacz w %1$s</string>
     <string name="option_export_for_frontend">Eksportuj dla frontendu</string>
     <string name="option_open_container">Otwórz kontener</string>
     <string name="option_edit_container">Edytuj kontener</string>

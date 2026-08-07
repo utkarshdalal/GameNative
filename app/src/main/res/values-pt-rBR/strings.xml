@@ -1335,7 +1335,6 @@
     <string name="workshop_failed_count">%1$d mod(s) da Oficina não puderam ser atualizados</string>
     <string name="workshop_download_failed">Falha no download</string>
     <string name="option_open_store_page">Abrir página da loja</string>
-    <string name="view_on_store">Ver na %1$s</string>
     <string name="option_export_for_frontend">Exportar para frontend</string>
     <string name="option_open_container">Abrir contêiner</string>
     <string name="option_edit_container">Editar contêiner</string>

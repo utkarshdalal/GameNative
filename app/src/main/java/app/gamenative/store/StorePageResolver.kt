@@ -5,9 +5,6 @@ import java.util.Locale
 
 object StorePageResolver {
     private const val STEAM_PACKAGE = "com.valvesoftware.android.steam.community"
-    private const val STEAM_NAME = "Steam"
-    private const val GOG_NAME = "GOG"
-    private const val EPIC_NAME = "Epic"
     private val gogSlugPattern = Regex("[a-z0-9][a-z0-9_-]*")
     private val epicSlugPattern = Regex("[a-z0-9][a-z0-9_-]*")
 
@@ -18,7 +15,6 @@ object StorePageResolver {
         return StorePageTarget.NativeWithWebFallback(
             source = GameSource.STEAM,
             canonicalWebUrl = webUrl,
-            storeName = STEAM_NAME,
             nativeCandidates = listOf(
                 NativeStoreTarget(
                     uri = "steam://store/$appId",
@@ -39,7 +35,6 @@ object StorePageResolver {
         return StorePageTarget.WebOnly(
             source = GameSource.GOG,
             canonicalWebUrl = "https://www.gog.com/en/game/$normalizedSlug",
-            storeName = GOG_NAME,
         )
     }
 
@@ -50,7 +45,6 @@ object StorePageResolver {
         return StorePageTarget.WebOnly(
             source = GameSource.EPIC,
             canonicalWebUrl = "https://store.epicgames.com/p/$normalizedSlug",
-            storeName = EPIC_NAME,
         )
     }
 }

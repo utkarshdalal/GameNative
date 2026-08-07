@@ -12,7 +12,6 @@ class StorePageResolverTest {
         val target = StorePageResolver.steam(400) as StorePageTarget.NativeWithWebFallback
 
         assertEquals(GameSource.STEAM, target.source)
-        assertEquals("Steam", target.storeName)
         assertEquals("https://store.steampowered.com/app/400/", target.canonicalWebUrl)
         assertEquals("steam://store/400", target.nativeCandidates.first().uri)
         assertTrue(target.nativeCandidates.all { it.packageName == "com.valvesoftware.android.steam.community" })
@@ -28,7 +27,6 @@ class StorePageResolverTest {
     fun `gog target uses validated slug`() {
         val target = StorePageResolver.gog("baldurs_gate_iii") as StorePageTarget.WebOnly
 
-        assertEquals("GOG", target.storeName)
         assertEquals("https://www.gog.com/en/game/baldurs_gate_iii", target.canonicalWebUrl)
     }
 
@@ -42,7 +40,6 @@ class StorePageResolverTest {
     fun `epic target uses explicit validated slug`() {
         val target = StorePageResolver.epic("sol-cesto-e9b803") as StorePageTarget.WebOnly
 
-        assertEquals("Epic", target.storeName)
         assertEquals("https://store.epicgames.com/p/sol-cesto-e9b803", target.canonicalWebUrl)
     }
 

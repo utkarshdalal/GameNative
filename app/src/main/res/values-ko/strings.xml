@@ -1586,7 +1586,6 @@
     <string name="download_paused_wifi">다운로드 일시 중지됨 - Wi-Fi 또는 LAN 연결 대기 중</string>
     <string name="main_downloading_entry">%s 다운로드 중</string>
     <string name="option_open_store_page">상점 페이지 열기</string>
-    <string name="view_on_store">%1$s에서 보기</string>
     <string name="option_export_for_frontend">프론트엔드용으로 내보내기</string>
     <string name="option_open_container">컨테이너 열기</string>
     <string name="option_edit_container">컨테이너 편집</string>
