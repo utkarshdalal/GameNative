@@ -98,6 +98,14 @@ object SteamWishlistService {
         return false
     }
 
+    private fun steamIdFromToken(token: String): Long? = try {
+        val payload = token.split(".")[1]
+        val json = String(java.util.Base64.getUrlDecoder().decode(payload))
+        JSONObject(json).optString("sub").toLongOrNull()
+    } catch (e: Exception) {
+        null
+    }
+
     private suspend fun refreshAccessToken(): String? {
         val client = SteamService.instance?.steamClient ?: return null
         val steamId = client.steamID ?: return null
@@ -126,24 +134,45 @@ object SteamWishlistService {
         }
     }
 
+    // The public steamid read returns nothing for private wishlists, so prefer the
+    // token-authenticated form, which always sees the caller's own list.
     suspend fun isWishlisted(appId: Int): Boolean? = withContext(Dispatchers.IO) {
-        val steamId = SteamService.userSteamId?.convertToUInt64()
-        if (steamId == null || steamId == 0L) {
-            Timber.tag(TAG).w("no live steam session, cannot read wishlist")
-            return@withContext null
+        readWishlist(PrefManager.accessToken.ifEmpty { null })?.let {
+            return@withContext it.contains(appId)
         }
-        val url = GET_URL.toHttpUrl().newBuilder()
-            .addQueryParameter("steamid", steamId.toString())
-            .build()
-        try {
-            Net.http.newCall(Request.Builder().url(url).build()).execute().use { res ->
+        val fresh = refreshAccessToken() ?: return@withContext null
+        readWishlist(fresh)?.contains(appId)
+    }
+
+    private fun readWishlist(token: String?): Set<Int>? {
+        val builder = GET_URL.toHttpUrl().newBuilder()
+        if (token != null) {
+            val steamId = steamIdFromToken(token) ?: SteamService.userSteamId?.convertToUInt64()
+            if (steamId == null || steamId == 0L) {
+                Timber.tag(TAG).w("cannot resolve steamid for authed wishlist read")
+                return null
+            }
+            builder.addQueryParameter("access_token", token)
+            builder.addQueryParameter("steamid", steamId.toString())
+        } else {
+            val steamId = SteamService.userSteamId?.convertToUInt64()
+            if (steamId == null || steamId == 0L) {
+                Timber.tag(TAG).w("no token or steam session, cannot read wishlist")
+                return null
+            }
+            builder.addQueryParameter("steamid", steamId.toString())
+        }
+        return try {
+            Net.http.newCall(Request.Builder().url(builder.build()).build()).execute().use { res ->
                 if (!res.isSuccessful) {
-                    Timber.tag(TAG).w("wishlist read failed ${res.code}")
+                    Timber.tag(TAG).w("wishlist read failed ${res.code} (authed=${token != null})")
                     return@use null
                 }
                 val response = JSONObject(res.body?.string().orEmpty()).optJSONObject("response")
-                val items = response?.optJSONArray("items") ?: return@use null
-                (0 until items.length()).any { items.optJSONObject(it)?.optInt("appid") == appId }
+                // Authed: absent items = empty wishlist. Public: absent = private, i.e. unknown.
+                val items = response?.optJSONArray("items")
+                    ?: return@use if (token != null) emptySet() else null
+                (0 until items.length()).mapNotNull { items.optJSONObject(it)?.optInt("appid") }.toSet()
             }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "wishlist read failed")
