@@ -578,6 +578,11 @@
     <string name="add_custom_game_content_desc">添加自定義遊戲</string>
     <string name="add_custom_game_dialog_title">添加自定義遊戲</string>
     <string name="add_custom_game_dialog_message">請選擇包含您要添加為自定義遊戲的遊戲的文件夾</string>
+    <string name="custom_game_importing">正在匯入遊戲…</string>
+    <string name="custom_game_import_success">遊戲已匯入</string>
+    <string name="custom_game_import_failed">匯入失敗</string>
+    <string name="custom_game_import_dialog_message">請選擇包含遊戲的資料夾。遊戲將被匯入到 GameNative 的儲存空間，無需任何儲存權限即可執行。大型遊戲可能需要幾分鐘。</string>
+    <string name="custom_game_import_remove_original">匯入後刪除原始檔案</string>
     <string name="add_custom_game_dont_show_again">不再顯示</string>
     <string name="base_app_shortcut_created">已創建捷徑</string>
     <string name="base_app_shortcut_failed">無法創建捷徑：%s</string>

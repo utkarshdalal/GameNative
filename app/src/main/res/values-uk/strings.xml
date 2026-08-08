@@ -583,6 +583,11 @@
     <string name="add_custom_game_content_desc">Додати власну гру</string>
     <string name="add_custom_game_dialog_title">Додати власну гру</string>
     <string name="add_custom_game_dialog_message">Будь ласка, виберіть папку з файлами гри, яку ви хочете додати як власну гру.</string>
+    <string name="custom_game_importing">Імпорт гри…</string>
+    <string name="custom_game_import_success">Гру імпортовано</string>
+    <string name="custom_game_import_failed">Не вдалося імпортувати</string>
+    <string name="custom_game_import_dialog_message">Виберіть папку з грою. Її буде імпортовано до сховища GameNative, щоб вона могла працювати без дозволу на доступ до сховища. Імпорт великих ігор може тривати кілька хвилин.</string>
+    <string name="custom_game_import_remove_original">Видалити оригінал після імпорту</string>
     <string name="add_custom_game_dont_show_again">Більше не показувати</string>
     <string name="base_app_shortcut_created">Ярлик створено</string>
     <string name="base_app_shortcut_failed">Не вдалося створити ярлик: %s</string>

@@ -598,6 +598,11 @@
     <string name="add_custom_game_content_desc">カスタムゲームを追加する</string>
     <string name="add_custom_game_dialog_title">カスタムゲームを追加</string>
     <string name="add_custom_game_dialog_message">カスタム ゲームとして追加するゲーム ファイルが含まれるフォルダーを選択してください。</string>
+    <string name="custom_game_importing">ゲームをインポート中…</string>
+    <string name="custom_game_import_success">ゲームをインポートしました</string>
+    <string name="custom_game_import_failed">インポートに失敗しました</string>
+    <string name="custom_game_import_dialog_message">ゲームが含まれるフォルダーを選択してください。ストレージ権限なしで実行できるように、GameNative のストレージにインポートされます。大きなゲームは数分かかる場合があります。</string>
+    <string name="custom_game_import_remove_original">インポート後に元のファイルを削除</string>
     <string name="add_custom_game_dont_show_again">\'このダイアログを再度表示しないでください</string>
     <string name="base_app_shortcut_created">ショートカットが作成されました</string>
     <string name="base_app_shortcut_failed">ショートカットの作成に失敗しました: %s</string>

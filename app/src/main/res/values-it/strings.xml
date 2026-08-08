@@ -588,6 +588,11 @@
     <string name="add_custom_game_content_desc">Aggiungi gioco personalizzato</string>
     <string name="add_custom_game_dialog_title">Aggiungi Gioco Personalizzato</string>
     <string name="add_custom_game_dialog_message">Seleziona la cartella contenente i file del gioco che vuoi aggiungere come gioco personalizzato.</string>
+    <string name="custom_game_importing">Importazione del gioco…</string>
+    <string name="custom_game_import_success">Gioco importato</string>
+    <string name="custom_game_import_failed">Importazione non riuscita</string>
+    <string name="custom_game_import_dialog_message">Seleziona la cartella contenente il gioco. Verrà importato nell\'archivio di GameNative così da poter funzionare senza alcun permesso di archiviazione. I giochi di grandi dimensioni possono richiedere alcuni minuti.</string>
+    <string name="custom_game_import_remove_original">Rimuovi l\'originale dopo l\'importazione</string>
     <string name="add_custom_game_dont_show_again">Non mostrare più questa finestra</string>
     <string name="base_app_shortcut_created">Scorciatoia creata</string>
     <string name="base_app_shortcut_failed">Impossibile creare scorciatoia: %s</string>

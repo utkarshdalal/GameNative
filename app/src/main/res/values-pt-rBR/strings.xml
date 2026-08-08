@@ -1238,6 +1238,11 @@
     <string name="add_custom_game_content_desc">Adicionar jogo personalizado</string>
     <string name="add_custom_game_dialog_title">Adicionar jogo personalizado</string>
     <string name="add_custom_game_dialog_message">Por favor, selecione a pasta contendo os arquivos do jogo que você deseja adicionar como um jogo personalizado.</string>
+    <string name="custom_game_importing">Importando jogo…</string>
+    <string name="custom_game_import_success">Jogo importado</string>
+    <string name="custom_game_import_failed">Falha na importação</string>
+    <string name="custom_game_import_dialog_message">Selecione a pasta que contém o jogo. Ele será importado para o armazenamento do GameNative para poder rodar sem nenhuma permissão de armazenamento. Jogos grandes podem levar alguns minutos.</string>
+    <string name="custom_game_import_remove_original">Remover o original após a importação</string>
     <string name="add_custom_game_dont_show_again">Não mostrar este diálogo novamente</string>
     <string name="base_app_shortcut_created">Atalho criado</string>
     <string name="base_app_shortcut_failed">Falha ao criar atalho: %s</string>
