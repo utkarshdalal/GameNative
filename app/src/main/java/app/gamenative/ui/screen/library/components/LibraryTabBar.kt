@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
@@ -70,12 +71,14 @@ import app.gamenative.ui.util.rememberWindowWidthClass
 @Composable
 fun LibraryTabBar(
     currentTab: LibraryTab,
+    tabs: List<LibraryTab>,
     tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
     onSearchClick: () -> Unit,
     onAddGameClick: () -> Unit,
     onMenuClick: () -> Unit,
+    onCustomizeTabsClick: () -> Unit,
     onNavigateDownToGrid: () -> Unit,
     onPreviousTab: () -> Unit = {},
     onNextTab: () -> Unit = {},
@@ -86,12 +89,14 @@ fun LibraryTabBar(
     when (widthClass) {
         WindowWidthClass.COMPACT -> CompactLibraryTabBar(
             currentTab = currentTab,
+            tabs = tabs,
             tabCounts = tabCounts,
             onTabSelected = onTabSelected,
             onOptionsClick = onOptionsClick,
             onSearchClick = onSearchClick,
             onAddGameClick = onAddGameClick,
             onMenuClick = onMenuClick,
+            onCustomizeTabsClick = onCustomizeTabsClick,
             onNavigateDownToGrid = onNavigateDownToGrid,
             onPreviousTab = onPreviousTab,
             onNextTab = onNextTab,
@@ -100,12 +105,14 @@ fun LibraryTabBar(
 
         else -> ExpandedLibraryTabBar(
             currentTab = currentTab,
+            tabs = tabs,
             tabCounts = tabCounts,
             onTabSelected = onTabSelected,
             onOptionsClick = onOptionsClick,
             onSearchClick = onSearchClick,
             onAddGameClick = onAddGameClick,
             onMenuClick = onMenuClick,
+            onCustomizeTabsClick = onCustomizeTabsClick,
             onNavigateDownToGrid = onNavigateDownToGrid,
             onPreviousTab = onPreviousTab,
             onNextTab = onNextTab,
@@ -121,18 +128,19 @@ fun LibraryTabBar(
 @Composable
 private fun CompactLibraryTabBar(
     currentTab: LibraryTab,
+    tabs: List<LibraryTab>,
     tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
     onSearchClick: () -> Unit,
     onAddGameClick: () -> Unit,
     onMenuClick: () -> Unit,
+    onCustomizeTabsClick: () -> Unit,
     onNavigateDownToGrid: () -> Unit,
     onPreviousTab: () -> Unit,
     onNextTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LibraryTab.visibleEntries
     val currentIndex = tabs.indexOf(currentTab)
     val scrollState = rememberScrollState()
     val tabPositions = remember { mutableStateMapOf<Int, Float>() }
@@ -277,6 +285,11 @@ private fun CompactLibraryTabBar(
             }
 
             CompactIconButton(
+                icon = Icons.Default.Edit,
+                contentDescription = stringResource(R.string.library_customize_tabs),
+                onClick = onCustomizeTabsClick,
+            )
+            CompactIconButton(
                 icon = Icons.Default.Search,
                 contentDescription = stringResource(R.string.search),
                 onClick = onSearchClick,
@@ -347,18 +360,19 @@ private fun CompactIconButton(
 @Composable
 private fun ExpandedLibraryTabBar(
     currentTab: LibraryTab,
+    tabs: List<LibraryTab>,
     tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
     onSearchClick: () -> Unit,
     onAddGameClick: () -> Unit,
     onMenuClick: () -> Unit,
+    onCustomizeTabsClick: () -> Unit,
     onNavigateDownToGrid: () -> Unit,
     onPreviousTab: () -> Unit,
     onNextTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LibraryTab.visibleEntries
     val currentIndex = tabs.indexOf(currentTab)
     val scrollState = rememberScrollState()
 
@@ -493,6 +507,12 @@ private fun ExpandedLibraryTabBar(
                     }
                 }
             }
+
+            IconActionButton(
+                icon = Icons.Default.Edit,
+                contentDescription = stringResource(R.string.library_customize_tabs),
+                onClick = onCustomizeTabsClick,
+            )
 
             IconActionButton(
                 icon = Icons.Default.Search,
@@ -696,6 +716,7 @@ private fun Preview_LibraryTabBar() {
         ) {
             LibraryTabBar(
                 currentTab = LibraryTab.ALL,
+                tabs = LibraryTab.visibleEntries,
                 tabCounts = mapOf(
                     LibraryTab.ALL to 42,
                     LibraryTab.STEAM to 30,
@@ -708,6 +729,7 @@ private fun Preview_LibraryTabBar() {
                 onSearchClick = {},
                 onAddGameClick = {},
                 onMenuClick = {},
+                onCustomizeTabsClick = {},
                 onNavigateDownToGrid = {},
             )
         }
@@ -725,6 +747,7 @@ private fun Preview_LibraryTabBar_Steam() {
         ) {
             LibraryTabBar(
                 currentTab = LibraryTab.STEAM,
+                tabs = LibraryTab.visibleEntries,
                 tabCounts = mapOf(
                     LibraryTab.ALL to 42,
                     LibraryTab.STEAM to 30,
@@ -737,6 +760,7 @@ private fun Preview_LibraryTabBar_Steam() {
                 onSearchClick = {},
                 onAddGameClick = {},
                 onMenuClick = {},
+                onCustomizeTabsClick = {},
                 onNavigateDownToGrid = {},
             )
         }

@@ -46,6 +46,7 @@ import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.LibraryTab
+import app.gamenative.ui.enums.LibraryTabPreference
 import app.gamenative.ui.enums.LibraryTab.Companion.next
 import app.gamenative.ui.enums.LibraryTab.Companion.previous
 import app.gamenative.ui.enums.SortOption
@@ -466,13 +467,14 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun onTabChanged(tab: LibraryTab) {
+        if (tab !in _state.value.visibleLibraryTabs) return
         _state.update { it.copy(currentTab = tab) }
         onFilterApps(0) // Reset to first page and refresh
     }
 
     fun onNextTab() {
         _state.update { currentState ->
-            val nextTab = currentState.currentTab.next()
+            val nextTab = currentState.currentTab.next(currentState.visibleLibraryTabs)
             Timber.tag("LibraryViewModel").d("Tab next via bumper: ${currentState.currentTab} -> $nextTab")
             currentState.copy(currentTab = nextTab)
         }
@@ -481,11 +483,61 @@ class LibraryViewModel @Inject constructor(
 
     fun onPreviousTab() {
         _state.update { currentState ->
-            val previousTab = currentState.currentTab.previous()
+            val previousTab = currentState.currentTab.previous(currentState.visibleLibraryTabs)
             Timber.tag("LibraryViewModel").d("Tab previous via bumper: ${currentState.currentTab} -> $previousTab")
             currentState.copy(currentTab = previousTab)
         }
         onFilterApps(0)
+    }
+
+    fun onLibraryTabVisibilityChanged(tab: LibraryTab, isVisible: Boolean) {
+        if (tab == LibraryTab.ALL) return
+        updateLibraryTabPreferences { preferences ->
+            preferences.map { preference ->
+                if (preference.tab == tab) preference.copy(isVisible = isVisible) else preference
+            }
+        }
+    }
+
+    fun onLibraryTabMoved(tab: LibraryTab, offset: Int) {
+        if (tab == LibraryTab.ALL || offset == 0) return
+        updateLibraryTabPreferences { preferences ->
+            val mutable = preferences.toMutableList()
+            val currentIndex = mutable.indexOfFirst { it.tab == tab }
+            if (currentIndex < 1) return@updateLibraryTabPreferences preferences
+            val targetIndex = (currentIndex + offset).coerceIn(1, mutable.lastIndex)
+            if (targetIndex == currentIndex) return@updateLibraryTabPreferences preferences
+            val item = mutable.removeAt(currentIndex)
+            mutable.add(targetIndex, item)
+            mutable
+        }
+    }
+
+    fun resetLibraryTabPreferences() {
+        val defaults = LibraryTab.visibleEntries.map { LibraryTabPreference(it, isVisible = true) }
+        PrefManager.libraryTabPreferences = defaults
+        _state.update { it.copy(libraryTabPreferences = defaults) }
+    }
+
+    private fun updateLibraryTabPreferences(
+        transform: (List<LibraryTabPreference>) -> List<LibraryTabPreference>,
+    ) {
+        var tabChanged = false
+        _state.update { currentState ->
+            val updated = transform(currentState.libraryTabPreferences)
+            val currentTab = if (updated.any { it.tab == currentState.currentTab && it.isVisible }) {
+                currentState.currentTab
+            } else {
+                tabChanged = true
+                LibraryTab.ALL
+            }
+            PrefManager.libraryTabPreferences = updated
+            currentState.copy(
+                currentTab = currentTab,
+                libraryTabPreferences = updated,
+            )
+        }
+        if (tabChanged) onFilterApps(0)
     }
 
     fun onSearchQuery(value: String) {

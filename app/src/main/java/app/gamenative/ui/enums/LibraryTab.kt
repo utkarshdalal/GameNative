@@ -91,7 +91,8 @@ enum class LibraryTab(
         showEpic = false,
         showAmazon = false,
         installedOnly = false,
-    );
+    ),
+    ;
 
     companion object {
         /**
@@ -105,16 +106,62 @@ enum class LibraryTab(
                 return result
             }
 
-        fun LibraryTab.next(): LibraryTab {
-            val values = visibleEntries
+        fun normalizePreferences(
+            serialized: String,
+            supportedTabs: List<LibraryTab> = visibleEntries,
+        ): List<LibraryTabPreference> {
+            val supported = supportedTabs.distinct()
+            val parsed = serialized
+                .split(',')
+                .mapNotNull { token ->
+                    val value = token.trim()
+                    if (value.isEmpty()) return@mapNotNull null
+                    val visible = !value.startsWith(HIDDEN_PREFIX)
+                    val name = value.removePrefix(HIDDEN_PREFIX)
+                    entries.firstOrNull { it.name == name }?.let { LibraryTabPreference(it, visible) }
+                }
+                .filter { it.tab in supported }
+                .distinctBy { it.tab }
+
+            val preferences = buildList {
+                addAll(parsed)
+                supported.filterNot { tab -> parsed.any { it.tab == tab } }
+                    .forEach { add(LibraryTabPreference(it, isVisible = true)) }
+            }
+
+            return preferences
+                .map { preference ->
+                    if (preference.tab == ALL) preference.copy(isVisible = true) else preference
+                }
+                .sortedBy { if (it.tab == ALL) 0 else 1 }
+        }
+
+        fun serializePreferences(preferences: List<LibraryTabPreference>): String =
+            preferences.joinToString(",") { preference ->
+                if (preference.isVisible || preference.tab == ALL) {
+                    preference.tab.name
+                } else {
+                    "$HIDDEN_PREFIX${preference.tab.name}"
+                }
+            }
+
+        fun LibraryTab.next(visibleTabs: List<LibraryTab> = visibleEntries): LibraryTab {
+            val values = visibleTabs.ifEmpty { listOf(ALL) }
             val index = values.indexOf(this).coerceAtLeast(0)
             return values[(index + 1) % values.size]
         }
 
-        fun LibraryTab.previous(): LibraryTab {
-            val values = visibleEntries
+        fun LibraryTab.previous(visibleTabs: List<LibraryTab> = visibleEntries): LibraryTab {
+            val values = visibleTabs.ifEmpty { listOf(ALL) }
             val index = values.indexOf(this).coerceAtLeast(0)
             return values[if (index == 0) values.size - 1 else index - 1]
         }
+
+        private const val HIDDEN_PREFIX = "!"
     }
 }
+
+data class LibraryTabPreference(
+    val tab: LibraryTab,
+    val isVisible: Boolean,
+)
