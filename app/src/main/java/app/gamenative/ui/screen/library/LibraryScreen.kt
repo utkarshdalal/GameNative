@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.library
 
 import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -52,7 +53,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
@@ -113,7 +114,6 @@ import app.gamenative.ui.util.PlatformLogoutCallbacks
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
-import app.gamenative.utils.CustomGameImporter
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.PlatformOAuthHandlers
 import app.gamenative.utils.SteamUtils
@@ -135,10 +135,13 @@ fun HomeLibraryScreen(
     isSteamConnected: Boolean = false,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val importState by viewModel.importState.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     LibraryScreenContent(
         state = state,
+        importState = importState,
+        onImportCustomGame = viewModel::importCustomGame,
         listState = viewModel.listState,
         sheetState = sheetState,
         onFilterChanged = viewModel::onFilterChanged,
@@ -182,6 +185,8 @@ private fun LibraryScreenContent(
     state: LibraryState,
     listState: LazyGridState,
     sheetState: SheetState,
+    importState: LibraryViewModel.CustomGameImportState = LibraryViewModel.CustomGameImportState(),
+    onImportCustomGame: (Uri, Boolean) -> Unit = { _, _ -> },
     onFilterChanged: (AppFilter) -> Unit,
     onPageChange: (Int) -> Unit,
     onModalBottomSheet: (Boolean) -> Unit,
@@ -480,34 +485,13 @@ private fun LibraryScreenContent(
 
     // Modern add path: import the picked folder into app-owned storage via the SAF grant,
     // since the map-in-place flow needs MANAGE_EXTERNAL_STORAGE
-    val importScope = rememberCoroutineScope()
-    var importProgress by remember { mutableStateOf<CustomGameImporter.Progress?>(null) }
-    var isImporting by remember { mutableStateOf(false) }
     var showModernImportDialog by remember { mutableStateOf(false) }
-    var importRemoveOriginal by remember { mutableStateOf(false) }
+    var importRemoveOriginal by rememberSaveable { mutableStateOf(false) }
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
     ) { uri ->
         if (uri != null) {
-            isImporting = true
-            importProgress = null
-            importScope.launch {
-                var lastShown = 0L
-                val result = CustomGameImporter.importFromTreeUri(context, uri, importRemoveOriginal) { progress ->
-                    if (progress.copiedBytes - lastShown > 8_000_000L) {
-                        lastShown = progress.copiedBytes
-                        importProgress = progress
-                    }
-                }
-                isImporting = false
-                importProgress = null
-                result.onSuccess { path ->
-                    onAddCustomGameFolder(path)
-                    SnackbarManager.show(context.getString(R.string.custom_game_import_success))
-                }.onFailure {
-                    SnackbarManager.show(context.getString(R.string.custom_game_import_failed))
-                }
-            }
+            onImportCustomGame(uri, importRemoveOriginal)
         }
     }
 
@@ -1314,7 +1298,7 @@ private fun LibraryScreenContent(
         }
 
         // Import progress dialog (modern add path)
-        if (isImporting) {
+        if (importState.isImporting) {
             AlertDialog(
                 onDismissRequest = { },
                 title = { Text(stringResource(R.string.custom_game_importing)) },
@@ -1323,9 +1307,9 @@ private fun LibraryScreenContent(
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
-                            val mb = (importProgress?.copiedBytes ?: 0L) / 1_000_000L
+                            val mb = (importState.progress?.copiedBytes ?: 0L) / 1_000_000L
                             Text("$mb MB")
-                            importProgress?.currentFile?.let {
+                            importState.progress?.currentFile?.let {
                                 Text(text = it, maxLines = 1)
                             }
                         }
