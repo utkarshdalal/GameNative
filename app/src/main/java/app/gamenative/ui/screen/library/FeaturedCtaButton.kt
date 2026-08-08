@@ -46,7 +46,7 @@ internal fun FeaturedCtaButton(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
-    val cta = remember(action) { InAppCta.forAction(action) }
+    val cta = remember(action) { InAppCta.forAction(action, campaignId) }
     var done by remember(action) { mutableStateOf<Boolean?>(null) }
     var busy by remember(action) { mutableStateOf(false) }
 
@@ -141,11 +141,11 @@ private sealed class InAppCta(
 
     abstract suspend fun run(): Boolean
 
-    private class Wishlist(appId: Int) : InAppCta(appId, R.string.featured_action_wishlisted) {
+    private class Wishlist(appId: Int, private val campaignId: String) : InAppCta(appId, R.string.featured_action_wishlisted) {
         override suspend fun isDone(): Boolean? = SteamWishlistService.isWishlisted(appId)
 
         override suspend fun run(): Boolean =
-            SteamWishlistService.addToWishlist(appId) is SteamWishlistService.Outcome.Success
+            SteamWishlistService.addToWishlistAttributed(appId, campaignId) is SteamWishlistService.Outcome.Success
     }
 
     private class GetDemo(appId: Int) : InAppCta(appId, R.string.featured_action_in_library) {
@@ -155,10 +155,10 @@ private sealed class InAppCta(
     }
 
     companion object {
-        fun forAction(action: FeaturedCta): InAppCta? {
+        fun forAction(action: FeaturedCta, campaignId: String): InAppCta? {
             val appId = action.appId ?: return null
             return when (action.type) {
-                "WISHLIST" -> Wishlist(appId)
+                "WISHLIST" -> Wishlist(appId, campaignId)
                 "GET_DEMO" -> GetDemo(appId)
                 else -> null
             }
