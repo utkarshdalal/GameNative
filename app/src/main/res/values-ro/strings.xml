@@ -589,6 +589,11 @@
     <string name="add_custom_game_content_desc">Adaugă joc personalizat</string>
     <string name="add_custom_game_dialog_title">Adaugă joc personalizat</string>
     <string name="add_custom_game_dialog_message">Selectează folderul care conține fișierele jocului pe care vrei să-l adaugi ca joc personalizat.</string>
+    <string name="custom_game_importing">Se importă jocul…</string>
+    <string name="custom_game_import_success">Joc importat</string>
+    <string name="custom_game_import_failed">Importul a eșuat</string>
+    <string name="custom_game_import_dialog_message">Selectează folderul care conține jocul. Va fi importat în stocarea GameNative pentru a putea rula fără nicio permisiune de stocare. Jocurile mari pot dura câteva minute.</string>
+    <string name="custom_game_import_remove_original">Șterge originalul după import</string>
     <string name="add_custom_game_dont_show_again">Nu mai arăta acest dialog</string>
     <string name="base_app_shortcut_created">Shortcut creat</string>
     <string name="base_app_shortcut_failed">Nu s-a putut crea shortcut-ul: %s</string>

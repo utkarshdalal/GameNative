@@ -56,7 +56,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.enums.LibraryTab
@@ -270,13 +269,11 @@ private fun CompactLibraryTabBar(
                 contentDescription = stringResource(R.string.search),
                 onClick = onSearchClick,
             )
-            if (!BuildConfig.MODERN_ANDROID) {
-                CompactIconButton(
-                    icon = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.action_add_game),
-                    onClick = onAddGameClick,
-                )
-            }
+            CompactIconButton(
+                icon = Icons.Default.Add,
+                contentDescription = stringResource(R.string.action_add_game),
+                onClick = onAddGameClick,
+            )
             CompactIconButton(
                 icon = Icons.Default.Menu,
                 contentDescription = stringResource(R.string.menu),
@@ -491,13 +488,11 @@ private fun ExpandedLibraryTabBar(
                 onClick = onSearchClick,
             )
 
-            if (!BuildConfig.MODERN_ANDROID) {
-                IconActionButton(
-                    icon = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.action_add_game),
-                    onClick = onAddGameClick,
-                )
-            }
+            IconActionButton(
+                icon = Icons.Default.Add,
+                contentDescription = stringResource(R.string.action_add_game),
+                onClick = onAddGameClick,
+            )
 
             IconActionButton(
                 icon = Icons.Default.Menu,

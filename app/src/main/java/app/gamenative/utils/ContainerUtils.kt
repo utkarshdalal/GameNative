@@ -1230,10 +1230,8 @@ object ContainerUtils {
         GameSource.GOG,
         GameSource.EPIC,
         GameSource.AMAZON,
-        -> true
-
         GameSource.CUSTOM_GAME,
-        -> false
+        -> true
     }
 
     /**

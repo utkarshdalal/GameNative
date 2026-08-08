@@ -327,6 +327,7 @@ dependencies {
 
     // Chrome Custom Tabs for GOG OAuth
     implementation("androidx.browser:browser:1.8.0")
+    implementation("androidx.documentfile:documentfile:1.0.1")
 
     // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually

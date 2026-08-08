@@ -30,6 +30,11 @@
     <string name="add">Добавить</string>
     <string name="add_custom_game_content_desc">Добавить пользовательскую игру</string>
     <string name="add_custom_game_dialog_message">Пожалуйста, выберите папку, содержащую файлы игры, которые вы хотите добавить в качестве пользовательской игры.</string>
+    <string name="custom_game_importing">Импорт игры…</string>
+    <string name="custom_game_import_success">Игра импортирована</string>
+    <string name="custom_game_import_failed">Не удалось импортировать</string>
+    <string name="custom_game_import_dialog_message">Выберите папку с игрой. Она будет импортирована в хранилище GameNative, чтобы работать без разрешения на доступ к хранилищу. Импорт больших игр может занять несколько минут.</string>
+    <string name="custom_game_import_remove_original">Удалить оригинал после импорта</string>
     <string name="add_custom_game_dialog_title">Добавить пользовательскую игру</string>
     <string name="add_custom_game_dont_show_again">Не показывать этот диалог снова</string>
     <string name="add_drive">Добавить диск</string>

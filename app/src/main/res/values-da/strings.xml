@@ -1238,6 +1238,11 @@
     <string name="add_custom_game_content_desc">Tilføj tilpasset spil</string>
     <string name="add_custom_game_dialog_title">Tilføj tilpasset spil</string>
     <string name="add_custom_game_dialog_message">Vælg venligst mappen der indeholder spilfilerne du vil tilføje som et tilpasset spil.</string>
+    <string name="custom_game_importing">Importerer spil…</string>
+    <string name="custom_game_import_success">Spil importeret</string>
+    <string name="custom_game_import_failed">Import mislykkedes</string>
+    <string name="custom_game_import_dialog_message">Vælg mappen der indeholder spillet. Det importeres til GameNatives lager, så det kan køre uden nogen lagertilladelse. Store spil kan tage et par minutter.</string>
+    <string name="custom_game_import_remove_original">Fjern originalen efter import</string>
     <string name="add_custom_game_dont_show_again">Vis ikke denne dialog igen</string>
     <string name="base_app_shortcut_created">Genvej oprettet</string>
     <string name="base_app_shortcut_failed">Kunne ikke oprette genvej: %s</string>

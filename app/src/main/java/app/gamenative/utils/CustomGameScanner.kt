@@ -71,6 +71,51 @@ object CustomGameScanner {
         }
 
     /**
+     * Destination for imported custom games: CustomGames under the public install root of the
+     * configured install volume, falling back to the app sandbox.
+     */
+    val importRootPath: String
+        get() {
+            val external = PrefManager.externalStoragePath
+            if (PrefManager.useExternalStorage && external.isNotBlank() && File(external).isDirectory) {
+                val dir = File(external, "CustomGames")
+                if (StorageUtils.ensureInstallRoot(dir)) return dir.absolutePath
+            }
+            val appDir = DownloadService.baseExternalAppDirPath
+            if (appDir.isNotEmpty()) {
+                val publicRoot = StorageUtils.publicInstallRoot(File(appDir))
+                if (publicRoot != null) {
+                    val dir = File(publicRoot, "CustomGames")
+                    if (StorageUtils.ensureInstallRoot(dir)) return dir.absolutePath
+                }
+            }
+            return defaultRootPath
+        }
+
+    /**
+     * Roots whose immediate subfolders are treated as custom games: the public GameNative
+     * roots on every volume plus the app's own sandbox folders.
+     */
+    val scanRootPaths: List<String>
+        get() {
+            val roots = LinkedHashSet<String>()
+            val appDir = DownloadService.baseExternalAppDirPath
+            if (appDir.isNotEmpty()) {
+                StorageUtils.publicInstallRoot(File(appDir))?.let { roots.add(File(it, "CustomGames").absolutePath) }
+                roots.add(File(appDir, "CustomGames").absolutePath)
+            }
+            val external = PrefManager.externalStoragePath
+            if (external.isNotBlank()) {
+                roots.add(File(external, "CustomGames").absolutePath)
+            }
+            DownloadService.externalVolumePaths
+                .filterNot { it.contains("/Android/data/") }
+                .forEach { roots.add(File(it, "CustomGames").absolutePath) }
+            roots.add(File(DownloadService.baseDataDirPath, "CustomGames").absolutePath)
+            return roots.toList()
+        }
+
+    /**
      * Ensures the default CustomGames folder exists by creating it if it doesn't.
      * This should be called when the library screen loads to guarantee the folder exists
      * even if there are no custom games yet.
@@ -513,25 +558,39 @@ object CustomGameScanner {
         val items = mutableListOf<LibraryItem>()
         var indexCounter = indexOffsetStart
         val q = query.trim()
+        val existingAppIds = mutableSetOf<String>()
 
-        val manualFolders = PrefManager.customGameManualFolders
-        if (manualFolders.isNotEmpty()) {
-            val existingAppIds = mutableSetOf<String>()
-            for (manualPath in manualFolders) {
-                // Filter by query if provided
-                if (q.isNotEmpty()) {
-                    val folderName = File(manualPath).name
-                    if (!folderName.contains(q, ignoreCase = true)) continue
-                }
+        for (folderPath in candidateFolders()) {
+            // Filter by query if provided
+            if (q.isNotEmpty()) {
+                val folderName = File(folderPath).name
+                if (!folderName.contains(q, ignoreCase = true)) continue
+            }
 
-                val manualItem = createLibraryItemFromFolder(manualPath)
-                if (manualItem != null && existingAppIds.add(manualItem.appId)) {
-                    items.add(manualItem.copy(index = indexCounter++))
-                }
+            val item = createLibraryItemFromFolder(folderPath)
+            if (item != null && existingAppIds.add(item.appId)) {
+                items.add(item.copy(index = indexCounter++))
             }
         }
 
         return items
+    }
+
+    /**
+     * Whether [folderPath] is inside an app-managed CustomGames root and therefore ours to
+     * delete when the game is removed, unlike folders mapped in place.
+     */
+    fun isManagedFolder(folderPath: String): Boolean =
+        scanRootPaths.any { folderPath.startsWith("$it/") }
+
+    /** Manually added folders plus every immediate subfolder of the scan roots. */
+    private fun candidateFolders(): Set<String> {
+        val folders = LinkedHashSet<String>()
+        folders.addAll(PrefManager.customGameManualFolders)
+        for (root in scanRootPaths) {
+            File(root).listFiles { f -> f.isDirectory }?.forEach { folders.add(it.absolutePath) }
+        }
+        return folders
     }
 
     private fun handleCustomGameDetection(folder: File, appId: String, idPart: Int) {
@@ -671,7 +730,7 @@ object CustomGameScanner {
      */
     private fun getOrRebuildCache(): Map<Int, String> {
         return CustomGameCache.getOrRebuildCache(
-            getManualFolders = { PrefManager.customGameManualFolders },
+            getManualFolders = { candidateFolders() },
             readGameIdFromFile = { folder -> readGameIdFromFile(folder) },
         )
     }
