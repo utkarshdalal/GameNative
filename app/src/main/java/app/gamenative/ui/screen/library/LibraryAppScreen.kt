@@ -16,7 +16,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -113,6 +112,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
@@ -212,22 +212,7 @@ private fun PrimaryActionButton(
             .background(
                 if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f),
             )
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        2.dp,
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary,
-                            ),
-                        ),
-                        RoundedCornerShape(8.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            )
+            .focusRing(interactionSource, RoundedCornerShape(8.dp), width = 2.dp)
             .focusRequester(focusRequester)
             .selectable(
                 selected = isFocused,
@@ -337,22 +322,7 @@ private fun ActionIconButton(
                     Color.White.copy(alpha = 0.1f)
                 },
             )
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        2.dp,
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary,
-                            ),
-                        ),
-                        RoundedCornerShape(8.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            )
+            .focusRing(interactionSource, RoundedCornerShape(8.dp), width = 2.dp)
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -383,6 +353,7 @@ private fun InfoCard(
     focusableForNavigation: Boolean = false,
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val scope = rememberCoroutineScope()
     val cardModifier = if (focusableForNavigation) {
@@ -394,23 +365,8 @@ private fun InfoCard(
                     scope.launch { bringIntoViewRequester.bringIntoView() }
                 }
             }
-            .focusable()
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        2.dp,
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary,
-                            ),
-                        ),
-                        RoundedCornerShape(16.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            )
+            .focusable(interactionSource = interactionSource)
+            .focusRing(interactionSource, RoundedCornerShape(16.dp), width = 2.dp)
     } else {
         modifier
     }
@@ -556,6 +512,7 @@ fun AppScreen(
     libraryItem: LibraryItem,
     onClickPlay: (Boolean) -> Unit,
     onTestGraphics: () -> Unit,
+    onPlayWithDiagnostics: () -> Unit,
     onBack: () -> Unit,
 ) {
     // Get the appropriate screen model based on game source
@@ -574,6 +531,7 @@ fun AppScreen(
         libraryItem = libraryItem,
         onClickPlay = onClickPlay,
         onTestGraphics = onTestGraphics,
+        onPlayWithDiagnostics = onPlayWithDiagnostics,
         onBack = onBack,
     )
 }
@@ -603,6 +561,7 @@ internal fun AppScreenContent(
     isDownloading: Boolean,
     downloadProgress: Float,
     hasPartialDownload: Boolean,
+    hasLeftoverInstall: Boolean = false,
     isUpdatePending: Boolean,
     downloadInfo: app.gamenative.data.DownloadInfo? = null,
     onDownloadInstallClick: () -> Unit,
@@ -610,7 +569,8 @@ internal fun AppScreenContent(
     onDeleteDownloadClick: () -> Unit,
     onUpdateClick: () -> Unit,
     onBack: () -> Unit = {},
-    vararg optionsMenu: AppMenuOption,
+    optionsMenu: List<AppMenuOption>,
+    dialogOpen: Boolean = false,
 ) {
     val context = LocalContext.current
     // reactive — recomposes when network state changes
@@ -637,6 +597,18 @@ internal fun AppScreenContent(
 
     LaunchedEffect(Unit) {
         playButtonFocusRequester.requestFocus()
+    }
+
+    // Restore focus when options menu, dialogs
+    LaunchedEffect(optionsMenuVisible, dialogOpen) {
+        if (!optionsMenuVisible && !dialogOpen) {
+            kotlinx.coroutines.delay(100) // Brief delay for menu/dialog animation
+            try {
+                playButtonFocusRequester.requestFocus()
+            } catch (_: IllegalStateException) {
+                // FocusRequester not attached
+            }
+        }
     }
 
     // Button state calculations (needed by key event handler)
@@ -990,10 +962,10 @@ internal fun AppScreenContent(
                             onClick = { optionsMenuVisible = true },
                         )
 
-                        if (isInstalled || hasPartialDownload) {
+                        if (isInstalled || hasPartialDownload || hasLeftoverInstall) {
                             ActionIconButton(
                                 icon = Icons.Default.Delete,
-                                contentDescription = if (isInstalled) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
+                                contentDescription = if (isInstalled || hasLeftoverInstall) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
                                 onClick = onDeleteDownloadClick,
                             )
                         }
@@ -1370,7 +1342,7 @@ private fun Preview_AppScreen() {
                         optionType = it,
                         onClick = { },
                     )
-                }.toTypedArray(),
+                },
             )
         }
     }

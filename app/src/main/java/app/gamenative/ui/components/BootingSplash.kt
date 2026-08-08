@@ -62,7 +62,7 @@ fun BootingSplash(
             context.getString(R.string.game_launch_tip_2, context.getString(R.string.option_open_container)),
             context.getString(R.string.game_launch_tip_3),
             context.getString(R.string.game_launch_tip_4),
-            context.getString(R.string.game_launch_tip_5, context.getString(R.string.option_open_container)),
+            context.getString(R.string.game_launch_tip_5, context.getString(R.string.option_test_graphics)),
             context.getString(R.string.game_launch_tip_6),
             context.getString(R.string.game_launch_tip_7),
             context.getString(R.string.game_launch_tip_8),
@@ -82,6 +82,7 @@ fun BootingSplash(
             context.getString(R.string.game_launch_tip_22),
             context.getString(R.string.game_launch_tip_23),
             context.getString(R.string.game_launch_tip_24, context.getString(R.string.option_test_graphics)),
+            context.getString(R.string.game_launch_tip_25),
         )
     }
 
@@ -233,6 +234,7 @@ fun BootingSplash(
                         color = PluviaTheme.colors.accentCyan.copy(alpha = glowAlpha * 0.6f),
                         modifier = Modifier
                             .blur(20.dp)
+                            .padding(20.dp)
                             .alpha(glowAlpha),
                     )
 
@@ -255,7 +257,7 @@ fun BootingSplash(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(48.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
                 ProgressBar(
                     progress = progress,
@@ -287,6 +289,7 @@ fun BootingSplash(
                     textAlign = TextAlign.Center,
                 )
 
+                Spacer(modifier = Modifier.height(15.dp))
                 Spacer(modifier = Modifier.weight(0.3f))
 
                 // Tips section

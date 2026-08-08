@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-05-27",
+  "updatedAt": "2026-07-17",
   "components": [
     {
       "id": "turnip-24.1.0",
@@ -106,6 +106,11 @@
       "id": "wrapper-v2",
       "name": "wrapper-v2.tzst",
       "url": "https://downloads.gamenative.app/graphics_driver/wrapper-v2.tzst"
+    },
+    {
+      "id": "wrapper-gamenative",
+      "name": "wrapper-gamenative-20260724.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-gamenative-20260724.tzst"
     },
     {
       "id": "wrapper-legacy",

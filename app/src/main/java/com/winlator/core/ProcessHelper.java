@@ -194,14 +194,22 @@ public abstract class ProcessHelper {
     //                         the main thread reads stdout. This keeps stdout clean for callers
     //                         such as SteamTokenLogin
     public static String execWithOutput(String command, String[] envp, File workingDir, boolean includeStderr) {
+        return execWithOutput(command, envp, workingDir, includeStderr, -1);
+    }
+
+    public static String execWithOutput(String command, String[] envp, File workingDir, boolean includeStderr, int timeoutSeconds) {
         StringBuilder output = new StringBuilder();
         final StringBuilder stdoutBuf = new StringBuilder();
         final StringBuilder stderrBuf = new StringBuilder();
         Thread stdoutDrainer = null;
         Thread stderrDrainer = null;
         try {
-            Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
+
+            if (BuildConfig.DEBUG) {
+                Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            }
+
             ProcessBuilder pb = new ProcessBuilder(splitCommand(command));
             Map<String, String> env = pb.environment();
             env.clear();
@@ -237,11 +245,33 @@ public abstract class ProcessHelper {
             stderrDrainer.setDaemon(true);
             stderrDrainer.start();
 
-            process.waitFor();
+            if (timeoutSeconds > 0) {
+                boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+                if (!finished) {
+                    process.destroyForcibly();
+                    try {
+                        process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    output.append("Error: Process timeout after ").append(timeoutSeconds).append(" seconds");
+                }
+            } else {
+                process.waitFor();
+            }
+
             try { stdoutStream.close(); } catch (IOException ignored) {}
             try { stderrStream.close(); } catch (IOException ignored) {}
+
             stdoutDrainer.join(5_000);
+            if (stdoutDrainer.isAlive()) {
+                stdoutDrainer.interrupt();
+            }
+
             stderrDrainer.join(5_000);
+            if (stderrDrainer.isAlive()) {
+                stderrDrainer.interrupt();
+            }
 
             output.append(stdoutBuf);
             if (includeStderr) output.append(stderrBuf);
@@ -275,7 +305,11 @@ public abstract class ProcessHelper {
         java.lang.Process process = null;
         try {
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
-            Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+
+            if (BuildConfig.DEBUG) {
+                Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            }
+
             process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
 
             Field pidField = process.getClass().getDeclaredField("pid");
@@ -303,8 +337,12 @@ public abstract class ProcessHelper {
 
     public static java.lang.Process startProcess(String command, String[] envp, File workingDir) {
         try {
-            Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
+
+            if (BuildConfig.DEBUG) {
+                Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+            }
+
             java.lang.Process process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
             if (!debugCallbacks.isEmpty()) {
                 createDebugThread(process.getInputStream());

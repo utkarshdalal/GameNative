@@ -36,6 +36,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +45,8 @@ import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -58,6 +61,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringArrayResource
@@ -93,10 +103,12 @@ import app.gamenative.utils.ManifestInstaller
 import app.gamenative.service.SteamService
 import app.gamenative.utils.ManifestComponentHelper.VersionOptionList
 import app.gamenative.utils.ManifestRepository
+import app.gamenative.utils.PaddingUtils
 import com.winlator.contents.ContentProfile
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
+import com.winlator.box86_64.Box86_64Preset
 import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
@@ -107,7 +119,9 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUHelper
 import com.winlator.core.WineInfo
 import com.winlator.core.WineInfo.MAIN_WINE_VERSION
+import com.winlator.core.WineThemeManager
 import com.winlator.fexcore.FEXCoreManager
+import com.winlator.fexcore.FEXCorePreset
 import com.winlator.fexcore.FEXCorePresetManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
@@ -126,6 +140,8 @@ internal fun winComponentsItemTitleRes(string: String): Int {
     return when (string) {
         "direct3d" -> R.string.direct3d
         "directsound" -> R.string.directsound
+        "directinput8" -> R.string.directinput8
+        "directinput" -> R.string.directinput
         "directmusic" -> R.string.directmusic
         "directplay" -> R.string.directplay
         "directshow" -> R.string.directshow
@@ -141,6 +157,7 @@ private data class ContainerConfigDialogStaticData(
     val screenSizes: List<String>,
     val baseGraphicsDrivers: List<String>,
     val dxWrappers: List<String>,
+    val displayRenderers: List<String>,
     val dxvkVersionsBase: List<String>,
     val vkd3dVersionsBase: List<String>,
     val audioDrivers: List<String>,
@@ -160,9 +177,9 @@ private data class ContainerConfigDialogStaticData(
     val box64Versions: List<String>,
     val wowBox64VersionsBase: List<String>,
     val box64BionicVersionsBase: List<String>,
-    val box64Presets: List<com.winlator.box86_64.Box86_64Preset>,
+    val box64Presets: List<Box86_64Preset>,
     val fexcoreVersionsBase: List<String>,
-    val fexcorePresets: List<com.winlator.fexcore.FEXCorePreset>,
+    val fexcorePresets: List<FEXCorePreset>,
     val fexcoreTSOPresets: List<String>,
     val fexcoreX87Presets: List<String>,
     val fexcoreMultiblockValues: List<String>,
@@ -200,6 +217,7 @@ private fun rememberContainerConfigDialogStaticData(): ContainerConfigDialogStat
         screenSizes = stringArrayResource(R.array.screen_size_entries).toList(),
         baseGraphicsDrivers = stringArrayResource(R.array.graphics_driver_entries).toList(),
         dxWrappers = stringArrayResource(R.array.dxwrapper_entries).toList(),
+        displayRenderers = stringArrayResource(R.array.displayrenderers_entries).toList(),
         dxvkVersionsBase = stringArrayResource(R.array.dxvk_version_entries).toList(),
         vkd3dVersionsBase = stringArrayResource(R.array.vkd3d_version_entries).toList(),
         audioDrivers = stringArrayResource(R.array.audio_driver_entries).toList(),
@@ -287,6 +305,7 @@ fun ContainerConfigDialog(
         val graphicsDriversRef = remember { mutableStateOf(baseGraphicsDrivers.toMutableList()) }
         var graphicsDrivers by graphicsDriversRef
         val dxWrappers = staticData.dxWrappers
+        val displayRenderers = staticData.displayRenderers
         // Start with defaults from resources (modern: un-greyed comes from on-disk + manifest)
         val dxvkVersionsBase = ManifestComponentHelper.bundledDxWrapperBase(staticData.dxvkVersionsBase)
         val vkd3dVersionsBase = ManifestComponentHelper.bundledDxWrapperBase(staticData.vkd3dVersionsBase)
@@ -382,6 +401,11 @@ fun ContainerConfigDialog(
         val installedWine = installedLists?.wine.orEmpty()
         val installedProton = installedLists?.proton.orEmpty()
         val installedWrapperDrivers = availability?.installedDrivers.orEmpty()
+        val installedWrappers = installedLists?.wrapper.orEmpty()
+
+        val bionicGraphicsDriversMerged = remember(bionicGraphicsDrivers, installedWrappers) {
+            (bionicGraphicsDrivers + installedWrappers.map { "Wrapper-$it" }).distinct()
+        }
 
         val dxvkOptions = remember(dxvkVersionsBase, installedDxvk, manifestDxvk) {
             ManifestComponentHelper.buildVersionOptionList(dxvkVersionsBase, installedDxvk, manifestDxvk)
@@ -641,7 +665,7 @@ fun ContainerConfigDialog(
 
         // Bionic-specific state
         val bionicDriverIndexRef = rememberSaveable {
-            val idx = bionicGraphicsDrivers.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
+            val idx = bionicGraphicsDriversMerged.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
             mutableIntStateOf(if (idx >= 0) idx else 0)
         }
         var bionicDriverIndex by bionicDriverIndexRef
@@ -726,6 +750,11 @@ fun ContainerConfigDialog(
             if (wrapperVersionIndex != newIdx) wrapperVersionIndex = newIdx
         }
 
+        LaunchedEffect(bionicGraphicsDriversMerged, config.graphicsDriver) {
+            val newIdx = bionicGraphicsDriversMerged.indexOfFirst { StringUtils.parseIdentifier(it) == config.graphicsDriver }
+            if (newIdx >= 0 && bionicDriverIndex != newIdx) bionicDriverIndex = newIdx
+        }
+
         val screenSizeIndexRef = rememberSaveable {
             val searchIndex = screenSizes.indexOfFirst { it.contains(config.screenSize) }
             mutableIntStateOf(if (searchIndex > 0) searchIndex else 0)
@@ -785,6 +814,10 @@ fun ContainerConfigDialog(
         }
         val dxWrapperIndexRef = rememberSaveable {
             val driverIndex = dxWrappers.indexOfFirst { StringUtils.parseIdentifier(it) == config.dxwrapper }
+            mutableIntStateOf(if (driverIndex >= 0) driverIndex else 0)
+        }
+        val displayRendererIndexRef = rememberSaveable {
+            val driverIndex = displayRenderers.indexOfFirst { StringUtils.parseIdentifier(it) == config.displayRenderer }
             mutableIntStateOf(if (driverIndex >= 0) driverIndex else 0)
         }
         var dxWrapperIndex by dxWrapperIndexRef
@@ -1064,6 +1097,7 @@ fun ContainerConfigDialog(
             customScreenHeight = customScreenHeightRef,
             graphicsDriverIndex = graphicsDriverIndexRef,
             dxWrapperIndex = dxWrapperIndexRef,
+            displayRendererIndex = displayRendererIndexRef,
             dxvkVersionIndex = dxvkVersionIndexRef,
             graphicsDriverVersionIndex = graphicsDriverVersionIndexRef,
             audioDriverIndex = audioDriverIndexRef,
@@ -1081,6 +1115,7 @@ fun ContainerConfigDialog(
             screenSizes = screenSizes,
             baseGraphicsDrivers = baseGraphicsDrivers,
             dxWrappers = dxWrappers,
+            displayRenderers = displayRenderers,
             dxvkVersionsBase = dxvkVersionsBase,
             vkd3dVersionsBase = vkd3dVersionsBase,
             audioDrivers = audioDrivers,
@@ -1114,7 +1149,7 @@ fun ContainerConfigDialog(
             bionicWineEntriesBase = bionicWineEntriesBase,
             glibcWineEntriesBase = glibcWineEntriesBase,
             emulatorEntries = emulatorEntries,
-            bionicGraphicsDrivers = bionicGraphicsDrivers,
+            bionicGraphicsDrivers = bionicGraphicsDriversMerged,
             baseWrapperVersions = baseWrapperVersions,
             languages = languages,
             dxvkOptions = dxvkOptions,
@@ -1228,22 +1263,52 @@ fun ContainerConfigDialog(
                         stringResource(R.string.container_config_tab_drives),
                         stringResource(R.string.container_config_tab_advanced)
                     )
+
+                    // Let controller shoulder buttons cycle through the tabs: R1/R2
+                    // forward, L1/L2 back (both wrap). The handler lives on the content
+                    // container (not a focusable wrapper, which would break up/down
+                    // traversal), so it fires whenever focus is anywhere in the tabs or
+                    // content below.
+                    val firstTabFocusRequester = remember { FocusRequester() }
+                    // Seed focus onto the first tab when the dialog opens so the gamepad
+                    // can navigate immediately instead of needing a button press first.
+                    LaunchedEffect(Unit) { runCatching { firstTabFocusRequester.requestFocus() } }
+
                     Column(
                         modifier = Modifier
+                            .onPreviewKeyEvent { event ->
+                                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                when (event.key) {
+                                    Key.ButtonR1, Key.ButtonR2 -> {
+                                        selectedTab = (selectedTab + 1) % tabs.size
+                                        true
+                                    }
+                                    Key.ButtonL1, Key.ButtonL2 -> {
+                                        selectedTab = (selectedTab - 1 + tabs.size) % tabs.size
+                                        true
+                                    }
+                                    else -> false
+                                }
+                            }
                             .padding(
-                                top = app.gamenative.utils.PaddingUtils.statusBarAwarePadding().calculateTopPadding() + paddingValues.calculateTopPadding(),
+                                top = PaddingUtils.statusBarAwarePadding().calculateTopPadding() + paddingValues.calculateTopPadding(),
                                 bottom = 32.dp + paddingValues.calculateBottomPadding(),
                                 start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
                                 end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
                             )
                             .fillMaxSize(),
                     ) {
-                        androidx.compose.material3.ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
+                        ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 0.dp) {
                             tabs.forEachIndexed { index, label ->
-                                androidx.compose.material3.Tab(
+                                Tab(
                                     selected = selectedTab == index,
                                     onClick = { selectedTab = index },
                                     text = { Text(text = label) },
+                                    modifier = if (index == 0) {
+                                        Modifier.focusRequester(firstTabFocusRequester)
+                                    } else {
+                                        Modifier
+                                    },
                                 )
                             }
                         }
@@ -1283,7 +1348,7 @@ private fun Preview_ContainerConfigDialog() {
             dxwrapper = "dxvk",
             dxwrapperConfig = "",
             audioDriver = "alsa",
-            wincomponents = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0",
+            wincomponents = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0",
             drives = "",
             execArgs = "",
             executablePath = "",
@@ -1297,15 +1362,15 @@ private fun Preview_ContainerConfigDialog() {
             cpuListWoW64 = "0,1,2,3",
             wow64Mode = true,
             startupSelection = 1,
-            box86Version = com.winlator.core.DefaultVersion.BOX86,
-            box64Version = com.winlator.core.DefaultVersion.BOX64,
-            box86Preset = com.winlator.box86_64.Box86_64Preset.COMPATIBILITY,
-            box64Preset = com.winlator.box86_64.Box86_64Preset.COMPATIBILITY,
-            desktopTheme = com.winlator.core.WineThemeManager.DEFAULT_DESKTOP_THEME,
+            box86Version = DefaultVersion.BOX86,
+            box64Version = DefaultVersion.BOX64,
+            box86Preset = Box86_64Preset.COMPATIBILITY,
+            box64Preset = Box86_64Preset.COMPATIBILITY,
+            desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME,
             containerVariant = "glibc",
-            wineVersion = com.winlator.core.WineInfo.MAIN_WINE_VERSION.identifier(),
+            wineVersion = MAIN_WINE_VERSION.identifier(),
             emulator = "FEXCore",
-            fexcoreVersion = com.winlator.core.DefaultVersion.FEXCORE,
+            fexcoreVersion = DefaultVersion.FEXCORE,
             fexcoreTSOMode = "Fast",
             fexcoreX87Mode = "Fast",
             fexcoreMultiBlock = "Disabled",
@@ -1367,7 +1432,20 @@ internal fun ExecutablePathDropdown(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(),
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                // A focused text field also swallows the center/enter (gamepad A) key,
+                // so the anchor never opens via controller. Intercept it here and toggle
+                // the menu. (Up/down focus-escape is handled in NoExtractOutlinedTextField.)
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (event.key) {
+                        Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.Spacebar, Key.ButtonA -> {
+                            expanded = !expanded
+                            true
+                        }
+                        else -> false
+                    }
+                },
             singleLine = true
         )
 

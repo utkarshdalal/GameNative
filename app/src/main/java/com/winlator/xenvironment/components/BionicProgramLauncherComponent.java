@@ -17,6 +17,7 @@ import androidx.annotation.NonNull;
 
 import com.winlator.PrefManager;
 
+import app.gamenative.utils.BionicFgManager;
 import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
@@ -186,11 +187,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     private int execGuestProgram() {
 
-        final int MAX_PLAYERS = 1; // old static method
+        final int MAX_PLAYERS = 4;
 
         // Get the number of enabled players directly from ControllerManager.
-        final int enabledPlayerCount = MAX_PLAYERS;
-        for (int i = 0; i < enabledPlayerCount; i++) {
+        for (int i = 0; i < MAX_PLAYERS; i++) {
             String memPath;
             if (i == 0) {
                 // Player 1 uses the original, non-numbered path that is known to work.
@@ -232,7 +232,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         EnvVars envVars = new EnvVars();
 
         // Use the ControllerManager's dynamic count for the environment variable
-        envVars.put("EVSHIM_MAX_PLAYERS", String.valueOf(enabledPlayerCount));
+        envVars.put("EVSHIM_MAX_PLAYERS", String.valueOf(MAX_PLAYERS));
         if (true) {
             envVars.put("EVSHIM_SHM_ID", 1);
         }
@@ -346,6 +346,12 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             LsfgVkManager.ensureRuntimeInstalled(environment.getContext(), container);
             LsfgVkManager.writeConfig(container);
             LsfgVkManager.applyLaunchEnv(container, envVars);
+        }
+
+        if (BionicFgManager.isSupported(container)) {
+            BionicFgManager.ensureRuntimeInstalled(environment.getContext(), container);
+            BionicFgManager.writeConfig(container);
+            BionicFgManager.applyLaunchEnv(container, envVars);
         }
 
         Log.d("BionicProgramLauncherComponent", "env vars are " + envVars.toString());
@@ -509,6 +515,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("BREAKPAD_DUMP_LOCATION", breakpadDir);
         envVars.put("STEAM_BASE_FOLDER", steamRootLinux);
         envVars.put("ENABLE_VK_LAYER_VALVE_steam_overlay_1", "0");
+        // ISteamUtils::IsOverlayEnabled() is not engine state -- it resolves in-process to
+        // `getenv("SteamOS") ? true : dlsym(RTLD_DEFAULT, "IsOverlayEnabled")`. No overlay
+        // module is loaded here (the bionic asset set ships none), so without this it returns
+        // false and games that gate their invite/host UI on it refuse to open it.
+        envVars.put("SteamOS", "1");
         envVars.put("STEAMVIDEOTOKEN", "1");
 
         // IPC endpoints; override defaults if the MCP-hosted .so listens elsewhere
@@ -540,36 +551,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (steamAppId != null && !steamAppId.isEmpty()) {
             envVars.put("SteamGameId", steamAppId);
             envVars.put("SteamAppId", steamAppId);
-
-            try {
-                int appIdInt = Integer.parseInt(steamAppId);
-                int[] dlcs = app.gamenative.service.SteamService.getOwnedDlcAppIdsOf(appIdInt);
-                if (dlcs != null && dlcs.length > 0) {
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 0; i < dlcs.length; i++) {
-                        if (i > 0) sb.append(',');
-                        sb.append(dlcs[i]);
-                    }
-                    envVars.put("OWNED_DLCS", sb.toString());
-                    Log.i("BionicProgramLauncherComponent",
-                          "OWNED_DLCS=" + sb + " (count=" + dlcs.length + ")");
-                }
-            } catch (NumberFormatException nfe) {
-                // steamAppId not numeric; the SteamBootstrap.prepareApp block
-                // below will log the same condition and skip its own work.
-            } catch (Throwable t) {
-                Log.w("BionicProgramLauncherComponent",
-                      "Failed to resolve owned DLCs for OWNED_DLCS env var", t);
-            }
         }
-        envVars.put("STEAM_LOG_LEVEL", "10");
-        envVars.put("STEAM_DEBUG", "1");
-        envVars.put("IPCLOGGING", "1");
-        envVars.put("STEAMNETWORKINGSOCKETS_LOG_LEVEL", "verbose");
-        envVars.put("NetworkVerbose", "1");
-        envVars.put("SteamNetworkingSockets_Verbose", "4");
-        envVars.put("SteamNetworkingSocketsLib_Verbose", "4");
-        envVars.put("DebugNetworkConnections", "1");
     }
 
     /**
@@ -608,6 +590,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 "ENABLE_VK_LAYER_VALVE_steam_overlay_1",
                 "STEAMVIDEOTOKEN",
                 "SteamUser",
+                "SteamOS",
         };
         for (String key : passthrough) {
             String val = envVars.get(key);
@@ -647,19 +630,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             if (rc == 0 && steamAppId != null && !steamAppId.isEmpty()) {
                 try {
                     int appIdInt = Integer.parseInt(steamAppId);
-                    int[] dlcAppIds;
-                    try {
-                        dlcAppIds = app.gamenative.service.SteamService.getOwnedDlcAppIdsOf(appIdInt);
-                    } catch (Throwable t) {
-                        Log.w("BionicProgramLauncherComponent",
-                              "getOwnedDlcAppIdsOf threw for appId=" + appIdInt
-                              + "; proceeding with no DLCs", t);
-                        dlcAppIds = new int[0];
-                    }
                     Log.i("BionicProgramLauncherComponent",
-                          "SteamBootstrap.prepareApp(" + appIdInt + ") with "
-                          + dlcAppIds.length + " owned DLC(s)");
-                    app.gamenative.SteamBootstrap.INSTANCE.prepareApp(appIdInt, dlcAppIds);
+                          "SteamBootstrap.prepareApp(" + appIdInt + ")");
+                    app.gamenative.SteamBootstrap.INSTANCE.prepareApp(appIdInt);
                 } catch (NumberFormatException nfe) {
                     Log.w("BionicProgramLauncherComponent",
                           "steamAppId=" + steamAppId + " is not numeric; "

@@ -816,6 +816,9 @@ class GOGDownloadManager @Inject constructor(
             val chunkAttempts = ConcurrentHashMap<String, AtomicInteger>()
             val pendingChunks = AtomicInteger(chunkHashes.size)
 
+            // Calculate total expected installed size once (sum of all file sizes)
+            val totalExpectedSize = files.sumOf { file -> file.chunks.sumOf { it.size } }
+
             chunkHashes.forEach { chunkMd5 ->
                 chunkUsageCounts[chunkMd5] = AtomicInteger(
                     files.sumOf { file -> file.chunks.count { chunk -> chunk.compressedMd5 == chunkMd5 } }
@@ -984,7 +987,15 @@ class GOGDownloadManager @Inject constructor(
 
                 val chunksAdded = mutableListOf<String>()
 
-                files.forEach { file ->
+                // Sort files by total chunk usage (lowest first) - files with less-shared chunks complete faster and free cache sooner
+                val sortedFiles = files.sortedBy { file ->
+                    file.chunks.sumOf { chunk ->
+                        chunkUsageCounts[chunk.compressedMd5]?.get() ?: 0
+                    }
+                }
+                Timber.tag("GOG").d("Processing ${sortedFiles.size} files sorted by chunk usage (least shared first)")
+
+                sortedFiles.forEach { file ->
                     if (!downloadInfo.isActive()) {
                         Timber.tag("GOG").w("Download cancelled during file iteration")
                         return@launch
@@ -1029,7 +1040,16 @@ class GOGDownloadManager @Inject constructor(
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
 
-                Timber.tag("GOG").d("Waiting for $currentPendingChunks pending chunks to complete")
+                // Calculate storage usage stats (only scan cache dir, not entire install dir)
+                val chunkCacheSize = calculateDirectorySize(chunkCacheDir)
+
+                Timber.tag("GOG").d(
+                    """Waiting for $currentPendingChunks pending chunks
+                    |  Cache: ${chunkCacheSize / 1_000_000}MB
+                    |  Game files: ${totalExpectedSize / 1_000_000}MB
+                    |  Total disk: ${(chunkCacheSize + totalExpectedSize) / 1_000_000}MB
+                    """.trimMargin()
+                )
 
                 if (currentPendingChunks == lastPendingChunks) {
                     samePendingChunksAttempts++
@@ -1051,8 +1071,8 @@ class GOGDownloadManager @Inject constructor(
                     samePendingChunksAttempts = 0
                 }
 
-                // Wait for 1 second to recheck
-                delay(1000)
+                // Wait for 5 seconds to recheck (not too quick due to added stats causing IO)
+                delay(5000)
 
                 currentPendingChunks = pendingChunks.get()
             }
@@ -1426,7 +1446,7 @@ class GOGDownloadManager @Inject constructor(
                     ?: return@withContext Result.failure(Exception("Empty response for chunk $chunkMd5"))
 
                 val md = MessageDigest.getInstance("MD5")
-                val buffer = ByteArray(256 * 1024) // 256KB
+                val buffer = ByteArray(64 * 1024) // 64KB - reduced from 256KB to minimize memory pressure during parallel downloads
                 var lastProgressEmitAt = System.currentTimeMillis()
 
                 if (tempChunkFile.exists()) tempChunkFile.delete()
@@ -1513,34 +1533,15 @@ class GOGDownloadManager @Inject constructor(
                 )
             }
 
-            // Read compressed data
-            val compressedBytes = chunkFile.readBytes()
-
-            // Decompress chunk
-            val decompressedBytes = decompressChunk(compressedBytes, chunk)
-            if (decompressedBytes.isFailure) {
-                return@withContext Result.failure(
-                    decompressedBytes.exceptionOrNull()
-                        ?: Exception("Failed to decompress chunk ${chunk.compressedMd5}"),
-                )
-            }
-
-            val data = decompressedBytes.getOrThrow()
-
-            // Verify decompressed MD5
-            val actualMd5 = calculateMd5(data)
-            if (actualMd5 != chunk.md5) {
-                return@withContext Result.failure(
-                    Exception("Decompressed MD5 mismatch for chunk: expected ${chunk.md5}, got $actualMd5"),
-                )
-            }
-
             val writeOffset = file.chunks.take(chunkIndex).sumOf { it.size }
 
-            // Write decompressed chunk at specific file offset using RandomAccessFile
-            RandomAccessFile(outputFile.path, "rw").use { randomAccessFile ->
-                randomAccessFile.seek(writeOffset)
-                randomAccessFile.write(data)
+            // Decompress directly to file while calculating MD5
+            val decompressResult = decompressChunkToFile(chunkFile, chunk, outputFile, writeOffset)
+            if (decompressResult.isFailure) {
+                return@withContext Result.failure(
+                    decompressResult.exceptionOrNull()
+                        ?: Exception("Failed to decompress chunk ${chunk.compressedMd5}"),
+                )
             }
 
             // Verify final file hash if provided
@@ -1554,6 +1555,9 @@ class GOGDownloadManager @Inject constructor(
                     // Move the log here for files finally assembled
                     Timber.tag("GOG").v("Assembled: ${file.path} (${outputFile.length()} bytes)")
                 }
+            } else {
+                // For md5 is null, likely it does not need to decompress, need to show log here
+                Timber.tag("GOG").v("Assembled: ${file.path} (${outputFile.length()} bytes)")
             }
 
             Result.success(outputFile)
@@ -1564,62 +1568,107 @@ class GOGDownloadManager @Inject constructor(
     }
 
     /**
-     * Decompress a GOG chunk using zlib
+     * Decompress a GOG chunk directly to file using zlib, streaming to avoid large memory allocations.
+     * Calculates MD5 while decompressing and writes directly to the target file at the specified offset.
      *
-     * GOG chunks are compressed with zlib
-     * If chunk.compressedSize is null, data is uncompressed
-     *
-     * @param compressedBytes Compressed chunk data
+     * @param chunkFile Compressed chunk file
      * @param chunk Chunk metadata
-     * @return Decompressed data
+     * @param outputFile Target file to write decompressed data
+     * @param writeOffset Offset in the output file to write at
+     * @return Result indicating success or failure
      */
-    private fun decompressChunk(compressedBytes: ByteArray, chunk: FileChunk): Result<ByteArray> {
+    internal fun decompressChunkToFile(
+        chunkFile: File,
+        chunk: FileChunk,
+        outputFile: File,
+        writeOffset: Long,
+    ): Result<Unit> {
         return try {
-            // If no compressed size specified, data is already uncompressed
-            if (chunk.compressedSize == null) {
-                return Result.success(compressedBytes)
-            }
+            val md5Digest = MessageDigest.getInstance("MD5")
+            var totalBytesWritten = 0L
 
-            // Decompress using zlib
-            val inflater = Inflater()
-            try {
-                inflater.setInput(compressedBytes)
-                val outputStream = ByteArrayOutputStream(chunk.size.toInt())
-                val buffer = ByteArray(8192)
+            RandomAccessFile(outputFile.path, "rw").use { raf ->
+                raf.seek(writeOffset)
 
-                while (!inflater.finished()) {
-                    val count = inflater.inflate(buffer)
-                    if (count > 0) {
-                        outputStream.write(buffer, 0, count)
-                    } else {
-                        // No bytes produced - check if we need more input or a dictionary
-                        if (inflater.needsInput()) {
-                            throw java.io.IOException(
-                                "Incomplete zlib data: decompression requires more input but none available"
-                            )
-                        } else if (inflater.needsDictionary()) {
-                            throw java.io.IOException(
-                                "Zlib data requires a preset dictionary which is not supported"
-                            )
+                // If no compressed size specified, data is already uncompressed
+                if (chunk.compressedSize == null) {
+                    chunkFile.inputStream().use { input ->
+                        val buffer = ByteArray(8192)
+                        var bytesRead: Int
+                        while (input.read(buffer).also { bytesRead = it } != -1) {
+                            md5Digest.update(buffer, 0, bytesRead)
+                            raf.write(buffer, 0, bytesRead)
+                            totalBytesWritten += bytesRead
                         }
-                        // If neither condition is true, inflater is still processing internally
-                        // Continue loop, but this should be rare
+                    }
+                } else {
+                    // Decompress using zlib and stream directly to file
+                    val inflater = Inflater()
+                    try {
+                        chunkFile.inputStream().buffered().use { input ->
+                            val inputBuffer = ByteArray(8192)
+                            val outputBuffer = ByteArray(8192)
+                            var inputBytesRead: Int
+
+                            while (input.read(inputBuffer).also { inputBytesRead = it } != -1) {
+                                inflater.setInput(inputBuffer, 0, inputBytesRead)
+
+                                while (!inflater.needsInput() && !inflater.finished()) {
+                                    val count = inflater.inflate(outputBuffer)
+                                    if (count > 0) {
+                                        md5Digest.update(outputBuffer, 0, count)
+                                        raf.write(outputBuffer, 0, count)
+                                        totalBytesWritten += count
+                                    } else {
+                                        if (inflater.needsDictionary()) {
+                                            throw java.io.IOException(
+                                                "Zlib data requires a preset dictionary which is not supported"
+                                            )
+                                        }
+                                        break
+                                    }
+                                }
+                            }
+
+                            // Finish any remaining data
+                            while (!inflater.finished()) {
+                                val count = inflater.inflate(outputBuffer)
+                                if (count > 0) {
+                                    md5Digest.update(outputBuffer, 0, count)
+                                    raf.write(outputBuffer, 0, count)
+                                    totalBytesWritten += count
+                                } else {
+                                    if (inflater.needsInput()) {
+                                        throw java.io.IOException(
+                                            "Incomplete zlib data: decompression requires more input but none available"
+                                        )
+                                    }
+                                    break
+                                }
+                            }
+                        }
+                    } finally {
+                        inflater.end()
                     }
                 }
-
-                val decompressed = outputStream.toByteArray()
-
-                // Verify size matches expected
-                if (decompressed.size.toLong() != chunk.size) {
-                    return Result.failure(
-                        Exception("Decompressed size mismatch: expected ${chunk.size}, got ${decompressed.size}"),
-                    )
-                }
-
-                Result.success(decompressed)
-            } finally {
-                inflater.end()
             }
+
+            // Verify size matches expected
+            if (totalBytesWritten != chunk.size) {
+                return Result.failure(
+                    Exception("Decompressed size mismatch: expected ${chunk.size}, got $totalBytesWritten"),
+                )
+            }
+
+            // Verify decompressed MD5
+            val actualMd5 = md5Digest.digest().joinToString("") { "%02x".format(it) }
+            if (actualMd5 != chunk.md5) {
+                return Result.failure(
+                    Exception("Decompressed MD5 mismatch for chunk: expected ${chunk.md5}, got $actualMd5"),
+                )
+            }
+
+            Result.success(Unit)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to decompress chunk ${chunk.compressedMd5}")
             Result.failure(e)

@@ -438,6 +438,7 @@ class SteamAutoCloudTest {
         whenever(mockFile1.filename).thenReturn("cloud_save_1.sav")
         whenever(mockFile1.shaFile).thenReturn(cloudFile1Sha)
         whenever(mockFile1.pathPrefixIndex).thenReturn(0)
+        whenever(mockFile1.hasPathPrefixIndex).thenReturn(true)
         whenever(mockFile1.timestamp).thenReturn(Date())
         whenever(mockFile1.rawFileSize).thenReturn(cloudFile1Content.size)
 
@@ -445,6 +446,7 @@ class SteamAutoCloudTest {
         whenever(mockFile2.filename).thenReturn("cloud_save_2.sav")
         whenever(mockFile2.shaFile).thenReturn(cloudFile2Sha)
         whenever(mockFile2.pathPrefixIndex).thenReturn(0)
+        whenever(mockFile2.hasPathPrefixIndex).thenReturn(true)
         whenever(mockFile2.timestamp).thenReturn(Date())
         whenever(mockFile2.rawFileSize).thenReturn(cloudFile2Content.size)
 
@@ -452,6 +454,7 @@ class SteamAutoCloudTest {
         whenever(mockFile3.filename).thenReturn("cloud_save_3.sav")
         whenever(mockFile3.shaFile).thenReturn(cloudFile3Sha)
         whenever(mockFile3.pathPrefixIndex).thenReturn(0)
+        whenever(mockFile3.hasPathPrefixIndex).thenReturn(true)
         whenever(mockFile3.timestamp).thenReturn(Date())
         whenever(mockFile3.rawFileSize).thenReturn(cloudFile3Content.size)
 
@@ -1034,6 +1037,7 @@ class SteamAutoCloudTest {
                 whenever(file.filename).thenReturn("%GameInstall%/save$it.dat")
                 whenever(file.shaFile).thenReturn(hashes[it])
                 whenever(file.pathPrefixIndex).thenReturn(0)
+                whenever(file.hasPathPrefixIndex).thenReturn(true)
                 whenever(file.timestamp).thenReturn(Date())
                 whenever(file.rawFileSize).thenReturn(contents[it].size)
                 file
@@ -1194,6 +1198,7 @@ class SteamAutoCloudTest {
         whenever(mockFile.filename).thenReturn("%GameInstall%savedata.vfs")
         whenever(mockFile.shaFile).thenReturn(fileHash)
         whenever(mockFile.pathPrefixIndex).thenReturn(0)
+        whenever(mockFile.hasPathPrefixIndex).thenReturn(true)
         whenever(mockFile.timestamp).thenReturn(Date())
         whenever(mockFile.rawFileSize).thenReturn(fileContent.size)
 
@@ -1669,6 +1674,7 @@ class SteamAutoCloudTest {
         whenever(mockFile.filename).thenReturn("1003.sav")
         whenever(mockFile.shaFile).thenReturn(cloudSha)
         whenever(mockFile.pathPrefixIndex).thenReturn(0)
+        whenever(mockFile.hasPathPrefixIndex).thenReturn(true)
         whenever(mockFile.timestamp).thenReturn(Date())
         whenever(mockFile.rawFileSize).thenReturn(cloudContent.size)
 
@@ -1739,6 +1745,125 @@ class SteamAutoCloudTest {
         assertTrue("Downloaded save should land in the game's Cloud directory", expectedSave.exists())
         assertFalse("Downloaded save must not land directly under LocalLow/accountId", wrongSave.exists())
         assertEquals(cloudContent.contentToString(), expectedSave.readBytes().contentToString())
+    }
+
+    /**
+     * Yakuza 4 Remastered (1105500) stores some cloud files under a "save/" prefix and the rest at
+     * the remote root. path_prefix_index is an optional proto field, so root files omit it; without
+     * a presence check they read back as index 0 and wrongly inherit pathPrefixes[0].
+     */
+    @Test
+    fun mixedPrefixedAndRootCloudFiles_rootFilesDoNotInheritFirstPrefix() = runBlocking {
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+        db.appChangeNumbersDao().insert(app.gamenative.data.ChangeNumbers(steamAppId, 0))
+        db.appFileChangeListsDao().insert(steamAppId, emptyList())
+
+        val userdataRoot = File(tempDir, "userdata-yakuza")
+        val cloudContent = "yakuza save content".toByteArray()
+        val cloudSha = CryptoHelper.shaHash(cloudContent)
+
+        val prefixedSave = File(userdataRoot, "save/savegame1.sav")
+        val rootSave = File(userdataRoot, "savegame2.sav")
+        val misplacedRootSave = File(userdataRoot, "save/savegame2.sav")
+
+        val appUnderTest = db.steamAppDao().findApp(steamAppId)!!
+            .copy(ufs = UFS(saveFilePatterns = emptyList()))
+
+        val prefixedFile = mock<AppFileInfo>()
+        whenever(prefixedFile.filename).thenReturn("savegame1.sav")
+        whenever(prefixedFile.shaFile).thenReturn(cloudSha)
+        whenever(prefixedFile.pathPrefixIndex).thenReturn(0)
+        whenever(prefixedFile.hasPathPrefixIndex).thenReturn(true)
+        whenever(prefixedFile.timestamp).thenReturn(Date())
+        whenever(prefixedFile.rawFileSize).thenReturn(cloudContent.size)
+
+        val rootFile = mock<AppFileInfo>()
+        whenever(rootFile.filename).thenReturn("savegame2.sav")
+        whenever(rootFile.shaFile).thenReturn(cloudSha)
+        whenever(rootFile.pathPrefixIndex).thenReturn(0)
+        whenever(rootFile.hasPathPrefixIndex).thenReturn(false)
+        whenever(rootFile.timestamp).thenReturn(Date())
+        whenever(rootFile.rawFileSize).thenReturn(cloudContent.size)
+
+        val mockAppFileChangeList = mock<AppFileChangeList>()
+        whenever(mockAppFileChangeList.currentChangeNumber).thenReturn(19L)
+        whenever(mockAppFileChangeList.isOnlyDelta).thenReturn(false)
+        whenever(mockAppFileChangeList.appBuildIDHwm).thenReturn(0)
+        whenever(mockAppFileChangeList.pathPrefixes).thenReturn(listOf("save/"))
+        whenever(mockAppFileChangeList.machineNames).thenReturn(emptyList())
+        whenever(mockAppFileChangeList.files).thenReturn(listOf(prefixedFile, rootFile))
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(mockAppFileChangeList)
+
+        val mockDownloadInfo = mock<FileDownloadInfo>()
+        whenever(mockDownloadInfo.urlHost).thenReturn("test.example.com")
+        whenever(mockDownloadInfo.urlPath).thenReturn("/download/yakuza")
+        whenever(mockDownloadInfo.useHttps).thenReturn(true)
+        whenever(mockDownloadInfo.requestHeaders).thenReturn(emptyList())
+        whenever(mockDownloadInfo.fileSize).thenReturn(cloudContent.size)
+        whenever(mockDownloadInfo.rawFileSize).thenReturn(cloudContent.size)
+        whenever(mockDownloadInfo.timestamp).thenReturn(Date())
+
+        val requestedPaths = java.util.Collections.synchronizedList(mutableListOf<String>())
+        every { mockSteamCloud.clientFileDownload(any(), any()) } answers {
+            requestedPaths.add(secondArg<String>())
+            CompletableFuture.completedFuture(mockDownloadInfo)
+        }
+        every { mockSteamCloud.clientFileDownload(any(), any(), any(), any(), any()) } answers {
+            requestedPaths.add(secondArg<String>())
+            CompletableFuture.completedFuture(mockDownloadInfo)
+        }
+
+        val mockHttpClient = mock<OkHttpClient>()
+        val mockCall = mock<Call>()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
+        whenever(mockHttpClient.newCall(any())).thenReturn(mockCall)
+        whenever(mockCall.execute()).thenAnswer {
+            Response.Builder()
+                .request(okhttp3.Request.Builder().url("https://test.example.com/download/yakuza").build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body(cloudContent.toResponseBody(null))
+                .build()
+        }
+
+        val prefixToPath: (String) -> String = { prefix ->
+            when (prefix) {
+                "SteamUserData" -> userdataRoot.absolutePath
+                else -> tempDir.absolutePath
+            }
+        }
+
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = appUnderTest,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = prefixToPath,
+        ).await()
+
+        assertNotNull("Result should not be null", result)
+        assertEquals(SyncResult.Success, result!!.syncResult)
+        assertEquals(2, result.filesDownloaded)
+
+        assertTrue("Prefixed cloud file should land under the save/ subfolder", prefixedSave.exists())
+        assertTrue("Root cloud file should land at the remote root", rootSave.exists())
+        assertFalse(
+            "Root cloud file must not inherit pathPrefixes[0] and land under save/",
+            misplacedRootSave.exists(),
+        )
+        assertTrue(
+            "Root file must be requested from Steam by its bare name. Got: $requestedPaths",
+            requestedPaths.contains("savegame2.sav"),
+        )
+        assertTrue(
+            "Prefixed file must be requested with its save/ prefix. Got: $requestedPaths",
+            requestedPaths.contains("save/savegame1.sav"),
+        )
     }
 
     @Test
@@ -1982,6 +2107,7 @@ class SteamAutoCloudTest {
         whenever(mockFile.filename).thenReturn("SaveData_0.sav")
         whenever(mockFile.shaFile).thenReturn(cloudSha)
         whenever(mockFile.pathPrefixIndex).thenReturn(0)
+        whenever(mockFile.hasPathPrefixIndex).thenReturn(true)
         whenever(mockFile.timestamp).thenReturn(Date())
         whenever(mockFile.rawFileSize).thenReturn(cloudContent.size)
 
@@ -2059,6 +2185,7 @@ class SteamAutoCloudTest {
             whenever(m.filename).thenReturn(name)
             whenever(m.shaFile).thenReturn(sha1(content))
             whenever(m.pathPrefixIndex).thenReturn(0)
+            whenever(m.hasPathPrefixIndex).thenReturn(true)
             whenever(m.timestamp).thenReturn(Date())
             whenever(m.rawFileSize).thenReturn(content.size)
             return m
@@ -2256,6 +2383,7 @@ class SteamAutoCloudTest {
         whenever(mockFile.filename).thenReturn("SaveData_0.sav")
         whenever(mockFile.shaFile).thenReturn(cloudSha)
         whenever(mockFile.pathPrefixIndex).thenReturn(0)
+        whenever(mockFile.hasPathPrefixIndex).thenReturn(true)
         whenever(mockFile.timestamp).thenReturn(Date())
         whenever(mockFile.rawFileSize).thenReturn(cloudContent.size)
 
@@ -2527,6 +2655,7 @@ class SteamAutoCloudTest {
         whenever(mockFile.filename).thenReturn("SaveData_0.sav")
         whenever(mockFile.shaFile).thenReturn(cloudSha)
         whenever(mockFile.pathPrefixIndex).thenReturn(0)
+        whenever(mockFile.hasPathPrefixIndex).thenReturn(true)
         whenever(mockFile.timestamp).thenReturn(Date())
         whenever(mockFile.rawFileSize).thenReturn(cloudContent.size)
 
@@ -2596,6 +2725,7 @@ class SteamAutoCloudTest {
         whenever(mockFile.filename).thenReturn("SaveData_0.sav")
         whenever(mockFile.shaFile).thenReturn(cloudSha)
         whenever(mockFile.pathPrefixIndex).thenReturn(0)
+        whenever(mockFile.hasPathPrefixIndex).thenReturn(true)
         whenever(mockFile.timestamp).thenReturn(Date())
         whenever(mockFile.rawFileSize).thenReturn(cloudContent.size)
 
@@ -2660,6 +2790,7 @@ class SteamAutoCloudTest {
         whenever(successfulFile.filename).thenReturn("SaveGames/AutoSaveData.sav")
         whenever(successfulFile.shaFile).thenReturn(sha1(successfulCloudContent))
         whenever(successfulFile.pathPrefixIndex).thenReturn(0)
+        whenever(successfulFile.hasPathPrefixIndex).thenReturn(true)
         whenever(successfulFile.timestamp).thenReturn(Date())
         whenever(successfulFile.rawFileSize).thenReturn(successfulCloudContent.size)
 
@@ -2667,6 +2798,7 @@ class SteamAutoCloudTest {
         whenever(metadataFailureFile.filename).thenReturn("SaveGames/SaveData_0.sav")
         whenever(metadataFailureFile.shaFile).thenReturn(sha1("savedata0 content".toByteArray()))
         whenever(metadataFailureFile.pathPrefixIndex).thenReturn(0)
+        whenever(metadataFailureFile.hasPathPrefixIndex).thenReturn(true)
         whenever(metadataFailureFile.timestamp).thenReturn(Date())
         whenever(metadataFailureFile.rawFileSize).thenReturn("savedata0 content".toByteArray().size)
 
@@ -2759,6 +2891,7 @@ class SteamAutoCloudTest {
             whenever(m.filename).thenReturn(name)
             whenever(m.shaFile).thenReturn(sha1(content))
             whenever(m.pathPrefixIndex).thenReturn(0)
+            whenever(m.hasPathPrefixIndex).thenReturn(true)
             whenever(m.timestamp).thenReturn(Date())
             whenever(m.rawFileSize).thenReturn(content.size)
             m
@@ -2810,4 +2943,265 @@ class SteamAutoCloudTest {
             rehydratedCn!!.changeNumber,
         )
     }
+
+    // ── Reconciliation of never-synced cloud files ───────────────────────
+    // The offline-first-boot bug: an upload-only sync stamps the local change
+    // number to match the cloud's without downloading, so cloud-only files are
+    // orphaned. With equal change numbers we must still pull down any cloud file
+    // that's absent from both disk and the cache.
+
+    /** Wire up the download pipeline (Cloud metadata + HTTP) for a single cloud file's content. */
+    private fun stubSingleFileDownload(content: ByteArray) {
+        val mockDownloadInfo = mock<FileDownloadInfo>()
+        whenever(mockDownloadInfo.urlHost).thenReturn("test.example.com")
+        whenever(mockDownloadInfo.urlPath).thenReturn("/download/file1")
+        whenever(mockDownloadInfo.useHttps).thenReturn(true)
+        whenever(mockDownloadInfo.requestHeaders).thenReturn(emptyList())
+        whenever(mockDownloadInfo.fileSize).thenReturn(content.size)
+        whenever(mockDownloadInfo.rawFileSize).thenReturn(content.size)
+        whenever(mockDownloadInfo.timestamp).thenReturn(Date())
+
+        every { mockSteamCloud.clientFileDownload(any(), any()) } returns
+            CompletableFuture.completedFuture(mockDownloadInfo)
+        every { mockSteamCloud.clientFileDownload(any(), any(), any(), any(), any()) } returns
+            CompletableFuture.completedFuture(mockDownloadInfo)
+
+        val mockHttpClient = mock<OkHttpClient>()
+        every { Net.httpForParallelDownloads(any()) } returns mockHttpClient
+        val mockCall = mock<Call>()
+        whenever(mockHttpClient.newCall(any())).thenReturn(mockCall)
+        whenever(mockCall.execute()).thenReturn(
+            Response.Builder()
+                .request(okhttp3.Request.Builder().url("https://test.example.com/download/file1").build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body(content.toResponseBody())
+                .build(),
+        )
+
+        val mockSteamClient = mockSteamService.steamClient!!
+        val mockConfig = mock<SteamConfiguration>()
+        whenever(mockSteamClient.configuration).thenReturn(mockConfig)
+        whenever(mockConfig.httpClient).thenReturn(mockHttpClient)
+    }
+
+    private fun cloudFile(filename: String, content: ByteArray): AppFileInfo {
+        val m = mock<AppFileInfo>()
+        whenever(m.filename).thenReturn(filename)
+        whenever(m.shaFile).thenReturn(sha1(content))
+        whenever(m.pathPrefixIndex).thenReturn(0)
+        whenever(m.hasPathPrefixIndex).thenReturn(true)
+        whenever(m.timestamp).thenReturn(Date())
+        whenever(m.rawFileSize).thenReturn(content.size)
+        return m
+    }
+
+    private val saveGamesPrefix = "%WinMyDocuments%/My Games/TestGame/Steam/76561198025127569/SaveGames"
+
+    // ── Equal CN, cloud has a file this device never synced → download it ──
+    @Test
+    fun equalCn_cloudHasNeverSyncedFile_downloadsAndCaches() = runBlocking {
+        val cn = 5L
+        cacheCurrentLocalFiles(cn)
+
+        val orphanContent = "cloud-only save this device never had".toByteArray()
+        val orphan = cloudFile("OrphanSaveData.sav", orphanContent)
+
+        val changeList = makeCloudFileChangeList(cn, files = listOf(orphan), pathPrefixes = listOf(saveGamesPrefix))
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(changeList)
+        stubSingleFileDownload(orphanContent)
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.Success, result!!.syncResult)
+        assertEquals("orphaned cloud file should be downloaded", 1, result.filesDownloaded)
+
+        val downloaded = File(saveFilesDir, "OrphanSaveData.sav")
+        assertTrue("never-synced cloud file must land on disk", downloaded.exists())
+        assertEquals(orphanContent.contentToString(), downloaded.readBytes().contentToString())
+
+        // change number is unchanged (cloud didn't advance), and the file is now cached
+        val cnAfter = db.appChangeNumbersDao().getByAppId(steamAppId)
+        assertEquals("change number must stay equal", cn, cnAfter!!.changeNumber)
+        val cache = db.appFileChangeListsDao().getByAppId(steamAppId)!!.userFileInfo
+        assertTrue(
+            "downloaded file must be added to the cache so it isn't re-fetched next launch",
+            cache.any { it.filename.endsWith("OrphanSaveData.sav") },
+        )
+        assertEquals("cache should now hold the 5 original files plus the downloaded one", 6, cache.size)
+    }
+
+    // ── Equal CN, cache-known file deleted from disk → stays a delete, not resurrected ──
+    @Test
+    fun equalCn_cacheKnownFileMissingFromDisk_notReDownloaded() = runBlocking {
+        val cn = 5L
+        cacheCurrentLocalFiles(cn)
+
+        // user deleted this save locally; it's still in the cache
+        val deleted = File(saveFilesDir, "SaveData_0.sav")
+        assertTrue("precondition: file exists before delete", deleted.exists())
+        deleted.delete()
+
+        // cloud still lists it. A working download stub is wired up so that if the never-synced
+        // check mis-keys the path, reconcile downloads it and the filesDownloaded assertion fails
+        // fast — rather than blocking forever on an unstubbed download future.
+        val stillInCloud = cloudFile("SaveData_0.sav", "savedata0 content".toByteArray())
+        val changeList = makeCloudFileChangeList(cn, files = listOf(stillInCloud), pathPrefixes = listOf(saveGamesPrefix))
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(changeList)
+        stubSingleFileDownload("savedata0 content".toByteArray())
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals("locally-deleted file must not be re-downloaded", 0, result!!.filesDownloaded)
+        assertFalse("locally-deleted file must not be resurrected on disk", deleted.exists())
+    }
+
+    // ── Equal CN, cloud files already present on disk → nothing to do ──
+    @Test
+    fun equalCn_cloudFilesAlreadyOnDisk_upToDate() = runBlocking {
+        val cn = 5L
+        cacheCurrentLocalFiles(cn)
+
+        // cloud lists exactly the files already on disk. Correct path-keying means none are
+        // "never synced". A working download stub is wired up so a mis-key fails the download
+        // assertion fast instead of blocking forever on an unstubbed download future.
+        val onDisk = listOf(
+            cloudFile("AutoSaveData.sav", "autosave content".toByteArray()),
+            cloudFile("SaveData_0.sav", "savedata0 content".toByteArray()),
+            cloudFile("ContinueSaveData.sav", "continue content".toByteArray()),
+            cloudFile("SaveData_1.sav", "savedata1 content".toByteArray()),
+            cloudFile("SystemData_0.sav", "systemdata content".toByteArray()),
+        )
+        val changeList = makeCloudFileChangeList(cn, files = onDisk, pathPrefixes = listOf(saveGamesPrefix))
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(changeList)
+        stubSingleFileDownload("autosave content".toByteArray())
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.UpToDate, result!!.syncResult)
+        assertEquals("nothing to download", 0, result.filesDownloaded)
+    }
+
+    // ── Equal CN, mixed manifest: only the never-synced file is fetched (strict subset) ──
+    // Manifest has two files already on disk plus one orphan. Reconcile must download exactly
+    // the orphan and leave the on-disk files untouched — this exercises downloadFiles fetching
+    // a strict subset of the manifest, not all of it.
+    @Test
+    fun equalCn_mixedManifest_downloadsOnlyTheOrphan() = runBlocking {
+        val cn = 5L
+        cacheCurrentLocalFiles(cn)
+
+        val orphanContent = "the only cloud-only file".toByteArray()
+        // Two files that already exist on disk (from setUp) + one orphan that does not.
+        val manifest = listOf(
+            cloudFile("AutoSaveData.sav", "autosave content".toByteArray()),
+            cloudFile("SaveData_0.sav", "savedata0 content".toByteArray()),
+            cloudFile("OrphanSaveData.sav", orphanContent),
+        )
+        val changeList = makeCloudFileChangeList(cn, files = manifest, pathPrefixes = listOf(saveGamesPrefix))
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(changeList)
+        // The download stub serves orphanContent for ANY request, so if reconcile wrongly fetched
+        // an on-disk file it would both bump filesDownloaded and overwrite that file's content.
+        stubSingleFileDownload(orphanContent)
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.Success, result!!.syncResult)
+        assertEquals("exactly one (the orphan) should be downloaded", 1, result.filesDownloaded)
+
+        // orphan pulled down with its own content
+        val orphan = File(saveFilesDir, "OrphanSaveData.sav")
+        assertTrue("orphan must be downloaded", orphan.exists())
+        assertEquals(orphanContent.contentToString(), orphan.readBytes().contentToString())
+
+        // the two already-present files must be left exactly as they were (not re-fetched/overwritten)
+        assertEquals(
+            "AutoSaveData.sav must not be re-fetched",
+            "autosave content",
+            File(saveFilesDir, "AutoSaveData.sav").readText(),
+        )
+        assertEquals(
+            "SaveData_0.sav must not be re-fetched",
+            "savedata0 content",
+            File(saveFilesDir, "SaveData_0.sav").readText(),
+        )
+    }
+
+    // ── Root cause: Keep Local must still pull down cloud-only files, not orphan them ──
+    @Test
+    fun keepLocal_downloadsNeverSyncedCloudFiles() = runBlocking {
+        // db cleared (fresh) + local files exist + cloud ahead → conflict; user picks Keep Local
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+        assertTrue("precondition: local save files exist", saveFilesDir.listFiles()!!.isNotEmpty())
+
+        val orphanContent = "PC-only save the phone never had".toByteArray()
+        val orphan = cloudFile("CloudOnlySaveData.sav", orphanContent)
+        val changeList = makeCloudFileChangeList(5, files = listOf(orphan), pathPrefixes = listOf(saveGamesPrefix))
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(changeList)
+        stubSingleFileDownload(orphanContent)
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.Local,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.Success, result!!.syncResult)
+        assertTrue("local saves should upload", result.uploadsCompleted)
+        assertTrue("local saves should upload", result.filesUploaded > 0)
+        assertEquals("cloud-only file must be pulled down, not orphaned", 1, result.filesDownloaded)
+        assertTrue(
+            "cloud-only file must land on disk",
+            File(saveFilesDir, "CloudOnlySaveData.sav").exists(),
+        )
+    }
+
 }

@@ -12,6 +12,7 @@ import app.gamenative.data.SteamApp
 import app.gamenative.enums.LoginResult
 import app.gamenative.enums.Marker
 import app.gamenative.enums.SpecialGameSaveMapping
+import app.gamenative.enums.SteamRealm
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirName
@@ -99,6 +100,49 @@ object SteamUtils {
         // DL size should always be smaller than installSize.
         val hasSaneDownload = manifest.download > 0L && manifest.download <= manifest.size
         return if (hasSaneDownload) manifest.download else manifest.size
+    }
+
+    /**
+     * The language [depots] should be filtered by: the requested one when the app ships an
+     * installable depot in it, otherwise English, otherwise any language it ships. Used for both the
+     * base game and its DLC so a title that omits the container's language still resolves instead of
+     * yielding zero depots. Untagged (neutral) depots pass the language filter regardless.
+     */
+    fun effectiveDepotLanguage(
+        depots: Map<Int, DepotInfo>,
+        preferredLanguage: String,
+        ownedDlc: Map<Int, DepotInfo>?,
+        licensedDepotIds: Set<Int>?,
+        hasSteamUnlockedBranch: Boolean = false,
+    ): String {
+        // A depot installs once its language is chosen if it passes every check except language
+        // and arch. Arch is left out because it is a per-language preference, not a gate.
+        fun DepotInfo.installableInItsLanguage(): Boolean {
+            val isDlc = dlcAppId != SteamService.INVALID_APP_ID
+            val hasContent = manifests.isNotEmpty() || sharedInstall ||
+                (hasSteamUnlockedBranch && encryptedManifests.isNotEmpty())
+            val ownedIfDlc = !isDlc || ownedDlc == null || ownedDlc.containsKey(depotId)
+            val licensedIfBaseGame = isDlc || systemDefined ||
+                licensedDepotIds == null || depotId in licensedDepotIds
+            // Mirror the SteamChina realm gate in filterForDownloadableDepots, or we could pick a
+            // language only the final pass drops and lose the real fallback.
+            return isWindowsCompatible && realm != SteamRealm.SteamChina &&
+                hasContent && ownedIfDlc && licensedIfBaseGame
+        }
+
+        // Base-game depots only, so an owned in-app DLC's language can't steer the base game.
+        val installableBaseGameDepots = depots.values
+            .filter { it.dlcAppId == SteamService.INVALID_APP_ID && it.installableInItsLanguage() }
+        val availableLanguages = installableBaseGameDepots
+            .filter { it.language.isNotEmpty() }
+            .mapTo(mutableSetOf()) { it.language }
+        val hasNeutralDepot = installableBaseGameDepots.any { it.language.isEmpty() }
+        return when {
+            preferredLanguage in availableLanguages -> preferredLanguage
+            hasNeutralDepot -> preferredLanguage
+            "english" in availableLanguages -> "english"
+            else -> availableLanguages.firstOrNull() ?: preferredLanguage
+        }
     }
 
     internal val http = Net.http.newBuilder()
@@ -860,10 +904,8 @@ object SteamUtils {
 
         Timber.i("Finished restoreSteamApi for appId: ${appId}")
 
-        // Restore original executable if it exists (for real Steam mode)
-        if (!container.isLaunchBionicSteam) {
-            restoreOriginalExecutable(context, steamAppId)
-        }
+        // Restore original executable if it exists (real Steam + bionic Steam)
+        restoreOriginalExecutable(context, steamAppId)
 
         // Restore original steamclient.dll files if they exist
         restoreSteamclientFiles(context, steamAppId)

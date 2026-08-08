@@ -722,7 +722,8 @@ object ContainerStorageManager {
             gameInstallSizeBytes = gameInstallSizeBytes,
             status = status,
             installPath = installPath,
-            canUninstallGame = status == Status.READY && gameSource != null && gameSource != GameSource.CUSTOM_GAME,
+            canUninstallGame = (status == Status.READY || status == Status.GAME_FILES_MISSING) &&
+                gameSource != null && gameSource != GameSource.CUSTOM_GAME,
             hasContainer = true,
         )
     }

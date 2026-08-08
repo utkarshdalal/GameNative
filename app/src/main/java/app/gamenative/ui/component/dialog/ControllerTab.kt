@@ -2,7 +2,12 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.settingsTileColors
@@ -14,6 +19,9 @@ import com.winlator.container.Container
 @Composable
 fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
     val config = state.config.value
+    var showControllerDebugMenu by remember {
+        mutableStateOf(PrefManager.showControllerDebugMenu)
+    }
 
     SettingsGroup() {
         if (!default) {
@@ -53,10 +61,13 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.shooter_mode_toggle)) },
-            subtitle = { Text(text = stringResource(R.string.shooter_mode_toggle_description)) },
-            state = config.shooterMode,
-            onCheckedChange = { state.config.value = config.copy(shooterMode = it) },
+            title = { Text(text = stringResource(R.string.show_controller_debug_menu)) },
+            subtitle = { Text(text = stringResource(R.string.show_controller_debug_menu_subtitle)) },
+            state = showControllerDebugMenu,
+            onCheckedChange = {
+                showControllerDebugMenu = it
+                PrefManager.showControllerDebugMenu = it
+            },
         )
         SettingsListDropdown(
             colors = settingsTileColors(),

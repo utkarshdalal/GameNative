@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Mouse
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
@@ -68,6 +69,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -98,6 +100,7 @@ import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.VulkanRenderer
 import com.winlator.winhandler.ProcessInfo
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 object QuickMenuAction {
@@ -109,6 +112,7 @@ object QuickMenuAction {
     const val PERFORMANCE_HUD = 6
     const val TOUCHSCREEN_MODE = 7
     const val DISABLE_MOUSE = 8
+    const val SHOOTER_MODE = 9
 }
 
 private object QuickMenuTab {
@@ -117,6 +121,8 @@ private object QuickMenuTab {
     const val EFFECTS = 2
     const val CONTROLLER = 3
     const val TOOLS = 4
+    const val BFG = 5
+    const val INVITE = 6
 }
 
 data class QuickMenuItem(
@@ -256,6 +262,8 @@ fun QuickMenu(
     hasPhysicalController: Boolean = false,
     isTouchscreenModeActive: Boolean = false,
     onTouchGestureSettingsClick: () -> Unit = {},
+    isShooterModeActive: Boolean = false,
+    onShooterModeSettingsClick: () -> Unit = {},
     activeToggleIds: Set<Int> = emptySet(),
     // LSFG hot-reload state (tab only visible when isLsfgAvailable)
     isLsfgAvailable: Boolean = false,
@@ -266,6 +274,8 @@ fun QuickMenu(
     onLsfgFlowScaleChanged: (Float) -> Unit = {},
     onLsfgPerformanceModeChanged: (Boolean) -> Unit = {},
     onAnimationComplete: (Boolean) -> Unit = {},
+    /** Lets the menu open itself when the running game asks for its Steam invite dialog. */
+    onRequestOpen: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val exitGameItem = QuickMenuItem(
@@ -326,11 +336,29 @@ fun QuickMenu(
                 accentColor = PluviaTheme.colors.accentPurple,
             )
         )
+        add(
+            QuickMenuItem(
+                id = QuickMenuAction.SHOOTER_MODE,
+                icon = Icons.Default.Gamepad,
+                labelResId = R.string.shooter_mode_toggle,
+                accentColor = PluviaTheme.colors.accentPurple,
+            )
+        )
     }
+
+    // Created here rather than plumbed through XServerScreen: that composable
+    // sits at the dex verifier's register limit and any extra locals there
+    // trip a VerifyError at class load (dex methods over 255 registers hit a
+    // broken D8 codegen path).
+    val bfgMenu = remember(container?.id) { container?.let { BfgMenuState.createIfAvailable(it) } }
+    val inviteMenu = remember(container?.id) { SteamInviteState.createIfAvailable(container) }
 
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
-            if (PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable)
+            if ((PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable) ||
+                (PrefManager.quickMenuLastTab == QuickMenuTab.BFG && bfgMenu == null) ||
+                (PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null)
+            )
                 QuickMenuTab.HUD
             else PrefManager.quickMenuLastTab
         )
@@ -338,8 +366,10 @@ fun QuickMenu(
     val selectedTabLabelResId = when (selectedTab) {
         QuickMenuTab.HUD -> R.string.performance_hud
         QuickMenuTab.LSFG -> R.string.lsfg_tab_title
+        QuickMenuTab.BFG -> R.string.bfg_tab_title
         QuickMenuTab.EFFECTS -> R.string.screen_effects
         QuickMenuTab.TOOLS -> R.string.task_manager
+        QuickMenuTab.INVITE -> R.string.steam_invite_tab_title
         else -> R.string.quick_menu_tab_controller
     }
 
@@ -357,6 +387,28 @@ fun QuickMenu(
     val controllerItemFocusRequester = remember { FocusRequester() }
     val toolsItemFocusRequester = remember { FocusRequester() }
     val lsfgItemFocusRequester = remember { FocusRequester() }
+    val bfgScrollState = rememberScrollState()
+    val bfgTabFocusRequester = remember { FocusRequester() }
+    val bfgItemFocusRequester = remember { FocusRequester() }
+    val inviteTabFocusRequester = remember { FocusRequester() }
+    val inviteItemFocusRequester = remember { FocusRequester() }
+
+    // The game's own "Invite friends" button reaches us as an engine callback the bionic host
+    // captures. Open on the invite tab rather than drawing a separate panel, so controller focus
+    // and back-to-dismiss behave like the rest of the menu.
+    if (inviteMenu != null) {
+        LaunchedEffect(inviteMenu) {
+            while (true) {
+                if (!isVisible && inviteMenu.consumeGameInviteRequest()) {
+                    selectedTab = QuickMenuTab.INVITE
+                    PrefManager.quickMenuLastTab = selectedTab
+                    SteamInviteState.openedForGameRequest = true
+                    onRequestOpen()
+                }
+                delay(1000)
+            }
+        }
+    }
 
     val visibleState = remember { MutableTransitionState(false) }
     visibleState.targetState = isVisible
@@ -483,6 +535,34 @@ fun QuickMenu(
                                         focusRequester = lsfgTabFocusRequester,
                                     )
                                 }
+                                if (bfgMenu != null) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.Speed,
+                                        contentDescriptionResId = R.string.bfg_tab_title,
+                                        selected = selectedTab == QuickMenuTab.BFG,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.BFG
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = bfgTabFocusRequester,
+                                    )
+                                }
+                                if (inviteMenu != null) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.PersonAdd,
+                                        contentDescriptionResId = R.string.steam_invite_tab_title,
+                                        selected = selectedTab == QuickMenuTab.INVITE,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.INVITE
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = inviteTabFocusRequester,
+                                    )
+                                }
                                 if (renderer != null || glRenderer != null) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.AutoFixHigh,
@@ -601,6 +681,32 @@ fun QuickMenu(
                                         )
                                     }
 
+                                    QuickMenuTab.BFG -> {
+                                        if (bfgMenu != null) {
+                                            BionicFgQuickMenuTab(
+                                                multiplier = bfgMenu.multiplier,
+                                                flowScale = bfgMenu.flowScale,
+                                                model = bfgMenu.model,
+                                                onMultiplierChanged = bfgMenu::applyMultiplier,
+                                                onFlowScaleChanged = bfgMenu::applyFlowScale,
+                                                onModelChanged = bfgMenu::applyModel,
+                                                scrollState = bfgScrollState,
+                                                focusRequester = bfgItemFocusRequester,
+                                                modifier = Modifier.fillMaxSize(),
+                                            )
+                                        }
+                                    }
+
+                                    QuickMenuTab.INVITE -> {
+                                        if (inviteMenu != null) {
+                                            SteamInviteQuickMenuTab(
+                                                state = inviteMenu,
+                                                focusRequester = inviteItemFocusRequester,
+                                                modifier = Modifier.fillMaxSize(),
+                                            )
+                                        }
+                                    }
+
                                     QuickMenuTab.EFFECTS -> {
                                         if (renderer != null) {
                                             ScreenEffectsTabContent(
@@ -663,9 +769,20 @@ fun QuickMenu(
                                                     },
                                                     focusRequester = if (index == 0) controllerItemFocusRequester else null,
                                                     secondaryIcon = if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && isTouchscreenModeActive)
-                                                        Icons.Default.Settings else null,
+                                                        Icons.Default.Settings
+                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && isShooterModeActive)
+                                                        Icons.Default.Settings
+                                                    else null,
+                                                    secondaryContentDescriptionResId = if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && isTouchscreenModeActive)
+                                                        R.string.gesture_settings_title
+                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && isShooterModeActive)
+                                                        R.string.shooter_mode_settings_title
+                                                    else null,
                                                     onSecondaryClick = if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && isTouchscreenModeActive)
-                                                        onTouchGestureSettingsClick else null,
+                                                        onTouchGestureSettingsClick
+                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && isShooterModeActive)
+                                                        onShooterModeSettingsClick
+                                                    else null,
                                                 )
                                             }
                                         }
@@ -690,6 +807,8 @@ fun QuickMenu(
                     when (selectedTab) {
                         QuickMenuTab.HUD -> hudItemFocusRequester.requestFocus()
                         QuickMenuTab.LSFG -> lsfgItemFocusRequester.requestFocus()
+                        QuickMenuTab.BFG -> bfgItemFocusRequester.requestFocus()
+                        QuickMenuTab.INVITE -> inviteItemFocusRequester.requestFocus()
                         QuickMenuTab.EFFECTS -> effectsItemFocusRequester.requestFocus()
                         QuickMenuTab.TOOLS -> toolsItemFocusRequester.requestFocus()
                         else -> controllerItemFocusRequester.requestFocus()
@@ -699,6 +818,66 @@ fun QuickMenu(
                     delay(80)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SteamInviteQuickMenuTab(
+    state: SteamInviteState,
+    focusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier,
+) {
+    val scrollState = rememberScrollState()
+    val accentColor = PluviaTheme.colors.accentPurple
+    val scope = rememberCoroutineScope()
+
+    // Keep polling while the tab is up: a friend joining our lobby is the only signal Steam
+    // gives us that an invite was acted on, so the rows would otherwise go stale.
+    LaunchedEffect(Unit) {
+        state.refresh()
+        while (true) {
+            delay(3000)
+            state.refreshQuietly()
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .verticalScroll(scrollState)
+            .focusGroup(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        QuickMenuSectionHeader(
+            title = when {
+                state.isLoading -> stringResource(R.string.main_loading)
+                state.hostUnavailable -> stringResource(R.string.steam_invite_unavailable)
+                else -> stringResource(R.string.steam_invite_header, state.friends.size)
+            },
+            subtitle = state.lastError?.let { stringResource(it) },
+        )
+
+        state.friends.forEachIndexed { index, friend ->
+            QuickMenuDetailRow(
+                title = friend.name,
+                subtitle = stringResource(
+                    when {
+                        friend.inOurLobby -> R.string.steam_invite_joined
+                        friend.isJoinable -> R.string.steam_invite_joinable
+                        friend.steamId in state.inviteSent -> R.string.steam_invite_sent
+                        friend.isOnline -> R.string.steam_invite_online
+                        else -> R.string.steam_invite_offline
+                    },
+                ),
+                accentColor = accentColor,
+                onActivate = {
+                    scope.launch {
+                        // Someone already in this game gets joined, not invited.
+                        if (friend.isJoinable) state.join(friend) else state.invite(friend.steamId)
+                    }
+                },
+                focusRequester = if (index == 0) focusRequester else null,
+            )
         }
     }
 }
@@ -737,11 +916,11 @@ private fun ToolsQuickMenuTab(
             )
         } else {
             processes.forEachIndexed { index, process ->
-                QuickMenuProcessRow(
+                QuickMenuDetailRow(
                     title = process.name + if (process.wow64Process) " *32" else "",
                     subtitle = process.formattedMemoryUsage,
                     accentColor = accentColor,
-                    onEndProcess = {
+                    onActivate = {
                         onEndProcess(process)
                     },
                     focusRequester = if (index == 0) firstItemFocusRequester else null,
@@ -1181,6 +1360,105 @@ private fun LsfgQuickMenuTab(
 }
 
 @Composable
+private fun BionicFgQuickMenuTab(
+    multiplier: Int,
+    flowScale: Float,
+    model: Int,
+    onMultiplierChanged: (Int) -> Unit,
+    onFlowScaleChanged: (Float) -> Unit,
+    onModelChanged: (Int) -> Unit,
+    scrollState: ScrollState,
+    focusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier,
+) {
+    val accentColor = PluviaTheme.colors.accentPurple
+    val isEnabled = multiplier >= 2
+
+    Column(
+        modifier = modifier
+            .verticalScroll(scrollState)
+            .focusGroup(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        // ── Multiplier (Off / 2x / 3x / 4x) ───────────────────────────────
+        QuickMenuSectionHeader(
+            title = stringResource(R.string.bfg_multiplier),
+        )
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf(0, 2, 3, 4).forEach { value ->
+                QuickMenuChoiceChip(
+                    text = if (value == 0) "Off" else "${value}x",
+                    selected = multiplier == value || (value == 0 && multiplier < 2),
+                    accentColor = accentColor,
+                    onClick = { onMultiplierChanged(value) },
+                    modifier = Modifier.width(56.dp),
+                    focusRequester = if (value == 0) focusRequester else null,
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = isEnabled,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // ── Flow Scale ────────────────────────────────────────────
+                QuickMenuAdjustmentRow(
+                    title = stringResource(R.string.bfg_flow_scale),
+                    subtitle = stringResource(R.string.bfg_flow_scale_desc),
+                    valueText = String.format(java.util.Locale.US, "%.2f", flowScale),
+                    progress = (flowScale - 0.2f) / 0.8f, // 0.2..1.0 → 0..1
+                    onDecrease = {
+                        val next = (flowScale - 0.05f).coerceIn(0.2f, 1.0f)
+                        onFlowScaleChanged(String.format(java.util.Locale.US, "%.2f", next).toFloat())
+                    },
+                    onIncrease = {
+                        val next = (flowScale + 0.05f).coerceIn(0.2f, 1.0f)
+                        onFlowScaleChanged(String.format(java.util.Locale.US, "%.2f", next).toFloat())
+                    },
+                    accentColor = accentColor,
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // ── Model (Standard / Clear) ──────────────────────────────
+                QuickMenuSectionHeader(
+                    title = stringResource(R.string.bfg_model),
+                    subtitle = stringResource(R.string.bfg_model_desc),
+                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    QuickMenuChoiceChip(
+                        text = stringResource(R.string.bfg_model_standard),
+                        selected = model == 0,
+                        accentColor = accentColor,
+                        onClick = { onModelChanged(0) },
+                        modifier = Modifier.width(88.dp),
+                    )
+                    QuickMenuChoiceChip(
+                        text = stringResource(R.string.bfg_model_clear),
+                        selected = model == 1,
+                        accentColor = accentColor,
+                        onClick = { onModelChanged(1) },
+                        modifier = Modifier.width(88.dp),
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+    }
+}
+
+@Composable
 private fun QuickMenuSectionHeader(
     title: String,
     subtitle: String? = null,
@@ -1218,24 +1496,6 @@ private fun QuickMenuCloseButton(
     Box(
         modifier = modifier
             .size(44.dp)
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        BorderStroke(
-                            2.dp,
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.tertiary,
-                                ),
-                            ),
-                        ),
-                        shape,
-                    )
-                } else {
-                    Modifier
-                }
-            )
             .clip(shape)
             .background(
                 if (isFocused) {
@@ -1244,6 +1504,7 @@ private fun QuickMenuCloseButton(
                     Color.Transparent
                 },
             )
+            .focusRing(interactionSource, shape, width = 2.dp)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -1282,24 +1543,6 @@ private fun QuickMenuTabButton(
     Box(
         modifier = modifier
             .size(56.dp)
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        BorderStroke(
-                            2.dp,
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.tertiary,
-                                ),
-                            ),
-                        ),
-                        shape,
-                    )
-                } else {
-                    Modifier
-                }
-            )
             .clip(shape)
             .background(
                 when {
@@ -1308,6 +1551,7 @@ private fun QuickMenuTabButton(
                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                 },
             )
+            .focusRing(interactionSource, shape, width = 2.dp)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -1842,11 +2086,11 @@ private fun QuickMenuSwitch(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun QuickMenuProcessRow(
+private fun QuickMenuDetailRow(
     title: String,
     subtitle: String,
     accentColor: Color,
-    onEndProcess: () -> Unit,
+    onActivate: () -> Unit,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester? = null,
 ) {
@@ -1901,7 +2145,7 @@ private fun QuickMenuProcessRow(
                         KeyEvent.KEYCODE_BUTTON_A,
                         KeyEvent.KEYCODE_DPAD_CENTER,
                         KeyEvent.KEYCODE_ENTER -> {
-                            onEndProcess()
+                            onActivate()
                             true
                         }
 
@@ -1915,7 +2159,7 @@ private fun QuickMenuProcessRow(
                 selected = isFocused,
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onEndProcess,
+                onClick = onActivate,
             )
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1951,6 +2195,7 @@ private fun QuickMenuItemRow(
     onClick: () -> Unit,
     focusRequester: FocusRequester? = null,
     secondaryIcon: ImageVector? = null,
+    secondaryContentDescriptionResId: Int? = null,
     onSecondaryClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -1970,24 +2215,6 @@ private fun QuickMenuItemRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .then(
-                if (isFocused && isEnabled) {
-                    Modifier.border(
-                        BorderStroke(
-                            2.dp,
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.tertiary,
-                                ),
-                            ),
-                        ),
-                        shape,
-                    )
-                } else {
-                    Modifier
-                }
-            )
             .clip(shape)
             .then(
                 if (isFocused && isEnabled) {
@@ -1999,6 +2226,13 @@ private fun QuickMenuItemRow(
                             ),
                         ),
                     )
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (isEnabled) {
+                    Modifier.focusRing(interactionSource, shape, width = 2.dp)
                 } else {
                     Modifier
                 }
@@ -2077,7 +2311,9 @@ private fun QuickMenuItemRow(
             ) {
                 Icon(
                     imageVector = secondaryIcon,
-                    contentDescription = stringResource(R.string.gesture_settings_title),
+                    contentDescription = stringResource(
+                        secondaryContentDescriptionResId ?: R.string.gesture_settings_title,
+                    ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp),
                 )

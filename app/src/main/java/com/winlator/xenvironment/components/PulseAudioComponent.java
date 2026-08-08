@@ -13,6 +13,8 @@ import com.winlator.xenvironment.XEnvironment;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import timber.log.Timber;
@@ -40,11 +42,13 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private final UnixSocketConfig socketConfig;
     private final String SINK_NAME = "AAudioSink";
 
-    private final Object lock = new Object();
     private float volume = 1.0f;
     private byte performanceMode = 1;
+    private final AtomicBoolean isPauseResumeRunning = new AtomicBoolean(false);
     private final AtomicBoolean isPaused = new AtomicBoolean(false);
     private boolean lowLatency = false;
+
+    private final ExecutorService singleThreadExecutor = Executors.newSingleThreadExecutor();
 
     public PulseAudioComponent(UnixSocketConfig socketConfig, boolean lowLatency) {
         this.socketConfig = socketConfig;
@@ -79,66 +83,63 @@ public class PulseAudioComponent extends EnvironmentComponent {
 
     @Override
     public void start() {
-        Timber.tag("PulseAudioComponent").d("Starting...");
-        synchronized (lock) {
-            if (!isServerRunning()) {
-                killAllPulseAudioProcesses();
-                startPulseAudio();
-                isPaused.set(false);
-            }
-        }
+        singleThreadExecutor.execute(() -> {
+            Timber.tag("PulseAudioComponent").d("Starting...");
+            killAllPulseAudioProcesses();
+            startPulseAudio();
+            isPaused.set(false);
+        });
     }
 
     @Override
     public void stop() {
-        Timber.tag("PulseAudioComponent").d("Stopping...");
-        synchronized (lock) {
-            // Stop sink here
-            updateSink(true);
-
-            isPaused.set(false);
-
+        singleThreadExecutor.execute(() -> {
+            Timber.tag("PulseAudioComponent").d("Stopping...");
             killAllPulseAudioProcesses();
-
+            isPaused.set(false);
             Timber.tag("PulseAudioComponent").d("Stopped PulseAudio server");
-        }
+        });
+        singleThreadExecutor.shutdown();
     }
 
     public void pause() {
-        synchronized (lock) {
-            if (!isPaused.get() && isServerRunning()) {
-                Timber.tag("PulseAudioComponent").d("Pausing...");
+        singleThreadExecutor.execute(() -> {
+            if (!isPaused.get()) {
+                if (!isPauseResumeRunning.get()) {
+                    isPauseResumeRunning.set(true);
+                    Timber.tag("PulseAudioComponent").d("Pausing...");
 
-                // Suspend sink and set isPaused together immediately
-                isPaused.set(true);
-                updateSink(true);
+                    if (updateSink(true)) {
+                        isPaused.set(true);
+                        Timber.tag("PulseAudioComponent").d("Audio paused");
+                    } else {
+                        Timber.tag("PulseAudioComponent").d("Failed to pause Audio");
+                    }
 
-                Timber.tag("PulseAudioComponent").d("Audio paused");
+                    isPauseResumeRunning.set(false);
+                }
             }
-        }
+        });
     }
 
     public void resume() {
-        synchronized (lock) {
+        singleThreadExecutor.execute(() -> {
             if (isPaused.get()) {
-                Timber.tag("PulseAudioComponent").d("Resuming...");
+                if (!isPauseResumeRunning.get()) {
+                    isPauseResumeRunning.set(true);
+                    Timber.tag("PulseAudioComponent").d("Resuming...");
 
-                if (isServerRunning()) {
-                    // Set isPaused immediately
-                    isPaused.set(false);
-                    updateSink(false);
+                    if (updateSink(false)) {
+                        isPaused.set(false);
+                        Timber.tag("PulseAudioComponent").d("Audio resumed");
+                    } else {
+                        Timber.tag("PulseAudioComponent").d("Failed to resume Audio");
+                    }
 
-                    Timber.tag("PulseAudioComponent").d("Audio resumed");
-                } else {
-                    start();
+                    isPauseResumeRunning.set(false);
                 }
             }
-        }
-    }
-
-    public boolean isServerRunning() {
-        final String info = execPactlCommand("info").toLowerCase(java.util.Locale.ROOT);
-        return info.contains("server name:") && !info.contains("connection failure");
+        });
     }
 
     public void setVolume(float volume) {
@@ -217,14 +218,14 @@ public class PulseAudioComponent extends EnvironmentComponent {
         envVars.put("TMPDIR", XEnvironment.getTmpDir(context));
         envVars.put("PULSE_SERVER", socketConfig.path);
 
-        return ProcessHelper.execWithOutput(workingDir + "/pactl " + command, envVars.toStringArray(), workingDir, true);
+        return ProcessHelper.execWithOutput(workingDir + "/pactl " + command, envVars.toStringArray(), workingDir, true, 5);
     }
 
-    private void updateSink(boolean suspend) {
+    private boolean updateSink(boolean suspend) {
         if (!suspend) {
-            execPactlCommand("suspend-sink " + SINK_NAME + " false");
+            return !execPactlCommand("suspend-sink " + SINK_NAME + " false").toLowerCase().contains("process timeout");
         } else {
-            execPactlCommand("suspend-sink " + SINK_NAME + " true");
+            return !execPactlCommand("suspend-sink " + SINK_NAME + " true").toLowerCase().contains("process timeout");
         }
     }
 

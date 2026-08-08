@@ -9,7 +9,11 @@ import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.CachedLicenseDao
 import app.gamenative.db.dao.DownloadingAppInfoDao
 import app.gamenative.db.dao.EncryptedAppTicketDao
+import app.gamenative.db.dao.LibraryPlayHistoryDao
+import app.gamenative.db.dao.ModDao
 import app.gamenative.db.dao.SteamUnlockedBranchDao
+import app.gamenative.db.migration.ROOM_MIGRATION_V23_to_V24
+import app.gamenative.db.migration.ROOM_MIGRATION_V24_to_V25
 import app.gamenative.db.migration.ROOM_MIGRATION_V7_to_V8
 import dagger.Module
 import dagger.Provides
@@ -28,7 +32,11 @@ class DatabaseModule {
         // The db will be considered unstable during development.
         // Once stable we should add a (room) db migration
         return Room.databaseBuilder(context, PluviaDatabase::class.java, DATABASE_NAME)
-            .addMigrations(ROOM_MIGRATION_V7_to_V8)
+            .addMigrations(
+                ROOM_MIGRATION_V7_to_V8,
+                ROOM_MIGRATION_V23_to_V24,
+                ROOM_MIGRATION_V24_to_V25,
+            )
             .fallbackToDestructiveMigration(true)
             .build()
     }
@@ -52,6 +60,10 @@ class DatabaseModule {
     @Provides
     @Singleton
     fun provideAppFileChangeListsDao(db: PluviaDatabase) = db.appFileChangeListsDao()
+
+    @Provides
+    @Singleton
+    fun provideLibraryPlayHistoryDao(db: PluviaDatabase): LibraryPlayHistoryDao = db.libraryPlayHistoryDao()
 
     @Provides
     @Singleton
@@ -84,4 +96,8 @@ class DatabaseModule {
     @Provides
     @Singleton
     fun provideSteamUnlockedBranchDao(db: PluviaDatabase): SteamUnlockedBranchDao = db.steamUnlockedBranchDao()
+
+    @Provides
+    @Singleton
+    fun provideModDao(db: PluviaDatabase): ModDao = db.modDao()
 }

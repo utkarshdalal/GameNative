@@ -11,10 +11,15 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
   workflow_dispatch:
 
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
 
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
     - uses: actions/checkout@v4
@@ -83,6 +88,9 @@ jobs:
         cp app/build/outputs/bundle/legacyRelease/app-legacy-release.aab app-release.aab
         cp app/build/outputs/bundle/modernRelease/app-modern-release.aab app-modern-release.aab
         cp app/build/outputs/bundle/legacyXrRelease/app-legacyXr-release.aab app-legacy-xr-release.aab
+
+    - name: Stop Gradle daemon to free memory
+      run: ./gradlew --stop
 
     - name: Extract APKs from Bundles
       run: |
@@ -172,5 +180,5 @@ jobs:
           --arg modern "$MODERN_URL" \
           --arg legacyXr "$LEGACY_XR_URL" \
           --arg changes "$CHANGELOG" \
-          '{content: "**New Android build**\nStandard Build (Recommended): \($legacy)\nPlay Store Build (Android 11+ — built for the latest Android, so **no security warning** about an outdated target. No D drive access and no custom game support; glibc not supported, external storage location moved.): \($modern)\nQuest/VR Build (sideload only — legacy storage with all-files access and D drive support, forced landscape): \($legacyXr)\n\nChanges:\n\($changes)"}')
+          '{content: "**New Android build**\nRegular Build (Recommended): \($legacy)\nModern Build (Play Store, features stripped): \($modern)\nXR Build (for Quest): \($legacyXr)\n\nChanges:\n\($changes)"}')
         curl -H 'Content-Type: application/json' -d "$payload" "$DISCORD_WEBHOOK_URL"

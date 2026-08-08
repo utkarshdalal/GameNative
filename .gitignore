@@ -63,7 +63,12 @@ app/keystores/*
 __pycache__/
 resign.keystore
 
+/app/modernXr/
+
 # Steam bootstrap shim source — withheld out of respect for Valve, since it
 # encodes internal details of Steam's proprietary client that Valve does not
 # publish. See THIRD_PARTY_NOTICES ("Steam Client Bootstrap Shim").
 app/src/main/cpp/steambootstrap/steam_bootstrap.c
+
+# Vendored SDL2 headers (fetched for evshim build, not pushed)
+app/src/main/cpp/third_party/SDL2/

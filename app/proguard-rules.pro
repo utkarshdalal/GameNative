@@ -23,6 +23,9 @@
 # Needed for release build
 -keep class in.dragonbra.javasteam.** { *; }
 
+# UnifiedService subclasses are built via reflection in SteamUnifiedMessages.createService; keep their ctor.
+-keep class * extends in.dragonbra.javasteam.steam.handlers.steamunifiedmessages.UnifiedService { *; }
+
 -keep class org.spongycastle.**
 -dontwarn org.spongycastle.jce.provider.X509LDAPCertStoreSpi
 -dontwarn org.spongycastle.x509.util.LDAPStoreHelper
@@ -33,4 +36,9 @@
 # Timber Logging
 -keep class timber.log.Timber { *; }
 -keep class app.gamenative.ReleaseTree { *; }
+
+-keep class horizon.** { *; }
+-keep class com.meta.horizon.** { *; }
+-dontwarn horizon.**
+-dontwarn com.meta.horizon.**
 

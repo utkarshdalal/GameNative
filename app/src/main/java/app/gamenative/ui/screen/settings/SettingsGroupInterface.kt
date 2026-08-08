@@ -155,6 +155,7 @@ fun SettingsGroupInterface(
 
     // Achievements
     var showAchievementNotifications by rememberSaveable { mutableStateOf(PrefManager.achievementShowNotification) }
+    var playAchievementSound by rememberSaveable { mutableStateOf(PrefManager.achievementPlaySound) }
 
     // Language selection dialog
     var openLanguageDialog by rememberSaveable { mutableStateOf(false) }
@@ -258,6 +259,15 @@ fun SettingsGroupInterface(
             onCheckedChange = {
                 showAchievementNotifications = it
                 PrefManager.achievementShowNotification = it
+            },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_achievement_play_sound)) },
+            state = playAchievementSound,
+            onCheckedChange = {
+                playAchievementSound = it
+                PrefManager.achievementPlaySound = it
             },
         )
         // Achievement notification position
@@ -551,16 +561,18 @@ fun SettingsGroupInterface(
                 useExternalStorage = it
                 PrefManager.useExternalStorage = it
                 if (it && dirs.isNotEmpty()) {
-                    PrefManager.externalStoragePath = dirs[0].absolutePath
+                    PrefManager.externalStoragePath = StorageUtils.preferredInstallRoot(dirs[0])
                 }
             },
         )
         if (useExternalStorage) {
             // Currently selected item
-            var selectedIndex by rememberSaveable {
+            var selectedIndex by rememberSaveable(dirs) {
                 mutableStateOf(
-                    dirs.indexOfFirst { it.absolutePath == PrefManager.externalStoragePath }
-                        .takeIf { it >= 0 } ?: 0,
+                    dirs.indexOfFirst { dir ->
+                        dir.absolutePath == PrefManager.externalStoragePath ||
+                            StorageUtils.publicInstallRoot(dir)?.absolutePath == PrefManager.externalStoragePath
+                    }.takeIf { it >= 0 } ?: 0,
                 )
             }
             SettingsListDropdown(
@@ -569,7 +581,7 @@ fun SettingsGroupInterface(
                 value = selectedIndex,
                 onItemSelected = { idx ->
                     selectedIndex = idx
-                    PrefManager.externalStoragePath = dirs[idx].absolutePath
+                    PrefManager.externalStoragePath = StorageUtils.preferredInstallRoot(dirs[idx])
                 },
                 colors = settingsTileColorsAlt(),
             )

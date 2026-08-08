@@ -23,10 +23,12 @@ fun HomeScreen(
     onClickExit: () -> Unit,
     onClickPlay: (String, Boolean) -> Unit,
     onTestGraphics: (String) -> Unit,
+    onPlayWithDiagnostics: (String) -> Unit,
     onLogout: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onGoOnline: () -> Unit,
-    isOffline: Boolean = false
+    isOffline: Boolean = false,
+    isSteamConnected: Boolean = false,
 ) {
     val homeState by viewModel.homeState.collectAsStateWithLifecycle()
 
@@ -43,16 +45,19 @@ fun HomeScreen(
         HomeDestination.Library -> HomeLibraryScreen(
             onClickPlay = onClickPlay,
             onTestGraphics = onTestGraphics,
+            onPlayWithDiagnostics = onPlayWithDiagnostics,
             onNavigateRoute = onNavigateRoute,
             onLogout = onLogout,
             onGoOnline = onGoOnline,
             onDownloadsClick = { viewModel.onDestination(HomeDestination.Downloads) },
             isOffline = isOffline,
+            isSteamConnected = isSteamConnected,
         )
         HomeDestination.Downloads -> HomeDownloadsScreen(
             onBack = { viewModel.onDestination(HomeDestination.Library) },
             onClickPlay = onClickPlay,
             onTestGraphics = onTestGraphics,
+            onPlayWithDiagnostics = onPlayWithDiagnostics,
         )
     }
 }
@@ -72,6 +77,7 @@ private fun Preview_HomeScreenContent() {
             onChat = {},
             onClickPlay = { _, _ -> },
             onTestGraphics = { },
+            onPlayWithDiagnostics = { },
             onLogout = {},
             onNavigateRoute = {},
             onClickExit = {},
