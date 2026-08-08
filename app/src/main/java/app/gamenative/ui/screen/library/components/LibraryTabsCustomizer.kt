@@ -8,11 +8,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,7 +26,7 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -41,6 +44,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -69,43 +74,58 @@ fun LibraryTabsCustomizer(
 ) {
     if (!visible) return
 
-    val content: @Composable () -> Unit = {
-        CustomizerContent(
-            preferences = preferences,
-            tabCounts = tabCounts,
-            onVisibilityChanged = onVisibilityChanged,
-            onMove = onMove,
-            onReset = onReset,
-            onDismiss = onDismiss,
-        )
-    }
-
     if (rememberWindowWidthClass() == WindowWidthClass.COMPACT) {
         ModalBottomSheet(
             onDismissRequest = onDismiss,
             containerColor = MaterialTheme.colorScheme.surface,
         ) {
-            content()
+            CompactCustomizerContent(
+                preferences = preferences,
+                tabCounts = tabCounts,
+                onVisibilityChanged = onVisibilityChanged,
+                onMove = onMove,
+                onReset = onReset,
+                onDismiss = onDismiss,
+            )
         }
     } else {
-        AlertDialog(
+        Dialog(
             onDismissRequest = onDismiss,
-            confirmButton = {},
-            text = {
-                Box(
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Surface(
                     modifier = Modifier
-                        .widthIn(max = 620.dp)
-                        .heightIn(max = 720.dp),
+                        .fillMaxWidth(0.94f)
+                        .fillMaxHeight(0.92f)
+                        .widthIn(max = 780.dp)
+                        .heightIn(max = 560.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 24.dp,
                 ) {
-                    content()
+                    WideCustomizerContent(
+                        preferences = preferences,
+                        tabCounts = tabCounts,
+                        onVisibilityChanged = onVisibilityChanged,
+                        onMove = onMove,
+                        onReset = onReset,
+                        onDismiss = onDismiss,
+                    )
                 }
-            },
-        )
+            }
+        }
     }
 }
 
 @Composable
-private fun CustomizerContent(
+private fun CompactCustomizerContent(
     preferences: List<LibraryTabPreference>,
     tabCounts: Map<LibraryTab, Int>,
     onVisibilityChanged: (LibraryTab, Boolean) -> Unit,
@@ -119,98 +139,187 @@ private fun CustomizerContent(
             .padding(horizontal = 20.dp)
             .padding(bottom = 20.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.library_customize_tabs),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = stringResource(R.string.library_customize_tabs_description),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = onDismiss) {
-                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = stringResource(R.string.library_tabs_live_preview),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        CustomizerHeader(
+            onDismiss = onDismiss,
+            titleStyle = MaterialTheme.typography.headlineSmall,
         )
-        Row(
+        Spacer(modifier = Modifier.height(14.dp))
+        TabsPreview(preferences = preferences)
+        PreferenceList(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            preferences.filter { it.isVisible }.forEachIndexed { index, preference ->
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (index == 0) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    },
-                ) {
-                    Text(
-                        text = stringResource(preference.tab.labelResId),
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
-            }
-        }
-
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = false)
                 .heightIn(max = 470.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            tonalElevation = 1.dp,
-        ) {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                preferences.forEachIndexed { index, preference ->
-                    LibraryTabPreferenceRow(
-                        preference = preference,
-                        count = tabCounts[preference.tab] ?: 0,
-                        canMoveUp = index > 1,
-                        canMoveDown = index in 1..<preferences.lastIndex,
-                        onVisibilityChanged = onVisibilityChanged,
-                        onMove = onMove,
-                    )
-                    if (index < preferences.lastIndex) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
-                    }
-                }
-            }
-        }
+            preferences = preferences,
+            tabCounts = tabCounts,
+            onVisibilityChanged = onVisibilityChanged,
+            onMove = onMove,
+        )
+        CustomizerActions(
+            onReset = onReset,
+            onDismiss = onDismiss,
+        )
+    }
+}
 
-        Row(
+@Composable
+private fun WideCustomizerContent(
+    preferences: List<LibraryTabPreference>,
+    tabCounts: Map<LibraryTab, Int>,
+    onVisibilityChanged: (LibraryTab, Boolean) -> Unit,
+    onMove: (LibraryTab, Int) -> Unit,
+    onReset: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+                .width(250.dp)
+                .fillMaxHeight(),
         ) {
+            CustomizerHeader(
+                onDismiss = onDismiss,
+                titleStyle = MaterialTheme.typography.headlineSmall,
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            TabsPreview(preferences = preferences)
+            Spacer(modifier = Modifier.weight(1f))
             TextButton(onClick = onReset) {
                 Text(stringResource(R.string.library_tabs_reset))
             }
-            TextButton(onClick = onDismiss) {
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 Text(stringResource(R.string.done), fontWeight = FontWeight.Bold)
             }
+        }
+        PreferenceList(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+            preferences = preferences,
+            tabCounts = tabCounts,
+            onVisibilityChanged = onVisibilityChanged,
+            onMove = onMove,
+        )
+    }
+}
+
+@Composable
+private fun CustomizerHeader(
+    onDismiss: () -> Unit,
+    titleStyle: androidx.compose.ui.text.TextStyle,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.library_customize_tabs),
+                style = titleStyle,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(R.string.library_customize_tabs_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = onDismiss) {
+            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+        }
+    }
+}
+
+@Composable
+private fun TabsPreview(preferences: List<LibraryTabPreference>) {
+    Text(
+        text = stringResource(R.string.library_tabs_live_preview),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        preferences.filter { it.isVisible }.forEachIndexed { index, preference ->
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = if (index == 0) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+            ) {
+                Text(
+                    text = stringResource(preference.tab.labelResId),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreferenceList(
+    preferences: List<LibraryTabPreference>,
+    tabCounts: Map<LibraryTab, Int>,
+    onVisibilityChanged: (LibraryTab, Boolean) -> Unit,
+    onMove: (LibraryTab, Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 1.dp,
+    ) {
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+            preferences.forEachIndexed { index, preference ->
+                LibraryTabPreferenceRow(
+                    preference = preference,
+                    count = tabCounts[preference.tab] ?: 0,
+                    canMoveUp = index > 1,
+                    canMoveDown = index in 1..<preferences.lastIndex,
+                    onVisibilityChanged = onVisibilityChanged,
+                    onMove = onMove,
+                )
+                if (index < preferences.lastIndex) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomizerActions(
+    onReset: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(onClick = onReset) {
+            Text(stringResource(R.string.library_tabs_reset))
+        }
+        Button(onClick = onDismiss) {
+            Text(stringResource(R.string.done), fontWeight = FontWeight.Bold)
         }
     }
 }
