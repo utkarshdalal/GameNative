@@ -759,17 +759,25 @@ object CustomGameScanner {
      * If generated, stores it in the file for future use.
      */
     private fun getOrGenerateGameId(folder: File): Int {
-        // First, try to read from .gamenative file
+        // Use the stored id unless another live folder owns it, e.g. an imported copy whose
+        // .gamenative was copied along with the game files
         val storedId = readGameIdFromFile(folder)
         if (storedId != null) {
-            return storedId
+            val owner = getOrRebuildCache()[storedId]
+            if (owner == null || owner == folder.absolutePath || !File(owner).isDirectory) {
+                return storedId
+            }
         }
 
-        // If not found, generate from folder name (same logic as before)
         var candidateId = abs(folder.absolutePath.hashCode()).let { if (it == 0) 1 else it }
 
-        // Check for collisions and make it unique if needed
-        val existingIds = getAllExistingGameIds(excludeFolder = folder)
+        // On a stored-id collision the colliding id must stay reserved for its owner, so
+        // nothing is excluded from the taken set
+        val existingIds = if (storedId != null) {
+            getOrRebuildCache().keys.toSet()
+        } else {
+            getAllExistingGameIds(excludeFolder = folder)
+        }
         if (candidateId in existingIds) {
             // ID collision detected, find a unique ID by incrementing
             Timber.tag("CustomGameScanner").d("ID collision detected for ${folder.absolutePath}: $candidateId, finding unique ID")
