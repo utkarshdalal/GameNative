@@ -125,6 +125,12 @@ object ContainerStorageManager {
         val installPath: String? = null,
         val canUninstallGame: Boolean = false,
         val hasContainer: Boolean = true,
+        // gates "Reclaim Wine storage" button. true only when: (a) runtime=webview (html5
+        // containers don't USE the wine distribution dirs -- pure waste) AND (b) at least one
+        // of drive_c/{windows, Program Files, Program Files (x86)} exists on disk so there's
+        // something to reclaim. wine-runtime containers actively USE those dirs; reclaiming
+        // would break the next launch until ImageFsInstaller restored them.
+        val canReclaimWineStorage: Boolean = false,
     ) {
         val combinedSizeBytes: Long?
             get() = when {
@@ -348,6 +354,38 @@ object ContainerStorageManager {
             }
         }
 
+        // html5 sidecar follow-up: WebViewContainer.installPath gets baked at fingerprint time
+        // and is what WebViewScreen uses to find game assets at launch. without this, a moved
+        // html5 container will fail to load (installPath points to the old location), opt-in
+        // would re-run on relaunch and synthesize a NEW slug → NEW container.id → NEW origin →
+        // user's saves "reset" because the WebView profile is keyed by origin. scan-by-id is
+        // used (instead of recomputing the slug from store-service install path) so we don't
+        // depend on the store DB update having propagated first.
+        runCatching {
+            val slug = app.gamenative.html5.host.WebViewScreenViewModel.slugFromAppId(normalizedContainerId)
+            if (slug != null) {
+                val existing = app.gamenative.runtime.WebViewContainer.load(slug)
+                if (existing != null && existing.installPath != targetDir.absolutePath) {
+                    app.gamenative.runtime.WebViewContainer.save(
+                        slug,
+                        existing.copy(installPath = targetDir.absolutePath),
+                    )
+                    Timber.tag("ContainerStorageManager").i(
+                        "Updated html5 sidecar installPath: slug=%s old=%s new=%s",
+                        slug,
+                        existing.installPath,
+                        targetDir.absolutePath,
+                    )
+                }
+            }
+        }.onFailure {
+            Timber.tag("ContainerStorageManager").w(
+                it,
+                "Failed to update html5 sidecar installPath for %s — game will fail to launch in html5 path",
+                normalizedContainerId,
+            )
+        }
+
         Timber.tag("ContainerStorageManager").i(
             "Moved game %s successfully to %s",
             entry.containerId,
@@ -372,6 +410,36 @@ object ContainerStorageManager {
             containerDir.exists(),
         )
 
+        // this path bypasses ContainerUtils.deleteContainer entirely
+        // (FileUtils.delete on the dir directly), so the orphan-ControlsProfile cleanup added
+        // in ec8a6405c never fires for Steam/GOG/Epic/Amazon library uninstalls routed through
+        // the storage manager UI. fire it BEFORE FileUtils.delete so the html5-containers
+        // JSON dir scan still resolves THIS container's profileId.
+        val normalizedId = normalizeContainerId(containerId)
+        runCatching {
+            ContainerUtils.deleteHtml5ControlsProfileIfOrphan(context, normalizedId)
+        }.onFailure {
+            Timber.tag("ContainerStorageManager").w(it, "html5 controls profile cleanup failed containerId=%s", containerId)
+        }
+
+        // origin-scoped LS+IDB scrub mirrors ContainerUtils.deleteContainer's call so
+        // storage-manager uninstalls don't leave stale chromium state in the shared
+        // app_webview/Default profile.
+        runCatching {
+            ContainerUtils.deleteHtml5OriginStorage(context, normalizedId)
+        }.onFailure {
+            Timber.tag("ContainerStorageManager").w(it, "html5 origin storage cleanup failed containerId=%s", containerId)
+        }
+
+        // delete the html5-containers/<slug>/ JSON dir. mirrors ContainerUtils.deleteContainer.
+        // runs AFTER deleteHtml5ControlsProfileIfOrphan above so the slug→profileId scan still
+        // resolves THIS container before the JSON is gone.
+        runCatching {
+            ContainerUtils.deleteHtml5JsonDir(context, normalizedId)
+        }.onFailure {
+            Timber.tag("ContainerStorageManager").w(it, "html5 json dir cleanup failed containerId=%s", containerId)
+        }
+
         val deleted = try {
             FileUtils.delete(containerDir)
         } catch (e: Exception) {
@@ -387,6 +455,94 @@ object ContainerStorageManager {
         }
 
         deleted
+    }
+
+    // Surgical wipe of Wine's distribution directories under the container's drive_c.
+    // Reclaims ~1-1.5GB per container of `windows/`, `Program Files/`, `Program Files (x86)/` --
+    // all of which are restored from imagefs on first launch via ImageFsInstaller. clearing
+    // the `appVersion` extra is what trips ImageFsInstaller into "first launch" mode on the
+    // next boot (see XServerScreen.kt:4287 firstBoot detection).
+    //
+    // user data (saves, registry tweaks, drive_c/users/, drive_c/ProgramData/, and
+    // drive_c/Program Files (x86)/Steam/userdata/ -- Steam Cloud's local cache, recreated by
+    // SteamAutoCloud on launch) is preserved. applies to both wine and html5 containers --
+    // html5 containers still keep a wine prefix shell that accumulates the same junk.
+    //
+    // returns bytes reclaimed; null entries (no wine prefix, e.g. never launched) → 0.
+    suspend fun reclaimWineStorage(context: Context, containerId: String): Result<Long> = withContext(Dispatchers.IO) {
+        val normalizedId = normalizeContainerId(containerId)
+        val homeDir = File(ImageFs.find(context).rootDir, "home")
+        val containerDir = File(homeDir, "${ImageFs.USER}-$normalizedId")
+        val driveC = File(containerDir, ".wine/drive_c")
+        if (!driveC.exists() || !driveC.isDirectory) {
+            Timber.tag("ContainerStorageManager").i(
+                "Reclaim skipped for %s — drive_c absent (wine prefix never initialized)",
+                normalizedId,
+            )
+            return@withContext Result.success(0L)
+        }
+
+        val targets = listOf("windows", "Program Files", "Program Files (x86)")
+            .map { File(driveC, it) }
+            .filter { it.exists() && it.isDirectory }
+
+        if (targets.isEmpty()) {
+            Timber.tag("ContainerStorageManager").i(
+                "Reclaim no-op for %s — nothing to reclaim",
+                normalizedId,
+            )
+            return@withContext Result.success(0L)
+        }
+
+        var totalBytes = 0L
+        for (target in targets) {
+            // Program Files (x86)/Steam/userdata/ is Steam Cloud's local-save cache, not wine
+            // bloat. wiping it would force a full re-download on next launch and risks data
+            // loss if the cloud copy is stale. preserve it alongside drive_c/users/.
+            val preserveUserdata = target.name == "Program Files (x86)" &&
+                File(target, "Steam/userdata").isDirectory
+            val bytes = if (preserveUserdata) {
+                deleteExceptSteamUserdata(target)
+            } else {
+                val s = runCatching { StorageUtils.getFolderSize(target.absolutePath) }.getOrDefault(0L)
+                val deleted = runCatching { FileUtils.delete(target) }
+                    .onFailure {
+                        Timber.tag("ContainerStorageManager").w(it, "Failed to delete %s", target.absolutePath)
+                    }
+                    .getOrDefault(false)
+                if (deleted) s else 0L
+            }
+            if (bytes > 0L) {
+                totalBytes += bytes
+                Timber.tag("ContainerStorageManager").i(
+                    "Reclaimed %s from %s",
+                    StorageUtils.formatBinarySize(bytes),
+                    target.absolutePath,
+                )
+            }
+        }
+
+        // clear appVersion extra so the next wine launch sees firstBoot=true and ImageFsInstaller
+        // restores the distribution dirs we just wiped. mirrors ImageFsInstaller.java:60
+        // which does the same when re-installing imagefs from scratch.
+        runCatching {
+            val container = ContainerUtils.getContainer(context, normalizedId)
+            container.putExtra("appVersion", null)
+            container.saveData()
+        }.onFailure {
+            Timber.tag("ContainerStorageManager").w(
+                it,
+                "Failed to clear appVersion for %s — next launch will skip imagefs restore, container will be unbootable",
+                normalizedId,
+            )
+        }
+
+        Timber.tag("ContainerStorageManager").i(
+            "Reclaimed total %s from %s wine prefix",
+            StorageUtils.formatBinarySize(totalBytes),
+            normalizedId,
+        )
+        Result.success(totalBytes)
     }
 
     suspend fun uninstallGameAndContainer(context: Context, entry: Entry): Result<Unit> = withContext(Dispatchers.IO) {
@@ -556,12 +712,19 @@ object ContainerStorageManager {
                     val folderPath = CustomGameScanner.getFolderPathFromAppId(item.appId) ?: return@mapNotNull null
                     val folder = File(folderPath)
                     if (!folder.exists() || !folder.isDirectory) return@mapNotNull null
+                    // unlike Steam/GOG/Epic/Amazon, custom games have no DAO row holding install
+                    // size -- they're sideloaded folders. compute on the fly so the storage card
+                    // shows real numbers instead of just the (tiny) container dir.
+                    val size = runCatching { StorageUtils.getFolderSize(folder.absolutePath) }
+                        .getOrDefault(0L)
+                        .takeIf { it > 0L }
                     InstalledGame(
                         appId = item.appId,
                         displayName = item.name.ifBlank { folder.name },
                         gameSource = GameSource.CUSTOM_GAME,
                         installPath = folder.absolutePath,
                         iconUrl = item.clientIconUrl,
+                        installSizeBytes = size,
                     )
                 }
         }.onSuccess { games ->
@@ -712,6 +875,10 @@ object ContainerStorageManager {
             null
         }
 
+        val runtime = config.optString("runtime", com.winlator.container.Container.RUNTIME_WINE)
+        val isWebviewRuntime = runtime.equals(com.winlator.container.Container.RUNTIME_WEBVIEW, ignoreCase = true)
+        val canReclaimWineStorage = isWebviewRuntime && hasReclaimableWineDirs(dir)
+
         return Entry(
             containerId = containerId,
             displayName = displayName,
@@ -725,7 +892,53 @@ object ContainerStorageManager {
             canUninstallGame = (status == Status.READY || status == Status.GAME_FILES_MISSING) &&
                 gameSource != null && gameSource != GameSource.CUSTOM_GAME,
             hasContainer = true,
+            canReclaimWineStorage = canReclaimWineStorage,
         )
+    }
+
+    // delete everything under Program Files (x86)/ except Steam/userdata/. returns bytes freed.
+    private suspend fun deleteExceptSteamUserdata(pfx86: File): Long {
+        var freed = 0L
+        val children = pfx86.listFiles() ?: return 0L
+        for (child in children) {
+            if (child.name == "Steam") continue
+            val s = runCatching { StorageUtils.getFolderSize(child.absolutePath) }.getOrDefault(0L)
+            val ok = runCatching { FileUtils.delete(child) }
+                .onFailure { Timber.tag("ContainerStorageManager").w(it, "Failed to delete %s", child.absolutePath) }
+                .getOrDefault(false)
+            if (ok) freed += s
+        }
+        val steam = File(pfx86, "Steam").takeIf { it.isDirectory } ?: return freed
+        val steamChildren = steam.listFiles() ?: return freed
+        for (child in steamChildren) {
+            if (child.name == "userdata") continue
+            val s = runCatching { StorageUtils.getFolderSize(child.absolutePath) }.getOrDefault(0L)
+            val ok = runCatching { FileUtils.delete(child) }
+                .onFailure { Timber.tag("ContainerStorageManager").w(it, "Failed to delete %s", child.absolutePath) }
+                .getOrDefault(false)
+            if (ok) freed += s
+        }
+        return freed
+    }
+
+    // UI gate -- don't show "Reclaim" when nothing meaningful is reclaimable.
+    // windows/ and Program Files/ are pure wine bloat; existence is enough.
+    // Program Files (x86)/ is recreated by Steam Cloud sync writing to
+    // Steam/userdata/<accountId>/... (PathType.SteamUserData / DEFAULT), so existence
+    // alone is a false positive -- only count it when there's something OTHER than
+    // Steam/userdata/ inside.
+    private fun hasReclaimableWineDirs(containerDir: File): Boolean {
+        val driveC = File(containerDir, ".wine/drive_c")
+        if (!driveC.isDirectory) return false
+        if (File(driveC, "windows").isDirectory) return true
+        if (File(driveC, "Program Files").isDirectory) return true
+        val pfx86 = File(driveC, "Program Files (x86)")
+        if (!pfx86.isDirectory) return false
+        val children = pfx86.listFiles() ?: return false
+        if (children.any { it.name != "Steam" }) return true
+        val steam = File(pfx86, "Steam").takeIf { it.isDirectory } ?: return false
+        val steamChildren = steam.listFiles() ?: return false
+        return steamChildren.any { it.name != "userdata" }
     }
 
     private fun buildInstalledOnlyEntry(
@@ -942,11 +1155,11 @@ object ContainerStorageManager {
     internal fun normalizeContainerId(containerId: String): String = containerId.substringBefore("(")
 
     internal fun detectGameSource(containerId: String): GameSource? = when {
-        containerId.startsWith("STEAM_") -> GameSource.STEAM
-        containerId.startsWith("CUSTOM_GAME_") -> GameSource.CUSTOM_GAME
-        containerId.startsWith("GOG_") -> GameSource.GOG
-        containerId.startsWith("EPIC_") -> GameSource.EPIC
-        containerId.startsWith("AMAZON_") -> GameSource.AMAZON
+        GameSource.STEAM.matches(containerId) -> GameSource.STEAM
+        GameSource.CUSTOM_GAME.matches(containerId) -> GameSource.CUSTOM_GAME
+        GameSource.GOG.matches(containerId) -> GameSource.GOG
+        GameSource.EPIC.matches(containerId) -> GameSource.EPIC
+        GameSource.AMAZON.matches(containerId) -> GameSource.AMAZON
         else -> null
     }
 

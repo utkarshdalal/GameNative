@@ -173,7 +173,21 @@ public class ContainerManager {
             boolean isMainWineVersion = !data.has("wineVersion") || WineInfo.isMainWineVersion(data.getString("wineVersion"));
             if (!isMainWineVersion) container.setWineVersion(data.getString("wineVersion"));
 
-            if (!extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
+            // gate prefix extraction on runtime. html5 containers don't run wine — the prefix
+            // (windows/, Program Files/, system.reg, etc, ~60MB) is pure waste for them. just
+            // create the .wine/drive_c skeleton so html5 save-sync's mkdirs() paths land in a
+            // writable tree.
+            //
+            // caveat: if user later flips this container's variant from html5 → glibc/bionic,
+            // wine WILL fail to boot (no prefix). variant-flip safety is a separate gap.
+            if (Container.RUNTIME_WEBVIEW.equals(container.getRuntime())) {
+                File driveC = new File(containerDir, ".wine/drive_c");
+                if (!driveC.mkdirs() && !driveC.isDirectory()) {
+                    Log.w("ContainerManager", "Failed to create drive_c skeleton for html5 container, deleting.");
+                    FileUtils.delete(containerDir);
+                    return null;
+                }
+            } else if (!extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
                 Log.w("Container Manager", "Failed to extract container pattern, deleting container directory...");
                 FileUtils.delete(containerDir);
                 return null;

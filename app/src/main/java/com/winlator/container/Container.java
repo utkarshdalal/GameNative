@@ -70,8 +70,14 @@ public class Container {
     public static final String STEAM_TYPE_NORMAL = "normal";
     public static final String STEAM_TYPE_LIGHT = "light";
     public static final String STEAM_TYPE_ULTRALIGHT = "ultralight";
+
+    public static final String RUNTIME_WINE = "wine";
+    public static final String RUNTIME_WEBVIEW = "webview";
+
     public static final String GLIBC = "glibc";
     public static final String BIONIC = "bionic";
+    // variant=html5 ⇔ runtime=webview, enforced in setContainerVariant + setRuntime.
+    public static final String CONTAINER_VARIANT_HTML5 = "html5";
     public static final byte MAX_DRIVE_LETTERS = 8;
     public final String id;
     private String name;
@@ -167,6 +173,9 @@ public class Container {
     private boolean portraitMode = false;
 
     private String containerVariant = DEFAULT_VARIANT;
+
+    // default wine for back-compat — pre-html5 containers have no runtime key in json
+    private String runtime = RUNTIME_WINE;
 
     public String getGraphicsDriverVersion() {
         return graphicsDriverVersion;
@@ -505,11 +514,12 @@ public class Container {
     }
 
     public void setContainerVariant(String variant) {
-        this.containerVariant = variant;
+        // invariant: variant is the driver — may pull runtime to webview or revert to wine.
+        applyRuntimeInvariant(this.runtime, variant, true);
     }
 
     public String getContainerVariant() {
-        return this.containerVariant;
+        return normalizeContainerVariant(containerVariant);
     }
 
     public String getExtra(String name) {
@@ -764,6 +774,9 @@ public class Container {
             data.put("suspendPolicy", suspendPolicy);
             data.put("portraitMode", portraitMode);
 
+            // runtime classification — written every save for forward-compat
+            data.put("runtime", runtime);
+
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
         }
@@ -775,11 +788,30 @@ public class Container {
     public void loadData(JSONObject data) throws JSONException {
         wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
         dxwrapperConfig = "";
+        // resolve runtime+variant in an EXPLICIT order BEFORE the key loop so the outcome can't
+        // depend on JSONObject.keys() iteration order. apply runtime FIRST, then variant, so a
+        // hand-edited JSON carrying BOTH (and disagreeing) resolves variant-last-write-wins —
+        // honoring the invariant containerVariant=html5 ⇔ runtime=webview (see applyRuntimeInvariant).
+        // applying only one (the prior behaviour) left the other field stale, breaking the invariant
+        // for mismatched JSON. neither key present → pre-html5 container → default to wine.
+        if (data.has("runtime")) {
+            setRuntime(data.optString("runtime", RUNTIME_WINE));
+        } else if (!data.has("containerVariant")) {
+            setRuntime(RUNTIME_WINE);
+        }
+        if (data.has("containerVariant")) {
+            setContainerVariant(data.optString("containerVariant", DEFAULT_VARIANT));
+        }
         checkObsoleteOrMissingProperties(data);
 
         for (Iterator<String> it = data.keys(); it.hasNext(); ) {
             String key = it.next();
             switch (key) {
+                case "runtime" :
+                case "containerVariant" :
+                    // handled in pre-pass above so the runtime/variant invariant can't depend on
+                    // JSONObject.keys() iteration order.
+                    break;
                 case "name" :
                     setName(data.getString(key));
                     break;
@@ -842,9 +874,6 @@ public class Container {
                     break;
                 case "language" :
                     setLanguage(data.getString(key));
-                    break;
-                case "containerVariant" :
-                    setContainerVariant(data.getString(key));
                     break;
                 case "inputType" :
                     setInputType(data.getInt(key));
@@ -1116,6 +1145,71 @@ public class Container {
 
     public void setSuspendPolicy(String suspendPolicy) {
         this.suspendPolicy = normalizeSuspendPolicy(suspendPolicy);
+    }
+
+    // normalize case + trim — hand-edited .container JSON with "WEBVIEW" or " Wine " must still
+    // route correctly. unknown values default to wine (safe back-compat, mirrors loadData fallback).
+    public static String normalizeRuntime(String runtime) {
+        String normalized = (runtime == null) ? "" : runtime.trim().toLowerCase(Locale.ROOT);
+        switch (normalized) {
+            case RUNTIME_WEBVIEW:
+                return RUNTIME_WEBVIEW;
+            case RUNTIME_WINE:
+            default:
+                return RUNTIME_WINE;
+        }
+    }
+
+    public String getRuntime() {
+        return normalizeRuntime(runtime);
+    }
+
+    public void setRuntime(String runtime) {
+        // invariant: runtime is the driver — may pull variant to html5 or revert to default.
+        applyRuntimeInvariant(runtime, this.containerVariant, false);
+    }
+
+    // variant=html5 ⇔ runtime=webview. mirrors normalizeRuntime style.
+    // unknown → DEFAULT_VARIANT (same safe-default shape as normalizeRuntime).
+    public static String normalizeContainerVariant(String variant) {
+        String normalized = (variant == null) ? "" : variant.trim().toLowerCase(Locale.ROOT);
+        switch (normalized) {
+            case GLIBC:
+                return GLIBC;
+            case BIONIC:
+                return BIONIC;
+            case CONTAINER_VARIANT_HTML5:
+                return CONTAINER_VARIANT_HTML5;
+            default:
+                return DEFAULT_VARIANT;
+        }
+    }
+
+    // single mutation point for invariant. both setters delegate here. no cross-call
+    // recursion — writes fields directly without re-entering setters. driver flag encodes
+    // WHICH setter called us so user intent (the thing they explicitly set) wins.
+    private void applyRuntimeInvariant(String targetRuntime, String targetVariant, boolean variantIsDriver) {
+        String normalizedRuntime = normalizeRuntime(targetRuntime);
+        String normalizedVariant = normalizeContainerVariant(targetVariant);
+        if (variantIsDriver) {
+            // variant setter drives: user picked a variant explicitly; runtime follows.
+            if (CONTAINER_VARIANT_HTML5.equals(normalizedVariant)) {
+                normalizedRuntime = RUNTIME_WEBVIEW;
+            } else if (RUNTIME_WEBVIEW.equals(this.runtime)) {
+                // flipping variant AWAY from html5 while runtime was webview → runtime reverts.
+                normalizedRuntime = RUNTIME_WINE;
+            }
+        } else {
+            // runtime setter drives: caller picked a runtime explicitly; variant follows.
+            if (RUNTIME_WEBVIEW.equals(normalizedRuntime)) {
+                normalizedVariant = CONTAINER_VARIANT_HTML5;
+            } else if (CONTAINER_VARIANT_HTML5.equals(this.containerVariant)) {
+                // flipping runtime AWAY from webview while variant was html5 → variant reverts.
+                normalizedVariant = DEFAULT_VARIANT;
+            }
+        }
+        this.runtime = normalizedRuntime;
+        this.containerVariant = normalizedVariant;
     }
 
     public boolean isPortraitMode() {

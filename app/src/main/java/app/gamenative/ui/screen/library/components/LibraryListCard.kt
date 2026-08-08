@@ -160,6 +160,9 @@ internal fun ListViewCard(
                 ) {
                     InstallStatusBadge(appInfo = appInfo, isRefreshing = isRefreshing)
 
+                    // html5 runtime badge for detected webview containers
+                    RuntimeBadge(runtime = appInfo.runtime)
+
                     // Family share indicator
                     if (appInfo.isShared) {
                         Row(

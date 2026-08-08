@@ -318,6 +318,14 @@ class PhysicalControllerHandler(
      */
     // offset: analog axis value for presses; must be 0f for releases (triggers use offset > 0f
     // to determine pressed state, sticks gate on isActionDown, everything else ignores offset)
+
+    // public entry point for the html5 input pipeline (overlay taps, virtual gamepad,
+    // dispatchBinding from Html5InputController). same routing as physical KeyEvent path --
+    // writes profile.gamepadState → Html5GamepadBridge.updateState → navigator.getGamepads()[0].
+    fun applyBinding(binding: Binding, isActionDown: Boolean, offset: Float = 0f) {
+        handleInputEvent(binding, isActionDown, offset)
+    }
+
     private fun handleInputEvent(binding: Binding, isActionDown: Boolean, offset: Float = 0f) {
         if (binding == Binding.NONE) return
 

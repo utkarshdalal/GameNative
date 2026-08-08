@@ -27,8 +27,7 @@ import com.alorma.compose.settings.ui.SettingsSwitch
 
 @Composable
 fun SettingsGroupEmulation() {
-    SettingsGroup(
-    ) {
+    SettingsGroup {
         var showConfigDialog by rememberSaveable { mutableStateOf(false) }
         var showOrientationDialog by rememberSaveable { mutableStateOf(false) }
         var showBox64PresetsDialog by rememberSaveable { mutableStateOf(false) }
@@ -44,9 +43,10 @@ fun SettingsGroupEmulation() {
             default = true,
             initialConfig = ContainerUtils.getDefaultContainerData(),
             onDismissRequest = { showConfigDialog = false },
-            onSave = {
+            onSave = { newConfig, onComplete ->
                 showConfigDialog = false
-                ContainerUtils.setDefaultContainerData(it)
+                ContainerUtils.setDefaultContainerData(newConfig)
+                onComplete()
             },
         )
 

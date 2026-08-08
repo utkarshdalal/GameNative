@@ -1,0 +1,24 @@
+{
+  "byAppId": {
+    "STEAM_2738490": {
+      "saves": {
+        "sync": {
+          "mechanism": "leveldb-origin-rewrite",
+          "pcOrigin": "chrome-extension://anopiimlkmdoenonenclohfilpeenfmj"
+        }
+      }
+    },
+    "GOG_1516178466": {
+      "workerShim": true,
+      "patches": [
+        {"type": "response-body-replace", "pathPattern": "(scripts/(c3runtime|main|c3main)|c3runtime|c3main)\\.js$", "find": "exportType:\"html5\"", "replace": "exportType:\"nwjs\""}
+      ],
+      "saves": {
+        "sync": {
+          "mechanism": "opfs-mirror",
+          "pcOrigin": "file://"
+        }
+      }
+    }
+  }
+}

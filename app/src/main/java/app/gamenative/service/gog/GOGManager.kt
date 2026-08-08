@@ -942,6 +942,20 @@ class GOGManager @Inject constructor(
         }
     }
 
+    // per-title shape variance: some installs ship `clientId` (camelCase) inside
+    // goggame-<id>.info; others omit it from .info and put `client_id` (snake_case)
+    // in GalaxyConfig.json next to it. moonstone island = latter, cursed to golf = former.
+    // returns "" if neither source has it.
+    private fun resolveClientId(infoJson: JSONObject?, installPath: String): String {
+        val fromInfo = infoJson?.optString("clientId", "").orEmpty()
+        if (fromInfo.isNotEmpty()) return fromInfo
+        return runCatching {
+            val cfg = File(installPath, "GalaxyConfig.json")
+            if (!cfg.isFile) return@runCatching ""
+            JSONObject(cfg.readText()).optString("client_id", "")
+        }.getOrDefault("")
+    }
+
     /**
      * Fetch save locations from GOG Remote Config API
      * @param context Android context
@@ -964,13 +978,16 @@ class GOGManager @Inject constructor(
                 return@withContext null
             }
 
-            // Get clientId + clientSecret from the build metadata, like gogdl/Heroic. The goggame-*.info
-            // clientId is optional and missing for many games (e.g. Dead Cells), so prefer the .info value
-            // only as a hint and fall back to the build metadata, which always carries both.
+            // clientId + clientSecret come from build metadata (gogdl/Heroic), which always carries
+            // both -- the goggame-*.info clientId is optional and missing for many games (e.g. Dead
+            // Cells). prefer .info, then build metadata, then GalaxyConfig.json next to the .info
+            // (per-title variance). clientSecret only ever comes from build metadata.
             val buildCredentials = GOGApiClient.getClientCredentials(context, gameId.toString(), installPath)
-            val clientId = infoJson.optString("clientId", "").ifEmpty { buildCredentials?.first ?: "" }
+            val clientId = infoJson.optString("clientId", "")
+                .ifEmpty { buildCredentials?.first ?: "" }
+                .ifEmpty { resolveClientId(infoJson, installPath) }
             if (clientId.isEmpty()) {
-                Timber.tag("GOG").w("[Cloud Saves] No clientId in info file or build metadata for game $gameId")
+                Timber.tag("GOG").w("[Cloud Saves] No clientId in info file, build metadata, or GalaxyConfig.json for game $gameId")
                 return@withContext null
             }
             Timber.tag("GOG").d("[Cloud Saves] Client ID: $clientId")
@@ -1114,7 +1131,8 @@ class GOGManager @Inject constructor(
             Timber.tag("GOG").d("[Cloud Saves] Game install path: $installPath")
 
             // Fetch clientId + clientSecret + save locations from API (Android runs games through Wine,
-            // so always Windows). clientId comes from build metadata when the goggame-*.info omits it.
+            // so always Windows). clientId comes from build metadata / GalaxyConfig.json when the
+            // goggame-*.info omits it (resolved inside getSaveSyncLocation).
             Timber.tag("GOG").d("[Cloud Saves] Fetching save locations from API")
             val result = getSaveSyncLocation(context, appId, installPath)
 

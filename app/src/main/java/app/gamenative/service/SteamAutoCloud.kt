@@ -14,6 +14,7 @@ import app.gamenative.db.dao.SteamFileHashCacheDao
 import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
+import app.gamenative.html5.savesync.SyncFileFilter
 import app.gamenative.service.SteamService.Companion.FileChanges
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
@@ -52,6 +53,7 @@ import kotlinx.coroutines.future.await
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -71,10 +73,34 @@ object SteamAutoCloud {
 
     private const val MAX_USER_FILE_RETRIES = 3
 
+    // a leading "%Root%" token Steam sometimes inlines into an otherwise-prefixless filename.
+    private val EMBEDDED_ROOT_TOKEN = Regex("^%[^%]+%")
+
     internal data class HashLookupResult(
         val sha: ByteArray,
         val wasCacheHit: Boolean,
     )
+
+    // reconcile cache builder for when Steam advances cloud CN even on a failed
+    // completeAppUploadBatch (extracted from syncUserFiles for unit testing). for every local file
+    // PRESENT IN CLOUD, keep its entry but override its sha with cloud's sha when they differ -- a
+    // failed PUT leaves cloud's old sha, so the next launch's diff vs disk re-detects the file as
+    // "modified" and re-queues a tiny retry batch (self-healing). local-only files (failed uploads
+    // cloud never recorded) are EXCLUDED so the next launch's diff sees no oldFile entry → treats
+    // them as new → re-queues the upload. including them with local's sha would lie about state and
+    // the upload would never retry until the file mutates locally.
+    // [keyOf] maps a file to the lowercased absolute-path key shared by both sides' maps.
+    internal fun buildRace3CacheEntries(
+        localFiles: List<UserFileInfo>,
+        remoteShaByPath: Map<String, ByteArray>,
+        keyOf: (UserFileInfo) -> String,
+    ): List<UserFileInfo> =
+        localFiles
+            .filter { remoteShaByPath.containsKey(keyOf(it)) }
+            .map { local ->
+                val cloudSha = remoteShaByPath[keyOf(local)]
+                if (cloudSha != null && !cloudSha.contentEquals(local.sha)) local.copy(sha = cloudSha) else local
+            }
 
     /** Computes SHA-1 hash by streaming the file in chunks to avoid OOM on large files. */
     private fun streamingShaHash(path: Path): ByteArray {
@@ -152,6 +178,19 @@ object SteamAutoCloud {
         prefixToPath: (String) -> String,
         overrideLocalChangeNumber: Long? = null,
         onProgress: ((message: String, progress: Float) -> Unit)? = null,
+        // Wine games historically kept this off because cloud-file deletion is risky and most
+        // saves append-only. Leveldb-backed HTML5 saves churn files on every compaction, so
+        // skipping deletes leaves orphaned `.ldb`/`MANIFEST-*` in cloud and desktop reads a
+        // broken mix of old + new files. HTML5 callers opt in; everyone else keeps the
+        // pre-existing accretive behavior.
+        propagateDeletions: Boolean = false,
+        // symmetric to propagateDeletions on the download side: when true, files tombstoned in
+        // the cloud manifest (persistState != Persisted) are treated as absent from the remote
+        // set, so the diff will delete them locally. default false preserves pre-existing
+        // behavior -- Wine games ignored tombstones historically and leveldb churn didn't
+        // matter. HTML5 callers opt in so Android-to-Android save convergence works when
+        // device B syncs after device A deleted files via propagateDeletions.
+        applyRemoteTombstones: Boolean = false,
     ): Deferred<PostSyncInfo?> = parentScope.async {
         val postSyncInfo: PostSyncInfo?
 
@@ -223,7 +262,19 @@ object SteamAutoCloud {
                 // but the map keys are built without one — trim before lookup so they match.
                 val cloudPrefix = prefix.trimEnd('/')
                 cloudPrefixToLocalPath.entries
-                    .filter { (cloudKey, _) -> cloudPrefix == cloudKey || cloudPrefix.startsWith("$cloudKey/") }
+                    // a key like "%GameInstall%saves" needs a separator before the relative path
+                    // ("%GameInstall%saves/foo"). but a BARE root-token key ("%WinAppDataLocal%",
+                    // built when the savefile uploadPath is empty) is delimited by its trailing '%',
+                    // so cloud stores "%WinAppDataLocal%Default/file" with NO separator after the
+                    // token. without the endsWith("%") branch that prefix misses both other clauses
+                    // and falls through to root-only replacement, dropping the addpath subfolder
+                    // (Alabaster Dawn: saves landed at AppData/Local/Default instead of
+                    // AppData/Local/Alabaster Dawn/Saves/Default).
+                    .filter { (cloudKey, _) ->
+                        cloudPrefix == cloudKey ||
+                            cloudPrefix.startsWith("$cloudKey/") ||
+                            (cloudKey.endsWith("%") && cloudPrefix.startsWith(cloudKey))
+                    }
                     .maxByOrNull { (cloudKey, _) -> cloudKey.length }
                     ?.let { (cloudKey, localPath) ->
                         Paths.get(localPath, cloudPrefix.removePrefix(cloudKey).trimStart('/')).pathString
@@ -269,19 +320,18 @@ object SteamAutoCloud {
         val hashCacheDao = steamInstance.db.steamFileHashCacheDao()
 
         val getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path = getFullFilePath@{ file, fileList ->
-            val gameInstallPrefix = "%${PathType.GameInstall.name}%"
-            if (file.filename.startsWith(gameInstallPrefix)) {
-                // Steam API sometimes returns prefix="" and filename="%GameInstall%save0.dat" instead of splitting correctly.
-                // Strip the embedded prefix (and any leading slash) to get the bare filename.
-                val stripped = file.filename.removePrefix(gameInstallPrefix).trimStart('/')
-                // If a Windows rootoverride remaps GameInstall → another directory (e.g.
-                // Danganronpa 2: WinMyDocuments/My Games/Danganronpa2/), download there instead
-                // of the raw game-install folder so the game can find its saves.
-                val remapped = cloudPrefixToLocalPath[gameInstallPrefix]
-                return@getFullFilePath if (remapped != null) {
-                    Paths.get(remapped, stripped)
-                } else {
-                    Paths.get(prefixToPath(PathType.GameInstall.name), stripped)
+            // Steam sometimes returns prefix="" with the root token inlined in the filename
+            // ("%GameInstall%save0.dat", "%WinAppDataLocal%cc.save"). decode any leading %Root%
+            // token to its real local dir, else it lands as a literal-named file under
+            // userdata/remote and the game can't find its save (see #508, %GameInstall%-only).
+            // resolve via the game's rootoverride map (encodes path + remap), else the raw root.
+            val embeddedToken = EMBEDDED_ROOT_TOKEN.find(file.filename)?.value
+            if (embeddedToken != null) {
+                val localRoot = cloudPrefixToLocalPath[embeddedToken]
+                    ?: runCatching { PathType.valueOf(embeddedToken.trim('%')) }.getOrNull()?.let { prefixToPath(it.name) }
+                if (localRoot != null) {
+                    val stripped = file.filename.removePrefix(embeddedToken).trimStart('/')
+                    return@getFullFilePath Paths.get(localRoot, stripped)
                 }
             }
 
@@ -367,6 +417,14 @@ object SteamAutoCloud {
                     ).collect(Collectors.toList())
                     val files = buildList {
                         for (path in filePaths) {
+                            val relativePath = basePath.relativize(path).pathString
+                            // chromium-runtime denylist (see SyncFileFilter). only matters for HTML5
+                            // NW.js titles whose UFS pattern roots a chromium User Data dir; per-file
+                            // patterns naturally never match these paths.
+                            if (SyncFileFilter.isChromiumInternal(relativePath)) {
+                                Timber.d("Skipping chromium-internal local: $relativePath")
+                                continue
+                            }
                             val hashLookup = getCachedShaOrHash(
                                 appId = appInfo.id,
                                 path = path,
@@ -380,8 +438,6 @@ object SteamAutoCloud {
                             val sha = hashLookup.sha
 
                             Timber.i("Found ${path.pathString}\n\tin ${userFile.prefix}\n\twith sha [${sha.joinToString(", ")}]")
-
-                            val relativePath = basePath.relativize(path).pathString
 
                             add(UserFileInfo(
                                 root = userFile.root,
@@ -415,6 +471,11 @@ object SteamAutoCloud {
             ).collect(Collectors.toList())
             val files = buildList {
                 for (path in steamUserDataPaths) {
+                    val relativePath = basePath.relativize(path).pathString
+                    if (SyncFileFilter.isChromiumInternal(relativePath)) {
+                        Timber.d("Skipping chromium-internal local (SteamUserData): $relativePath")
+                        continue
+                    }
                     val hashLookup = getCachedShaOrHash(
                         appId = appInfo.id,
                         path = path,
@@ -426,8 +487,6 @@ object SteamAutoCloud {
                         hashCacheMisses.incrementAndGet()
                     }
                     val sha = hashLookup.sha
-
-                    val relativePath = basePath.relativize(path).pathString
 
                     Timber.i("Found ${path.pathString}\n\tin %${rootType.name}%\n\twith sha [${sha.joinToString(", ")}]")
 
@@ -464,7 +523,21 @@ object SteamAutoCloud {
         val fileChangeListToUserFiles: (AppFileChangeList) -> List<UserFileInfo> = { appFileListChange ->
             val pathTypePairs = getPathTypePairs(appFileListChange)
 
-            appFileListChange.files.map {
+            // symmetric to the HTML5 upload changes: when applyRemoteTombstones is true, drop
+            // entries with persistState != Persisted so the download diff treats them as absent
+            // from the remote set and deletes the local copy. default path passes tombstones
+            // through (Wine-safe accretive behavior).
+            appFileListChange.files
+                .filter { !applyRemoteTombstones || it.persistState.number == 0 }
+                .filter {
+                    // chromium-runtime denylist on the cloud-side too: a prior Android session
+                    // may have uploaded these before we shipped the upload-side filter, so the
+                    // download diff would still pull them. SyncFileFilter is the single source.
+                    val excluded = SyncFileFilter.isChromiumInternal(it.filename)
+                    if (excluded) Timber.d("Skipping chromium-internal cloud: ${it.filename}")
+                    !excluded
+                }
+                .map {
                 UserFileInfo(
                     root = if (it.hasPathPrefixIndex && it.pathPrefixIndex < pathTypePairs.size) {
                         PathType.from(pathTypePairs[it.pathPrefixIndex].first)
@@ -632,6 +705,23 @@ object SteamAutoCloud {
                         uploadBatchId = uploadBatchResponse.batchID,
                     ).await()
 
+                    // Steam dedupes by SHA -- empty blockRequests means cloud already has this
+                    // exact blob, no transfer needed. The file is implicitly part of the upload
+                    // manifest (declared in beginAppUploadBatch) and carries forward at
+                    // completeAppUploadBatch. Calling commitFileUpload here returns
+                    // file_committed=false (server has nothing pending for this file in this
+                    // session) -- pollutes log without affecting batch state. a chromium User Data
+                    // tree triggers this for most files because chromium leveldb files are
+                    // CAS-deduped across sessions.
+                    if (uploadInfo.blockRequests.isEmpty()) {
+                        Timber.i("File ${file.prefixPath} already in cloud (SHA dedup) — skipping commit")
+                        // file IS counted in the batch -- Steam acknowledged via SHA dedup, it
+                        // carries forward at completeAppUploadBatch. bytesUploaded += 0 is
+                        // implicit (no bytes moved).
+                        filesUploaded++
+                        return@forEachIndexed
+                    }
+
                     var uploadFileSuccess = true
                     var bytesUploadedForFile = 0L
                     var lastReportedProgress = -1f
@@ -758,6 +848,31 @@ object SteamAutoCloud {
                     Timber.i("File ${file.prefixPath} commit success: $commitSuccess")
                 }
 
+                // beginAppUploadBatch only declared filesToDelete in the manifest -- the per-file
+                // CCloud.Delete#1 RPC is what actually removes the blob from Steam Cloud. mirrors
+                // clearCloudForApp's delete protocol; bounded concurrency = 8 to avoid cancel-
+                // cascading JavaSteam's AsyncJobManager on big delete sets.
+                if (propagateDeletions && filesToDelete.isNotEmpty()) {
+                    Timber.i("Propagating ${filesToDelete.size} delete(s) to Steam Cloud")
+                    val permits = Semaphore(permits = 8)
+                    val deleted = coroutineScope {
+                        filesToDelete.map { filename ->
+                            async {
+                                permits.withPermit {
+                                    runCatching {
+                                        steamCloud.deleteFile(appInfo.id, filename, uploadBatchResponse.batchID).await()
+                                    }.getOrElse { e ->
+                                        Timber.e(e, "deleteFile threw for '$filename'")
+                                        uploadBatchSuccess = false
+                                        false
+                                    }
+                                }
+                            }
+                        }.awaitAll().count { it }
+                    }
+                    Timber.i("Propagated $deleted / ${filesToDelete.size} delete(s) to Steam Cloud")
+                }
+
                 steamCloud.completeAppUploadBatch(
                     appId = appInfo.id,
                     batchId = uploadBatchResponse.batchID,
@@ -833,13 +948,30 @@ object SteamAutoCloud {
                 parentScope.async {
                     Timber.i("Downloading cloud user files")
 
-                    val remoteUserFiles = fileChangeListToUserFiles(appFileListChange)
-                    val filesDiff = getFilesDiff(remoteUserFiles, allLocalUserFiles).second
+                    // Delta responses list only files CHANGED since our cursor; unchanged files
+                    // are absent. The diff-based "absence = deletion" rule wipes those unchanged
+                    // files locally and the delta never re-downloads them (they weren't in the
+                    // response). Fine for append-only Wine saves but catastrophic for HTML5
+                    // leveldb churn -- CURRENT doesn't change across compactions, so it gets
+                    // wiped on every round-trip.
+                    
+                    // Gate behind applyRemoteTombstones (HTML5 opt-in). Wine default stays
+                    // lock-step with pre-fix behavior to avoid regressing the "Wine never
+                    // deletes" property. Full responses also keep the existing diff-based path.
+                    val filesToDelete: List<java.nio.file.Path> = if (appFileListChange.isOnlyDelta && applyRemoteTombstones) {
+                        appFileListChange.files
+                            .filter { it.persistState.number != 0 }
+                            .map { getFullFilePath(it, appFileListChange) }
+                    } else {
+                        val remoteUserFiles = fileChangeListToUserFiles(appFileListChange)
+                        getFilesDiff(remoteUserFiles, allLocalUserFiles).second.filesDeleted
+                            .map { it.getAbsPath(prefixToPath) }
+                    }
                     microsecDeleteFiles = measureTime {
                         var totalFilesDeleted = 0
 
-                        filesDiff.filesDeleted.forEach {
-                            val deleted = Files.deleteIfExists(it.getAbsPath(prefixToPath))
+                        filesToDelete.forEach {
+                            val deleted = Files.deleteIfExists(it)
                             if (deleted) totalFilesDeleted++
                         }
 
@@ -922,6 +1054,90 @@ object SteamAutoCloud {
                         }
                     } else {
                         syncResult = SyncResult.UpdateFail
+
+                        // Steam advances cloud CN even when our completeAppUploadBatch reports
+                        // EResult.Fail (empirically confirmed). without reconciling, the next
+                        // launch sees stale cache + advanced cloud CN → spurious conflict every
+                        // launch, forever.
+                        //
+                        // Reconcile strategy: refetch cloud manifest, then for every local file
+                        // build a cache entry using cloud's SHA when one exists at that path.
+                        // - Files where local & cloud SHAs already agree → cache reflects truth
+                        // - Files where the PUT failed (intermittent CDN auth failures etc.) → cache
+                        //   records cloud's old SHA. Next launch's diff vs disk catches it as
+                        //   "modified" and triggers a tiny re-upload batch -- self-healing.
+                        // Cloud orphans (cloud has, local doesn't): chromium leveldb compaction
+                        // removed them locally but cloud manifest still tracks them. For html5
+                        // (propagateDeletions=true) we issue best-effort deletes to clean up.
+                        // Wine never deletes from cloud per project policy -- accept cloud bloat.
+                        // Local-only files (we have, cloud doesn't): these are uploads that
+                        // never landed at all. Skip reconcile entirely -- would be lying about
+                        // state.
+                        runCatching {
+                            val refreshed = steamCloud.getAppFileListChange(appInfo.id, 0L).await()
+                            val localByPath = allLocalUserFiles.associate {
+                                it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
+                            }
+                            val remoteEntries = refreshed.files.filter { it.persistState.number == 0 }
+                            val remoteByPath = remoteEntries.associate {
+                                getFullFilePath(it, refreshed).toString().lowercase() to it.shaFile
+                            }
+                            val cloudOnlyKeys = remoteByPath.keys - localByPath.keys
+                            val mismatchedShas = (localByPath.keys intersect remoteByPath.keys)
+                                .count { !localByPath[it]!!.contentEquals(remoteByPath[it]) }
+
+
+                            if (propagateDeletions && cloudOnlyKeys.isNotEmpty()) {
+                                Timber.i("Race-3 reconcile: deleting ${cloudOnlyKeys.size} cloud orphan(s)")
+                                val orphanFilenames = remoteEntries
+                                    .filter { getFullFilePath(it, refreshed).toString().lowercase() in cloudOnlyKeys }
+                                    .map { getFilePrefixPath(it, refreshed) }
+                                val permits = Semaphore(permits = 8)
+                                coroutineScope {
+                                    orphanFilenames.map { fname ->
+                                        async {
+                                            permits.withPermit {
+                                                runCatching {
+                                                    steamCloud.deleteFile(appInfo.id, fname, null).await()
+                                                }.onFailure { Timber.w(it, "orphan delete failed for $fname") }
+                                            }
+                                        }
+                                    }.awaitAll()
+                                }
+                            } else if (cloudOnlyKeys.isNotEmpty()) {
+                                Timber.i(
+                                    "Race-3 reconcile: ${cloudOnlyKeys.size} cloud orphan(s) left in cloud " +
+                                        "(propagateDeletions=false; wine policy)",
+                                )
+                            }
+
+                            // Build cache entries: for each local file PRESENT IN CLOUD, override
+                            // sha with cloud's sha. Differing SHAs become next-launch retry
+                            // candidates. Local-only files (failed uploads -- cloud has no record)
+                            // are EXCLUDED from cache so the next launch's diff sees no oldFile
+                            // entry → treats them as new → queues the retry. Including them with
+                            // local's sha would lie about state and the upload would never retry
+                            // until the file mutates locally.
+                            val cacheEntries = buildRace3CacheEntries(allLocalUserFiles, remoteByPath) {
+                                it.getAbsPath(prefixToPath).toString().lowercase()
+                            }
+                            val localOnlyDropped = allLocalUserFiles.size - cacheEntries.size
+                            Timber.i(
+                                "Race-3 reconcile: writing cache (${cacheEntries.size} entries, " +
+                                    "$mismatchedShas sha-mismatch retained as cloud SHA for next-launch retry, " +
+                                    "$localOnlyDropped local-only excluded for next-launch retry) " +
+                                    "to CN ${refreshed.currentChangeNumber}",
+                            )
+                            with(steamInstance) {
+                                db.withTransaction {
+                                    fileChangeListsDao.insert(appInfo.id, cacheEntries)
+                                    changeNumbersDao.insert(appInfo.id, refreshed.currentChangeNumber)
+                                }
+                            }
+                            syncResult = SyncResult.UpToDate
+                        }.onFailure { e ->
+                            Timber.e(e, "Race-3 reconcile failed")
+                        }
                     }
                 }
             }
@@ -975,30 +1191,33 @@ object SteamAutoCloud {
 
                     val hasUncachedLocalFiles = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty()
                     var rehydratedSilently = false
-                    if (hasUncachedLocalFiles) {
-                        // no cache but local files exist. before declaring conflict,
-                        // check if local state is byte-identical to remote — this is
-                        // the "cache-wiped by destructive migration, nothing actually
-                        // changed" case and should be silent. key by absolute filesystem
-                        // path: cloud stores files as (pathPrefixIndex, basename) while
-                        // local scan stores filename as subdir-relative path with a
-                        // single pattern prefix, so basename-only keys won't match for
-                        // nested files.
-                        // windows paths are case-insensitive; steam cloud and wine may
-                        // disagree on case. lowercase the keys so content-identical
-                        // files compare equal regardless.
+
+                    // P3 fix:
+                    // getFilesDiff uses path-equality on the new+deleted dimensions, so
+                    // cached prefixPath keys that drift between APK builds appear as deleted+new
+                    // even when SHAs are identical. lifting the SHA cross-check out of the
+                    // cache-absent gate lets cache-present + identical-content silent-rehydrate
+                    // instead of firing SaveLocation.None. byte-identity by lowercased absolute
+                    // filesystem path is the load-bearing test -- cloud stores (pathPrefixIndex,
+                    // basename) while local scan stores filename as subdir-relative, so basename-only
+                    // keys can't match nested files. windows paths are case-insensitive so we
+                    // lowercase.
+                    val computeLocalMatchesRemote: () -> Boolean = {
                         val localByPath = allLocalUserFiles.associate {
                             it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
                         }
                         val remoteByPath = appFileListChange.files.associate {
                             getFullFilePath(it, appFileListChange).toString().lowercase() to it.shaFile
                         }
-                        val localMatchesRemote = localByPath.keys == remoteByPath.keys &&
-                            localByPath.all { (path, sha) ->
-                                sha.contentEquals(remoteByPath[path])
+                        localByPath.keys == remoteByPath.keys &&
+                            localByPath.all { (path, sha) -> sha.contentEquals(remoteByPath[path]) }
                             }
 
-                        if (localMatchesRemote) {
+                    if (hasUncachedLocalFiles) {
+                        // no cache but local files exist. cache-wiped-by-destructive-migration
+                        // case: silent-rehydrate when SHAs match, otherwise fall through to the
+                        // conflict cascade.
+                        if (computeLocalMatchesRemote()) {
                             Timber.i("Cache absent but local matches remote — rehydrating cache silently")
                             with(steamInstance) {
                                 db.withTransaction {
@@ -1028,6 +1247,21 @@ object SteamAutoCloud {
                         downloadUserFiles(parentScope).await()?.let {
                             return@async it
                         }
+                    } else if (computeLocalMatchesRemote()) {
+                        // P3 fix: cache present but path-encoding drifted between APK builds
+                        // (getFilesDiff flagged new+deleted on prefixPath inequality). SHA still
+                        // matches remote → no real divergence, silent-rehydrate the cache.
+                        // when SHAs really differ this branch falls through to the conflict path,
+                        // so it can't over-suppress a genuine divergence.
+                        Timber.i("Cache present but local matches remote — rehydrating cache silently")
+                        with(steamInstance) {
+                            db.withTransaction {
+                                fileChangeListsDao.insert(appInfo.id, allLocalUserFiles)
+                                changeNumbersDao.insert(appInfo.id, cloudAppChangeNumber)
+                            }
+                        }
+                        syncResult = SyncResult.UpToDate
+                        filesManaged = allLocalUserFiles.size
                     } else {
                         Timber.i("Found local changes and new cloud user files, conflict resolution...")
 
@@ -1414,6 +1648,9 @@ object SteamAutoCloud {
                 val fileSize = try {
                     Files.size(fileInfo.getAbsPath(prefixToPath))
                 } catch (e: Exception) {
+                    // size probe failed -> entry gets size=0 in remotecache.vdf; log so a corrupt
+                    // entry leaves a breadcrumb (matches the upload-path sibling above)
+                    Timber.w("remotecache.vdf size probe failed for ${fileInfo.filename}: ${e.javaClass.simpleName}: ${e.message}")
                     0L
                 }
 
@@ -1448,6 +1685,166 @@ object SteamAutoCloud {
             Timber.i("Wrote remotecache.vdf for app $appId to ${remoteCacheFile.toAbsolutePath()}")
         } catch (e: Exception) {
             Timber.w(e, "Failed to write remotecache.vdf for app $appId")
+        }
+    }
+
+    data class ClearCloudResult(val success: Boolean, val filesDeleted: Int, val error: String? = null)
+
+    // DEV ONLY -- wipes Steam Cloud for one app by issuing a delete-only upload batch.
+    // caller must confirm intent; there is no undo.
+    suspend fun clearCloudForApp(
+        appInfo: SteamApp,
+        clientId: Long,
+        steamInstance: SteamService,
+        steamCloud: SteamCloud,
+    ): ClearCloudResult = withContext(Dispatchers.IO) {
+        runCatching {
+            // CLAIM SESSION -- Steam blocks cloud writes when another client has an active session.
+            // ignorePendingOperations=true force-kicks any rival session (e.g. desktop Steam).
+            val pending = steamCloud.signalAppLaunchIntent(
+                appId = appInfo.id,
+                clientId = clientId,
+                machineName = SteamUtils.getMachineName(steamInstance),
+                ignorePendingOperations = true,
+                osType = EOSType.AndroidUnknown,
+            ).await()
+            Timber.w("clearCloudForApp: signalAppLaunchIntent pending ops = ${pending.joinToString { it.operation.toString() }}")
+
+            // Steam caps the GetAppFileListChange response (~50-100 files/page for large manifests).
+            // proto has no explicit page token; syncedChangeNumber doubles as a delta cursor -- advance
+            // it with currentChangeNumber until the server returns no further progress.
+            val filesToDelete = mutableListOf<String>()
+            val seenPaths = mutableSetOf<String>()
+            var cursor = 0L
+            var lastChangeNumber = -1L
+            var lastFileList: AppFileChangeList? = null
+            val maxPages = 50
+            for (pageIdx in 0 until maxPages) {
+                val page = steamCloud.getAppFileListChange(appInfo.id, cursor).await()
+                lastFileList = page
+                Timber.w(
+                    "clearCloudForApp: page=$pageIdx cursor=$cursor -> files=${page.files.size} " +
+                        "currentChangeNumber=${page.currentChangeNumber} " +
+                        "isOnlyDelta=${page.isOnlyDelta} " +
+                        "pathPrefixes=${page.pathPrefixes}",
+                )
+                var addedThisPage = 0
+                page.files.forEachIndexed { idx, f ->
+                    Timber.w(
+                        "clearCloudForApp: [p$pageIdx:$idx] name='${f.filename}' " +
+                            "persistState=${f.persistState} " +
+                            "rawSize=${f.rawFileSize} " +
+                            "pathPrefixIndex=${f.pathPrefixIndex}",
+                    )
+                    if (f.filename.isNullOrEmpty()) return@forEachIndexed
+                    if (f.persistState.number != 0) return@forEachIndexed // skip tombstones
+                    // filenames starting with a Steam path variable (e.g. `%GameInstall%`) are already
+                    // absolute; pathPrefixIndex points at a default slot and double-prefixing produces
+                    // garbage paths the server rejects.
+                    val combined = if (f.filename.startsWith("%")) {
+                        f.filename
+                    } else if (f.pathPrefixIndex < page.pathPrefixes.size) {
+                        Paths.get(page.pathPrefixes[f.pathPrefixIndex], f.filename).pathString
+                    } else {
+                        f.filename
+                    }
+                    if (seenPaths.add(combined)) {
+                        filesToDelete += combined
+                        addedThisPage++
+                    }
+                }
+                // termination: empty page, cursor didn't advance, or nothing new collected
+                if (page.files.isEmpty()) break
+                if (page.currentChangeNumber == lastChangeNumber) break
+                if (addedThisPage == 0 && pageIdx > 0) break
+                lastChangeNumber = page.currentChangeNumber
+                cursor = page.currentChangeNumber
+            }
+            val changeList = lastFileList!!
+
+            if (filesToDelete.isEmpty()) {
+                Timber.i("clearCloudForApp: cloud empty for appId=${appInfo.id}, nothing to delete")
+                steamInstance.fileChangeListsDao.deleteByAppId(appInfo.id)
+                return@runCatching ClearCloudResult(success = true, filesDeleted = 0)
+}
+
+            Timber.w("clearCloudForApp: deleting ${filesToDelete.size} cloud file(s): $filesToDelete")
+
+            val batch = steamCloud.beginAppUploadBatch(
+                appId = appInfo.id,
+                machineName = SteamUtils.getMachineName(steamInstance),
+                clientId = clientId,
+                filesToDelete = filesToDelete,
+                filesToUpload = emptyList(),
+                appBuildId = appInfo.branches[SteamService.getInstalledApp(appInfo.id)?.branch ?: "public"]?.buildId ?: 0,
+            ).await()
+
+            Timber.w(
+                "clearCloudForApp: beginAppUploadBatch returned batchID=${batch.batchID} " +
+                    "appChangeNumber=${batch.appChangeNumber}",
+            )
+
+            // per-file CCloud.Delete#1 RPC -- batch's filesToDelete is a manifest hint, not a commit;
+            // the explicit deleteFile call is what actually removes the blob from Steam Cloud.
+            // bounded concurrency -- unbounded fan-out overwhelms JavaSteam's AsyncJobManager
+            // (default job timeout), which cancel-cascades in-flight futures on big manifests.
+            val permits = Semaphore(permits = 8)
+            val deleted = coroutineScope {
+                filesToDelete.map { filename ->
+                    async {
+                        permits.withPermit {
+                            val ok = runCatching {
+                                steamCloud.deleteFile(appInfo.id, filename, batch.batchID).await()
+                            }.getOrElse { e ->
+                                Timber.e(e, "clearCloudForApp: deleteFile threw for '$filename'")
+                                false
+                            }
+                            Timber.w("clearCloudForApp: deleteFile name='$filename' ok=$ok")
+                            ok
+                        }
+                    }
+                }.awaitAll().count { it }
+            }
+
+            val completeResp = steamCloud.completeAppUploadBatch(
+                appId = appInfo.id,
+                batchId = batch.batchID,
+                batchEResult = EResult.OK,
+            ).await()
+
+            Timber.w("clearCloudForApp: completeAppUploadBatch response=$completeResp")
+
+            // FLUSH -- tell Steam the session is done syncing so the delete commits to cloud
+            steamCloud.signalAppExitSyncDone(
+                appId = appInfo.id,
+                clientId = clientId,
+                uploadsCompleted = true,
+                uploadsRequired = false,
+            )
+
+            Timber.w("clearCloudForApp: signalAppExitSyncDone sent for appId=${appInfo.id}")
+
+            // DIAGNOSTIC -- refetch manifest to verify server actually committed the delete
+            val postManifest = steamCloud.getAppFileListChange(appInfo.id, 0L).await()
+            Timber.w(
+                "clearCloudForApp: POST-DELETE manifest — " +
+                    "files=${postManifest.files.size} " +
+                    "currentChangeNumber=${postManifest.currentChangeNumber}",
+            )
+            postManifest.files.forEachIndexed { idx, f ->
+                Timber.w(
+                    "clearCloudForApp: POST [$idx] name='${f.filename}' persistState=${f.persistState}",
+                )
+            }
+
+            // blow away DAO cache so next sync rebuilds from empty-cloud baseline
+            steamInstance.fileChangeListsDao.deleteByAppId(appInfo.id)
+
+            Timber.i("clearCloudForApp: deleted $deleted/${filesToDelete.size} cloud file(s) for appId=${appInfo.id}")
+            ClearCloudResult(success = deleted == filesToDelete.size, filesDeleted = deleted)
+        }.getOrElse { e ->
+            Timber.e(e, "clearCloudForApp failed for appId=${appInfo.id}")
+            ClearCloudResult(success = false, filesDeleted = 0, error = e.message)
         }
     }
 }

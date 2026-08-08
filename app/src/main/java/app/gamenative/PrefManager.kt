@@ -8,10 +8,10 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.byteArrayPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
-import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.gamenative.data.GameSource
 import app.gamenative.enums.AppTheme
@@ -26,9 +26,11 @@ import com.winlator.core.DefaultVersion
 import com.winlator.xenvironment.components.PulseAudioComponent
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.util.EnumSet
+import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -41,12 +43,21 @@ import timber.log.Timber
  */
 object PrefManager {
 
+    // dedicated single thread for ALL datastore work -- NOT Dispatchers.IO. getPref/setPrefBlocking
+    // do runBlocking { dataStore.data.first() }; when those run ON an IO thread (e.g. FrontendSyncManager
+    // .syncGame launches on IO then reads a pref) they block that thread waiting for the datastore read.
+    // if the read also needed an IO thread, enough concurrent readers (>= IO pool size) starve the pool
+    // and deadlock. a private thread keeps reads/writes always runnable regardless of IO pressure.
+    private val dataStoreDispatcher =
+        Executors.newSingleThreadExecutor { r -> Thread(r, "PrefDataStore") }.asCoroutineDispatcher()
+
     private val Context.datastore by preferencesDataStore(
         name = "PluviaPreferences",
         corruptionHandler = ReplaceFileCorruptionHandler {
             Timber.e("Preferences (somehow got) corrupted, resetting.")
             emptyPreferences()
         },
+        scope = CoroutineScope(dataStoreDispatcher + SupervisorJob()),
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -130,6 +141,13 @@ object PrefManager {
         scope.launch {
             dataStore.edit { pref -> pref[key] = value }
         }
+    }
+
+    // sync variant for write-then-read patterns. async setPref returns before the write lands,
+    // so the next read can see stale state -- fine for prefs that don't drive immediate downstream
+    // logic. use this when a write must be visible to subsequent reads on the same call stack.
+    private fun <T> setPrefBlocking(key: Preferences.Key<T>, value: T) {
+        runBlocking { dataStore.edit { pref -> pref[key] = value } }
     }
 
     private fun <T> removePref(key: Preferences.Key<T>) {
@@ -460,6 +478,69 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_SHOW_GPU_USAGE_GRAPH, value)
         }
 
+    private val PERFORMANCE_HUD_SHOW_FRAME_TIME = booleanPreferencesKey("performance_hud_show_frame_time")
+    var performanceHudShowFrameTime: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_FRAME_TIME, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_FRAME_TIME, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_LOW_1_PCT = booleanPreferencesKey("performance_hud_show_low_1_pct")
+    var performanceHudShowLow1Pct: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_LOW_1_PCT, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_LOW_1_PCT, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_LOW_01_PCT = booleanPreferencesKey("performance_hud_show_low_01_pct")
+    var performanceHudShowLow01Pct: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_LOW_01_PCT, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_LOW_01_PCT, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_CPU_CORES = booleanPreferencesKey("performance_hud_show_cpu_cores")
+    var performanceHudShowCpuCores: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_CPU_CORES, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_CPU_CORES, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_THERMAL_STATUS = booleanPreferencesKey("performance_hud_show_thermal_status")
+    var performanceHudShowThermalStatus: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_THERMAL_STATUS, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_THERMAL_STATUS, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_GPU_MEMORY = booleanPreferencesKey("performance_hud_show_gpu_memory")
+    var performanceHudShowGpuMemory: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_GPU_MEMORY, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_GPU_MEMORY, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_ENERGY_SESSION = booleanPreferencesKey("performance_hud_show_energy_session")
+    var performanceHudShowEnergySession: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_ENERGY_SESSION, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_ENERGY_SESSION, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_MAH_USED = booleanPreferencesKey("performance_hud_show_mah_used")
+    var performanceHudShowMahUsed: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_MAH_USED, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_MAH_USED, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_AVG_POWER = booleanPreferencesKey("performance_hud_show_avg_power")
+    var performanceHudShowAvgPower: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_AVG_POWER, false)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_AVG_POWER, value)
+        }
+
     private val PERFORMANCE_HUD_BACKGROUND_OPACITY = floatPreferencesKey("performance_hud_background_opacity")
     var performanceHudBackgroundOpacity: Float
         get() = getPref(PERFORMANCE_HUD_BACKGROUND_OPACITY, 0.72f)
@@ -515,6 +596,44 @@ object PrefManager {
         set(value) {
             setPref(SHOW_CONTROLLER_DEBUG_MENU, value)
         }
+
+    // flag-guard for the one-shot wipe of the contaminated shared
+    // app_webview/Default/Local Storage/ + IndexedDB/ subtrees. set true AFTER successful wipe.
+    // boot-internal -- never surfaced to the user (no Settings entry).
+    private val HTML5_DEFAULT_PROFILE_WIPED = booleanPreferencesKey("html5_default_profile_wiped")
+    var html5DefaultProfileWiped: Boolean
+        get() = getPref(HTML5_DEFAULT_PROFILE_WIPED, false)
+        set(value) {
+            setPref(HTML5_DEFAULT_PROFILE_WIPED, value)
+        }
+
+    // perf: global default for html5 window.devicePixelRatio override.
+    // 0f → device-native (no override) -- default
+    // >0f → explicit value applied to every html5 container that hasn't set its own.
+    // per-container override lives on WebViewContainer.renderScale (-1f = follow this global).
+    private val HTML5_RENDER_SCALE = floatPreferencesKey("html5_render_scale")
+    var html5RenderScale: Float
+        get() = getPref(HTML5_RENDER_SCALE, 0f)
+        set(value) {
+            setPref(HTML5_RENDER_SCALE, value)
+        }
+
+    // one-shot migration cookie: when html5 origin format changes the per-appId lastApplied
+    // markers under html5/sync-state/ point to data written under the OLD origin's leveldb
+    // prefix. WebView reads the NEW origin and sees empty stores. clearing those markers on
+    // first boot after the migration forces inbound sync to run again, producing leveldb
+    // bytes at the new origin. value is the version number we last migrated past -- bump
+    // when introducing a future origin change. 0 = never migrated.
+    // v1: `https://gamenative` → loopback `http://127.0.0.1:<port>`
+    // v2: loopback `http://127.0.0.1:<port>` → per-container `http://<safeId>.localhost:<port>`
+    // boot-internal -- never surfaced to the user (no Settings entry).
+    private val HTML5_ORIGIN_MIGRATION_VERSION = intPreferencesKey("html5_origin_migration_version")
+    var html5OriginMigrationVersion: Int
+        get() = getPref(HTML5_ORIGIN_MIGRATION_VERSION, 0)
+        set(value) {
+            setPref(HTML5_ORIGIN_MIGRATION_VERSION, value)
+        }
+
     private val LAUNCH_BIONIC_STEAM = booleanPreferencesKey("launch_bionic_steam")
     var launchBionicSteam: Boolean
         get() = getPref(LAUNCH_BIONIC_STEAM, false)
@@ -1296,9 +1415,22 @@ object PrefManager {
                 emptySet()
             }
         }
+        // blocking -- addCustomGameFolder writes then immediately emits CustomGameDiscovered,
+        // and the watcher's cache rebuild reads this back before fingerprinting. async write
+        // raced the read and returned stale folders, dropping new sideloads.
         set(value) {
-            setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
+            setPrefBlocking(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
         }
+
+    // controls the Effekseer WASM stub workaround for the chromium-109 audio CHECK bug.
+    // values: "auto" (apply when WebView major < EffekseerWasmGate.AFFECTED_BELOW_MAJOR),
+    // "on" (always stub, no particle effects), "off" (never stub, allow Effekseer's WASM).
+    // dev override knob -- flip to "off" to quickly re-enable WASM for testing on newer
+    // WebView builds. EffekseerWasmGate.shouldStubWasm resolves this at interceptor init.
+    private val HTML5_EFFEKSEER_WASM_STUB_MODE = stringPreferencesKey("html5_effekseer_wasm_stub_mode")
+    var html5EffekseerWasmStubMode: String
+        get() = getPref(HTML5_EFFEKSEER_WASM_STUB_MODE, "auto")
+        set(value) = setPref(HTML5_EFFEKSEER_WASM_STUB_MODE, value)
 
     // Add new setting for Wine debug logging
     private val ENABLE_WINE_DEBUG = booleanPreferencesKey("enable_wine_debug")

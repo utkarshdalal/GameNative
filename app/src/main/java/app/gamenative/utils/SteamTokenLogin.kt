@@ -195,13 +195,13 @@ class SteamTokenLogin(
                         Timber.tag("SteamTokenLogin").d("MTBF and ConnectCache not found, overriding config.vdf")
                         shouldWriteConfig = true
                     } else if (mtbf != null) {
-                        Timber.tag("SteamTokenLogin").d("MTBF exists but ConnectCache not found, it is an updated steam client, processing phase 2")
+                        Timber.tag("SteamTokenLogin").d("MTBF exists but ConnectCache not found, it is an updated steam client, processing")
                         shouldWriteConfig = false
                         shouldProcessPhase2 = true
                     }
                 }
             } else if (vdfContent.contains("MTBF")) {
-                Timber.tag("SteamTokenLogin").d("MTBF exists but ConnectCache not found, it is an updated steam client, processing phase 2")
+                Timber.tag("SteamTokenLogin").d("MTBF exists but ConnectCache not found, it is an updated steam client, processing")
                 shouldWriteConfig = false
                 shouldProcessPhase2 = true
             }

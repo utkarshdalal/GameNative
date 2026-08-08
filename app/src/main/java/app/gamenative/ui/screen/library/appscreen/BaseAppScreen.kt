@@ -31,6 +31,7 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
+import app.gamenative.html5.Html5OptInService
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
@@ -46,6 +47,7 @@ import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
+import com.winlator.container.Container
 import kotlinx.coroutines.CancellationException
 import com.winlator.container.ContainerData
 import com.winlator.core.GPUInformation
@@ -786,10 +788,26 @@ abstract class BaseAppScreen {
      * This is common behavior for all game sources.
      */
     protected fun resetContainerToDefaults(context: Context, libraryItem: LibraryItem) {
-        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+        val appId = libraryItem.appId
+        val container = ContainerUtils.getOrCreateContainer(context, appId)
+        val isHtml5 = container.containerVariant
+            .equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
         val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
 
-        ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
+        ContainerUtils.applyToContainer(context, appId, defaults)
+
+        if (isHtml5) {
+            // re-run install-time factory so reset uses the canonical "fresh" WebViewContainer
+            // shape -- optIn re-fingerprints + writes a fresh JSON via WebViewContainer.save(slug,..).
+            // Dispatchers.IO required by optIn's contract (fingerprint + JSON I/O).
+            CoroutineScope(Dispatchers.IO).launch {
+                runCatching {
+                    Html5OptInService.optIn(context, appId, defaults)
+                }.onFailure {
+                    Timber.tag("BaseAppScreen").w(it, "html5 reset optIn failed for $appId")
+                }
+            }
+        }
 
         SnackbarManager.show("Container reset to defaults")
     }
@@ -986,9 +1004,12 @@ abstract class BaseAppScreen {
     abstract fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData
 
     /**
-     * Save container configuration
+     * Save container configuration. suspend so the html5 opt-in gate
+     * (fingerprint + WebViewContainer JSON write) can run before Container mutation.
+     * return true when the save completed; false when variant=html5 opt-in refused the
+     * flip -- callers keep the dialog open in that case.
      */
-    abstract fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData)
+    abstract suspend fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData): Boolean
 
     /**
      * Get the main content composable for this screen.
@@ -1380,10 +1401,20 @@ abstract class BaseAppScreen {
             ContainerConfigDialog(
                 title = "${displayInfo.name} Config",
                 initialConfig = containerData,
+                appId = libraryItem.appId,
                 onDismissRequest = { showConfigDialog = false },
-                onSave = {
-                    saveContainerConfig(context, libraryItem, it)
-                    showConfigDialog = false
+                onSave = { newConfig, onComplete ->
+                    // saveContainerConfig is suspend so the html5 opt-in gate can run;
+                    // uiScope owns the coroutine, onComplete resets dialog spinner.
+                    uiScope.launch {
+                        try {
+                            if (saveContainerConfig(context, libraryItem, newConfig)) {
+                                showConfigDialog = false
+                            }
+                        } finally {
+                            onComplete()
+                        }
+                    }
                 },
             )
         }
@@ -1461,7 +1492,10 @@ abstract class BaseAppScreen {
         }
 
         // Render any additional dialogs
-        AdditionalDialogs(libraryItem, onDismiss = {}, onEditContainer = onEditContainer, onBack = onBack)
+        // onClickPlay is threaded through so the html5 open-container install dialog (steam-only)
+        // can fire onClickPlay(true) after ImageFs install completes -- without it, the dialog
+        // confirm handler has no way to invoke the wine launch path.
+        AdditionalDialogs(libraryItem, onDismiss = {}, onEditContainer = onEditContainer, onBack = onBack, onClickPlay = onClickPlay)
     }
 
     /**
@@ -1486,6 +1520,8 @@ abstract class BaseAppScreen {
     /**
      * Get additional dialogs to show (e.g., loading, message dialogs).
      * Override this to add source-specific dialogs.
+     * onClickPlay: needed by source-specific dialogs that drive launch (e.g. steam html5
+     * open-container install confirm).
      */
     @Composable
     open fun AdditionalDialogs(
@@ -1493,6 +1529,7 @@ abstract class BaseAppScreen {
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         // Default: no additional dialogs
     }

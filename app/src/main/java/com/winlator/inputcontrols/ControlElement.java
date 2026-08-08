@@ -1140,9 +1140,16 @@ public class ControlElement {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
                     Binding binding = getBindingAt(i);
                     if (binding.isGamepad()) {
+                        // gate by direction-past-deadzone — prior code fired isDown=true for ALL
+                        // 4 directions every tick, saturating html5 keyboard-synth + virtualGamepad.
+                        if (states[i]) {
                         value = Mathf.clamp(Math.max(0, Math.abs(value) - 0.01f) * Mathf.sign(value) * STICK_SENSITIVITY, -1, 1);
                         inputControlsView.handleInputEvent(binding, true, value);
-                        this.states[i] = true;
+                            this.states[i] = true;
+                        } else if (this.states[i]) {
+                            inputControlsView.handleInputEvent(binding, false, 0f);
+                            this.states[i] = false;
+                        }
                     }
                     else {
                         boolean state = binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i];

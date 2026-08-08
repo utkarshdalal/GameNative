@@ -11,6 +11,11 @@ interface AndroidEvent<T> : Event<T> {
     data object StartOrientator : AndroidEvent<Unit>
     data object ActivityDestroyed : AndroidEvent<Unit>
     data object GuestProgramTerminated : AndroidEvent<Unit>
+
+    // fires immediately after webView.destroy() returns. save-sync subscribes here
+    // (leveldb lock releases post-destroy). built once so doesn't retouch
+    // WebViewScreen.
+    data object WebViewDestroyed : AndroidEvent<Unit>
     data class KeyEvent(val event: android.view.KeyEvent) : AndroidEvent<Boolean>
     data class MotionEvent(val event: android.view.MotionEvent?) : AndroidEvent<Boolean>
     data object EndProcess : AndroidEvent<Unit>
@@ -24,6 +29,11 @@ interface AndroidEvent<T> : Event<T> {
     data class DownloadStatusChanged(val appId: Int, val isDownloading: Boolean) : AndroidEvent<Unit>
     data class PostInstallSyncStatusChanged(val appId: Int, val isSyncing: Boolean) : AndroidEvent<Unit>
     data class LibraryInstallStatusChanged(val appId: Int, val source: GameSource) : AndroidEvent<Unit>
+    // fires when a sideloaded folder is newly added to the manual-folders set (the "install"
+    // moment for custom games, since they don't have a download phase). consumed by
+    // Html5InstallWatcher to auto-fingerprint + flip variant=html5 when an engine matches,
+    // matching Steam/GOG behavior on download completion.
+    data class CustomGameDiscovered(val appId: Int) : AndroidEvent<Unit>
     data class CustomGameImagesFetched(val appId: String) : AndroidEvent<Unit>
     data object RecommendationToggleChanged : AndroidEvent<Unit>
     data class GOGAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>

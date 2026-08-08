@@ -278,6 +278,7 @@ class EpicAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            runtime = app.gamenative.utils.ContainerUtils.resolveRuntime(context, libraryItem.appId),
         )
         Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation}")
         return displayInfo
@@ -378,7 +379,13 @@ class EpicAppScreen : BaseAppScreen() {
      * @param scope Lifecycle-aware CoroutineScope from the calling composable
      * @param selectedGameIds List of game IDs to download (base game + selected DLCs)
      */
-    private fun performDownload(scope: CoroutineScope, context: Context, libraryItem: LibraryItem, selectedGameIds: List<Int>, onClickPlay: (Boolean) -> Unit) {
+    private fun performDownload(
+        scope: CoroutineScope,
+        context: Context,
+        libraryItem: LibraryItem,
+        selectedGameIds: List<Int>,
+        onClickPlay: (Boolean) -> Unit,
+    ) {
         Timber.tag(TAG).i("Starting Epic game download: ${libraryItem.gameId} with ${selectedGameIds.size} items (including DLCs)")
         scope.launch(Dispatchers.IO) {
             try {
@@ -546,11 +553,11 @@ class EpicAppScreen : BaseAppScreen() {
         return containerData
     }
 
-    override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
+    override suspend fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData): Boolean {
         Timber.tag(TAG).i("saveContainerConfig: appId=${libraryItem.appId}")
-        // Save Epic-specific container configuration using ContainerUtils
-        app.gamenative.utils.ContainerUtils.applyToContainer(context, libraryItem.appId, config)
-        Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
+        return app.gamenative.utils.ContainerUtils.applyToContainerGated(context, libraryItem.appId, config).also {
+            if (it) Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
+        }
     }
 
     override fun supportsContainerConfig(): Boolean {
@@ -752,6 +759,7 @@ class EpicAppScreen : BaseAppScreen() {
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         Timber.tag(TAG).d("AdditionalDialogs: composing for appId=${libraryItem.appId}")
         val context = LocalContext.current

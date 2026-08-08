@@ -157,9 +157,11 @@ fun AmazonInstallDialog(
                         color = Color.White,
                     )
                     val yearText = remember(displayInfo.releaseDate) {
-                        if (displayInfo.releaseDate > 0)
+                        if (displayInfo.releaseDate > 0) {
                             SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
-                        else ""
+                        } else {
+                            ""
+                        }
                     }
                     Text(
                         text = "${displayInfo.developer} • $yearText",

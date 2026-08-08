@@ -103,6 +103,16 @@ data class ContainerData(
     val sharpnessEffect: String = "None",
     val sharpnessLevel: Int = 100,
     val sharpnessDenoise: Int = 100,
+    // input mode override for html5 containers . tri-state:
+    // "" = use pack default (resolveInputMode fallback), "native-controller", "pointer-with-tap-detection".
+    val inputMap: String = "",
+    // perf: per-container DPR override for html5 containers. tri-state:
+    // -1f → follow PrefManager.html5RenderScale (global default — only valid in per-container dialog)
+    // 0f → device-native (no override)
+    // >0f → explicit value (1.0 / 1.5 / 2.0 / 3.0 / 4.0)
+    // global slot lives in PrefManager.html5RenderScale; default config dialog edits the global
+    // (where -1 is suppressed in UI), per-container dialog edits the override.
+    val renderScale: Float = -1f,
     // LSFG Vulkan frame generation
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
@@ -178,6 +188,8 @@ data class ContainerData(
                     "sharpnessEffect" to state.sharpnessEffect,
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
+                    "inputMap" to state.inputMap,
+                    "renderScale" to state.renderScale,
                     "lsfgEnabled" to state.lsfgEnabled,
                     "bionicFgEnabled" to state.bionicFgEnabled,
                 )
@@ -249,6 +261,8 @@ data class ContainerData(
                     sharpnessEffect = (savedMap["sharpnessEffect"] as? String) ?: "None",
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
+                    inputMap = (savedMap["inputMap"] as? String) ?: "",
+                    renderScale = (savedMap["renderScale"] as? Float) ?: -1f,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
                     bionicFgEnabled = (savedMap["bionicFgEnabled"] as? Boolean) ?: false,
                 )

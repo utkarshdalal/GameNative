@@ -6,7 +6,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -22,17 +24,33 @@ import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.LsfgVkManager
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsSwitch
+import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
+import com.winlator.container.Container.CONTAINER_VARIANT_HTML5
 import com.winlator.contents.ContentProfile
 import com.winlator.container.Container
 import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVars
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @Composable
-fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
+fun GraphicsTabContent(
+    state: ContainerConfigState,
+    // when true, dialog is editing the GLOBAL default config (Settings → Modify Default Config).
+    // suppresses per-container-only options (e.g. "follow global" for renderScale, which would
+    // mean "follow itself" in the global slot).
+    default: Boolean = false,
+    // wine-only items (graphics driver, dxwrapper, vortek extensions, useDRI3, etc.) are
+    // greyed out when this container's runtime is webview. renderScale knob stays enabled --
+    // it's the only Graphics-tab control that actually affects the webview launch path.
+    isHtml5: Boolean = false,
+) {
     val config = state.config.value
-    SettingsGroup() {
+    SettingsGroup {
+        CompositionLocalProvider(
+            LocalSettingsGroupEnabled provides !isHtml5,
+        ) {
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             // Bionic: Graphics Driver (Wrapper/Wrapper-v2)
             SettingsListDropdown(
@@ -117,16 +135,23 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     state.exposedExtIndices.value =
                         if (current.contains(idx)) current.filter { it != idx } else current + idx
                     val cfg = KeyValueSet(config.graphicsDriverConfig)
-                    val allSelected = state.exposedExtIndices.value.size == state.gpuExtensions.size
-                    if (allSelected) cfg.put("exposedDeviceExtensions", "all") else cfg.put(
+                        val allSelected = state.exposedExtIndices.value.size == state.gpuExtensions.size
+                        if (allSelected) {
+                            cfg.put("exposedDeviceExtensions", "all")
+                        } else {
+                            cfg.put(
                         "exposedDeviceExtensions",
                         state.exposedExtIndices.value.sorted().joinToString("|") { state.gpuExtensions[it] },
-                    )
-                    val blacklisted = if (allSelected) "" else
+                            )
+                        }
+                        val blacklisted = if (allSelected) {
+                            ""
+                        } else {
                         state.gpuExtensions.indices
                             .filter { it !in state.exposedExtIndices.value }
                             .sorted()
-                            .joinToString(",") { state.gpuExtensions[it] }
+                                .joinToString(",") { state.gpuExtensions[it] }
+                        }
                     cfg.put("blacklistedExtensions", blacklisted)
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                 },
@@ -260,9 +285,8 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     )
                     Text(text = "${state.sharpnessDenoise.value}%")
                 }
-            }
-        }
-        else {
+                }
+            } else {
             // Non-bionic: existing driver/version UI and Vortek-specific options
             SettingsListDropdown(
                 colors = settingsTileColors(),
@@ -319,16 +343,23 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                             state.exposedExtIndices.value =
                                 if (current.contains(idx)) current.filter { it != idx } else current + idx
                             val cfg = KeyValueSet(config.graphicsDriverConfig)
-                            val allSelected = state.exposedExtIndices.value.size == state.gpuExtensions.size
-                            if (allSelected) cfg.put("exposedDeviceExtensions", "all") else cfg.put(
+                                val allSelected = state.exposedExtIndices.value.size == state.gpuExtensions.size
+                                if (allSelected) {
+                                    cfg.put("exposedDeviceExtensions", "all")
+                                } else {
+                                    cfg.put(
                                 "exposedDeviceExtensions",
                                 state.exposedExtIndices.value.sorted().joinToString("|") { state.gpuExtensions[it] },
-                            )
-                            val blacklisted = if (allSelected) "" else
+                                    )
+                                }
+                                val blacklisted = if (allSelected) {
+                                    ""
+                                } else {
                                 state.gpuExtensions.indices
                                     .filter { it !in state.exposedExtIndices.value }
                                     .sorted()
-                                    .joinToString(",") { state.gpuExtensions[it] }
+                                        .joinToString(",") { state.gpuExtensions[it] }
+                                }
                             cfg.put("blacklistedExtensions", blacklisted)
                             state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                         },
@@ -379,7 +410,65 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             onCheckedChange = {
                 state.config.value = config.copy(useDRI3 = it)
             },
-        )
+            )
+        } // close CompositionLocalProvider -- renderScale below stays enabled for html5
+
+        // perf: html5-only DPR override. visible in (a) default-config dialog regardless of
+        // variant -- global applies to all html5 containers -- and (b) per-container html5
+        // dialog. per-container adds "follow global" at index 0.
+        // sentinel: -1f = follow global (per-container only), 0f = device-native, >0f = explicit.
+        if (default || config.containerVariant.equals(CONTAINER_VARIANT_HTML5, ignoreCase = true)) {
+            // sub-1 DPRs are a perf win for engines that size their canvas backing-store from
+            // window.devicePixelRatio (PIXI/Three/RMMV/RMMZ/c3 useHighDpi): smaller backing store,
+            // Chromium composites back up to the CSS-px slot. DOM/CSS/text unaffected (physical-res).
+            val renderScaleValues = if (default) {
+                listOf(0f, 0.5f, 0.75f, 1f, 1.5f, 2f, 3f, 4f)
+            } else {
+                listOf(-1f, 0f, 0.5f, 0.75f, 1f, 1.5f, 2f, 3f, 4f)
+            }
+            val renderScaleLabels = if (default) {
+                listOf(
+                    stringResource(R.string.render_scale_device),
+                    stringResource(R.string.render_scale_0_5x),
+                    stringResource(R.string.render_scale_0_75x),
+                    stringResource(R.string.render_scale_1x),
+                    stringResource(R.string.render_scale_1_5x),
+                    stringResource(R.string.render_scale_2x),
+                    stringResource(R.string.render_scale_3x),
+                    stringResource(R.string.render_scale_4x),
+                )
+            } else {
+                listOf(
+                    stringResource(R.string.render_scale_follow_global),
+                    stringResource(R.string.render_scale_device),
+                    stringResource(R.string.render_scale_0_5x),
+                    stringResource(R.string.render_scale_0_75x),
+                    stringResource(R.string.render_scale_1x),
+                    stringResource(R.string.render_scale_1_5x),
+                    stringResource(R.string.render_scale_2x),
+                    stringResource(R.string.render_scale_3x),
+                    stringResource(R.string.render_scale_4x),
+                )
+            }
+            // tolerance match -- Float identity bites at 1.5f vs persisted bits.
+            val renderScaleIndex = rememberSaveable {
+                mutableIntStateOf(
+                    renderScaleValues.indexOfFirst { abs(it - config.renderScale) < 0.001f }
+                        .coerceAtLeast(0),
+                )
+            }
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.render_scale_label)) },
+                subtitle = { Text(text = stringResource(R.string.render_scale_description)) },
+                value = renderScaleIndex.value,
+                items = renderScaleLabels,
+                onItemSelected = { idx ->
+                    renderScaleIndex.value = idx
+                    state.config.value = config.copy(renderScale = renderScaleValues[idx])
+                },
+            )
+        }
     }
 }
 

@@ -24,6 +24,7 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     MoveToExternalStorage(R.string.option_move_to_external_storage),
     MoveToInternalStorage(R.string.option_move_to_internal_storage),
     ForceCloudSync(R.string.option_force_cloud_sync),
+    ClearSteamCloud(R.string.option_clear_steam_cloud),
     BrowseOnlineSaves(R.string.option_browse_online_saves),
     ForceDownloadRemote(R.string.option_force_download_remote),
     ForceUploadLocal(R.string.option_force_upload_local),

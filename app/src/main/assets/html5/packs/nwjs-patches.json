@@ -1,0 +1,14 @@
+{
+  "byAppId": {
+    "GOG_1252295864": {
+      "saves": {
+        "sync": {
+          "mechanism": "leveldb-origin-rewrite",
+          "pcOrigin": "file://",
+          "chromiumProfileSubdir": "User Data/Default",
+          "syncChromiumProfile": true
+        }
+      }
+    }
+  }
+}

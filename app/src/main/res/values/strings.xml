@@ -36,6 +36,10 @@
     <string name="steam_container_reset_success">Container reset to defaults</string>
     <string name="steam_imagefs_installed">ImageFS installed. Please try editing container again.</string>
     <string name="steam_imagefs_install_failed">Failed to install ImageFS: %s</string>
+    <string name="steam_imagefs_open_container_title">Set Up Wine for This Container</string>
+    <string name="steam_imagefs_open_container_message_imagefs_only">To open this container in Wine, the Wine Ubuntu image needs to be downloaded and installed (~600 MB, one-time, shared by all games). Continue?</string>
+    <string name="steam_imagefs_open_container_message_prefix_only">To open this container in Wine for the first time, a Windows prefix needs to be extracted into the container (~1.5 GB of additional storage, one-time per container). Continue?</string>
+    <string name="steam_imagefs_open_container_message_full">To open this container in Wine for the first time, two one-time setup steps will run: the Wine Ubuntu image (~600 MB, shared by all games) and a Windows prefix for this container (~1.5 GB). Continue?</string>
     <string name="steam_uninstall_game_title">Uninstall Game</string>
     <string name="steam_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="steam_uninstall_success">%1$s has been uninstalled</string>
@@ -199,6 +203,16 @@
     <string name="intent_launch_failed">Could not launch game: invalid launch shortcut</string>
     <string name="intent_launch_steam_pending">Game will launch when Steam connects</string>
     <string name="intent_launch_service_pending">Game will launch when service is ready</string>
+    <!--webview host: surfaced by ChromiumVersionGate on boot if chromium < min OR multi-profile unsupported -->
+    <string name="webview_unsupported_chromium">HTML5 runtime unavailable — WebView %1$s is too old (Chromium %2$d or newer required)</string>
+    <!--webview host: surfaced by WebViewScreen on compose-entry if gate failed at boot -->
+    <string name="webview_runtime_unavailable">HTML5 runtime unavailable on this device</string>
+    <!--webview host: surfaced by WebViewScreen when WebViewContainer missing/corrupt -->
+    <string name="webview_container_not_found">HTML5 game container missing or corrupt</string>
+    <!--webview host: data-url save export via DownloadListener (WebViewSetup) -->
+    <string name="webview_download_saved">Saved to Downloads/%1$s</string>
+    <string name="webview_download_unsupported_scheme">Download skipped (unsupported scheme)</string>
+    <string name="webview_download_failed">Download failed: %1$s</string>
     <string name="intent_launch_steam_login_failed">Steam login failed — game launch cancelled</string>
     <string name="intent_launch_service_timeout">Game service failed to start — game launch cancelled</string>
     <string name="back_press_exit_warning">Press back again to exit</string>
@@ -247,6 +261,8 @@
     <string name="input_controls">On-screen Controller</string>
     <string name="edit_controls">Edit On-screen Controller</string>
     <string name="edit_physical_controller">Edit Physical Controller</string>
+    <!--HTML5 QuickMenu items -->
+    <string name="quickmenu_edit_overlay">Edit Overlay</string>
     <string name="controller_disconnected">Disconnected</string>
     <string name="reset_onscreen_controls">Reset On-Screen Controls</string>
     <string name="open_navigation_menu">Open Navigation Menu</string>
@@ -349,6 +365,19 @@
     <string name="performance_hud_clock_time">Clock time</string>
     <string name="performance_hud_cpu_temperature">CPU temperature</string>
     <string name="performance_hud_gpu_temperature">GPU temperature</string>
+    <string name="performance_hud_frame_time">Frame time (mean)</string>
+    <string name="performance_hud_low_1_pct">1%% low FPS</string>
+    <string name="performance_hud_low_01_pct">0.1%% low FPS</string>
+    <string name="performance_hud_cpu_cores">Per-core CPU</string>
+    <string name="performance_hud_thermal_status">Thermal status</string>
+    <string name="performance_hud_gpu_memory">GPU memory</string>
+    <string name="performance_hud_energy_session">Session energy (Wh)</string>
+    <string name="performance_hud_mah_used">Session mAh used</string>
+    <string name="performance_hud_avg_power">Average power (W)</string>
+    <string name="performance_hud_metrics_advanced">Power-user metrics</string>
+    <string name="performance_hud_metrics_advanced_description">Frametime, percentile lows, per-core CPU, thermal throttle, GPU memory.</string>
+    <string name="performance_hud_metrics_energy">Energy</string>
+    <string name="performance_hud_metrics_energy_description">Session-cumulative power consumption.</string>
     <string name="touchpad_help">Touchpad Help</string>
     <string name="hide_controls_with_controller">Hide on-screen controls with controller</string>
     <string name="hide_controls_with_controller_description">Automatically hide on-screen controls when a physical controller is connected</string>
@@ -772,6 +801,28 @@
     <string name="value">Value</string>
     <string name="no_more_known_variables">No more known variables</string>
     <string name="container_variant">Container Variant</string>
+    <!-- HTML5 QuickMenu row label (replaces former Input Mode dropdown) -->
+    <string name="touch_gestures_label">Touch Gestures</string>
+    <!-- perf: render-scale (devicePixelRatio) override dropdown for HTML5 containers. -->
+    <string name="render_scale_label">Render Scale (HTML5 backend only)</string>
+    <string name="render_scale_description">Lower values render fewer pixels for better performance and battery; higher values look sharper. Takes effect on next launch. No effect on Wine containers.</string>
+    <string name="render_scale_follow_global">Follow global default</string>
+    <string name="render_scale_device">Device default</string>
+    <string name="render_scale_0_5x">0.5× (lowest, best perf)</string>
+    <string name="render_scale_0_75x">0.75×</string>
+    <string name="render_scale_1x">1×</string>
+    <string name="render_scale_1_5x">1.5×</string>
+    <string name="render_scale_2x">2×</string>
+    <string name="render_scale_3x">3×</string>
+    <string name="render_scale_4x">4× (highest, worst perf)</string>
+    <string name="html5_controller_tab_edit_physical">Physical Controller Mapping</string>
+    <string name="html5_controller_tab_unavailable">HTML5 controller settings unavailable — container may have been deleted.</string>
+    <string name="html5_controller_tab_default_config_disabled">Default HTML5 Config (coming soon)</string>
+    <string name="html5_controller_tab_overlay_opacity_value">Overlay Opacity: %1$d%%</string>
+    <string name="html5_controller_tab_overlay_visible">Show Onscreen Overlay</string>
+    <!-- snackbar shown when user taps Edit in the overlay toolbar without selecting an element first -->
+    <string name="html5_overlay_select_element_first">Tap an overlay element first, then Edit</string>
+    <string name="container_config_html5_controller_saved">Saved</string>
     <string name="wine_version">Wine Version</string>
     <string name="exec_arguments">Exec Arguments</string>
     <string name="exec_arguments_example">Example: -dx11</string>
@@ -951,6 +1002,11 @@
     <string name="gesture_show_debug_overlay_subtitle">Show temporary gesture labels at top center</string>
     <string name="gesture_show_cursor_touchscreen_mode">Show Cursor in Touchscreen Mode</string>
     <string name="gesture_show_cursor_touchscreen_mode_subtitle">Keep the mouse cursor visible while touchscreen gestures are active</string>
+
+    <!-- HTML5-only gesture extras (cursor mode + open-quick-menu action) -->
+    <string name="gesture_cursor_mode">Relative cursor</string>
+    <string name="gesture_cursor_mode_relative_subtitle">Move a tracked cursor instead of dispatching at finger position</string>
+    <string name="gesture_action_open_quick_menu">Open Quick Menu</string>
 
     <string name="external_display_input">External Display Input</string>
     <string name="external_display_input_subtitle">Choose how a connected presentation display should behave</string>
@@ -1147,6 +1203,12 @@
     <string name="container_storage_uninstall_game_only_message">This uninstalls %1$s and removes its game files. No container will be deleted.</string>
     <string name="container_storage_uninstall_success">Uninstalled %1$s</string>
     <string name="container_storage_uninstall_failed">Failed to uninstall game: %1$s</string>
+    <string name="container_storage_reclaim_button">Reclaim Wine storage</string>
+    <string name="container_storage_reclaim_title">Reclaim Wine storage?</string>
+    <string name="container_storage_reclaim_message">Deletes the Wine distribution directories (windows, Program Files, Program Files (x86)) for %1$s. Saves and registry settings are preserved. The Wine prefix rebuilds itself on the next Wine backend launch (~30 sec).</string>
+    <string name="container_storage_reclaim_success">Reclaimed %2$s from %1$s</string>
+    <string name="container_storage_reclaim_noop">Nothing to reclaim for %1$s</string>
+    <string name="container_storage_reclaim_failed">Failed to reclaim storage: %1$s</string>
     <string name="container_storage_move_to_external_button">Move to external</string>
     <string name="container_storage_move_to_internal_button">Move to internal</string>
     <string name="container_storage_move_success">Moved %1$s to %2$s storage</string>
@@ -1636,6 +1698,7 @@
     <string name="option_move_to_external_storage">Move to external storage</string>
     <string name="option_move_to_internal_storage">Move to internal storage</string>
     <string name="option_force_cloud_sync">Force cloud sync</string>
+    <string name="option_clear_steam_cloud">Clear Steam Cloud (dev)</string>
     <string name="option_browse_online_saves">Browse online saves</string>
     <string name="option_force_download_remote">Force download remote saves</string>
     <string name="option_force_upload_local">Force upload local saves</string>
@@ -2094,6 +2157,71 @@
     <string name="frontend_sync_resync_complete">Frontend sync complete</string>
     <string name="frontend_sync_pick_directory_cd">Pick directory for %1$s</string>
     <string name="frontend_sync_clear_directory_cd">Clear directory for %1$s</string>
+
+    <!--html5 opt-in snackbar surfaces. %1$s is the install path. -->
+    <string name="html5_optin_no_engine">No supported HTML5 engine found at %1$s. Expected RMMV, RMMZ, Construct 3, or a package.nw zip.</string>
+    <string name="html5_optin_install_path_unresolvable">HTML5 opt-in could not resolve the install path.</string>
+
+    <!-- auto-flip snackbar. %1$s is the game's display name. -->
+    <string name="html5_install_auto_detected">%1$s detected as HTML5 — launching with WebView runtime. Switch in Container Config.</string>
+
+    <!-- candidate-engine snackbar — fired when an HTML5 shape is recognized but no pack ships
+         for it yet (Godot, Unity WebGL, GameMaker HTML5). %1$s = game name, %2$s = engine. -->
+    <string name="html5_install_candidate">%1$s looks like an HTML5 game (%2$s) but isn\'t supported yet — running under Wine.</string>
+
+    <!-- engine-changed snackbar — re-fingerprint on update detected a different engine than
+         before. %1$s = game name, %2$s = old engine, %3$s = new engine. -->
+    <string name="html5_engine_changed">%1$s engine updated: %2$s → %3$s. Container config refreshed.</string>
+
+    <!-- prophylactic shader-compile failure surface. fired when the WebView reports 3+ GLSL
+         uniform/varying overflow errors within 15s of launch (typically heavy WebGL2 titles
+         on Adreno where ANGLE-on-GL caps below the engine's needs). -->
+    <string name="html5_runtime_graphics_alloc_failure">Can\'t allocate graphics resources to this title in HTML5 mode. Please try switching to Wine in container settings.</string>
+
+    <!--: library card badge label for webview-runtime games. -->
+    <string name="library_runtime_html5">HTML5</string>
+
+    <!-- detail screen "Runtime: WebView" InfoCard. -->
+    <string name="library_runtime_label">Runtime</string>
+    <string name="library_runtime_value_webview">WebView</string>
+
+    <!-- save sync failure snackbars. one entry per SaveSyncFailure.userFacingKey. -->
+    <string name="save_sync_lock">Save sync busy — try again in a moment.</string>
+    <string name="save_sync_corruption">Save file appears corrupt — sync paused.</string>
+    <string name="save_sync_missing">Save path not found — sync paused.</string>
+    <string name="save_sync_permission">Storage permission denied — sync paused.</string>
+    <string name="save_sync_other">Save sync failed. Your saves may not reach Steam Cloud.</string>
+    <string name="save_sync_incompatible">Cloud save format not supported by this device — sync paused. Android saves stay local.</string>
+    <!-- distinct from save_sync_missing — used when the engine pack profile
+         is absent (no fingerprint match → no engineId, or unknown engineId). this is "we
+         can't sync because we don't know what kind of game this is", not "the game's known-
+         supported but its save dir disappeared". snackbar fires at most once per launch. -->
+    <string name="save_sync_unsupported_game">This game doesn\'t support Steam Cloud</string>
+
+    <!--: pack:c3 fs-mode title falls back to Wine on Chromium <109. -->
+    <string name="html5_opfs_unsupported_falling_back_to_wine">this game needs Chromium 109+ for HTML5 saves — launching via Wine instead</string>
+
+    <!--: terra-engine title launching without the android ANGLE override; informational only,
+         we can't write the setting (needs WRITE_SECURE_SETTINGS via adb/Shizuku). -->
+    <string name="html5_angle_override_suggested">This game needs Android\'s ANGLE override to render. Via adb: settings put global angle_gl_driver_all_angle 1, then restart GameNative</string>
+
+    <!-- diagnostic shim (debug-only). timber-tagged, not snackbar'd. -->
+    <string name="html5_diagnostic_log_full">Diagnostic log rotated — older trace archived.</string>
+    <string name="html5_diagnostic_write_error">Diagnostic log write failed.</string>
+
+    <!-- shown when pack:electron asar opened but package.json lacks both productName and
+         name. graceful degradation — launch proceeds with non-electron sandbox;
+         app.getPath() surfaces NOT_IMPLEMENTED_V1. -->
+    <string name="html5_electron_missing_product_name">HTML5 profile: Electron title missing productName/name in package.json</string>
+
+    <!-- DEBUG-ONLY: Clear Steam Cloud dev action on SteamAppScreen. user-facing only in debug builds. -->
+    <string name="debug_clear_cloud_title">Clear Steam Cloud</string>
+    <string name="debug_clear_cloud_body">This will DELETE all cloud save files for %1$s on Steam\'s servers. Local files are NOT touched. This cannot be undone.\n\nContinue?</string>
+    <string name="debug_clear_cloud_confirm">Delete all</string>
+    <string name="debug_clear_cloud_in_progress">Clearing Steam Cloud for %1$s…</string>
+    <string name="debug_clear_cloud_success">Cleared %1$d cloud file(s) for %2$s</string>
+    <string name="debug_clear_cloud_failed">Clear cloud failed: %1$s</string>
+
     <!-- Game Launch Tips -->
     <string name="game_launch_tip_1">Booting may take a few minutes on first launch</string>
     <string name="game_launch_tip_2">Tip: You can view the game files by pressing \"%s\" in the game settings.</string>

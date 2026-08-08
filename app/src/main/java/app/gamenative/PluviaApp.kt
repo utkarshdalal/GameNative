@@ -8,10 +8,18 @@ import androidx.navigation.NavController
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.events.EventDispatcher
+import app.gamenative.html5.host.ChromiumVersionGate
+import app.gamenative.html5.host.WebViewOrigin
+import app.gamenative.html5.install.Html5InstallWatcher
+import app.gamenative.html5.profile.DefaultProfileWiper
+import app.gamenative.html5.savesync.Html5CrashpadCleanup
+import app.gamenative.html5.savesync.Html5LeveldbHealth
+import app.gamenative.html5.savesync.Html5SaveSyncService
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.sync.FrontendSyncManager
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.PlayIntegrity
@@ -46,11 +54,25 @@ class PluviaApp : SplitCompatApplication() {
 
     @Inject lateinit var gogGameDao: GOGGameDao
     @Inject lateinit var amazonGameDao: AmazonGameDao
+    @Inject lateinit var html5InstallWatcher: Html5InstallWatcher
+    @Inject lateinit var html5SaveSyncService: Html5SaveSyncService
 
-    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val appScope: CoroutineScope get() = Companion.appScope
 
     override fun onCreate() {
         super.onCreate()
+
+        // MUST run before any org.xerial.snappy class loads (checked by SnappyLoader.loadNativeLibrary).
+        // switches snappy-java's native loader from classpath-resource extraction (which fails on
+        // Android because AGP strips .so files from non-lib/<abi>/ jar paths) to System.loadLibrary,
+        // which finds our extractSnappyAndroidJni-relocated lib/<abi>/libsnappyjava.so.
+
+        // skip on Robolectric -- host JVM has no libsnappyjava on its library path, but the jar's
+        // classpath-resource path DOES yield a working native (Linux/Mac/Windows .so/.dylib/.dll).
+        // setting use.systemlib here would break snappy for the whole JVM.
+        if (!android.os.Build.FINGERPRINT.startsWith("robolectric")) {
+            System.setProperty("org.xerial.snappy.use.systemlib", "true")
+        }
 
         preloadSystemLibraries()
 
@@ -76,6 +98,102 @@ class PluviaApp : SplitCompatApplication() {
         // Init our datastore preferences.
         PrefManager.init(this)
         FrontendSyncManager.init(this)
+
+        // boot gate for chromium >= 100. gate-fail flips html5RuntimeDisabled;
+        // WebViewScreen + install watcher + save-sync service all check this flag and no-op.
+        if (!ChromiumVersionGate.isSupported(this)) {
+            val chromiumMajor = ChromiumVersionGate.getMajor(this)
+            val shown = chromiumMajor?.toString() ?: "unknown"
+            Timber.tag("PluviaApp").w(
+                "chromium %s gate fail — html5 runtime disabled (min major=%d)",
+                shown,
+                ChromiumVersionGate.MIN_MAJOR,
+            )
+            SnackbarManager.show(
+                getString(R.string.webview_unsupported_chromium, shown, ChromiumVersionGate.MIN_MAJOR),
+            )
+            html5RuntimeDisabled = true
+        } else {
+            Timber.tag("PluviaApp").d("chromium gate ok — html5 runtime supported")
+        }
+
+        // resolve the html5 loopback port (single port for all containers; per-container
+        // origin via *.localhost host). MUST run before save-sync starts so origin paths
+        // are stable. failure to bind a deterministic port = html5 disabled this session
+        // rather than silently drifting (drift would orphan saves under the wrong leveldb
+        // origin filename).
+        if (!html5RuntimeDisabled) {
+            WebViewOrigin.init(this)
+            WebViewOrigin.initFailureMessage()?.let { reason ->
+                Timber.tag("PluviaApp").w("html5 port init failed: %s", reason)
+                SnackbarManager.show(reason)
+                html5RuntimeDisabled = true
+            }
+        }
+
+        // html5 boot housekeeping. deferred off the main thread so Wine-only users don't pay for
+        // it on every launch. order matters within the block: DefaultProfileWiper must finish
+        // before WebView ever opens (chromium takes an exclusive lock at open), but it can race
+        // freely with html5InstallWatcher.start() below since the watcher only does work when
+        // LibraryInstallStatusChanged fires -- never at boot.
+        appScope.launch {
+            runCatching {
+                DefaultProfileWiper.wipeIfNeeded(
+                    context = this@PluviaApp,
+                    flagRead = { PrefManager.html5DefaultProfileWiped },
+                    flagWrite = { PrefManager.html5DefaultProfileWiped = it },
+                )
+            }.onFailure { Timber.e(it, "DefaultProfileWiper boot wipe failed") }
+
+            if (!html5RuntimeDisabled) {
+                // chromium ships no auto-repair for LocalStorage; without this, a single force-stop
+                // mid-compaction permanently silently-drops all subsequent writes.
+                runCatching { Html5LeveldbHealth.repairIfWedged(this@PluviaApp) }
+                    .onFailure { Timber.e(it, "Html5LeveldbHealth boot scan failed") }
+                // wipe accumulated crashpad dumps. chromium ships no knob to disable generation;
+                // bounded-by-cleanup is the practical alternative. paired with SyncFileFilter
+                // (which keeps any leakage out of cloud).
+                runCatching { Html5CrashpadCleanup.wipe(this@PluviaApp) }
+                    .onFailure { Timber.e(it, "Html5CrashpadCleanup boot wipe failed") }
+            }
+        }
+
+        // start auto-flip watcher only AFTER chromium gate runs -- start() itself
+        // also checks html5RuntimeDisabled, but starting it after the gate keeps the call ordered.
+        // forward-only listener; subscribed once for the process lifetime.
+        html5InstallWatcher.start()
+
+        // exit-sync subscriber. same html5-gate semantics as the watcher.
+        // wrapped in runCatching -- a start() failure must never prevent the app from launching.
+        runCatching { html5SaveSyncService.start() }
+            .onFailure { Timber.e(it, "failed to start Html5SaveSyncService") }
+
+        // one-shot migration: clear per-appId html5 lastApplied sync markers whenever the html5
+        // WebView origin format changes. clearing markers forces inbound sync to re-run
+        // wine→webview at the new origin (wine prefix is unchanged so the wine-vs-lastApplied
+        // gate would otherwise skip). idempotent across cold boots; bump TARGET when
+        // introducing a future change.
+        // v1 (target=1): `https://gamenative` → loopback `http://127.0.0.1:<port>`
+        // v2 (target=2): loopback → per-container `https://game-<id>` over AssetLoader (DEAD,
+        //                briefly tested then reverted because module-worker subresources fail)
+        // v3 (target=3): per-container `http://<safeId>.localhost:<port>` over loopback --
+        //                worker subresources reach the loopback server, save round-trip works.
+        runCatching {
+            val target = 3
+            if (PrefManager.html5OriginMigrationVersion < target) {
+                val syncStateDir = java.io.File(filesDir, "html5/sync-state")
+                if (syncStateDir.isDirectory) {
+                    val cleared = syncStateDir.listFiles()
+                        ?.filter { it.isFile && it.name.endsWith(".lastApplied") }
+                        ?.count { it.delete() } ?: 0
+                    Timber.i(
+                        "html5 origin-migration v%d: cleared %d lastApplied marker(s)",
+                        target, cleared,
+                    )
+                }
+                PrefManager.html5OriginMigrationVersion = target
+            }
+        }.onFailure { Timber.e(it, "html5 origin-migration failed (non-fatal)") }
 
         // Initialize GOGConstants
         app.gamenative.service.gog.GOGConstants.init(this)
@@ -117,10 +235,21 @@ class PluviaApp : SplitCompatApplication() {
         com.posthog.PostHog.register("build_flavor", BuildConfig.FLAVOR)
 
         if (PrefManager.usageAnalyticsEnabled) {
+            // WebView provider+version is the dominant html5 compatibility variable; capture it
+            // as person-properties so the install-base distribution is queryable (decides whether
+            // old/locked WebView is a real population or a documentable tail). see ChromiumVersionGate.
+            val webView = ChromiumVersionGate.getWebViewInfo(this)
             com.posthog.PostHog.capture(
                 event = "\$set",
                 properties = mapOf(
-                    "\$set" to mapOf("recommendation_enabled" to PrefManager.showRecommendations),
+                    "\$set" to mapOf(
+                        "recommendation_enabled" to PrefManager.showRecommendations,
+                        "webview_package" to (webView.packageName ?: "unknown"),
+                        "webview_version" to (webView.versionName ?: "unknown"),
+                        "webview_chromium_major" to (webView.major ?: -1),
+                        "webview_html5_supported" to ((webView.major ?: 0) >= ChromiumVersionGate.MIN_MAJOR),
+                        "webview_opfs_sah_supported" to ((webView.major ?: 0) >= ChromiumVersionGate.MIN_OPFS_SAH_MAJOR),
+                    ),
                 ),
             )
         }
@@ -199,6 +328,12 @@ class PluviaApp : SplitCompatApplication() {
         val events: EventDispatcher = EventDispatcher()
         internal var onDestinationChangedListener: NavChangedListener? = null
 
+        // process-lifetime supervisor scope. shared across the app for background work that
+        // must outlive a specific Activity / Composable / ViewModel -- boot init, WebView
+        // teardown's flush+snapshot awaits, etc. NonCancellable wrap at call sites that need
+        // to survive Composable destruction.
+        internal val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
         internal var xEnvironment: XEnvironment? = null
         internal var xServerView: XServerRendererView? = null
@@ -207,9 +342,19 @@ class PluviaApp : SplitCompatApplication() {
         var touchpadView: TouchpadView? = null
         var achievementWatcher: app.gamenative.service.AchievementWatcher? = null
 
+        // HTML5 runtime parallel to xEnvironment. WebViewScreen owns lifetime (registers on
+        // attach, clears on dispose). MainActivity.onPause/onResume drives webView.onPause /
+        // .onResume alongside the Wine equivalent so suspend semantics apply uniformly.
+        var activeWebView: android.webkit.WebView? = null
+
         var isOverlayPaused by mutableStateOf(false)
         @Volatile
         var isActivityInForeground: Boolean = true
+
+        // one-shot boot flag. true iff chromium < 100 or WebView package unavailable.
+        // WebViewScreen checks this at compose-entry and snackbars + pops back if true.
+        @Volatile
+        var html5RuntimeDisabled: Boolean = false
 
         // Active runtime suspend policy for the current in-game session.
         var activeSuspendPolicy: String = Container.SUSPEND_POLICY_MANUAL
@@ -244,6 +389,10 @@ class PluviaApp : SplitCompatApplication() {
             inputControlsManager = null
             touchpadView = null
             achievementWatcher = null
+            // null the WebView global too -- MainActivity's stale-keepAlive guard requires BOTH
+            // xEnvironment and activeWebView null, so leaving this set wedges keepAlive on the
+            // next same-process launch when an html5 session dies via this recovery path.
+            activeWebView = null
             ActiveGameRegistry.clear()
             SteamService.keepAlive = false
             SteamService.clearPlayingConflict()

@@ -695,7 +695,8 @@ private fun FolderPickerDialog(
                                     val rootDir = roots
                                         .find { it.label == currentRootLabel }
                                         ?.dir
-                                    if (parent != null && rootDir != null &&
+                                    if (parent != null &&
+                                        rootDir != null &&
                                         parent.absolutePath.startsWith(rootDir.absolutePath)
                                     ) {
                                         currentDir = parent

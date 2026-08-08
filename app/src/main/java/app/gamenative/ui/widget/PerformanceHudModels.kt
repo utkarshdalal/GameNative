@@ -12,6 +12,19 @@ internal enum class MetricId {
     CLOCK,
     CPU_TEMP,
     GPU_TEMP,
+
+    // power-user
+    FRAMETIME,
+    LOW_1PCT,
+    LOW_01PCT,
+    CPU_CORES,
+    THERMAL,
+    GPU_MEM,
+
+    // energy
+    ENERGY_SESSION,
+    MAH_USED,
+    AVG_POWER,
 }
 
 internal enum class GraphScaleMode {
@@ -22,6 +35,7 @@ internal enum class GraphScaleMode {
 internal data class BatterySnapshot(
     val percent: Int? = null,
     val powerWatts: Double? = null,
+    val currentMilliAmps: Double? = null,
     val runtimeText: String? = null,
     val temperatureC: Int? = null,
 )
@@ -41,6 +55,15 @@ internal data class HudSnapshot(
     val clock: String,
     val cpuTemp: String?,
     val gpuTemp: String?,
+    val frameTime: String? = null,
+    val low1Pct: String? = null,
+    val low01Pct: String? = null,
+    val cpuCores: String? = null,
+    val thermal: String? = null,
+    val gpuMem: String? = null,
+    val energySession: String? = null,
+    val mahUsed: String? = null,
+    val avgPower: String? = null,
 )
 
 internal data class HudAppearance(

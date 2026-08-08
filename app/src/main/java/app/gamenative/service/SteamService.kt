@@ -1,5 +1,6 @@
 package app.gamenative.service
 
+import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.callback.UserStatsCallback
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -62,6 +63,7 @@ import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.generateSteamApp
+import app.gamenative.utils.parseLaunchArguments
 import app.gamenative.workshop.WorkshopManager
 import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
@@ -252,6 +254,12 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var _steamUserStats: SteamUserStats? = null
     private var _steamFamilyGroups: FamilyGroups? = null
 
+    // tightly-scoped accessor for app.gamenative.html5.savesync.GreenworksCloudClient
+    // so the greenworks programmatic-cloud arm routes through the same SteamCloud handler
+    // SteamAutoCloud uses without globally loosening _steamCloud's `private`. internal scope
+    // = same module. returns null when not authenticated.
+    internal fun steamCloudHandler(): SteamCloud? = _steamCloud
+
     private var _loginResult: LoginResult = LoginResult.Failed
 
     private var licenses: List<License> = emptyList()
@@ -363,6 +371,23 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         /** Apps with a workshop download that was paused (cancelled) by the user. */
         val workshopPausedApps: MutableSet<Int> = ConcurrentHashMap.newKeySet()
+
+        // appId → list of launch arguments (one per launch entry, parallel-indexed with
+        // SteamApp.config.launch). populated at PICS sync from raw KeyValues. NOT persisted to
+        // Room (would require schema bump) -- repopulated on every login from the next PICS payload.
+        // (first consumer: OMORI's AES launch arg, passed by Steam as `--<32-hex>` to OMORI.exe.)
+        private val launchArgumentsCache: ConcurrentHashMap<Int, List<String>> = ConcurrentHashMap()
+
+        // returns the arguments string for the first launch entry whose configOS includes the given
+        // OS and whose executable ends with .exe. null when uncached or no match. caller strips the
+        // leading `--` if needed.
+        fun getLaunchArgumentsForOs(appId: Int, os: OS = OS.windows): String? {
+            val args = launchArgumentsCache[appId] ?: return null
+            val launches = getAppInfoOf(appId)?.config?.launch ?: return null
+            val idx = launches.indexOfFirst { os in it.configOS && it.executable.endsWith(".exe", ignoreCase = true) }
+            if (idx < 0 || idx >= args.size) return null
+            return args[idx].takeIf { it.isNotEmpty() }
+        }
 
         internal fun notifyDownloadStarted(appId: Int) {
             PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, true))
@@ -2408,6 +2433,9 @@ class SteamService : Service(), IChallengeUrlChanged {
             prefixToPath: (String) -> String,
             isOffline: Boolean = false,
             onProgress: ((message: String, progress: Float) -> Unit)? = null,
+            // HTML5 leveldb-backed titles opt in; see SteamAutoCloud.syncUserFiles doc.
+            propagateDeletions: Boolean = false,
+            applyRemoteTombstones: Boolean = false,
         ): Deferred<PostSyncInfo> = parentScope.async {
             if (isOffline || !isConnected) {
                 return@async PostSyncInfo(SyncResult.UpToDate)
@@ -2440,6 +2468,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                                             parentScope = parentScope,
                                             prefixToPath = prefixToPath,
                                             onProgress = onProgress,
+                                            propagateDeletions = propagateDeletions,
+                                            applyRemoteTombstones = applyRemoteTombstones,
                                         ).await()
 
                                         postSyncInfo?.let { info ->
@@ -2559,7 +2589,35 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        suspend fun closeApp(context: Context, appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
+        // DEV ONLY -- wipe all Steam Cloud files for appId. Irreversible.
+        suspend fun clearCloudForApp(appId: Int): SteamAutoCloud.ClearCloudResult = withContext(Dispatchers.IO) {
+            if (!tryAcquireSync(appId)) {
+                return@withContext SteamAutoCloud.ClearCloudResult(success = false, filesDeleted = 0, error = "sync in progress")
+            }
+            try {
+                val clientId = PrefManager.clientId
+                    ?: return@withContext SteamAutoCloud.ClearCloudResult(success = false, filesDeleted = 0, error = "no clientId")
+                val steamInstance = instance
+                    ?: return@withContext SteamAutoCloud.ClearCloudResult(success = false, filesDeleted = 0, error = "no steam instance")
+                val appInfo = getAppInfoOf(appId)
+                    ?: return@withContext SteamAutoCloud.ClearCloudResult(success = false, filesDeleted = 0, error = "no appInfo")
+                val steamCloud = steamInstance._steamCloud
+                    ?: return@withContext SteamAutoCloud.ClearCloudResult(success = false, filesDeleted = 0, error = "no steamCloud handler")
+
+                SteamAutoCloud.clearCloudForApp(appInfo, clientId, steamInstance, steamCloud)
+            } finally {
+                releaseSync(appId)
+            }
+        }
+
+        suspend fun closeApp(
+            context: Context,
+            appId: Int,
+            isOffline: Boolean,
+            propagateDeletions: Boolean = false,
+            applyRemoteTombstones: Boolean = false,
+            prefixToPath: (String) -> String,
+        ) = withContext(Dispatchers.IO) {
             async {
                 if (isOffline || !isConnected) {
                     instance?.addPendingSyncApp(appId)
@@ -2592,6 +2650,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                 steamCloud = steamCloud,
                                                 parentScope = this,
                                                 prefixToPath = prefixToPath,
+                                                propagateDeletions = propagateDeletions,
+                                                applyRemoteTombstones = applyRemoteTombstones,
                                             ).await()
 
                                             steamCloud.signalAppExitSyncDone(
@@ -3108,6 +3168,30 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        /**
+         * Public offline-safe wrapper around _steamUserStats.getUserStats: lets
+         * Html5AchievementSeed read user stats without touching the private _steamUserStats field.
+         * companion-scope access keeps visibility intact.
+         *
+         * returns null when:
+         *   - SteamService.instance is null (service not initialized)
+         *   - _steamUser is null OR steamID is null (not logged in)
+         *   - _steamUserStats is null (handler not yet registered)
+         *   - the JavaSteam call throws (offline / network error / disconnect during await)
+         *
+         * callers (Html5AchievementSeed.seed) treat null as "no fresh stats available; fall back
+         * to on-disk state". warn-level log so expected offline launches don't spam.
+         */
+        suspend fun fetchUserStatsForApp(appId: Int): UserStatsCallback? {
+            val service = instance ?: return null
+            val steamUser = service._steamUser ?: return null
+            val steamId = steamUser.steamID ?: return null
+            val handler = service._steamUserStats ?: return null
+            return runCatching { handler.getUserStats(appId, steamId).await() }
+                .onFailure { Timber.tag("SteamService").w(it, "fetchUserStatsForApp failed for appId=$appId") }
+                .getOrNull()
+        }
+
         suspend fun generateAchievements(appId: Int, configDirectory: String) {
             val steamUser = instance!!._steamUser!!
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
@@ -3247,9 +3331,31 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return
             }
 
+            // push only achievements Steam hasn't already recorded as earned.
+            // without this, close-time sync re-uploads stale local state and undoes user-initiated
+            // resets (Steam Support, SAM, ClearAchievement RPC, etc.) -- the local achievements.json
+            // still carries the prior earned set even after Steam wipes, and a naive additive push
+            // restores those bits. when the Steam fetch fails (offline at close), we fall back to
+            // the legacy additive push so we don't drop genuinely new offline-earned achievements.
+            val nameToBlockBit = app.gamenative.html5.shim.Html5AchievementSeed.readNameToBlockBitMap(configDirectory)
+            val steamUserStats = fetchUserStatsForApp(appId)
+            val steamEarnedNames: Set<String>? = if (steamUserStats != null && steamUserStats.result == EResult.OK && nameToBlockBit.isNotEmpty()) {
+                val (state, _) = app.gamenative.html5.shim.Html5AchievementSeed.decodeAchievementBlocks(steamUserStats, nameToBlockBit)
+                state.filterValues { it }.keys
+            } else {
+                null
+            }
+            val toPush = app.gamenative.html5.shim.Html5AchievementSeed.achievementsToPush(unlockedNames, steamEarnedNames)
+
             val hasStats = gseStatsDir != null
-            Timber.i("Found ${unlockedNames.size} earned achievements and ${if (hasStats) "stats" else "no stats"} for appId=$appId, syncing to Steam")
-            val result = storeAchievementUnlocks(appId, configDirectory, unlockedNames, gseStatsDir ?: gseSaveDirs.first().resolve("stats"))
+            Timber.i("syncAchievementsFromGoldberg: disk=${unlockedNames.size} steam=${steamEarnedNames?.size ?: "fetch-failed"} push=${toPush.size} stats=${if (hasStats) "yes" else "no"} appId=$appId")
+
+            if (toPush.isEmpty() && !hasStats) {
+                Timber.i("Nothing to push for appId=$appId (Steam already has all ${unlockedNames.size} disk-earned achievements)")
+                return
+            }
+
+            val result = storeAchievementUnlocks(appId, configDirectory, toPush, gseStatsDir ?: gseSaveDirs.first().resolve("stats"))
             result.onSuccess {
                 Timber.i("Successfully synced achievements and stats to Steam for appId=$appId")
             }.onFailure { e ->
@@ -3302,24 +3408,16 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
-                // Seed with current achievement bitmasks from server
-                for (block in userStats.achievementBlocks ?: emptyList()) {
-                    val blockId = (block.achievementId as? Number)?.toInt() ?: continue
-                    var bitmask = 0
-                    val unlockTimes = block.unlockTime ?: emptyList()
-                    for (i in unlockTimes.indices) {
-                        val t = unlockTimes[i]
-                        if ((t as? Number)?.toLong() != 0L) bitmask = bitmask or (1 shl i)
-                    }
-                    allStats[blockId] = bitmask
-                }
-
-                // Merge in newly unlocked achievements
-                for (name in unlockedNames) {
-                    val (blockId, bitIndex) = nameToBlockBit[name] ?: continue
-                    val current = allStats.getOrDefault(blockId, 0)
-                    allStats[blockId] = current or (1 shl bitIndex)
-                }
+                // seed from the LIVE stat bitmasks + OR-in newly unlocked. seeding from live
+                // values (NOT achievementBlocks.unlockTime[], which Steam never clears on reset)
+                // is what lets user-initiated resets survive close-time sync. see
+                // Html5AchievementSeed.encodeUnlockBitmasks for the full rationale.
+                val liveStats = userStats.stats.associate { it.statId to it.statValue }
+                allStats.putAll(
+                    app.gamenative.html5.shim.Html5AchievementSeed.encodeUnlockBitmasks(
+                        liveStats, nameToBlockBit, unlockedNames,
+                    ),
+                )
             }
 
             // Merge GSE stat files using schema from getUserStats for name->id mapping
@@ -4393,6 +4491,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                             ensureActive()
                             val steamAppsMap = picsCallback.apps.values.mapNotNull { app ->
+                                // populate launch-args cache on EVERY pass (not gated by changeNumber)
+                                // so a warm login still has args available even when PICS data is
+                                // identical to the persisted Room snapshot.
+                                launchArgumentsCache[app.id] = app.keyValues.parseLaunchArguments()
+
                                 val appFromDb = appDao.findApp(app.id)
                                 val packageId = appFromDb?.packageId ?: INVALID_PKG_ID
                                 val packageFromDb = if (packageId != INVALID_PKG_ID) licenseDao.findLicense(packageId) else null
