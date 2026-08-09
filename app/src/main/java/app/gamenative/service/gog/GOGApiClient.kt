@@ -3,6 +3,7 @@ package app.gamenative.service.gog
 import android.content.Context
 import app.gamenative.data.GOGGame
 import app.gamenative.data.GOGCredentials
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -218,6 +219,8 @@ object GOGApiClient {
             }
             Timber.tag("GOG").i("Successfully fetched ${mergedIds.size} hidden GOG game IDs")
             return@withContext Result.success(mergedIds)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Exception fetching hidden GOG game IDs: ${e.message}")
             return@withContext Result.failure(e)
@@ -271,6 +274,8 @@ object GOGApiClient {
 
             Timber.tag("GOG").d("Fetched ${hiddenIds.size} hidden GOG game IDs from $baseUrl")
             Result.success(hiddenIds)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }

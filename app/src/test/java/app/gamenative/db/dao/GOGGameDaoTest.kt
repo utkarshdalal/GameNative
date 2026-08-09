@@ -76,6 +76,21 @@ class GOGGameDaoTest {
     }
 
     @Test
+    fun upsertPreservingHiddenKeepsExistingHiddenFlag() = runBlocking {
+        dao.insert(game("1", hidden = true))
+
+        dao.upsertPreservingHidden(game("1", hidden = false).copy(title = "Updated"))
+
+        val existing = dao.getById("1")!!
+        assertTrue(existing.hidden)
+        assertEquals("Updated", existing.title)
+
+        // New rows keep the hidden value they carry.
+        dao.upsertPreservingHidden(game("2", hidden = true))
+        assertTrue(dao.getById("2")!!.hidden)
+    }
+
+    @Test
     fun getAllEmitsUpdatedHiddenRows() = runBlocking {
         dao.insertAll(listOf(game("1"), game("2")))
 

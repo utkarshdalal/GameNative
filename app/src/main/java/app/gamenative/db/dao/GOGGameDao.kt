@@ -28,6 +28,16 @@ interface GOGGameDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(games: List<GOGGame>)
 
+    /**
+     * Inserts [game], keeping the existing row's hidden flag when the id already exists so a
+     * single-game refresh cannot reset hidden state.
+     */
+    @Transaction
+    suspend fun upsertPreservingHidden(game: GOGGame) {
+        val existing = getById(game.id)
+        insert(if (existing != null) game.copy(hidden = existing.hidden) else game)
+    }
+
     @Update
     suspend fun update(game: GOGGame)
 

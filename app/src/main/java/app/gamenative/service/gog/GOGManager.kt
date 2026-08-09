@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -46,18 +47,15 @@ data class GameSizeInfo(
  * Tracks hidden-ID refresh generations so a slower, older response cannot overwrite a newer one.
  */
 internal class HiddenRefreshCoordinator {
-    private val counter = AtomicLong(0)
-    @Volatile private var latestGeneration = 0L
+    // A single atomic counter doubles as both the generation and the latest marker: incrementAndGet
+    // atomically assigns and publishes, so latestGeneration can never regress.
+    private val latestGeneration = AtomicLong(0)
 
     /** Starts a refresh, marks it as the latest, and returns its generation. */
-    fun begin(): Long {
-        val generation = counter.incrementAndGet()
-        latestGeneration = generation
-        return generation
-    }
+    fun begin(): Long = latestGeneration.incrementAndGet()
 
     /** True when [generation] is still the latest refresh (nothing newer has started). */
-    fun isLatest(generation: Long): Boolean = generation == latestGeneration
+    fun isLatest(generation: Long): Boolean = generation == latestGeneration.get()
 }
 
 /**
@@ -125,7 +123,9 @@ class GOGManager @Inject constructor(
 
     suspend fun insertGame(game: GOGGame) {
         withContext(Dispatchers.IO) {
-            gogGameDao.insert(game)
+            // Preserve the existing hidden flag when the row already exists, so a single-game
+            // refresh cannot reset hidden state to false.
+            gogGameDao.upsertPreservingHidden(game)
         }
     }
 
@@ -218,6 +218,8 @@ class GOGManager @Inject constructor(
                 try {
                     gogGameDao.applyHiddenFlags(hiddenIds)
                     hiddenIds
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Timber.tag("GOG").e(e, "Failed to persist hidden GOG game IDs; keeping existing hidden flags")
                     null
