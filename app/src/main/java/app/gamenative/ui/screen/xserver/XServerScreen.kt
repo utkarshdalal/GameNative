@@ -14,6 +14,7 @@ import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import android.view.View.OnLayoutChangeListener
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -272,6 +273,7 @@ private data class XServerViewReleaseBinding(
     val xServerView: XServerRendererView,
     val windowModificationListener: WindowManager.OnWindowModificationListener,
     var gameHost: FrameLayout? = null,
+    var gameHostLayoutListener: OnLayoutChangeListener? = null,
     val screenWidth: Int,
 )
 
@@ -336,6 +338,27 @@ internal fun portraitGameHostHeight(
     val (renderWidth, renderHeight) = parseScreenSize(screenSize) ?: return ViewGroup.LayoutParams.MATCH_PARENT
     val aspectHeight = ceil(screenWidth * (renderHeight.toFloat() / renderWidth.toFloat())).toInt()
     return if (availableHeight > 0) minOf(aspectHeight, availableHeight) else aspectHeight
+}
+
+private fun updatePortraitGameHostHeight(
+    gameHost: View,
+    isPortrait: Boolean,
+    portraitRenderAtTop: Boolean,
+    screenWidth: Int,
+    screenSize: String,
+) {
+    val params = gameHost.layoutParams ?: return
+    val height = portraitGameHostHeight(
+        isPortrait,
+        portraitRenderAtTop,
+        screenWidth,
+        (gameHost.parent as? View)?.height ?: 0,
+        screenSize,
+    )
+    if (params.height != height) {
+        params.height = height
+        gameHost.layoutParams = params
+    }
 }
 
 private fun extractExecutableBasename(path: String): String {
@@ -2256,7 +2279,29 @@ fun XServerScreen(
             }
             frameLayout.addView(gameHost)
             gameHost.addView(xServerView as View)
-            (mainRoot.tag as? XServerViewReleaseBinding)?.gameHost = gameHost
+            (mainRoot.tag as? XServerViewReleaseBinding)?.let { binding ->
+                binding.gameHost = gameHost
+                val layoutListener = OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                    updatePortraitGameHostHeight(
+                        gameHost,
+                        isPortrait,
+                        container.isPortraitRenderAtTop,
+                        screenWidth,
+                        container.screenSize,
+                    )
+                }
+                frameLayout.addOnLayoutChangeListener(layoutListener)
+                binding.gameHostLayoutListener = layoutListener
+                frameLayout.post {
+                    updatePortraitGameHostHeight(
+                        gameHost,
+                        isPortrait,
+                        container.isPortraitRenderAtTop,
+                        screenWidth,
+                        container.screenSize,
+                    )
+                }
+            }
             val touchpadHost = if (isPortrait && container.isPortraitRenderAtTop) gameHost else frameLayout
             touchpadHost.addView(PluviaApp.touchpadView)
 
@@ -2490,18 +2535,13 @@ fun XServerScreen(
             val binding = view.tag as? XServerViewReleaseBinding
             val gameHost = binding?.gameHost
             if (binding != null && gameHost != null) {
-                val params = gameHost.layoutParams
-                val height = portraitGameHostHeight(
+                updatePortraitGameHostHeight(
+                    gameHost,
                     isPortrait,
                     container.isPortraitRenderAtTop,
                     binding.screenWidth,
-                    (gameHost.parent as? View)?.height ?: 0,
                     container.screenSize,
                 )
-                if (params.height != height) {
-                    params.height = height
-                    gameHost.layoutParams = params
-                }
             }
         },
         onRelease = { view ->
@@ -2515,6 +2555,9 @@ fun XServerScreen(
                 // Remove the WindowManager listener associated with the released AndroidView.
                 binding.xServerView.renderer.setOnFrameRenderedListener(null)
                 binding.xServerView.getxServer().windowManager.removeOnWindowModificationListener(binding.windowModificationListener)
+                binding.gameHostLayoutListener?.let { listener ->
+                    (binding.gameHost?.parent as? View)?.removeOnLayoutChangeListener(listener)
+                }
                 if (PluviaApp.xServerView === binding.xServerView) {
                     PluviaApp.xServerView = null
                 }
