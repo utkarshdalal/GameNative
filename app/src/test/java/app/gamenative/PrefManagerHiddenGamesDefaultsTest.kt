@@ -9,7 +9,8 @@ class PrefManagerHiddenGamesDefaultsTest {
 
     @Test
     fun showHiddenGamesByDefaultDefaultsToFalse() {
-        installFakePrefManager(FakeDataStore())
-        assertFalse(PrefManager.showHiddenGamesByDefault)
+        installFakePrefManager(FakeDataStore()).use {
+            assertFalse(PrefManager.showHiddenGamesByDefault)
+        }
     }
 }

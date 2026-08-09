@@ -78,4 +78,25 @@ class SteamCollectionFilterTest {
     @Test fun collectionCountsAreEmptyWhenCollectionsNotLoaded() {
         assertEquals(emptyMap<String, Int>(), SteamCollectionFilter.collectionCounts(null, listOf(440)))
     }
+
+    @Test fun visibleCollectionCountsKeepHiddenCollectionFullButExcludeHiddenElsewhere() {
+        val hidden = SteamCollection(SteamCollection.ID_HIDDEN, "Hidden", setOf(440, 570))
+        val favorites = SteamCollection("fav", "Favorites", setOf(440, 570, 730))
+
+        val counts = SteamCollectionFilter.visibleCollectionCounts(
+            collections = listOf(hidden, favorites),
+            visibleAppIds = listOf(440, 730), // 570 is hidden and filtered out by default
+            preHiddenAppIds = listOf(440, 570, 730),
+        )
+
+        assertEquals(2, counts[SteamCollection.ID_HIDDEN]) // full count, includes the hidden game
+        assertEquals(2, counts["fav"]) // excludes the hidden game, so the badge matches the list
+    }
+
+    @Test fun visibleCollectionCountsAreEmptyWhenCollectionsNotLoaded() {
+        assertEquals(
+            emptyMap<String, Int>(),
+            SteamCollectionFilter.visibleCollectionCounts(null, listOf(440), listOf(440)),
+        )
+    }
 }

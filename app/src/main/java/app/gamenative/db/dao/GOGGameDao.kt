@@ -16,6 +16,12 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface GOGGameDao {
 
+    // SQLite (and Room's expanded IN lists) bind each entry separately; Android's default bind
+    // limit is 999, so chunk large hidden sets to stay well under it.
+    private companion object {
+        const val MAX_HIDDEN_BIND_PARAMS = 500
+    }
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(game: GOGGame)
 
@@ -78,12 +84,15 @@ interface GOGGameDao {
 
     /**
      * Replaces the stored hidden state with [hiddenIds]: every GOG row is cleared first, then the
-     * listed product IDs are marked hidden.
+     * listed product IDs are marked hidden. Large sets are applied in chunks to stay under SQLite's
+     * bind-variable limit.
      */
     @Transaction
     suspend fun applyHiddenFlags(hiddenIds: Collection<String>) {
         clearHiddenFlags()
-        markHidden(hiddenIds)
+        hiddenIds.chunked(MAX_HIDDEN_BIND_PARAMS).forEach { chunk ->
+            markHidden(chunk)
+        }
     }
 
     /**

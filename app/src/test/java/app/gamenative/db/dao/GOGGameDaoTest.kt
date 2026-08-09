@@ -86,4 +86,14 @@ class GOGGameDaoTest {
         assertFalse(updated.first { it.id == "1" }.hidden)
         assertTrue(updated.first { it.id == "2" }.hidden)
     }
+
+    @Test
+    fun applyHiddenFlagsHandlesMoreThanSqliteBindLimit() = runBlocking {
+        val count = 1001
+        dao.insertAll((1..count).map { game(it.toString()) })
+
+        dao.applyHiddenFlags((1..count).map { it.toString() })
+
+        assertEquals(count, dao.getAllAsList().count { it.hidden })
+    }
 }

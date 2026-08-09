@@ -203,20 +203,19 @@ object GOGApiClient {
             // The embed host returned no hidden products (or failed). Retry on www before
             // concluding the account has none, because hiddenFlag handling can differ between hosts.
             val fallbackResult = fetchHiddenGameIdsFrom(credentials, "https://www.gog.com")
+            if (fallbackResult.isFailure) {
+                // The embed host did not confirm the hidden set and the fallback cannot confirm it
+                // either; return failure so callers keep their previous cache instead of clearing it.
+                val error = fallbackResult.exceptionOrNull()
+                    ?: Exception("Failed to fetch hidden GOG game IDs")
+                Timber.tag("GOG").w(error, "Hidden fallback failed; keeping previous hidden set")
+                return@withContext Result.failure(error)
+            }
+
             val mergedIds = buildSet {
                 primaryIds?.let { addAll(it) }
                 fallbackResult.getOrNull()?.let { addAll(it) }
             }
-            if (primaryResult.isFailure && fallbackResult.isFailure) {
-                val error = primaryResult.exceptionOrNull()
-                    ?: Exception("Failed to fetch hidden GOG game IDs")
-                Timber.tag("GOG").e(error, "Failed to fetch hidden GOG game IDs from both hosts")
-                return@withContext Result.failure(error)
-            }
-            if (fallbackResult.isFailure) {
-                Timber.tag("GOG").w(fallbackResult.exceptionOrNull(), "www fallback failed; using embed result")
-            }
-
             Timber.tag("GOG").i("Successfully fetched ${mergedIds.size} hidden GOG game IDs")
             return@withContext Result.success(mergedIds)
         } catch (e: Exception) {

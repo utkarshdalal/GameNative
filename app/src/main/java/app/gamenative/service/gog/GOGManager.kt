@@ -26,6 +26,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONObject
@@ -59,6 +61,10 @@ class GOGManager @Inject constructor(
     private val gogGameDao: GOGGameDao,
     @ApplicationContext private val context: Context,
 ) {
+
+    // Serializes hidden-flag refreshes against logout's clear so a refresh that started before
+    // logout cannot restore the previous account's flags afterwards.
+    private val hiddenRefreshMutex = Mutex()
 
     // Thread-safe cache for download sizes
     private val downloadSizeCache = ConcurrentHashMap<String, String>()
@@ -162,24 +168,33 @@ class GOGManager @Inject constructor(
      * authenticated (callers can use it to stamp newly inserted rows).
      */
     suspend fun refreshHiddenIds(): Set<String>? {
-        if (!GOGAuthManager.hasStoredCredentials(context)) return null
-        val hiddenIdsResult = GOGApiClient.getHiddenGameIds(context)
-        if (hiddenIdsResult.isSuccess) {
-            val hiddenIds = hiddenIdsResult.getOrNull() ?: emptySet()
-            gogGameDao.applyHiddenFlags(hiddenIds)
-            return hiddenIds
-        } else {
-            Timber.tag("GOG").w(
-                hiddenIdsResult.exceptionOrNull(),
-                "Failed to fetch hidden GOG game IDs; keeping existing hidden flags",
-            )
-            return null
+        return hiddenRefreshMutex.withLock {
+            if (!GOGAuthManager.hasStoredCredentials(context)) return@withLock null
+            val hiddenIdsResult = GOGApiClient.getHiddenGameIds(context)
+            if (hiddenIdsResult.isSuccess) {
+                val hiddenIds = hiddenIdsResult.getOrNull() ?: emptySet()
+                try {
+                    gogGameDao.applyHiddenFlags(hiddenIds)
+                    hiddenIds
+                } catch (e: Exception) {
+                    Timber.tag("GOG").e(e, "Failed to persist hidden GOG game IDs; keeping existing hidden flags")
+                    null
+                }
+            } else {
+                Timber.tag("GOG").w(
+                    hiddenIdsResult.exceptionOrNull(),
+                    "Failed to fetch hidden GOG game IDs; keeping existing hidden flags",
+                )
+                null
+            }
         }
     }
 
     /** Clears the hidden flag on every GOG row (used when the logged-out account's metadata is removed). */
     suspend fun clearHiddenFlags() {
-        gogGameDao.clearHiddenFlags()
+        hiddenRefreshMutex.withLock {
+            gogGameDao.clearHiddenFlags()
+        }
     }
 
     /**

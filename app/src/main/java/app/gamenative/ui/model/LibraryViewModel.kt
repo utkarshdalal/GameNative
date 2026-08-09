@@ -650,15 +650,6 @@ class LibraryViewModel @Inject constructor(
                 }
                 .toList()
 
-            // Per-collection counts: computed from the owner/type/search-filtered set (independent of the
-            // current collection selection) so each collection shows how many games it would contribute.
-            // Kept pre-hidden so the Hidden collection keeps its full count while hidden games are
-            // excluded from the visible list.
-            val steamCollectionCounts: Map<String, Int> = SteamCollectionFilter.collectionCounts(
-                collections = steamCollections,
-                appIds = steamOwnerTypeFiltered.map { it.id },
-            )
-
             // Apply the Steam collection filter — union/OR, fail-open (see SteamCollectionFilter).
             // Resolve the allowed app-id set once for the whole pass instead of per app.
             val allowedSteamAppIds = SteamCollectionFilter.allowedAppIds(
@@ -672,6 +663,25 @@ class LibraryViewModel @Inject constructor(
                 ?.appIds
                 ?: emptySet()
             val hiddenCollectionSelected = currentState.selectedSteamCollectionIds.contains(SteamCollection.ID_HIDDEN)
+
+            // Per-collection counts: the Hidden collection keeps its full pre-hidden count (so it
+            // stays discoverable), while every other collection counts only visible games so its
+            // badge matches what is rendered when selected.
+            val preHiddenAppIds = steamOwnerTypeFiltered.map { it.id }
+            val visibleAppIds = preHiddenAppIds.filter { appId ->
+                HiddenGameFilter.passesSteam(
+                    appId = appId,
+                    hiddenAppIds = hiddenSteamAppIds,
+                    showHiddenByDefault = showHiddenGamesByDefault,
+                    hiddenCollectionSelected = hiddenCollectionSelected,
+                )
+            }
+            val steamCollectionCounts: Map<String, Int> = SteamCollectionFilter.visibleCollectionCounts(
+                collections = steamCollections,
+                visibleAppIds = visibleAppIds,
+                preHiddenAppIds = preHiddenAppIds,
+            )
+
             val steamFilteredBeforeCompatibility: List<SteamApp> =
                 (
                     if (allowedSteamAppIds == null) {
