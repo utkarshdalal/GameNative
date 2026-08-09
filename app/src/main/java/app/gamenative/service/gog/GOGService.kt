@@ -801,6 +801,8 @@ class GOGService : Service() {
                         // Mark that initial sync has been performed
                         hasPerformedInitialSync = true
                     }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "[GOGService]: Exception starting background sync")
                 } finally {

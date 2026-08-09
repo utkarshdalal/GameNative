@@ -62,7 +62,13 @@ class GOGGameDaoTest {
 
     @Test
     fun upsertPreservingInstallStatusPreservesHiddenAndInstallState() = runBlocking {
-        dao.insert(game("1", hidden = true).copy(isInstalled = true, installPath = "/games/g1"))
+        dao.insert(
+            game("1", hidden = true).copy(
+                isInstalled = true,
+                installPath = "/games/g1",
+                verticalCoverUrl = "https://images.gog.com/cover.webp",
+            )
+        )
 
         dao.upsertPreservingInstallStatus(listOf(game("1", hidden = false).copy(title = "Updated")))
 
@@ -70,6 +76,7 @@ class GOGGameDaoTest {
         assertTrue(existing.hidden)
         assertTrue(existing.isInstalled)
         assertEquals("/games/g1", existing.installPath)
+        assertEquals("https://images.gog.com/cover.webp", existing.verticalCoverUrl)
         assertEquals("Updated", existing.title)
 
         // New rows are inserted with the values they carry.

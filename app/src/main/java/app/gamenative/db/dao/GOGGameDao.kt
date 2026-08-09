@@ -111,6 +111,7 @@ interface GOGGameDao {
                     installSize = existingGame.installSize,
                     lastPlayed = existingGame.lastPlayed,
                     playTime = existingGame.playTime,
+                    verticalCoverUrl = existingGame.verticalCoverUrl,
                     hidden = existingGame.hidden,
                 )
                 insert(gameToInsert)
