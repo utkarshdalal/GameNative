@@ -313,6 +313,9 @@ private fun normalizeProcessName(name: String): String {
     return if (lower.endsWith(".exe")) lower.removeSuffix(".exe") else lower
 }
 
+private fun portraitGameHostHeight(isPortrait: Boolean, portraitRenderAtTop: Boolean, controlsHeightPortrait: Int): Int =
+    if (isPortrait && portraitRenderAtTop) controlsHeightPortrait else ViewGroup.LayoutParams.MATCH_PARENT
+
 private fun extractExecutableBasename(path: String): String {
     if (path.isBlank()) return ""
     return normalizeProcessName(path)
@@ -2218,12 +2221,10 @@ fun XServerScreen(
             }
             PluviaApp.xServerView = xServerView
 
-            val gameHostHeight =
-                if (isPortrait && portraitRenderAtTop) controlsHeightPortrait else ViewGroup.LayoutParams.MATCH_PARENT
             val gameHost = FrameLayout(context).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    gameHostHeight,
+                    portraitGameHostHeight(isPortrait, portraitRenderAtTop, controlsHeightPortrait),
                 )
             }
             frameLayout.addView(gameHost)
