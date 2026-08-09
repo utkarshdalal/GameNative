@@ -654,6 +654,8 @@
     <string name="show_fps">显示帧率</string>
     <string name="portrait_mode">竖屏模式</string>
     <string name="portrait_mode_description">适用于 8BitDo FlipPad/GameSir Pocket Taco 类型控制器</string>
+    <string name="portrait_render_at_top">将游戏画面置于顶部</string>
+    <string name="portrait_render_at_top_description">将游戏画面放在屏幕顶部、控制器上方</string>
     <string name="remove_driver_confirmation">确定要移除驱动程序“%s”？此操作无法撤销</string>
 
     <!-- 容器配置：Steam 集成 -->

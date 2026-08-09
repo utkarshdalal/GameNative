@@ -1688,9 +1688,10 @@ fun XServerScreen(
     }
 
     val isPortrait = container.isPortraitMode
+    val portraitRenderAtTop = container.isPortraitRenderAtTop
     // var launchedView by rememberSaveable { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxSize()) {
-        key(isPortrait) {
+        key(isPortrait, portraitRenderAtTop) {
         AndroidView(
         modifier = Modifier
             .fillMaxSize()
@@ -2217,10 +2218,12 @@ fun XServerScreen(
             }
             PluviaApp.xServerView = xServerView
 
+            val gameHostHeight =
+                if (isPortrait && portraitRenderAtTop) controlsHeightPortrait else ViewGroup.LayoutParams.MATCH_PARENT
             val gameHost = FrameLayout(context).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    gameHostHeight,
                 )
             }
             frameLayout.addView(gameHost)

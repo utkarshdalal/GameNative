@@ -166,6 +166,9 @@ public class Container {
 
     private boolean portraitMode = false;
 
+    // In portrait controller mode, constrain the game surface to the top 16:9 region.
+    private boolean portraitRenderAtTop = false;
+
     private String containerVariant = DEFAULT_VARIANT;
 
     public String getGraphicsDriverVersion() {
@@ -763,6 +766,7 @@ public class Container {
             // Process suspend policy setting
             data.put("suspendPolicy", suspendPolicy);
             data.put("portraitMode", portraitMode);
+            data.put("portraitRenderAtTop", portraitRenderAtTop);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
@@ -983,6 +987,9 @@ public class Container {
                 case "portraitMode":
                     this.portraitMode = data.getBoolean(key);
                     break;
+                case "portraitRenderAtTop":
+                    this.portraitRenderAtTop = data.getBoolean(key);
+                    break;
             }
         }
 
@@ -1124,6 +1131,14 @@ public class Container {
 
     public void setPortraitMode(boolean portraitMode) {
         this.portraitMode = portraitMode;
+    }
+
+    public boolean isPortraitRenderAtTop() {
+        return portraitRenderAtTop;
+    }
+
+    public void setPortraitRenderAtTop(boolean portraitRenderAtTop) {
+        this.portraitRenderAtTop = portraitRenderAtTop;
     }
 
     public String getContainerJson() {

@@ -675,6 +675,8 @@
     <string name="show_fps">Pokaż FPS</string>
     <string name="portrait_mode">Tryb pionowy</string>
     <string name="portrait_mode_description">Dla kontrolerów typu 8BitDo FlipPad/GameSir Pocket Taco</string>
+    <string name="portrait_render_at_top">Wyrównaj ekran gry do góry</string>
+    <string name="portrait_render_at_top_description">Umieszcza ekran gry u góry ekranu, nad kontrolerem</string>
     <string name="remove_driver_confirmation">Czy na pewno chcesz usunąć sterownik "%s"? Tej operacji nie można cofnąć</string>
 
     <!-- Container Configuration: Steam Integration -->

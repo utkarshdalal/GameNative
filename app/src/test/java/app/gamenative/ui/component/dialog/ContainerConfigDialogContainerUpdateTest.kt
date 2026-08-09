@@ -671,5 +671,18 @@ class ContainerConfigDialogContainerUpdateTest {
 
         assertEquals(Container.STARTUP_SELECTION_AGGRESSIVE, container.startupSelection)
     }
+
+    @Test
+    fun portraitTopAlignedRendering_isAppliedCorrectly() {
+        val containerData = ContainerData(
+            portraitMode = true,
+            portraitRenderAtTop = true,
+        )
+
+        ContainerUtils.applyToContainer(context, container, containerData, saveToDisk = false)
+
+        assertTrue(container.isPortraitMode)
+        assertTrue(container.isPortraitRenderAtTop)
+    }
 }
 

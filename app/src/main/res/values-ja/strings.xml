@@ -677,6 +677,8 @@
     <string name="show_fps">FPS を表示</string>
     <string name="portrait_mode">ポートレートモード</string>
     <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco タイプ コントローラー用</string>
+    <string name="portrait_render_at_top">ゲーム画面を上部に配置</string>
+    <string name="portrait_render_at_top_description">ゲーム画面をコントローラーの上、画面上部に配置します</string>
     <string name="remove_driver_confirmation">ドライバー「%s」を削除してもよろしいですか?これは元に戻すことはできません</string>
 
     <!-- Container Configuration: Steam Integration -->

@@ -666,6 +666,8 @@
     <string name="show_fps">Mostra FPS</string>
     <string name="portrait_mode">Modalità verticale</string>
     <string name="portrait_mode_description">Per controller tipo 8BitDo FlipPad/GameSir Pocket Taco</string>
+    <string name="portrait_render_at_top">Allinea la visualizzazione del gioco in alto</string>
+    <string name="portrait_render_at_top_description">Posiziona la visualizzazione del gioco nella parte superiore dello schermo sopra il controller</string>
     <string name="remove_driver_confirmation">Sei sicuro di voler rimuovere il driver "%s"? Questo non può essere annullato</string>
 
     <!-- Container Configuration: Steam Integration -->

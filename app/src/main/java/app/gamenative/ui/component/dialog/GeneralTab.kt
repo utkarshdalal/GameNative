@@ -314,6 +314,15 @@ fun GeneralTabContent(
             state = config.portraitMode,
             onCheckedChange = { state.config.value = config.copy(portraitMode = it) },
         )
+        if (config.portraitMode) {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.portrait_render_at_top)) },
+                subtitle = { Text(text = stringResource(R.string.portrait_render_at_top_description)) },
+                state = config.portraitRenderAtTop,
+                onCheckedChange = { state.config.value = config.copy(portraitRenderAtTop = it) },
+            )
+        }
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.audio_driver)) },
