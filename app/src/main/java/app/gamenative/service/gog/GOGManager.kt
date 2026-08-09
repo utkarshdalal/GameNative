@@ -22,6 +22,7 @@ import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +41,24 @@ data class GameSizeInfo(
     val downloadSize: Long,
     val diskSize: Long,
 )
+
+/**
+ * Tracks hidden-ID refresh generations so a slower, older response cannot overwrite a newer one.
+ */
+internal class HiddenRefreshCoordinator {
+    private val counter = AtomicLong(0)
+    @Volatile private var latestGeneration = 0L
+
+    /** Starts a refresh, marks it as the latest, and returns its generation. */
+    fun begin(): Long {
+        val generation = counter.incrementAndGet()
+        latestGeneration = generation
+        return generation
+    }
+
+    /** True when [generation] is still the latest refresh (nothing newer has started). */
+    fun isLatest(generation: Long): Boolean = generation == latestGeneration
+}
 
 /**
  * Unified manager for GOG game and library operations.
@@ -65,6 +84,8 @@ class GOGManager @Inject constructor(
     // Serializes hidden-flag refreshes against logout's clear so a refresh that started before
     // logout cannot restore the previous account's flags afterwards.
     private val hiddenRefreshMutex = Mutex()
+
+    private val hiddenRefreshCoordinator = HiddenRefreshCoordinator()
 
     // Thread-safe cache for download sizes
     private val downloadSizeCache = ConcurrentHashMap<String, String>()
@@ -170,6 +191,7 @@ class GOGManager @Inject constructor(
     suspend fun refreshHiddenIds(): Set<String>? {
         // Fetch outside the lock so logout's clearHiddenFlags() is never stalled by long network
         // work. The lock is held only for the credential re-check + DB write.
+        val generation = hiddenRefreshCoordinator.begin()
         val fetchUserId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
             ?: return null
         val hiddenIdsResult = GOGApiClient.getHiddenGameIds(context)
@@ -186,7 +208,10 @@ class GOGManager @Inject constructor(
             // Re-validate the account after the fetch: if logout (or an account switch) happened
             // while we were fetching, do not write the old account's flags.
             val currentUserId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
-            if (currentUserId != fetchUserId) {
+            if (!hiddenRefreshCoordinator.isLatest(generation)) {
+                Timber.tag("GOG").w("Skipping hidden-flag persist: superseded by a newer refresh")
+                null
+            } else if (currentUserId != fetchUserId) {
                 Timber.tag("GOG").w("Skipping hidden-flag persist: GOG account changed during fetch")
                 null
             } else {

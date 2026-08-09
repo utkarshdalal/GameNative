@@ -1,10 +1,8 @@
 package app.gamenative.utils
 
-import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
-import androidx.test.core.app.ApplicationProvider
 import app.gamenative.PrefManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,9 +51,6 @@ class PrefManagerTestScope(
  * fake from leaking into other tests in the shared JVM.
  */
 fun installFakePrefManager(fake: FakeDataStore): PrefManagerTestScope {
-    val context = ApplicationProvider.getApplicationContext<Context>()
-    PrefManager.init(context)
-
     val dataStoreField = PrefManager::class.java.getDeclaredField("dataStore")
     dataStoreField.isAccessible = true
     val originalStore = dataStoreField.get(PrefManager)
