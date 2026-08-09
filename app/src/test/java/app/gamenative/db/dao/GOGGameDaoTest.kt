@@ -61,32 +61,19 @@ class GOGGameDaoTest {
     }
 
     @Test
-    fun upsertPreservingInstallStatusPreservesHiddenFlag() = runBlocking {
-        dao.insert(game("1", hidden = true))
+    fun upsertPreservingInstallStatusPreservesHiddenAndInstallState() = runBlocking {
+        dao.insert(game("1", hidden = true).copy(isInstalled = true, installPath = "/games/g1"))
 
         dao.upsertPreservingInstallStatus(listOf(game("1", hidden = false).copy(title = "Updated")))
 
         val existing = dao.getById("1")!!
         assertTrue(existing.hidden)
+        assertTrue(existing.isInstalled)
+        assertEquals("/games/g1", existing.installPath)
         assertEquals("Updated", existing.title)
 
-        // New rows are inserted with the hidden value they carry.
+        // New rows are inserted with the values they carry.
         dao.upsertPreservingInstallStatus(listOf(game("2", hidden = true)))
-        assertTrue(dao.getById("2")!!.hidden)
-    }
-
-    @Test
-    fun upsertPreservingHiddenKeepsExistingHiddenFlag() = runBlocking {
-        dao.insert(game("1", hidden = true))
-
-        dao.upsertPreservingHidden(game("1", hidden = false).copy(title = "Updated"))
-
-        val existing = dao.getById("1")!!
-        assertTrue(existing.hidden)
-        assertEquals("Updated", existing.title)
-
-        // New rows keep the hidden value they carry.
-        dao.upsertPreservingHidden(game("2", hidden = true))
         assertTrue(dao.getById("2")!!.hidden)
     }
 

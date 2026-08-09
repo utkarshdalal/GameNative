@@ -44,18 +44,23 @@ data class GameSizeInfo(
 )
 
 /**
- * Tracks hidden-ID refresh generations so a slower, older response cannot overwrite a newer one.
+ * Tracks hidden-ID refresh generations so a slower, older response cannot overwrite a newer
+ * committed one, while a failed newer attempt does not block an older successful response.
  */
 internal class HiddenRefreshCoordinator {
-    // A single atomic counter doubles as both the generation and the latest marker: incrementAndGet
-    // atomically assigns and publishes, so latestGeneration can never regress.
-    private val latestGeneration = AtomicLong(0)
+    private val counter = AtomicLong(0)
+    private val latestCommittedGeneration = AtomicLong(0)
 
-    /** Starts a refresh, marks it as the latest, and returns its generation. */
-    fun begin(): Long = latestGeneration.incrementAndGet()
+    /** Starts a refresh and returns its generation. */
+    fun begin(): Long = counter.incrementAndGet()
 
-    /** True when [generation] is still the latest refresh (nothing newer has started). */
-    fun isLatest(generation: Long): Boolean = generation == latestGeneration.get()
+    /** True if [generation] is newer than the newest refresh that has committed successfully. */
+    fun canCommit(generation: Long): Boolean = generation > latestCommittedGeneration.get()
+
+    /** Records [generation] as the newest committed refresh (monotonic). */
+    fun markCommitted(generation: Long) {
+        latestCommittedGeneration.updateAndGet { current -> maxOf(current, generation) }
+    }
 }
 
 /**
@@ -123,9 +128,9 @@ class GOGManager @Inject constructor(
 
     suspend fun insertGame(game: GOGGame) {
         withContext(Dispatchers.IO) {
-            // Preserve the existing hidden flag when the row already exists, so a single-game
-            // refresh cannot reset hidden state to false.
-            gogGameDao.upsertPreservingHidden(game)
+            // Preserve install state and the hidden flag when the row already exists, so a
+            // single-game refresh cannot reset them.
+            gogGameDao.upsertPreservingInstallStatus(listOf(game))
         }
     }
 
@@ -173,6 +178,8 @@ class GOGManager @Inject constructor(
                 Timber.e(error, "Background sync failed: ${error?.message}")
                 return@withContext Result.failure(error ?: Exception("Background sync failed"))
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Failed to sync GOG library in background")
             Result.failure(e)
@@ -208,8 +215,8 @@ class GOGManager @Inject constructor(
             // Re-validate the account after the fetch: if logout (or an account switch) happened
             // while we were fetching, do not write the old account's flags.
             val currentUserId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
-            if (!hiddenRefreshCoordinator.isLatest(generation)) {
-                Timber.tag("GOG").w("Skipping hidden-flag persist: superseded by a newer refresh")
+            if (!hiddenRefreshCoordinator.canCommit(generation)) {
+                Timber.tag("GOG").w("Skipping hidden-flag persist: superseded by a newer committed refresh")
                 null
             } else if (currentUserId != fetchUserId) {
                 Timber.tag("GOG").w("Skipping hidden-flag persist: GOG account changed during fetch")
@@ -217,6 +224,7 @@ class GOGManager @Inject constructor(
             } else {
                 try {
                     gogGameDao.applyHiddenFlags(hiddenIds)
+                    hiddenRefreshCoordinator.markCommitted(generation)
                     hiddenIds
                 } catch (e: CancellationException) {
                     throw e
@@ -326,6 +334,8 @@ class GOGManager @Inject constructor(
                     } else {
                         Timber.w("GOG game ID $id not found in library after refresh")
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to parse game details for ID: $id")
                 }
@@ -344,6 +354,8 @@ class GOGManager @Inject constructor(
             }
             Timber.tag("GOG").i("Successfully refreshed GOG library with $totalProcessed games")
             return@withContext Result.success(totalProcessed)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Failed to refresh GOG library")
             return@withContext Result.failure(e)
@@ -562,8 +574,14 @@ class GOGManager @Inject constructor(
                 Timber.tag("GOG").w("Skipping Invalid GOG App with id: $gameId")
                 return Result.success(null)
             }
-            insertGame(game)
-            return Result.success(game)
+            // Apply the current hidden-ID set so a newly inserted hidden game is not written with
+            // hidden = false; insertGame preserves install state and the existing hidden flag.
+            val hiddenIds = refreshHiddenIds()
+            val gameToInsert = game.copy(hidden = hiddenIds?.contains(gameId) == true)
+            insertGame(gameToInsert)
+            return Result.success(gogGameDao.getById(gameId) ?: gameToInsert)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Error fetching single game data for $gameId")
             Result.failure(e)

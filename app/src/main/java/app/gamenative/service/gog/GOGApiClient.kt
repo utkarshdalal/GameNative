@@ -159,6 +159,8 @@ object GOGApiClient {
                 Timber.tag("GOG").d("First 10 game IDs: ${gameIds.take(10).joinToString()}")
                 return@withContext Result.success(gameIds)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Exception fetching game IDs: ${e.message}")
             return@withContext Result.failure(e)
@@ -356,6 +358,8 @@ object GOGApiClient {
 
                 return@withContext Result.success(transformedResponse)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Exception fetching game details for $gameId: ${e.message}")
             return@withContext Result.failure(e)
