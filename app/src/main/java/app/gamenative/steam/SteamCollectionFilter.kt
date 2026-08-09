@@ -24,16 +24,6 @@ object SteamCollectionFilter {
     }
 
     /**
-     * Per-collection counts computed from a pre-hidden app-id set (e.g. the owner/type/search
-     * filtered list before default hidden filtering). This keeps the Hidden collection's count
-     * visible even when hidden games are excluded from the main library list.
-     */
-    fun collectionCounts(collections: List<SteamCollection>?, appIds: Collection<Int>): Map<String, Int> =
-        collections?.associate { collection ->
-            collection.id to appIds.count { it in collection.appIds }
-        } ?: emptyMap()
-
-    /**
      * Per-collection counts for the options panel: the Hidden collection uses [preHiddenAppIds] so
      * it keeps its full count (and stays discoverable), while every other collection counts only
      * [visibleAppIds] so badges match the games actually rendered.

@@ -8,7 +8,10 @@ import app.gamenative.utils.awaitUntil
 import app.gamenative.utils.installFakePrefManager
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class LibraryCountsTest {
 
     @Test

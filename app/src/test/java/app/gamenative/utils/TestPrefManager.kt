@@ -4,13 +4,12 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.test.core.app.ApplicationProvider
 import app.gamenative.PrefManager
-import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.mockito.Mockito
 
 /** In-memory [DataStore] so unit tests can observe [PrefManager] writes. */
 class FakeDataStore(initial: Preferences = emptyPreferences()) : DataStore<Preferences> {
@@ -54,13 +53,7 @@ class PrefManagerTestScope(
  * fake from leaking into other tests in the shared JVM.
  */
 fun installFakePrefManager(fake: FakeDataStore): PrefManagerTestScope {
-    val context = Mockito.mock(Context::class.java)
-    val filesDir = File(System.getProperty("java.io.tmpdir"), "gamenative-pref-test-${System.nanoTime()}")
-    filesDir.mkdirs()
-    Mockito.`when`(context.filesDir).thenReturn(filesDir)
-    Mockito.`when`(context.dataDir).thenReturn(filesDir)
-    Mockito.`when`(context.applicationContext).thenReturn(context)
-
+    val context = ApplicationProvider.getApplicationContext<Context>()
     PrefManager.init(context)
 
     val dataStoreField = PrefManager::class.java.getDeclaredField("dataStore")

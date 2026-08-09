@@ -168,11 +168,28 @@ class GOGManager @Inject constructor(
      * authenticated (callers can use it to stamp newly inserted rows).
      */
     suspend fun refreshHiddenIds(): Set<String>? {
+        // Fetch outside the lock so logout's clearHiddenFlags() is never stalled by long network
+        // work. The lock is held only for the credential re-check + DB write.
+        val fetchUserId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
+            ?: return null
+        val hiddenIdsResult = GOGApiClient.getHiddenGameIds(context)
+        if (hiddenIdsResult.isFailure) {
+            Timber.tag("GOG").w(
+                hiddenIdsResult.exceptionOrNull(),
+                "Failed to fetch hidden GOG game IDs; keeping existing hidden flags",
+            )
+            return null
+        }
+        val hiddenIds = hiddenIdsResult.getOrNull() ?: emptySet()
+
         return hiddenRefreshMutex.withLock {
-            if (!GOGAuthManager.hasStoredCredentials(context)) return@withLock null
-            val hiddenIdsResult = GOGApiClient.getHiddenGameIds(context)
-            if (hiddenIdsResult.isSuccess) {
-                val hiddenIds = hiddenIdsResult.getOrNull() ?: emptySet()
+            // Re-validate the account after the fetch: if logout (or an account switch) happened
+            // while we were fetching, do not write the old account's flags.
+            val currentUserId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
+            if (currentUserId != fetchUserId) {
+                Timber.tag("GOG").w("Skipping hidden-flag persist: GOG account changed during fetch")
+                null
+            } else {
                 try {
                     gogGameDao.applyHiddenFlags(hiddenIds)
                     hiddenIds
@@ -180,12 +197,6 @@ class GOGManager @Inject constructor(
                     Timber.tag("GOG").e(e, "Failed to persist hidden GOG game IDs; keeping existing hidden flags")
                     null
                 }
-            } else {
-                Timber.tag("GOG").w(
-                    hiddenIdsResult.exceptionOrNull(),
-                    "Failed to fetch hidden GOG game IDs; keeping existing hidden flags",
-                )
-                null
             }
         }
     }
