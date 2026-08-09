@@ -271,6 +271,8 @@ private fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int {
 private data class XServerViewReleaseBinding(
     val xServerView: XServerRendererView,
     val windowModificationListener: WindowManager.OnWindowModificationListener,
+    var gameHost: FrameLayout? = null,
+    val screenWidth: Int,
 )
 
 private data class ControllerSlotUiState(
@@ -314,7 +316,7 @@ private fun normalizeProcessName(name: String): String {
     return if (lower.endsWith(".exe")) lower.removeSuffix(".exe") else lower
 }
 
-private fun parseScreenSize(screenSize: String): Pair<Int, Int>? {
+internal fun parseScreenSize(screenSize: String): Pair<Int, Int>? {
     val parts = screenSize.lowercase(Locale.getDefault()).split("x")
     if (parts.size != 2) return null
     val width = parts[0].trim().toIntOrNull() ?: return null
@@ -323,15 +325,17 @@ private fun parseScreenSize(screenSize: String): Pair<Int, Int>? {
     return width to height
 }
 
-private fun portraitGameHostHeight(
+internal fun portraitGameHostHeight(
     isPortrait: Boolean,
     portraitRenderAtTop: Boolean,
     screenWidth: Int,
+    availableHeight: Int,
     screenSize: String,
 ): Int {
     if (!isPortrait || !portraitRenderAtTop) return ViewGroup.LayoutParams.MATCH_PARENT
     val (renderWidth, renderHeight) = parseScreenSize(screenSize) ?: return ViewGroup.LayoutParams.MATCH_PARENT
-    return ceil(screenWidth * (renderHeight.toFloat() / renderWidth.toFloat())).toInt()
+    val aspectHeight = ceil(screenWidth * (renderHeight.toFloat() / renderWidth.toFloat())).toInt()
+    return if (availableHeight > 0) minOf(aspectHeight, availableHeight) else aspectHeight
 }
 
 private fun extractExecutableBasename(path: String): String {
@@ -2073,7 +2077,7 @@ fun XServerScreen(
                     }
                 getxServer().windowManager.addOnWindowModificationListener(wmListener)
                 windowModificationListener = wmListener
-                mainRoot.tag = XServerViewReleaseBinding(this, wmListener)
+                mainRoot.tag = XServerViewReleaseBinding(this, wmListener, screenWidth = screenWidth)
 
                 if (PluviaApp.xEnvironment == null) {
                     // Launch all blocking wine setup operations on a background thread to avoid blocking main thread
@@ -2241,11 +2245,18 @@ fun XServerScreen(
             val gameHost = FrameLayout(context).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    portraitGameHostHeight(isPortrait, container.isPortraitRenderAtTop, screenWidth, container.screenSize),
+                    portraitGameHostHeight(
+                        isPortrait,
+                        container.isPortraitRenderAtTop,
+                        screenWidth,
+                        frameLayout.height,
+                        container.screenSize,
+                    ),
                 )
             }
             frameLayout.addView(gameHost)
             gameHost.addView(xServerView as View)
+            (mainRoot.tag as? XServerViewReleaseBinding)?.gameHost = gameHost
             val touchpadHost = if (isPortrait && container.isPortraitRenderAtTop) gameHost else frameLayout
             touchpadHost.addView(PluviaApp.touchpadView)
 
@@ -2476,6 +2487,22 @@ fun XServerScreen(
         },
         update = { view ->
             gameRoot = view
+            val binding = view.tag as? XServerViewReleaseBinding
+            val gameHost = binding?.gameHost
+            if (binding != null && gameHost != null) {
+                val params = gameHost.layoutParams
+                val height = portraitGameHostHeight(
+                    isPortrait,
+                    container.isPortraitRenderAtTop,
+                    binding.screenWidth,
+                    (gameHost.parent as? View)?.height ?: 0,
+                    container.screenSize,
+                )
+                if (params.height != height) {
+                    params.height = height
+                    gameHost.layoutParams = params
+                }
+            }
         },
         onRelease = { view ->
             gameRoot = null
