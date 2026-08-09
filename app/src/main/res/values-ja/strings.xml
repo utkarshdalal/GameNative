@@ -1888,6 +1888,7 @@
     <string name="nexus_resolving_collection_item">コレクションの解決 %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">コレクションの準備完了: %1$d 個のMOD</string>
     <string name="nexus_resolve_collection_failed">Nexus コレクションを解決できませんでした</string>
+    <string name="nexus_adult_content_blocked">Nexus Mods の成人向けコンテンツ設定により、このコレクションは非表示になっています。</string>
     <string name="nexus_no_selected_collection_mods_ready">選択されたコレクション MOD はダウンロードする準備ができていません</string>
     <string name="nexus_collection_different_file_reused">コレクションは別のファイルを要求しました。既存のインストールされたファイルが再利用される</string>
     <string name="nexus_collection_existing_placement_kept">既存の配置が維持される</string>

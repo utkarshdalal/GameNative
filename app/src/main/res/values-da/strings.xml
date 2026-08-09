@@ -1801,6 +1801,7 @@
     <string name="nexus_resolving_collection_item">Løsning af opkrævning %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Samling klar: %1$d mods</string>
     <string name="nexus_resolve_collection_failed">Kunne ikke løse Nexus-indsamlingen</string>
+    <string name="nexus_adult_content_blocked">Denne samling er skjult på grund af dine indstillinger for voksenindhold på Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Ingen udvalgte samlingsmods er klar til at downloade</string>
     <string name="nexus_collection_different_file_reused">Samling anmodede om en anden fil; eksisterende installeret fil genbrugt</string>
     <string name="nexus_collection_existing_placement_kept">Eksisterende anbringelse bevares</string>

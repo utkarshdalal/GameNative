@@ -1931,6 +1931,7 @@
     <string name="nexus_resolving_collection_item">Résolution du recouvrement %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Collection prête : %1$d mods</string>
     <string name="nexus_resolve_collection_failed">Échec de la résolution de la collection Nexus</string>
+    <string name="nexus_adult_content_blocked">Cette collection est masquée en raison de vos paramètres de contenu pour adultes sur Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Aucun mod de collection sélectionné n\'est prêt à être téléchargé</string>
     <string name="nexus_collection_different_file_reused">La collection a demandé un fichier différent ; fichier installé existant réutilisé</string>
     <string name="nexus_collection_existing_placement_kept">Emplacement existant conservé</string>

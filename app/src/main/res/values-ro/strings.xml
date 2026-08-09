@@ -1932,6 +1932,7 @@
     <string name="nexus_resolving_collection_item">Rezolvarea colectării %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Colecție gata: %1$d moduri</string>
     <string name="nexus_resolve_collection_failed">Nu s-a putut rezolva colecția Nexus</string>
+    <string name="nexus_adult_content_blocked">Această colecție este ascunsă din cauza setărilor tale privind conținutul pentru adulți de pe Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Niciun mod de colecție selectat nu este gata de descărcat</string>
     <string name="nexus_collection_different_file_reused">Colecția a solicitat un alt fișier; fișierul instalat existent a fost reutilizat</string>
     <string name="nexus_collection_existing_placement_kept">Plasament existent păstrat</string>

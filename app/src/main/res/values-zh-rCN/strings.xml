@@ -1949,6 +1949,7 @@
     <string name="nexus_resolving_collection_item">解决集合%1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">收藏就绪：%1$d模组</string>
     <string name="nexus_resolve_collection_failed">未能解决Nexus 集合</string>
+    <string name="nexus_adult_content_blocked">此合集因你的 Nexus Mods 成人内容设置而被隐藏。</string>
     <string name="nexus_no_selected_collection_mods_ready">没有可供下载的选定合集模组</string>
     <string name="nexus_collection_different_file_reused">集合请求不同的文件；重复使用现有的已安装文件</string>
     <string name="nexus_collection_existing_placement_kept">保留现有安置</string>

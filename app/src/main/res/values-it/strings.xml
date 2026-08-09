@@ -1922,6 +1922,7 @@
     <string name="nexus_resolving_collection_item">Risoluzione incasso %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Collezione pronta: %1$d mod</string>
     <string name="nexus_resolve_collection_failed">Impossibile risolvere la raccolta Nexus</string>
+    <string name="nexus_adult_content_blocked">Questa raccolta è nascosta a causa delle tue impostazioni per i contenuti per adulti su Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Nessuna mod della raccolta selezionata è pronta per il download</string>
     <string name="nexus_collection_different_file_reused">La raccolta ha richiesto un file diverso; file installato esistente riutilizzato</string>
     <string name="nexus_collection_existing_placement_kept">Posizionamento esistente mantenuto</string>

@@ -1929,6 +1929,7 @@
     <string name="nexus_resolving_collection_item">컬렉션 확인 중 %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">컬렉션 준비됨: %1$d 모드</string>
     <string name="nexus_resolve_collection_failed">Nexus 컬렉션을 확인하지 못했습니다.</string>
+    <string name="nexus_adult_content_blocked">이 컬렉션은 사용자의 Nexus Mods 성인 콘텐츠 설정에 따라 숨겨져 있습니다.</string>
     <string name="nexus_no_selected_collection_mods_ready">선택한 컬렉션 모드를 다운로드할 준비가 되지 않았습니다.</string>
     <string name="nexus_collection_different_file_reused">컬렉션에서 다른 파일을 요청했습니다. 기존에 설치된 파일 재사용</string>
     <string name="nexus_collection_existing_placement_kept">기존 배치가 유지됨</string>

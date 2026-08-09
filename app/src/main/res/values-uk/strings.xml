@@ -1925,6 +1925,7 @@
     <string name="nexus_resolving_collection_item">Розв\'язка колекції %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Колекція готова: %1$d модів</string>
     <string name="nexus_resolve_collection_failed">Не вдалося вирішити колекцію Nexus</string>
+    <string name="nexus_adult_content_blocked">Цю колекцію приховано через ваші налаштування вмісту для дорослих у Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Жодна вибрана колекція модів не готова для завантаження</string>
     <string name="nexus_collection_different_file_reused">Колекція запитала інший файл; існуючий встановлений файл повторно використаний</string>
     <string name="nexus_collection_existing_placement_kept">Існуюче розміщення збережено</string>
