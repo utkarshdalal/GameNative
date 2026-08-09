@@ -1691,10 +1691,9 @@ fun XServerScreen(
     }
 
     val isPortrait = container.isPortraitMode
-    val portraitRenderAtTop = container.isPortraitRenderAtTop
     // var launchedView by rememberSaveable { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxSize()) {
-        key(isPortrait, portraitRenderAtTop) {
+        key(isPortrait) {
         AndroidView(
         modifier = Modifier
             .fillMaxSize()
@@ -2224,7 +2223,7 @@ fun XServerScreen(
             val gameHost = FrameLayout(context).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    portraitGameHostHeight(isPortrait, portraitRenderAtTop, controlsHeightPortrait),
+                    portraitGameHostHeight(isPortrait, container.isPortraitRenderAtTop, controlsHeightPortrait),
                 )
             }
             frameLayout.addView(gameHost)
