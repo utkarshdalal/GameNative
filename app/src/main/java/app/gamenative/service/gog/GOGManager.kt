@@ -90,6 +90,10 @@ class GOGManager @Inject constructor(
 
     private val hiddenRefreshCoordinator = HiddenRefreshCoordinator()
 
+    // The newest hidden-ID set that has committed to gog_games. Written under hiddenRefreshMutex;
+    // used to stamp newly inserted rows so a concurrent newer refresh cannot leave them stale.
+    @Volatile private var lastCommittedHiddenIds: Set<String>? = null
+
     // Thread-safe cache for download sizes
     private val downloadSizeCache = ConcurrentHashMap<String, String>()
     private val REFRESH_BATCH_SIZE = 10
@@ -225,6 +229,7 @@ class GOGManager @Inject constructor(
                 try {
                     gogGameDao.applyHiddenFlags(hiddenIds)
                     hiddenRefreshCoordinator.markCommitted(generation)
+                    lastCommittedHiddenIds = hiddenIds
                     hiddenIds
                 } catch (e: CancellationException) {
                     throw e
@@ -240,6 +245,7 @@ class GOGManager @Inject constructor(
     suspend fun clearHiddenFlags() {
         hiddenRefreshMutex.withLock {
             gogGameDao.clearHiddenFlags()
+            lastCommittedHiddenIds = null
         }
     }
 
@@ -342,7 +348,17 @@ class GOGManager @Inject constructor(
 
                 if ((index + 1) % REFRESH_BATCH_SIZE == 0 || index == newGameIds.size - 1) {
                     if (games.isNotEmpty()) {
-                        gogGameDao.upsertPreservingInstallStatus(games)
+                        // Re-stamp hidden from the newest committed refresh so a concurrent newer
+                        // refresh cannot leave newly inserted rows with a stale hidden flag.
+                        hiddenRefreshMutex.withLock {
+                            val currentHiddenIds = lastCommittedHiddenIds ?: hiddenIds
+                            val adjustedGames = if (currentHiddenIds != null) {
+                                games.map { it.copy(hidden = it.id in currentHiddenIds) }
+                            } else {
+                                games
+                            }
+                            gogGameDao.upsertPreservingInstallStatus(adjustedGames)
+                        }
                         Timber.tag("GOG").d("Batch inserted ${games.size} games (processed ${index + 1}/${newGameIds.size})")
                         games.clear()
                     }
@@ -575,11 +591,16 @@ class GOGManager @Inject constructor(
                 return Result.success(null)
             }
             // Apply the current hidden-ID set so a newly inserted hidden game is not written with
-            // hidden = false; insertGame preserves install state and the existing hidden flag.
-            val hiddenIds = refreshHiddenIds()
-            val gameToInsert = game.copy(hidden = hiddenIds?.contains(gameId) == true)
-            insertGame(gameToInsert)
-            return Result.success(gogGameDao.getById(gameId) ?: gameToInsert)
+            // hidden = false. The insert happens under the same lock as hidden-flag commits, using
+            // the newest committed set, so a concurrent newer refresh cannot race the stamp.
+            refreshHiddenIds()
+            val persisted = hiddenRefreshMutex.withLock {
+                val currentHiddenIds = lastCommittedHiddenIds
+                val gameToInsert = game.copy(hidden = currentHiddenIds?.contains(gameId) == true)
+                insertGame(gameToInsert)
+                gogGameDao.getById(gameId) ?: gameToInsert
+            }
+            return Result.success(persisted)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
