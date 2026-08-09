@@ -251,6 +251,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
         envVars.put("TMPDIR", rootDir.getPath() + "/usr/tmp");
+        new File(imageFs.home_path + "/.wine/drive_c" + rootDir.getPath() + "/usr/tmp").mkdirs();
         envVars.put("DISPLAY", ":0");
 
         String winePath = imageFs.getWinePath() + "/bin";
