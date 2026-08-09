@@ -1825,6 +1825,7 @@ fun XServerScreen(
             }
             val frameLayout = if (isPortrait) {
                 val top = FrameLayout(context)
+                top.setBackgroundColor(Color.BLACK)
                 mainRoot.addView(top, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
                 top
             } else {
@@ -1875,7 +1876,6 @@ fun XServerScreen(
                 }
                 getxServer().renderer = renderer
                 PluviaApp.touchpadView = TouchpadView(context, getxServer(), PrefManager.getBoolean("capture_pointer_on_external_mouse", true))
-                frameLayout.addView(PluviaApp.touchpadView)
                 PluviaApp.touchpadView?.setMoveCursorToTouchpoint(PrefManager.getBoolean("move_cursor_to_touchpoint", false))
 
                 // Wire keyboard toggle callback for gesture "Show Keyboard" action.
@@ -2246,6 +2246,8 @@ fun XServerScreen(
             }
             frameLayout.addView(gameHost)
             gameHost.addView(xServerView as View)
+            val touchpadHost = if (isPortrait && container.isPortraitRenderAtTop) gameHost else frameLayout
+            touchpadHost.addView(PluviaApp.touchpadView)
 
             PluviaApp.inputControlsManager = InputControlsManager(context)
 
