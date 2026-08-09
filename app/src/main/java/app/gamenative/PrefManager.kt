@@ -898,21 +898,6 @@ object PrefManager {
         }
 
     /**
-     * IDs of GOG games the user has hidden on GOG, cached so hidden filtering works offline.
-     * Encoded the same way as [librarySteamCollections]; empty by default.
-     */
-    private val LIBRARY_GOG_HIDDEN_IDS = stringPreferencesKey("library_gog_hidden_ids")
-    var libraryGogHiddenIds: Set<String>
-        get() {
-            val raw = getPref(LIBRARY_GOG_HIDDEN_IDS, "")
-            if (raw.isEmpty()) return emptySet()
-            return raw.split(COLLECTION_ID_SEPARATOR).filter { it.isNotEmpty() }.toSet()
-        }
-        set(value) {
-            setPref(LIBRARY_GOG_HIDDEN_IDS, value.joinToString(COLLECTION_ID_SEPARATOR))
-        }
-
-    /**
      * Get or Set the last known Persona State. See [EPersonaState]
      */
     private val PERSONA_STATE = intPreferencesKey("persona_state")

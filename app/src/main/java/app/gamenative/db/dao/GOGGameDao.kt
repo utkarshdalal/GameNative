@@ -68,6 +68,24 @@ interface GOGGameDao {
     @Query("UPDATE gog_games SET vertical_cover_url = :url WHERE id = :gameId")
     suspend fun updateVerticalCoverUrl(gameId: String, url: String)
 
+    /** Clears the hidden flag on every GOG row (used before applying a fresh hidden set). */
+    @Query("UPDATE gog_games SET hidden = 0")
+    suspend fun clearHiddenFlags()
+
+    /** Marks the given GOG product IDs as hidden. */
+    @Query("UPDATE gog_games SET hidden = 1 WHERE id IN (:hiddenIds)")
+    suspend fun markHidden(hiddenIds: Collection<String>)
+
+    /**
+     * Replaces the stored hidden state with [hiddenIds]: every GOG row is cleared first, then the
+     * listed product IDs are marked hidden.
+     */
+    @Transaction
+    suspend fun applyHiddenFlags(hiddenIds: Collection<String>) {
+        clearHiddenFlags()
+        markHidden(hiddenIds)
+    }
+
     /**
      * Upsert GOG games while preserving install status and paths
      * This is useful when refreshing the library from GOG API
@@ -84,6 +102,7 @@ interface GOGGameDao {
                     installSize = existingGame.installSize,
                     lastPlayed = existingGame.lastPlayed,
                     playTime = existingGame.playTime,
+                    hidden = existingGame.hidden,
                 )
                 insert(gameToInsert)
             } else {

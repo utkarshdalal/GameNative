@@ -13,7 +13,6 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
-import app.gamenative.data.GogHiddenRepository
 import app.gamenative.data.HiddenGameFilter
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
@@ -133,9 +132,6 @@ class LibraryViewModel @Inject constructor(
     private var playHistoryByAppId: Map<String, Long> = emptyMap()
 
     @Volatile private var steamCollections: List<SteamCollection>? = null
-
-    // null = not loaded yet (fail open); empty = loaded with no hidden games
-    @Volatile private var gogHiddenIds: Set<String>? = null
 
     // Mirrors PrefManager.showHiddenGamesByDefault without the async DataStore write race.
     @Volatile private var showHiddenGamesByDefault: Boolean = PrefManager.showHiddenGamesByDefault
@@ -290,16 +286,8 @@ class LibraryViewModel @Inject constructor(
             }
         }
 
-        // Load cached hidden GOG IDs immediately, then observe live updates.
-        GogHiddenRepository.loadFromCache()
-        viewModelScope.launch(Dispatchers.IO) {
-            GogHiddenRepository.hiddenIds.collect { ids ->
-                gogHiddenIds = ids
-                onFilterApps(paginationCurrentPage)
-            }
-        }
         // Keep hidden metadata fresh even if the GOG background sync is throttled or has not run
-        // since this feature was added; failures keep the previous cache (fail open) and are logged.
+        // since this feature was added; the DAO flow re-emits when flags change and re-filters.
         viewModelScope.launch(Dispatchers.IO) {
             gogManager.refreshHiddenIds()
         }
@@ -793,10 +781,10 @@ class LibraryViewModel @Inject constructor(
                 }
                 .filter { game ->
                     // Hidden GOG games stay out of every library view unless the user opted to
-                    // show them by default. Null/unloaded hidden metadata fails open.
+                    // show them by default. Rows default to not hidden, so unloaded metadata
+                    // (before the first refresh) fails open.
                     HiddenGameFilter.passesGog(
-                        gameId = game.id,
-                        hiddenIds = gogHiddenIds,
+                        isHidden = game.hidden,
                         showHiddenByDefault = showHiddenGamesByDefault,
                     )
                 }

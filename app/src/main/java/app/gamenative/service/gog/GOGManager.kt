@@ -2,7 +2,6 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.PluviaApp
-import app.gamenative.data.GogHiddenRepository
 import app.gamenative.data.GOGCloudSavesLocation
 import app.gamenative.data.GOGCloudSavesLocationTemplate
 import app.gamenative.data.GOGGame
@@ -154,22 +153,33 @@ class GOGManager @Inject constructor(
     }
 
     /**
-     * Fetches hidden-product IDs and publishes them via [GogHiddenRepository].
+     * Fetches hidden-product IDs and stores them on the matching `gog_games` rows.
      *
-     * Failures keep the previous cache (or the unloaded fail-open state) and are logged; this
-     * never throws and never fails the caller.
+     * Failures leave the existing hidden flags untouched and are logged; this never throws and
+     * never fails the caller.
+     *
+     * @return the fetched hidden product IDs, or null when the fetch failed or the user is not
+     * authenticated (callers can use it to stamp newly inserted rows).
      */
-    suspend fun refreshHiddenIds() {
-        if (!GOGAuthManager.hasStoredCredentials(context)) return
+    suspend fun refreshHiddenIds(): Set<String>? {
+        if (!GOGAuthManager.hasStoredCredentials(context)) return null
         val hiddenIdsResult = GOGApiClient.getHiddenGameIds(context)
         if (hiddenIdsResult.isSuccess) {
-            GogHiddenRepository.update(hiddenIdsResult.getOrNull() ?: emptySet())
+            val hiddenIds = hiddenIdsResult.getOrNull() ?: emptySet()
+            gogGameDao.applyHiddenFlags(hiddenIds)
+            return hiddenIds
         } else {
             Timber.tag("GOG").w(
                 hiddenIdsResult.exceptionOrNull(),
-                "Failed to fetch hidden GOG game IDs; keeping cached hidden list",
+                "Failed to fetch hidden GOG game IDs; keeping existing hidden flags",
             )
+            return null
         }
+    }
+
+    /** Clears the hidden flag on every GOG row (used when the logged-out account's metadata is removed). */
+    suspend fun clearHiddenFlags() {
+        gogGameDao.clearHiddenFlags()
     }
 
     /**
@@ -201,8 +211,8 @@ class GOGManager @Inject constructor(
             Timber.tag("GOG").i("Successfully fetched ${gameIds.size} game IDs from GOG")
 
             // Refresh hidden-game metadata even when the owned library itself is unchanged.
-            // A failure here keeps the previous cache and must not fail the library refresh.
-            refreshHiddenIds()
+            // A failure keeps the existing flags and must not fail the library refresh.
+            val hiddenIds = refreshHiddenIds()
 
             if (gameIds.isEmpty()) {
                 Timber.w("No games found in GOG library")
@@ -244,12 +254,16 @@ class GOGManager @Inject constructor(
                             Timber.tag("GOG").d("Got Game Details for ID: $id")
                             val parsedGame = parseGameObject(gameDetails)
                             if (parsedGame != null) {
+                                val isHidden = hiddenIds?.contains(id) == true
                                 // Only real (non-excluded) games are shown, so only fetch
                                 // their portrait cover to avoid wasting GamesDB requests.
                                 val game = if (parsedGame.exclude) {
-                                    parsedGame
+                                    parsedGame.copy(hidden = isHidden)
                                 } else {
-                                    parsedGame.copy(verticalCoverUrl = GOGApiClient.getVerticalCoverUrl(id))
+                                    parsedGame.copy(
+                                        hidden = isHidden,
+                                        verticalCoverUrl = GOGApiClient.getVerticalCoverUrl(id),
+                                    )
                                 }
                                 games.add(game)
                                 Timber.tag("GOG").d("Refreshed Game: ${game.title}")

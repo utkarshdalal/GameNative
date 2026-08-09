@@ -29,13 +29,12 @@ object HiddenGameFilter {
     /**
      * Whether a GOG game should appear in the library.
      *
-     * @param gameId GOG product ID to test.
-     * @param hiddenIds Hidden GOG product IDs; null means not loaded yet and fails open.
+     * @param isHidden Whether the GOG row is flagged hidden (rows default to false until the first
+     * hidden-metadata refresh, which fails open).
      * @param showHiddenByDefault Value of [PrefManager.showHiddenGamesByDefault].
      */
     fun passesGog(
-        gameId: String,
-        hiddenIds: Set<String>?,
+        isHidden: Boolean,
         showHiddenByDefault: Boolean,
-    ): Boolean = hiddenIds == null || showHiddenByDefault || gameId !in hiddenIds
+    ): Boolean = showHiddenByDefault || !isHidden
 }

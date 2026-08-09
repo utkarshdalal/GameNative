@@ -6,7 +6,6 @@ import org.junit.Test
 
 class HiddenGameFilterTest {
     private val hiddenSteamIds = setOf(440, 570)
-    private val hiddenGogIds = setOf("123", "456")
 
     @Test
     fun steamHiddenGameIsHiddenByDefault() {
@@ -60,26 +59,22 @@ class HiddenGameFilterTest {
 
     @Test
     fun gogHiddenGameIsHiddenByDefault() {
-        assertFalse(HiddenGameFilter.passesGog("123", hiddenGogIds, showHiddenByDefault = false))
+        assertFalse(HiddenGameFilter.passesGog(isHidden = true, showHiddenByDefault = false))
     }
 
     @Test
     fun gogHiddenGameIsShownWhenSettingOn() {
-        assertTrue(HiddenGameFilter.passesGog("123", hiddenGogIds, showHiddenByDefault = true))
+        assertTrue(HiddenGameFilter.passesGog(isHidden = true, showHiddenByDefault = true))
     }
 
     @Test
     fun gogNonHiddenGameIsAlwaysShown() {
-        assertTrue(HiddenGameFilter.passesGog("789", hiddenGogIds, showHiddenByDefault = false))
+        assertTrue(HiddenGameFilter.passesGog(isHidden = false, showHiddenByDefault = false))
     }
 
     @Test
-    fun gogNullHiddenStateFailsOpen() {
-        assertTrue(HiddenGameFilter.passesGog("123", hiddenIds = null, showHiddenByDefault = false))
-    }
-
-    @Test
-    fun gogLoadedEmptySetShowsAll() {
-        assertTrue(HiddenGameFilter.passesGog("123", emptySet(), showHiddenByDefault = false))
+    fun gogUnflaggedRowsFailOpen() {
+        // Rows default to not hidden before the first hidden-metadata refresh.
+        assertTrue(HiddenGameFilter.passesGog(isHidden = false, showHiddenByDefault = false))
     }
 }
