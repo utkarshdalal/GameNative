@@ -217,6 +217,7 @@ import java.nio.file.StandardCopyOption
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.Arrays
 import java.util.Locale
+import kotlin.math.ceil
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.name
 import kotlin.math.roundToInt
@@ -313,8 +314,25 @@ private fun normalizeProcessName(name: String): String {
     return if (lower.endsWith(".exe")) lower.removeSuffix(".exe") else lower
 }
 
-private fun portraitGameHostHeight(isPortrait: Boolean, portraitRenderAtTop: Boolean, controlsHeightPortrait: Int): Int =
-    if (isPortrait && portraitRenderAtTop) controlsHeightPortrait else ViewGroup.LayoutParams.MATCH_PARENT
+private fun parseScreenSize(screenSize: String): Pair<Int, Int>? {
+    val parts = screenSize.lowercase(Locale.getDefault()).split("x")
+    if (parts.size != 2) return null
+    val width = parts[0].trim().toIntOrNull() ?: return null
+    val height = parts[1].trim().toIntOrNull() ?: return null
+    if (width <= 0 || height <= 0) return null
+    return width to height
+}
+
+private fun portraitGameHostHeight(
+    isPortrait: Boolean,
+    portraitRenderAtTop: Boolean,
+    screenWidth: Int,
+    screenSize: String,
+): Int {
+    if (!isPortrait || !portraitRenderAtTop) return ViewGroup.LayoutParams.MATCH_PARENT
+    val (renderWidth, renderHeight) = parseScreenSize(screenSize) ?: return ViewGroup.LayoutParams.MATCH_PARENT
+    return ceil(screenWidth * (renderHeight.toFloat() / renderWidth.toFloat())).toInt()
+}
 
 private fun extractExecutableBasename(path: String): String {
     if (path.isBlank()) return ""
@@ -2223,7 +2241,7 @@ fun XServerScreen(
             val gameHost = FrameLayout(context).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    portraitGameHostHeight(isPortrait, container.isPortraitRenderAtTop, controlsHeightPortrait),
+                    portraitGameHostHeight(isPortrait, container.isPortraitRenderAtTop, screenWidth, container.screenSize),
                 )
             }
             frameLayout.addView(gameHost)
