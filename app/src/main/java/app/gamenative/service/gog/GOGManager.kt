@@ -349,13 +349,13 @@ class GOGManager @Inject constructor(
                 if ((index + 1) % REFRESH_BATCH_SIZE == 0 || index == newGameIds.size - 1) {
                     if (games.isNotEmpty()) {
                         // Re-stamp hidden from the newest committed refresh so a concurrent newer
-                        // refresh cannot leave newly inserted rows with a stale hidden flag.
+                        // refresh cannot leave newly inserted rows with a stale hidden flag. If
+                        // logout cleared the committed set, new rows fail open instead of
+                        // resurrecting the previous account's flags from the in-flight response.
                         hiddenRefreshMutex.withLock {
-                            val currentHiddenIds = lastCommittedHiddenIds ?: hiddenIds
-                            val adjustedGames = if (currentHiddenIds != null) {
-                                games.map { it.copy(hidden = it.id in currentHiddenIds) }
-                            } else {
-                                games
+                            val currentHiddenIds = lastCommittedHiddenIds
+                            val adjustedGames = games.map {
+                                it.copy(hidden = currentHiddenIds?.contains(it.id) == true)
                             }
                             gogGameDao.upsertPreservingInstallStatus(adjustedGames)
                         }
