@@ -2059,8 +2059,8 @@
     <string name="control_stroke_width_default">Implicit</string>
     <string name="control_stroke_width_thick">Gros</string>
     <string name="control_stroke_width_extra_thick">Foarte gros</string>
-    <string name="button_shooter_look_through">Trecere privire shooter</string>
-    <string name="button_shooter_look_through_subtitle">Permite ca această atingere a butonului să controleze și mișcarea și privirea shooter dinamice</string>
+    <string name="button_look_through">Control prin glisare</string>
+    <string name="button_look_through_subtitle">Apasă și glisează de la acest buton pentru a controla și mișcarea sau camera. Indisponibil în modul ecran tactil.</string>
     <string name="preview">Previzualizare</string>
     <string name="active">Activ</string>
     <string name="apply_all">Aplică tuturor</string>

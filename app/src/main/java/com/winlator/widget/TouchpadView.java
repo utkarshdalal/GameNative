@@ -49,6 +49,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private final float[] xform;
     private boolean simTouchScreen = false;
     private boolean continueClick = true;
+    private Runnable simulatedTouchPressRunnable;
+    private boolean simulatedTouchButtonDown;
     private int lastTouchedPosX;
     private int lastTouchedPosY;
     private static final Byte CLICK_DELAYED_TIME = 50;
@@ -207,7 +209,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         // any held drag/long-press/2F/3F-hold injections, and resets gesture
         // state. Avoids leaking pressed buttons/keys when the view is removed
         // mid-gesture (e.g., game exit while a hold is active).
-        handleTsCancel();
+        cancelTouchInput();
         super.onDetachedFromWindow();
     }
 
@@ -434,9 +436,14 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private boolean handleTouchpadEvent(MotionEvent event) {
+        int actionMasked = event.getActionMasked();
+        if (actionMasked == MotionEvent.ACTION_CANCEL) {
+            cancelTouchInput();
+            return true;
+        }
+
         int actionIndex = event.getActionIndex();
         int pointerId = event.getPointerId(actionIndex);
-        int actionMasked = event.getActionMasked();
         if (pointerId >= MAX_FINGERS) return true;
 
         switch (actionMasked) {
@@ -449,19 +456,13 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                 fingers[pointerId] = new Finger(event.getX(actionIndex), event.getY(actionIndex));
                 numFingers++;
                 if (simTouchScreen) {
-                    final Runnable clickDelay = () -> {
-                        if (continueClick) {
-                            xServer.injectPointerMove(lastTouchedPosX, lastTouchedPosY);
-                            xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
-                        }
-                    };
                     if (pointerId == 0) {
                         continueClick = true;
                         if (Math.hypot(fingers[0].x - lastTouchedPosX, fingers[0].y - lastTouchedPosY) * resolutionScale > EFFECTIVE_TOUCH_DISTANCE) {
                             lastTouchedPosX = fingers[0].x;
                             lastTouchedPosY = fingers[0].y;
                         }
-                        postDelayed(clickDelay, CLICK_DELAYED_TIME);
+                        scheduleSimulatedTouchPress();
                     } else if (pointerId == 1) {
                         // When put a finger on InputControl, such as a button.
                         // The pointerId that TouchPadView got won't increase from 1, so map 1 as 0 here.
@@ -471,7 +472,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                                 lastTouchedPosX = fingers[1].x;
                                 lastTouchedPosY = fingers[1].y;
                             }
-                            postDelayed(clickDelay, CLICK_DELAYED_TIME);
+                            scheduleSimulatedTouchPress();
                         } else
                             continueClick = System.currentTimeMillis() - fingers[0].touchTime > CLICK_DELAYED_TIME;
                     }
@@ -495,6 +496,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                                 handleFingerUp(fingers[i]);
                                 fingers[i] = null;
                                 numFingers--;
+                                if (numFingers == 0) cancelSimulatedTouchPress();
                             }
                         }
                     }
@@ -507,15 +509,81 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
                     handleFingerUp(fingers[pointerId]);
                     fingers[pointerId] = null;
                     numFingers--;
+                    if (numFingers == 0) cancelSimulatedTouchPress();
                 }
-                break;
-            case MotionEvent.ACTION_CANCEL:
-                for (byte i = 0; i < MAX_FINGERS; i++) fingers[i] = null;
-                numFingers = 0;
                 break;
         }
 
         return true;
+    }
+
+    void cancelTouchInput() {
+        cancelSimulatedTouchPress();
+        cancelPointerButtonLeft(fingerPointerButtonLeft);
+        cancelPointerButtonRight(fingerPointerButtonRight);
+        for (byte i = 0; i < MAX_FINGERS; i++) {
+            fingers[i] = null;
+        }
+        numFingers = 0;
+        scrollAccumY = 0;
+        scrolling = false;
+        suppressNextLeftTap = false;
+        handleTsCancel();
+    }
+
+    private void cancelSimulatedTouchPress() {
+        continueClick = false;
+        if (simulatedTouchPressRunnable != null) {
+            removeCallbacks(simulatedTouchPressRunnable);
+            simulatedTouchPressRunnable = null;
+        }
+        if (simulatedTouchButtonDown) {
+            if (xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
+                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+            }
+            simulatedTouchButtonDown = false;
+        }
+    }
+
+    private void scheduleSimulatedTouchPress() {
+        if (simulatedTouchPressRunnable != null) {
+            removeCallbacks(simulatedTouchPressRunnable);
+        }
+        simulatedTouchPressRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (simulatedTouchPressRunnable != this) return;
+                simulatedTouchPressRunnable = null;
+                if (continueClick) {
+                    xServer.injectPointerMove(lastTouchedPosX, lastTouchedPosY);
+                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+                    simulatedTouchButtonDown = true;
+                }
+            }
+        };
+        postDelayed(simulatedTouchPressRunnable, CLICK_DELAYED_TIME);
+    }
+
+    private void cancelPointerButtonLeft(Finger finger) {
+        if (finger == null || finger != fingerPointerButtonLeft) return;
+        fingerPointerButtonLeft = null;
+        if (xServer.isRelativeMouseMovement()) {
+            xServer.getWinHandler().mouseEvent(MouseEventFlags.LEFTUP, 0, 0, 0);
+        }
+        else if (xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_LEFT)) {
+            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+        }
+    }
+
+    private void cancelPointerButtonRight(Finger finger) {
+        if (finger == null || finger != fingerPointerButtonRight) return;
+        fingerPointerButtonRight = null;
+        if (xServer.isRelativeMouseMovement()) {
+            xServer.getWinHandler().mouseEvent(MouseEventFlags.RIGHTUP, 0, 0, 0);
+        }
+        else if (xServer.pointer.isButtonPressed(Pointer.Button.BUTTON_RIGHT)) {
+            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_RIGHT);
+        }
     }
 
     private boolean handleTouchscreenEvent(MotionEvent event) {
@@ -1916,6 +1984,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             Pointer.Button button = Pointer.Button.BUTTON_LEFT;
             if (pointer.isButtonPressed(button)) {
                 this.xServer.injectPointerButtonRelease(button);
+                simulatedTouchButtonDown = false;
             }
             this.xServer.injectPointerButtonPress(button);
             this.fingerPointerButtonLeft = finger;
@@ -2000,6 +2069,28 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     public void setMoveCursorToTouchpoint(boolean moveCursorToTouchpoint) {
         this.moveCursorToTouchpoint = moveCursorToTouchpoint;
+    }
+
+    /**
+     * Moves the pointer for a drag owned by an on-screen look-through button.
+     * This deliberately bypasses tap, hold, scroll, pinch, and multi-finger recognition.
+     */
+    public void movePointerFromLookThrough(float deltaX, float deltaY) {
+        if (touchscreenMouseDisabled) return;
+
+        float[] delta = computeDeltaPoint(0, 0, deltaX, deltaY);
+        float moveX = delta[0] * sensitivity;
+        float moveY = delta[1] * sensitivity;
+        if (Math.abs(moveX) > CURSOR_ACCELERATION_THRESHOLD) moveX *= CURSOR_ACCELERATION;
+        if (Math.abs(moveY) > CURSOR_ACCELERATION_THRESHOLD) moveY *= CURSOR_ACCELERATION;
+
+        int dx = Mathf.roundPoint(moveX);
+        int dy = Mathf.roundPoint(moveY);
+        if (xServer.isRelativeMouseMovement()) {
+            xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
+        } else {
+            xServer.injectPointerMoveDelta(dx, dy);
+        }
     }
 
     public boolean onExternalMouseEvent(MotionEvent event) {

@@ -2056,8 +2056,8 @@
     <string name="control_stroke_width_default">Predeterminado</string>
     <string name="control_stroke_width_thick">Grueso</string>
     <string name="control_stroke_width_extra_thick">Extra grueso</string>
-    <string name="button_shooter_look_through">Paso de mirada shooter</string>
-    <string name="button_shooter_look_through_subtitle">Permitir que este toque de botón también controle el movimiento y la mirada shooter dinámicos</string>
+    <string name="button_look_through">Control al arrastrar</string>
+    <string name="button_look_through_subtitle">Pulsa y arrastra desde este botón para controlar también el movimiento o la cámara. No disponible en el modo de pantalla táctil.</string>
     <string name="preview">Vista previa</string>
     <string name="active">Activo</string>
     <string name="apply_all">Aplicar a todos</string>

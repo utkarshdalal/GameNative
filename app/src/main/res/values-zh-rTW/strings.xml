@@ -2067,8 +2067,8 @@
     <string name="control_stroke_width_default">預設</string>
     <string name="control_stroke_width_thick">粗</string>
     <string name="control_stroke_width_extra_thick">特粗</string>
-    <string name="button_shooter_look_through">射擊模式穿透</string>
-    <string name="button_shooter_look_through_subtitle">允許此按鈕觸控同時控制動態射擊移動和視角</string>
+    <string name="button_look_through">拖曳穿透</string>
+    <string name="button_look_through_subtitle">按住此按鈕並拖曳，也可控制移動或鏡頭視角。觸控螢幕模式下無法使用。</string>
     <string name="preview">預覽</string>
     <string name="active">啟用</string>
     <string name="apply_all">全部套用</string>

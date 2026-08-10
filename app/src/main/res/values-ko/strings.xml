@@ -2056,8 +2056,8 @@
     <string name="control_stroke_width_default">기본</string>
     <string name="control_stroke_width_thick">두껍게</string>
     <string name="control_stroke_width_extra_thick">매우 두껍게</string>
-    <string name="button_shooter_look_through">슈터 통과 입력</string>
-    <string name="button_shooter_look_through_subtitle">이 버튼 터치가 동적 슈터 이동 및 시점도 제어하도록 허용</string>
+    <string name="button_look_through">드래그 입력 통과</string>
+    <string name="button_look_through_subtitle">이 버튼을 누른 채 드래그하여 이동이나 카메라 시점도 조작합니다. 터치스크린 모드에서는 사용할 수 없습니다.</string>
     <string name="preview">미리보기</string>
     <string name="active">활성</string>
     <string name="apply_all">모두 적용</string>

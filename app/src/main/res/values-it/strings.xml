@@ -2049,8 +2049,8 @@
     <string name="control_stroke_width_default">Predefinito</string>
     <string name="control_stroke_width_thick">Spesso</string>
     <string name="control_stroke_width_extra_thick">Molto spesso</string>
-    <string name="button_shooter_look_through">Movimento e mira in modalità sparatutto</string>
-    <string name="button_shooter_look_through_subtitle">Consenti a questo tocco del pulsante di controllare anche movimento e mira shooter dinamici</string>
+    <string name="button_look_through">Controllo tramite trascinamento</string>
+    <string name="button_look_through_subtitle">Premi e trascina da questo pulsante per controllare anche il movimento o la visuale. Non disponibile in modalità touchscreen.</string>
     <string name="preview">Anteprima</string>
     <string name="active">Attivo</string>
     <string name="apply_all">Applica a tutti</string>

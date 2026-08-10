@@ -1928,8 +1928,8 @@
     <string name="control_stroke_width_default">Standard</string>
     <string name="control_stroke_width_thick">Tyk</string>
     <string name="control_stroke_width_extra_thick">Ekstra tyk</string>
-    <string name="button_shooter_look_through">Shooter-gennemkig</string>
-    <string name="button_shooter_look_through_subtitle">Tillad at denne knapberøring også styrer dynamisk shooter-bevægelse og blik</string>
+    <string name="button_look_through">Gennemkig</string>
+    <string name="button_look_through_subtitle">Tryk på og træk fra denne knap for også at styre bevægelse eller kameravisningen. Ikke tilgængelig i touchscreen-tilstand.</string>
     <string name="preview">Forhåndsvisning</string>
     <string name="active">Aktiv</string>
     <string name="apply_all">Anvend alle</string>

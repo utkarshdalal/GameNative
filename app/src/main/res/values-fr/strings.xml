@@ -2058,8 +2058,8 @@
     <string name="control_stroke_width_default">Par défaut</string>
     <string name="control_stroke_width_thick">Épais</string>
     <string name="control_stroke_width_extra_thick">Très épais</string>
-    <string name="button_shooter_look_through">Passage du regard shooter</string>
-    <string name="button_shooter_look_through_subtitle">Permettre à ce toucher de bouton de contrôler aussi le mouvement et le regard shooter dynamiques</string>
+    <string name="button_look_through">Contrôle par glissement</string>
+    <string name="button_look_through_subtitle">Appuyez sur ce bouton et faites glisser pour contrôler aussi le déplacement ou la caméra. Indisponible en mode écran tactile.</string>
     <string name="preview">Aperçu</string>
     <string name="active">Actif</string>
     <string name="apply_all">Appliquer à tous</string>
