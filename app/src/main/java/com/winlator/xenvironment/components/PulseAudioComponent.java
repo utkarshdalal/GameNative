@@ -1,6 +1,8 @@
 package com.winlator.xenvironment.components;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 
 import com.winlator.core.AppUtils;
 import com.winlator.core.FileUtils;
@@ -41,12 +43,14 @@ import timber.log.Timber;
 public class PulseAudioComponent extends EnvironmentComponent {
     private final UnixSocketConfig socketConfig;
     private final String SINK_NAME = "AAudioSink";
+    private final String SOURCE_NAME = "AAudioSource";
 
     private float volume = 1.0f;
     private byte performanceMode = 1;
     private final AtomicBoolean isPauseResumeRunning = new AtomicBoolean(false);
     private final AtomicBoolean isPaused = new AtomicBoolean(false);
     private boolean lowLatency = false;
+    private boolean micEnabled = false;
 
     private final ExecutorService singleThreadExecutor = Executors.newSingleThreadExecutor();
 
@@ -171,10 +175,27 @@ public class PulseAudioComponent extends EnvironmentComponent {
         if (lowLatency) {
             sinkParams += " low_latency=true";
         }
-        FileUtils.writeString(configFile, String.join("\n",
+        // Without a capture source the only recording device PulseAudio offers is
+        // AAudioSink.monitor, which Wine hands to games as a microphone - so a game with
+        // voice chat ends up transmitting its own output back into the lobby. Load a real
+        // source when we are allowed to; module-aaudio-source makes itself the default
+        // source, which is what actually outranks the monitor.
+        String config = String.join("\n",
                 "load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=false socket=\""+socketConfig.path+"\"",
                 "load-module module-aaudio-sink " + sinkParams
-        ));
+        );
+
+        if (hasMicrophonePermission(context)) {
+            config += "\nload-module module-aaudio-source source_name=" + SOURCE_NAME;
+            micEnabled = true;
+        } else {
+            // Not fatal: the daemon runs with --fail=false and simply comes up without a
+            // capture device, which is the behaviour before this change.
+            Timber.tag("PulseAudioComponent").i("RECORD_AUDIO not granted, starting without a capture source");
+            micEnabled = false;
+        }
+
+        FileUtils.writeString(configFile, config);
 
         String archName = AppUtils.getArchName();
         File modulesDir = new File(workingDir, "modules");
@@ -221,12 +242,30 @@ public class PulseAudioComponent extends EnvironmentComponent {
         return ProcessHelper.execWithOutput(workingDir + "/pactl " + command, envVars.toStringArray(), workingDir, true, 5);
     }
 
+    private boolean hasMicrophonePermission(Context context) {
+        return context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+    }
+
     private boolean updateSink(boolean suspend) {
-        if (!suspend) {
-            return !execPactlCommand("suspend-sink " + SINK_NAME + " false").toLowerCase().contains("process timeout");
-        } else {
-            return !execPactlCommand("suspend-sink " + SINK_NAME + " true").toLowerCase().contains("process timeout");
+        String state = suspend ? "true" : "false";
+        boolean sinkUpdated = !execPactlCommand("suspend-sink " + SINK_NAME + " " + state)
+                .toLowerCase().contains("process timeout");
+
+        // The capture source has to follow the sink. A suspended game must not keep
+        // holding the microphone open, or the Android privacy indicator stays lit and
+        // Android 14+ background-capture restrictions apply. Failing to suspend the
+        // source is logged rather than blocking the pause/resume transition, since the
+        // source is optional and may not have been loaded at all.
+        if (micEnabled) {
+            boolean sourceUpdated = !execPactlCommand("suspend-source " + SOURCE_NAME + " " + state)
+                    .toLowerCase().contains("process timeout");
+            if (!sourceUpdated) {
+                Timber.tag("PulseAudioComponent").w("Failed to %s source %s",
+                        suspend ? "suspend" : "resume", SOURCE_NAME);
+            }
         }
+
+        return sinkUpdated;
     }
 
 }

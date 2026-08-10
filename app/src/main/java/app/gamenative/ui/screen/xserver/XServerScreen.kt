@@ -1,7 +1,9 @@
 package app.gamenative.ui.screen.xserver
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.graphics.Color
 import android.os.Build
@@ -25,6 +27,8 @@ import android.hardware.input.InputManager
 import android.view.InputDevice
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import app.gamenative.BuildConfig
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -384,6 +388,26 @@ fun XServerScreen(
         ContainerUtils.getContainer(context, appId)
     }
     val activity = remember(context) { BrightnessManager.findActivity(context) }
+
+    // Games that open a recording device otherwise get AAudioSink.monitor, i.e. a loopback
+    // of their own output. Ask for the microphone here rather than at app startup so the
+    // prompt has context, and only for containers that actually use the pulseaudio driver.
+    // If it is denied, PulseAudioComponent simply starts without a capture source.
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { isGranted ->
+        Timber.i("RECORD_AUDIO permission granted: $isGranted")
+    }
+
+    LaunchedEffect(appId) {
+        if (!BuildConfig.MODERN_XR &&
+            container?.audioDriver == "pulseaudio" &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
 
     DisposableEffect(activity) {
         if (activity == null) return@DisposableEffect onDispose { }
