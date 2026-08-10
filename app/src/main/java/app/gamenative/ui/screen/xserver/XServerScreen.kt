@@ -397,6 +397,14 @@ fun XServerScreen(
         contract = ActivityResultContracts.RequestPermission(),
     ) { isGranted ->
         Timber.i("RECORD_AUDIO permission granted: $isGranted")
+        if (isGranted) {
+            // The daemon reads default.pa once at spawn, and the container is usually
+            // already booting by the time this is answered, so load the capture source
+            // into the running daemon rather than making the user relaunch the game.
+            PluviaApp.xEnvironment
+                ?.getComponent(PulseAudioComponent::class.java)
+                ?.enableMicrophone()
+        }
     }
 
     LaunchedEffect(appId) {

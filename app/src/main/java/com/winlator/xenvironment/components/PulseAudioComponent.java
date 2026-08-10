@@ -246,6 +246,35 @@ public class PulseAudioComponent extends EnvironmentComponent {
         return context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
     }
 
+    /**
+     * Load the capture source into an already running daemon.
+     *
+     * The daemon reads default.pa exactly once, when it spawns. If the user grants
+     * RECORD_AUDIO after that - which is the normal case on a first launch, since the
+     * permission dialog is answered while the container is still booting - there would
+     * otherwise be no capture device until the game is relaunched. Loading the module at
+     * runtime avoids that.
+     */
+    public void enableMicrophone() {
+        if (singleThreadExecutor.isShutdown()) return;
+
+        singleThreadExecutor.execute(() -> {
+            if (micEnabled) return;
+
+            Context context = environment.getContext();
+            if (!hasMicrophonePermission(context)) return;
+
+            String result = execPactlCommand("load-module module-aaudio-source source_name=" + SOURCE_NAME);
+            String lower = result.toLowerCase();
+            if (lower.contains("failure") || lower.contains("process timeout")) {
+                Timber.tag("PulseAudioComponent").w("Failed to load capture source at runtime: %s", result.trim());
+            } else {
+                micEnabled = true;
+                Timber.tag("PulseAudioComponent").i("Capture source loaded after permission grant");
+            }
+        });
+    }
+
     private boolean updateSink(boolean suspend) {
         String state = suspend ? "true" : "false";
         boolean sinkUpdated = !execPactlCommand("suspend-sink " + SINK_NAME + " " + state)
@@ -255,13 +284,21 @@ public class PulseAudioComponent extends EnvironmentComponent {
         // holding the microphone open, or the Android privacy indicator stays lit and
         // Android 14+ background-capture restrictions apply. Failing to suspend the
         // source is logged rather than blocking the pause/resume transition, since the
-        // source is optional and may not have been loaded at all.
+        // source is optional.
         if (micEnabled) {
-            boolean sourceUpdated = !execPactlCommand("suspend-source " + SOURCE_NAME + " " + state)
-                    .toLowerCase().contains("process timeout");
-            if (!sourceUpdated) {
-                Timber.tag("PulseAudioComponent").w("Failed to %s source %s",
-                        suspend ? "suspend" : "resume", SOURCE_NAME);
+            String result = execPactlCommand("suspend-source " + SOURCE_NAME + " " + state).toLowerCase();
+            // pactl reports a missing source as "Failure: No such entity" on stderr, which
+            // execPactlCommand captures, so check for that as well as a timeout.
+            if (result.contains("failure") || result.contains("process timeout")) {
+                Timber.tag("PulseAudioComponent").w("Failed to %s source %s: %s",
+                        suspend ? "suspend" : "resume", SOURCE_NAME, result.trim());
+                if (result.contains("no such entity")) {
+                    // The module never loaded - most likely the pulseaudio asset predates
+                    // module-aaudio-source. Stop issuing suspend-source rather than warning
+                    // on every pause for the rest of the session.
+                    Timber.tag("PulseAudioComponent").w("Capture source absent, disabling source suspend handling");
+                    micEnabled = false;
+                }
             }
         }
 
