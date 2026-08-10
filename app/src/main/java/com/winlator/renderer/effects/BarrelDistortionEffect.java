@@ -41,7 +41,7 @@ public class BarrelDistortionEffect extends Effect {
     @Override
     protected void onUse(ShaderMaterial material, GLRenderer renderer) {
         material.setUniformFloat("strength", Math.max(-1.0f, Math.min(strength, 1.0f)));
-        material.setUniformFloat("height", Math.max(-1.0f, Math.min(height, 1.0f)));
+        material.setUniformFloat("height", Math.max(0.05f, height));
         material.setUniformFloat("cylindricalRatio", Math.max(0.5f, Math.min(cylindricalRatio, 1.5f)));
     }
 

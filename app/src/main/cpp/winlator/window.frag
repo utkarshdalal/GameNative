@@ -296,6 +296,7 @@ void main() {
         if (hasEffect(EFFECT_MASK_BARREL_DISTORTION)) {
             vec3 puv = dot(vUVDotBarrel, vUVDotBarrel) * vec3(-0.5, -0.5, -1.0) + vUVBarrel;
             rgb = texture(texSampler, puv.xy / puv.z).rgb;
+            rgb = applyColorAdjustments(rgb);
         }
     }
 
