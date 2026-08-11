@@ -2193,7 +2193,7 @@ fun XServerScreen(
                             )
 
                             // Start performance driver after environment is set up
-                            PowerManager.start()
+                            PowerManager.start(container.rootDir)
 
                             // Pin game process to performance cores (CPUs 4-7)
                             container.executablePath

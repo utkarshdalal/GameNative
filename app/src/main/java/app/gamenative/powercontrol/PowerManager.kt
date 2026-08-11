@@ -2,7 +2,6 @@ package app.gamenative.powercontrol
 
 import android.content.Context
 import app.gamenative.BuildConfig
-import app.gamenative.PrefManager
 import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
 import app.gamenative.powercontrol.drivers.PServerDriver
@@ -11,6 +10,7 @@ import app.gamenative.powercontrol.drivers.SamsungPerformanceDriver
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import kotlinx.serialization.json.Json
 import timber.log.Timber
+import java.io.File
 
 /**
  * Manager for CPU and GPU performance control.
@@ -25,6 +25,7 @@ object PowerManager {
 
     private var driver: PerformanceDriver? = null
     private var autoTuner: PerformanceAutoTuner? = null
+    private var containerDir: File? = null
 
     /**
      * Flag to track if a game has been started.
@@ -128,8 +129,10 @@ object PowerManager {
 
     /**
      * Start the performance driver and restore saved profile if available
+     * @param containerDir The container directory for saving/restoring per-container profiles
      */
-    fun start() {
+    fun start(containerDir: File? = null) {
+        this.containerDir = containerDir
         getDriver().start()
         restoreSavedProfile()
 
@@ -147,6 +150,7 @@ object PowerManager {
         stopAutoTuning()
         getDriver().stop()
         isGameStarted = false
+        containerDir = null
     }
 
     /**
@@ -538,15 +542,22 @@ object PowerManager {
     // ========================================
 
     /**
-     * Save a power profile to preferences
+     * Save a power profile to container-specific file
      */
     fun saveProfile() {
         try {
             val jsonString = if (currentProfile != null) {
                 json.encodeToString(currentProfile)
             } else ""
-            PrefManager.powerControlProfile = jsonString
-            Timber.tag("PowerManager").d("Saved power profile: $jsonString")
+
+            val profileFile = getProfileFile()
+            if (profileFile != null) {
+                profileFile.parentFile?.mkdirs()
+                profileFile.writeText(jsonString)
+                Timber.tag("PowerManager").d("Saved power profile to ${profileFile.absolutePath}: $jsonString")
+            } else {
+                Timber.tag("PowerManager").w("No container directory set, skipping profile save")
+            }
         } catch (e: Exception) {
             Timber.tag("PowerManager").e(e, "Failed to save power profile")
         }
@@ -755,19 +766,39 @@ object PowerManager {
     }
 
     /**
-     * Restore the saved power profile from preferences
+     * Get the profile file path for the current container
+     */
+    private fun getProfileFile(): File? {
+        return containerDir?.let { File(it, ".config/.power-profile") }
+    }
+
+    /**
+     * Restore the saved power profile from container-specific file
      */
     private fun restoreSavedProfile() {
         try {
-            val jsonString = PrefManager.powerControlProfile
+            val profileFile = getProfileFile()
+            if (profileFile == null) {
+                currentProfile = driver?.getDefaultProfile()
+                Timber.tag("PowerManager").d("No container directory set, using default profile")
+                return
+            }
+
+            if (!profileFile.exists()) {
+                currentProfile = driver?.getDefaultProfile()
+                Timber.tag("PowerManager").d("No saved profile found at ${profileFile.absolutePath}, using default profile")
+                return
+            }
+
+            val jsonString = profileFile.readText()
             if (jsonString.isEmpty()) {
                 currentProfile = driver?.getDefaultProfile()
-                Timber.tag("PowerManager").d("No saved profile to restore")
+                Timber.tag("PowerManager").d("Empty profile file, using default profile")
                 return
             }
 
             currentProfile = json.decodeFromString<PowerProfile>(jsonString)
-            Timber.tag("PowerManager").d("Restoring power profile: $jsonString")
+            Timber.tag("PowerManager").d("Restoring power profile from ${profileFile.absolutePath}: $jsonString")
 
             val success = update {
                 governor(currentProfile!!.governor.governorName)

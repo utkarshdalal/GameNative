@@ -298,7 +298,7 @@ driver.findWineProcessPid("DaveTheDiver.exe")  // Returns PID or null
 
 ```kotlin
 // In XServerScreen.kt after game environment setup
-PowerManager.start()  // Auto-pins app + PulseAudio
+PowerManager.start(container.rootDir)  // Auto-pins app + PulseAudio, loads per-container profile
 
 // Pin game process
 val executableName = container.executablePath
@@ -531,18 +531,21 @@ PowerManager automatically saves and restores performance profiles across app se
 
 **Persistence Mechanism:**
 - Profiles are serialized to JSON using `kotlinx.serialization`
-- Stored in `PrefManager.powerControlProfile` (DataStore preference)
-- Includes all profile fields: name, governor, CPU frequencies, GPU power levels
+- Stored per-container in `<container_dir>/.config/.power-profile`
+- Each container maintains its own independent power profile
+- Includes all profile fields: name, governor, CPU frequencies, GPU power levels, bus levels, auto-tuning settings
 
 **Lifecycle Integration:**
-1. **On `start()`**:
-   - Attempts to restore saved profile from preferences
+1. **On `start(containerDir)`**:
+   - Accepts container directory path for per-container profile storage
+   - Attempts to restore saved profile from `<container_dir>/.config/.power-profile`
    - If no saved profile exists, applies default Balanced profile from `driver.getDefaultProfile()`
    - Applies the profile to hardware via driver methods
+   - Creates `.config` directory automatically if it doesn't exist
 
 2. **On `stop()`**:
-   - Saves `currentProfile` to preferences (if not null)
-   - Ensures user's last settings are preserved for next session
+   - Saves `currentProfile` to container-specific file (if not null)
+   - Ensures user's last settings are preserved for next session per container
 
 3. **During Runtime**:
    - All setter methods (`setGovernor`, `setMinCpuValue`, etc.) automatically update `currentProfile`
@@ -576,9 +579,9 @@ Drivers follow a game lifecycle pattern with automatic profile persistence:
 
 1. **Game Environment Setup** (`XServerScreen.kt`)
    - After `PluviaApp.xEnvironment` is initialized
-   - `PowerManager.start()` is called
+   - `PowerManager.start(container.rootDir)` is called with container directory
    - **Profile Restoration**:
-     - Attempts to load saved profile from `PrefManager.powerControlProfile`
+     - Attempts to load saved profile from `<container_dir>/.config/.power-profile`
      - If no saved profile, applies default Balanced profile from `driver.getDefaultProfile()`
      - Applies profile settings to hardware via driver methods
    - Driver-specific initialization occurs
