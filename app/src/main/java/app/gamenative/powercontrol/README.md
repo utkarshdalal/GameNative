@@ -171,7 +171,7 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
 - ✅ Separate PID controllers for CPU and GPU with anti-windup protection
 
 **Lifecycle:**
-- ✅ `start()` - Restores saved profile from preferences (or applies default Balanced profile)
+- ✅ `start(containerDir)` - Restores saved profile from container-specific file (or applies default Balanced profile)
   - **Automatically pins app process to efficiency cores**
   - **Automatically pins PulseAudio to first performance core**
   - **Starts auto-tuning if enabled in profile**
@@ -472,7 +472,7 @@ for (policy in cpuPolicies) {
 - ❌ Direct GPU frequency setting (not supported)
 
 **Lifecycle:**
-- ✅ `start()` - Restores saved profile from preferences (or applies default Balanced profile)
+- ✅ `start(containerDir)` - Restores saved profile from container-specific file (or applies default Balanced profile)
 - ✅ `stop()` - Calls `performanceManager.stop()` to stop all active performance controls. PowerManager saves the current profile before calling this method.
 
 ### Future Candidates
@@ -541,7 +541,7 @@ PowerManager automatically saves and restores performance profiles across app se
    - Attempts to restore saved profile from `<container_dir>/.config/.power-profile`
    - If no saved profile exists, applies default Balanced profile from `driver.getDefaultProfile()`
    - Applies the profile to hardware via driver methods
-   - Creates `.config` directory automatically if it doesn't exist
+   - `.config` directory is created automatically when the profile is saved
 
 2. **On `stop()`**:
    - Saves `currentProfile` to container-specific file (if not null)
@@ -599,7 +599,7 @@ Drivers follow a game lifecycle pattern with automatic profile persistence:
 3. **Game Environment Shutdown** (`PluviaApp.shutdownEnvironment()`)
    - `PowerManager.stop()` is called
    - **Profile Persistence**:
-     - Saves `currentProfile` to preferences for next session
+     - Saves `currentProfile` to container-specific file for next session
    - **Hardware Restoration**:
      - PServerDriver:
        1. Resets CPU frequencies to full range (prevents slowness from Power Save)
