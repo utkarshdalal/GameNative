@@ -565,6 +565,8 @@
     <string name="downloading">Se descarcă...</string>
     <string name="calculating_time">Se calculează...</string>
     <string name="download_failed_try_again">Descărcarea a eșuat. Încearcă din nou.</string>
+    <string name="download_preparing">Se pregătește descărcarea...</string>
+    <string name="download_preparing_depots">Se pregătesc depozitele (%1$d/%2$d)</string>
     <string name="update_available">Actualizare disponibilă</string>
     <string name="game_information">Informații joc</string>
     <string name="status">Stare</string>

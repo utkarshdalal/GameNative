@@ -608,6 +608,8 @@
     <string name="downloading">Descargando…</string>
     <string name="calculating_time">Calculando…</string>
     <string name="download_failed_try_again">Descarga fallida, inténtalo de nuevo.</string>
+    <string name="download_preparing">Preparando la descarga…</string>
+    <string name="download_preparing_depots">Preparando depósitos (%1$d/%2$d)</string>
     <string name="update_available">Actualización disponible</string>
     <string name="game_information">Información del juego</string>
     <string name="status">Estado</string>
