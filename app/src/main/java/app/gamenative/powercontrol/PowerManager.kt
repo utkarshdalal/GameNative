@@ -196,21 +196,27 @@ object PowerManager {
             numGpuLevels = numGpuLevels,
             numBusLevels = numBusLevels,
             onCpuFrequencyChange = { freq ->
-                update {
-                    setMinCpuValue(freq)
-                    setMaxCpuValue(freq)
+                if (currentProfile?.minCpuFreq != freq || currentProfile?.maxCpuFreq != freq) {
+                    update {
+                        setMinCpuValue(freq)
+                        setMaxCpuValue(freq)
+                    }
                 }
             },
             onGpuLevelChange = { level ->
-                update {
-                    setMinGpuPowerLevel(level)
-                    setMaxGpuPowerLevel(level)
+                if (currentProfile?.minGpuPowerLevel != level || currentProfile?.maxGpuPowerLevel != level) {
+                    update {
+                        setMinGpuPowerLevel(level)
+                        setMaxGpuPowerLevel(level)
+                    }
                 }
             },
             onBusLevelChange = { level ->
-                update {
-                    setMinBusLevel(level)
-                    setMaxBusLevel(level)
+                if (currentProfile?.minBusLevel != level || currentProfile?.maxBusLevel != level) {
+                    update {
+                        setMinBusLevel(level)
+                        setMaxBusLevel(level)
+                    }
                 }
             },
             getTuningStrategy = { currentProfile?.tuningStrategy ?: AutoTuningStrategy.BALANCED },
