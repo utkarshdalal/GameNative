@@ -133,8 +133,8 @@ object PowerManager {
         getDriver().start()
         restoreSavedProfile()
 
-        // Pin PulseAudio to dedicated performance core if PServer is available
-        pinPulseAudioToDedicatedCore()
+        // Pin PulseAudio to dedicated performance cores if PServer is available
+        pinPulseAudioToDedicatedCores()
         isGameStarted = true
     }
 
@@ -551,13 +551,13 @@ object PowerManager {
     // ========================================
 
     /**
-     * Pin PulseAudio daemon to a dedicated core.
+     * Pin PulseAudio daemon to dedicated cores.
      * Strategy varies by cluster count:
      * - Dual-cluster (e.g., Odin 3): Pin to first efficiency/lower-frequency core
      * - Tri-cluster: Pin to first efficiency core
      * - Single-cluster: Pin to first available core
      */
-    private fun pinPulseAudioToDedicatedCore() {
+    private fun pinPulseAudioToDedicatedCores() {
         val driver = getDriver()
         if (driver !is PServerDriver) return
 
@@ -573,16 +573,16 @@ object PowerManager {
                     val perfCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
 
                     // Choose cores based on cluster configuration
-                    val audioCores = when {
-                        effCores.isNotEmpty() -> listOf(effCores.first())
-                        perfCores.isNotEmpty() -> listOf(perfCores.first())
-                        else -> emptyList()
+                    val audioCores = when (clusterCount) {
+                        1 -> perfCores.take(2) // Single cluster: use first 2 cores
+                        2 -> effCores.take(2)  // Dual cluster: use first 2 lower-frequency cores, save prime for game
+                        else -> (effCores + perfCores).take(2) // Tri+ cluster: use first 2 cores of eff + perf, save prime for game
                     }
 
                     if (audioCores.isNotEmpty()) {
                         val success = driver.setCpuAffinityByCores(audioPid, audioCores)
                         if (success) {
-                            Timber.tag("PowerManager").i("Pinned PulseAudio (PID: $audioPid) to CPU ${audioCores.first()} ($clusterCount clusters)")
+                            Timber.tag("PowerManager").i("Pinned PulseAudio (PID: $audioPid) to CPU $audioCores ($clusterCount clusters)")
                         }
                     }
                 } else {
