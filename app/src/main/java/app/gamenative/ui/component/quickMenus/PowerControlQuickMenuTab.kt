@@ -70,24 +70,6 @@ fun PowerControlQuickMenuTab(
     var refreshTrigger by remember { mutableIntStateOf(0) }
     val uiState by rememberPowerControlState(refreshTrigger)
     val coroutineScope = rememberCoroutineScope()
-    val localFirstItemFocusRequester = remember { FocusRequester() }
-    val firstItemFocusRequester = focusRequester ?: localFirstItemFocusRequester
-    var hasRequestedInitialFocus by remember { mutableStateOf(false) }
-
-    LaunchedEffect(uiState is PowerControlUiState.Success) {
-        if (hasRequestedInitialFocus || uiState !is PowerControlUiState.Success) {
-            return@LaunchedEffect
-        }
-        repeat(3) {
-            try {
-                firstItemFocusRequester.requestFocus()
-                hasRequestedInitialFocus = true
-                return@LaunchedEffect
-            } catch (_: Exception) {
-                delay(80)
-            }
-        }
-    }
 
     PowerControlQuickMenuContent(
         uiState = uiState,
@@ -217,7 +199,7 @@ fun PowerControlQuickMenuTab(
                 refreshTrigger++
             }
         },
-        firstItemFocusRequester = firstItemFocusRequester,
+        firstItemFocusRequester = focusRequester,
         modifier = modifier.focusGroup(),
     )
 }
