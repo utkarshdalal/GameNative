@@ -1,6 +1,7 @@
 package app.gamenative.powercontrol
 
 import android.content.Context
+import android.util.AtomicFile
 import app.gamenative.BuildConfig
 import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
@@ -542,7 +543,8 @@ object PowerManager {
     // ========================================
 
     /**
-     * Save a power profile to container-specific file
+     * Save a power profile to container-specific file using atomic write.
+     * Uses AtomicFile to prevent corruption if process is killed during write.
      */
     fun saveProfile() {
         try {
@@ -553,8 +555,17 @@ object PowerManager {
             val profileFile = getProfileFile()
             if (profileFile != null) {
                 profileFile.parentFile?.mkdirs()
-                profileFile.writeText(jsonString)
-                Timber.tag("PowerManager").d("Saved power profile to ${profileFile.absolutePath}: $jsonString")
+
+                val atomicFile = AtomicFile(profileFile)
+                val stream = atomicFile.startWrite()
+                try {
+                    stream.write(jsonString.toByteArray(Charsets.UTF_8))
+                    atomicFile.finishWrite(stream)
+                    Timber.tag("PowerManager").d("Saved power profile to ${profileFile.absolutePath}: $jsonString")
+                } catch (e: Exception) {
+                    atomicFile.failWrite(stream)
+                    throw e
+                }
             } else {
                 Timber.tag("PowerManager").w("No container directory set, skipping profile save")
             }
