@@ -2199,6 +2199,8 @@
     <string name="power_control_fan_control">Fan Control</string>
     <string name="power_control_fan_control_desc">Holds a target temperature with minimum fan noise. Only works on Retroid Pocket 6.</string>
     <string name="power_control_fan_control_unsupported">Only works on Retroid Pocket 6</string>
+    <string name="power_control_hud_show_fan">Show fan speed</string>
+    <string name="power_control_hud_show_tuner">Show tuner clock caps</string>
     <string name="power_control_tuning_strategy">Tuning Strategy</string>
     <string name="power_control_strategy_balanced">Balanced</string>
     <string name="power_control_strategy_balanced_desc">Adjusts all components equally for best overall performance</string>

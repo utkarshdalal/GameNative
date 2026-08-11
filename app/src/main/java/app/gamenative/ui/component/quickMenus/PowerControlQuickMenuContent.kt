@@ -1,8 +1,12 @@
 package app.gamenative.ui.component.quickMenus
 
 import android.annotation.SuppressLint
+import android.view.KeyEvent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,7 +27,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +37,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,6 +51,11 @@ import app.gamenative.powercontrol.AutoTuningStrategy
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.PowerProfile
 import app.gamenative.powercontrol.drivers.PerformanceDriver
+import app.gamenative.ui.component.QuickMenuAdjustmentRow
+import app.gamenative.ui.component.QuickMenuToggleRow
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.utils.MathUtils.normalizedProgress
+import kotlinx.coroutines.delay
 
 @Composable
 fun PowerControlQuickMenuContent(
@@ -58,6 +73,7 @@ fun PowerControlQuickMenuContent(
     modifier: Modifier = Modifier,
     onFanControlToggled: (Boolean) -> Unit = {},
     onPerClusterTuningToggled: (Boolean) -> Unit = {},
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     val scrollState = rememberScrollState()
 
@@ -87,6 +103,7 @@ fun PowerControlQuickMenuContent(
                     onMaxGpuPowerChanged = onMaxGpuPowerChanged,
                     onMinRamValueChanged = onMinRamValueChanged,
                     onMaxRamValueChanged = onMaxRamValueChanged,
+                    firstItemFocusRequester = firstItemFocusRequester,
                 )
             }
         }
@@ -155,7 +172,9 @@ private fun SuccessView(
     onMaxGpuPowerChanged: (Int) -> Unit,
     onMinRamValueChanged: (Int) -> Unit,
     onMaxRamValueChanged: (Int) -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
+    val accentColor = PluviaTheme.colors.accentPurple
     var isProfileDropdownExpanded by remember { mutableStateOf(false) }
     var isGovernorDropdownExpanded by remember { mutableStateOf(false) }
     var isTuningStrategyDropdownExpanded by remember { mutableStateOf(false) }
@@ -198,100 +217,44 @@ private fun SuccessView(
     }
 
     // Auto-Tuning Toggle
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(8.dp)
-            )
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.power_control_auto_tuning),
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.power_control_auto_tuning_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            )
-        }
-        Switch(
-            checked = state.selectedProfile.enableAutoTuning,
-            onCheckedChange = onAutoTuningToggled
-        )
-    }
+    QuickMenuToggleRow(
+        title = stringResource(R.string.power_control_auto_tuning),
+        subtitle = stringResource(R.string.power_control_auto_tuning_desc),
+        enabled = state.selectedProfile.enableAutoTuning,
+        onToggle = { onAutoTuningToggled(!state.selectedProfile.enableAutoTuning) },
+        accentColor = accentColor,
+        focusRequester = firstItemFocusRequester,
+    )
 
     val isClusterTuningAvailable = PowerManager.isClusterTuningAvailable()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(8.dp)
-            )
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.power_control_per_cluster),
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.power_control_per_cluster_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            )
-        }
-        Switch(
-            checked = isClusterTuningAvailable && state.selectedProfile.enablePerClusterTuning,
-            onCheckedChange = onPerClusterTuningToggled,
-            enabled = isClusterTuningAvailable
-        )
-    }
+    QuickMenuToggleRow(
+        title = stringResource(R.string.power_control_per_cluster),
+        subtitle = stringResource(R.string.power_control_per_cluster_desc),
+        enabled = isClusterTuningAvailable && state.selectedProfile.enablePerClusterTuning,
+        onToggle = {
+            if (isClusterTuningAvailable) {
+                onPerClusterTuningToggled(!state.selectedProfile.enablePerClusterTuning)
+            }
+        },
+        accentColor = accentColor,
+    )
 
     val isFanControlAvailable = PowerManager.isFanControlAvailable()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(8.dp)
-            )
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.power_control_fan_control),
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = if (isFanControlAvailable) {
-                    stringResource(R.string.power_control_fan_control_desc)
-                } else {
-                    stringResource(R.string.power_control_fan_control_unsupported)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            )
-        }
-        Switch(
-            checked = isFanControlAvailable && state.selectedProfile.enableFanControl,
-            onCheckedChange = onFanControlToggled,
-            enabled = isFanControlAvailable
-        )
-    }
+    QuickMenuToggleRow(
+        title = stringResource(R.string.power_control_fan_control),
+        subtitle = if (isFanControlAvailable) {
+            stringResource(R.string.power_control_fan_control_desc)
+        } else {
+            stringResource(R.string.power_control_fan_control_unsupported)
+        },
+        enabled = isFanControlAvailable && state.selectedProfile.enableFanControl,
+        onToggle = {
+            if (isFanControlAvailable) {
+                onFanControlToggled(!state.selectedProfile.enableFanControl)
+            }
+        },
+        accentColor = accentColor,
+    )
 
     // Tuning Strategy Dropdown (only shown when auto-tuning is enabled)
     if (state.selectedProfile.enableAutoTuning) {
@@ -301,72 +264,37 @@ private fun SuccessView(
             color = MaterialTheme.colorScheme.onSurface,
         )
 
-        Box {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .clickable { isTuningStrategyDropdownExpanded = true }
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = stringResource(state.selectedProfile.tuningStrategy.displayNameRes),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = stringResource(state.selectedProfile.tuningStrategy.descriptionRes),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                    )
-                }
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+        SelectorRow(
+            valueText = stringResource(state.selectedProfile.tuningStrategy.displayNameRes),
+            descriptionText = stringResource(state.selectedProfile.tuningStrategy.descriptionRes),
+            accentColor = accentColor,
+            expanded = isTuningStrategyDropdownExpanded,
+            onExpandedChange = { isTuningStrategyDropdownExpanded = it },
+        ) { menuFocusRequester ->
+            AutoTuningStrategy.entries.forEachIndexed { index, strategy ->
+                SelectorMenuItem(
+                    accentColor = accentColor,
+                    focusRequester = if (index == 0) menuFocusRequester else null,
+                    onClick = {
+                        isTuningStrategyDropdownExpanded = false
+                        onTuningStrategySelected(strategy)
+                    },
+                    text = {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = stringResource(strategy.displayNameRes),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = stringResource(strategy.descriptionRes),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
                 )
-            }
-
-            DropdownMenu(
-                expanded = isTuningStrategyDropdownExpanded,
-                onDismissRequest = { isTuningStrategyDropdownExpanded = false }
-            ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    AutoTuningStrategy.entries.forEach { strategy ->
-                        DropdownMenuItem(
-                            text = {
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(strategy.displayNameRes),
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Text(
-                                        text = stringResource(strategy.descriptionRes),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            },
-                            onClick = {
-                                isTuningStrategyDropdownExpanded = false
-                                onTuningStrategySelected(strategy)
-                            }
-                        )
-                    }
-                }
             }
         }
     }
@@ -381,56 +309,34 @@ private fun SuccessView(
             color = MaterialTheme.colorScheme.onSurface,
         )
 
-        Box {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .clickable { isProfileDropdownExpanded = true }
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = state.selectedProfile.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            DropdownMenu(
-                expanded = isProfileDropdownExpanded,
-                onDismissRequest = { isProfileDropdownExpanded = false }
-            ) {
-                state.availableProfiles.forEach { profile ->
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text(
-                                    text = profile.name,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Text(
-                                    text = "${formatFrequency(profile.minCpuFreq)} - ${formatFrequency(profile.maxCpuFreq)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
-                        onClick = {
-                            isProfileDropdownExpanded = false
-                            onProfileSelected(profile)
+        SelectorRow(
+            valueText = state.selectedProfile.name,
+            accentColor = accentColor,
+            expanded = isProfileDropdownExpanded,
+            onExpandedChange = { isProfileDropdownExpanded = it },
+        ) { menuFocusRequester ->
+            state.availableProfiles.forEachIndexed { index, profile ->
+                SelectorMenuItem(
+                    accentColor = accentColor,
+                    focusRequester = if (index == 0) menuFocusRequester else null,
+                    onClick = {
+                        isProfileDropdownExpanded = false
+                        onProfileSelected(profile)
+                    },
+                    text = {
+                        Column {
+                            Text(
+                                text = profile.name,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = "${formatFrequency(profile.minCpuFreq)} - ${formatFrequency(profile.maxCpuFreq)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                    )
-                }
+                    },
+                )
             }
         }
     }
@@ -443,122 +349,80 @@ private fun SuccessView(
         color = MaterialTheme.colorScheme.onSurface,
     )
 
-    Box {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .clickable { isGovernorDropdownExpanded = true }
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = state.cpuInfo.currentGovernor.replaceFirstChar { it.uppercase() },
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+    SelectorRow(
+        valueText = state.cpuInfo.currentGovernor.replaceFirstChar { it.uppercase() },
+        accentColor = accentColor,
+        expanded = isGovernorDropdownExpanded,
+        onExpandedChange = { isGovernorDropdownExpanded = it },
+    ) { menuFocusRequester ->
+        state.cpuInfo.availableGovernors.forEachIndexed { index, governor ->
+            SelectorMenuItem(
+                accentColor = accentColor,
+                focusRequester = if (index == 0) menuFocusRequester else null,
+                onClick = {
+                    isGovernorDropdownExpanded = false
+                    onGovernorSelected(governor)
+                },
+                text = {
+                    Text(
+                        text = governor.replaceFirstChar { it.uppercase() },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
             )
-            Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        DropdownMenu(
-            expanded = isGovernorDropdownExpanded,
-            onDismissRequest = { isGovernorDropdownExpanded = false }
-        ) {
-            state.cpuInfo.availableGovernors.forEach { governor ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = governor.replaceFirstChar { it.uppercase() },
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    },
-                    onClick = {
-                        isGovernorDropdownExpanded = false
-                        onGovernorSelected(governor)
-                    }
-                )
-            }
         }
     }
 
     // Only show manual controls when auto-tuning is disabled
     if (!state.selectedProfile.enableAutoTuning) {
         if (state.cpuInfo.availableFrequencies.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.power_control_cpu_min_freq),
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
+            val maxFreqIndex = state.cpuInfo.availableFrequencies.size - 1
+
+            QuickMenuAdjustmentRow(
+                title = stringResource(R.string.power_control_cpu_min_freq),
+                valueText = formatFrequency(
+                    state.cpuInfo.availableFrequencies[selectedMinFreqIndex.coerceIn(0, maxFreqIndex)],
+                ),
+                progress = normalizedProgress(selectedMinFreqIndex.toFloat(), 0f, maxFreqIndex.toFloat()),
+                onDecrease = {
+                    val newIndex = (selectedMinFreqIndex - 1).coerceAtLeast(0)
+                    if (newIndex != selectedMinFreqIndex) {
+                        selectedMinFreqIndex = newIndex
+                        onMinCpuValueChanged(newIndex)
+                    }
+                },
+                onIncrease = {
+                    val newIndex = (selectedMinFreqIndex + 1).coerceAtMost(selectedMaxFreqIndex)
+                    if (newIndex != selectedMinFreqIndex) {
+                        selectedMinFreqIndex = newIndex
+                        onMinCpuValueChanged(newIndex)
+                    }
+                },
+                accentColor = accentColor,
             )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Slider(
-                    value = selectedMinFreqIndex.toFloat(),
-                    onValueChange = { newValue ->
-                        val newIndex = newValue.toInt()
-                        if (newIndex <= selectedMaxFreqIndex) {
-                            selectedMinFreqIndex = newIndex
-                        }
-                    },
-                    onValueChangeFinished = {
-                        onMinCpuValueChanged(selectedMinFreqIndex)
-                    },
-                    valueRange = 0f..(state.cpuInfo.availableFrequencies.size - 1).toFloat(),
-                    steps = state.cpuInfo.availableFrequencies.size - 2,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = formatFrequency(state.cpuInfo.availableFrequencies[selectedMinFreqIndex]),
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.width(80.dp)
-                )
-            }
-
-            Text(
-                text = stringResource(R.string.power_control_cpu_max_freq),
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
+            QuickMenuAdjustmentRow(
+                title = stringResource(R.string.power_control_cpu_max_freq),
+                valueText = formatFrequency(
+                    state.cpuInfo.availableFrequencies[selectedMaxFreqIndex.coerceIn(0, maxFreqIndex)],
+                ),
+                progress = normalizedProgress(selectedMaxFreqIndex.toFloat(), 0f, maxFreqIndex.toFloat()),
+                onDecrease = {
+                    val newIndex = (selectedMaxFreqIndex - 1).coerceAtLeast(selectedMinFreqIndex)
+                    if (newIndex != selectedMaxFreqIndex) {
+                        selectedMaxFreqIndex = newIndex
+                        onMaxCpuValueChanged(newIndex)
+                    }
+                },
+                onIncrease = {
+                    val newIndex = (selectedMaxFreqIndex + 1).coerceAtMost(maxFreqIndex)
+                    if (newIndex != selectedMaxFreqIndex) {
+                        selectedMaxFreqIndex = newIndex
+                        onMaxCpuValueChanged(newIndex)
+                    }
+                },
+                accentColor = accentColor,
             )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Slider(
-                    value = selectedMaxFreqIndex.toFloat(),
-                    onValueChange = { newValue ->
-                        val newIndex = newValue.toInt()
-                        if (newIndex >= selectedMinFreqIndex) {
-                            selectedMaxFreqIndex = newIndex
-                        }
-                    },
-                    onValueChangeFinished = {
-                        onMaxCpuValueChanged(selectedMaxFreqIndex)
-                    },
-                    valueRange = 0f..(state.cpuInfo.availableFrequencies.size - 1).toFloat(),
-                    steps = state.cpuInfo.availableFrequencies.size - 2,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = formatFrequency(state.cpuInfo.availableFrequencies[selectedMaxFreqIndex]),
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.width(80.dp)
-                )
-            }
         }
 
         state.gpuInfo?.let { gpuInfo ->
@@ -594,73 +458,55 @@ private fun SuccessView(
             }
 
             if (gpuInfo.maxAvailablePowerLevel > 0) {
-                Text(
-                    text = stringResource(R.string.power_control_gpu_min_power),
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
+                QuickMenuAdjustmentRow(
+                    title = stringResource(R.string.power_control_gpu_min_power),
+                    valueText = selectedMinGpuPowerLevel.toString(),
+                    progress = normalizedProgress(
+                        selectedMinGpuPowerLevel.toFloat(),
+                        0f,
+                        gpuInfo.maxAvailablePowerLevel.toFloat(),
+                    ),
+                    onDecrease = {
+                        val newLevel = (selectedMinGpuPowerLevel - 1).coerceAtLeast(0)
+                        if (newLevel != selectedMinGpuPowerLevel) {
+                            selectedMinGpuPowerLevel = newLevel
+                            onMinGpuPowerChanged(newLevel)
+                        }
+                    },
+                    onIncrease = {
+                        val newLevel = (selectedMinGpuPowerLevel + 1).coerceAtMost(selectedMaxGpuPowerLevel)
+                        if (newLevel != selectedMinGpuPowerLevel) {
+                            selectedMinGpuPowerLevel = newLevel
+                            onMinGpuPowerChanged(newLevel)
+                        }
+                    },
+                    accentColor = accentColor,
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Slider(
-                        value = selectedMinGpuPowerLevel.toFloat(),
-                        onValueChange = { newValue ->
-                            val newLevel = newValue.toInt()
-                            if (newLevel <= selectedMaxGpuPowerLevel) {
-                                selectedMinGpuPowerLevel = newLevel
-                            }
-                        },
-                        onValueChangeFinished = {
-                            onMinGpuPowerChanged(selectedMinGpuPowerLevel)
-                        },
-                        valueRange = 0f..gpuInfo.maxAvailablePowerLevel.toFloat(),
-                        steps = gpuInfo.maxAvailablePowerLevel - 1,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = selectedMinGpuPowerLevel.toString(),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.width(20.dp)
-                    )
-                }
-
-                Text(
-                    text = stringResource(R.string.power_control_gpu_max_power),
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
+                QuickMenuAdjustmentRow(
+                    title = stringResource(R.string.power_control_gpu_max_power),
+                    valueText = selectedMaxGpuPowerLevel.toString(),
+                    progress = normalizedProgress(
+                        selectedMaxGpuPowerLevel.toFloat(),
+                        0f,
+                        gpuInfo.maxAvailablePowerLevel.toFloat(),
+                    ),
+                    onDecrease = {
+                        val newLevel = (selectedMaxGpuPowerLevel - 1).coerceAtLeast(selectedMinGpuPowerLevel)
+                        if (newLevel != selectedMaxGpuPowerLevel) {
+                            selectedMaxGpuPowerLevel = newLevel
+                            onMaxGpuPowerChanged(newLevel)
+                        }
+                    },
+                    onIncrease = {
+                        val newLevel = (selectedMaxGpuPowerLevel + 1).coerceAtMost(gpuInfo.maxAvailablePowerLevel)
+                        if (newLevel != selectedMaxGpuPowerLevel) {
+                            selectedMaxGpuPowerLevel = newLevel
+                            onMaxGpuPowerChanged(newLevel)
+                        }
+                    },
+                    accentColor = accentColor,
                 )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Slider(
-                        value = selectedMaxGpuPowerLevel.toFloat(),
-                        onValueChange = { newValue ->
-                            val newLevel = newValue.toInt()
-                            if (newLevel >= selectedMinGpuPowerLevel) {
-                                selectedMaxGpuPowerLevel = newLevel
-                            }
-                        },
-                        onValueChangeFinished = {
-                            onMaxGpuPowerChanged(selectedMaxGpuPowerLevel)
-                        },
-                        valueRange = 0f..gpuInfo.maxAvailablePowerLevel.toFloat(),
-                        steps = gpuInfo.maxAvailablePowerLevel - 1,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = selectedMaxGpuPowerLevel.toString(),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.width(20.dp)
-                    )
-                }
             }
         }
 
@@ -668,86 +514,216 @@ private fun SuccessView(
             if (ramInfo.maxAvailableBusLevel > 0) {
                 SectionHeader(title = "RAM")
 
-                Text(
-                    text = stringResource(R.string.power_control_ram_min_power),
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.SemiBold
+                QuickMenuAdjustmentRow(
+                    title = stringResource(R.string.power_control_ram_min_power),
+                    valueText = selectedMinRamValue.toString(),
+                    progress = normalizedProgress(
+                        selectedMinRamValue.toFloat(),
+                        0f,
+                        ramInfo.maxAvailableBusLevel.toFloat(),
                     ),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    onDecrease = {
+                        val newLevel = (selectedMinRamValue - 1).coerceAtLeast(0)
+                        if (newLevel != selectedMinRamValue) {
+                            selectedMinRamValue = newLevel
+                            onMinRamValueChanged(newLevel)
+                        }
+                    },
+                    onIncrease = {
+                        val newLevel = (selectedMinRamValue + 1).coerceAtMost(selectedMaxRamValue)
+                        if (newLevel != selectedMinRamValue) {
+                            selectedMinRamValue = newLevel
+                            onMinRamValueChanged(newLevel)
+                        }
+                    },
+                    accentColor = accentColor,
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Slider(
-                        value = selectedMinRamValue.toFloat(),
-                        onValueChange = { newValue ->
-                            val newLevel = newValue.toInt()
-
-                            if (newLevel <= selectedMaxRamValue) {
-                                selectedMinRamValue = newLevel
-                            }
-                        },
-                        onValueChangeFinished = {
-                            onMinRamValueChanged(selectedMinRamValue)
-                        },
-                        valueRange = 0f..ramInfo.maxAvailableBusLevel.toFloat(),
-                        steps = (ramInfo.maxAvailableBusLevel - 1).coerceAtLeast(0),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Text(
-                        text = selectedMinRamValue.toString(),
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.width(20.dp)
-                    )
-                }
-
-                Text(
-                    text = stringResource(R.string.power_control_ram_max_power),
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.SemiBold
+                QuickMenuAdjustmentRow(
+                    title = stringResource(R.string.power_control_ram_max_power),
+                    valueText = selectedMaxRamValue.toString(),
+                    progress = normalizedProgress(
+                        selectedMaxRamValue.toFloat(),
+                        0f,
+                        ramInfo.maxAvailableBusLevel.toFloat(),
                     ),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    onDecrease = {
+                        val newLevel = (selectedMaxRamValue - 1).coerceAtLeast(selectedMinRamValue)
+                        if (newLevel != selectedMaxRamValue) {
+                            selectedMaxRamValue = newLevel
+                            onMaxRamValueChanged(newLevel)
+                        }
+                    },
+                    onIncrease = {
+                        val newLevel = (selectedMaxRamValue + 1).coerceAtMost(ramInfo.maxAvailableBusLevel)
+                        if (newLevel != selectedMaxRamValue) {
+                            selectedMaxRamValue = newLevel
+                            onMaxRamValueChanged(newLevel)
+                        }
+                    },
+                    accentColor = accentColor,
                 )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Slider(
-                        value = selectedMaxRamValue.toFloat(),
-                        onValueChange = { newValue ->
-                            val newLevel = newValue.toInt()
-
-                            if (newLevel >= selectedMinRamValue) {
-                                selectedMaxRamValue = newLevel
-                            }
-                        },
-                        onValueChangeFinished = {
-                            onMaxRamValueChanged(selectedMaxRamValue)
-                        },
-                        valueRange = 0f..ramInfo.maxAvailableBusLevel.toFloat(),
-                        steps = (ramInfo.maxAvailableBusLevel - 1).coerceAtLeast(0),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Text(
-                        text = selectedMaxRamValue.toString(),
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.width(20.dp)
-                    )
-                }
             }
         }
     } // End of auto-tuning check
+}
+
+@Composable
+private fun SelectorRow(
+    valueText: String,
+    accentColor: Color,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    descriptionText: String? = null,
+    focusRequester: FocusRequester? = null,
+    menuContent: @Composable (FocusRequester) -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(14.dp)
+    val menuFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            repeat(3) {
+                try {
+                    menuFocusRequester.requestFocus()
+                    return@LaunchedEffect
+                } catch (_: Exception) {
+                    delay(80)
+                }
+            }
+        }
+    }
+
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+                .clip(shape)
+                .background(
+                    if (isFocused) {
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                accentColor.copy(alpha = 0.16f),
+                                accentColor.copy(alpha = 0.08f),
+                            ),
+                        )
+                    } else {
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
+                            ),
+                        )
+                    },
+                )
+                .then(
+                    if (isFocused) {
+                        Modifier.border(
+                            width = 2.dp,
+                            color = accentColor.copy(alpha = 0.7f),
+                            shape = shape,
+                        )
+                    } else {
+                        Modifier
+                    }
+                )
+                .then(
+                    if (focusRequester != null) {
+                        Modifier.focusRequester(focusRequester)
+                    } else {
+                        Modifier
+                    }
+                )
+                .focusable(interactionSource = interactionSource)
+                .onPreviewKeyEvent { keyEvent ->
+                    if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && isFocused) {
+                        when (keyEvent.nativeKeyEvent.keyCode) {
+                            KeyEvent.KEYCODE_BUTTON_A,
+                            KeyEvent.KEYCODE_DPAD_CENTER,
+                            KeyEvent.KEYCODE_ENTER -> {
+                                onExpandedChange(true)
+                                true
+                            }
+
+                            else -> false
+                        }
+                    } else {
+                        false
+                    }
+                }
+                .selectable(
+                    selected = isFocused,
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = { onExpandedChange(true) },
+                )
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = valueText,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
+                )
+                if (!descriptionText.isNullOrBlank()) {
+                    Text(
+                        text = descriptionText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = null,
+                tint = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+        ) {
+            menuContent(menuFocusRequester)
+        }
+    }
+}
+
+@Composable
+private fun SelectorMenuItem(
+    accentColor: Color,
+    onClick: () -> Unit,
+    text: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    focusRequester: FocusRequester? = null,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
+    DropdownMenuItem(
+        text = text,
+        onClick = onClick,
+        interactionSource = interactionSource,
+        modifier = modifier
+            .background(
+                if (isFocused) accentColor.copy(alpha = 0.16f) else Color.Transparent,
+            )
+            .then(
+                if (focusRequester != null) {
+                    Modifier.focusRequester(focusRequester)
+                } else {
+                    Modifier
+                }
+            ),
+    )
 }

@@ -70,12 +70,45 @@ object TunerThresholds {
     const val STEPS_UNCAPPED = Int.MAX_VALUE
 }
 
+data class StrategyTuning(
+    val fpsRaiseDeficitFps: Float,
+    val fpsTrimToleranceFps: Float,
+    val trimQualifyCycles: Int,
+    val trimWatchCycles: Int,
+    val raiseCyclesBeforeUncap: Int,
+) {
+    companion object {
+        val BALANCED = StrategyTuning(
+            fpsRaiseDeficitFps = TunerThresholds.FPS_RAISE_DEFICIT_FPS,
+            fpsTrimToleranceFps = TunerThresholds.FPS_TRIM_TOLERANCE_FPS,
+            trimQualifyCycles = TunerThresholds.TRIM_QUALIFY_CYCLES,
+            trimWatchCycles = TunerThresholds.TRIM_WATCH_CYCLES,
+            raiseCyclesBeforeUncap = TunerThresholds.RAISE_CYCLES_BEFORE_UNCAP,
+        )
+        val POWER_EFFICIENT = BALANCED.copy(
+            fpsTrimToleranceFps = 2f,
+            trimQualifyCycles = 2,
+        )
+        val AGGRESSIVE = BALANCED.copy(
+            fpsRaiseDeficitFps = 2f,
+            trimQualifyCycles = 5,
+            raiseCyclesBeforeUncap = 1,
+        )
+        val CONSERVATIVE = BALANCED.copy(
+            trimQualifyCycles = 6,
+            trimWatchCycles = 4,
+        )
+    }
+}
+
 /**
  * Pure decision logic for [ClusterTuner]: a snapshot plus the current per-domain
  * capabilities in, one action out. Holds all tuning state and has no Android or
  * sysfs dependency, so it can be exercised on the JVM.
  */
-class TunerDecisionEngine {
+class TunerDecisionEngine(
+    private val strategyTuning: () -> StrategyTuning = { StrategyTuning.BALANCED },
+) {
 
     private val frozen = LinkedHashSet<TunerDomain>()
 
@@ -113,8 +146,9 @@ class TunerDecisionEngine {
 
         val target = input.targetFps.toFloat()
         val targetPeriodMs = 1000f / target
+        val tuning = strategyTuning()
 
-        val missingTarget = input.fps < target - TunerThresholds.FPS_RAISE_DEFICIT_FPS
+        val missingTarget = input.fps < target - tuning.fpsRaiseDeficitFps
         val slowFrameSpike = slowRatio > TunerThresholds.SLOW_FRAME_RAISE_RATIO
 
         if (missingTarget || slowFrameSpike) {
@@ -127,7 +161,7 @@ class TunerDecisionEngine {
                 return decision(TunerAction.HOLD, null, 0, "raise:uncapped")
             }
 
-            val steps = if (raiseCycles >= TunerThresholds.RAISE_CYCLES_BEFORE_UNCAP) {
+            val steps = if (raiseCycles >= tuning.raiseCyclesBeforeUncap) {
                 TunerThresholds.STEPS_UNCAPPED
             } else {
                 TunerThresholds.RAISE_STEP_COUNT
@@ -138,7 +172,7 @@ class TunerDecisionEngine {
 
         val watched = watchedDomain
         if (watchCyclesRemaining > 0 && watched != null) {
-            if (isDegraded(input, slowRatio, targetPeriodMs)) {
+            if (isDegraded(input, slowRatio, targetPeriodMs, tuning)) {
                 frozen.add(watched)
                 clearWatch()
                 trimQualifiedCycles = 0
@@ -148,19 +182,19 @@ class TunerDecisionEngine {
             return decision(TunerAction.HOLD, watched, 0, "watch:${watched.key}")
         }
 
-        if (isHealthy(input, slowRatio, targetPeriodMs)) {
+        if (isHealthy(input, slowRatio, targetPeriodMs, tuning)) {
             trimQualifiedCycles++
         } else {
             trimQualifiedCycles = 0
         }
 
         val steadyEnough = steadyCycles >= TunerThresholds.STEADY_RENDER_CYCLES
-        if (steadyEnough && trimQualifiedCycles >= TunerThresholds.TRIM_QUALIFY_CYCLES) {
+        if (steadyEnough && trimQualifiedCycles >= tuning.trimQualifyCycles) {
             val domain = trimTarget(input)
             if (domain != null) {
                 trimQualifiedCycles = 0
                 watchedDomain = domain
-                watchCyclesRemaining = TunerThresholds.TRIM_WATCH_CYCLES
+                watchCyclesRemaining = tuning.trimWatchCycles
                 return decision(TunerAction.TRIM, domain, 1, "trim:${domain.key}")
             }
             return decision(TunerAction.HOLD, null, 0, "trim:no-domain")
@@ -190,15 +224,15 @@ class TunerDecisionEngine {
         }
     }
 
-    private fun isHealthy(input: TunerInput, slowRatio: Float, targetPeriodMs: Float): Boolean {
+    private fun isHealthy(input: TunerInput, slowRatio: Float, targetPeriodMs: Float, tuning: StrategyTuning): Boolean {
         val target = input.targetFps.toFloat()
-        return input.fps >= target - TunerThresholds.FPS_TRIM_TOLERANCE_FPS &&
+        return input.fps >= target - tuning.fpsTrimToleranceFps &&
             input.frameTimeP95Ms <= targetPeriodMs * TunerThresholds.FRAME_TIME_P95_TRIM_FACTOR &&
             slowRatio < TunerThresholds.SLOW_FRAME_TRIM_RATIO
     }
 
-    private fun isDegraded(input: TunerInput, slowRatio: Float, targetPeriodMs: Float): Boolean {
-        return !isHealthy(input, slowRatio, targetPeriodMs)
+    private fun isDegraded(input: TunerInput, slowRatio: Float, targetPeriodMs: Float, tuning: StrategyTuning): Boolean {
+        return !isHealthy(input, slowRatio, targetPeriodMs, tuning)
     }
 
     private fun clearWatch() {

@@ -2197,6 +2197,8 @@
     <string name="power_control_fan_control">팬 제어</string>
     <string name="power_control_fan_control_desc">팬 소음을 최소화하며 목표 온도를 유지합니다. Retroid Pocket 6에서만 작동합니다.</string>
     <string name="power_control_fan_control_unsupported">Retroid Pocket 6에서만 작동합니다</string>
+    <string name="power_control_hud_show_fan">팬 속도 표시</string>
+    <string name="power_control_hud_show_tuner">튜닝 클록 상한 표시</string>
     <string name="power_control_tuning_strategy">튜닝 전략</string>
     <string name="power_control_strategy_balanced">균형</string>
     <string name="power_control_strategy_balanced_desc">모든 구성 요소를 균등하게 조정하여 최고의 전체 성능 달성</string>

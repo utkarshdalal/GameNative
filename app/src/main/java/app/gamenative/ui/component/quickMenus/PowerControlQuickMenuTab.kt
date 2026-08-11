@@ -14,7 +14,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.powercontrol.AutoTuningStrategy
 import app.gamenative.powercontrol.PowerManager
@@ -23,6 +22,7 @@ import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
 import app.gamenative.powercontrol.PowerProfiles
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -70,6 +70,24 @@ fun PowerControlQuickMenuTab(
     var refreshTrigger by remember { mutableIntStateOf(0) }
     val uiState by rememberPowerControlState(refreshTrigger)
     val coroutineScope = rememberCoroutineScope()
+    val localFirstItemFocusRequester = remember { FocusRequester() }
+    val firstItemFocusRequester = focusRequester ?: localFirstItemFocusRequester
+    var hasRequestedInitialFocus by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState is PowerControlUiState.Success) {
+        if (hasRequestedInitialFocus || uiState !is PowerControlUiState.Success) {
+            return@LaunchedEffect
+        }
+        repeat(3) {
+            try {
+                firstItemFocusRequester.requestFocus()
+                hasRequestedInitialFocus = true
+                return@LaunchedEffect
+            } catch (_: Exception) {
+                delay(80)
+            }
+        }
+    }
 
     PowerControlQuickMenuContent(
         uiState = uiState,
@@ -199,15 +217,8 @@ fun PowerControlQuickMenuTab(
                 refreshTrigger++
             }
         },
-        modifier = modifier
-            .focusGroup()
-            .then(
-                if (focusRequester != null) {
-                    Modifier.focusRequester(focusRequester)
-                } else {
-                    Modifier
-                }
-            )
+        firstItemFocusRequester = firstItemFocusRequester,
+        modifier = modifier.focusGroup(),
     )
 }
 
@@ -319,6 +330,7 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
                         // Preserve enableAutoTuning and tuningStrategy from PowerManager's current profile
                         enableAutoTuning = PowerManager.currentProfile?.enableAutoTuning ?: true,
                         enablePerClusterTuning = PowerManager.currentProfile?.enablePerClusterTuning ?: true,
+                        enableFanControl = PowerManager.currentProfile?.enableFanControl ?: true,
                         tuningStrategy = PowerManager.currentProfile?.tuningStrategy ?: AutoTuningStrategy.POWER_EFFICIENT
                     )
 

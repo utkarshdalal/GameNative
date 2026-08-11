@@ -2071,6 +2071,8 @@
     <string name="power_control_fan_control">Blæserstyring</string>
     <string name="power_control_fan_control_desc">Holder en måltemperatur med mindst mulig blæserstøj. Virker kun på Retroid Pocket 6.</string>
     <string name="power_control_fan_control_unsupported">Virker kun på Retroid Pocket 6</string>
+    <string name="power_control_hud_show_fan">Vis blæserhastighed</string>
+    <string name="power_control_hud_show_tuner">Vis tunerens frekvensgrænser</string>
     <string name="power_control_tuning_strategy">Justeringsstrategi</string>
     <string name="power_control_strategy_balanced">Afbalanceret</string>
     <string name="power_control_strategy_balanced_desc">Justerer alle komponenter lige meget for bedste samlede ydeevne</string>

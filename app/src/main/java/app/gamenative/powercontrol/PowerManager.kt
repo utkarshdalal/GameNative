@@ -317,6 +317,7 @@ object PowerManager {
             metricsProvider = { latestMetrics },
             targetFpsProvider = { targetFps },
             fanSampleProvider = { FanController.latestSample },
+            strategyProvider = { currentProfile?.tuningStrategy ?: AutoTuningStrategy.BALANCED },
             stateFile = ClusterTuner.stateFileFor(containerDir),
             logDirectory = appContext?.let { context ->
                 File(
@@ -921,6 +922,14 @@ object PowerManager {
         return containerDir?.let { File(it, ".config/.power-profile") }
     }
 
+    private fun applyDefaultProfile(logMessage: String?) {
+        currentProfile = getDriver().getDefaultProfile()
+        logMessage?.let { Timber.tag("PowerManager").d(it) }
+        if (currentProfile?.enableAutoTuning == true) {
+            startAutoTuning()
+        }
+    }
+
     /**
      * Restore the saved power profile from container-specific file
      */
@@ -928,21 +937,18 @@ object PowerManager {
         try {
             val profileFile = getProfileFile()
             if (profileFile == null) {
-                currentProfile = driver?.getDefaultProfile()
-                Timber.tag("PowerManager").d("No container directory set, using default profile")
+                applyDefaultProfile("No container directory set, using default profile")
                 return
             }
 
             if (!profileFile.exists()) {
-                currentProfile = driver?.getDefaultProfile()
-                Timber.tag("PowerManager").d("No saved profile found at ${profileFile.absolutePath}, using default profile")
+                applyDefaultProfile("No saved profile found at ${profileFile.absolutePath}, using default profile")
                 return
             }
 
             val jsonString = profileFile.readText()
             if (jsonString.isEmpty()) {
-                currentProfile = driver?.getDefaultProfile()
-                Timber.tag("PowerManager").d("Empty profile file, using default profile")
+                applyDefaultProfile("Empty profile file, using default profile")
                 return
             }
 
@@ -974,7 +980,7 @@ object PowerManager {
             }
         } catch (e: Exception) {
             Timber.tag("PowerManager").e(e, "Failed to restore power profile, falling back to default")
-            currentProfile = getDriver().getDefaultProfile()
+            applyDefaultProfile(null)
         }
     }
 }

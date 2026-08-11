@@ -20,6 +20,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import app.gamenative.PrefManager
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.fan.FanController
 import app.gamenative.powercontrol.metrics.CpuUsageSampler
@@ -334,11 +335,13 @@ class PerformanceHudView(
     }
 
     private fun readFanText(): String? {
+        if (!PrefManager.showPerformanceHudFan) return null
         if (!FanController.isRunning()) return null
         return FanController.latestSample?.let { "FAN ${it.appliedPercent}%" }
     }
 
     private fun readTuneText(): String? {
+        if (!PrefManager.showPerformanceHudTunerCaps) return null
         val caps = PowerManager.latestTunerCaps() ?: return null
         val prime = caps.primeKhz?.let { String.format(Locale.US, "%.2f", it / 1_000_000.0) } ?: "-"
         val performance = caps.performanceKhz?.let { String.format(Locale.US, "%.2f", it / 1_000_000.0) } ?: "-"

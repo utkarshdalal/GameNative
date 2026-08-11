@@ -1,5 +1,6 @@
 package app.gamenative.powercontrol.autotuning
 
+import app.gamenative.powercontrol.AutoTuningStrategy
 import app.gamenative.powercontrol.fan.FanSample
 import app.gamenative.powercontrol.metrics.JsonlSessionLog
 import app.gamenative.powercontrol.metrics.MetricsSnapshot
@@ -28,6 +29,7 @@ class ClusterTuner(
     private val metricsProvider: () -> MetricsSnapshot?,
     private val targetFpsProvider: () -> Int,
     private val fanSampleProvider: () -> FanSample? = { null },
+    private val strategyProvider: () -> AutoTuningStrategy = { AutoTuningStrategy.BALANCED },
     private val stateFile: File?,
     private val logDirectory: File?,
     private val sessionStartMillis: Long = System.currentTimeMillis(),
@@ -39,6 +41,15 @@ class ClusterTuner(
 
         fun stateFileFor(containerDir: File?): File? {
             return containerDir?.let { File(it, ".config/$STATE_FILE_NAME") }
+        }
+
+        fun tuningForStrategy(strategy: AutoTuningStrategy): StrategyTuning {
+            return when (strategy) {
+                AutoTuningStrategy.POWER_EFFICIENT -> StrategyTuning.POWER_EFFICIENT
+                AutoTuningStrategy.BALANCED -> StrategyTuning.BALANCED
+                AutoTuningStrategy.AGGRESSIVE -> StrategyTuning.AGGRESSIVE
+                AutoTuningStrategy.CONSERVATIVE -> StrategyTuning.CONSERVATIVE
+            }
         }
     }
 
@@ -59,7 +70,7 @@ class ClusterTuner(
     )
 
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
-    private val engine = TunerDecisionEngine()
+    private val engine = TunerDecisionEngine({ tuningForStrategy(strategyProvider()) })
     private val sessionLog = JsonlSessionLog(TAG, "tuner-")
     private val stepIndex = mutableMapOf<TunerDomain, Int>()
 
@@ -417,7 +428,7 @@ class ClusterTuner(
                 "\"cpu\":%s,\"cpuSrc\":\"%s\",\"gpu\":%s,\"cpuTemp\":%s,\"gpuTemp\":%s," +
                 "\"capPrime\":%s,\"capPerf\":%s,\"capGpu\":%s,\"frozen\":[%s]," +
                 "\"action\":\"%s\",\"reason\":\"%s\",\"steadyCount\":%d," +
-                "\"fanPercent\":%s,\"fanTempC\":%s}",
+                "\"strategy\":\"%s\",\"fanPercent\":%s,\"fanTempC\":%s}",
             System.currentTimeMillis(),
             snapshot?.let { String.format(Locale.US, "%.2f", it.fps) } ?: "null",
             targetFps,
@@ -436,6 +447,7 @@ class ClusterTuner(
             action,
             reason,
             steadyCycles,
+            strategyProvider().name,
             fanSample?.appliedPercent?.toString() ?: "null",
             fanSample?.tempC?.toString() ?: "null",
         )

@@ -1300,6 +1300,30 @@ private fun PerformanceHudQuickMenuTab(
             },
             accentColor = accentColor,
         )
+        if (PowerManager.isFanControlAvailable()) {
+            var showFan by remember { mutableStateOf(PrefManager.showPerformanceHudFan) }
+            QuickMenuToggleRow(
+                title = stringResource(R.string.power_control_hud_show_fan),
+                enabled = showFan,
+                onToggle = {
+                    showFan = !showFan
+                    PrefManager.showPerformanceHudFan = showFan
+                },
+                accentColor = accentColor,
+            )
+        }
+        if (PowerManager.isClusterTuningAvailable()) {
+            var showTunerCaps by remember { mutableStateOf(PrefManager.showPerformanceHudTunerCaps) }
+            QuickMenuToggleRow(
+                title = stringResource(R.string.power_control_hud_show_tuner),
+                enabled = showTunerCaps,
+                onToggle = {
+                    showTunerCaps = !showTunerCaps
+                    PrefManager.showPerformanceHudTunerCaps = showTunerCaps
+                },
+                accentColor = accentColor,
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
     }
@@ -1746,7 +1770,7 @@ private fun QuickMenuChoiceChip(
 }
 
 @Composable
-private fun QuickMenuAdjustmentRow(
+internal fun QuickMenuAdjustmentRow(
     title: String,
     valueText: String,
     progress: Float,
@@ -1997,7 +2021,7 @@ private fun QuickMenuAdjustmentButton(
 }
 
 @Composable
-private fun QuickMenuToggleRow(
+internal fun QuickMenuToggleRow(
     title: String,
     enabled: Boolean,
     onToggle: () -> Unit,
