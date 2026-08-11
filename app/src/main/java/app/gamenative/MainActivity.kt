@@ -6,6 +6,7 @@ import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
 import android.hardware.input.InputManager
@@ -27,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import coil.ImageLoader
 import coil.disk.DiskCache
@@ -58,6 +60,7 @@ import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
 import com.winlator.inputcontrols.ControllerManager
+import com.winlator.xenvironment.components.PulseAudioComponent
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.util.EnumSet
@@ -227,15 +230,51 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             var hasNotificationPermission by remember { mutableStateOf(false) }
+
+            // Games on the pulseaudio driver otherwise only get AAudioSink.monitor as a
+            // recording device, which is a loopback of their own output. Asked for here at
+            // startup rather than from XServerScreen: raising a system dialog once that
+            // screen is up backgrounds the activity while the container is still booting,
+            // which both suspends the environment right after setup and widens the window
+            // where the activity can be destroyed before the renderer view exists.
+            val micPermissionLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestPermission(),
+            ) { isGranted ->
+                Timber.i("RECORD_AUDIO permission granted: $isGranted")
+                if (isGranted) {
+                    // No container is normally running this early, so this is usually a
+                    // no-op; it only matters if the prompt is answered after one started.
+                    PluviaApp.xEnvironment
+                        ?.getComponent(PulseAudioComponent::class.java)
+                        ?.enableMicrophone()
+                }
+            }
+
+            // Requested only after the notification prompt resolves - the platform drops a
+            // permission request made while another dialog is still up.
+            fun requestMicrophoneIfNeeded() {
+                if (!BuildConfig.MODERN_XR &&
+                    ContextCompat.checkSelfPermission(
+                        this@MainActivity,
+                        Manifest.permission.RECORD_AUDIO,
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }
+            }
+
             val permissionLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.RequestPermission(),
             ) { isGranted ->
                 hasNotificationPermission = isGranted
+                requestMicrophoneIfNeeded()
             }
 
             LaunchedEffect(Unit) {
                 if (!BuildConfig.MODERN_XR && !hasNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    requestMicrophoneIfNeeded()
                 }
             }
 
