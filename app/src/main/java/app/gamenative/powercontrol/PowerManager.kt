@@ -553,9 +553,9 @@ object PowerManager {
     /**
      * Pin PulseAudio daemon to dedicated cores.
      * Strategy varies by cluster count:
-     * - Single-cluster: Pin to first 2 performance cores
-     * - Dual-cluster (e.g., Odin 3): Pin to first 2 efficiency cores (saves prime cores for game)
-     * - Tri+ cluster: Pin to first 2 cores from efficiency + performance (saves prime cores for game)
+     * - Dual-cluster (e.g., Odin 3): Pin to efficiency/lower-frequency cores to free prime cores for game
+     * - Tri-cluster: Pin to efficiency + performance cores, leave prime for game
+     * - Single-cluster: Pin to all available cores
      */
     private fun pinPulseAudioToDedicatedCores() {
         val driver = getDriver()
@@ -574,13 +574,13 @@ object PowerManager {
 
                     // Choose cores based on cluster configuration
                     val audioCores = when (clusterCount) {
-                        1 -> perfCores.take(2) // Single cluster: use first 2 cores
-                        2 -> effCores.take(2)  // Dual cluster: use first 2 lower-frequency cores, save prime for game
-                        else -> (effCores + perfCores).take(2) // Tri+ cluster: use first 2 cores of eff + perf, save prime for game
+                        1 -> perfCores // Single cluster: use all cores
+                        2 -> effCores  // Dual cluster: use lower-frequency cores, save prime for game
+                        else -> effCores + perfCores // Tri+ cluster: use eff + perf, save prime for game
                     }
 
                     if (audioCores.isNotEmpty()) {
-                        val success = driver.setCpuAffinityByCores(audioPid, audioCores)
+                        val success = driver.setCpuAffinityByCores(audioPid, audioCores.take(2))
                         if (success) {
                             Timber.tag("PowerManager").i("Pinned PulseAudio (PID: $audioPid) to CPU $audioCores ($clusterCount clusters)")
                         }
