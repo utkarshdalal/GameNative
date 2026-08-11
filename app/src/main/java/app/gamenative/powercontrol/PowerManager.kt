@@ -588,7 +588,7 @@ object PowerManager {
                     if (audioCores.isNotEmpty()) {
                         val success = driver.setCpuAffinityByCores(audioPid, audioCores.take(2))
                         if (success) {
-                            Timber.tag("PowerManager").i("Pinned PulseAudio (PID: $audioPid) to CPU $audioCores ($clusterCount clusters)")
+                            Timber.tag("PowerManager").i("Pinned PulseAudio (PID: $audioPid) to CPU ${audioCores.take(2)} ($clusterCount clusters)")
                         }
                     }
                 } else {
