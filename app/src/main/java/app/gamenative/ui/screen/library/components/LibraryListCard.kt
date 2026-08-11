@@ -39,8 +39,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
+import app.gamenative.data.FavoritesManager
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.SteamService
@@ -48,6 +50,7 @@ import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.GameCardStats
+import app.gamenative.ui.theme.PluviaWarning
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +80,8 @@ internal fun ListViewCard(
         if (isItemFocused) onFocus()
     }
 
+    val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
+    val isFavorite = !appInfo.isRecommended && appInfo.appId in favorites
     val shape = RoundedCornerShape(14.dp)
     Box(
         modifier = modifier
@@ -105,6 +110,7 @@ internal fun ListViewCard(
                 1.dp,
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
             )
+            isFavorite -> BorderStroke(2.dp, PluviaWarning)
             else -> null
         },
     ) {
@@ -199,13 +205,6 @@ internal fun ListViewCard(
                 )
             }
 
-            if (!appInfo.isRecommended) {
-                FavoriteStarButton(
-                    appId = appInfo.appId,
-                    gameName = appInfo.name,
-                    iconSize = 22,
-                )
-            }
         }
     }
     }

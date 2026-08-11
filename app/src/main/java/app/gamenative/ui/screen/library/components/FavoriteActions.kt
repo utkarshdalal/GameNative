@@ -7,8 +7,8 @@ import app.gamenative.ui.util.SnackbarManager
 
 /**
  * Toggles the favorite state for [appId], and when a game is being *removed* shows a snackbar with
- * an "Undo" action that puts it back. Adding a favorite is silent (the filled star is confirmation
- * enough); only removals get the safety net, since an accidental un-star is easy to miss.
+ * an "Undo" action that puts it back. Adding a favorite is silent (the gold card outline confirms
+ * it); only removals get the safety net, since an accidental un-favorite is easy to miss.
  *
  * [gameName] is used to make the message specific ("Removed <game> from favorites"); when it is
  * null or blank a generic message is shown instead.

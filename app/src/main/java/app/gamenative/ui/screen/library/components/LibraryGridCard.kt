@@ -53,9 +53,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
+import app.gamenative.data.FavoritesManager
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.ui.component.CompatibilityBadge
@@ -64,6 +66,7 @@ import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.GameCardStats
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.PluviaWarning
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import com.skydoves.landscapist.ImageOptions
@@ -132,6 +135,9 @@ internal fun GridViewCard(
         if (isItemFocused) onFocus()
     }
 
+    val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
+    val isFavorite = !appInfo.isRecommended && appInfo.appId in favorites
+
     Box(
         modifier = modifier
             .padding(vertical = 4.dp)
@@ -157,6 +163,7 @@ internal fun GridViewCard(
                     1.dp,
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                 )
+                isFavorite -> BorderStroke(2.dp, PluviaWarning)
                 else -> null
             },
         ) {
@@ -368,15 +375,6 @@ internal fun GridViewCard(
                         iconSize = if (isCapsule) 14 else 12,
                     )
 
-                    FavoriteStarButton(
-                        appId = appInfo.appId,
-                        gameName = appInfo.name,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 2.dp, bottom = 2.dp),
-                        iconSize = if (isCapsule) 18 else 20,
-                        onImage = true,
-                    )
                 }
             }
         }
