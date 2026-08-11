@@ -553,9 +553,9 @@ object PowerManager {
     /**
      * Pin PulseAudio daemon to dedicated cores.
      * Strategy varies by cluster count:
-     * - Dual-cluster (e.g., Odin 3): Pin to first efficiency/lower-frequency core
-     * - Tri-cluster: Pin to first efficiency core
-     * - Single-cluster: Pin to first available core
+     * - Single-cluster: Pin to first 2 performance cores
+     * - Dual-cluster (e.g., Odin 3): Pin to first 2 efficiency cores (saves prime cores for game)
+     * - Tri+ cluster: Pin to first 2 cores from efficiency + performance (saves prime cores for game)
      */
     private fun pinPulseAudioToDedicatedCores() {
         val driver = getDriver()
