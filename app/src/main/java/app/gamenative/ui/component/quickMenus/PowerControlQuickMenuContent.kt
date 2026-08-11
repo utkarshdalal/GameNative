@@ -55,7 +55,9 @@ fun PowerControlQuickMenuContent(
     onMaxGpuPowerChanged: (Int) -> Unit,
     onMinRamValueChanged: (Int) -> Unit,
     onMaxRamValueChanged: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onFanControlToggled: (Boolean) -> Unit = {},
+    onPerClusterTuningToggled: (Boolean) -> Unit = {},
 ) {
     val scrollState = rememberScrollState()
 
@@ -74,6 +76,8 @@ fun PowerControlQuickMenuContent(
                 SuccessView(
                     state = uiState,
                     onAutoTuningToggled = onAutoTuningToggled,
+                    onFanControlToggled = onFanControlToggled,
+                    onPerClusterTuningToggled = onPerClusterTuningToggled,
                     onTuningStrategySelected = onTuningStrategySelected,
                     onProfileSelected = onProfileSelected,
                     onGovernorSelected = onGovernorSelected,
@@ -140,6 +144,8 @@ private fun LoadingView() {
 private fun SuccessView(
     state: PowerControlUiState.Success,
     onAutoTuningToggled: (Boolean) -> Unit,
+    onFanControlToggled: (Boolean) -> Unit,
+    onPerClusterTuningToggled: (Boolean) -> Unit,
     onTuningStrategySelected: (AutoTuningStrategy) -> Unit,
     onProfileSelected: (PowerProfile) -> Unit,
     onGovernorSelected: (String) -> Unit,
@@ -218,6 +224,72 @@ private fun SuccessView(
         Switch(
             checked = state.selectedProfile.enableAutoTuning,
             onCheckedChange = onAutoTuningToggled
+        )
+    }
+
+    val isClusterTuningAvailable = PowerManager.isClusterTuningAvailable()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.power_control_per_cluster),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.power_control_per_cluster_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            )
+        }
+        Switch(
+            checked = isClusterTuningAvailable && state.selectedProfile.enablePerClusterTuning,
+            onCheckedChange = onPerClusterTuningToggled,
+            enabled = isClusterTuningAvailable
+        )
+    }
+
+    val isFanControlAvailable = PowerManager.isFanControlAvailable()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.power_control_fan_control),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = if (isFanControlAvailable) {
+                    stringResource(R.string.power_control_fan_control_desc)
+                } else {
+                    stringResource(R.string.power_control_fan_control_unsupported)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            )
+        }
+        Switch(
+            checked = isFanControlAvailable && state.selectedProfile.enableFanControl,
+            onCheckedChange = onFanControlToggled,
+            enabled = isFanControlAvailable
         )
     }
 

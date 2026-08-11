@@ -2,6 +2,7 @@ package app.gamenative.powercontrol
 
 import androidx.annotation.StringRes
 import app.gamenative.R
+import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
 import kotlinx.serialization.Serializable
@@ -16,7 +17,9 @@ enum class AutoTuningStrategy(@param:StringRes val displayNameRes: Int, @param:S
 @Serializable
 data class PowerProfile(
     var enableAutoTuning: Boolean = true,
+    var enablePerClusterTuning: Boolean = true,
     var tuningStrategy: AutoTuningStrategy = AutoTuningStrategy.BALANCED,
+    var enableFanControl: Boolean = true,
     var name: String,
     var governor: CpuGovernor,
     var minCpuFreq: Long,
@@ -51,6 +54,8 @@ object PowerProfiles {
         maxGpuPowerLevel: Int = 0
     ): List<PowerProfile> {
         if (availableFrequencies.isEmpty()) return emptyList()
+
+        val enableAutoTuning = DeviceGate.isRetroidPocket6()
 
         val minFreq = availableFrequencies.first()  // Odin 3: 384 MHz, RP6: 307 MHz
         val maxFreq = availableFrequencies.last()   // Odin 3: 3532 MHz, RP6: 2016 MHz
@@ -91,6 +96,7 @@ object PowerProfiles {
             // GPU: 0 - 25% of max power level
             if (availableGovernors.contains(CpuGovernor.POWERSAVE.governorName)) {
                 add(PowerProfile(
+                    enableAutoTuning = enableAutoTuning,
                     name = PerformancePreset.POWER_SAVE.displayName,
                     governor = CpuGovernor.POWERSAVE,
                     minCpuFreq = minFreq,
@@ -106,6 +112,7 @@ object PowerProfiles {
             // GPU: 50% - 100% of max power level
             if (availableGovernors.contains(CpuGovernor.SCHEDUTIL.governorName)) {
                 add(PowerProfile(
+                    enableAutoTuning = enableAutoTuning,
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.SCHEDUTIL,
                     minCpuFreq = midFreq,
@@ -115,6 +122,7 @@ object PowerProfiles {
                 ))
             } else if (availableGovernors.contains(CpuGovernor.CONSERVATIVE.governorName)) {
                 add(PowerProfile(
+                    enableAutoTuning = enableAutoTuning,
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.CONSERVATIVE,
                     minCpuFreq = midFreq,
@@ -124,6 +132,7 @@ object PowerProfiles {
                 ))
             } else if (availableGovernors.contains(CpuGovernor.INTERACTIVE.governorName)) {
                 add(PowerProfile(
+                    enableAutoTuning = enableAutoTuning,
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.INTERACTIVE,
                     minCpuFreq = midFreq,
@@ -138,6 +147,7 @@ object PowerProfiles {
             // GPU: 75% - 100% of max power level
             if (availableGovernors.contains(CpuGovernor.PERFORMANCE.governorName)) {
                 add(PowerProfile(
+                    enableAutoTuning = enableAutoTuning,
                     name = PerformancePreset.PERFORMANCE.displayName,
                     governor = CpuGovernor.PERFORMANCE,
                     minCpuFreq = highFreq,
@@ -151,6 +161,7 @@ object PowerProfiles {
             // CPU: Full range, GPU: Full range
             if (availableGovernors.contains(CpuGovernor.ONDEMAND.governorName)) {
                 add(PowerProfile(
+                    enableAutoTuning = enableAutoTuning,
                     name = PerformancePreset.ON_DEMAND.displayName,
                     governor = CpuGovernor.ONDEMAND,
                     minCpuFreq = minFreq,
@@ -165,6 +176,7 @@ object PowerProfiles {
             // GPU: Full range
             if (availableGovernors.contains(CpuGovernor.WALT.governorName)) {
                 add(PowerProfile(
+                    enableAutoTuning = enableAutoTuning,
                     name = PerformancePreset.WALT.displayName,
                     governor = CpuGovernor.WALT,
                     minCpuFreq = minFreq,

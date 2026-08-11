@@ -5,10 +5,15 @@ import android.content.Context
 import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.Parcel
+import app.gamenative.powercontrol.PowerBaseline
+import app.gamenative.powercontrol.PowerBaselineEntry
+import app.gamenative.powercontrol.PowerBaselineScripts
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.PowerProfile
+import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
+import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.io.File
 import java.nio.charset.Charset
@@ -23,6 +28,8 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
     companion object {
         private const val TAG = "PServerDriver"
+        private const val POWER_TAG = "PowerControl"
+        private const val FAN_TAG = "PowerFan"
 
         // CPU sysfs paths
         private const val CPU_BASE_PATH = "/sys/devices/system/cpu"
@@ -83,6 +90,14 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         PLAIN_HEX,  // e.g., "f8"
         HEX_PREFIX  // e.g., "0xf8"
     }
+
+    // Pre-session sysfs snapshot, persisted so a crashed session can still be undone
+    private val baselineJson = Json { encodeDefaults = true; ignoreUnknownKeys = true }
+    private var sessionBaseline: PowerBaseline? = null
+    private var rootRestoreScriptPath: String = ""
+    private var rootCleanupPaths: List<String> = emptyList()
+    private var babysitterPid: Int? = null
+    private var babysitterActive: Boolean = false
 
     // Track current CPU settings (what was requested, not what policy0 has)
     private var currentMinCpuFreq: Long = 0L
@@ -296,11 +311,15 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             cpuPolicies = discoverCpuPolicies()
             cpuClusters = identifyCpuClusters()
         }
+
+        if (isPServerAvailable) {
+            armSessionBaseline()
+        }
     }
 
     /**
      * Stop the performance driver
-     * Restores CPU governor to first available governor and all modified sysfs files to 644 permissions
+     * Restores every sysfs file to the value recorded at session start and back to 644 permissions
      * Runs asynchronously on a background thread
      */
     override fun stop() {
@@ -318,80 +337,15 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                     return@Thread
                 }
 
-                // Batch all restoration commands for efficient execution
-                beginUpdate()
+                val restored = restoreRecordedBaseline()
 
-                // Reset CPU frequencies to maximum before changing governor
-                // This prevents device from staying slow if it was in Power Save mode
-                try {
-                    val availableFrequencies = getAvailableCpuFrequencies()
-                    if (availableFrequencies.isNotEmpty()) {
-                        val minFreq = availableFrequencies.first()
-                        val maxFreq = availableFrequencies.last()
-                        Timber.tag(TAG).d("Resetting CPU frequencies to full range: $minFreq - $maxFreq")
-                        setMinCpuValue(minFreq)
-                        setMaxCpuValue(maxFreq)
-                    }
-                } catch (e: Exception) {
-                    Timber.tag(TAG).e(e, "Failed to reset CPU frequencies")
+                if (restored) {
+                    killBabysitter()
+                    deleteBaselineArtifacts()
+                    sessionBaseline = null
+                    rootRestoreScriptPath = ""
+                    modifiedSysfsFiles.clear()
                 }
-
-                // Reset GPU power levels to maximum if supported
-                // This prevents GPU from staying throttled
-                if (isGpuSupported()) {
-                    try {
-                        val maxGpuLevel = getNumGpuPowerLevels() - 1
-                        Timber.tag(TAG).d("Resetting GPU power levels to full range: 0 - $maxGpuLevel")
-                        setMinGpuPowerLevel(0)
-                        setMaxGpuPowerLevel(maxGpuLevel)
-                    } catch (e: Exception) {
-                        Timber.tag(TAG).e(e, "Failed to reset GPU power levels")
-                    }
-                }
-
-                // Restore governor to first available (typically the default/recommended one)
-                try {
-                    val availableGovernors = getAvailableGovernors()
-                    if (availableGovernors.isNotEmpty()) {
-                        val defaultGovernor = availableGovernors.first()
-                        Timber.tag(TAG).d("Restoring governor to $defaultGovernor")
-                        setGovernor(defaultGovernor)
-
-                        // Restore governor file permissions to 644 (setGovernor sets them to 444)
-                        val numCpus = getNumCpus()
-                        for (cpu in 0 until numCpus) {
-                            modifiedSysfsFiles.add("$CPU_BASE_PATH/cpu$cpu/cpufreq/scaling_governor")
-                        }
-                    }
-                } catch (e: Exception) {
-                    Timber.tag(TAG).e(e, "Failed to restore governor")
-                }
-
-                // Add chmod 644 commands for all modified files to restore permissions
-                if (modifiedSysfsFiles.isNotEmpty()) {
-                    for (path in modifiedSysfsFiles) {
-                        batchCommands.add("chmod 644 '$path'")
-                    }
-                }
-
-                // Check if interrupted before committing to avoid corrupting batch state
-                if (!Thread.currentThread().isInterrupted) {
-                    // Execute all batched commands in a single root call
-                    val commitSuccess = commitInternal(true)
-                    if (commitSuccess) {
-                        Timber.tag(TAG).d("Successfully restored settings and permissions")
-                    } else {
-                        Timber.tag(TAG).e("Failed to commit restoration batch")
-                    }
-                } else {
-                    Timber.tag(TAG).d("Stop cleanup interrupted before commit - skipping restoration")
-                    // Clear batch mode to avoid corrupting state
-                    isBatchMode = false
-                    batchCommands.clear()
-                    batchFilePaths.clear()
-                }
-
-                modifiedSysfsFiles.clear()
 
                 // Clear CPU policies and clusters to force re-discovery on next start()
                 cpuPolicies = emptyList()
@@ -413,6 +367,307 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
         stopThread = cleanupThread
         cleanupThread.start()
+    }
+
+    // ========================================
+    // Crash-Safe Baseline / Restore
+    // ========================================
+
+    /**
+     * True when a baseline from a previous session is still on disk, meaning that
+     * session never restored what it changed.
+     */
+    fun hasPendingBaseline(): Boolean = sessionBaseline == null && findExistingBaselineFile() != null
+
+    /**
+     * Run a command as root on the driver's executor.
+     */
+    fun executeRootCommand(command: String): Result<String?> = executeAsRoot(command)
+
+    /**
+     * Attach (or clear) the command that hands the fan back to the vendor controller and
+     * rewrite the on-disk artifacts, so the babysitter and any dirty-session recovery
+     * carry it too.
+     */
+    fun updateFanRestoreCommand(command: String?): Boolean {
+        val baseline = sessionBaseline
+        if (baseline == null) {
+            Timber.tag(POWER_TAG).w("No session baseline, fan restore command not persisted")
+            return false
+        }
+        if (baseline.fanRestoreCommand == command) return true
+
+        val updated = baseline.copy(fanRestoreCommand = command)
+        val scriptPath = writeBaselineArtifacts(updated) ?: return false
+        sessionBaseline = updated
+        rootRestoreScriptPath = scriptPath
+        return true
+    }
+
+    /**
+     * Capture the pre-session sysfs values, persist them together with a restore script,
+     * and hand that script to a detached root process that runs it if this app dies.
+     */
+    private fun armSessionBaseline() {
+        if (context == null) {
+            Timber.tag(POWER_TAG).w("No context available, power baseline capture disabled")
+            return
+        }
+
+        if (sessionBaseline != null) {
+            if (!babysitterActive) {
+                spawnBabysitter()
+            }
+            return
+        }
+
+        try {
+            recoverDirtySessionIfNeeded()
+
+            val entries = readBaselineEntries()
+            if (entries.isEmpty()) {
+                Timber.tag(POWER_TAG).w("Baseline capture found no readable sysfs values, skipping")
+                return
+            }
+
+            val baseline = PowerBaseline(
+                capturedAtMillis = System.currentTimeMillis(),
+                appPid = android.os.Process.myPid(),
+                entries = entries
+            )
+            Timber.tag(POWER_TAG).i("Baseline captured: ${PowerBaselineScripts.describe(baseline)}")
+
+            val scriptPath = writeBaselineArtifacts(baseline) ?: return
+            sessionBaseline = baseline
+            rootRestoreScriptPath = scriptPath
+            spawnBabysitter()
+        } catch (e: Exception) {
+            Timber.tag(POWER_TAG).e(e, "Failed to arm power baseline")
+        }
+    }
+
+    private fun baselinePaths(): List<String> {
+        val paths = mutableListOf<String>()
+        for (policy in cpuPolicies) {
+            paths.add(policy.minFreqPath)
+            paths.add(policy.maxFreqPath)
+            paths.add(policy.governorPath)
+        }
+        if (isGpuSupported()) {
+            paths.add("$GPU_BASE_PATH/min_pwrlevel")
+            paths.add("$GPU_BASE_PATH/max_pwrlevel")
+        }
+        return paths
+    }
+
+    private fun readBaselineEntries(): List<PowerBaselineEntry> {
+        val paths = baselinePaths()
+        if (paths.isEmpty()) return emptyList()
+
+        val output = executeAsRoot(PowerBaselineScripts.buildReadCommand(paths)).getOrNull()
+        val captured = PowerBaselineScripts.parseReadOutput(output, paths).associateBy { it.path }
+
+        return paths.mapNotNull { path ->
+            captured[path] ?: readSysfsFile(path)
+                ?.lines()
+                ?.firstOrNull()
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { PowerBaselineEntry(path, it) }
+        }
+    }
+
+    private fun baselineDirectories(): List<File> {
+        val ctx = context ?: return emptyList()
+        val dirs = LinkedHashSet<File>()
+        ctx.getExternalFilesDir(null)?.let { dirs.add(File(it, PowerBaselineScripts.DIRECTORY_NAME)) }
+        dirs.add(File(ctx.filesDir, PowerBaselineScripts.DIRECTORY_NAME))
+        return dirs.toList()
+    }
+
+    private fun findExistingBaselineFile(): File? {
+        return baselineDirectories()
+            .map { File(it, PowerBaselineScripts.BASELINE_FILE_NAME) }
+            .firstOrNull { it.exists() && it.length() > 0 }
+    }
+
+    private fun writeBaselineArtifacts(baseline: PowerBaseline): String? {
+        val ctx = context ?: return null
+        val primaryDir = baselineDirectories().firstOrNull() ?: return null
+        primaryDir.mkdirs()
+
+        val jsonText = baselineJson.encodeToString(PowerBaseline.serializer(), baseline)
+        val scriptText = PowerBaselineScripts.buildRestoreScript(baseline)
+
+        val jsonFile = File(primaryDir, PowerBaselineScripts.BASELINE_FILE_NAME)
+        val scriptFile = File(primaryDir, PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME)
+        jsonFile.writeText(jsonText)
+        scriptFile.writeText(scriptText)
+
+        val cleanupPaths = mutableListOf(
+            PowerBaselineScripts.toRootVisiblePath(jsonFile.absolutePath),
+            PowerBaselineScripts.toRootVisiblePath(scriptFile.absolutePath)
+        )
+        var rootScript = PowerBaselineScripts.toRootVisiblePath(scriptFile.absolutePath)
+
+        if (!isRootReadable(rootScript)) {
+            val mirrorDir = File(ctx.filesDir, PowerBaselineScripts.DIRECTORY_NAME)
+            mirrorDir.mkdirs()
+            val mirrorJson = File(mirrorDir, PowerBaselineScripts.BASELINE_FILE_NAME)
+            val mirrorScript = File(mirrorDir, PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME)
+            mirrorJson.writeText(jsonText)
+            mirrorScript.writeText(scriptText)
+            rootScript = mirrorScript.absolutePath
+            cleanupPaths.add(mirrorJson.absolutePath)
+            cleanupPaths.add(mirrorScript.absolutePath)
+            Timber.tag(POWER_TAG).w("Root cannot read ${scriptFile.absolutePath}, mirrored restore script to $rootScript")
+        }
+
+        rootCleanupPaths = cleanupPaths
+        Timber.tag(POWER_TAG).i("Restore script written: $rootScript (baseline ${jsonFile.absolutePath})")
+        return rootScript
+    }
+
+    private fun deleteBaselineArtifacts() {
+        for (dir in baselineDirectories()) {
+            listOf(
+                PowerBaselineScripts.BASELINE_FILE_NAME,
+                PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME
+            ).forEach { name ->
+                try {
+                    File(dir, name).delete()
+                } catch (e: Exception) {
+                    Timber.tag(POWER_TAG).w(e, "Failed to delete ${File(dir, name).absolutePath}")
+                }
+            }
+        }
+        rootCleanupPaths = emptyList()
+    }
+
+    private fun isRootReadable(path: String): Boolean {
+        return try {
+            executeAsRoot("[ -r \"$path\" ] && echo READABLE").getOrNull()?.contains("READABLE") == true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun spawnBabysitter() {
+        val scriptPath = rootRestoreScriptPath
+        if (scriptPath.isEmpty()) return
+
+        val appPid = android.os.Process.myPid()
+        val command = PowerBaselineScripts.buildBabysitterCommand(appPid, scriptPath, rootCleanupPaths)
+        val result = executeAsRoot(command)
+
+        if (result.isFailure) {
+            babysitterActive = false
+            Timber.tag(POWER_TAG).e("Babysitter spawn failed: ${result.exceptionOrNull()?.message}")
+            return
+        }
+
+        babysitterPid = result.getOrNull()?.lines()?.lastOrNull()?.trim()?.toIntOrNull()
+        babysitterActive = true
+        Timber.tag(POWER_TAG).i(
+            "Babysitter spawned (appPid=$appPid, babysitterPid=${babysitterPid ?: "unknown"}, script=$scriptPath)"
+        )
+    }
+
+    private fun killBabysitter() {
+        if (!babysitterActive && babysitterPid == null) return
+
+        val result = executeAsRoot(
+            PowerBaselineScripts.buildKillBabysitterCommand(
+                babysitterPid,
+                PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME
+            )
+        )
+        Timber.tag(POWER_TAG).i("Babysitter killed (pid=${babysitterPid ?: "unknown"}, success=${result.isSuccess})")
+        babysitterPid = null
+        babysitterActive = false
+    }
+
+    /**
+     * Restore from the values recorded at session start.
+     * Falls back to permission-only restoration when no baseline was captured.
+     */
+    private fun restoreRecordedBaseline(): Boolean {
+        beginUpdate()
+
+        val scriptPath = rootRestoreScriptPath
+        if (scriptPath.isEmpty()) {
+            Timber.tag(POWER_TAG).w("No recorded baseline for this session, restoring permissions only")
+        } else {
+            batchCommands.add("/system/bin/sh '$scriptPath'")
+        }
+
+        for (path in modifiedSysfsFiles) {
+            batchCommands.add("chmod 644 '$path'")
+        }
+
+        if (Thread.currentThread().isInterrupted) {
+            Timber.tag(TAG).d("Stop cleanup interrupted before commit - skipping restoration")
+            isBatchMode = false
+            batchCommands.clear()
+            batchFilePaths.clear()
+            return false
+        }
+
+        val success = commitInternal(true)
+        Timber.tag(POWER_TAG).i(
+            "Clean restore executed: ${if (success) "success" else "failure"} " +
+                "(entries=${sessionBaseline?.entries?.size ?: 0}, extraFiles=${modifiedSysfsFiles.size}, script=$scriptPath)"
+        )
+        return success
+    }
+
+    /**
+     * A baseline left on disk means the previous session died without restoring.
+     * Regenerate its script somewhere root can always read and run it now.
+     */
+    private fun recoverDirtySessionIfNeeded() {
+        val jsonFile = findExistingBaselineFile() ?: return
+        val ctx = context ?: return
+
+        val ageSeconds = (System.currentTimeMillis() - jsonFile.lastModified()) / 1000
+        Timber.tag(POWER_TAG).i("Dirty session detected at startup: ${jsonFile.absolutePath} (age ${ageSeconds}s)")
+
+        val baseline = try {
+            baselineJson.decodeFromString(PowerBaseline.serializer(), jsonFile.readText())
+        } catch (e: Exception) {
+            Timber.tag(POWER_TAG).e(e, "Failed to parse stale baseline, discarding it")
+            deleteBaselineArtifacts()
+            return
+        }
+
+        val recoveryDir = File(ctx.filesDir, PowerBaselineScripts.DIRECTORY_NAME)
+        recoveryDir.mkdirs()
+        val recoveryScript = File(recoveryDir, PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME)
+
+        val success = try {
+            recoveryScript.writeText(PowerBaselineScripts.buildRestoreScript(baseline))
+            executeAsRoot("/system/bin/sh '${recoveryScript.absolutePath}'").isSuccess
+        } catch (e: Exception) {
+            Timber.tag(POWER_TAG).e(e, "Failed to run dirty session restore")
+            false
+        }
+
+        Timber.tag(POWER_TAG).i(
+            "Dirty restore executed: ${if (success) "success" else "failure"} " +
+                "(pid=${baseline.appPid}, entries=${baseline.entries.size}) ${PowerBaselineScripts.describe(baseline)}"
+        )
+
+        baseline.fanRestoreCommand?.let {
+            Timber.tag(FAN_TAG).i("Fan restore (dirty): $it success=$success")
+        }
+
+        // A babysitter from the dead session may still be sleeping; it would otherwise
+        // fire mid-session and delete the new baseline files.
+        executeAsRoot(
+            PowerBaselineScripts.buildKillBabysitterCommand(null, PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME)
+        )
+
+        deleteBaselineArtifacts()
     }
 
     // ========================================
@@ -745,6 +1000,76 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     // ========================================
+    // CPU Control - Per-Cluster Setters
+    // ========================================
+
+    /**
+     * Resolve the cpufreq policy that backs a cluster.
+     */
+    private fun policyForCluster(cluster: CpuCluster): CpuPolicy? {
+        val cores = cpuClusters[cluster]?.toSet() ?: return null
+        if (cores.isEmpty()) return null
+        return cpuPolicies.firstOrNull { policy -> policy.cpuCores.any { it in cores } }
+    }
+
+    /**
+     * Set the maximum frequency of a single cluster in KHz, leaving every other
+     * cluster and every scaling_min_freq untouched.
+     */
+    fun setMaxCpuValueForCluster(cluster: CpuCluster, freqKhz: Long): Boolean {
+        val policy = policyForCluster(cluster)
+        if (policy == null) {
+            Timber.tag(TAG).w("No CPU policy found for cluster $cluster")
+            return false
+        }
+
+        val cappedValue = if (policy.maxFrequency > 0) minOf(freqKhz, policy.maxFrequency) else freqKhz
+
+        if (isBatchMode) {
+            queueClusterMaxFreq(policy, cappedValue)
+            return true
+        }
+
+        beginUpdate()
+        queueClusterMaxFreq(policy, cappedValue)
+        return commitInternal()
+    }
+
+    private fun queueClusterMaxFreq(policy: CpuPolicy, value: Long) {
+        batchFilePaths.add(policy.maxFreqPath)
+        batchCommands.add("echo '$value' > '${policy.maxFreqPath}'")
+        modifiedSysfsFiles.add(policy.maxFreqPath)
+    }
+
+    /**
+     * Get the frequencies a single cluster can be capped to, in KHz, sorted ascending.
+     */
+    fun getAvailableCpuFrequenciesForCluster(cluster: CpuCluster): List<Long> {
+        val policy = policyForCluster(cluster) ?: return emptyList()
+        val policyDir = policy.maxFreqPath.substringBeforeLast("/")
+
+        return try {
+            val frequencies = readSysfsFile("$policyDir/scaling_available_frequencies")
+                ?.split("\\s+".toRegex())
+                ?.mapNotNull { it.toLongOrNull() }
+                ?.distinct()
+                ?.sorted()
+                ?: emptyList()
+
+            if (frequencies.isNotEmpty()) {
+                frequencies
+            } else if (policy.maxFrequency > 0) {
+                listOf(policy.maxFrequency)
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to read available frequencies for cluster $cluster")
+            emptyList()
+        }
+    }
+
+    // ========================================
     // GPU Control - Getters
     // ========================================
 
@@ -873,6 +1198,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         if (availableFrequencies.isEmpty()) {
             // Fallback to a safe default
             return PowerProfile(
+                enableAutoTuning = DeviceGate.isRetroidPocket6(),
                 name = PerformancePreset.BALANCED.displayName,
                 governor = CpuGovernor.SCHEDUTIL,
                 minCpuFreq = getCurrentMinCpuValue(),
@@ -902,6 +1228,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
 
         return PowerProfile(
+            enableAutoTuning = DeviceGate.isRetroidPocket6(),
             name = PerformancePreset.BALANCED.displayName,
             governor = governor,
             minCpuFreq = midFreq,

@@ -2198,7 +2198,12 @@
     <string name="power_control_ram_max_power">Frecvență maximă RAM</string>
     <string name="power_control_available_frequencies">Frecvențe disponibile</string>
     <string name="power_control_auto_tuning">Reglare automată</string>
-    <string name="power_control_auto_tuning_desc">Ajustează automat performanța în funcție de FPS</string>
+    <string name="power_control_auto_tuning_desc">Performanță mai stabilă, autonomie mai mare a bateriei, mai puțină căldură: reglează automat CPU și GPU pentru jocul tău. Verificat pe Retroid Pocket 6.</string>
+    <string name="power_control_per_cluster">Reglare pe cluster</string>
+    <string name="power_control_per_cluster_desc">Reglează fiecare cluster CPU separat. Funcționează doar pe Retroid Pocket 6.</string>
+    <string name="power_control_fan_control">Control ventilator</string>
+    <string name="power_control_fan_control_desc">Menține o temperatură țintă cu zgomot minim al ventilatorului. Funcționează doar pe Retroid Pocket 6.</string>
+    <string name="power_control_fan_control_unsupported">Funcționează doar pe Retroid Pocket 6</string>
     <string name="power_control_tuning_strategy">Strategie de reglare</string>
     <string name="power_control_strategy_balanced">Echilibrat</string>
     <string name="power_control_strategy_balanced_desc">Ajustează toate componentele uniform pentru cea mai bună performanță generală</string>

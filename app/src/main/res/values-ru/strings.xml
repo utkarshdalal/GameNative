@@ -2125,7 +2125,12 @@ https://gamenative.app
     <string name="power_control_ram_max_power">Максимальная частота ОЗУ</string>
     <string name="power_control_available_frequencies">Доступные частоты</string>
     <string name="power_control_auto_tuning">Автонастройка</string>
-    <string name="power_control_auto_tuning_desc">Автоматическая настройка производительности на основе FPS</string>
+    <string name="power_control_auto_tuning_desc">Более стабильная производительность, дольше работа от батареи, меньше нагрев: автоматически настраивает CPU и GPU под игру. Проверено на Retroid Pocket 6.</string>
+    <string name="power_control_per_cluster">Настройка по кластерам</string>
+    <string name="power_control_per_cluster_desc">Настраивает каждый кластер ЦП отдельно. Работает только на Retroid Pocket 6.</string>
+    <string name="power_control_fan_control">Управление вентилятором</string>
+    <string name="power_control_fan_control_desc">Поддерживает заданную температуру при минимальном шуме вентилятора. Работает только на Retroid Pocket 6.</string>
+    <string name="power_control_fan_control_unsupported">Работает только на Retroid Pocket 6</string>
     <string name="power_control_tuning_strategy">Стратегия настройки</string>
     <string name="power_control_strategy_balanced">Сбалансированная</string>
     <string name="power_control_strategy_balanced_desc">Равномерно настраивает все компоненты для лучшей общей производительности</string>

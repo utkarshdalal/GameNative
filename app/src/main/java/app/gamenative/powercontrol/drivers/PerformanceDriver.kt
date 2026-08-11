@@ -1,6 +1,7 @@
 package app.gamenative.powercontrol.drivers
 
 import app.gamenative.powercontrol.PowerProfile
+import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
 
@@ -173,6 +174,7 @@ abstract class PerformanceDriver {
     open fun getDefaultProfile(): PowerProfile {
         // Return a dummy Balanced profile for devices without driver support
         return PowerProfile(
+            enableAutoTuning = DeviceGate.isRetroidPocket6(),
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,
             minCpuFreq = 0,

@@ -2211,7 +2211,12 @@
     <string name="power_control_ram_max_power">最高RAM频率</string>
     <string name="power_control_available_frequencies">可用频率</string>
     <string name="power_control_auto_tuning">自动调整</string>
-    <string name="power_control_auto_tuning_desc">根据帧率自动调整性能</string>
+    <string name="power_control_auto_tuning_desc">更稳定的性能、更长的续航、更少的发热：自动为游戏调节 CPU 和 GPU。已在 Retroid Pocket 6 上验证。</string>
+    <string name="power_control_per_cluster">分集群调整</string>
+    <string name="power_control_per_cluster_desc">分别调整每个 CPU 集群。仅适用于 Retroid Pocket 6。</string>
+    <string name="power_control_fan_control">风扇控制</string>
+    <string name="power_control_fan_control_desc">以最小的风扇噪音保持目标温度。仅适用于 Retroid Pocket 6。</string>
+    <string name="power_control_fan_control_unsupported">仅适用于 Retroid Pocket 6</string>
     <string name="power_control_tuning_strategy">调整策略</string>
     <string name="power_control_strategy_balanced">平衡</string>
     <string name="power_control_strategy_balanced_desc">均衡调整所有组件以获得最佳整体性能</string>

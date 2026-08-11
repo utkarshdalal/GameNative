@@ -73,6 +73,22 @@ fun PowerControlQuickMenuTab(
 
     PowerControlQuickMenuContent(
         uiState = uiState,
+        onFanControlToggled = { enabled ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.currentProfile?.let { profile ->
+                    PowerManager.setCurrentProfile(profile.copy(enableFanControl = enabled))
+                }
+                refreshTrigger++
+            }
+        },
+        onPerClusterTuningToggled = { enabled ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.currentProfile?.let { profile ->
+                    PowerManager.setCurrentProfile(profile.copy(enablePerClusterTuning = enabled))
+                }
+                refreshTrigger++
+            }
+        },
         onAutoTuningToggled = { enabled ->
             coroutineScope.launch(Dispatchers.IO) {
                 // Update current profile
@@ -302,6 +318,7 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
                     )).copy(
                         // Preserve enableAutoTuning and tuningStrategy from PowerManager's current profile
                         enableAutoTuning = PowerManager.currentProfile?.enableAutoTuning ?: true,
+                        enablePerClusterTuning = PowerManager.currentProfile?.enablePerClusterTuning ?: true,
                         tuningStrategy = PowerManager.currentProfile?.tuningStrategy ?: AutoTuningStrategy.POWER_EFFICIENT
                     )
 

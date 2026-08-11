@@ -2150,7 +2150,12 @@
     <string name="power_control_ram_max_power">最大RAM周波数</string>
     <string name="power_control_available_frequencies">利用可能な周波数</string>
     <string name="power_control_auto_tuning">自動調整</string>
-    <string name="power_control_auto_tuning_desc">FPSに基づいてパフォーマンスを自動調整</string>
+    <string name="power_control_auto_tuning_desc">より安定したパフォーマンス、より長いバッテリー駆動時間、発熱の低減：ゲームに合わせてCPUとGPUを自動調整します。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_per_cluster">クラスターごとの調整</string>
+    <string name="power_control_per_cluster_desc">CPUクラスターごとに個別に調整します。Retroid Pocket 6でのみ動作します。</string>
+    <string name="power_control_fan_control">ファン制御</string>
+    <string name="power_control_fan_control_desc">ファンの騒音を最小限に抑えて目標温度を維持します。Retroid Pocket 6でのみ動作します。</string>
+    <string name="power_control_fan_control_unsupported">Retroid Pocket 6でのみ動作します</string>
     <string name="power_control_tuning_strategy">調整ストラテジー</string>
     <string name="power_control_strategy_balanced">バランス</string>
     <string name="power_control_strategy_balanced_desc">すべてのコンポーネントを均等に調整して最高の総合パフォーマンスを実現</string>

@@ -1,12 +1,18 @@
 package app.gamenative.powercontrol
 
 import android.content.Context
+import android.os.Build
 import app.gamenative.BuildConfig
+import app.gamenative.powercontrol.autotuning.ClusterTuner
+import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
 import app.gamenative.powercontrol.drivers.PServerDriver
 import app.gamenative.powercontrol.drivers.PerformanceDriver
 import app.gamenative.powercontrol.drivers.SamsungPerformanceDriver
+import app.gamenative.powercontrol.fan.FanController
+import app.gamenative.powercontrol.metrics.MetricsSnapshot
+import app.gamenative.powercontrol.metrics.PerformanceMetricsCollector
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import kotlinx.serialization.json.Json
 import timber.log.Timber
@@ -25,7 +31,9 @@ object PowerManager {
 
     private var driver: PerformanceDriver? = null
     private var autoTuner: PerformanceAutoTuner? = null
+    private var clusterTuner: ClusterTuner? = null
     private var containerDir: File? = null
+    private var appContext: Context? = null
 
     /**
      * Flag to track if a game has been started.
@@ -66,10 +74,18 @@ object PowerManager {
         }
 
     /**
+     * Full metrics snapshot of the most recent collector cycle, or null when no
+     * game session is active.
+     */
+    @Volatile
+    var latestMetrics: MetricsSnapshot? = null
+
+    /**
      * Initialize PowerManager with application context.
      * Should be called once during application startup.
      */
     fun initialize(context: Context) {
+        appContext = context.applicationContext
         if (driver != null) return
 
         driver = when {
@@ -93,7 +109,13 @@ object PowerManager {
             }
         }
 
-        // Reset the driver on initialize
+        // Reset the driver on initialize. For PServer this also restores the recorded
+        // baseline of a session that died without restoring it.
+        (driver as? PServerDriver)?.let {
+            if (it.hasPendingBaseline()) {
+                Timber.tag("PowerControl").i("Power baseline from a previous session found on disk, restoring it")
+            }
+        }
         driver?.reset()
     }
 
@@ -139,6 +161,13 @@ object PowerManager {
         // Pin PulseAudio to dedicated performance cores if PServer is available
         pinPulseAudioToDedicatedCores()
         isGameStarted = true
+
+        appContext?.let { PerformanceMetricsCollector.start(it) }
+            ?: Timber.tag("PowerManager").w("No application context, metrics collector not started")
+
+        if (currentProfile?.enableFanControl != false) {
+            FanController.start(getDriver())
+        }
     }
 
     /**
@@ -148,6 +177,8 @@ object PowerManager {
         // Save the current profile if available, otherwise read from driver
         saveProfile()
         stopAutoTuning()
+        PerformanceMetricsCollector.stop()
+        FanController.stop()
         getDriver().stop()
         isGameStarted = false
         containerDir = null
@@ -160,6 +191,8 @@ object PowerManager {
         if (!isGameStarted) return
         saveProfile()
         stopAutoTuning()
+        PerformanceMetricsCollector.pause()
+        FanController.pause()
         getDriver().stop()
     }
 
@@ -170,6 +203,10 @@ object PowerManager {
         if (!isGameStarted) return
         getDriver().start()
         restoreSavedProfile()
+        PerformanceMetricsCollector.resume()
+        if (currentProfile?.enableFanControl != false) {
+            FanController.start(getDriver())
+        }
     }
 
     /**
@@ -180,9 +217,21 @@ object PowerManager {
     fun startAutoTuning() {
         val driver = getDriver()
 
-        if (autoTuner?.isRunning() == true) {
+        if (autoTuner?.isRunning() == true || clusterTuner?.isRunning() == true) {
             Timber.tag("PowerManager").w("Auto-tuning already running")
             return
+        }
+
+        val perClusterTuning = currentProfile?.enablePerClusterTuning ?: true
+        val clusterTuningSupported = DeviceGate.isRetroidPocket6() && driver is PServerDriver
+        if (perClusterTuning && clusterTuningSupported) {
+            Timber.tag("PowerManager").i("Selected ClusterTuner (per-cluster tuning on, PServer driver, model: ${Build.MODEL})")
+            if (startClusterTuning(driver as PServerDriver)) return
+            Timber.tag("PowerManager").w("Cluster tuner unavailable, falling back to PerformanceAutoTuner")
+        } else {
+            Timber.tag("PowerManager").i(
+                "Selected PerformanceAutoTuner (per-cluster tuning: $perClusterTuning, cluster tuning supported: $clusterTuningSupported, model: ${Build.MODEL}, driver: ${driver::class.simpleName})"
+            )
         }
 
         // Check if driver supports required features
@@ -233,9 +282,67 @@ object PowerManager {
     }
 
     /**
+     * Start the per-cluster, frame-pacing aware tuner.
+     * Unlike [PerformanceAutoTuner] it caps each cluster separately, never touches
+     * scaling_min_freq and never writes its values back into [currentProfile].
+     * @return true when the tuner took over tuning for this session
+     */
+    private fun startClusterTuning(pserver: PServerDriver): Boolean {
+        val primeSteps = pserver.getAvailableCpuFrequenciesForCluster(PServerDriver.CpuCluster.PRIME)
+        val performanceSteps = pserver.getAvailableCpuFrequenciesForCluster(PServerDriver.CpuCluster.PERFORMANCE)
+        val gpuSteps = if (pserver.isGpuSupported()) {
+            val numLevels = pserver.getNumGpuPowerLevels()
+            if (numLevels > 0) (0 until numLevels).toList() else emptyList()
+        } else {
+            emptyList()
+        }
+
+        if (primeSteps.size < 2 && performanceSteps.size < 2 && gpuSteps.size < 2) {
+            Timber.tag("PowerManager").w("Cluster tuner has no controllable domain")
+            return false
+        }
+
+        val tuner = ClusterTuner(
+            primeSteps = primeSteps,
+            performanceSteps = performanceSteps,
+            gpuSteps = gpuSteps,
+            applyPrimeCapKhz = { freq ->
+                pserver.setMaxCpuValueForCluster(PServerDriver.CpuCluster.PRIME, freq)
+            },
+            applyPerformanceCapKhz = { freq ->
+                pserver.setMaxCpuValueForCluster(PServerDriver.CpuCluster.PERFORMANCE, freq)
+            },
+            applyGpuMaxLevel = { level -> pserver.setMaxGpuPowerLevel(level) },
+            metricsProvider = { latestMetrics },
+            targetFpsProvider = { targetFps },
+            fanSampleProvider = { FanController.latestSample },
+            stateFile = ClusterTuner.stateFileFor(containerDir),
+            logDirectory = appContext?.let { context ->
+                File(
+                    context.getExternalFilesDir(null) ?: context.filesDir,
+                    PowerBaselineScripts.DIRECTORY_NAME
+                )
+            },
+        )
+
+        clusterTuner = tuner
+        tuner.start()
+        Timber.tag("PowerManager").i(
+            "Cluster tuning started (prime: ${primeSteps.size} steps, performance: ${performanceSteps.size} steps, GPU: ${gpuSteps.size} levels)"
+        )
+        return true
+    }
+
+    /**
      * Stop automatic performance tuning.
      */
     fun stopAutoTuning() {
+        clusterTuner?.let {
+            it.stop()
+            clusterTuner = null
+            return
+        }
+
         autoTuner?.let {
             if (!it.isRunning()) {
                 Timber.tag("PowerManager").w("Auto-tuning not running")
@@ -253,14 +360,45 @@ object PowerManager {
      * Should be called when the UI changes the active profile.
      */
     fun setCurrentProfile(profile: PowerProfile) {
+        val previousProfile = currentProfile
         currentProfile = profile
 
         // Handle auto-tuning based on profile setting
         if (profile.enableAutoTuning) {
+            if (previousProfile != null && previousProfile.enablePerClusterTuning != profile.enablePerClusterTuning) {
+                Timber.tag("PowerManager").i(
+                    "Per-cluster tuning changed to ${profile.enablePerClusterTuning}, restarting the tuner"
+                )
+                stopAutoTuning()
+            }
             startAutoTuning()
         } else {
             stopAutoTuning()
         }
+
+        if (isGameStarted) {
+            if (profile.enableFanControl) {
+                FanController.start(getDriver())
+            } else {
+                FanController.stop()
+            }
+        }
+    }
+
+    /**
+     * Caps currently applied by the cluster tuner, or null when it is not running.
+     */
+    fun latestTunerCaps(): ClusterTuner.Caps? = clusterTuner?.latestCaps()
+
+    fun isFanControlAvailable(): Boolean {
+        return FanController.isAvailable(driver)
+    }
+
+    /**
+     * True when auto-tuning caps each CPU cluster separately via [ClusterTuner].
+     */
+    fun isClusterTuningAvailable(): Boolean {
+        return DeviceGate.isRetroidPocket6() && driver is PServerDriver
     }
 
     /**

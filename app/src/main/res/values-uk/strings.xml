@@ -2193,7 +2193,12 @@
     <string name="power_control_ram_max_power">Максимальна частота ОЗП</string>
     <string name="power_control_available_frequencies">Доступні частоти</string>
     <string name="power_control_auto_tuning">Автоналаштування</string>
-    <string name="power_control_auto_tuning_desc">Автоматичне налаштування продуктивності на основі FPS</string>
+    <string name="power_control_auto_tuning_desc">Стабільніша продуктивність, довша робота від батареї, менше нагрівання: автоматично налаштовує CPU та GPU під гру. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_per_cluster">Налаштування за кластерами</string>
+    <string name="power_control_per_cluster_desc">Налаштовує кожен кластер ЦП окремо. Працює лише на Retroid Pocket 6.</string>
+    <string name="power_control_fan_control">Керування вентилятором</string>
+    <string name="power_control_fan_control_desc">Підтримує задану температуру за мінімального шуму вентилятора. Працює лише на Retroid Pocket 6.</string>
+    <string name="power_control_fan_control_unsupported">Працює лише на Retroid Pocket 6</string>
     <string name="power_control_tuning_strategy">Стратегія налаштування</string>
     <string name="power_control_strategy_balanced">Збалансована</string>
     <string name="power_control_strategy_balanced_desc">Рівномірно налаштовує всі компоненти для кращої загальної продуктивності</string>
