@@ -34,6 +34,8 @@ import java.io.File
  */
 object PowerManager {
     private const val AFFINITY_SETTLE_MS = 1500L
+    private const val GAME_PIN_MAX_RETRIES = 10
+    private const val GAME_PIN_RETRY_DELAY_MS = 1000L
 
     private val json = Json {
         encodeDefaults = true
@@ -120,6 +122,13 @@ object PowerManager {
     @Volatile
     var ownsGameAffinity: Boolean = false
         private set
+
+    /**
+     * Bumped whenever a pin run starts or is called off, so a retry loop left over from an earlier
+     * run stops instead of pinning the game again.
+     */
+    @Volatile
+    private var gamePinGeneration: Int = 0
 
     /**
      * Initialize PowerManager with application context.
@@ -494,6 +503,20 @@ object PowerManager {
             } else {
                 FanController.stop()
             }
+
+            if (previousProfile != null && previousProfile.enableGamePinning != profile.enableGamePinning) {
+                val processName = pinnedGameProcessName
+                if (profile.enableGamePinning) {
+                    if (processName != null) {
+                        Timber.tag("PowerManager").i("Game pinning switched on, pinning $processName now")
+                        startGamePin(processName, "live toggle")
+                    } else {
+                        Timber.tag("PowerManager").i("Game pinning switched on, no game process recorded yet")
+                    }
+                } else {
+                    unpinGame()
+                }
+            }
         }
     }
 
@@ -504,6 +527,13 @@ object PowerManager {
 
     fun isFanControlAvailable(): Boolean {
         return FanController.isAvailable(driver)
+    }
+
+    /**
+     * True when this session can hold the game on the fast CPU cores.
+     */
+    fun isGamePinningAvailable(): Boolean {
+        return DeviceGate.isRetroidPocket6() && driver is PServerDriver
     }
 
     /**
@@ -956,28 +986,45 @@ object PowerManager {
     }
 
     /**
-     * Pin a game process with retry logic.
-     * Strategy varies by cluster count:
-     * - Dual-cluster (e.g., Odin 3): Pin to prime cores only for maximum performance
-     * - Tri-cluster: Pin to performance + prime cores
-     * - Single-cluster: Pin to all available cores
+     * Records the game process of this session and pins it onto the fast cores when the profile
+     * asks for it. The name is recorded whatever the gates say, so a later toggle of
+     * [PowerProfile.enableGamePinning] knows which process to move.
      *
      * @param processName Process name or package name
-     * @param maxRetries Maximum number of retry attempts (default: 10)
-     * @param retryDelayMs Delay between retries in milliseconds (default: 1000)
+     * @param maxRetries Maximum number of retry attempts
+     * @param retryDelayMs Delay between retries in milliseconds
      */
     fun pinGameWithRetry(
         processName: String,
-        maxRetries: Int = 10,
-        retryDelayMs: Long = 1000
+        maxRetries: Int = GAME_PIN_MAX_RETRIES,
+        retryDelayMs: Long = GAME_PIN_RETRY_DELAY_MS
     ) {
-        val driver = getDriver()
-        if (driver !is PServerDriver) return
+        pinnedGameProcessName = processName
+        startGamePin(processName, "game start", maxRetries, retryDelayMs)
+    }
 
-        if (!DeviceGate.isRetroidPocket6() || currentProfile?.enableAutoTuning != true) {
+    /**
+     * Hands the game process to the winhandler by name, which resolves it against the Windows
+     * process list and applies the mask to every thread. The request is repeated until the kernel
+     * reports the mask on the game, because the winhandler drops a request for a process that has
+     * not started yet.
+     */
+    private fun startGamePin(
+        processName: String,
+        reason: String,
+        maxRetries: Int = GAME_PIN_MAX_RETRIES,
+        retryDelayMs: Long = GAME_PIN_RETRY_DELAY_MS
+    ) {
+        val pserver = driver as? PServerDriver
+        if (pserver == null || !DeviceGate.isRetroidPocket6()) {
             Timber.tag("PowerManager").i(
-                "Game pinning inactive (RP6=${DeviceGate.isRetroidPocket6()}, autoTuning=${currentProfile?.enableAutoTuning}), not pinning $processName"
+                "Game pinning inactive (RP6=${DeviceGate.isRetroidPocket6()}, driver=${driver?.let { it::class.simpleName }}), not pinning $processName"
             )
+            return
+        }
+
+        if (currentProfile?.enableGamePinning != true) {
+            Timber.tag("PowerManager").i("Game pinning switched off in the profile, not pinning $processName")
             return
         }
 
@@ -988,59 +1035,115 @@ object PowerManager {
             return
         }
 
+        val generation = ++gamePinGeneration
         Thread {
             try {
-                var retries = maxRetries
-                val isWineExecutable = processName.endsWith(".exe", ignoreCase = true)
+                val gameCores = gamePinCores(pserver)
+                if (gameCores.isEmpty()) {
+                    Timber.tag("PowerManager").w("No cores to pin $processName on, leaving its affinity alone")
+                    return@Thread
+                }
 
-                while (retries > 0) {
-                    // Use Wine-specific search for .exe files, regular pidof for others
-                    val pid = if (isWineExecutable) {
-                        driver.findRunningProcesses(processName).find {
-                            !it.second.contains("winhandler.exe") &&
-                            (
-                                it.second.endsWith(processName, ignoreCase = true) ||
-                                it.second.startsWith("A:\\$processName", ignoreCase = true)
-                            )
-                        }?.first
-                    } else {
-                        driver.getProcessId(processName)
-                    }
-
-                    if (pid != null) {
-                        val clusterCount = driver.getCpuClusterCount()
-                        val perfCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
-                        val primeCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME)
-
-                        // Determine game cores based on cluster configuration
-                        val gameCores = when (clusterCount) {
-                            1 -> perfCores // Single cluster: use all cores
-                            2 -> primeCores.ifEmpty { perfCores } // Dual: prime only (or perf if no prime)
-                            else -> perfCores + primeCores // Tri+: perf + prime, leave efficiency for background
-                        }
-
-                        if (gameCores.isNotEmpty()) {
-                            val success = applyAffinity(processName, pid, gameCores)
-                            if (success) {
-                                pinnedGameProcessName = processName
-                                pinnedGamePid = pid
-                                pinnedGameCores = gameCores
-                                Timber.tag("PowerManager").i(
-                                    "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} ($clusterCount clusters) after ${maxRetries - retries + 1} attempts"
-                                )
-                                verifyGameAffinity(pid, gameCores, "PowerManager")
-                            }
-                        }
+                var pid: Int? = null
+                var attempt = 1
+                while (attempt <= maxRetries) {
+                    if (generation != gamePinGeneration) {
+                        Timber.tag("PowerManager").i("Pin run of $processName called off ($reason)")
                         return@Thread
                     }
-                    Thread.sleep(retryDelayMs)
-                    retries--
+
+                    val applied = applyAffinity(processName, pid, gameCores)
+                    pid = findGamePid(pserver, processName)
+
+                    if (pid == null) {
+                        Timber.tag("PowerManager").d(
+                            "$processName has not started yet, pin attempt $attempt of $maxRetries ($reason)"
+                        )
+                    } else if (applied && verifyGameAffinity(pid, gameCores, "PowerManager")) {
+                        pinnedGameProcessName = processName
+                        pinnedGamePid = pid
+                        pinnedGameCores = gameCores
+                        Timber.tag("PowerManager").i(
+                            "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} after $attempt attempts ($reason)"
+                        )
+                        return@Thread
+                    }
+
+                    if (attempt < maxRetries) Thread.sleep(retryDelayMs)
+                    attempt++
                 }
-                Timber.tag("PowerManager").w("Failed to find process after $maxRetries attempts: $processName")
+                Timber.tag("PowerManager").w(
+                    "Pin of $processName onto CPUs ${gameCores.joinToString()} did not take after $maxRetries attempts ($reason)"
+                )
             } catch (e: Exception) {
-                Timber.tag("PowerManager").e(e, "Failed to pin game with retry: $processName")
+                Timber.tag("PowerManager").e(e, "Failed to pin game: $processName")
             }
         }.start()
+    }
+
+    /**
+     * Hands the recorded game process back every core and forgets the pinned mask.
+     */
+    private fun unpinGame() {
+        val processName = pinnedGameProcessName
+        if (processName == null) {
+            Timber.tag("PowerManager").i("No game process recorded, nothing to unpin")
+            return
+        }
+
+        val allCores = parseCpuList(Container.getFallbackCPUList()).sorted()
+        if (allCores.isEmpty()) {
+            Timber.tag("PowerManager").w("No all-cores mask available, affinity of $processName left alone")
+            return
+        }
+
+        val pid = pinnedGamePid
+        gamePinGeneration++
+        Thread {
+            try {
+                val success = applyAffinity(processName, pid, allCores)
+                pinnedGameCores = emptyList()
+                Timber.tag("PowerManager").i(
+                    "Game pinning switched off, gave $processName CPUs ${allCores.joinToString()} back (success=$success)"
+                )
+                if (success && pid != null) verifyGameAffinity(pid, allCores, "PowerManager")
+            } catch (e: Exception) {
+                Timber.tag("PowerManager").e(e, "Failed to unpin game: $processName")
+            }
+        }.start()
+    }
+
+    /**
+     * Cores a pinned game runs on.
+     * - Single-cluster: all cores
+     * - Dual-cluster: prime cores only, performance cores when the device has no prime cluster
+     * - Tri-cluster and up: performance + prime cores, efficiency left for background work
+     */
+    private fun gamePinCores(pserver: PServerDriver): List<Int> {
+        val perfCores = pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
+        val primeCores = pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME)
+        return when (pserver.getCpuClusterCount()) {
+            1 -> perfCores
+            2 -> primeCores.ifEmpty { perfCores }
+            else -> perfCores + primeCores
+        }
+    }
+
+    /**
+     * Linux PID of the game process, or null while it is not running. Only read to verify a pin
+     * against /proc, the winhandler resolves the process by name on its own side.
+     */
+    private fun findGamePid(pserver: PServerDriver, processName: String): Int? {
+        if (!processName.endsWith(".exe", ignoreCase = true)) {
+            return pserver.getProcessId(processName)
+        }
+        return pserver.findRunningProcesses(processName).find {
+            !it.second.contains("winhandler.exe") &&
+                (
+                    it.second.endsWith(processName, ignoreCase = true) ||
+                        it.second.startsWith("A:\\$processName", ignoreCase = true)
+                    )
+        }?.first
     }
 
     /**
@@ -1068,7 +1171,7 @@ object PowerManager {
      * OpenProcess on the other side.
      * @return true when the request left this side
      */
-    private fun applyAffinity(processName: String, pid: Int, cores: List<Int>): Boolean {
+    private fun applyAffinity(processName: String, pid: Int?, cores: List<Int>): Boolean {
         val mask = ProcessHelper.getAffinityMask(cores.joinToString(","))
         if (mask == 0) return false
 
@@ -1083,8 +1186,8 @@ object PowerManager {
         }
 
         val pserver = driver as? PServerDriver
-        if (pserver == null) {
-            Timber.tag("PowerManager").w("No winhandler and no PServer driver, affinity of $processName left alone")
+        if (pserver == null || pid == null) {
+            Timber.tag("PowerManager").w("No winhandler and no PID for $processName, its affinity is left alone")
             return false
         }
 

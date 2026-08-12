@@ -262,6 +262,7 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         return PowerProfile(
             enableAutoTuning = DeviceGate.isRetroidPocket6(),
             enableAdaptiveFpsCap = DeviceGate.isRetroidPocket6(),
+            enableGamePinning = DeviceGate.isRetroidPocket6(),
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL, // Samsung doesn't use governors, but we need a value
             minCpuFreq = 0, // CPU level 0

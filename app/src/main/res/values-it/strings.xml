@@ -2195,6 +2195,8 @@
     <string name="power_control_fan_control">Controllo ventola</string>
     <string name="power_control_fan_control_desc">Mantiene una temperatura target con il minimo rumore della ventola. Funziona solo su Retroid Pocket 6.</string>
     <string name="power_control_fan_control_unsupported">Funziona solo su Retroid Pocket 6</string>
+    <string name="power_control_game_pinning">Ancoraggio del gioco</string>
+    <string name="power_control_game_pinning_desc">Mantiene il gioco sui core CPU veloci. Funziona solo su Retroid Pocket 6.</string>
     <string name="power_control_hud_show_fan">Mostra velocità della ventola</string>
     <string name="power_control_hud_show_tuner">Mostra i limiti di frequenza della regolazione</string>
     <string name="power_control_tuning_strategy">Strategia di regolazione</string>

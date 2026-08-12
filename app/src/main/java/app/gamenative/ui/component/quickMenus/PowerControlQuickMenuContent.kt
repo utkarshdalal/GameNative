@@ -72,6 +72,7 @@ fun PowerControlQuickMenuContent(
     onMaxRamValueChanged: (Int) -> Unit,
     modifier: Modifier = Modifier,
     onFanControlToggled: (Boolean) -> Unit = {},
+    onGamePinningToggled: (Boolean) -> Unit = {},
     onTuningModeSelected: (Boolean) -> Unit = {},
     onAdaptiveFpsCapToggled: (Boolean) -> Unit = {},
     firstItemFocusRequester: FocusRequester? = null,
@@ -94,6 +95,7 @@ fun PowerControlQuickMenuContent(
                     state = uiState,
                     onAutoTuningToggled = onAutoTuningToggled,
                     onFanControlToggled = onFanControlToggled,
+                    onGamePinningToggled = onGamePinningToggled,
                     onTuningModeSelected = onTuningModeSelected,
                     onAdaptiveFpsCapToggled = onAdaptiveFpsCapToggled,
                     onTuningStrategySelected = onTuningStrategySelected,
@@ -164,6 +166,7 @@ private fun SuccessView(
     state: PowerControlUiState.Success,
     onAutoTuningToggled: (Boolean) -> Unit,
     onFanControlToggled: (Boolean) -> Unit,
+    onGamePinningToggled: (Boolean) -> Unit,
     onTuningModeSelected: (Boolean) -> Unit,
     onAdaptiveFpsCapToggled: (Boolean) -> Unit,
     onTuningStrategySelected: (AutoTuningStrategy) -> Unit,
@@ -303,6 +306,19 @@ private fun SuccessView(
         onToggle = {
             if (isFanControlAvailable) {
                 onFanControlToggled(!state.selectedProfile.enableFanControl)
+            }
+        },
+        accentColor = accentColor,
+    )
+
+    val isGamePinningAvailable = PowerManager.isGamePinningAvailable()
+    QuickMenuToggleRow(
+        title = stringResource(R.string.power_control_game_pinning),
+        subtitle = stringResource(R.string.power_control_game_pinning_desc),
+        enabled = isGamePinningAvailable && state.selectedProfile.enableGamePinning,
+        onToggle = {
+            if (isGamePinningAvailable) {
+                onGamePinningToggled(!state.selectedProfile.enableGamePinning)
             }
         },
         accentColor = accentColor,

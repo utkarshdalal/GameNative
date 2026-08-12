@@ -21,6 +21,7 @@ data class PowerProfile(
     var enableAdaptiveFpsCap: Boolean = false,
     var tuningStrategy: AutoTuningStrategy = AutoTuningStrategy.BALANCED,
     var enableFanControl: Boolean = true,
+    var enableGamePinning: Boolean = false,
     var name: String,
     var governor: CpuGovernor,
     var minCpuFreq: Long,
@@ -99,6 +100,7 @@ object PowerProfiles {
                 add(PowerProfile(
                     enableAutoTuning = isRetroidPocket6,
                     enableAdaptiveFpsCap = isRetroidPocket6,
+                    enableGamePinning = isRetroidPocket6,
                     name = PerformancePreset.POWER_SAVE.displayName,
                     governor = CpuGovernor.POWERSAVE,
                     minCpuFreq = minFreq,
@@ -116,6 +118,7 @@ object PowerProfiles {
                 add(PowerProfile(
                     enableAutoTuning = isRetroidPocket6,
                     enableAdaptiveFpsCap = isRetroidPocket6,
+                    enableGamePinning = isRetroidPocket6,
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.SCHEDUTIL,
                     minCpuFreq = midFreq,
@@ -127,6 +130,7 @@ object PowerProfiles {
                 add(PowerProfile(
                     enableAutoTuning = isRetroidPocket6,
                     enableAdaptiveFpsCap = isRetroidPocket6,
+                    enableGamePinning = isRetroidPocket6,
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.CONSERVATIVE,
                     minCpuFreq = midFreq,
@@ -138,6 +142,7 @@ object PowerProfiles {
                 add(PowerProfile(
                     enableAutoTuning = isRetroidPocket6,
                     enableAdaptiveFpsCap = isRetroidPocket6,
+                    enableGamePinning = isRetroidPocket6,
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.INTERACTIVE,
                     minCpuFreq = midFreq,
@@ -154,6 +159,7 @@ object PowerProfiles {
                 add(PowerProfile(
                     enableAutoTuning = isRetroidPocket6,
                     enableAdaptiveFpsCap = isRetroidPocket6,
+                    enableGamePinning = isRetroidPocket6,
                     name = PerformancePreset.PERFORMANCE.displayName,
                     governor = CpuGovernor.PERFORMANCE,
                     minCpuFreq = highFreq,
@@ -169,6 +175,7 @@ object PowerProfiles {
                 add(PowerProfile(
                     enableAutoTuning = isRetroidPocket6,
                     enableAdaptiveFpsCap = isRetroidPocket6,
+                    enableGamePinning = isRetroidPocket6,
                     name = PerformancePreset.ON_DEMAND.displayName,
                     governor = CpuGovernor.ONDEMAND,
                     minCpuFreq = minFreq,
@@ -185,6 +192,7 @@ object PowerProfiles {
                 add(PowerProfile(
                     enableAutoTuning = isRetroidPocket6,
                     enableAdaptiveFpsCap = isRetroidPocket6,
+                    enableGamePinning = isRetroidPocket6,
                     name = PerformancePreset.WALT.displayName,
                     governor = CpuGovernor.WALT,
                     minCpuFreq = minFreq,

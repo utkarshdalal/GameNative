@@ -81,6 +81,14 @@ fun PowerControlQuickMenuTab(
                 refreshTrigger++
             }
         },
+        onGamePinningToggled = { enabled ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.currentProfile?.let { profile ->
+                    PowerManager.setCurrentProfile(profile.copy(enableGamePinning = enabled))
+                }
+                refreshTrigger++
+            }
+        },
         onTuningModeSelected = { perCluster ->
             coroutineScope.launch(Dispatchers.IO) {
                 PowerManager.currentProfile?.let { profile ->
@@ -322,6 +330,7 @@ private fun rememberPowerControlState(refreshTrigger: Int): State<PowerControlUi
                         enablePerClusterTuning = PowerManager.currentProfile?.enablePerClusterTuning ?: true,
                         enableAdaptiveFpsCap = PowerManager.currentProfile?.enableAdaptiveFpsCap ?: true,
                         enableFanControl = PowerManager.currentProfile?.enableFanControl ?: true,
+                        enableGamePinning = PowerManager.currentProfile?.enableGamePinning ?: false,
                         tuningStrategy = PowerManager.currentProfile?.tuningStrategy ?: AutoTuningStrategy.POWER_EFFICIENT
                     )
 

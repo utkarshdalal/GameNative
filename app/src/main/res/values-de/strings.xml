@@ -2144,6 +2144,8 @@
     <string name="power_control_fan_control">Lüftersteuerung</string>
     <string name="power_control_fan_control_desc">Hält eine Zieltemperatur mit minimalem Lüftergeräusch. Funktioniert nur auf dem Retroid Pocket 6.</string>
     <string name="power_control_fan_control_unsupported">Funktioniert nur auf dem Retroid Pocket 6</string>
+    <string name="power_control_game_pinning">Spiel-Pinning</string>
+    <string name="power_control_game_pinning_desc">Hält das Spiel auf den schnellen CPU-Kernen. Funktioniert nur auf dem Retroid Pocket 6.</string>
     <string name="power_control_hud_show_fan">Lüfterdrehzahl anzeigen</string>
     <string name="power_control_hud_show_tuner">Taktgrenzen des Tunings anzeigen</string>
     <string name="power_control_tuning_strategy">Tuning-Strategie</string>

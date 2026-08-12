@@ -1207,7 +1207,8 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             // Fallback to a safe default
             return PowerProfile(
                 enableAutoTuning = DeviceGate.isRetroidPocket6(),
-            enableAdaptiveFpsCap = DeviceGate.isRetroidPocket6(),
+                enableAdaptiveFpsCap = DeviceGate.isRetroidPocket6(),
+                enableGamePinning = DeviceGate.isRetroidPocket6(),
                 name = PerformancePreset.BALANCED.displayName,
                 governor = CpuGovernor.SCHEDUTIL,
                 minCpuFreq = getCurrentMinCpuValue(),
@@ -1239,6 +1240,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         return PowerProfile(
             enableAutoTuning = DeviceGate.isRetroidPocket6(),
             enableAdaptiveFpsCap = DeviceGate.isRetroidPocket6(),
+            enableGamePinning = DeviceGate.isRetroidPocket6(),
             name = PerformancePreset.BALANCED.displayName,
             governor = governor,
             minCpuFreq = midFreq,

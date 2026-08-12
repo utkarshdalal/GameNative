@@ -2206,6 +2206,8 @@
     <string name="power_control_fan_control">Sterowanie wentylatorem</string>
     <string name="power_control_fan_control_desc">Utrzymuje docelową temperaturę przy minimalnym hałasie wentylatora. Działa tylko na Retroid Pocket 6.</string>
     <string name="power_control_fan_control_unsupported">Działa tylko na Retroid Pocket 6</string>
+    <string name="power_control_game_pinning">Przypinanie gry</string>
+    <string name="power_control_game_pinning_desc">Utrzymuje grę na szybkich rdzeniach CPU. Działa tylko na Retroid Pocket 6.</string>
     <string name="power_control_hud_show_fan">Pokaż prędkość wentylatora</string>
     <string name="power_control_hud_show_tuner">Pokaż limity taktowania dostrajania</string>
     <string name="power_control_tuning_strategy">Strategia dostrajania</string>

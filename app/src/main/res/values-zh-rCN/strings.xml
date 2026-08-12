@@ -2220,6 +2220,8 @@
     <string name="power_control_fan_control">风扇控制</string>
     <string name="power_control_fan_control_desc">以最小的风扇噪音保持目标温度。仅适用于 Retroid Pocket 6。</string>
     <string name="power_control_fan_control_unsupported">仅适用于 Retroid Pocket 6</string>
+    <string name="power_control_game_pinning">游戏核心绑定</string>
+    <string name="power_control_game_pinning_desc">将游戏保持在高性能 CPU 核心上。仅适用于 Retroid Pocket 6。</string>
     <string name="power_control_hud_show_fan">显示风扇转速</string>
     <string name="power_control_hud_show_tuner">显示调整的频率上限</string>
     <string name="power_control_tuning_strategy">调整策略</string>

@@ -181,6 +181,7 @@ abstract class PerformanceDriver {
         return PowerProfile(
             enableAutoTuning = DeviceGate.isRetroidPocket6(),
             enableAdaptiveFpsCap = DeviceGate.isRetroidPocket6(),
+            enableGamePinning = DeviceGate.isRetroidPocket6(),
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,
             minCpuFreq = 0,
