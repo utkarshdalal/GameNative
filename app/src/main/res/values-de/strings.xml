@@ -549,6 +549,8 @@
     <string name="downloading">Wird heruntergeladen…</string>
     <string name="calculating_time">Wird berechnet…</string>
     <string name="download_failed_try_again">Download fehlgeschlagen. Bitte nochmal versuchen.</string>
+    <string name="download_preparing">Download wird vorbereitet…</string>
+    <string name="download_preparing_depots">Depots werden vorbereitet (%1$d/%2$d)</string>
     <string name="update_available">Update verfügbar</string>
     <string name="game_information">Spieldetails</string>
     <string name="status">Status</string>

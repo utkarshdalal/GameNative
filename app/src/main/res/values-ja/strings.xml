@@ -574,6 +574,8 @@
     <string name="downloading">ダウンロード中...</string>
     <string name="calculating_time">計算中...</string>
     <string name="download_failed_try_again">ダウンロードに失敗しました。もう一度試してください。</string>
+    <string name="download_preparing">ダウンロードを準備中...</string>
+    <string name="download_preparing_depots">デポを準備中 (%1$d/%2$d)</string>
     <string name="update_available">利用可能なアップデート</string>
     <string name="game_information">ゲーム情報</string>
     <string name="status">状態</string>

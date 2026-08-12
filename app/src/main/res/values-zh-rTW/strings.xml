@@ -554,6 +554,8 @@
     <string name="downloading">下載中...</string>
     <string name="calculating_time">計算中...</string>
     <string name="download_failed_try_again">下載失敗, 請再試一次</string>
+    <string name="download_preparing">正在準備下載...</string>
+    <string name="download_preparing_depots">正在準備儲存庫 (%1$d/%2$d)</string>
     <string name="update_available">可用更新</string>
     <string name="game_information">遊戲資訊</string>
     <string name="status">狀態</string>

@@ -325,6 +325,8 @@
     <string name="download">Загрузить</string>
     <string name="download_failed_try_again">Ошибка загрузки. Пожалуйста, попробуйте снова.</string>
     <string name="download_file">Загрузить файл</string>
+    <string name="download_preparing">Подготовка загрузки...</string>
+    <string name="download_preparing_depots">Подготовка депо (%1$d/%2$d)</string>
     <string name="download_prompt_title">Установить приложение</string>
     <string name="downloading">Загрузка...</string>
     <string name="dpad_category">D-Pad</string>

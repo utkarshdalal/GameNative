@@ -554,6 +554,8 @@
     <string name="downloading">下载中...</string>
     <string name="calculating_time">计算中...</string>
     <string name="download_failed_try_again">下载失败，请重试</string>
+    <string name="download_preparing">正在准备下载...</string>
+    <string name="download_preparing_depots">正在准备仓库 (%1$d/%2$d)</string>
     <string name="update_available">有可用更新</string>
     <string name="game_information">游戏信息</string>
     <string name="status">状态</string>

@@ -95,6 +95,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamapps.GamePlayedInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.License
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.PICSRequest
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.SteamApps
+import `in`.dragonbra.javasteam.steam.handlers.steamapps.callback.DepotKeyCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.callback.LicenseListCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.SteamFriends
@@ -138,6 +139,7 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import kotlin.io.path.pathString
 import kotlin.time.Duration.Companion.seconds
@@ -364,6 +366,61 @@ class SteamService : Service(), IChallengeUrlChanged {
         /** Apps with a workshop download that was paused (cancelled) by the user. */
         val workshopPausedApps: MutableSet<Int> = ConcurrentHashMap.newKeySet()
 
+        // Depot-key acquisition progress, keyed by appId. Useful for games with many depots like Borderlands 2
+        private val depotKeyPrep = ConcurrentHashMap<Int, DepotKeyPrep>()
+
+        // owner pins the phase to one specific download attempt. A cancelled DepotDownloader can
+        // still deliver a chunk while it unwinds, and depot keys arrive on the callback thread, so
+        // callbacks belonging to a previous download of the same app must not touch a newer
+        // attempt's state — nor may its messages go to a DownloadInfo that has since been replaced.
+        private class DepotKeyPrep(val owner: DownloadInfo, val total: Int) {
+            val resolved = AtomicInteger(0)
+        }
+
+        private val depotKeyOwner = ConcurrentHashMap<Int, Int>()
+
+        // Guards the prep bookkeeping together with the status messages it writes, so a key
+        // callback can never re-post "Preparing depots" after the phase has already been ended.
+        private val depotKeyPrepLock = Any()
+
+        // Begins the depot key prep phase, seeding a status message so the UI never shows a bare 0%
+        private fun beginDepotKeyPrep(appId: Int, depotIds: Set<Int>, downloadInfo: DownloadInfo) {
+            synchronized(depotKeyPrepLock) {
+                depotKeyPrep[appId] = DepotKeyPrep(downloadInfo, depotIds.size)
+                depotIds.forEach { depotId -> depotKeyOwner[depotId] = appId }
+                instance?.let { downloadInfo.updateStatusMessage(it.getString(R.string.download_preparing)) }
+            }
+        }
+
+        /** Called once per depot key Steam returns, from the DepotKeyCallback subscription. */
+        private fun noteDepotKeyResolved(depotId: Int) {
+            val appId = depotKeyOwner[depotId] ?: return
+            val svc = instance ?: return
+            synchronized(depotKeyPrepLock) {
+                val prep = depotKeyPrep[appId] ?: return
+                val done = prep.resolved.incrementAndGet().coerceAtMost(prep.total)
+                prep.owner.updateStatusMessage(
+                    svc.getString(R.string.download_preparing_depots, done, prep.total),
+                )
+            }
+        }
+
+        // Ends the depot key prep phase and clears its status message, once the actual download
+        // begins or the job goes away. Callers that can outlive their own download (the progress
+        // callbacks) must pass [owner]: the phase is then only ended if it still belongs to that
+        // download, so a late callback cannot wipe the message a newer attempt just posted. Omit
+        // [owner] to end the phase whoever owns it, e.g. when tearing the job down.
+        private fun clearDepotKeyPrep(appId: Int, owner: DownloadInfo? = null) {
+            if (!depotKeyPrep.containsKey(appId)) return
+            synchronized(depotKeyPrepLock) {
+                val prep = depotKeyPrep[appId] ?: return
+                if (owner != null && prep.owner !== owner) return
+                depotKeyOwner.entries.removeIf { it.value == appId }
+                depotKeyPrep.remove(appId)
+                prep.owner.updateStatusMessage(null)
+            }
+        }
+
         internal fun notifyDownloadStarted(appId: Int) {
             PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, true))
         }
@@ -373,6 +430,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         fun removeDownloadJob(appId: Int) {
+            clearDepotKeyPrep(appId)
             val removed = downloadJobs.remove(appId)
             if (removed != null) {
                 notifyDownloadStopped(appId)
@@ -1849,6 +1907,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // downloadApp call returns the stale DownloadInfo from the still-populated
                 // map (line ~1666 short-circuit).
                 downloadJobs[appId] = di
+
+                // Depot keys are fetched one per depot before the first chunk arrives, and
+                // nothing in IDownloadListener reports that phase. Seed a status message now
+                // so the UI never shows a bare 0% with no explanation; noteDepotKeyResolved
+                // refines it into a running count as keys resolve. Register before launching,
+                // since keys start arriving almost immediately.
+                beginDepotKeyPrep(appId, selectedDepots.keys, di)
+
                 notifyDownloadStarted(appId)
                 instance?.notifierOrNull?.trackDownload(di, getAppInfoOf(appId)?.name.orEmpty(), NotificationHelper.NOTIFICATION_ID_STEAM)
 
@@ -2295,6 +2361,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 uncompressedBytes: Long,
             ) {
                 val isFirstCallForDepot = !depotCumulativeCompressedBytes.containsKey(depotId)
+
+                clearDepotKeyPrep(downloadInfo.gameId, owner = downloadInfo)
 
                 val previousBytes = depotCumulativeCompressedBytes[depotId] ?: 0L
                 val deltaBytes = compressedBytes - previousBytes
@@ -3533,6 +3601,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     add(subscribe(PersonaStateCallback::class.java, ::onPersonaStateReceived))
                     add(subscribe(LicenseListCallback::class.java, ::onLicenseList))
                     add(subscribe(PlayingSessionStateCallback::class.java, ::onPlayingSessionState))
+                    add(subscribe(DepotKeyCallback::class.java) { noteDepotKeyResolved(it.depotID) })
                     add(subscribe(GameInviteCallback::class.java, ::onGameInvite))
                 }
             }

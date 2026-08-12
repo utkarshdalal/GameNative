@@ -572,6 +572,8 @@
     <string name="downloading">Pobieranie...</string>
     <string name="calculating_time">Obliczanie...</string>
     <string name="download_failed_try_again">Pobieranie nie powiodło się. Spróbuj ponownie.</string>
+    <string name="download_preparing">Przygotowywanie pobierania...</string>
+    <string name="download_preparing_depots">Przygotowywanie depotów (%1$d/%2$d)</string>
     <string name="update_available">Dostępna aktualizacja</string>
     <string name="game_information">Informacje o grze</string>
     <string name="status">Status</string>

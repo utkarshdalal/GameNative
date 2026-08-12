@@ -570,6 +570,8 @@
     <string name="downloading">다운로드 중...</string>
     <string name="calculating_time">계산 중...</string>
     <string name="download_failed_try_again">다운로드 실패. 다시 시도해 주세요.</string>
+    <string name="download_preparing">다운로드 준비 중...</string>
+    <string name="download_preparing_depots">디포 준비 중 (%1$d/%2$d)</string>
     <string name="update_available">업데이트 사용 가능</string>
     <string name="game_information">게임 정보</string>
     <string name="status">상태</string>
