@@ -41,6 +41,12 @@ object AdaptiveFpsCapController {
      */
     fun snapshot(): FpsCapSnapshot? = if (running) cap.snapshot() else null
 
+    /**
+     * True while an upward probe and its watch own the render window. Other experiments wait
+     * for this to clear before they start one of their own.
+     */
+    fun isProbeActive(): Boolean = running && cap.capState == AdaptiveFpsCap.STATE_PROBE
+
     fun start(containerDir: File?, logDirectory: File?, sessionStartMillis: Long = System.currentTimeMillis()) {
         if (running) return
 

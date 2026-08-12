@@ -17,8 +17,12 @@ import app.gamenative.powercontrol.fan.FanController
 import app.gamenative.powercontrol.metrics.MetricsSnapshot
 import app.gamenative.powercontrol.metrics.PerformanceMetricsCollector
 import app.gamenative.powercontrol.profiles.CpuGovernor
+import com.winlator.container.Container
+import com.winlator.core.ProcessHelper
+import com.winlator.winhandler.WinHandler
 import com.winlator.xserver.extensions.PresentExtension
 import kotlinx.serialization.json.Json
+import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
 
@@ -28,6 +32,8 @@ import java.io.File
  * Uses a PerformanceDriver implementation for device-specific operations.
  */
 object PowerManager {
+    private const val AFFINITY_SETTLE_MS = 1500L
+
     private val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = true
@@ -83,6 +89,36 @@ object PowerManager {
      */
     @Volatile
     var latestMetrics: MetricsSnapshot? = null
+
+    /**
+     * Process name of the game [pinGameWithRetry] pinned, or null when nothing is pinned.
+     */
+    @Volatile
+    var pinnedGameProcessName: String? = null
+        private set
+
+    /**
+     * PID of the pinned game process, or null when nothing is pinned.
+     */
+    @Volatile
+    var pinnedGamePid: Int? = null
+        private set
+
+    /**
+     * Exact core list last applied to the pinned game, empty when nothing is pinned.
+     */
+    @Volatile
+    var pinnedGameCores: List<Int> = emptyList()
+        private set
+
+    /**
+     * True while power control is allowed to move the game between cores. False when the
+     * container carries an explicit CPU list, because that list is the user's own choice and the
+     * winhandler applies it to every thread of the game anyway.
+     */
+    @Volatile
+    var ownsGameAffinity: Boolean = false
+        private set
 
     /**
      * Initialize PowerManager with application context.
@@ -159,6 +195,7 @@ object PowerManager {
      */
     fun start(containerDir: File? = null) {
         this.containerDir = containerDir
+        resolveGameAffinityOwnership()
         getDriver().start()
         restoreSavedProfile()
 
@@ -191,6 +228,10 @@ object PowerManager {
         getDriver().stop()
         isGameStarted = false
         containerDir = null
+        pinnedGameProcessName = null
+        pinnedGamePid = null
+        pinnedGameCores = emptyList()
+        ownsGameAffinity = false
     }
 
     /**
@@ -932,6 +973,13 @@ object PowerManager {
         val driver = getDriver()
         if (driver !is PServerDriver) return
 
+        if (!ownsGameAffinity) {
+            Timber.tag("PowerManager").i(
+                "Container CPU list owns the game affinity, not pinning $processName"
+            )
+            return
+        }
+
         Thread {
             try {
                 var retries = maxRetries
@@ -964,11 +1012,15 @@ object PowerManager {
                         }
 
                         if (gameCores.isNotEmpty()) {
-                            val success = driver.setCpuAffinityByCores(pid, gameCores)
+                            val success = applyAffinity(processName, pid, gameCores)
                             if (success) {
+                                pinnedGameProcessName = processName
+                                pinnedGamePid = pid
+                                pinnedGameCores = gameCores
                                 Timber.tag("PowerManager").i(
                                     "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} ($clusterCount clusters) after ${maxRetries - retries + 1} attempts"
                                 )
+                                verifyGameAffinity(pid, gameCores, "PowerManager")
                             }
                         }
                         return@Thread
@@ -982,6 +1034,164 @@ object PowerManager {
             }
         }.start()
     }
+
+    /**
+     * Re-pins the recorded game process onto [cores] and records the new mask.
+     * @return true when the pin reached the process
+     */
+    internal fun applyGameAffinity(cores: List<Int>): Boolean {
+        if (!ownsGameAffinity) return false
+        val pid = pinnedGamePid ?: return false
+        val processName = pinnedGameProcessName ?: return false
+        if (cores.isEmpty()) return false
+
+        val success = applyAffinity(processName, pid, cores)
+        if (success) pinnedGameCores = cores
+        return success
+    }
+
+    /**
+     * Moves a game process onto [cores] through the winhandler, which hands the mask to
+     * SetProcessAffinityMask and so reaches every thread of the process. `taskset` only moves the
+     * thread it is given and is kept as the fallback for a session without a live winhandler.
+     *
+     * The request carries the process name, not [pid]: the winhandler resolves the name against
+     * the Windows process list, while [pid] is the Linux pid this side found and means nothing to
+     * OpenProcess on the other side.
+     * @return true when the request left this side
+     */
+    private fun applyAffinity(processName: String, pid: Int, cores: List<Int>): Boolean {
+        val mask = ProcessHelper.getAffinityMask(cores.joinToString(","))
+        if (mask == 0) return false
+
+        val winHandler = WinHandler.getActiveInstance()
+            ?.takeIf { processName.endsWith(".exe", ignoreCase = true) }
+        if (winHandler != null) {
+            winHandler.setProcessAffinity(processName, mask)
+            Timber.tag("PowerManager").i(
+                "Applied affinity ${cores.joinToString()} (mask 0x${Integer.toHexString(mask)}) to $processName over the winhandler"
+            )
+            return true
+        }
+
+        val pserver = driver as? PServerDriver
+        if (pserver == null) {
+            Timber.tag("PowerManager").w("No winhandler and no PServer driver, affinity of $processName left alone")
+            return false
+        }
+
+        val success = pserver.setCpuAffinityByCores(pid, cores)
+        Timber.tag("PowerManager").w(
+            "No winhandler available, applied affinity ${cores.joinToString()} to PID $pid over taskset (success=$success)"
+        )
+        return success
+    }
+
+    /**
+     * Waits for the winhandler round trip and compares what the kernel reports for [pid] with the
+     * core list this app applied.
+     * @return true when the mask took effect
+     */
+    internal fun verifyGameAffinity(pid: Int, cores: List<Int>, tag: String): Boolean {
+        try {
+            Thread.sleep(AFFINITY_SETTLE_MS)
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            return false
+        }
+
+        val kernelCores = kernelCpuList(pid)
+        if (kernelCores == null) {
+            Timber.tag(tag).w("Could not read the affinity of PID $pid, treating the pin as unverified")
+            return false
+        }
+
+        if (kernelCores == cores.toSet()) {
+            Timber.tag(tag).i("Affinity of PID $pid settled on ${formatCores(kernelCores)}")
+            return true
+        }
+
+        Timber.tag(tag).w(
+            "Affinity of PID $pid is ${formatCores(kernelCores)}, applied ${cores.joinToString()}"
+        )
+        return false
+    }
+
+    /**
+     * Cores the kernel currently allows for [pid], or null when the read failed.
+     */
+    internal fun kernelCpuList(pid: Int): Set<Int>? {
+        val pserver = driver as? PServerDriver ?: return null
+        val value = pserver.executeRootCommand("cat /proc/$pid/status | grep Cpus_allowed_list")
+            .getOrNull()
+            ?.substringAfter(':', "")
+            ?.trim()
+        if (value.isNullOrEmpty()) return null
+        return parseCpuList(value).takeIf { it.isNotEmpty() }
+    }
+
+    /**
+     * Expands a core list such as `4-6,7` or `0,1,2` into the core numbers it names.
+     */
+    internal fun parseCpuList(value: String): Set<Int> {
+        val cores = mutableSetOf<Int>()
+        value.split(',').forEach { part ->
+            val range = part.trim().split('-')
+            when (range.size) {
+                1 -> range[0].toIntOrNull()?.let { cores.add(it) }
+                2 -> {
+                    val from = range[0].toIntOrNull()
+                    val to = range[1].toIntOrNull()
+                    if (from != null && to != null && to >= from) cores.addAll(from..to)
+                }
+            }
+        }
+        return cores
+    }
+
+    internal fun formatCores(cores: Collection<Int>): String = cores.sorted().joinToString(", ")
+
+    /**
+     * Decides once per session whether power control may move the game between cores. A container
+     * with an explicit CPU list keeps its own pin, anything else (no list, or the all-cores
+     * default) leaves the game affinity to power control.
+     */
+    private fun resolveGameAffinityOwnership() {
+        val cpuList = containerCpuList(containerDir)
+        val allCores = parseCpuList(Container.getFallbackCPUList())
+        val explicit = cpuList != null && parseCpuList(cpuList) != allCores
+        ownsGameAffinity = !explicit
+
+        if (explicit) {
+            Timber.tag("PowerManager").i(
+                "Container CPU list is $cpuList, power control does not manage the game affinity this session"
+            )
+        } else {
+            Timber.tag("PowerManager").i(
+                "Container CPU list is ${cpuList ?: "unset"}, power control manages the game affinity this session"
+            )
+        }
+    }
+
+    /**
+     * The CPU list the container stores, or null when it has none.
+     */
+    private fun containerCpuList(dir: File?): String? {
+        if (dir == null) return null
+        return runCatching {
+            val container = Container(dir.name.substringAfterLast('-'))
+            container.rootDir = dir
+            container.loadData(JSONObject(container.containerJson))
+            container.getCPUList(false)
+        }.onFailure {
+            Timber.tag("PowerManager").w(it, "Failed to read the CPU list of ${dir.absolutePath}")
+        }.getOrNull()
+    }
+
+    /**
+     * The PServer driver of this session, or null when another driver is in use.
+     */
+    internal fun pserverDriver(): PServerDriver? = driver as? PServerDriver
 
     /**
      * Get the profile file path for the current container
