@@ -573,6 +573,11 @@
     <string name="add_custom_game_content_desc">Eigenes Spiel hinzufügen</string>
     <string name="add_custom_game_dialog_title">Eigenes Spiel hinzufügen</string>
     <string name="add_custom_game_dialog_message">Bitte wähle den Ordner aus, der die Spieldateien enthält, die du als eigenes Spiel hinzufügen möchtest.</string>
+    <string name="custom_game_importing">Spiel wird importiert…</string>
+    <string name="custom_game_import_success">Spiel importiert</string>
+    <string name="custom_game_import_failed">Import fehlgeschlagen</string>
+    <string name="custom_game_import_dialog_message">Wähle den Ordner aus, der das Spiel enthält. Es wird in den Speicher von GameNative importiert, damit es ohne Speicherberechtigung laufen kann. Bei großen Spielen kann das einige Minuten dauern.</string>
+    <string name="custom_game_import_remove_original">Original nach dem Import entfernen</string>
     <string name="add_custom_game_dont_show_again">Diesen Hinweis nicht mehr anzeigen</string>
     <string name="base_app_shortcut_created">Verknüpfung erstellt</string>
     <string name="base_app_shortcut_failed">Verknüpfung konnte nicht erstellt werden: %s</string>
@@ -1925,6 +1930,7 @@
     <string name="nexus_resolving_collection_item">Sammlung auflösen %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Sammlung bereit: %1$d Mods</string>
     <string name="nexus_resolve_collection_failed">Nexus-Sammlung konnte nicht aufgelöst werden</string>
+    <string name="nexus_adult_content_blocked">Diese Sammlung ist aufgrund deiner Einstellungen für nicht jugendfreie Inhalte bei Nexus Mods ausgeblendet.</string>
     <string name="nexus_no_selected_collection_mods_ready">Es stehen keine ausgewählten Sammlungs-Mods zum Download bereit</string>
     <string name="nexus_collection_different_file_reused">Sammlung hat eine andere Datei angefordert; bestehende installierte Datei wiederverwendet</string>
     <string name="nexus_collection_existing_placement_kept">Bestehende Platzierung beibehalten</string>
@@ -2051,8 +2057,8 @@
     <string name="control_stroke_width_default">Standard</string>
     <string name="control_stroke_width_thick">Dick</string>
     <string name="control_stroke_width_extra_thick">Extra dick</string>
-    <string name="button_shooter_look_through">Shooter-Durchgriff</string>
-    <string name="button_shooter_look_through_subtitle">Diese Tastenberührung auch zur Steuerung dynamischer Shooter-Bewegung und des Blicks verwenden</string>
+    <string name="button_look_through">Durchgriff</string>
+    <string name="button_look_through_subtitle">Diese Taste drücken und von ihr aus ziehen, um zusätzlich Bewegung oder Kamerablick zu steuern. Im Touchscreen-Modus nicht verfügbar.</string>
     <string name="preview">Vorschau</string>
     <string name="active">Aktiv</string>
     <string name="apply_all">Auf alle anwenden</string>
@@ -2069,6 +2075,10 @@
     <string name="featured_badge">Gesponsert</string>
     <string name="featured_action_wishlist">Wunschliste</string>
     <string name="featured_action_wishlist_on">Auf %1$s auf die Wunschliste</string>
+    <string name="featured_action_wishlisted">Auf der Wunschliste</string>
+    <string name="featured_action_get_demo">Demo holen</string>
+    <string name="featured_action_in_library">In der Bibliothek</string>
+    <string name="featured_action_failed">In der App nicht möglich – Store-Seite wird geöffnet</string>
     <string name="featured_action_preorder">Vorbestellen</string>
     <string name="featured_action_preorder_on">Auf %1$s vorbestellen</string>
     <string name="featured_action_buy">Kaufen</string>
@@ -2166,4 +2176,14 @@
     <string name="bfg_model_desc">Clear ist schärfer, aber aufwendiger</string>
     <string name="bfg_model_standard">Standard</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">Einladen</string>
+    <string name="steam_invite_header">%1$d Freunde</string>
+    <string name="steam_invite_joinable">In diesem Spiel — zum Beitreten tippen</string>
+    <string name="steam_invite_unavailable">Steam-Client nicht bereit</string>
+    <string name="steam_invite_failed">Einladung fehlgeschlagen — dein Spiel ist in keiner beitretbaren Sitzung</string>
+    <string name="steam_join_failed">Beitritt nicht möglich — die Sitzung wurde möglicherweise geschlossen</string>
+    <string name="steam_invite_sent">Einladung gesendet</string>
+    <string name="steam_invite_joined">In deinem Spiel</string>
+    <string name="steam_invite_online">Online</string>
+    <string name="steam_invite_offline">Offline</string>
 </resources>

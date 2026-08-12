@@ -594,6 +594,11 @@
     <string name="add_custom_game_content_desc">커스텀 게임 추가</string>
     <string name="add_custom_game_dialog_title">커스텀 게임 추가</string>
     <string name="add_custom_game_dialog_message">커스텀 게임으로 추가할 게임 파일이 있는 폴더를 선택하세요.</string>
+    <string name="custom_game_importing">게임 가져오는 중…</string>
+    <string name="custom_game_import_success">게임을 가져왔습니다</string>
+    <string name="custom_game_import_failed">가져오기 실패</string>
+    <string name="custom_game_import_dialog_message">게임이 있는 폴더를 선택하세요. 저장소 권한 없이 실행할 수 있도록 GameNative 저장소로 가져옵니다. 용량이 큰 게임은 몇 분 정도 걸릴 수 있습니다.</string>
+    <string name="custom_game_import_remove_original">가져온 후 원본 삭제</string>
     <string name="add_custom_game_dont_show_again">이 대화상자 다시 표시 안 함</string>
     <string name="base_app_shortcut_created">바로가기가 생성되었습니다</string>
     <string name="base_app_shortcut_failed">바로가기 생성 실패: %s</string>
@@ -1982,6 +1987,7 @@
     <string name="nexus_resolving_collection_item">컬렉션 확인 중 %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">컬렉션 준비됨: %1$d 모드</string>
     <string name="nexus_resolve_collection_failed">Nexus 컬렉션을 확인하지 못했습니다.</string>
+    <string name="nexus_adult_content_blocked">이 컬렉션은 사용자의 Nexus Mods 성인 콘텐츠 설정에 따라 숨겨져 있습니다.</string>
     <string name="nexus_no_selected_collection_mods_ready">선택한 컬렉션 모드를 다운로드할 준비가 되지 않았습니다.</string>
     <string name="nexus_collection_different_file_reused">컬렉션에서 다른 파일을 요청했습니다. 기존에 설치된 파일 재사용</string>
     <string name="nexus_collection_existing_placement_kept">기존 배치가 유지됨</string>
@@ -2108,8 +2114,8 @@
     <string name="control_stroke_width_default">기본</string>
     <string name="control_stroke_width_thick">두껍게</string>
     <string name="control_stroke_width_extra_thick">매우 두껍게</string>
-    <string name="button_shooter_look_through">슈터 통과 입력</string>
-    <string name="button_shooter_look_through_subtitle">이 버튼 터치가 동적 슈터 이동 및 시점도 제어하도록 허용</string>
+    <string name="button_look_through">드래그 입력 통과</string>
+    <string name="button_look_through_subtitle">이 버튼을 누른 채 드래그하여 이동이나 카메라 시점도 조작합니다. 터치스크린 모드에서는 사용할 수 없습니다.</string>
     <string name="preview">미리보기</string>
     <string name="active">활성</string>
     <string name="apply_all">모두 적용</string>
@@ -2126,6 +2132,10 @@
     <string name="featured_badge">스폰서</string>
     <string name="featured_action_wishlist">위시리스트</string>
     <string name="featured_action_wishlist_on">%1$s에서 위시리스트에 추가</string>
+    <string name="featured_action_wishlisted">위시리스트에 추가됨</string>
+    <string name="featured_action_get_demo">데모 받기</string>
+    <string name="featured_action_in_library">라이브러리에 있음</string>
+    <string name="featured_action_failed">앱에서 완료할 수 없어 상점 페이지를 엽니다</string>
     <string name="featured_action_preorder">예약 구매</string>
     <string name="featured_action_preorder_on">%1$s에서 예약 구매</string>
     <string name="featured_action_buy">구매</string>
@@ -2221,4 +2231,14 @@
     <string name="bfg_model_desc">Clear는 더 선명하지만 부하가 큽니다</string>
     <string name="bfg_model_standard">표준</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">초대</string>
+    <string name="steam_invite_header">친구 %1$d명</string>
+    <string name="steam_invite_joinable">이 게임 플레이 중 — 탭하여 참가</string>
+    <string name="steam_invite_unavailable">Steam 클라이언트가 준비되지 않음</string>
+    <string name="steam_invite_failed">초대 실패 — 참가할 수 있는 세션이 아닙니다</string>
+    <string name="steam_join_failed">참가할 수 없음 — 세션이 종료되었을 수 있습니다</string>
+    <string name="steam_invite_sent">초대를 보냈습니다</string>
+    <string name="steam_invite_joined">내 게임에 참가 중</string>
+    <string name="steam_invite_online">온라인</string>
+    <string name="steam_invite_offline">오프라인</string>
 </resources>

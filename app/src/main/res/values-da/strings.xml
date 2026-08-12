@@ -1296,6 +1296,11 @@
     <string name="add_custom_game_content_desc">Tilføj tilpasset spil</string>
     <string name="add_custom_game_dialog_title">Tilføj tilpasset spil</string>
     <string name="add_custom_game_dialog_message">Vælg venligst mappen der indeholder spilfilerne du vil tilføje som et tilpasset spil.</string>
+    <string name="custom_game_importing">Importerer spil…</string>
+    <string name="custom_game_import_success">Spil importeret</string>
+    <string name="custom_game_import_failed">Import mislykkedes</string>
+    <string name="custom_game_import_dialog_message">Vælg mappen der indeholder spillet. Det importeres til GameNatives lager, så det kan køre uden nogen lagertilladelse. Store spil kan tage et par minutter.</string>
+    <string name="custom_game_import_remove_original">Fjern originalen efter import</string>
     <string name="add_custom_game_dont_show_again">Vis ikke denne dialog igen</string>
     <string name="base_app_shortcut_created">Genvej oprettet</string>
     <string name="base_app_shortcut_failed">Kunne ikke oprette genvej: %s</string>
@@ -1855,6 +1860,7 @@
     <string name="nexus_resolving_collection_item">Løsning af opkrævning %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Samling klar: %1$d mods</string>
     <string name="nexus_resolve_collection_failed">Kunne ikke løse Nexus-indsamlingen</string>
+    <string name="nexus_adult_content_blocked">Denne samling er skjult på grund af dine indstillinger for voksenindhold på Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Ingen udvalgte samlingsmods er klar til at downloade</string>
     <string name="nexus_collection_different_file_reused">Samling anmodede om en anden fil; eksisterende installeret fil genbrugt</string>
     <string name="nexus_collection_existing_placement_kept">Eksisterende anbringelse bevares</string>
@@ -1981,8 +1987,8 @@
     <string name="control_stroke_width_default">Standard</string>
     <string name="control_stroke_width_thick">Tyk</string>
     <string name="control_stroke_width_extra_thick">Ekstra tyk</string>
-    <string name="button_shooter_look_through">Shooter-gennemkig</string>
-    <string name="button_shooter_look_through_subtitle">Tillad at denne knapberøring også styrer dynamisk shooter-bevægelse og blik</string>
+    <string name="button_look_through">Gennemkig</string>
+    <string name="button_look_through_subtitle">Tryk på og træk fra denne knap for også at styre bevægelse eller kameravisningen. Ikke tilgængelig i touchscreen-tilstand.</string>
     <string name="preview">Forhåndsvisning</string>
     <string name="active">Aktiv</string>
     <string name="apply_all">Anvend alle</string>
@@ -1999,6 +2005,10 @@
     <string name="featured_badge">Sponsoreret</string>
     <string name="featured_action_wishlist">Ønskeliste</string>
     <string name="featured_action_wishlist_on">Føj til ønskeliste på %1$s</string>
+    <string name="featured_action_wishlisted">På ønskelisten</string>
+    <string name="featured_action_get_demo">Hent demoen</string>
+    <string name="featured_action_in_library">I biblioteket</string>
+    <string name="featured_action_failed">Kunne ikke fuldføres i appen – åbner butikssiden</string>
     <string name="featured_action_preorder">Forudbestil</string>
     <string name="featured_action_preorder_on">Forudbestil på %1$s</string>
     <string name="featured_action_buy">Køb</string>
@@ -2096,4 +2106,14 @@
     <string name="bfg_model_desc">Clear er skarpere, men tungere</string>
     <string name="bfg_model_standard">Standard</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">Inviter</string>
+    <string name="steam_invite_header">%1$d venner</string>
+    <string name="steam_invite_joinable">I dette spil — tryk for at deltage</string>
+    <string name="steam_invite_unavailable">Steam-klienten er ikke klar</string>
+    <string name="steam_invite_failed">Invitationen mislykkedes — dit spil er ikke i en session, man kan deltage i</string>
+    <string name="steam_join_failed">Kunne ikke deltage — deres session er måske lukket</string>
+    <string name="steam_invite_sent">Invitation sendt</string>
+    <string name="steam_invite_joined">I dit spil</string>
+    <string name="steam_invite_online">Online</string>
+    <string name="steam_invite_offline">Offline</string>
 </resources>

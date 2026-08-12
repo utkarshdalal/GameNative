@@ -10,7 +10,10 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.IBinder
 import android.util.Base64
+import app.gamenative.ui.util.GameInviteNotificationManager
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.service.callback.GameInviteCallback
+import app.gamenative.service.handler.GameInviteHandler
 import androidx.room.withTransaction
 import app.gamenative.BuildConfig
 import app.gamenative.NetworkMonitor
@@ -722,6 +725,24 @@ class SteamService : Service(), IChallengeUrlChanged {
             return getAppInfoOf(appId)?.let {
                 it.depots.filter { it.value.dlcAppId != INVALID_APP_ID }
             }.orEmpty()
+        }
+
+        suspend fun isAppInLibrary(appId: Int): Boolean =
+            instance?.licenseDao?.getAllLicenses()?.any { appId in it.appIds } == true
+
+        suspend fun requestFreeLicense(appId: Int): Boolean = withContext(Dispatchers.IO) {
+            val steamApps = instance?._steamApps ?: return@withContext false
+            try {
+                val callback = steamApps.requestFreeLicense(appId).toFuture().await()
+                Timber.i(
+                    "requestFreeLicense($appId) -> ${callback.result}, " +
+                        "apps=${callback.grantedApps}, packages=${callback.grantedPackages}",
+                )
+                callback.result == EResult.OK && appId in callback.grantedApps
+            } catch (e: Exception) {
+                Timber.e(e, "requestFreeLicense($appId) failed")
+                false
+            }
         }
 
         suspend fun getOwnedAppDlc(appId: Int): Map<Int, DepotInfo> {
@@ -3485,6 +3506,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 removeHandler(SteamMasterServer::class.java)
                 removeHandler(SteamWorkshop::class.java)
                 removeHandler(SteamScreenshots::class.java)
+                // JavaSteam has the protobuf for game invites but no handler for them.
+                addHandler(GameInviteHandler())
             }
 
             // create the callback manager which will route callbacks to function calls
@@ -3510,6 +3533,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     add(subscribe(PersonaStateCallback::class.java, ::onPersonaStateReceived))
                     add(subscribe(LicenseListCallback::class.java, ::onLicenseList))
                     add(subscribe(PlayingSessionStateCallback::class.java, ::onPlayingSessionState))
+                    add(subscribe(GameInviteCallback::class.java, ::onGameInvite))
                 }
             }
 
@@ -4005,6 +4029,18 @@ class SteamService : Service(), IChallengeUrlChanged {
         if (_isHandlingConflict.compareAndSet(false, true)) {
             PluviaApp.events.emit(SteamEvent.PlayingBlocked(remoteAppName = knownApp.name))
         }
+    }
+
+    /**
+     * Steam fans a game invite out to every session on the account, so this arrives here even
+     * though the running game is served by the separate bionic Steam client. Acting on it is the
+     * overlay's job -- this only surfaces the prompt.
+     */
+    private fun onGameInvite(callback: GameInviteCallback) {
+        Timber.i("onGameInvite: from=${callback.inviterSteamId} connect=${callback.connectString}")
+        if (callback.connectString.isEmpty()) return
+
+        GameInviteNotificationManager.show(callback.inviterSteamId, callback.connectString)
     }
 
     @OptIn(ExperimentalStdlibApi::class)

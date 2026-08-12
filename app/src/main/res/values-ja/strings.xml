@@ -598,6 +598,11 @@
     <string name="add_custom_game_content_desc">カスタムゲームを追加する</string>
     <string name="add_custom_game_dialog_title">カスタムゲームを追加</string>
     <string name="add_custom_game_dialog_message">カスタム ゲームとして追加するゲーム ファイルが含まれるフォルダーを選択してください。</string>
+    <string name="custom_game_importing">ゲームをインポート中…</string>
+    <string name="custom_game_import_success">ゲームをインポートしました</string>
+    <string name="custom_game_import_failed">インポートに失敗しました</string>
+    <string name="custom_game_import_dialog_message">ゲームが含まれるフォルダーを選択してください。ストレージ権限なしで実行できるように、GameNative のストレージにインポートされます。大きなゲームは数分かかる場合があります。</string>
+    <string name="custom_game_import_remove_original">インポート後に元のファイルを削除</string>
     <string name="add_custom_game_dont_show_again">\'このダイアログを再度表示しないでください</string>
     <string name="base_app_shortcut_created">ショートカットが作成されました</string>
     <string name="base_app_shortcut_failed">ショートカットの作成に失敗しました: %s</string>
@@ -1941,6 +1946,7 @@
     <string name="nexus_resolving_collection_item">コレクションの解決 %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">コレクションの準備完了: %1$d 個のMOD</string>
     <string name="nexus_resolve_collection_failed">Nexus コレクションを解決できませんでした</string>
+    <string name="nexus_adult_content_blocked">Nexus Mods の成人向けコンテンツ設定により、このコレクションは非表示になっています。</string>
     <string name="nexus_no_selected_collection_mods_ready">選択されたコレクション MOD はダウンロードする準備ができていません</string>
     <string name="nexus_collection_different_file_reused">コレクションは別のファイルを要求しました。既存のインストールされたファイルが再利用される</string>
     <string name="nexus_collection_existing_placement_kept">既存の配置が維持される</string>
@@ -2067,8 +2073,8 @@
     <string name="control_stroke_width_default">既定</string>
     <string name="control_stroke_width_thick">太い</string>
     <string name="control_stroke_width_extra_thick">極太</string>
-    <string name="button_shooter_look_through">シューター透過操作</string>
-    <string name="button_shooter_look_through_subtitle">このボタンのタッチでも動的シューター移動や視点操作を行う</string>
+    <string name="button_look_through">ドラッグ中の移動・視点操作</string>
+    <string name="button_look_through_subtitle">このボタンを押したままドラッグして、移動やカメラ操作も行います。タッチスクリーンモードでは使用できません。</string>
     <string name="preview">プレビュー</string>
     <string name="active">アクティブ</string>
     <string name="apply_all">すべてに適用</string>
@@ -2085,6 +2091,10 @@
     <string name="featured_badge">スポンサー</string>
     <string name="featured_action_wishlist">ウィッシュリスト</string>
     <string name="featured_action_wishlist_on">%1$s でウィッシュリストに追加</string>
+    <string name="featured_action_wishlisted">ウィッシュリスト追加済み</string>
+    <string name="featured_action_get_demo">デモを入手</string>
+    <string name="featured_action_in_library">ライブラリにあります</string>
+    <string name="featured_action_failed">アプリ内で完了できませんでした。ストアページを開きます</string>
     <string name="featured_action_preorder">予約購入</string>
     <string name="featured_action_preorder_on">%1$s で予約購入</string>
     <string name="featured_action_buy">購入</string>
@@ -2180,4 +2190,14 @@
     <string name="bfg_model_desc">Clear はより鮮明ですが負荷が高くなります</string>
     <string name="bfg_model_standard">標準</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">招待</string>
+    <string name="steam_invite_header">フレンド %1$d 人</string>
+    <string name="steam_invite_joinable">このゲームをプレイ中 — タップして参加</string>
+    <string name="steam_invite_unavailable">Steam クライアントの準備ができていません</string>
+    <string name="steam_invite_failed">招待に失敗しました — 参加可能なセッションではありません</string>
+    <string name="steam_join_failed">参加できません — セッションが終了した可能性があります</string>
+    <string name="steam_invite_sent">招待を送信しました</string>
+    <string name="steam_invite_joined">あなたのゲームに参加中</string>
+    <string name="steam_invite_online">オンライン</string>
+    <string name="steam_invite_offline">オフライン</string>
 </resources>

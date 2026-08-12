@@ -578,6 +578,11 @@
     <string name="add_custom_game_content_desc">添加自定義遊戲</string>
     <string name="add_custom_game_dialog_title">添加自定義遊戲</string>
     <string name="add_custom_game_dialog_message">請選擇包含您要添加為自定義遊戲的遊戲的文件夾</string>
+    <string name="custom_game_importing">正在匯入遊戲…</string>
+    <string name="custom_game_import_success">遊戲已匯入</string>
+    <string name="custom_game_import_failed">匯入失敗</string>
+    <string name="custom_game_import_dialog_message">請選擇包含遊戲的資料夾。遊戲將被匯入到 GameNative 的儲存空間，無需任何儲存權限即可執行。大型遊戲可能需要幾分鐘。</string>
+    <string name="custom_game_import_remove_original">匯入後刪除原始檔案</string>
     <string name="add_custom_game_dont_show_again">不再顯示</string>
     <string name="base_app_shortcut_created">已創建捷徑</string>
     <string name="base_app_shortcut_failed">無法創建捷徑：%s</string>
@@ -1993,6 +1998,7 @@
     <string name="nexus_resolving_collection_item">正在解析收藏 %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">收藏就緒：%1$d 個模組</string>
     <string name="nexus_resolve_collection_failed">無法解析 Nexus 收藏</string>
+    <string name="nexus_adult_content_blocked">此收藏因你的 Nexus Mods 成人內容設定而被隱藏。</string>
     <string name="nexus_no_selected_collection_mods_ready">沒有可供下載的選定收藏模組</string>
     <string name="nexus_collection_different_file_reused">收藏要求不同的檔案；重複使用現有已安裝檔案</string>
     <string name="nexus_collection_existing_placement_kept">保留現有安置</string>
@@ -2119,8 +2125,8 @@
     <string name="control_stroke_width_default">預設</string>
     <string name="control_stroke_width_thick">粗</string>
     <string name="control_stroke_width_extra_thick">特粗</string>
-    <string name="button_shooter_look_through">射擊模式穿透</string>
-    <string name="button_shooter_look_through_subtitle">允許此按鈕觸控同時控制動態射擊移動和視角</string>
+    <string name="button_look_through">拖曳穿透</string>
+    <string name="button_look_through_subtitle">按住此按鈕並拖曳，也可控制移動或鏡頭視角。觸控螢幕模式下無法使用。</string>
     <string name="preview">預覽</string>
     <string name="active">啟用</string>
     <string name="apply_all">全部套用</string>
@@ -2137,6 +2143,10 @@
     <string name="featured_badge">贊助</string>
     <string name="featured_action_wishlist">願望清單</string>
     <string name="featured_action_wishlist_on">在 %1$s 加入願望清單</string>
+    <string name="featured_action_wishlisted">已加入願望清單</string>
+    <string name="featured_action_get_demo">取得試玩版</string>
+    <string name="featured_action_in_library">已在收藏庫中</string>
+    <string name="featured_action_failed">無法在應用程式內完成，正在開啟商店頁面</string>
     <string name="featured_action_preorder">預購</string>
     <string name="featured_action_preorder_on">在 %1$s 預購</string>
     <string name="featured_action_buy">購買</string>
@@ -2232,4 +2242,14 @@
     <string name="bfg_model_desc">Clear 更清晰，但負擔更大</string>
     <string name="bfg_model_standard">標準</string>
     <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">邀請</string>
+    <string name="steam_invite_header">%1$d 位好友</string>
+    <string name="steam_invite_joinable">正在玩此遊戲 — 點按加入</string>
+    <string name="steam_invite_unavailable">Steam 用戶端未就緒</string>
+    <string name="steam_invite_failed">邀請失敗 — 你的遊戲不在可加入的工作階段中</string>
+    <string name="steam_join_failed">無法加入 — 對方的工作階段可能已關閉</string>
+    <string name="steam_invite_sent">已傳送邀請</string>
+    <string name="steam_invite_joined">在你的遊戲中</string>
+    <string name="steam_invite_online">線上</string>
+    <string name="steam_invite_offline">離線</string>
 </resources>
