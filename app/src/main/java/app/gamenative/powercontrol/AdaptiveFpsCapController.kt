@@ -122,7 +122,13 @@ object AdaptiveFpsCapController {
         }
 
         val trimmedSteps = PowerManager.tunerTrimmedSteps()
-        val clocksOpen = trimmedSteps == null || trimmedSteps == 0
+
+        // A harvest only trims domains that are not the bottleneck, so its steps are not what
+        // holds the frame rate back and must not block the step down. Treating them as held
+        // performance deadlocks the two features against each other: the harvest keeps the
+        // step count above zero, the cap never drops, and the target stays out of reach.
+        val harvesting = PowerManager.tunerIsHarvesting() == true
+        val clocksOpen = trimmedSteps == null || trimmedSteps == 0 || harvesting
         val clockHeadroom = trimmedSteps == null || trimmedSteps >= AdaptiveFpsCap.MIN_TRIMMED_STEPS
 
         val change = cap.onCycle(snapshot.fps, clocksOpen, clockHeadroom) ?: return

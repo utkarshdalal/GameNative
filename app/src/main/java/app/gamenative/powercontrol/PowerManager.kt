@@ -409,6 +409,12 @@ object PowerManager {
     internal fun tunerTrimmedSteps(): Int? = clusterTuner?.trimmedSteps()
 
     /**
+     * True while the cluster tuner's trimmed steps come from a harvest, so they are taken
+     * off a domain that is not the bottleneck. Null when it is not running.
+     */
+    internal fun tunerIsHarvesting(): Boolean? = clusterTuner?.isHarvesting()
+
+    /**
      * Asks the cluster tuner to reopen every domain for an FPS cap probe.
      * @return true when a running tuner took the request
      */

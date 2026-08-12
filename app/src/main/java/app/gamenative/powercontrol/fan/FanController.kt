@@ -198,8 +198,9 @@ object FanController {
 
         if (tickCount % LOG_EVERY_TICKS == 0L) {
             Timber.tag(TAG).i(
-                "temp=%d target=%d pi=%d%% applied=%d%%",
+                "temp=%d smoothed=%.1f target=%d pi=%d%% applied=%d%%",
                 tempC,
+                controller.smoothedTempC ?: tempC.toDouble(),
                 FanTuning.TARGET_TEMP_C.toInt(),
                 controller.rawIntegerPercent,
                 percent,

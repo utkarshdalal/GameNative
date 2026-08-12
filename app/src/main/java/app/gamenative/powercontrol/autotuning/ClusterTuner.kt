@@ -91,6 +91,9 @@ class ClusterTuner(
     @Volatile
     private var openClocksRequested = false
 
+    @Volatile
+    private var harvesting = false
+
     fun isRunning(): Boolean = running
 
     /**
@@ -104,6 +107,12 @@ class ClusterTuner(
      * tuner is not running. Reads a single volatile, safe to call from any thread.
      */
     fun trimmedSteps(): Int? = if (running) trimmedStepCount else null
+
+    /**
+     * True while the trimmed steps come from a harvest, so they are not holding the frame
+     * rate back. Null while the tuner is not running.
+     */
+    fun isHarvesting(): Boolean? = if (running) harvesting else null
 
     /**
      * Asks for every domain to be reopened and every trim hold to be dropped. The request is
@@ -207,6 +216,7 @@ class ClusterTuner(
 
         val slowRatio = engine.slowFrameRatio(input)
         val decision = engine.decide(input)
+        harvesting = engine.harvesting
 
         var applied = true
         var reason = decision.reason
