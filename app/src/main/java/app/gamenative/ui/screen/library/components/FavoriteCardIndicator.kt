@@ -10,10 +10,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,6 +70,16 @@ internal fun Modifier.favoriteInnerGlow(
         val mediumStroke = 8.dp.toPx()
         val narrowStroke = 3.dp.toPx()
         val outline = shape.createOutline(size, layoutDirection, this)
+        val edgeRect = when (outline) {
+            is Outline.Rectangle -> outline.rect
+            is Outline.Rounded -> Rect(
+                left = outline.roundRect.left,
+                top = outline.roundRect.top,
+                right = outline.roundRect.right,
+                bottom = outline.roundRect.bottom,
+            )
+            is Outline.Generic -> Rect(0f, 0f, size.width, size.height)
+        }
         val clipPath = Path().apply {
             when (outline) {
                 is Outline.Rectangle -> addRect(outline.rect)
@@ -77,24 +87,49 @@ internal fun Modifier.favoriteInnerGlow(
                 is Outline.Generic -> addPath(outline.path)
             }
         }
+        val edgePath = Path().apply {
+            moveTo(edgeRect.left, edgeRect.bottom)
+            lineTo(edgeRect.left, edgeRect.top)
+            lineTo(edgeRect.right, edgeRect.top)
+            lineTo(edgeRect.right, edgeRect.bottom)
+        }
+        val bottomPath = Path().apply {
+            moveTo(edgeRect.left, edgeRect.bottom)
+            lineTo(edgeRect.right, edgeRect.bottom)
+        }
 
         onDrawWithContent {
             drawContent()
             val canvas = drawContext.canvas
             canvas.save()
             canvas.clipPath(clipPath)
-            drawOutline(
-                outline = outline,
+            drawPath(
+                path = bottomPath,
+                color = PluviaWarning.copy(alpha = 0.02f * glowAlpha),
+                style = Stroke(wideStroke),
+            )
+            drawPath(
+                path = bottomPath,
+                color = PluviaWarning.copy(alpha = 0.035f * glowAlpha),
+                style = Stroke(mediumStroke),
+            )
+            drawPath(
+                path = bottomPath,
+                color = PluviaWarning.copy(alpha = 0.05f * glowAlpha),
+                style = Stroke(narrowStroke),
+            )
+            drawPath(
+                path = edgePath,
                 color = PluviaWarning.copy(alpha = 0.08f * glowAlpha),
                 style = Stroke(wideStroke),
             )
-            drawOutline(
-                outline = outline,
+            drawPath(
+                path = edgePath,
                 color = PluviaWarning.copy(alpha = 0.14f * glowAlpha),
                 style = Stroke(mediumStroke),
             )
-            drawOutline(
-                outline = outline,
+            drawPath(
+                path = edgePath,
                 color = PluviaWarning.copy(alpha = 0.22f * glowAlpha),
                 style = Stroke(narrowStroke),
             )
