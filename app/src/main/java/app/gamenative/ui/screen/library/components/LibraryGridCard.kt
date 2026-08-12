@@ -53,11 +53,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
-import app.gamenative.data.FavoritesManager
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.ui.component.CompatibilityBadge
@@ -66,7 +64,6 @@ import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.GameCardStats
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.ui.theme.PluviaWarning
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import com.skydoves.landscapist.ImageOptions
@@ -135,37 +132,41 @@ internal fun GridViewCard(
         if (isItemFocused) onFocus()
     }
 
-    val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
-    val isFavorite = !appInfo.isRecommended && appInfo.appId in favorites
+    val favoriteIndicator = rememberFavoriteCardIndicator(
+        appId = appInfo.appId,
+        isRecommended = appInfo.isRecommended,
+    )
 
     Box(
         modifier = modifier
             .padding(vertical = 4.dp)
             .scale(scale)
+            .scale(favoriteIndicator.initialScale)
             .then(focusHaloModifier),
     ) {
         Card(
+            shape = cardShape,
+            colors = CardDefaults.cardColors(
+                containerColor = Color.Transparent,
+            ),
+            border = if (appInfo.isRecommended) {
+                BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                )
+            } else {
+                null
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(aspectRatio)
                 .focusRing(interactionSource, cardShape)
+                .favoriteInnerGlow(favoriteIndicator.isFavorite, cardShape)
                 .clickable(
                     onClick = onClick,
                     interactionSource = interactionSource,
                     indication = null,
                 ),
-            shape = cardShape,
-            colors = CardDefaults.cardColors(
-                containerColor = Color.Transparent,
-            ),
-            border = when {
-                appInfo.isRecommended -> BorderStroke(
-                    1.dp,
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                )
-                isFavorite -> BorderStroke(2.dp, PluviaWarning)
-                else -> null
-            },
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 // Game image (primary + optional fallback for Steam header/hero)
