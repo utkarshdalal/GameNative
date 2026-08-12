@@ -57,7 +57,7 @@ object PowerProfiles {
     ): List<PowerProfile> {
         if (availableFrequencies.isEmpty()) return emptyList()
 
-        val isRetroidPocket6 = DeviceGate.isRetroidPocket6()
+        val isTestedDevice = DeviceGate.isDeviceSupported()
 
         val minFreq = availableFrequencies.first()  // Odin 3: 384 MHz, RP6: 307 MHz
         val maxFreq = availableFrequencies.last()   // Odin 3: 3532 MHz, RP6: 2016 MHz
@@ -98,9 +98,9 @@ object PowerProfiles {
             // GPU: 0 - 25% of max power level
             if (availableGovernors.contains(CpuGovernor.POWERSAVE.governorName)) {
                 add(PowerProfile(
-                    enableAutoTuning = isRetroidPocket6,
-                    enableAdaptiveFpsCap = isRetroidPocket6,
-                    enableGamePinning = isRetroidPocket6,
+                    enableAutoTuning = isTestedDevice,
+                    enableAdaptiveFpsCap = isTestedDevice,
+                    enableGamePinning = isTestedDevice,
                     name = PerformancePreset.POWER_SAVE.displayName,
                     governor = CpuGovernor.POWERSAVE,
                     minCpuFreq = minFreq,
@@ -116,9 +116,9 @@ object PowerProfiles {
             // GPU: 50% - 100% of max power level
             if (availableGovernors.contains(CpuGovernor.SCHEDUTIL.governorName)) {
                 add(PowerProfile(
-                    enableAutoTuning = isRetroidPocket6,
-                    enableAdaptiveFpsCap = isRetroidPocket6,
-                    enableGamePinning = isRetroidPocket6,
+                    enableAutoTuning = isTestedDevice,
+                    enableAdaptiveFpsCap = isTestedDevice,
+                    enableGamePinning = isTestedDevice,
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.SCHEDUTIL,
                     minCpuFreq = midFreq,
@@ -128,9 +128,9 @@ object PowerProfiles {
                 ))
             } else if (availableGovernors.contains(CpuGovernor.CONSERVATIVE.governorName)) {
                 add(PowerProfile(
-                    enableAutoTuning = isRetroidPocket6,
-                    enableAdaptiveFpsCap = isRetroidPocket6,
-                    enableGamePinning = isRetroidPocket6,
+                    enableAutoTuning = isTestedDevice,
+                    enableAdaptiveFpsCap = isTestedDevice,
+                    enableGamePinning = isTestedDevice,
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.CONSERVATIVE,
                     minCpuFreq = midFreq,
@@ -140,9 +140,9 @@ object PowerProfiles {
                 ))
             } else if (availableGovernors.contains(CpuGovernor.INTERACTIVE.governorName)) {
                 add(PowerProfile(
-                    enableAutoTuning = isRetroidPocket6,
-                    enableAdaptiveFpsCap = isRetroidPocket6,
-                    enableGamePinning = isRetroidPocket6,
+                    enableAutoTuning = isTestedDevice,
+                    enableAdaptiveFpsCap = isTestedDevice,
+                    enableGamePinning = isTestedDevice,
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.INTERACTIVE,
                     minCpuFreq = midFreq,
@@ -157,9 +157,9 @@ object PowerProfiles {
             // GPU: 75% - 100% of max power level
             if (availableGovernors.contains(CpuGovernor.PERFORMANCE.governorName)) {
                 add(PowerProfile(
-                    enableAutoTuning = isRetroidPocket6,
-                    enableAdaptiveFpsCap = isRetroidPocket6,
-                    enableGamePinning = isRetroidPocket6,
+                    enableAutoTuning = isTestedDevice,
+                    enableAdaptiveFpsCap = isTestedDevice,
+                    enableGamePinning = isTestedDevice,
                     name = PerformancePreset.PERFORMANCE.displayName,
                     governor = CpuGovernor.PERFORMANCE,
                     minCpuFreq = highFreq,
@@ -173,9 +173,9 @@ object PowerProfiles {
             // CPU: Full range, GPU: Full range
             if (availableGovernors.contains(CpuGovernor.ONDEMAND.governorName)) {
                 add(PowerProfile(
-                    enableAutoTuning = isRetroidPocket6,
-                    enableAdaptiveFpsCap = isRetroidPocket6,
-                    enableGamePinning = isRetroidPocket6,
+                    enableAutoTuning = isTestedDevice,
+                    enableAdaptiveFpsCap = isTestedDevice,
+                    enableGamePinning = isTestedDevice,
                     name = PerformancePreset.ON_DEMAND.displayName,
                     governor = CpuGovernor.ONDEMAND,
                     minCpuFreq = minFreq,
@@ -190,9 +190,9 @@ object PowerProfiles {
             // GPU: Full range
             if (availableGovernors.contains(CpuGovernor.WALT.governorName)) {
                 add(PowerProfile(
-                    enableAutoTuning = isRetroidPocket6,
-                    enableAdaptiveFpsCap = isRetroidPocket6,
-                    enableGamePinning = isRetroidPocket6,
+                    enableAutoTuning = isTestedDevice,
+                    enableAdaptiveFpsCap = isTestedDevice,
+                    enableGamePinning = isTestedDevice,
                     name = PerformancePreset.WALT.displayName,
                     governor = CpuGovernor.WALT,
                     minCpuFreq = minFreq,

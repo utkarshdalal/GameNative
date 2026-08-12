@@ -8,7 +8,6 @@ import android.util.AtomicFile
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.powercontrol.autotuning.ClusterTuner
-import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
 import app.gamenative.powercontrol.drivers.PServerDriver
@@ -533,7 +532,7 @@ object PowerManager {
      * True when this session can hold the game on the fast CPU cores.
      */
     fun isGamePinningAvailable(): Boolean {
-        return DeviceGate.isRetroidPocket6() && driver is PServerDriver
+        return driver is PServerDriver
     }
 
     /**
@@ -1016,9 +1015,9 @@ object PowerManager {
         retryDelayMs: Long = GAME_PIN_RETRY_DELAY_MS
     ) {
         val pserver = driver as? PServerDriver
-        if (pserver == null || !DeviceGate.isRetroidPocket6()) {
+        if (pserver == null) {
             Timber.tag("PowerManager").i(
-                "Game pinning inactive (RP6=${DeviceGate.isRetroidPocket6()}, driver=${driver?.let { it::class.simpleName }}), not pinning $processName"
+                "Game pinning inactive (driver=${driver?.let { it::class.simpleName }}), not pinning $processName"
             )
             return
         }

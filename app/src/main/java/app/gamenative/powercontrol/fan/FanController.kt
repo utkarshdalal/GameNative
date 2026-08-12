@@ -1,14 +1,13 @@
 package app.gamenative.powercontrol.fan
 
 import app.gamenative.powercontrol.PowerManager
-import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.drivers.PServerDriver
 import app.gamenative.powercontrol.drivers.PerformanceDriver
 import kotlin.math.roundToInt
 import timber.log.Timber
 
 /**
- * Closed-loop fan control for the Retroid Pocket 6.
+ * Closed-loop fan control, verified on the Retroid Pocket 6.
  *
  * The vendor controller only releases the PWM in CUSTOM mode, so a session takes the
  * fan over by recording the mode it found, switching to CUSTOM and regulating the duty
@@ -52,18 +51,20 @@ object FanController {
 
     fun isRunning(): Boolean = running
 
+    /**
+     * True when this session could drive a fan. The PWM nodes are only probed in [start],
+     * which stays the authoritative check, because reading them costs a root call.
+     */
     fun isAvailable(candidate: PerformanceDriver?): Boolean {
-        return DeviceGate.isRetroidPocket6() && candidate is PServerDriver
+        return candidate is PServerDriver
     }
 
     /**
      * Capture the vendor fan mode, enter CUSTOM and start regulating.
-     * Does nothing unless this is a Retroid Pocket 6 driven by [PServerDriver] whose
-     * PWM nodes root can actually read.
+     * Does nothing unless a [PServerDriver] session has PWM nodes root can actually read.
      */
     fun start(candidate: PerformanceDriver?) {
         if (running) return
-        if (!DeviceGate.isRetroidPocket6()) return
 
         val pserver = candidate as? PServerDriver ?: return
         val period = readPeriodTicks(pserver)

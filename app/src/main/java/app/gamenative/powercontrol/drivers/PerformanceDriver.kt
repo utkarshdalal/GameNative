@@ -179,9 +179,9 @@ abstract class PerformanceDriver {
     open fun getDefaultProfile(): PowerProfile {
         // Return a dummy Balanced profile for devices without driver support
         return PowerProfile(
-            enableAutoTuning = DeviceGate.isRetroidPocket6(),
-            enableAdaptiveFpsCap = DeviceGate.isRetroidPocket6(),
-            enableGamePinning = DeviceGate.isRetroidPocket6(),
+            enableAutoTuning = DeviceGate.isDeviceSupported(),
+            enableAdaptiveFpsCap = DeviceGate.isDeviceSupported(),
+            enableGamePinning = DeviceGate.isDeviceSupported(),
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,
             minCpuFreq = 0,

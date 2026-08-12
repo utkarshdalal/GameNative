@@ -155,10 +155,10 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
     /**
      * Check if per-cluster frequency caps are supported
-     * Only validated on the Retroid Pocket 6 cluster layout
+     * Root access to the cpufreq nodes of every policy is what the cluster tuner needs
      */
     override fun isPerClusterSupported(): Boolean {
-        return DeviceGate.isRetroidPocket6()
+        return true
     }
 
     /**
@@ -1206,9 +1206,9 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         if (availableFrequencies.isEmpty()) {
             // Fallback to a safe default
             return PowerProfile(
-                enableAutoTuning = DeviceGate.isRetroidPocket6(),
-                enableAdaptiveFpsCap = DeviceGate.isRetroidPocket6(),
-                enableGamePinning = DeviceGate.isRetroidPocket6(),
+                enableAutoTuning = DeviceGate.isDeviceSupported(),
+                enableAdaptiveFpsCap = DeviceGate.isDeviceSupported(),
+                enableGamePinning = DeviceGate.isDeviceSupported(),
                 name = PerformancePreset.BALANCED.displayName,
                 governor = CpuGovernor.SCHEDUTIL,
                 minCpuFreq = getCurrentMinCpuValue(),
@@ -1238,9 +1238,9 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
 
         return PowerProfile(
-            enableAutoTuning = DeviceGate.isRetroidPocket6(),
-            enableAdaptiveFpsCap = DeviceGate.isRetroidPocket6(),
-            enableGamePinning = DeviceGate.isRetroidPocket6(),
+            enableAutoTuning = DeviceGate.isDeviceSupported(),
+            enableAdaptiveFpsCap = DeviceGate.isDeviceSupported(),
+            enableGamePinning = DeviceGate.isDeviceSupported(),
             name = PerformancePreset.BALANCED.displayName,
             governor = governor,
             minCpuFreq = midFreq,

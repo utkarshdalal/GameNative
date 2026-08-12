@@ -297,11 +297,7 @@ private fun SuccessView(
     val isFanControlAvailable = PowerManager.isFanControlAvailable()
     QuickMenuToggleRow(
         title = stringResource(R.string.power_control_fan_control),
-        subtitle = if (isFanControlAvailable) {
-            stringResource(R.string.power_control_fan_control_desc)
-        } else {
-            stringResource(R.string.power_control_fan_control_unsupported)
-        },
+        subtitle = stringResource(R.string.power_control_fan_control_desc),
         enabled = isFanControlAvailable && state.selectedProfile.enableFanControl,
         onToggle = {
             if (isFanControlAvailable) {
