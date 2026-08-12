@@ -19,8 +19,10 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewConfiguration;
 import android.widget.FrameLayout;
 import android.util.SparseArray;
+import android.util.SparseBooleanArray;
 
 import androidx.compose.ui.input.pointer.PointerIcon;
 import androidx.core.graphics.ColorUtils;
@@ -84,6 +86,11 @@ public class InputControlsView extends View {
     private ControlElement lookFireElement = null;
     // Delays button-originated look/move until the touch becomes an intentional drag.
     private final SparseArray<PendingButtonLook> pendingButtonLooks = new SparseArray<>();
+    // General look-through owns one movement-only pointer and quarantines background pointers.
+    private final LookThroughPointerState lookThroughPointerState = new LookThroughPointerState();
+    // Pointers whose DOWN event was delivered to TouchpadView's normal gesture system.
+    private final SparseBooleanArray touchpadPointers = new SparseBooleanArray();
+    private final int lookThroughTouchSlop;
     // Right dynamic joystick (for gamepad_right_stick look type)
     private int rightJoystickPointerId = -1;
     private float rightJoystickCenterX, rightJoystickCenterY;
@@ -135,6 +142,7 @@ public class InputControlsView extends View {
     @SuppressLint("ResourceType")
     public InputControlsView(Context context) {
         super(context);
+        lookThroughTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         setClickable(true);
         setFocusable(true);
         setFocusableInTouchMode(true);
@@ -148,8 +156,21 @@ public class InputControlsView extends View {
     }
 
     public void setEditMode(boolean editMode) {
+        if (this.editMode != editMode) cancelTouchRouting();
         this.editMode = editMode;
         invalidate(); // Trigger redraw to show/hide grid background immediately
+    }
+
+    private void cancelTouchRouting() {
+        if (radialMenuTouchActive) handleRadialMenuTouchUp(radialMenuTouchPointerId, false);
+        if (profile != null) {
+            for (ControlElement element : profile.getElements()) element.cancelTouch();
+        }
+        releaseAllShooterInputs();
+        commitGamepadState();
+        if (touchpadView != null) touchpadView.cancelTouchInput();
+        touchpadPointers.clear();
+        lookThroughPointerState.clear();
     }
 
     public void setOverlayOpacity(float overlayOpacity) {
@@ -311,6 +332,7 @@ public class InputControlsView extends View {
     }
 
     public synchronized void setProfile(ControlsProfile profile) {
+        cancelTouchRouting();
         if (profile != null) {
             this.profile = profile;
             deselectAllElements();
@@ -378,6 +400,7 @@ public class InputControlsView extends View {
 
     @Override
     protected void onDetachedFromWindow() {
+        cancelTouchRouting();
         if (mouseMoveTimer != null)
             mouseMoveTimer.cancel();
         super.onDetachedFromWindow();
@@ -426,6 +449,7 @@ public class InputControlsView extends View {
     }
 
     public void setShooterModeActive(boolean active) {
+        if (shooterModeActive != active) cancelTouchRouting();
         if (!active) {
             releaseAllShooterInputs();
         }
@@ -435,6 +459,9 @@ public class InputControlsView extends View {
     }
 
     public void setContainerShooterMode(boolean enabled) {
+        if (containerShooterMode != enabled || containerShooterModeRuntime != enabled) {
+            cancelTouchRouting();
+        }
         this.containerShooterMode = enabled;
         this.containerShooterModeRuntime = enabled;
         if (!enabled && !shooterModeActive) {
@@ -1027,13 +1054,14 @@ public class InputControlsView extends View {
         return true;
     }
 
-    private boolean handleShooterTouchDown(int pointerId, float x, float y) {
+    private boolean handleShooterTouchDown(int pointerId, float x, float y, boolean allowButtonLookThrough) {
         boolean handled = false;
 
         // Check container shooter mode toggle button first
         if (containerShooterMode && isRuntimeToggleVisible()) {
             android.graphics.RectF toggleRect = getToggleButtonRect();
             if (toggleRect.contains(x, y)) {
+                cancelTouchRouting();
                 containerShooterModeRuntime = !containerShooterModeRuntime;
                 if (!containerShooterModeRuntime) {
                     releaseAllShooterInputs();
@@ -1056,7 +1084,9 @@ public class InputControlsView extends View {
             if (element.handleTouchDown(pointerId, x, y)) {
                 performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                 handled = true;
-                if (element.getType() == ControlElement.Type.BUTTON && element.isShooterLookThrough()) {
+                if (allowButtonLookThrough
+                        && element.getType() == ControlElement.Type.BUTTON
+                        && element.isShooterLookThrough()) {
                     startPendingButtonLookPointer(pointerId, x, y, element);
                 }
                 break;
@@ -1220,6 +1250,10 @@ public class InputControlsView extends View {
             int pointerId = event.getPointerId(actionIndex);
             int actionMasked = event.getActionMasked();
             boolean handled = false;
+            boolean touchscreenMode = touchpadView.isTouchscreenMode();
+            if (touchscreenMode && lookThroughPointerState.isActive()) {
+                cancelTouchRouting();
+            }
 
             switch (actionMasked) {
                 case MotionEvent.ACTION_DOWN:
@@ -1228,16 +1262,24 @@ public class InputControlsView extends View {
                     float y = event.getY(actionIndex);
 
                     // Shooter mode intercept (use containerShooterMode so toggle button is always reachable)
-                    if ((shooterModeActive || containerShooterMode) && handleShooterTouchDown(pointerId, x, y)) {
+                    if ((shooterModeActive || containerShooterMode)
+                            && handleShooterTouchDown(pointerId, x, y, !touchscreenMode)) {
                         break;
                     }
 
                     touchpadView.setPointerButtonLeftEnabled(true);
                     touchpadView.setPointerButtonRightEnabled(true);
+                    boolean lookThroughCandidate = false;
                     for (ControlElement element : profile.getElements()) {
                         if (element.handleTouchDown(pointerId, x, y)) {
                             performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                             handled = true;
+                            if (event.getToolType(actionIndex) == MotionEvent.TOOL_TYPE_FINGER
+                                    && element.getType() == ControlElement.Type.BUTTON
+                                    && !touchscreenMode
+                                    && element.isLookThrough()) {
+                                lookThroughCandidate = true;
+                            }
                         }
                         if (element.getBindingAt(0) == Binding.MOUSE_LEFT_BUTTON) {
                             touchpadView.setPointerButtonLeftEnabled(false);
@@ -1246,7 +1288,20 @@ public class InputControlsView extends View {
                             touchpadView.setPointerButtonRightEnabled(false);
                         }
                     }
-                    if (!handled) touchpadView.onTouchEvent(event);
+                    if (lookThroughCandidate) {
+                        lookThroughPointerState.tryStart(
+                                pointerId,
+                                x,
+                                y,
+                                touchpadPointers.size() > 0
+                        );
+                    }
+                    if (!handled) {
+                        if (!lookThroughPointerState.isActive()) {
+                            touchpadPointers.put(pointerId, true);
+                            touchpadView.onTouchEvent(event);
+                        }
+                    }
                     break;
                 }
                 case MotionEvent.ACTION_MOVE: {
@@ -1271,7 +1326,20 @@ public class InputControlsView extends View {
                         for (ControlElement element : profile.getElements()) {
                             if (element.handleTouchMove(pid, x, y)) handled = true;
                         }
-                        if (!handled) touchpadView.onTouchEvent(event);
+                        if (lookThroughPointerState.owns(pid)) {
+                            LookThroughPointerState.Delta delta = lookThroughPointerState.move(
+                                    pid,
+                                    x,
+                                    y,
+                                    lookThroughTouchSlop
+                            );
+                            if (delta != null) {
+                                touchpadView.movePointerFromLookThrough(delta.x, delta.y);
+                            }
+                        }
+                    }
+                    if (!(shooterModeActive || containerShooterModeRuntime) && touchpadPointers.size() > 0) {
+                        touchpadView.onTouchEvent(event);
                     }
                     break;
                 }
@@ -1279,39 +1347,33 @@ public class InputControlsView extends View {
                 case MotionEvent.ACTION_POINTER_UP:
                 case MotionEvent.ACTION_CANCEL:
                     if (actionMasked == MotionEvent.ACTION_CANCEL) {
-                        handleRadialMenuTouchUp(radialMenuTouchPointerId, false);
-                        for (ControlElement element : profile.getElements()) {
-                            if (element.cancelRadialMenuTouch()) handled = true;
-                        }
+                        cancelTouchRouting();
+                        handled = true;
+                        break;
                     }
                     // Shooter mode intercept
                     if (shooterModeActive || containerShooterModeRuntime) {
-                        if (actionMasked == MotionEvent.ACTION_CANCEL) {
-                            releaseAllShooterInputs();
-                            commitGamepadState();
+                        if (pendingButtonLooks.get(pointerId) != null) {
+                            releasePendingButtonLook(pointerId);
                             handled = true;
                         }
-                        else {
-                            if (pendingButtonLooks.get(pointerId) != null) {
-                                releasePendingButtonLook(pointerId);
-                                handled = true;
-                            }
-                            if (pointerId == joystickPointerId) {
-                                releaseShooterJoystick();
-                                handled = true;
-                            }
-                            if (pointerId == rightJoystickPointerId) {
-                                releaseRightJoystick();
-                                handled = true;
-                            }
-                            if (pointerId == lookPointerId) {
-                                releaseShooterLook();
-                                handled = true;
-                            }
+                        if (pointerId == joystickPointerId) {
+                            releaseShooterJoystick();
+                            handled = true;
+                        }
+                        if (pointerId == rightJoystickPointerId) {
+                            releaseRightJoystick();
+                            handled = true;
+                        }
+                        if (pointerId == lookPointerId) {
+                            releaseShooterLook();
+                            handled = true;
                         }
                     }
                     for (ControlElement element : profile.getElements()) if (element.handleTouchUp(pointerId)) handled = true;
-                    if (!handled) touchpadView.onTouchEvent(event);
+                    if (touchpadPointers.get(pointerId)) touchpadView.onTouchEvent(event);
+                    lookThroughPointerState.release(pointerId);
+                    touchpadPointers.delete(pointerId);
                     break;
             }
 

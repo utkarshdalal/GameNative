@@ -3,6 +3,7 @@ package app.gamenative.ui.util
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,7 +46,7 @@ internal fun ListItemImage(
             contentDescription = contentDescription,
         ),
         loading = {
-            CircularProgressIndicator()
+            CircularProgressIndicator(modifier = Modifier.wrapContentSize())
         },
         failure = {
             onFailure()

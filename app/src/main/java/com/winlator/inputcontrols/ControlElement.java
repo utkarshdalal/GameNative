@@ -35,6 +35,7 @@ public class ControlElement {
     public static final int DEFAULT_BUTTON_ACTIVE_COLOR = 0x00ffffff;
     public static final float INHERIT_BUTTON_OPACITY = -1.0f;
     public static final float DEFAULT_BUTTON_STROKE_SCALE = 1.0f;
+    public static final boolean DEFAULT_LOOK_THROUGH = false;
     public enum Type {
         BUTTON, D_PAD, RANGE_BUTTON, STICK, TRACKPAD, SHOOTER_MODE;
 
@@ -81,6 +82,7 @@ public class ControlElement {
     private boolean toggleSwitch = false;
     private boolean scrollLocked = false;
     private int currentPointerId = -1;
+    private boolean currentPointerActivatedButtonBindings = false;
     private final Rect boundingBox = new Rect();
     private boolean[] states = new boolean[4];
     private boolean radialMenuTouchActive = false;
@@ -102,6 +104,9 @@ public class ControlElement {
     private boolean buttonActiveColorCustom = false;
     private float buttonOpacity = INHERIT_BUTTON_OPACITY;
     private float buttonStrokeScale = DEFAULT_BUTTON_STROKE_SCALE;
+    // Null is reserved for buttons loaded from profiles that predate general
+    // look-through. Those buttons retain their legacy shooter-only setting.
+    private Boolean lookThrough = DEFAULT_LOOK_THROUGH;
     private boolean shooterLookThrough = true;
 
     public ControlElement(InputControlsView inputControlsView) {
@@ -111,6 +116,7 @@ public class ControlElement {
     private void reset() {
         setBinding(Binding.NONE);
         scroller = null;
+        lookThrough = DEFAULT_LOOK_THROUGH;
 
         if (type == Type.STICK) {
             bindings[0] = Binding.GAMEPAD_LEFT_THUMB_UP;
@@ -315,12 +321,28 @@ public class ControlElement {
         this.buttonStrokeScale = Mathf.clamp(buttonStrokeScale, 0.5f, 2.0f);
     }
 
+    public boolean isLookThrough() {
+        return Boolean.TRUE.equals(lookThrough) && !isRadialMenuButton();
+    }
+
+    public Boolean getLookThroughSetting() {
+        return lookThrough;
+    }
+
+    public void setLookThroughSetting(Boolean lookThrough) {
+        this.lookThrough = lookThrough;
+    }
+
     public boolean isShooterLookThrough() {
-        return shooterLookThrough && !isRadialMenuButton();
+        return !isRadialMenuButton() && (lookThrough != null ? lookThrough : shooterLookThrough);
     }
 
     public void setShooterLookThrough(boolean shooterLookThrough) {
         this.shooterLookThrough = shooterLookThrough;
+    }
+
+    public boolean getShooterLookThroughSetting() {
+        return shooterLookThrough;
     }
 
     public void copyButtonAppearanceFrom(ControlElement element) {
@@ -329,6 +351,7 @@ public class ControlElement {
         buttonActiveColorCustom = element.buttonActiveColorCustom;
         buttonOpacity = element.buttonOpacity;
         buttonStrokeScale = element.buttonStrokeScale;
+        lookThrough = element.lookThrough;
         shooterLookThrough = element.shooterLookThrough;
     }
 
@@ -1046,6 +1069,7 @@ public class ControlElement {
             if (buttonActiveColorCustom || buttonActiveColor != DEFAULT_BUTTON_ACTIVE_COLOR) elementJSONObject.put("buttonActiveColor", formatRgbColor(buttonActiveColor));
             if (buttonOpacity >= 0) elementJSONObject.put("buttonOpacity", (double)buttonOpacity);
             if (buttonStrokeScale != DEFAULT_BUTTON_STROKE_SCALE) elementJSONObject.put("buttonStrokeScale", (double)buttonStrokeScale);
+            if (type == Type.BUTTON && lookThrough != null) elementJSONObject.put("lookThrough", lookThrough);
             if (type == Type.BUTTON && !shooterLookThrough) elementJSONObject.put("shooterLookThrough", false);
 
             return elementJSONObject;
@@ -1098,6 +1122,7 @@ public class ControlElement {
     public boolean handleTouchDown(int pointerId, float x, float y) {
         if (currentPointerId == -1 && containsPoint(x, y)) {
             currentPointerId = pointerId;
+            currentPointerActivatedButtonBindings = false;
             inputControlsView.invalidate();
             if (type == Type.BUTTON) {
                 if (isRadialMenuButton()) {
@@ -1107,6 +1132,7 @@ public class ControlElement {
                 }
                 if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
                 if (!toggleSwitch || !selected) {
+                    currentPointerActivatedButtonBindings = !selected;
                     inputControlsView.handleInputEvent(getBindingAt(0), true);
                     inputControlsView.handleInputEvent(getBindingAt(1), true);
                 }
@@ -1234,12 +1260,20 @@ public class ControlElement {
                 final boolean[] states = {deltaY <= -DPAD_DEAD_ZONE, deltaX >= DPAD_DEAD_ZONE, deltaY >= DPAD_DEAD_ZONE, deltaX <= -DPAD_DEAD_ZONE};
                 if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
 
+                // Release transitions first because opposing stick and mouse-move
+                // bindings share an axis. An inactive direction must not clear an
+                // active direction later in the same update.
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
-                    Binding binding = getBindingAt(i);
-                    boolean state = binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i];
-                    inputControlsView.handleInputEvent(binding, state, value);
-                    this.states[i] = state;
+                    if (this.states[i] && !states[i]) {
+                        inputControlsView.handleInputEvent(getBindingAt(i), false, value);
+                    }
+                }
+
+                for (byte i = 0; i < 4; i++) {
+                    float value = i == 1 || i == 3 ? deltaX : deltaY;
+                    if (states[i]) inputControlsView.handleInputEvent(getBindingAt(i), true, value);
+                    this.states[i] = states[i];
                 }
 
                 inputControlsView.invalidate();
@@ -1294,6 +1328,7 @@ public class ControlElement {
                 else {
                     inputControlsView.invalidate();
                 }
+                currentPointerActivatedButtonBindings = false;
             }
             else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
                 for (byte i = 0; i < states.length; i++) {
@@ -1322,13 +1357,32 @@ public class ControlElement {
         return false;
     }
 
-    public boolean cancelRadialMenuTouch() {
-        if (currentPointerId == -1 || (!radialMenuTouchActive && !isRadialMenuButton())) return false;
+    public boolean cancelTouch() {
+        if (currentPointerId == -1) return false;
 
-        if (radialMenuTouchActive) releaseActiveDirectionalStates();
-        radialMenuTouchActive = false;
-        inputControlsView.handleRadialMenuTouchUp(currentPointerId, false);
-        if (currentPosition != null) currentPosition = null;
+        if (radialMenuTouchActive || isRadialMenuButton()) {
+            if (radialMenuTouchActive) releaseActiveDirectionalStates();
+            radialMenuTouchActive = false;
+            inputControlsView.handleRadialMenuTouchUp(currentPointerId, false);
+            if (currentPosition != null) currentPosition = null;
+        }
+        else if (type == Type.BUTTON) {
+            if (currentPointerActivatedButtonBindings) {
+                inputControlsView.handleInputEvent(getBindingAt(0), false);
+                inputControlsView.handleInputEvent(getBindingAt(1), false);
+            }
+            currentPointerActivatedButtonBindings = false;
+            touchTime = null;
+        }
+        else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
+            for (byte i = 0; i < states.length; i++) {
+                if (states[i]) inputControlsView.handleInputEvent(getBindingAt(i), false);
+                states[i] = false;
+            }
+            if (type == Type.RANGE_BUTTON) scroller.handleTouchUp();
+            currentPosition = null;
+        }
+
         currentPointerId = -1;
         inputControlsView.invalidate();
         return true;
