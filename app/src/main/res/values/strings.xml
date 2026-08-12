@@ -416,8 +416,8 @@
     <string name="control_stroke_width_default">Default</string>
     <string name="control_stroke_width_thick">Thick</string>
     <string name="control_stroke_width_extra_thick">Extra thick</string>
-    <string name="button_shooter_look_through">Shooter Look-through</string>
-    <string name="button_shooter_look_through_subtitle">Allow this button touch to also control dynamic shooter movement/look</string>
+    <string name="button_look_through">Look-through</string>
+    <string name="button_look_through_subtitle">Press and drag from this button to also control movement or camera look. Not available in touchscreen mode.</string>
     <string name="preview">Preview</string>
     <string name="active">Active</string>
     <string name="apply_all">Apply All</string>
@@ -704,6 +704,11 @@
     <string name="add_custom_game_dialog_title">Add Custom Game</string>
     <string name="add_custom_game_dialog_message">Please select the folder containing the game files you want to add as a custom game.</string>
     <string name="add_custom_game_dont_show_again">Don\'t show this dialog again</string>
+    <string name="custom_game_importing">Importing game…</string>
+    <string name="custom_game_import_success">Game imported</string>
+    <string name="custom_game_import_failed">Import failed</string>
+    <string name="custom_game_import_dialog_message">Select the folder containing the game. It will be imported into GameNative\'s storage so it can run without any storage permission. Large games may take a few minutes.</string>
+    <string name="custom_game_import_remove_original">Remove original after import</string>
     <string name="base_app_shortcut_created">Shortcut created</string>
     <string name="base_app_shortcut_failed">Failed to create shortcut: %s</string>
     <string name="base_app_images_fetched">Images fetched successfully</string>
@@ -1936,6 +1941,7 @@
     <string name="nexus_resolving_collection_item">Resolving collection %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Collection ready: %1$d mod(s)</string>
     <string name="nexus_resolve_collection_failed">Failed to resolve Nexus collection</string>
+    <string name="nexus_adult_content_blocked">This collection is hidden by your Nexus Mods adult-content settings.</string>
     <string name="nexus_no_selected_collection_mods_ready">No selected collection mods are ready to download</string>
     <string name="nexus_collection_different_file_reused">Collection requested a different file; existing installed file reused</string>
     <string name="nexus_collection_existing_placement_kept">Existing placement kept</string>
@@ -1996,6 +2002,10 @@
     <string name="featured_badge">Sponsored</string>
     <string name="featured_action_wishlist">Wishlist</string>
     <string name="featured_action_wishlist_on">Wishlist on %1$s</string>
+    <string name="featured_action_wishlisted">Wishlisted</string>
+    <string name="featured_action_get_demo">Get the Demo</string>
+    <string name="featured_action_in_library">In Library</string>
+    <string name="featured_action_failed">Couldn\'t finish in the app — opening the store page</string>
     <string name="featured_action_preorder">Pre-order</string>
     <string name="featured_action_preorder_on">Pre-order on %1$s</string>
     <string name="featured_action_buy">Buy</string>

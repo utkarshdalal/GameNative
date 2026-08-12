@@ -80,6 +80,7 @@ data class NexusCollectionInfo(
 enum class NexusApiErrorReason {
     AUTHENTICATION,
     FORBIDDEN,
+    ADULT_CONTENT_BLOCKED,
     DOWNLOAD_AUTHORIZATION_REQUIRED,
     DOWNLOAD_AUTHORIZATION_INVALID,
     DOWNLOAD_AUTHORIZATION_EXPIRED,
@@ -108,6 +109,7 @@ class NexusApiClient(
     private val accessTokenProvider: () -> String? = { null },
 ) {
     private companion object {
+        private const val ADULT_CONTENT_BLOCKED_CODE = "ADULT_CONTENT_BLOCKED"
         private const val MAX_COLLECTION_PAYLOAD_BYTES = 256L * 1024L * 1024L
         private const val MAX_COLLECTION_JSON_BYTES = 64L * 1024L * 1024L
     }
@@ -263,6 +265,18 @@ class NexusApiClient(
             try {
                 val response = postObject(url, payload)
                 val errors = response.optJSONArray("errors")
+                errors?.let { graphErrors ->
+                    for (i in 0 until graphErrors.length()) {
+                        val error = graphErrors.optJSONObject(i) ?: continue
+                        if (error.optJSONObject("extensions")?.optString("code") == ADULT_CONTENT_BLOCKED_CODE) {
+                            throw NexusApiException(
+                                message = error.optString("message").ifBlank { "Adult content blocked" },
+                                statusCode = 403,
+                                reason = NexusApiErrorReason.ADULT_CONTENT_BLOCKED,
+                            )
+                        }
+                    }
+                }
                 val data = response.optJSONObject("data")
                 val revision = data?.optJSONObject("collectionRevision")
                 if (revision == null) {
@@ -305,7 +319,7 @@ class NexusApiClient(
         val variables = JSONObject()
             .put("domainName", reference.gameDomain)
             .put("slug", reference.slug)
-            .put("viewAdultContent", true)
+            .put("viewAdultContent", false)
         reference.revision?.let { variables.put("revision", it) }
         return JSONObject()
             .put("operationName", "CollectionRevisionMods")

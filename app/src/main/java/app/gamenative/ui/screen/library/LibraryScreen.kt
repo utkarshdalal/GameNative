@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.library
 
 import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -10,8 +11,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -33,6 +36,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
@@ -49,6 +53,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
@@ -130,10 +135,13 @@ fun HomeLibraryScreen(
     isSteamConnected: Boolean = false,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val importState by viewModel.importState.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     LibraryScreenContent(
         state = state,
+        importState = importState,
+        onImportCustomGame = viewModel::importCustomGame,
         listState = viewModel.listState,
         sheetState = sheetState,
         onFilterChanged = viewModel::onFilterChanged,
@@ -177,6 +185,8 @@ private fun LibraryScreenContent(
     state: LibraryState,
     listState: LazyGridState,
     sheetState: SheetState,
+    importState: LibraryViewModel.CustomGameImportState = LibraryViewModel.CustomGameImportState(),
+    onImportCustomGame: (Uri, Boolean) -> Unit = { _, _ -> },
     onFilterChanged: (AppFilter) -> Unit,
     onPageChange: (Int) -> Unit,
     onModalBottomSheet: (Boolean) -> Unit,
@@ -473,9 +483,23 @@ private fun LibraryScreenContent(
         },
     )
 
+    // Modern add path: import the picked folder into app-owned storage via the SAF grant,
+    // since the map-in-place flow needs MANAGE_EXTERNAL_STORAGE
+    var showModernImportDialog by remember { mutableStateOf(false) }
+    var importRemoveOriginal by rememberSaveable { mutableStateOf(false) }
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri != null) {
+            onImportCustomGame(uri, importRemoveOriginal)
+        }
+    }
+
     // Handle opening folder picker (with dialog check)
     val onAddCustomGameClick = {
-        if (PrefManager.showAddCustomGameDialog) {
+        if (BuildConfig.MODERN_ANDROID) {
+            showModernImportDialog = true
+        } else if (PrefManager.showAddCustomGameDialog) {
             showAddCustomGameDialog = true
         } else {
             folderPicker.launchPicker()
@@ -874,7 +898,7 @@ private fun LibraryScreenContent(
 
                         // X button - add custom game
                         KeyEvent.KEYCODE_BUTTON_X -> {
-                            if (!BuildConfig.MODERN_ANDROID && selectedAppId == null && !state.isSearching && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
+                            if (selectedAppId == null && !state.isSearching && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
                                 onAddCustomGameClick()
                                 true
                             } else {
@@ -1144,17 +1168,13 @@ private fun LibraryScreenContent(
                         labelResId = R.string.search,
                         onClick = { onIsSearching(true) },
                     ),
-                ) + if (!BuildConfig.MODERN_ANDROID) {
-                    listOf(
-                        GamepadAction(
-                            button = GamepadButton.X,
-                            labelResId = R.string.action_add_game,
-                            onClick = onAddCustomGameClick,
-                        ),
-                    )
-                } else {
-                    emptyList()
-                }
+                ) + listOf(
+                    GamepadAction(
+                        button = GamepadButton.X,
+                        labelResId = R.string.action_add_game,
+                        onClick = onAddCustomGameClick,
+                    ),
+                )
             }
 
             GamepadActionBar(
@@ -1235,6 +1255,67 @@ private fun LibraryScreenContent(
                         callbacks = PlatformLogoutCallbacks(),
                     )
                 },
+            )
+        }
+
+        // Pre-import dialog (modern add path)
+        if (showModernImportDialog) {
+            AlertDialog(
+                onDismissRequest = { showModernImportDialog = false },
+                title = { Text(stringResource(R.string.add_custom_game_dialog_title)) },
+                text = {
+                    Column {
+                        Text(stringResource(R.string.custom_game_import_dialog_message))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { importRemoveOriginal = !importRemoveOriginal },
+                        ) {
+                            Checkbox(
+                                checked = importRemoveOriginal,
+                                onCheckedChange = { importRemoveOriginal = it },
+                            )
+                            Text(stringResource(R.string.custom_game_import_remove_original))
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showModernImportDialog = false
+                            importLauncher.launch(null)
+                        },
+                    ) {
+                        Text(stringResource(R.string.continue_action))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showModernImportDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                },
+            )
+        }
+
+        // Import progress dialog (modern add path)
+        if (importState.isImporting) {
+            AlertDialog(
+                onDismissRequest = { },
+                title = { Text(stringResource(R.string.custom_game_importing)) },
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            val mb = (importState.progress?.copiedBytes ?: 0L) / 1_000_000L
+                            Text("$mb MB")
+                            importState.progress?.currentFile?.let {
+                                Text(text = it, maxLines = 1)
+                            }
+                        }
+                    }
+                },
+                confirmButton = { },
             )
         }
 

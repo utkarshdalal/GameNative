@@ -727,6 +727,24 @@ class SteamService : Service(), IChallengeUrlChanged {
             }.orEmpty()
         }
 
+        suspend fun isAppInLibrary(appId: Int): Boolean =
+            instance?.licenseDao?.getAllLicenses()?.any { appId in it.appIds } == true
+
+        suspend fun requestFreeLicense(appId: Int): Boolean = withContext(Dispatchers.IO) {
+            val steamApps = instance?._steamApps ?: return@withContext false
+            try {
+                val callback = steamApps.requestFreeLicense(appId).toFuture().await()
+                Timber.i(
+                    "requestFreeLicense($appId) -> ${callback.result}, " +
+                        "apps=${callback.grantedApps}, packages=${callback.grantedPackages}",
+                )
+                callback.result == EResult.OK && appId in callback.grantedApps
+            } catch (e: Exception) {
+                Timber.e(e, "requestFreeLicense($appId) failed")
+                false
+            }
+        }
+
         suspend fun getOwnedAppDlc(appId: Int): Map<Int, DepotInfo> {
             val client = instance?.steamClient ?: return emptyMap()
             val accountId = client.steamID?.accountID?.toInt() ?: return emptyMap()

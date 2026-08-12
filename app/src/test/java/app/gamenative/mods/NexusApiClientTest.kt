@@ -4,6 +4,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -230,7 +231,56 @@ class NexusApiClientTest {
         assertTrue(collection.files.single().required)
         val request = server.takeRequest()
         assertEquals("/graphql", request.path)
-        assertTrue(request.body.readUtf8().contains("collectionRevision"))
+        val requestBody = JSONObject(request.body.readUtf8())
+        assertTrue(requestBody.getString("query").contains("collectionRevision"))
+        assertFalse(requestBody.getJSONObject("variables").getBoolean("viewAdultContent"))
+    }
+
+    @Test
+    fun getCollectionRevision_adultContentBlockInPartialResponseDoesNotFallBack() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "errors": [
+                        {
+                          "message": "Unrelated warning",
+                          "extensions": { "code": "OTHER" }
+                        },
+                        {
+                          "message": "Adult content blocked",
+                          "path": ["collectionRevision"],
+                          "extensions": { "code": "ADULT_CONTENT_BLOCKED" }
+                        }
+                      ],
+                      "data": {
+                        "collection": { "name": "Hidden Collection" },
+                        "collectionRevision": {
+                          "revisionNumber": 1,
+                          "modFiles": []
+                        }
+                      }
+                    }
+                    """.trimIndent(),
+                ),
+        )
+        server.enqueue(MockResponse().setResponseCode(403).setBody("{}"))
+
+        val error = runCatching {
+            client.getCollectionRevision(
+                NexusCollectionReference("fallout4", "adult-collection", 1),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        val nexusError = error as NexusApiException
+        assertEquals(403, nexusError.statusCode)
+        assertEquals(NexusApiErrorReason.ADULT_CONTENT_BLOCKED, nexusError.reason)
+        assertEquals("Adult content blocked", nexusError.message)
+        assertEquals(1, server.requestCount)
+        assertEquals("/graphql", server.takeRequest().path)
     }
 
     @Test

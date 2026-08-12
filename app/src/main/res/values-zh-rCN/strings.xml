@@ -578,6 +578,11 @@
     <string name="add_custom_game_content_desc">添加自定义游戏</string>
     <string name="add_custom_game_dialog_title">添加自定义游戏</string>
     <string name="add_custom_game_dialog_message">请选择包含您要添加为自定义游戏的文件夹</string>
+    <string name="custom_game_importing">正在导入游戏…</string>
+    <string name="custom_game_import_success">游戏已导入</string>
+    <string name="custom_game_import_failed">导入失败</string>
+    <string name="custom_game_import_dialog_message">请选择包含游戏的文件夹。游戏将被导入到 GameNative 的存储空间，无需任何存储权限即可运行。大型游戏可能需要几分钟。</string>
+    <string name="custom_game_import_remove_original">导入后删除原文件</string>
     <string name="add_custom_game_dont_show_again">不再显示</string>
     <string name="base_app_shortcut_created">快捷方式已创建</string>
     <string name="base_app_shortcut_failed">无法创建快捷方式：%s</string>
@@ -1944,6 +1949,7 @@
     <string name="nexus_resolving_collection_item">解决集合%1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">收藏就绪：%1$d模组</string>
     <string name="nexus_resolve_collection_failed">未能解决Nexus 集合</string>
+    <string name="nexus_adult_content_blocked">此合集因你的 Nexus Mods 成人内容设置而被隐藏。</string>
     <string name="nexus_no_selected_collection_mods_ready">没有可供下载的选定合集模组</string>
     <string name="nexus_collection_different_file_reused">集合请求不同的文件；重复使用现有的已安装文件</string>
     <string name="nexus_collection_existing_placement_kept">保留现有安置</string>
@@ -2070,8 +2076,8 @@
     <string name="control_stroke_width_default">默认</string>
     <string name="control_stroke_width_thick">粗</string>
     <string name="control_stroke_width_extra_thick">特粗</string>
-    <string name="button_shooter_look_through">射击模式穿透</string>
-    <string name="button_shooter_look_through_subtitle">允许此按钮触摸同时控制动态射击移动和视角</string>
+    <string name="button_look_through">拖动穿透</string>
+    <string name="button_look_through_subtitle">按住此按钮并拖动，也可控制移动或镜头视角。触摸屏模式下不可用。</string>
     <string name="preview">预览</string>
     <string name="active">激活</string>
     <string name="apply_all">全部应用</string>
@@ -2088,6 +2094,10 @@
     <string name="featured_badge">赞助</string>
     <string name="featured_action_wishlist">愿望单</string>
     <string name="featured_action_wishlist_on">在 %1$s 加入愿望单</string>
+    <string name="featured_action_wishlisted">已加入愿望单</string>
+    <string name="featured_action_get_demo">获取试玩版</string>
+    <string name="featured_action_in_library">已在库中</string>
+    <string name="featured_action_failed">无法在应用内完成，正在打开商店页面</string>
     <string name="featured_action_preorder">预购</string>
     <string name="featured_action_preorder_on">在 %1$s 预购</string>
     <string name="featured_action_buy">购买</string>

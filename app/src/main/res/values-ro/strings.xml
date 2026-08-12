@@ -589,6 +589,11 @@
     <string name="add_custom_game_content_desc">Adaugă joc personalizat</string>
     <string name="add_custom_game_dialog_title">Adaugă joc personalizat</string>
     <string name="add_custom_game_dialog_message">Selectează folderul care conține fișierele jocului pe care vrei să-l adaugi ca joc personalizat.</string>
+    <string name="custom_game_importing">Se importă jocul…</string>
+    <string name="custom_game_import_success">Joc importat</string>
+    <string name="custom_game_import_failed">Importul a eșuat</string>
+    <string name="custom_game_import_dialog_message">Selectează folderul care conține jocul. Va fi importat în stocarea GameNative pentru a putea rula fără nicio permisiune de stocare. Jocurile mari pot dura câteva minute.</string>
+    <string name="custom_game_import_remove_original">Șterge originalul după import</string>
     <string name="add_custom_game_dont_show_again">Nu mai arăta acest dialog</string>
     <string name="base_app_shortcut_created">Shortcut creat</string>
     <string name="base_app_shortcut_failed">Nu s-a putut crea shortcut-ul: %s</string>
@@ -1927,6 +1932,7 @@
     <string name="nexus_resolving_collection_item">Rezolvarea colectării %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Colecție gata: %1$d moduri</string>
     <string name="nexus_resolve_collection_failed">Nu s-a putut rezolva colecția Nexus</string>
+    <string name="nexus_adult_content_blocked">Această colecție este ascunsă din cauza setărilor tale privind conținutul pentru adulți de pe Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Niciun mod de colecție selectat nu este gata de descărcat</string>
     <string name="nexus_collection_different_file_reused">Colecția a solicitat un alt fișier; fișierul instalat existent a fost reutilizat</string>
     <string name="nexus_collection_existing_placement_kept">Plasament existent păstrat</string>
@@ -2053,8 +2059,8 @@
     <string name="control_stroke_width_default">Implicit</string>
     <string name="control_stroke_width_thick">Gros</string>
     <string name="control_stroke_width_extra_thick">Foarte gros</string>
-    <string name="button_shooter_look_through">Trecere privire shooter</string>
-    <string name="button_shooter_look_through_subtitle">Permite ca această atingere a butonului să controleze și mișcarea și privirea shooter dinamice</string>
+    <string name="button_look_through">Control prin glisare</string>
+    <string name="button_look_through_subtitle">Apasă și glisează de la acest buton pentru a controla și mișcarea sau camera. Indisponibil în modul ecran tactil.</string>
     <string name="preview">Previzualizare</string>
     <string name="active">Activ</string>
     <string name="apply_all">Aplică tuturor</string>
@@ -2071,6 +2077,10 @@
     <string name="featured_badge">Sponsorizat</string>
     <string name="featured_action_wishlist">Listă de dorințe</string>
     <string name="featured_action_wishlist_on">Adaugă în listă pe %1$s</string>
+    <string name="featured_action_wishlisted">În lista de dorințe</string>
+    <string name="featured_action_get_demo">Obține demo-ul</string>
+    <string name="featured_action_in_library">În bibliotecă</string>
+    <string name="featured_action_failed">Nu s-a putut finaliza în aplicație – se deschide pagina magazinului</string>
     <string name="featured_action_preorder">Precomandă</string>
     <string name="featured_action_preorder_on">Precomandă pe %1$s</string>
     <string name="featured_action_buy">Cumpără</string>

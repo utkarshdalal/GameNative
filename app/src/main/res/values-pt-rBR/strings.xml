@@ -1238,6 +1238,11 @@
     <string name="add_custom_game_content_desc">Adicionar jogo personalizado</string>
     <string name="add_custom_game_dialog_title">Adicionar jogo personalizado</string>
     <string name="add_custom_game_dialog_message">Por favor, selecione a pasta contendo os arquivos do jogo que você deseja adicionar como um jogo personalizado.</string>
+    <string name="custom_game_importing">Importando jogo…</string>
+    <string name="custom_game_import_success">Jogo importado</string>
+    <string name="custom_game_import_failed">Falha na importação</string>
+    <string name="custom_game_import_dialog_message">Selecione a pasta que contém o jogo. Ele será importado para o armazenamento do GameNative para poder rodar sem nenhuma permissão de armazenamento. Jogos grandes podem levar alguns minutos.</string>
+    <string name="custom_game_import_remove_original">Remover o original após a importação</string>
     <string name="add_custom_game_dont_show_again">Não mostrar este diálogo novamente</string>
     <string name="base_app_shortcut_created">Atalho criado</string>
     <string name="base_app_shortcut_failed">Falha ao criar atalho: %s</string>
@@ -1796,6 +1801,7 @@
     <string name="nexus_resolving_collection_item">Resolvendo cobrança %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Coleção pronta: %1$d mods</string>
     <string name="nexus_resolve_collection_failed">Falha ao resolver a coleta Nexus</string>
+    <string name="nexus_adult_content_blocked">Esta coleção está oculta devido às suas configurações de conteúdo adulto no Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Nenhum mod de coleção selecionado está pronto para download</string>
     <string name="nexus_collection_different_file_reused">A coleção solicitou um arquivo diferente; arquivo instalado existente reutilizado</string>
     <string name="nexus_collection_existing_placement_kept">Colocação existente mantida</string>
@@ -1922,8 +1928,8 @@
     <string name="control_stroke_width_default">Padrão</string>
     <string name="control_stroke_width_thick">Grossa</string>
     <string name="control_stroke_width_extra_thick">Extra grossa</string>
-    <string name="button_shooter_look_through">Passagem de mira shooter</string>
-    <string name="button_shooter_look_through_subtitle">Permitir que este toque de botão também controle movimento e mira shooter dinâmicos</string>
+    <string name="button_look_through">Controle por arrasto</string>
+    <string name="button_look_through_subtitle">Pressione e arraste a partir deste botão para também controlar o movimento ou a câmera. Indisponível no modo de tela sensível ao toque.</string>
     <string name="preview">Prévia</string>
     <string name="active">Ativo</string>
     <string name="apply_all">Aplicar a todos</string>
@@ -1940,6 +1946,10 @@
     <string name="featured_badge">Patrocinado</string>
     <string name="featured_action_wishlist">Lista de desejos</string>
     <string name="featured_action_wishlist_on">Adicionar à lista na %1$s</string>
+    <string name="featured_action_wishlisted">Na lista de desejos</string>
+    <string name="featured_action_get_demo">Obter a demo</string>
+    <string name="featured_action_in_library">Na biblioteca</string>
+    <string name="featured_action_failed">Não foi possível concluir no app – abrindo a página da loja</string>
     <string name="featured_action_preorder">Reservar</string>
     <string name="featured_action_preorder_on">Reservar na %1$s</string>
     <string name="featured_action_buy">Comprar</string>

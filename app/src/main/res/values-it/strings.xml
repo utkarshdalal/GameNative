@@ -588,6 +588,11 @@
     <string name="add_custom_game_content_desc">Aggiungi gioco personalizzato</string>
     <string name="add_custom_game_dialog_title">Aggiungi Gioco Personalizzato</string>
     <string name="add_custom_game_dialog_message">Seleziona la cartella contenente i file del gioco che vuoi aggiungere come gioco personalizzato.</string>
+    <string name="custom_game_importing">Importazione del gioco…</string>
+    <string name="custom_game_import_success">Gioco importato</string>
+    <string name="custom_game_import_failed">Importazione non riuscita</string>
+    <string name="custom_game_import_dialog_message">Seleziona la cartella contenente il gioco. Verrà importato nell\'archivio di GameNative così da poter funzionare senza alcun permesso di archiviazione. I giochi di grandi dimensioni possono richiedere alcuni minuti.</string>
+    <string name="custom_game_import_remove_original">Rimuovi l\'originale dopo l\'importazione</string>
     <string name="add_custom_game_dont_show_again">Non mostrare più questa finestra</string>
     <string name="base_app_shortcut_created">Scorciatoia creata</string>
     <string name="base_app_shortcut_failed">Impossibile creare scorciatoia: %s</string>
@@ -1917,6 +1922,7 @@
     <string name="nexus_resolving_collection_item">Risoluzione incasso %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Collezione pronta: %1$d mod</string>
     <string name="nexus_resolve_collection_failed">Impossibile risolvere la raccolta Nexus</string>
+    <string name="nexus_adult_content_blocked">Questa raccolta è nascosta a causa delle tue impostazioni per i contenuti per adulti su Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Nessuna mod della raccolta selezionata è pronta per il download</string>
     <string name="nexus_collection_different_file_reused">La raccolta ha richiesto un file diverso; file installato esistente riutilizzato</string>
     <string name="nexus_collection_existing_placement_kept">Posizionamento esistente mantenuto</string>
@@ -2043,8 +2049,8 @@
     <string name="control_stroke_width_default">Predefinito</string>
     <string name="control_stroke_width_thick">Spesso</string>
     <string name="control_stroke_width_extra_thick">Molto spesso</string>
-    <string name="button_shooter_look_through">Movimento e mira in modalità sparatutto</string>
-    <string name="button_shooter_look_through_subtitle">Consenti a questo tocco del pulsante di controllare anche movimento e mira shooter dinamici</string>
+    <string name="button_look_through">Controllo tramite trascinamento</string>
+    <string name="button_look_through_subtitle">Premi e trascina da questo pulsante per controllare anche il movimento o la visuale. Non disponibile in modalità touchscreen.</string>
     <string name="preview">Anteprima</string>
     <string name="active">Attivo</string>
     <string name="apply_all">Applica a tutti</string>
@@ -2061,6 +2067,10 @@
     <string name="featured_badge">Sponsorizzato</string>
     <string name="featured_action_wishlist">Lista dei desideri</string>
     <string name="featured_action_wishlist_on">Aggiungi ai desideri su %1$s</string>
+    <string name="featured_action_wishlisted">Nella lista dei desideri</string>
+    <string name="featured_action_get_demo">Ottieni la demo</string>
+    <string name="featured_action_in_library">Nella libreria</string>
+    <string name="featured_action_failed">Impossibile completare nell\'app: apertura della pagina del negozio</string>
     <string name="featured_action_preorder">Preordina</string>
     <string name="featured_action_preorder_on">Preordina su %1$s</string>
     <string name="featured_action_buy">Acquista</string>

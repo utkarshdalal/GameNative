@@ -1,6 +1,7 @@
 package app.gamenative.ui.model
 
 import android.content.Context
+import android.net.Uri
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +46,7 @@ import app.gamenative.ui.enums.LibraryTab.Companion.next
 import app.gamenative.ui.enums.LibraryTab.Companion.previous
 import app.gamenative.ui.enums.SortOption
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.CustomGameImporter
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.data.RecommendationRepository
 import app.gamenative.data.RecommendedGame
@@ -503,6 +505,37 @@ class LibraryViewModel @Inject constructor(
                 if (usesStats(_state.value)) {
                     onFilterApps(paginationCurrentPage)
                 }
+            }
+        }
+    }
+
+    data class CustomGameImportState(
+        val isImporting: Boolean = false,
+        val progress: CustomGameImporter.Progress? = null,
+    )
+
+    private val _importState = MutableStateFlow(CustomGameImportState())
+    val importState: StateFlow<CustomGameImportState> = _importState.asStateFlow()
+
+    // Runs in viewModelScope so the copy survives configuration changes; a scope tied to the
+    // composition would abort a "remove original" import partway through the move
+    fun importCustomGame(uri: Uri, removeOriginal: Boolean) {
+        if (_importState.value.isImporting) return
+        _importState.value = CustomGameImportState(isImporting = true)
+        viewModelScope.launch(Dispatchers.IO) {
+            var lastShown = 0L
+            val result = CustomGameImporter.importFromTreeUri(context, uri, removeOriginal) { progress ->
+                if (progress.copiedBytes - lastShown > 8_000_000L) {
+                    lastShown = progress.copiedBytes
+                    _importState.value = CustomGameImportState(isImporting = true, progress = progress)
+                }
+            }
+            _importState.value = CustomGameImportState()
+            result.onSuccess { path ->
+                addCustomGameFolder(path)
+                SnackbarManager.show(context.getString(R.string.custom_game_import_success))
+            }.onFailure {
+                SnackbarManager.show(context.getString(R.string.custom_game_import_failed))
             }
         }
     }

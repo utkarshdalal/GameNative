@@ -440,6 +440,7 @@ class CustomGameAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
     ): List<AppMenuOption> {
         return listOfNotNull(
+            getUseKnownConfigOption(context, libraryItem),
             getExportConfigOption(context, libraryItem),
             getImportConfigOption(context, libraryItem),
         )
@@ -516,6 +517,9 @@ class CustomGameAppScreen : BaseAppScreen() {
                                         val folderPath = CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
                                         cleanupNexusModsForApp(context, libraryItem, folderPath?.let(::File))
                                         if (folderPath != null) {
+                                            if (CustomGameScanner.isManagedFolder(folderPath)) {
+                                                File(folderPath).deleteRecursively()
+                                            }
                                             val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
                                             manualFolders.remove(folderPath)
                                             PrefManager.customGameManualFolders = manualFolders
