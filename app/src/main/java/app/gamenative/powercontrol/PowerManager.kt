@@ -8,6 +8,7 @@ import android.util.AtomicFile
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.powercontrol.autotuning.ClusterTuner
+import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
 import app.gamenative.powercontrol.drivers.PServerDriver
@@ -972,6 +973,13 @@ object PowerManager {
     ) {
         val driver = getDriver()
         if (driver !is PServerDriver) return
+
+        if (!DeviceGate.isRetroidPocket6() || currentProfile?.enableAutoTuning != true) {
+            Timber.tag("PowerManager").i(
+                "Game pinning inactive (RP6=${DeviceGate.isRetroidPocket6()}, autoTuning=${currentProfile?.enableAutoTuning}), not pinning $processName"
+            )
+            return
+        }
 
         if (!ownsGameAffinity) {
             Timber.tag("PowerManager").i(
