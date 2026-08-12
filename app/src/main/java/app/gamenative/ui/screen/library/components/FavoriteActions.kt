@@ -6,9 +6,8 @@ import app.gamenative.data.FavoritesManager
 import app.gamenative.ui.util.SnackbarManager
 
 /**
- * Toggles the favorite state for [appId], and when a game is being *removed* shows a snackbar with
- * an "Undo" action that puts it back. Adding a favorite is silent (the gold card outline confirms
- * it); only removals get the safety net, since an accidental un-favorite is easy to miss.
+ * Toggles the favorite state for [appId]. Both actions show confirmation, while removal also offers
+ * an "Undo" action because an accidental un-favorite is easy to miss.
  *
  * [gameName] is used to make the message specific ("Removed <game> from favorites"); when it is
  * null or blank a generic message is shown instead.
@@ -27,5 +26,12 @@ internal fun toggleFavoriteWithUndo(context: Context, appId: String, gameName: S
             actionLabel = context.getString(R.string.undo),
             onAction = { FavoritesManager.setFavorite(appId, true) },
         )
+    } else {
+        val message = if (gameName.isNullOrBlank()) {
+            context.getString(R.string.favorite_added)
+        } else {
+            context.getString(R.string.favorite_added_named, gameName)
+        }
+        SnackbarManager.show(message)
     }
 }

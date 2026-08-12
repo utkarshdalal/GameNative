@@ -1639,6 +1639,8 @@
     <string name="favorite_remove">Remove from favorites</string>
     <string name="favorite_add_named">Add %1$s to favorites</string>
     <string name="favorite_remove_named">Remove %1$s from favorites</string>
+    <string name="favorite_added">Added to favorites</string>
+    <string name="favorite_added_named">Added %1$s to favorites</string>
     <string name="favorite_removed">Removed from favorites</string>
     <string name="favorite_removed_named">Removed %1$s from favorites</string>
     <string name="undo">Undo</string>

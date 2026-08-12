@@ -22,7 +22,7 @@ import app.gamenative.ui.theme.PluviaWarning
 
 internal class FavoriteCardIndicator(
     val isFavorite: Boolean,
-    val initialScale: Float,
+    val glowAlpha: Float,
 )
 
 @Composable
@@ -33,39 +33,42 @@ internal fun rememberFavoriteCardIndicator(
     val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
     val favoritesLoaded by FavoritesManager.loaded.collectAsStateWithLifecycle()
     val isFavorite = !isRecommended && appId in favorites
-    val initialScale = remember { Animatable(1f) }
-    var wasLoaded by remember { mutableStateOf(favoritesLoaded) }
+    val glowAlpha = remember { Animatable(1f) }
+    var wasReady by remember { mutableStateOf(false) }
+    var previousIsFavorite by remember { mutableStateOf(isFavorite) }
 
-    LaunchedEffect(favoritesLoaded) {
-        if (favoritesLoaded && !wasLoaded && isFavorite) {
-            initialScale.animateTo(
-                targetValue = 1.03f,
-                animationSpec = tween(durationMillis = 300),
-            )
-            initialScale.animateTo(
+    LaunchedEffect(favoritesLoaded, isFavorite) {
+        if (!favoritesLoaded) return@LaunchedEffect
+
+        if (wasReady && !previousIsFavorite && isFavorite) {
+            glowAlpha.snapTo(0.45f)
+            glowAlpha.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 300),
+                animationSpec = tween(durationMillis = 240),
             )
         }
-        wasLoaded = favoritesLoaded
+
+        previousIsFavorite = isFavorite
+        wasReady = true
     }
 
     return FavoriteCardIndicator(
         isFavorite = isFavorite,
-        initialScale = initialScale.value,
+        glowAlpha = glowAlpha.value,
     )
 }
 
 internal fun Modifier.favoriteInnerGlow(
     isFavorite: Boolean,
+    glowAlpha: Float,
     shape: Shape,
 ): Modifier {
     if (!isFavorite) return this
 
     return drawWithCache {
-        val wideStroke = 20.dp.toPx()
-        val mediumStroke = 10.dp.toPx()
-        val narrowStroke = 4.dp.toPx()
+        val wideStroke = 16.dp.toPx()
+        val mediumStroke = 8.dp.toPx()
+        val narrowStroke = 3.dp.toPx()
         val outline = shape.createOutline(size, layoutDirection, this)
         val clipPath = Path().apply {
             when (outline) {
@@ -82,17 +85,17 @@ internal fun Modifier.favoriteInnerGlow(
             canvas.clipPath(clipPath)
             drawOutline(
                 outline = outline,
-                color = PluviaWarning.copy(alpha = 0.12f),
+                color = PluviaWarning.copy(alpha = 0.08f * glowAlpha),
                 style = Stroke(wideStroke),
             )
             drawOutline(
                 outline = outline,
-                color = PluviaWarning.copy(alpha = 0.2f),
+                color = PluviaWarning.copy(alpha = 0.14f * glowAlpha),
                 style = Stroke(mediumStroke),
             )
             drawOutline(
                 outline = outline,
-                color = PluviaWarning.copy(alpha = 0.3f),
+                color = PluviaWarning.copy(alpha = 0.22f * glowAlpha),
                 style = Stroke(narrowStroke),
             )
             canvas.restore()

@@ -141,7 +141,6 @@ internal fun GridViewCard(
         modifier = modifier
             .padding(vertical = 4.dp)
             .scale(scale)
-            .scale(favoriteIndicator.initialScale)
             .then(focusHaloModifier),
     ) {
         Card(
@@ -161,7 +160,11 @@ internal fun GridViewCard(
                 .fillMaxWidth()
                 .aspectRatio(aspectRatio)
                 .focusRing(interactionSource, cardShape)
-                .favoriteInnerGlow(favoriteIndicator.isFavorite, cardShape)
+                .favoriteInnerGlow(
+                    isFavorite = favoriteIndicator.isFavorite,
+                    glowAlpha = favoriteIndicator.glowAlpha,
+                    shape = cardShape,
+                )
                 .clickable(
                     onClick = onClick,
                     interactionSource = interactionSource,
