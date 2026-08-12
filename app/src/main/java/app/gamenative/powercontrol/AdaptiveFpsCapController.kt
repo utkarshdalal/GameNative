@@ -6,8 +6,6 @@ import app.gamenative.powercontrol.autotuning.FpsCapSnapshot
 import app.gamenative.powercontrol.metrics.JsonlSessionLog
 import java.io.File
 import java.util.Locale
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import timber.log.Timber
 
 /**
@@ -21,27 +19,15 @@ import timber.log.Timber
  */
 object AdaptiveFpsCapController {
     private const val TAG = "PowerTuner"
-    private const val STATE_FILE_NAME = ".power-fps-cap.json"
-    private const val LEGACY_STATE_FILE_NAME = ".power-tuner-state.json"
     private const val CYCLE_INTERVAL_MS = 1000L
     private const val METRICS_STALE_MS = 2000L
     private const val EVENT_RESTORE = "cap:disable-restore"
 
-    @Serializable
-    private data class CapState(val rungIndex: Int = 0)
-
-    @Serializable
-    private data class LegacyTunerState(val adaptiveFpsRungIndex: Int = 0)
-
-    private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
     private val sessionLog = JsonlSessionLog(TAG, "fpscap-")
 
     @Volatile
     private var cap = AdaptiveFpsCap()
 
-    private var stateFile: File? = null
-    private var legacyStateFile: File? = null
-    private var steadyCycles = 0
     private var loopThread: Thread? = null
     private var loggedRefusedApply = false
 
@@ -64,12 +50,7 @@ object AdaptiveFpsCapController {
         }
         loopThread = null
 
-        stateFile = containerDir?.let { File(it, ".config/$STATE_FILE_NAME") }
-        legacyStateFile = containerDir?.let { File(it, ".config/$LEGACY_STATE_FILE_NAME") }
-
-        val savedRung = readRungIndex()
-        cap = AdaptiveFpsCap().apply { restore(savedRung) }
-        steadyCycles = 0
+        cap = AdaptiveFpsCap()
         loggedRefusedApply = false
         logDirectory?.let { sessionLog.open(it, sessionStartMillis) }
 
@@ -80,11 +61,7 @@ object AdaptiveFpsCapController {
             start()
         }
 
-        Timber.tag(TAG).i(
-            "Adaptive FPS cap started (savedRung=%d, log=%s)",
-            savedRung,
-            sessionLog.path ?: "none",
-        )
+        Timber.tag(TAG).i("Adaptive FPS cap started at the user ceiling (log=%s)", sessionLog.path ?: "none")
     }
 
     fun stop() = shutdown("stop")
@@ -99,7 +76,7 @@ object AdaptiveFpsCapController {
         loopThread?.join(1000)
         loopThread = null
 
-        restoreUserCap(path, clearPersisted = false)
+        restoreUserCap(path)
         sessionLog.close()
         Timber.tag(TAG).i("Adaptive FPS cap stopped (%s)", path)
     }
@@ -121,7 +98,7 @@ object AdaptiveFpsCapController {
     private fun runCycle() {
         if (PowerManager.currentProfile?.enableAdaptiveFpsCap == false) {
             running = false
-            restoreUserCap("disabled", clearPersisted = true)
+            restoreUserCap("disabled")
             return
         }
 
@@ -134,17 +111,15 @@ object AdaptiveFpsCapController {
             System.currentTimeMillis() - snapshot.timestampMs > METRICS_STALE_MS ||
             snapshot.fps <= 0f
         ) {
-            steadyCycles = 0
             cap.interrupt()
             return
         }
-        steadyCycles++
 
         val trimmedSteps = PowerManager.tunerTrimmedSteps()
         val clocksOpen = trimmedSteps == null || trimmedSteps == 0
         val clockHeadroom = trimmedSteps == null || trimmedSteps >= AdaptiveFpsCap.MIN_TRIMMED_STEPS
 
-        val change = cap.onCycle(steadyCycles, snapshot.fps, clocksOpen, clockHeadroom) ?: return
+        val change = cap.onCycle(snapshot.fps, clocksOpen, clockHeadroom) ?: return
 
         if (change.requiresApply && !PowerManager.applyFpsCapToEngines(change.toFps)) {
             if (!loggedRefusedApply) {
@@ -163,7 +138,6 @@ object AdaptiveFpsCapController {
         }
 
         cap.commit(change)
-        persistRungIndex(cap.persistedRungIndex())
         logChange(change, snapshot.fps, targetFps, trimmedSteps)
     }
 
@@ -171,7 +145,7 @@ object AdaptiveFpsCapController {
      * Puts the user's own limiter value back when the feature is switched off mid-game or the
      * session ends on a lowered rung, and drops every counter.
      */
-    private fun restoreUserCap(reason: String, clearPersisted: Boolean) {
+    private fun restoreUserCap(reason: String) {
         val userCapFps = cap.userCapFps
         val effectiveCapFps = cap.effectiveCapFps
 
@@ -199,8 +173,6 @@ object AdaptiveFpsCapController {
         }
 
         cap = AdaptiveFpsCap()
-        steadyCycles = 0
-        if (clearPersisted) persistRungIndex(0)
     }
 
     private fun logChange(change: FpsCapChange, fps: Float, targetFps: Int, trimmedSteps: Int?) {
@@ -290,41 +262,4 @@ object AdaptiveFpsCapController {
         sessionLog.append(line)
     }
 
-    /**
-     * Reads the rung this game ended on, migrating it out of the old tuner state file once.
-     */
-    private fun readRungIndex(): Int {
-        val file = stateFile
-        if (file != null && file.exists() && file.length() > 0L) {
-            val saved = runCatching { json.decodeFromString(CapState.serializer(), file.readText()).rungIndex }
-                .onFailure { Timber.tag(TAG).w(it, "Failed to read FPS cap state, ignoring it") }
-                .getOrNull()
-            if (saved != null) return saved.coerceAtLeast(0)
-        }
-        return migrateLegacyRungIndex()
-    }
-
-    private fun migrateLegacyRungIndex(): Int {
-        val legacy = legacyStateFile ?: return 0
-        if (!legacy.exists() || legacy.length() == 0L) return 0
-
-        val saved = runCatching {
-            json.decodeFromString(LegacyTunerState.serializer(), legacy.readText()).adaptiveFpsRungIndex
-        }.getOrNull() ?: return 0
-        if (saved <= 0) return 0
-
-        persistRungIndex(saved)
-        Timber.tag(TAG).i("Migrated adaptive FPS rung %d out of the tuner state file", saved)
-        return saved
-    }
-
-    private fun persistRungIndex(rungIndex: Int) {
-        val file = stateFile ?: return
-        try {
-            file.parentFile?.mkdirs()
-            file.writeText(json.encodeToString(CapState.serializer(), CapState(rungIndex)))
-        } catch (e: Exception) {
-            Timber.tag(TAG).w(e, "Failed to persist FPS cap state")
-        }
-    }
 }

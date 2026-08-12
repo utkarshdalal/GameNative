@@ -29,11 +29,10 @@ data class FpsCapSnapshot(
 /**
  * Effective FPS cap ladder.
  *
- * The user's limiter value is the ceiling. When the render window misses the effective cap by
- * more than [DEFICIT_FPS_MARGIN] for [CYCLES_BEFORE_STEP] cycles in a row - and, on devices
- * where a tuner still owns the clocks, only while those clocks are wide open - the effective
- * cap drops one rung. The rung reached is persisted so the next session can probe one rung
- * back toward the ceiling once the render window is steady.
+ * The user's limiter value is the ceiling and every session starts on it. When the render
+ * window misses the effective cap by more than [DEFICIT_FPS_MARGIN] for [CYCLES_BEFORE_STEP]
+ * cycles in a row - and, on devices where a tuner still owns the clocks, only while those
+ * clocks are wide open - the effective cap drops one rung.
  *
  * The cap also recovers inside a session. After [HEADROOM_CYCLES_BEFORE_PROBE] consecutive
  * cycles that hit the effective cap while the owner reports spare clock headroom, the cap moves
@@ -48,7 +47,6 @@ data class FpsCapSnapshot(
 class AdaptiveFpsCap {
     companion object {
         const val TRIGGER_REASON = "fps:deficit"
-        const val PROBE_REASON = "probe"
         const val RECOVERY_PROBE_REASON = "recovery:probe"
         const val RECOVERY_COMMIT_REASON = "recovery:commit"
         const val RECOVERY_REDOWN_REASON = "recovery:redown"
@@ -93,10 +91,7 @@ class AdaptiveFpsCap {
     }
 
     private var ladder: List<Int> = emptyList()
-    private var savedRungIndex = 0
-    private var pendingProbeRung: Int? = null
     private var lastAppliedCapFps = UNSET_CAP
-    private var initialized = false
     private var headroomCycles = 0
     private var probeWatchCycles = 0
     private var probeFailures = 0
@@ -128,14 +123,6 @@ class AdaptiveFpsCap {
         }
 
     /**
-     * Seeds the rung the previous session for this game ended on. Must be called before
-     * the first [observeCap].
-     */
-    fun restore(rungIndex: Int) {
-        savedRungIndex = rungIndex.coerceAtLeast(0)
-    }
-
-    /**
      * Tracks the limiter value this class regulates against. A value it did not apply itself
      * is a new user ceiling: the ladder is rebuilt, the cap returns to it and every recovery
      * counter starts over.
@@ -143,14 +130,11 @@ class AdaptiveFpsCap {
     fun observeCap(observedCapFps: Int) {
         if (observedCapFps == lastAppliedCapFps) return
 
-        val isFirst = !initialized
-        initialized = true
         lastAppliedCapFps = observedCapFps
         userCapFps = observedCapFps
         ladder = ladderFor(observedCapFps)
         rungIndex = 0
         triggerCycles = 0
-        pendingProbeRung = if (isFirst) probeRung() else null
         resetRecovery()
     }
 
@@ -162,14 +146,12 @@ class AdaptiveFpsCap {
      * trimmed clocks, the extra evidence the upward probe needs. Owners without a tuner pass
      * true for both.
      */
-    fun onCycle(steadyCycles: Int, fps: Float, clocksOpen: Boolean, clockHeadroom: Boolean): FpsCapChange? {
+    fun onCycle(fps: Float, clocksOpen: Boolean, clockHeadroom: Boolean): FpsCapChange? {
         if (ladder.size < 2) {
             triggerCycles = 0
             headroomCycles = 0
             return null
         }
-
-        warmStartProbe(steadyCycles)?.let { return it }
 
         if (backoffCycles > 0) backoffCycles--
 
@@ -230,11 +212,6 @@ class AdaptiveFpsCap {
     }
 
     /**
-     * Rung index to persist for the next session.
-     */
-    fun persistedRungIndex(): Int = rungIndex
-
-    /**
      * Cap values for owners that log the cap alongside their own state.
      */
     fun snapshot(): FpsCapSnapshot = FpsCapSnapshot(userCapFps, effectiveCapFps, capState)
@@ -291,19 +268,6 @@ class AdaptiveFpsCap {
     private fun backoffCyclesFor(failures: Int): Int {
         val index = (failures - 1).coerceIn(0, BACKOFF_CYCLES.lastIndex)
         return BACKOFF_CYCLES[index]
-    }
-
-    private fun warmStartProbe(steadyCycles: Int): FpsCapChange? {
-        val target = pendingProbeRung ?: return null
-        if (steadyCycles < TunerThresholds.STEADY_RENDER_CYCLES) return null
-
-        pendingProbeRung = null
-        return changeTo(target, PROBE_REASON, 0)
-    }
-
-    private fun probeRung(): Int? {
-        if (ladder.size < 2) return null
-        return (savedRungIndex - 1).coerceIn(0, ladder.lastIndex).takeIf { it > 0 }
     }
 
     private fun changeTo(newRungIndex: Int, reason: String, cycles: Int): FpsCapChange? {
