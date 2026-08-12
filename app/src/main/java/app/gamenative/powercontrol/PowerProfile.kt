@@ -18,7 +18,7 @@ enum class AutoTuningStrategy(@param:StringRes val displayNameRes: Int, @param:S
 data class PowerProfile(
     var enableAutoTuning: Boolean = true,
     var enablePerClusterTuning: Boolean = true,
-    var enableAdaptiveFpsCap: Boolean = true,
+    var enableAdaptiveFpsCap: Boolean = false,
     var tuningStrategy: AutoTuningStrategy = AutoTuningStrategy.BALANCED,
     var enableFanControl: Boolean = true,
     var name: String,
