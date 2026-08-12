@@ -52,6 +52,11 @@ abstract class PerformanceDriver {
     open fun isFanSupported(): Boolean = false
 
     /**
+     * Check if this driver can cap each CPU cluster separately, as the cluster tuner needs
+     */
+    open fun isPerClusterSupported(): Boolean = false
+
+    /**
      * Get the display unit for frequency values
      */
     abstract fun getDisplayUnit(): DisplayUnit
@@ -175,6 +180,7 @@ abstract class PerformanceDriver {
         // Return a dummy Balanced profile for devices without driver support
         return PowerProfile(
             enableAutoTuning = DeviceGate.isRetroidPocket6(),
+            enableAdaptiveFpsCap = DeviceGate.isRetroidPocket6(),
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,
             minCpuFreq = 0,

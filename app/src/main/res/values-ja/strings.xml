@@ -2151,8 +2151,11 @@
     <string name="power_control_available_frequencies">利用可能な周波数</string>
     <string name="power_control_auto_tuning">自動調整</string>
     <string name="power_control_auto_tuning_desc">より安定したパフォーマンス、より長いバッテリー駆動時間、発熱の低減：ゲームに合わせてCPUとGPUを自動調整します。Retroid Pocket 6で動作確認済みです。</string>
-    <string name="power_control_per_cluster">クラスターごとの調整</string>
-    <string name="power_control_per_cluster_desc">CPUクラスターごとに個別に調整します。Retroid Pocket 6でのみ動作します。</string>
+    <string name="power_control_adaptive_fps">FPSの自動低減</string>
+    <string name="power_control_adaptive_fps_desc">ゲームがFPS上限に達しない場合は上限を下げ、フレーム間隔を安定させます。</string>
+    <string name="power_control_tuning_mode">調整モード</string>
+    <string name="power_control_tuning_mode_per_cluster">クラスターごと（Retroid Pocket 6のみ）</string>
+    <string name="power_control_tuning_mode_whole_cpu">CPU全体</string>
     <string name="power_control_fan_control">ファン制御</string>
     <string name="power_control_fan_control_desc">ファンの騒音を最小限に抑えて目標温度を維持します。Retroid Pocket 6でのみ動作します。</string>
     <string name="power_control_fan_control_unsupported">Retroid Pocket 6でのみ動作します</string>

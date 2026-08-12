@@ -203,6 +203,16 @@ class TunerDecisionEngine(
         return decision(TunerAction.HOLD, null, 0, if (steadyEnough) "hold" else "warmup")
     }
 
+    /**
+     * Drops the frozen set and any in-flight trim watch, the same trim state a raise clears.
+     * For owners that open every domain outside the decision path.
+     */
+    fun releaseHolds() {
+        frozen.clear()
+        clearWatch()
+        trimQualifiedCycles = 0
+    }
+
     fun slowFrameRatio(input: TunerInput): Float {
         if (input.totalFrameCount <= 0) return 0f
         return input.slowFrameCount.toFloat() / input.totalFrameCount.toFloat()

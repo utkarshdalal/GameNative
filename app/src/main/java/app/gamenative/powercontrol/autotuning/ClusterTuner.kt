@@ -30,6 +30,7 @@ class ClusterTuner(
     private val targetFpsProvider: () -> Int,
     private val fanSampleProvider: () -> FanSample? = { null },
     private val strategyProvider: () -> AutoTuningStrategy = { AutoTuningStrategy.BALANCED },
+    private val fpsCapProvider: () -> FpsCapSnapshot? = { null },
     private val stateFile: File?,
     private val logDirectory: File?,
     private val sessionStartMillis: Long = System.currentTimeMillis(),
@@ -38,6 +39,7 @@ class ClusterTuner(
         private const val TAG = "PowerTuner"
         private const val STATE_FILE_NAME = ".power-tuner-state.json"
         private const val HOLD_ACTION = "hold"
+        private const val CAP_STATE_OFF = "off"
 
         fun stateFileFor(containerDir: File?): File? {
             return containerDir?.let { File(it, ".config/$STATE_FILE_NAME") }
@@ -83,6 +85,12 @@ class ClusterTuner(
     @Volatile
     private var caps: Caps? = null
 
+    @Volatile
+    private var trimmedStepCount = 0
+
+    @Volatile
+    private var openClocksRequested = false
+
     fun isRunning(): Boolean = running
 
     /**
@@ -90,6 +98,20 @@ class ClusterTuner(
      * Reads a single volatile reference, safe to call from any thread.
      */
     fun latestCaps(): Caps? = if (running) caps else null
+
+    /**
+     * Total number of steps the clock domains sit below their maximum, or null while the
+     * tuner is not running. Reads a single volatile, safe to call from any thread.
+     */
+    fun trimmedSteps(): Int? = if (running) trimmedStepCount else null
+
+    /**
+     * Asks for every domain to be reopened and every trim hold to be dropped. The request is
+     * carried out at the top of the next tuning cycle, so all sysfs writes stay on one thread.
+     */
+    fun requestOpenClocks() {
+        openClocksRequested = true
+    }
 
     fun start() {
         if (running) {
@@ -149,8 +171,16 @@ class ClusterTuner(
     }
 
     private fun runCycle() {
+        if (openClocksRequested) {
+            openClocksRequested = false
+            applyUncapped()
+            engine.releaseHolds()
+            Timber.tag(TAG).i("Clocks reopened for an FPS cap probe")
+        }
+
         val snapshot = metricsProvider()
         val now = System.currentTimeMillis()
+        val targetFps = targetFpsProvider()
 
         if (snapshot == null) {
             logCycle(null, 0, HOLD_ACTION, "no-metrics", engine.steadyCycles, engine.frozenDomains, 0f)
@@ -161,7 +191,6 @@ class ClusterTuner(
             return
         }
 
-        val targetFps = targetFpsProvider()
         val input = TunerInput(
             fps = snapshot.fps,
             targetFps = targetFps,
@@ -323,6 +352,10 @@ class ClusterTuner(
             performanceKhz = capValue(TunerDomain.PERFORMANCE),
             gpuLevel = capValue(TunerDomain.GPU)?.toInt(),
         )
+        trimmedStepCount = TunerDomain.entries.sumOf { domain ->
+            val last = lastIndexOf(domain)
+            if (last <= 0) 0 else (last - (stepIndex[domain] ?: last)).coerceAtLeast(0)
+        }
     }
 
     private fun capValue(domain: TunerDomain): Long? {
@@ -422,13 +455,15 @@ class ClusterTuner(
         slowRatio: Float,
     ) {
         val fanSample = fanSampleProvider()
+        val fpsCap = fpsCapProvider()
         val line = String.format(
             Locale.US,
             "{\"t\":%d,\"fps\":%s,\"target\":%d,\"p50\":%s,\"p95\":%s,\"slowRatio\":%.4f," +
                 "\"cpu\":%s,\"cpuSrc\":\"%s\",\"gpu\":%s,\"cpuTemp\":%s,\"gpuTemp\":%s," +
                 "\"capPrime\":%s,\"capPerf\":%s,\"capGpu\":%s,\"frozen\":[%s]," +
                 "\"action\":\"%s\",\"reason\":\"%s\",\"steadyCount\":%d," +
-                "\"strategy\":\"%s\",\"fanPercent\":%s,\"fanTempC\":%s}",
+                "\"strategy\":\"%s\",\"fanPercent\":%s,\"fanTempC\":%s," +
+                "\"userCap\":%d,\"effectiveCap\":%d,\"capState\":\"%s\"}",
             System.currentTimeMillis(),
             snapshot?.let { String.format(Locale.US, "%.2f", it.fps) } ?: "null",
             targetFps,
@@ -450,6 +485,9 @@ class ClusterTuner(
             strategyProvider().name,
             fanSample?.appliedPercent?.toString() ?: "null",
             fanSample?.tempC?.toString() ?: "null",
+            fpsCap?.userCapFps ?: 0,
+            fpsCap?.effectiveCapFps ?: 0,
+            fpsCap?.capState ?: CAP_STATE_OFF,
         )
         sessionLog.append(line)
     }

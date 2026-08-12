@@ -2066,8 +2066,11 @@
     <string name="power_control_available_frequencies">Frequências disponíveis</string>
     <string name="power_control_auto_tuning">Ajuste automático</string>
     <string name="power_control_auto_tuning_desc">Desempenho mais estável, maior duração da bateria, menos calor: ajusta automaticamente a CPU e a GPU para o seu jogo. Verificado no Retroid Pocket 6.</string>
-    <string name="power_control_per_cluster">Ajuste por cluster</string>
-    <string name="power_control_per_cluster_desc">Ajusta cada cluster de CPU separadamente. Funciona apenas no Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Redução automática de FPS</string>
+    <string name="power_control_adaptive_fps_desc">Reduz o limite de FPS quando o jogo não consegue alcançá-lo, para um ritmo estável.</string>
+    <string name="power_control_tuning_mode">Modo de ajuste</string>
+    <string name="power_control_tuning_mode_per_cluster">Por cluster (apenas Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">CPU inteira</string>
     <string name="power_control_fan_control">Controle da ventoinha</string>
     <string name="power_control_fan_control_desc">Mantém uma temperatura alvo com o mínimo de ruído da ventoinha. Funciona apenas no Retroid Pocket 6.</string>
     <string name="power_control_fan_control_unsupported">Funciona apenas no Retroid Pocket 6</string>

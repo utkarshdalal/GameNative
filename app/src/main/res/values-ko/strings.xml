@@ -2192,8 +2192,11 @@
     <string name="power_control_available_frequencies">사용 가능한 주파수</string>
     <string name="power_control_auto_tuning">자동 튜닝</string>
     <string name="power_control_auto_tuning_desc">더 안정적인 성능, 더 긴 배터리 사용 시간, 더 적은 발열: 게임에 맞춰 CPU와 GPU를 자동으로 조정합니다. Retroid Pocket 6에서 검증되었습니다.</string>
-    <string name="power_control_per_cluster">클러스터별 튜닝</string>
-    <string name="power_control_per_cluster_desc">각 CPU 클러스터를 개별적으로 조정합니다. Retroid Pocket 6에서만 작동합니다.</string>
+    <string name="power_control_adaptive_fps">FPS 자동 감소</string>
+    <string name="power_control_adaptive_fps_desc">게임이 FPS 상한에 도달하지 못하면 상한을 낮춰 프레임 간격을 안정시킵니다.</string>
+    <string name="power_control_tuning_mode">튜닝 모드</string>
+    <string name="power_control_tuning_mode_per_cluster">클러스터별 (Retroid Pocket 6 전용)</string>
+    <string name="power_control_tuning_mode_whole_cpu">전체 CPU</string>
     <string name="power_control_fan_control">팬 제어</string>
     <string name="power_control_fan_control_desc">팬 소음을 최소화하며 목표 온도를 유지합니다. Retroid Pocket 6에서만 작동합니다.</string>
     <string name="power_control_fan_control_unsupported">Retroid Pocket 6에서만 작동합니다</string>

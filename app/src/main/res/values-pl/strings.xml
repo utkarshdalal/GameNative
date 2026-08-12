@@ -2198,8 +2198,11 @@
     <string name="power_control_available_frequencies">Dostępne częstotliwości</string>
     <string name="power_control_auto_tuning">Automatyczne dostrajanie</string>
     <string name="power_control_auto_tuning_desc">Stabilniejsza wydajność, dłuższy czas pracy baterii, mniej ciepła: automatycznie dostraja CPU i GPU do gry. Zweryfikowano na Retroid Pocket 6.</string>
-    <string name="power_control_per_cluster">Dostrajanie na klaster</string>
-    <string name="power_control_per_cluster_desc">Dostraja każdy klaster CPU oddzielnie. Działa tylko na Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Automatyczna redukcja FPS</string>
+    <string name="power_control_adaptive_fps_desc">Obniża limit FPS, gdy gra nie może go osiągnąć, aby zapewnić stabilne tempo klatek.</string>
+    <string name="power_control_tuning_mode">Tryb dostrajania</string>
+    <string name="power_control_tuning_mode_per_cluster">Na klaster (tylko Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">Cały procesor</string>
     <string name="power_control_fan_control">Sterowanie wentylatorem</string>
     <string name="power_control_fan_control_desc">Utrzymuje docelową temperaturę przy minimalnym hałasie wentylatora. Działa tylko na Retroid Pocket 6.</string>
     <string name="power_control_fan_control_unsupported">Działa tylko na Retroid Pocket 6</string>

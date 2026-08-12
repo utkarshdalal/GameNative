@@ -2,10 +2,12 @@ package app.gamenative.powercontrol
 
 import android.content.Context
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.AtomicFile
 import app.gamenative.BuildConfig
+import app.gamenative.PluviaApp
 import app.gamenative.powercontrol.autotuning.ClusterTuner
-import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
 import app.gamenative.powercontrol.drivers.PServerDriver
@@ -15,6 +17,7 @@ import app.gamenative.powercontrol.fan.FanController
 import app.gamenative.powercontrol.metrics.MetricsSnapshot
 import app.gamenative.powercontrol.metrics.PerformanceMetricsCollector
 import app.gamenative.powercontrol.profiles.CpuGovernor
+import com.winlator.xserver.extensions.PresentExtension
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.io.File
@@ -163,6 +166,10 @@ object PowerManager {
         pinPulseAudioToDedicatedCores()
         isGameStarted = true
 
+        if (currentProfile?.enableAdaptiveFpsCap != false) {
+            AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+        }
+
         appContext?.let { PerformanceMetricsCollector.start(it) }
             ?: Timber.tag("PowerManager").w("No application context, metrics collector not started")
 
@@ -178,6 +185,7 @@ object PowerManager {
         // Save the current profile if available, otherwise read from driver
         saveProfile()
         stopAutoTuning()
+        AdaptiveFpsCapController.stop()
         PerformanceMetricsCollector.stop()
         FanController.stop()
         getDriver().stop()
@@ -192,6 +200,7 @@ object PowerManager {
         if (!isGameStarted) return
         saveProfile()
         stopAutoTuning()
+        AdaptiveFpsCapController.pause()
         PerformanceMetricsCollector.pause()
         FanController.pause()
         getDriver().stop()
@@ -204,6 +213,9 @@ object PowerManager {
         if (!isGameStarted) return
         getDriver().start()
         restoreSavedProfile()
+        if (currentProfile?.enableAdaptiveFpsCap != false) {
+            AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+        }
         PerformanceMetricsCollector.resume()
         if (currentProfile?.enableFanControl != false) {
             FanController.start(getDriver())
@@ -224,10 +236,11 @@ object PowerManager {
         }
 
         val perClusterTuning = currentProfile?.enablePerClusterTuning ?: true
-        val clusterTuningSupported = DeviceGate.isRetroidPocket6() && driver is PServerDriver
-        if (perClusterTuning && clusterTuningSupported) {
+        val clusterTuningSupported = driver.isPerClusterSupported()
+        val pserver = driver as? PServerDriver
+        if (perClusterTuning && clusterTuningSupported && pserver != null) {
             Timber.tag("PowerManager").i("Selected ClusterTuner (per-cluster tuning on, PServer driver, model: ${Build.MODEL})")
-            if (startClusterTuning(driver as PServerDriver)) return
+            if (startClusterTuning(pserver)) return
             Timber.tag("PowerManager").w("Cluster tuner unavailable, falling back to PerformanceAutoTuner")
         } else {
             Timber.tag("PowerManager").i(
@@ -318,13 +331,9 @@ object PowerManager {
             targetFpsProvider = { targetFps },
             fanSampleProvider = { FanController.latestSample },
             strategyProvider = { currentProfile?.tuningStrategy ?: AutoTuningStrategy.BALANCED },
+            fpsCapProvider = { AdaptiveFpsCapController.snapshot() },
             stateFile = ClusterTuner.stateFileFor(containerDir),
-            logDirectory = appContext?.let { context ->
-                File(
-                    context.getExternalFilesDir(null) ?: context.filesDir,
-                    PowerBaselineScripts.DIRECTORY_NAME
-                )
-            },
+            logDirectory = tunerLogDirectory(),
         )
 
         clusterTuner = tuner
@@ -335,25 +344,78 @@ object PowerManager {
         return true
     }
 
+    private fun tunerLogDirectory(): File? {
+        return appContext?.let { context ->
+            File(
+                context.getExternalFilesDir(null) ?: context.filesDir,
+                PowerBaselineScripts.DIRECTORY_NAME
+            )
+        }
+    }
+
     /**
-     * Stop automatic performance tuning.
+     * Clock steps the cluster tuner currently holds back, or null when it is not running.
+     */
+    internal fun tunerTrimmedSteps(): Int? = clusterTuner?.trimmedSteps()
+
+    /**
+     * Asks the cluster tuner to reopen every domain for an FPS cap probe.
+     * @return true when a running tuner took the request
+     */
+    internal fun openTunerClocksForProbe(): Boolean {
+        val tuner = clusterTuner ?: return false
+        if (!tuner.isRunning()) return false
+        tuner.requestOpenClocks()
+        return true
+    }
+
+    /**
+     * Pushes an FPS cap into the live frame-limiting engines, the same ones the quick menu
+     * limiter drives. The container's stored limiter value is left untouched, so the user's
+     * setting stays the ceiling.
+     * @return true when the cap reached a running X server view
+     */
+    internal fun applyFpsCapToEngines(limitFps: Int): Boolean {
+        val xServerView = PluviaApp.xServerView ?: return false
+        val presentExtension = xServerView.getxServer()
+            ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
+
+        val apply = Runnable {
+            xServerView.setFrameRateLimit(limitFps)
+            presentExtension?.setFrameRateLimit(limitFps)
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            apply.run()
+        } else {
+            Handler(Looper.getMainLooper()).post(apply)
+        }
+
+        targetFps = limitFps
+        return true
+    }
+
+    /**
+     * Stop automatic performance tuning. Both tuners are stopped so a tuner left over from
+     * an earlier selection can never keep running.
      */
     fun stopAutoTuning() {
-        clusterTuner?.let {
-            it.stop()
-            clusterTuner = null
+        if (clusterTuner == null && autoTuner == null) {
+            Timber.tag("PowerManager").w("Auto-tuning not initialized")
             return
         }
 
-        autoTuner?.let {
-            if (!it.isRunning()) {
-                Timber.tag("PowerManager").w("Auto-tuning not running")
-                return
-            }
+        clusterTuner?.let {
             it.stop()
+            clusterTuner = null
+        }
+
+        autoTuner?.let {
+            if (it.isRunning()) {
+                it.stop()
+            } else {
+                Timber.tag("PowerManager").w("Auto-tuning not running")
+            }
             autoTuner = null
-        } ?: run {
-            Timber.tag("PowerManager").w("Auto-tuning not initialized")
         }
     }
 
@@ -379,6 +441,12 @@ object PowerManager {
         }
 
         if (isGameStarted) {
+            if (profile.enableAdaptiveFpsCap) {
+                AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+            } else {
+                AdaptiveFpsCapController.stop()
+            }
+
             if (profile.enableFanControl) {
                 FanController.start(getDriver())
             } else {
@@ -400,7 +468,7 @@ object PowerManager {
      * True when auto-tuning caps each CPU cluster separately via [ClusterTuner].
      */
     fun isClusterTuningAvailable(): Boolean {
-        return DeviceGate.isRetroidPocket6() && driver is PServerDriver
+        return driver?.isPerClusterSupported() == true
     }
 
     /**

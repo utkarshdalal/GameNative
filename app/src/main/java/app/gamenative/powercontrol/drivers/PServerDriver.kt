@@ -154,6 +154,14 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     /**
+     * Check if per-cluster frequency caps are supported
+     * Only validated on the Retroid Pocket 6 cluster layout
+     */
+    override fun isPerClusterSupported(): Boolean {
+        return DeviceGate.isRetroidPocket6()
+    }
+
+    /**
      * Get display unit for frequency values
      * Returns HZ for formatted display (e.g., 2.4 GHz)
      */
@@ -1199,6 +1207,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             // Fallback to a safe default
             return PowerProfile(
                 enableAutoTuning = DeviceGate.isRetroidPocket6(),
+            enableAdaptiveFpsCap = DeviceGate.isRetroidPocket6(),
                 name = PerformancePreset.BALANCED.displayName,
                 governor = CpuGovernor.SCHEDUTIL,
                 minCpuFreq = getCurrentMinCpuValue(),
@@ -1229,6 +1238,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
         return PowerProfile(
             enableAutoTuning = DeviceGate.isRetroidPocket6(),
+            enableAdaptiveFpsCap = DeviceGate.isRetroidPocket6(),
             name = PerformancePreset.BALANCED.displayName,
             governor = governor,
             minCpuFreq = midFreq,

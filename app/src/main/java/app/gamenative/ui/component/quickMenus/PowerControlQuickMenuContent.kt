@@ -72,7 +72,8 @@ fun PowerControlQuickMenuContent(
     onMaxRamValueChanged: (Int) -> Unit,
     modifier: Modifier = Modifier,
     onFanControlToggled: (Boolean) -> Unit = {},
-    onPerClusterTuningToggled: (Boolean) -> Unit = {},
+    onTuningModeSelected: (Boolean) -> Unit = {},
+    onAdaptiveFpsCapToggled: (Boolean) -> Unit = {},
     firstItemFocusRequester: FocusRequester? = null,
 ) {
     val scrollState = rememberScrollState()
@@ -93,7 +94,8 @@ fun PowerControlQuickMenuContent(
                     state = uiState,
                     onAutoTuningToggled = onAutoTuningToggled,
                     onFanControlToggled = onFanControlToggled,
-                    onPerClusterTuningToggled = onPerClusterTuningToggled,
+                    onTuningModeSelected = onTuningModeSelected,
+                    onAdaptiveFpsCapToggled = onAdaptiveFpsCapToggled,
                     onTuningStrategySelected = onTuningStrategySelected,
                     onProfileSelected = onProfileSelected,
                     onGovernorSelected = onGovernorSelected,
@@ -162,7 +164,8 @@ private fun SuccessView(
     state: PowerControlUiState.Success,
     onAutoTuningToggled: (Boolean) -> Unit,
     onFanControlToggled: (Boolean) -> Unit,
-    onPerClusterTuningToggled: (Boolean) -> Unit,
+    onTuningModeSelected: (Boolean) -> Unit,
+    onAdaptiveFpsCapToggled: (Boolean) -> Unit,
     onTuningStrategySelected: (AutoTuningStrategy) -> Unit,
     onProfileSelected: (PowerProfile) -> Unit,
     onGovernorSelected: (String) -> Unit,
@@ -178,6 +181,7 @@ private fun SuccessView(
     var isProfileDropdownExpanded by remember { mutableStateOf(false) }
     var isGovernorDropdownExpanded by remember { mutableStateOf(false) }
     var isTuningStrategyDropdownExpanded by remember { mutableStateOf(false) }
+    var isTuningModeDropdownExpanded by remember { mutableStateOf(false) }
     var selectedMinFreqIndex by remember { mutableIntStateOf(state.cpuInfo.selectedMinFreqIndex) }
     var selectedMaxFreqIndex by remember { mutableIntStateOf(state.cpuInfo.selectedMaxFreqIndex) }
     var selectedMinGpuPowerLevel by remember { mutableIntStateOf(state.gpuInfo?.minPowerLevel ?: 0) }
@@ -216,6 +220,15 @@ private fun SuccessView(
         }
     }
 
+    QuickMenuToggleRow(
+        title = stringResource(R.string.power_control_adaptive_fps),
+        subtitle = stringResource(R.string.power_control_adaptive_fps_desc),
+        enabled = state.selectedProfile.enableAdaptiveFpsCap,
+        onToggle = { onAdaptiveFpsCapToggled(!state.selectedProfile.enableAdaptiveFpsCap) },
+        accentColor = accentColor,
+        focusRequester = firstItemFocusRequester,
+    )
+
     // Auto-Tuning Toggle
     QuickMenuToggleRow(
         title = stringResource(R.string.power_control_auto_tuning),
@@ -223,21 +236,60 @@ private fun SuccessView(
         enabled = state.selectedProfile.enableAutoTuning,
         onToggle = { onAutoTuningToggled(!state.selectedProfile.enableAutoTuning) },
         accentColor = accentColor,
-        focusRequester = firstItemFocusRequester,
     )
 
+    // Tuning Mode Dropdown (only shown when auto-tuning is enabled)
     val isClusterTuningAvailable = PowerManager.isClusterTuningAvailable()
-    QuickMenuToggleRow(
-        title = stringResource(R.string.power_control_per_cluster),
-        subtitle = stringResource(R.string.power_control_per_cluster_desc),
-        enabled = isClusterTuningAvailable && state.selectedProfile.enablePerClusterTuning,
-        onToggle = {
-            if (isClusterTuningAvailable) {
-                onPerClusterTuningToggled(!state.selectedProfile.enablePerClusterTuning)
-            }
-        },
-        accentColor = accentColor,
-    )
+    if (state.selectedProfile.enableAutoTuning) {
+        val isPerClusterSelected = isClusterTuningAvailable && state.selectedProfile.enablePerClusterTuning
+
+        Text(
+            text = stringResource(R.string.power_control_tuning_mode),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        SelectorRow(
+            valueText = if (isPerClusterSelected) {
+                stringResource(R.string.power_control_tuning_mode_per_cluster)
+            } else {
+                stringResource(R.string.power_control_tuning_mode_whole_cpu)
+            },
+            accentColor = accentColor,
+            expanded = isTuningModeDropdownExpanded,
+            onExpandedChange = { isTuningModeDropdownExpanded = it },
+        ) { menuFocusRequester ->
+            SelectorMenuItem(
+                accentColor = accentColor,
+                enabled = isClusterTuningAvailable,
+                focusRequester = if (isClusterTuningAvailable) menuFocusRequester else null,
+                onClick = {
+                    isTuningModeDropdownExpanded = false
+                    onTuningModeSelected(true)
+                },
+                text = {
+                    Text(
+                        text = stringResource(R.string.power_control_tuning_mode_per_cluster),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                },
+            )
+            SelectorMenuItem(
+                accentColor = accentColor,
+                focusRequester = if (isClusterTuningAvailable) null else menuFocusRequester,
+                onClick = {
+                    isTuningModeDropdownExpanded = false
+                    onTuningModeSelected(false)
+                },
+                text = {
+                    Text(
+                        text = stringResource(R.string.power_control_tuning_mode_whole_cpu),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                },
+            )
+        }
+    }
 
     val isFanControlAvailable = PowerManager.isFanControlAvailable()
     QuickMenuToggleRow(
@@ -705,6 +757,7 @@ private fun SelectorMenuItem(
     onClick: () -> Unit,
     text: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     focusRequester: FocusRequester? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -713,6 +766,7 @@ private fun SelectorMenuItem(
     DropdownMenuItem(
         text = text,
         onClick = onClick,
+        enabled = enabled,
         interactionSource = interactionSource,
         modifier = modifier
             .background(
