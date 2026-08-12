@@ -2206,7 +2206,7 @@
     <string name="power_control_adaptive_fps_desc">게임이 FPS 상한에 도달하지 못하면 상한을 낮춰 프레임 간격을 안정시킵니다. Retroid Pocket 6에서 검증되었습니다.</string>
     <string name="power_control_tuning_mode">튜닝 모드</string>
     <string name="power_control_tuning_mode_per_cluster">클러스터별 (Retroid Pocket 6에서 검증됨)</string>
-    <string name="power_control_tuning_mode_whole_cpu">전체 CPU</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID 제어기</string>
     <string name="power_control_fan_control">팬 제어</string>
     <string name="power_control_fan_control_desc">팬 소음을 최소화하며 목표 온도를 유지합니다. Retroid Pocket 6에서 검증되었습니다.</string>
     <string name="power_control_game_pinning">게임 코어 고정</string>

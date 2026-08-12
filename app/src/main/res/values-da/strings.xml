@@ -2080,7 +2080,7 @@
     <string name="power_control_adaptive_fps_desc">Sænker FPS-grænsen, når spillet ikke kan nå den, for en stabil billedtakt. Verificeret på Retroid Pocket 6.</string>
     <string name="power_control_tuning_mode">Justeringstilstand</string>
     <string name="power_control_tuning_mode_per_cluster">Pr. klynge (verificeret på Retroid Pocket 6)</string>
-    <string name="power_control_tuning_mode_whole_cpu">Hele CPU\'en</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID-regulator</string>
     <string name="power_control_fan_control">Blæserstyring</string>
     <string name="power_control_fan_control_desc">Holder en måltemperatur med mindst mulig blæserstøj. Verificeret på Retroid Pocket 6.</string>
     <string name="power_control_game_pinning">Spilfastgørelse</string>

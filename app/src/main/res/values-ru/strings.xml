@@ -2140,7 +2140,7 @@ https://gamenative.app
     <string name="power_control_adaptive_fps_desc">Снижает предел FPS, если игра не может его достичь, для стабильного темпа кадров. Проверено на Retroid Pocket 6.</string>
     <string name="power_control_tuning_mode">Режим настройки</string>
     <string name="power_control_tuning_mode_per_cluster">По кластерам (проверено на Retroid Pocket 6)</string>
-    <string name="power_control_tuning_mode_whole_cpu">Весь ЦП</string>
+    <string name="power_control_tuning_mode_whole_cpu">ПИД-регулятор</string>
     <string name="power_control_fan_control">Управление вентилятором</string>
     <string name="power_control_fan_control_desc">Поддерживает заданную температуру при минимальном шуме вентилятора. Проверено на Retroid Pocket 6.</string>
     <string name="power_control_game_pinning">Закрепление игры</string>

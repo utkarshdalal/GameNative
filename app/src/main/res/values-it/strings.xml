@@ -2201,7 +2201,7 @@
     <string name="power_control_adaptive_fps_desc">Abbassa il limite di FPS quando il gioco non riesce a raggiungerlo, per un ritmo stabile. Verificato su Retroid Pocket 6.</string>
     <string name="power_control_tuning_mode">Modalità di regolazione</string>
     <string name="power_control_tuning_mode_per_cluster">Per cluster (verificato su Retroid Pocket 6)</string>
-    <string name="power_control_tuning_mode_whole_cpu">CPU intera</string>
+    <string name="power_control_tuning_mode_whole_cpu">Controller PID</string>
     <string name="power_control_fan_control">Controllo ventola</string>
     <string name="power_control_fan_control_desc">Mantiene una temperatura target con il minimo rumore della ventola. Verificato su Retroid Pocket 6.</string>
     <string name="power_control_game_pinning">Ancoraggio del gioco</string>
