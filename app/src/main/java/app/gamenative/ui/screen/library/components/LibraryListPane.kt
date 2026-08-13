@@ -122,6 +122,7 @@ internal fun LibraryListPane(
     onNavigate: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    shaderEnabledIds: Set<String> = emptySet(),
 ) {
     val context = LocalContext.current
     val snackBarHost = remember { SnackbarHostState() }
@@ -297,6 +298,7 @@ internal fun LibraryListPane(
                                         imageRefreshCounter = state.imageRefreshCounter,
                                         compatibilityStatus = state.compatibilityMap[item.name],
                                         gameStats = state.statsFor(item),
+                                        hasShader = item.appId in shaderEnabledIds,
                                     )
                                 }
                             }

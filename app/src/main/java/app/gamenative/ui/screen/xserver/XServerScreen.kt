@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import android.view.Display
@@ -61,6 +62,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
@@ -106,9 +109,20 @@ import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.shaders.ShaderCatalog
+import app.gamenative.shaders.ShaderLegacyMigration
+import app.gamenative.shaders.ShaderPack
+import app.gamenative.shaders.loadShaderConfig
+import app.gamenative.shaders.migrateShaderConfigFromContainer
+import app.gamenative.shaders.persistShaderConfig
+import app.gamenative.shaders.resolveShaderConfig
+import com.winlator.renderer.RetroArchShaderConfig
+import app.gamenative.ui.component.BusGamepadKeyBridge
+import app.gamenative.ui.component.BusJoystickFocusNavigator
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
 import app.gamenative.ui.component.SteamInviteState
+import app.gamenative.ui.component.gamepadBackHandler
 import app.gamenative.ui.component.parseBooleanExtra
 import app.gamenative.utils.BionicFgManager
 import app.gamenative.ui.component.parsePositiveFpsLimit
@@ -223,6 +237,13 @@ import kotlin.io.path.name
 import kotlin.math.roundToInt
 import kotlin.text.lowercase
 import com.winlator.PrefManager as WinlatorPrefManager
+import app.gamenative.ui.component.DebugGamepadInputHarness
+import app.gamenative.ui.component.GamepadFocusScope
+import app.gamenative.ui.component.GamepadKeyBridge
+import app.gamenative.ui.component.JoystickFocusNavigator
+import app.gamenative.ui.component.ModeKeyBehavior
+import app.gamenative.ui.component.OverlayInputContext
+import app.gamenative.ui.component.OverlayInputState
 
 // Always re-extract drivers and DXVK on every launch to handle cases of container corruption
 // where games randomly stop working. Set to false once corruption issues are resolved.
@@ -355,6 +376,14 @@ fun XServerScreen(
     onWindowUnmapped: ((Window) -> Unit)? = null,
     onGameLaunchError: ((String) -> Unit)? = null,
 ) {
+    // Defensive: on cold start the XServer route can compose before the launch state settles
+    // (launchedAppId still blank), and ContainerUtils.getContainer(context, "") throws.
+    // Early-return (no composable call in this branch: a Box() here tripped the DEX verifier
+    // on this device's ART). The next recomposition with a real appId proceeds normally.
+    if (appId.isBlank()) {
+        Timber.w("XServerScreen: blank appId, deferring (launch state not settled yet)")
+        return
+    }
     Timber.i("Starting up XServerScreen")
     val context = LocalContext.current
     val view = LocalView.current
@@ -619,9 +648,57 @@ fun XServerScreen(
     }
 
     LaunchedEffect(xServerView?.renderer) {
+        // One-time best-effort cleanup of the old embedded-shader trees (spec §6):
+        // `retroarch` / `retroarch_presets` were materialized by the removed
+        // ShaderImporter and no longer exist in the app — frees ~2.4 MB user storage.
+        ShaderLegacyMigration.cleanupOnce(context)
+        // One-shot migration of legacy container-extras shader state into the per-game
+        // store (spec 2026-08-12): runs once per install (SharedPreferences flag) at
+        // game-screen boot; scrubs the live container so a later saveData cannot
+        // resurrect the extras.
+        migrateShaderConfigFromContainer(context, container)
         val screenEffectsConfig = loadScreenEffectsConfig(container)
         when (val renderer = xServerView?.renderer) {
-            is VulkanRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
+            is VulkanRenderer -> {
+                applyScreenEffectsConfig(renderer, screenEffectsConfig)
+                // Apply the persisted RetroArch (librashader) shader state at startup.
+                // Without this the shader stays "selected" in the menu but is never
+                // sent to the renderer, so the game opens with the shader off until
+                // the user toggles it in the effects panel.
+                //
+                // §6 migration rule: configs from the old embedded system may point at
+                // `.../retroarch_presets/...` paths that no longer exist. Resolve against
+                // the on-demand pack: absolute path exists → load; gone but relative path
+                // resolves inside the installed pack → re-resolve + persist the new
+                // absolute path + load; nothing resolves (pack not installed) → load
+                // nothing, never download automatically.
+                val catalog = ShaderCatalog.load(context)
+                val pack = ShaderPack(context, catalog?.data?.source?.commit ?: "")
+                // Per-preset cache (user decision 2026-08-12): resolution checks actual
+                // file presence inside the cache — a missing closure simply resolves to
+                // "selection visible, nothing loaded, no automatic download".
+                val packDir = pack.packDir
+                val shaderConfig = loadShaderConfig(context, container)
+                // Closure-aware: a preset whose dependency files are not all cached
+                // resolves to "selection visible, nothing loaded" — the browser shows it
+                // in the cloud state and a re-pick downloads only the missing files
+                // (2026-08-12: chain create used to fail silently, e.g. technicolor's LUT).
+                val resolved = resolveShaderConfig(shaderConfig, packDir, catalog)
+                if (resolved.presetPath != shaderConfig.presetPath) {
+                    // The per-game store persists on its own — no container.saveData here.
+                    persistShaderConfig(
+                        context,
+                        container,
+                        RetroArchShaderConfig(
+                            resolved.enabled, resolved.presetPath, resolved.presetName, "", resolved.relativePath,
+                        ),
+                    )
+                }
+                if (resolved.enabled && resolved.presetPath.isNotEmpty()) {
+                    renderer.loadRetroArchShaderPreset(resolved.presetPath)
+                    renderer.setRetroArchShaderEnabled(true)
+                }
+            }
             is GLRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
         }
     }
@@ -1029,13 +1106,35 @@ fun XServerScreen(
         }
     }
 
-    val dismissOverlayMenu: () -> Unit = {
-        if (!keyboardRequestedFromOverlay) {
-            imeInputReceiver?.hideKeyboard()
+    // M3 (spec 2026-08-12 — C3): stable identity. Re-creating this lambda on every
+    // recomposition (process polls / HUD updates) propagated instability to the QuickMenu's
+    // bus bridge (onCloseOverlay was a DisposableEffect key -> off/on churn). The lambda
+    // reads only state-backed values (keyboardRequestedFromOverlay, imeInputReceiver,
+    // shouldForceResumeOnMenuClose, showQuickMenu are mutableStateOf delegates; manualResumeMode
+    // derives from suspendPolicy, stable per container session), so the remembered instance
+    // always reads CURRENT values at call time.
+    val dismissOverlayMenu: () -> Unit = remember {
+        {
+            Timber.d("XServerScreen: dismissOverlayMenu (keyboardRequestedFromOverlay=%b, showQuickMenu=%b)", keyboardRequestedFromOverlay, showQuickMenu)
+            if (!keyboardRequestedFromOverlay) {
+                imeInputReceiver?.hideKeyboard()
+            }
+            shouldForceResumeOnMenuClose = keyboardRequestedFromOverlay && manualResumeMode && !keepPausedForEditor
+            keyboardRequestedFromOverlay = false
+            showQuickMenu = false
         }
-        shouldForceResumeOnMenuClose = keyboardRequestedFromOverlay && manualResumeMode && !keepPausedForEditor
-        keyboardRequestedFromOverlay = false
-        showQuickMenu = false
+    }
+
+    // Home/START exit (spec 2026-08-13-home-button-overlay-exit): closes every overlay
+    // layer in one press. With the opt-in pref ON (and a manual-resume container), the
+    // game resumes straight away instead of landing on the Play screen. The flag must be
+    // set AFTER dismissOverlayMenu() — that lambda overwrites it with the keyboard path.
+    val dismissOverlayToGame: () -> Unit = remember {
+        {
+            dismissOverlayMenu()
+            shouldForceResumeOnMenuClose =
+                PrefManager.homeButtonStraightToGame && manualResumeMode && !neverSuspend
+        }
     }
 
     LaunchedEffect(showQuickMenu, quickMenuToolsVisible, xServerView) {
@@ -1424,6 +1523,39 @@ fun XServerScreen(
         Timber.i("onActivityDestroyed")
         exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
     }
+    // Single source of truth for "is an overlay consuming input right now?" (D3).
+    // Every overlay state must be listed HERE — the key/motion handlers only consult this.
+    // Debug-only synthetic gamepad input (setprop debug.gamenative.input) so adb can drive
+    // the full input pipeline on devices where `input keyevent` is blocked (MIUI).
+    DebugGamepadInputHarness(enabled = true)
+
+    // M1 (spec 2026-08-12 — C1): the routing context is now a MUTABLE holder written here
+    // during composition and READ by the bus handlers at EVENT time. The handlers are
+    // registered once (DisposableEffect(Unit)) and must never capture the derived value:
+    // a captured `val` from the first composition would be stale forever (NONE), leaking
+    // gamepad input to the game behind an open menu. The holder instance is stable
+    // (remember), so the once-registered closures always read the CURRENT context.
+    val overlayInputState = remember { OverlayInputState() }
+    overlayInputState.context = if (
+        showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode ||
+        showTouchGestureDialog || showShooterModeDialog || showPhysicalControllerDialog ||
+        showPlayingBlockedDialog
+    ) {
+        OverlayInputContext.OVERLAY
+    } else {
+        OverlayInputContext.NONE
+    }
+
+    // M2 (spec 2026-08-12): emit = MULTICAST — every bus listener runs, no early stop;
+    // "consumption" is only the window decision (MainActivity returns true when ANY
+    // listener returned true). Each listener owns ONE surface and must be INERT outside it:
+    //   - OVERLAY (menu/browser/edit): BusJoystickFocusNavigator + BusGamepadKeyBridge
+    //     (Compose surfaces in the same window as the GL).
+    //   - NONE: this handler routes to the game (PhysicalControllerHandler/WinHandler).
+    //   - Dialog windows: separate windows — never reach this bus (existing invariant).
+    // With an overlay open the game branch BELOW MUST NEVER run: no noteGamepadButton,
+    // no refreshControllerMappingsForHotplug, no winHandler/physicalControllerHandler —
+    // those are game-side effects that would corrupt the paused session (C2).
     val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
         val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
         val isPhysicalKeyboard = isKeyboard && it.event.device?.isVirtual != true
@@ -1433,6 +1565,14 @@ fun XServerScreen(
                 PluviaApp.isOverlayPaused &&
                 !showQuickMenu &&
                 !keepPausedForEditor
+        // M1: read the holder at EVENT time — never a value captured at registration.
+        val inputContext = overlayInputState.context
+        if (isGamepad) {
+            Timber.d(
+                "GamepadRoute: key code=%d action=%d ctx=%s manualResume=%b",
+                it.event.keyCode, it.event.action, inputContext, waitingForManualResume,
+            )
+        }
         // logD("onKeyEvent(${it.event.device.sources})\n\tisGamepad: $isGamepad\n\tisKeyboard: $isKeyboard\n\t${it.event}")
 
         if (waitingForManualResume) {
@@ -1447,7 +1587,7 @@ fun XServerScreen(
                 }
                 else -> false
             }
-        } else if ((showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode) && (isGamepad || isKeyboard)) {
+        } else if (inputContext != OverlayInputContext.NONE && (isGamepad || isKeyboard)) {
             val escPressed = !keepPausedForEditor &&
                 isKeyboard &&
                 it.event.keyCode == KeyEvent.KEYCODE_ESCAPE
@@ -1472,6 +1612,9 @@ fun XServerScreen(
                 if (it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0 &&
                     ControllerManager.getInstance().noteGamepadButton(it.event.device.id)
                 ) {
+                    // M8: game-side effect — the M2 acceptance greps this tag: with an
+                    // overlay open (ctx=OVERLAY) this branch never runs.
+                    Timber.d("GamepadRoute: refreshControllerMappingsForHotplug (game branch)")
                     winHandler.refreshControllerMappingsForHotplug()
                 }
                 val assignedSlot = ControllerManager.getInstance().getSlotForDevice(it.event.device.id)
@@ -1479,10 +1622,23 @@ fun XServerScreen(
                     handled = winHandler.onKeyEvent(it.event)
                 } else {
                     winHandler.setCurrentController(it.event.device.id)
-                    handled = physicalControllerHandler?.onKeyEvent(it.event) == true
-                    if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
-                    // Final fallback to WinHandler passthrough
-                    if (!handled) handled = winHandler.onKeyEvent(it.event)
+                    // P1 (spec 2026-08-12): START mirrors HOME as the second QuickMenu
+                    // toggle — with the menu closed it OPENS it instead of reaching the
+                    // game (the close half is the bus bridge while the menu is open).
+                    // Manual resume (paused overlay) keeps priority and still uses START.
+                    if (it.event.keyCode == KeyEvent.KEYCODE_BUTTON_START &&
+                        it.event.action == KeyEvent.ACTION_DOWN && it.event.repeatCount == 0 &&
+                        !showElementEditor && !keepPausedForEditor && !showQuickMenu && !isEditMode
+                    ) {
+                        Timber.i("XServerScreen: START opens QuickMenu (P1 toggle)")
+                        gameBack()
+                        handled = true
+                    } else {
+                        handled = physicalControllerHandler?.onKeyEvent(it.event) == true
+                        if (!handled) handled = PluviaApp.inputControlsView?.onKeyEvent(it.event) == true
+                        // Final fallback to WinHandler passthrough
+                        if (!handled) handled = winHandler.onKeyEvent(it.event)
+                    }
                 }
             }
             if (!handled && isKeyboard) {
@@ -1518,10 +1674,19 @@ fun XServerScreen(
 
     val onMotionEvent: (AndroidEvent.MotionEvent) -> Boolean = {
         val isGamepad = ExternalController.isGameController(it.event?.device)
+        // M1: read the holder at EVENT time (see onKeyEvent). M2: with an overlay open the
+        // motion is consumed here and the game branch below NEVER runs.
+        val inputContext = overlayInputState.context
+        if (isGamepad) {
+            Timber.d("GamepadRoute: motion action=%d ctx=%s", it.event?.actionMasked ?: -1, inputContext)
+        }
 
-        if ((showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode) && isGamepad) {
-            // Let Compose consume any gamepad motion while menu is visible.
-            false
+        if (inputContext != OverlayInputContext.NONE && isGamepad) {
+            // The overlay owns the stick: consume it so the game never receives gamepad
+            // motion while a menu/dialog is up. Overlay navigation (QuickMenu) reads the
+            // same event from this bus (BusJoystickFocusNavigator); dialog windows are
+            // separate windows and never reach this handler.
+            true
         } else {
             var handled = false
             if (isGamepad && it.event != null) {
@@ -2530,6 +2695,18 @@ fun XServerScreen(
             }
         }
 
+        // G7 (spec 2026-08-10, §3.6): bus-level gamepad navigation while editing
+        // controls. The toolbar is a Compose surface in the SAME window as the GL
+        // surface, so it uses the bus navigators like the QuickMenu. PS stays mapped to
+        // None: toggling the QuickMenu in the middle of an edit would be surprising.
+        // Disabled while the QuickMenu is up so the two overlays never fight over the bus.
+        if (isEditMode && !showQuickMenu) {
+            BusJoystickFocusNavigator(enabled = true)
+            // M3/M7 (spec 2026-08-12): explicit API — ModeKeyBehavior.None was only used via
+            // the DEFAULT parameter here; declaring it makes the edit-mode contract visible.
+            BusGamepadKeyBridge(enabled = true, modeKeyBehavior = ModeKeyBehavior.None)
+        }
+
         // Floating toolbar for edit mode (always visible in edit mode)
         if (isEditMode && areControlsVisible) {
             EditModeToolbar(
@@ -2606,6 +2783,7 @@ fun XServerScreen(
         QuickMenu(
             isVisible = showQuickMenu,
             onDismiss = dismissOverlayMenu,
+            onHomeFromOverlay = dismissOverlayToGame,
             onItemSelected = onQuickMenuItemSelected,
             renderer = xServerView?.renderer as? VulkanRenderer,
             glRenderer = xServerView?.renderer as? GLRenderer,
@@ -2655,10 +2833,14 @@ fun XServerScreen(
             onAnimationComplete = { isMenuVisible ->
                 if (isMenuVisible) {
                     // An invite dialog the game asked for must not suspend it -- the game has to
-                    // keep running to receive the peer that's joining.
-                    if (!SteamInviteState.openedForGameRequest) pauseForOverlayIfAllowed()
+                    // keep running to receive the peer that's joining. Only while the auto-open
+                    // request is recent: a stale flag must never leave the game unpaused.
+                    val inviteOpenedAt = SteamInviteState.openedForGameRequest
+                    val inviteFresh = inviteOpenedAt != 0L &&
+                        SystemClock.uptimeMillis() - inviteOpenedAt <= SteamInviteState.OPEN_REQUEST_MAX_AGE_MS
+                    if (!inviteFresh) pauseForOverlayIfAllowed()
                 } else {
-                    SteamInviteState.openedForGameRequest = false
+                    SteamInviteState.openedForGameRequest = 0L
                     if (shouldForceResumeOnMenuClose) {
                         forceResumeIfSuspended()
                         shouldForceResumeOnMenuClose = false
@@ -2767,7 +2949,16 @@ fun XServerScreen(
         androidx.compose.material3.AlertDialog(
             onDismissRequest = {},
             title = { Text(text = stringResource(R.string.main_app_running_title)) },
-            text = { Text(text = stringResource(R.string.main_app_running_message, remoteName)) },
+            text = {
+                // Gamepad window bootstrap (stick/hat -> focus, A -> activate). B is
+                // intentionally unmapped: this dialog forces a decision (play anyway vs
+                // cancel), so a stray B must not close it (spec: zero accidental exits).
+                GamepadFocusScope {
+                    Box(Modifier.fillMaxWidth()) {
+                        Text(text = stringResource(R.string.main_app_running_message, remoteName))
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showPlayingBlockedDialog = false
@@ -2907,6 +3098,22 @@ private fun EditModeToolbar(
     var toolbarOffsetY by remember { mutableStateOf(0f) }
     val density = LocalDensity.current
 
+    // G7 (spec 2026-08-10, §3.6): initial focus lands on the Add button so the stick has
+    // somewhere to start; retries while the toolbar's composition settles. The toolbar is
+    // only composed while `isEditMode && areControlsVisible`, so a Unit-keyed effect runs
+    // once per appearance.
+    val addButtonFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        repeat(3) {
+            try {
+                addButtonFocusRequester.requestFocus()
+                return@LaunchedEffect
+            } catch (_: Exception) {
+                delay(80)
+            }
+        }
+    }
+
     Box(
         contentAlignment = androidx.compose.ui.Alignment.TopCenter,
         modifier = Modifier
@@ -2921,6 +3128,9 @@ private fun EditModeToolbar(
                     toolbarOffsetY += dragAmount.y / density.density
                 }
             }
+            // G7: raw gamepad B = Close (cancels the edit, restores the snapshot) —
+            // parity with the Close button. Physical BACK stays on its own path.
+            .gamepadBackHandler(onClose)
     ) {
         Row(
             modifier = Modifier
@@ -2941,8 +3151,11 @@ private fun EditModeToolbar(
                 modifier = Modifier.padding(end = 4.dp)
             )
 
-            // Add button
-            TextButton(onClick = onAdd) {
+            // Add button (G7: initial gamepad focus target)
+            TextButton(
+                onClick = onAdd,
+                modifier = Modifier.focusRequester(addButtonFocusRequester),
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Add", tint = androidx.compose.ui.graphics.Color.White)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(stringResource(R.string.add), color = androidx.compose.ui.graphics.Color.White)

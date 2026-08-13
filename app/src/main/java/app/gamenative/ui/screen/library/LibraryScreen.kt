@@ -81,6 +81,7 @@ import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.shaders.PerGameShaderStore
 import app.gamenative.events.AndroidEvent
 import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
@@ -117,7 +118,9 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.PlatformOAuthHandlers
 import app.gamenative.utils.SteamUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import android.os.SystemClock
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -214,6 +217,16 @@ private fun LibraryScreenContent(
 ) {
     val context = LocalContext.current
     val lifecycleScope = LocalLifecycleOwner.current.lifecycleScope
+
+    // M4 (spec 2026-08-12 — badge de shader na biblioteca): one read per screen entry
+    // (re-navigating to the library reloads it, so in-game toggles reflect on the next
+    // visit). null = still loading — no badge until the store answers.
+    var shaderEnabledIds by remember { mutableStateOf<Set<String>?>(null) }
+    LaunchedEffect(Unit) {
+        shaderEnabledIds = withContext(Dispatchers.IO) {
+            PerGameShaderStore.fromContext(context).enabledGameIds()
+        }
+    }
 
     val gogOAuthLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
@@ -1025,6 +1038,7 @@ private fun LibraryScreenContent(
                             firstCarouselItemFocusRequester = carouselFocusRequester,
                             focusTargetListIndex = currentCarouselFocusTargetIndex(),
                             onFocusedIndexChanged = { carouselFocusTargetListIndex = it },
+                            shaderEnabledIds = shaderEnabledIds.orEmpty(),
                         )
                     } else {
                         LibraryListPane(
@@ -1040,6 +1054,7 @@ private fun LibraryScreenContent(
                             },
                             onRefresh = onRefresh,
                             modifier = Modifier.fillMaxSize(),
+                            shaderEnabledIds = shaderEnabledIds.orEmpty(),
                         )
                     }
                 }

@@ -1,7 +1,6 @@
 package app.gamenative.ui.component
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -24,12 +23,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /**
- * Tappable action row: an [accentColor]-tinted icon, a title, and the shared [focusRing].
+ * Tappable action row: an [accentColor]-tinted icon, a title, and the shared gamepad
+ * focus language (spec 2026-08-10, §3.7 — G9). [gamepadSelectable] replaces the manual
+ * clickable + focusRing pair, and the optional [focusIndex]/[onFocusIndexChanged] slot
+ * keeps the row inside the tab's remember-selection walk (previously restoration could
+ * never reach it).
  */
 @Composable
 fun AccentActionRow(
@@ -38,6 +40,8 @@ fun AccentActionRow(
     accentColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    focusIndex: Int? = null,
+    onFocusIndexChanged: ((Int) -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
@@ -65,12 +69,19 @@ fun AccentActionRow(
                     )
                 },
             )
-            .focusRing(interactionSource, shape, width = 2.dp)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                role = Role.Button,
+            .then(
+                if (focusIndex != null && onFocusIndexChanged != null) {
+                    Modifier.gamepadFocusIndex(focusIndex, onFocusIndexChanged)
+                } else {
+                    Modifier
+                }
+            )
+            .gamepadSelectable(
+                selected = false,
                 onClick = onClick,
+                shape = shape,
+                interactionSource = interactionSource,
+                accentColor = accentColor,
             )
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,

@@ -10,6 +10,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.shaders.PerGameShaderStore
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
@@ -1139,6 +1140,10 @@ object ContainerUtils {
      * Deletes the container associated with the given appId, if it exists.
      */
     fun deleteContainer(context: Context, appId: String) {
+        // Per-game shader config (spec 2026-08-12): the store entry dies with the game —
+        // independent of the container lifecycle, so it must be cleared here explicitly.
+        PerGameShaderStore.fromContext(context).clearForGame(appId)
+        Timber.i("[ContainerDeletion] Cleared per-game shader config for appId=$appId")
         Timber.i("[ContainerDeletion] Attempting to delete container for appId=$appId")
         val manager = ContainerManager(context)
         val hasContainer = manager.hasContainer(appId)

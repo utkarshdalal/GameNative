@@ -1,7 +1,18 @@
 package app.gamenative.ui.component.dialog
 
+import app.gamenative.ui.component.gamepadSelectable
+
+
+import app.gamenative.ui.component.gamepadBackHandler
+
+
+import app.gamenative.ui.component.GamepadFocusScope
+
+
 import android.util.Log
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +26,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -116,10 +129,16 @@ fun ControllerBindingDialog(
             dismissOnClickOutside = false
         )
     ) {
+        val initialFocusRequester = remember { FocusRequester() }
+        GamepadFocusScope(
+            backAction = onDismiss,
+            initialFocusRequester = initialFocusRequester,
+        ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.98f)  // Nearly full width for better space utilization
-                .fillMaxHeight(0.92f),  // Taller to maximize vertical space
+                .fillMaxHeight(0.92f)  // Taller to maximize vertical space
+                .gamepadBackHandler(onDismiss),
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface
         ) {
@@ -366,12 +385,13 @@ fun ControllerBindingDialog(
                         }
                     }
 
-                    // Right column: Bindings list
+                    // Right column: Bindings list (G5: confined focus inside the scroll)
                     Column(
                         modifier = Modifier
                             .weight(0.6f)
                             .fillMaxHeight()
                             .verticalScroll(rememberScrollState())
+                            .focusGroup()
                             .padding(vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -389,20 +409,26 @@ fun ControllerBindingDialog(
                                 )
                             }
                         } else {
-                            filteredBindings.forEach { binding ->
+                            filteredBindings.forEachIndexed { index, binding ->
                                 BindingOption(
                                     binding = binding,
                                     isSelected = binding == currentBinding,
                                     onClick = {
                                         Log.d("ControllerBindingDialog", "Binding selected for $buttonName: ${binding.name}")
                                         onBindingSelected(binding)
-                                    }
+                                    },
+                                    modifier = if (index == 0) {
+                                        Modifier.focusRequester(initialFocusRequester)
+                                    } else {
+                                        Modifier
+                                    },
                                 )
                             }
                         }
                     }
                 }
             }
+        }
         }
     }
 }
@@ -411,12 +437,19 @@ fun ControllerBindingDialog(
 fun BindingOption(
     binding: Binding,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .gamepadSelectable(
+                selected = isSelected,
+                onClick = onClick,
+                shape = MaterialTheme.shapes.small,
+                interactionSource = interactionSource,
+            ),
         color = if (isSelected)
             MaterialTheme.colorScheme.primaryContainer
         else

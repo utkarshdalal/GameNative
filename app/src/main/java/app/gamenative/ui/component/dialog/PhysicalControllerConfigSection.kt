@@ -1,5 +1,16 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+
+import app.gamenative.ui.component.gamepadSelectable
+
+
+import app.gamenative.ui.component.gamepadBackHandler
+
+
+import app.gamenative.ui.component.GamepadFocusScope
+
+
 import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -14,6 +25,8 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -211,8 +224,15 @@ internal fun PhysicalControllerConfigSection(
             dismissOnClickOutside = false
         )
     ) {
+        val editorScopeInitialFocus = remember { FocusRequester() }
+        GamepadFocusScope(
+            backAction = onDismiss,
+            initialFocusRequester = editorScopeInitialFocus,
+        ) {
         Scaffold(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .gamepadBackHandler(onDismiss),
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
@@ -336,7 +356,8 @@ internal fun PhysicalControllerConfigSection(
                         CategoryButton(
                             label = stringResource(R.string.face_buttons_category),
                             isSelected = selectedCategory == 0,
-                            onClick = { selectedCategory = 0 }
+                            onClick = { selectedCategory = 0 },
+                            focusRequester = editorScopeInitialFocus,
                         )
 
                         // Shoulder Buttons category
@@ -529,6 +550,7 @@ internal fun PhysicalControllerConfigSection(
                 }
             }
         }
+        }
     }
 
     // Binding selector dialog
@@ -559,12 +581,20 @@ internal fun PhysicalControllerConfigSection(
 private fun CategoryButton(
     label: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    focusRequester: FocusRequester? = null,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .gamepadSelectable(
+                selected = isSelected,
+                onClick = onClick,
+                shape = MaterialTheme.shapes.small,
+                interactionSource = interactionSource,
+            ),
         color = if (isSelected)
             MaterialTheme.colorScheme.primaryContainer
         else
@@ -589,11 +619,17 @@ private fun ControllerBindingItem(
 ) {
     val binding = workingBindings[keyCode]
     val bindingText = binding?.toString() ?: stringResource(R.string.not_set)
+    val interactionSource = remember { MutableInteractionSource() }
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .gamepadSelectable(
+                selected = false,
+                onClick = onClick,
+                shape = MaterialTheme.shapes.small,
+                interactionSource = interactionSource,
+            ),
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.small
     ) {

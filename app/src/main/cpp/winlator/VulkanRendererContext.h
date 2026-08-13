@@ -78,6 +78,9 @@ struct VkTable {
     PFN_vkCmdPipelineBarrier CmdPipelineBarrier;
     PFN_vkCmdCopyImage CmdCopyImage;
     PFN_vkCmdCopyBufferToImage CmdCopyBufferToImage;
+    PFN_vkCmdCopyImageToBuffer CmdCopyImageToBuffer;
+    PFN_vkCmdBlitImage CmdBlitImage;
+    PFN_vkUnmapMemory UnmapMemory;
     PFN_vkCreateSampler CreateSampler;
     PFN_vkDestroySampler DestroySampler;
     PFN_vkCreateSemaphore CreateSemaphore;
@@ -109,7 +112,10 @@ struct VkTable {
 #include <shared_mutex>
 #include <condition_variable>
 
+#include "VulkanLibrashader.h"
+
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+static constexpr int EFFECT_LIBRASHADER = 6;
 
 struct WindowPushConstants {
     float ndcX0, ndcY0, ndcX1, ndcY1;
@@ -178,6 +184,25 @@ public:
     void setEffect(int effectId, float sharpness, int effectMask, float brightness, float contrast, float gamma);
     void setPresentMode(VkPresentModeKHR mode);
     std::vector<int> getSupportedPresentModes() const;
+
+    void initLibrashader();
+    void loadLibrashaderPreset(const std::string& presetPath);
+    // Deferred preset load: stores the request; the RENDER thread applies it (reloadPreset does
+    // queue work that must not race with in-flight frame recording on the render thread).
+    void requestLibrashaderPreset(const std::string& presetPath);
+    // Deferred preset CLEAR (per-shader toggle-off, spec 2026-08-11): destroys the filter
+    // chain so the frame renders unshaded while librashader stays ENABLED (the main toggle's
+    // job is the on/off of the whole system; this only clears the selected preset).
+    void clearLibrashaderPreset();
+    std::mutex presetReqMtx;
+    std::string pendingPresetPath;
+    bool hasPendingPreset = false;
+    bool hasPendingClear = false;
+    void setLibrashaderParam(const std::string& name, float value);
+    void enableLibrashader(bool enabled);
+    bool isLibrashaderLoaded() const { return libraShader.isLoaded(); }
+    bool isLibrashaderActive() const { return libraShaderActive.load(); }
+    const std::string& getLibrashaderError() const { return libraShader.getLastError(); }
 
 private:
     struct WinTex {
@@ -310,13 +335,20 @@ private:
     std::vector<VkFramebuffer> swapchainFBs;
 
     VkRenderPass          renderPass  = VK_NULL_HANDLE;
+    VkRenderPass          offscreenRenderPass  = VK_NULL_HANDLE;
     VkDescriptorSetLayout dsLayout    = VK_NULL_HANDLE;
     VkPipelineLayout      pipeLayout  = VK_NULL_HANDLE;
 
     VkPipeline            pipeline    = VK_NULL_HANDLE;
+    VkPipeline            offscreenPipeline = VK_NULL_HANDLE;
 
     VkCommandPool                cmdPool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> cmdBufs;
+
+    VkCommandPool                filterCmdPool = VK_NULL_HANDLE;
+    VkCommandBuffer              filterCmdBuf = VK_NULL_HANDLE;
+    VkCommandBuffer              presentCmdBuf = VK_NULL_HANDLE;
+    VkFence                      filterFence = VK_NULL_HANDLE;
 
     std::vector<VkSemaphore> imgAvailSems;
     std::vector<VkSemaphore> renderDoneSems;
@@ -335,6 +367,12 @@ private:
     std::mutex        dirtyMutex;
     std::condition_variable dirtyCV;
     std::shared_mutex frameMutex;
+    // I2: serializes the filter-chain submit/waits (render thread, recordFilterChainPass) against
+    // reloadPreset (UI/JNI thread, loadLibrashaderPreset). The recorded command buffer references the
+    // chain's Vulkan resources until QueueSubmit completes, so reload must not free the chain while a
+    // submit referencing it is in flight. Always acquire renderMutex/filterSubmitMtx in the same order
+    // (filterSubmitMtx -> librashader.mtx) to avoid deadlock.
+    std::mutex        filterSubmitMtx;
 
     void createInstance();
     void createSurface();
@@ -342,8 +380,9 @@ private:
     void createLogicalDevice();
     void createSwapchain();
     void createRenderPass();
+    void createOffscreenRenderPass();
     void createDSLayout();
-    void createPipeline(bool blend, VkPipeline& out);
+    void createPipeline(bool blend, VkPipeline& out, VkRenderPass rp);
     void createFramebuffers();
     void createCmdPool();
     void createSampler();
@@ -384,5 +423,102 @@ private:
                                VkImageLayout oldL, VkImageLayout newL,
                                VkAccessFlags srcA, VkAccessFlags dstA,
                                VkPipelineStageFlags srcS, VkPipelineStageFlags dstS);
+    // melonDS wide-barrier recipe (VulkanSurfacePresenter.cpp:2258/2270): srcAccess =
+    // MEMORY_WRITE|TRANSFER_WRITE|COLOR_ATTACHMENT_WRITE, srcStage = ALL_COMMANDS.
+    void            transferBarrierWide(VkCommandBuffer cb, VkImage img,
+                                        VkImageLayout oldLayout, VkImageLayout newLayout,
+                                        VkAccessFlags dstAccess, VkPipelineStageFlags dstStage);
     VkShaderModule  makeShader(const uint32_t* code, size_t sz);
+
+    VulkanLibrashader libraShader;
+    std::atomic<bool> libraShaderEnabled{false};
+    std::atomic<bool> libraShaderActive{false};
+    std::string libraShaderPresetPath;
+    bool libraNeedsHistoryClear = true;
+    // Latch: a chain that failed applyFrame (or failed to compile) is not retried 60x/s.
+    // While latched, the default path presents the unshaded offscreen (ARMSX2 pattern:
+    // a broken preset degrades to the frame without shader, never to a black/garbage frame).
+    // Reset whenever a new preset is requested.
+    bool libraChainFailed = false;
+
+    VkImage         offscreenImage = VK_NULL_HANDLE;
+    VkDeviceMemory  offscreenMem = VK_NULL_HANDLE;
+    VkImageView     offscreenView = VK_NULL_HANDLE;
+    VkFramebuffer   offscreenFB = VK_NULL_HANDLE;
+
+    VkImage         processedImage = VK_NULL_HANDLE;
+    VkDeviceMemory  processedMem = VK_NULL_HANDLE;
+    VkImageView     processedView = VK_NULL_HANDLE;
+
+    VkBuffer         processedReadbackBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory   processedReadbackMem = VK_NULL_HANDLE;
+
+    // P4-PROBE (temporary): dedicated diagnostic destination image. melonDS blits the filter
+    // output into an intermediate image (atlasOutput) and only later presents it; diagDstImage is
+    // that dedicated destination for the P4 probe (never the swapchain). Reused by Task 6 (atlas).
+    VkImage         diagDstImage = VK_NULL_HANDLE;
+    VkDeviceMemory  diagDstMem = VK_NULL_HANDLE;
+    VkImageView     diagDstView = VK_NULL_HANDLE;
+    VkBuffer        diagReadbackBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory  diagReadbackMem = VK_NULL_HANDLE;
+
+    // Task 6 atlas fix (melonDS topology): filterOutputImage is the applyFrame target; the copy
+    // engine moves it to the dedicated atlasImage (presented sampled in GENERAL). atlasLayout tracks
+    // atlasImage's layout across frames; reset to UNDEFINED on recreate.
+    VkImage         filterOutputImage = VK_NULL_HANDLE;
+    VkDeviceMemory  filterOutputMem = VK_NULL_HANDLE;
+    VkImageView     filterOutputView = VK_NULL_HANDLE;
+    VkImage         atlasImage = VK_NULL_HANDLE;
+    VkDeviceMemory  atlasMem = VK_NULL_HANDLE;
+    VkImageView     atlasView = VK_NULL_HANDLE;
+    VkImageLayout   atlasLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    // C1: tracks filterOutputImage's layout across frames. applyFrame requires the output image in
+    // COLOR_ATTACHMENT_OPTIMAL and does not create a barrier for the final pass; the copy engine
+    // leaves it in TRANSFER_SRC_OPTIMAL, so we restore it to CAO each frame. UNDEFINED on first use
+    // / after recreate; reset in createOffscreenTargets/destroyOffscreenTargets.
+    VkImageLayout   filterOutputLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    uint64_t         libraFrameCount = 0;
+
+    VkPipeline      blitPipeline = VK_NULL_HANDLE;
+    VkSampler       blitSampler = VK_NULL_HANDLE;
+    VkDescriptorSet blitDS = VK_NULL_HANDLE;
+
+    void createOffscreenTargets(int w, int h);
+    void destroyOffscreenTargets();
+    void createBlitPipeline();
+    void destroyBlitPipeline();
+
+    void recordCompositorPass(VkCommandBuffer cb,
+        const std::vector<DrawEntry>& draws,
+        std::vector<VkImageMemoryBarrier>& ahbTransitions,
+        std::vector<VkImageMemoryBarrier>& preUpload,
+        std::vector<VkImageMemoryBarrier>& postUpload,
+        VkBuffer cursorUpload, bool hasCursorUpload,
+        float ox, float oy, float sx, float sy, float cw, float ch,
+        short curW, short curH);
+
+    void blitProcessedToSwapchain(VkCommandBuffer cb, uint32_t imgIdx);
+    void blitImageToSwapchain(VkCommandBuffer cb, uint32_t imgIdx, VkImageView srcView, VkSampler srcSampler);
+    void blitImageToSwapchainLayout(VkCommandBuffer cb, uint32_t imgIdx, VkImageView srcView, VkSampler srcSampler, VkImageLayout imageLayout);
+    // Full-screen present of srcView (in srcLayout) into swapchain image imgIdx, drawing the
+    // cursor in the SAME render pass (a separate cursor pass with loadOp=CLEAR wiped the
+    // presented frame — bug-fix 5). Used by the default librashader path and its fallback.
+    void recordPresentPass(VkCommandBuffer cb, uint32_t imgIdx,
+                           VkImageView srcView, VkSampler srcSampler, VkImageLayout srcLayout);
+    // P4-PROBE (temporary): blit processedImage -> dedicated diagDstImage with the melonDS wide
+    // transfer barrier, read back diagDstImage (READBACK-D), leave both images in presentable state.
+    void blitProcessedToDedicated(VkCommandBuffer cb);
+
+    // Task 6 atlas fix: applyFrame writes filterOutputImage, the copy engine moves it to atlasImage
+    // in the same CB, then submit-and-wait. presentAtlasToSwapchain records (CB must be already
+    // begun) the GENERAL->GENERAL barrier + atlas sampler blit into the swapchain.
+    void recordFilterChainPass(VkCommandBuffer cb, uint64_t frameCount, bool clearHistory);
+    void presentAtlasToSwapchain(VkCommandBuffer cb, uint32_t imgIdx);
+
+    // P2 in-frame readback of the applyFrame output. img is assumed to be in curLayout
+    // (COLOR_ATTACHMENT_OPTIMAL for processedImage and for filterOutputImage after the C1 restore;
+    // the default-path readback restores it to COLOR_ATTACHMENT_OPTIMAL to keep the invariant).
+    void readbackProcessedInFrame(VkCommandBuffer cb, VkImage img, VkImageLayout curLayout);
+    void readbackProcessedP1();
+    void readbackOffscreenDiag();
 };

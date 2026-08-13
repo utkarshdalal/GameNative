@@ -345,7 +345,26 @@ object PrefManager {
     var quickMenuLastTab: Int
         get() = getPref(QUICK_MENU_LAST_TAB, 0)
         set(value) {
-            setPref(QUICK_MENU_LAST_TAB, value.coerceIn(0, 6))
+            // 0..7: HUD..POWER (QuickMenuTab — a aba POWER veio no merge upstream
+            // PR #1698 e não pode ser clampada para 6/INVITE).
+            setPref(QUICK_MENU_LAST_TAB, value.coerceIn(0, 7))
+        }
+
+    private val HOME_BUTTON_STRAIGHT_TO_GAME = booleanPreferencesKey("home_button_straight_to_game")
+    var homeButtonStraightToGame: Boolean
+        get() = getPref(HOME_BUTTON_STRAIGHT_TO_GAME, false)
+        set(value) {
+            setPref(HOME_BUTTON_STRAIGHT_TO_GAME, value)
+        }
+
+    // Ghost-input gate (spec 2026-08-13): worn DS4 touchpads emit phantom DPAD/B/BACK
+    // keys and constant motion with a mixed JOYSTICK|POINTER source. Default ON silences
+    // the touchpad stream; users with a working touchpad can opt out here.
+    private val IGNORE_CONTROLLER_TOUCHPAD = booleanPreferencesKey("ignore_controller_touchpad")
+    var ignoreControllerTouchpad: Boolean
+        get() = getPref(IGNORE_CONTROLLER_TOUCHPAD, true)
+        set(value) {
+            setPref(IGNORE_CONTROLLER_TOUCHPAD, value)
         }
 
     private val SHOW_FPS = booleanPreferencesKey("show_fps")

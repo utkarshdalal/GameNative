@@ -68,6 +68,7 @@ internal fun ListViewCard(
     compatibilityStatus: GameCompatibilityStatus?,
     gameStats: GameCardStats?,
     context: Context,
+    hasShader: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isItemFocused by interactionSource.collectIsFocusedAsState()
@@ -137,6 +138,14 @@ internal fun ListViewCard(
                     imageModifier = Modifier.clip(RoundedCornerShape(10.dp)),
                     image = { iconUrl },
                 )
+                // M4 (spec 2026-08-12): shader-active badge on the icon's corner.
+                if (hasShader) {
+                    ShaderActiveBadge(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp),
+                    )
+                }
             }
 
             // Game info

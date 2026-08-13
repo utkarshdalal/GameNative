@@ -1,12 +1,20 @@
 package app.gamenative.events
 
 import kotlin.reflect.KClass
+import timber.log.Timber
 
 // written with the help of Claude 3.5
 sealed interface Event<T>
 
 class EventDispatcher {
-    val listeners = mutableMapOf<KClass<out Event<*>>, MutableList<Pair<String, EventListener<Event<*>, *>>>>()
+    /**
+     * Identity-keyed registry (spec 2026-08-12, M3 — C3). The key of every listener is the
+     * LAMBDA INSTANCE itself, matched by `===` on [off]. The old `listener.toString()`
+     * key failed whenever two different lambda instances produced the same toString()
+     * (stable val handlers re-created per recomposition churn off/on — if one `off()`
+     * failed its identity match, duplicate listeners accumulated forever).
+     */
+    val listeners = mutableMapOf<KClass<out Event<*>>, MutableList<Pair<Any, EventListener<Event<*>, *>>>>()
 
     open class EventListener<E : Event<T>, T>(
         val listener: (E) -> T,
@@ -28,21 +36,32 @@ class EventDispatcher {
     ) {
         val eventClass = E::class
         val typedListener = Pair(
-            listener.toString(),
+            listener,
             EventListener<Event<T>, T>({ event ->
                 // Log.d("EventDispatcher", "Dispatching event $event to $listener")
                 listener(event as E)
             }, once),
         )
         // Log.d("EventDispatcher", "Putting $typedListener in $eventClass")
-        listeners.getOrPut(eventClass) { mutableListOf() }.add(typedListener as Pair<String, EventListener<Event<*>, *>>)
+        listeners.getOrPut(eventClass) { mutableListOf() }.add(typedListener as Pair<Any, EventListener<Event<*>, *>>)
+        Timber.d("EventBus: on %s count=%d", eventClass.simpleName, listeners[eventClass]?.size ?: 0)
     }
 
     inline fun <reified E : Event<T>, T> off(noinline listener: (E) -> T) {
         val eventClass = E::class
+        val before = listeners[eventClass]?.size ?: 0
         listeners[eventClass]?.removeIf {
             // Log.d("EventDispatcher", "Removing if ${it.first} == $listener")
-            it.first == listener.toString()
+            it.first === listener
+        }
+        val after = listeners[eventClass]?.size ?: 0
+        if (before != after) {
+            Timber.d("EventBus: off %s count=%d", eventClass.simpleName, after)
+        } else {
+            // An off() that removed nothing is a red flag: a listener registered by a
+            // DIFFERENT lambda instance than the one being removed (C3 symptom). The
+            // identity registry makes this near-impossible; keep the log to catch strays.
+            Timber.w("EventBus: off %s matched NOTHING (count=%d)", eventClass.simpleName, after)
         }
     }
 
@@ -57,6 +76,16 @@ class EventDispatcher {
     fun clearAllListeners() {
         listeners.clear()
     }
+
+    /**
+     * Listener count per event class — the M8 instrumentation baseline (spec 2026-08-12):
+     * V1 accepts that KeyEvent/MotionEvent counts stay constant (±0) across 20 open/close
+     * cycles of menu + browser + edit mode.
+     */
+    fun listenerCount(): Map<String, Int> =
+        listeners.map { (eventClass, list) ->
+            (eventClass.simpleName ?: eventClass.toString()) to list.size
+        }.toMap()
 
     inline fun <reified E : Event<T>, reified T> emit(event: E, noinline resultAggregator: ((Array<T>) -> T)? = null): T? {
         val eventClass = E::class

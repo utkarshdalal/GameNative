@@ -1,5 +1,6 @@
 package app.gamenative.ui.component
 
+import android.os.SystemClock
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -18,6 +19,13 @@ import timber.log.Timber
  * The host process already knows which app it is serving, so nothing here needs an app id.
  */
 class SteamInviteState private constructor() {
+
+    /** Uptime when this state was created — i.e. when the game session opened. */
+    private val createdAt = SystemClock.uptimeMillis()
+
+    /** Last invite request consumed (dedupe key), for hosts that never clear their POLL. */
+    private var lastConsumedRequest: String? = null
+    private var lastConsumedAt: Long = 0L
 
     var friends by mutableStateOf<List<SteamOverlayClient.Friend>>(emptyList())
         private set
@@ -88,15 +96,28 @@ class SteamInviteState private constructor() {
      * True when the game has asked for its invite dialog -- i.e. the player pressed the game's
      * own "Invite friends" button. Consumes the request and pre-loads the friend list so the tab
      * is populated by the time it opens.
+     *
+     * Guards (spec 2026-08-11 quickmenu-invite-regression): a request must not pop the menu
+     * right at game start ([SESSION_GRACE_MS] — a stale request from a previous session would
+     * otherwise auto-open the menu and skip the pause the moment the game launches), and the
+     * same request is consumed only once per [REQUEST_DEDUPE_WINDOW_MS] so a host that never
+     * clears its POLL cannot make the menu auto-reopen forever.
      */
     suspend fun consumeGameInviteRequest(): Boolean {
         if (SteamBootstrap.getProcessStatus() !is SteamBootstrap.ProcessStatus.Ready) return false
+        if (SystemClock.uptimeMillis() - createdAt < SESSION_GRACE_MS) return false
 
         val request = SteamOverlayClient.pollOverlayRequest() ?: return false
         if (!request.isInviteRequest) {
             Timber.d("SteamInviteState: ignoring overlay request '${request.dialog}'")
             return false
         }
+
+        val key = "${request.dialog}|${request.lobbyId}"
+        val now = SystemClock.uptimeMillis()
+        if (key == lastConsumedRequest && now - lastConsumedAt < REQUEST_DEDUPE_WINDOW_MS) return false
+        lastConsumedRequest = key
+        lastConsumedAt = now
 
         Timber.i("SteamInviteState: game requested ${request.dialog} lobby=${request.lobbyId}")
         lastError = null
@@ -109,10 +130,20 @@ class SteamInviteState private constructor() {
         /**
          * Set while the menu is open because the game asked for it, so the host screen can skip
          * suspending the game. An invite dialog must not pause: the game has to keep running to
-         * receive the peer that's joining.
+         * receive the peer that's joining. Stores the uptime of the auto-open so a stale flag
+         * (from a previous open) can never leave the game unpaused — the host checks
+         * [OPEN_REQUEST_MAX_AGE_MS].
          */
+        const val OPEN_REQUEST_MAX_AGE_MS = 30_000L
+
+        /** Invite requests inside this window after the game session opens are ignored. */
+        const val SESSION_GRACE_MS = 20_000L
+
+        /** The same invite request is consumed at most once inside this window. */
+        const val REQUEST_DEDUPE_WINDOW_MS = 60_000L
+
         @Volatile
-        var openedForGameRequest: Boolean = false
+        var openedForGameRequest: Long = 0L
         fun createIfAvailable(container: Container?): SteamInviteState? =
             if (container != null && container.isLaunchBionicSteam) SteamInviteState() else null
     }

@@ -37,6 +37,48 @@ val copyDebugManifest by tasks.registering(Copy::class) {
     into(layout.buildDirectory.dir("generated/debugManifest"))
 }
 
+// =====================================================
+// librashader native build tasks
+// =====================================================
+
+val librashaderSourceDir = rootProject.file("librashader")
+val librashaderBuildDir = layout.buildDirectory.dir("generated/librashader")
+
+val ndkDir: File
+    get() {
+        val fromAndroid = android.ndkDirectory
+        if (fromAndroid.exists()) return fromAndroid
+        val fromEnv = System.getenv("ANDROID_NDK_HOME")
+        if (fromEnv != null && File(fromEnv).exists()) return File(fromEnv)
+        throw GradleException("ANDROID_NDK_HOME not set and ndkDirectory not found. Install NDK via SDK Manager.")
+    }
+
+val cargoBin: String
+    get() {
+        val home = System.getenv("HOME") ?: "/home/annapaula"
+        val candidates = listOf(
+            "$home/.cargo/bin/cargo",
+            "/usr/local/bin/cargo",
+            "/usr/bin/cargo"
+        )
+        for (c in candidates) { if (File(c).exists()) return c }
+        return ""
+    }
+
+data class AbiConfig(val abi: String, val rustTarget: String, val ndkClangPrefix: String)
+val abiConfigs = listOf(
+    AbiConfig("arm64-v8a",   "aarch64-linux-android",    "aarch64-linux-android"),
+    AbiConfig("armeabi-v7a", "armv7-linux-androideabi",  "armv7a-linux-androideabi"),
+    AbiConfig("x86_64",      "x86_64-linux-android",     "x86_64-linux-android")
+)
+
+val copyLibrashaderHeaders by tasks.registering(Copy::class) {
+    from(librashaderSourceDir.resolve("include")) {
+        include("librashader.h", "librashader_ld.h")
+    }
+    into(librashaderBuildDir.map { it.dir("include") })
+}
+
 android {
     namespace = "app.gamenative"
     compileSdk = 36
@@ -220,6 +262,18 @@ android {
             // 'extractNativeLibs' was not enough to keep the jniLibs and
             // the libs went missing after adding on-demand feature delivery
             useLegacyPackaging = true
+            // CMake builds adrenotools hook libs alongside vulkan_renderer;
+            // prebuilt copies exist in jniLibs — pick the CMake-built ones
+            pickFirsts.addAll(listOf(
+                "lib/arm64-v8a/libhook_impl.so",
+                "lib/arm64-v8a/libmain_hook.so",
+                "lib/arm64-v8a/libfile_redirect_hook.so",
+                "lib/arm64-v8a/libgsl_alloc_hook.so",
+                "lib/armeabi-v7a/libhook_impl.so",
+                "lib/armeabi-v7a/libmain_hook.so",
+                "lib/armeabi-v7a/libfile_redirect_hook.so",
+                "lib/armeabi-v7a/libgsl_alloc_hook.so",
+            ))
         }
     }
     testOptions {
@@ -268,6 +322,11 @@ android {
                 srcDirs("src/modern/jniLibs")
             }
         }
+        getByName("main") {
+            jniLibs {
+                srcDir(librashaderBuildDir.map { it.dir("jniLibs") })
+            }
+        }
         getByName("debug") {
             assets.srcDir(copyDebugManifest)
         }
@@ -306,13 +365,12 @@ android {
     //     }
     // }
 
-    // cmake on release builds a proot that fails to process ld-2.31.so
-    // externalNativeBuild {
-    //     cmake {
-    //         path = file("src/main/cpp/CMakeLists.txt")
-    //         version = "3.22.1"
-    //     }
-    // }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
 
     // (For now) Uncomment for LeakCanary to work.
     // configurations {
@@ -416,4 +474,94 @@ dependencies {
 
     "modernXrImplementation"("com.meta.horizon.platform.sdk:core-kotlin:0.2.2")
     "modernXrImplementation"("com.meta.horizon.platform.sdk:iap-kotlin:0.2.2")
+}
+
+// =====================================================
+// Per-ABI librashader build and copy tasks
+// =====================================================
+
+abiConfigs.forEach { config ->
+    val taskName = "compileLibrashader${config.abi.replaceFirstChar { it.uppercase() }}"
+
+    tasks.register(taskName) {
+        dependsOn(copyLibrashaderHeaders)
+        doLast {
+            val ndk = ndkDir
+            val toolchainDir = ndk.resolve("toolchains/llvm/prebuilt/linux-x86_64/bin")
+            val clang = toolchainDir.resolve("${config.ndkClangPrefix}26-clang").absolutePath
+            val clangxx = toolchainDir.resolve("${config.ndkClangPrefix}26-clang++").absolutePath
+            val ar = toolchainDir.resolve("llvm-ar").absolutePath
+            val rustTargetUpper = config.rustTarget.replace('-', '_').uppercase()
+
+            val env = mapOf(
+                "CC_${config.rustTarget}" to clang,
+                "CXX_${config.rustTarget}" to clangxx,
+                "AR_${config.rustTarget}" to ar,
+                "CARGO_TARGET_${rustTargetUpper}_LINKER" to clang,
+                "CARGO_TARGET_${rustTargetUpper}_RUSTFLAGS" to "-C link-arg=-Wl,-soname,liblibrashader.so",
+                "ANDROID_NDK_HOME" to ndk.absolutePath
+            )
+
+            if (cargoBin.isEmpty()) {
+                logger.warn("cargo not found, skipping librashader build for ${config.abi}")
+            } else {
+                exec {
+                    workingDir = librashaderSourceDir
+                    environment(env)
+                    commandLine(
+                        cargoBin,
+                        "ndk",
+                        "--target", config.rustTarget,
+                        "--platform", "26",
+                        "--",
+                        "build",
+                        "--package", "librashader-capi",
+                        "--profile", "optimized",
+                        "--no-default-features",
+                        "--features", "runtime-vulkan,stable"
+                    )
+                }
+            }
+        }
+    }
+
+    val copyTaskName = "copyLibrashader${config.abi.replaceFirstChar { it.uppercase() }}"
+    tasks.register(copyTaskName) {
+        dependsOn(taskName)
+        doLast {
+            val profileDir = "optimized"
+            val srcSo = librashaderSourceDir.resolve("target/${config.rustTarget}/$profileDir/liblibrashader_capi.so")
+            val jniLibsDir = librashaderBuildDir.map { it.dir("jniLibs/${config.abi}") }.get().asFile
+            jniLibsDir.mkdirs()
+
+            if (srcSo.exists()) {
+                srcSo.copyTo(jniLibsDir.resolve("liblibrashader.so"), overwrite = true)
+                logger.lifecycle("librashader: copied ${srcSo} -> ${jniLibsDir}/liblibrashader.so")
+            } else {
+                val altSo = librashaderSourceDir.resolve("target/${config.rustTarget}/release/liblibrashader_capi.so")
+                if (altSo.exists()) {
+                    altSo.copyTo(jniLibsDir.resolve("liblibrashader.so"), overwrite = true)
+                    logger.lifecycle("librashader: copied (from release) ${altSo} -> ${jniLibsDir}/liblibrashader.so")
+                } else {
+                    throw GradleException("librashader .so not found at ${srcSo} or ${altSo}")
+                }
+            }
+        }
+    }
+}
+
+val buildLibrashaderAll by tasks.registering {
+    dependsOn(
+        abiConfigs.flatMap { config ->
+            val abi = config.abi.replaceFirstChar { it.uppercase() }
+            listOf(
+                tasks.named("compileLibrashader$abi"),
+                tasks.named("copyLibrashader$abi")
+            )
+        }
+    )
+}
+
+tasks.named("preBuild") {
+    dependsOn(buildLibrashaderAll)
 }

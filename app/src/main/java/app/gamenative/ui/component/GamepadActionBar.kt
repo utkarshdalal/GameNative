@@ -54,6 +54,8 @@ enum class GamepadButton(@field:DrawableRes val iconRes: Int) {
     RT(InputIcons.Xbox.rt),
     START(InputIcons.Xbox.start),
     SELECT(InputIcons.Xbox.select),
+    /** System/Home button (PS/Xbox guide) — used by the shader browser's close hint. */
+    GUIDE(InputIcons.Xbox.guide),
     DPAD(InputIcons.Xbox.dpad),
     DPAD_UP(InputIcons.Xbox.dpadUp),
     DPAD_DOWN(InputIcons.Xbox.dpadDown),

@@ -4,3 +4,7 @@
 [submodule "app/src/main/cpp/lsfg-vk-android"]
 	path = app/src/main/cpp/lsfg-vk-android
 	url = https://github.com/GameNative/lsfg-vk-android.git
+
+[submodule "librashader"]
+	path = librashader
+	url = https://github.com/SnowflakePowered/librashader.git

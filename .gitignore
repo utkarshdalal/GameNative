@@ -72,3 +72,14 @@ app/src/main/cpp/steambootstrap/steam_bootstrap.c
 
 # Vendored SDL2 headers (fetched for evshim build, not pushed)
 app/src/main/cpp/third_party/SDL2/
+
+# External dependencies
+melonDS-android-0.7.0*/
+librashader/
+ARMSX2/
+RetroArch/
+nowinandroid/
+
+# Shader catalog sync: local tarball/extraction cache (spec §3.3 — never commit)
+tools/shaders/cache/
+.reasonix/

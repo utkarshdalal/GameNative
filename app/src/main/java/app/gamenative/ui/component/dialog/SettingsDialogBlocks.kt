@@ -1,6 +1,19 @@
 package app.gamenative.ui.component.dialog
 
+import app.gamenative.ui.component.gamepadFocusIndex
+
+
+import app.gamenative.ui.component.gamepadBackHandler
+
+
+import app.gamenative.ui.component.gamepadSelectable
+
+
+import app.gamenative.ui.component.GamepadFocusScope
+
+
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -8,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +42,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -60,9 +76,14 @@ fun GestureRow(
     subtitle: String,
     enabled: Boolean,
     onEnabledChange: (Boolean) -> Unit,
+    focusRequester: FocusRequester? = null,
     expandedContent: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    GestureBlock {
+    GestureBlock(
+        modifier = if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier,
+        gamepadSelected = enabled,
+        gamepadOnActivate = { onEnabledChange(!enabled) },
+    ) {
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(title) },
@@ -86,11 +107,31 @@ fun GestureRow(
 }
 
 @Composable
-fun GestureBlock(content: @Composable ColumnScope.() -> Unit) {
+fun GestureBlock(
+    modifier: Modifier = Modifier,
+    gamepadSelected: Boolean = false,
+    gamepadOnActivate: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .then(
+                if (gamepadOnActivate != null) {
+                    // The block itself becomes a gamepad target: A toggles the row,
+                    // selected state = the switch state (never focus).
+                    Modifier.gamepadSelectable(
+                        selected = gamepadSelected,
+                        onClick = gamepadOnActivate,
+                        shape = RoundedCornerShape(12.dp),
+                        interactionSource = interactionSource,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
         shape = RoundedCornerShape(12.dp),
         color = PluviaBackground,
         border = androidx.compose.foundation.BorderStroke(1.dp, PluviaBorder.copy(alpha = 0.55f)),
@@ -200,49 +241,69 @@ fun CategorizedActionPicker(
     }
 
     if (showDialog) {
+        val pickerScopeInitialFocus = remember { FocusRequester() }
+        val closePicker = { showDialog = false }
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = closePicker,
             containerColor = PluviaBackground,
             title = { Text(dialogTitle) },
             text = {
-                LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                    categories.forEach { category ->
-                        item {
-                            Text(
-                                text = category.header,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
-                            )
-                        }
-                        items(category.actions) { (actionKey, actionLabel) ->
-                            val isSelected = actionKey == currentValue
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onValueSelected(actionKey)
-                                        showDialog = false
-                                    },
-                                color = if (isSelected) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    PluviaSurface
-                                },
-                            ) {
+                // Standalone window: install navigator/bridge + B-close (G1/G10).
+                GamepadFocusScope(
+                    backAction = closePicker,
+                    initialFocusRequester = pickerScopeInitialFocus,
+                ) {
+                    LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                        categories.forEachIndexed { categoryIndex, category ->
+                            item {
                                 Text(
-                                    text = actionLabel,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    text = category.header,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                                 )
+                            }
+                            itemsIndexed(category.actions) { actionIndex, (actionKey, actionLabel) ->
+                                val isSelected = actionKey == currentValue
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .then(
+                                            if (categoryIndex == 0 && actionIndex == 0) {
+                                                Modifier.focusRequester(pickerScopeInitialFocus)
+                                            } else {
+                                                Modifier
+                                            }
+                                        )
+                                        .gamepadSelectable(
+                                            selected = isSelected,
+                                            onClick = {
+                                                onValueSelected(actionKey)
+                                                showDialog = false
+                                            },
+                                            shape = RoundedCornerShape(8.dp),
+                                            interactionSource = remember { MutableInteractionSource() },
+                                        ),
+                                    color = if (isSelected) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        PluviaSurface
+                                    },
+                                ) {
+                                    Text(
+                                        text = actionLabel,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    )
+                                }
                             }
                         }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showDialog = false }) {
+                TextButton(onClick = closePicker) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },

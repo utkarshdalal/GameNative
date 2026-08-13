@@ -11,6 +11,7 @@ import android.graphics.Color.TRANSPARENT
 import android.hardware.input.InputManager
 import android.os.Build
 import android.os.Bundle
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.OrientationEventListener
@@ -58,6 +59,7 @@ import app.gamenative.ui.util.SnackbarManager
 import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
+import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.ControllerManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -577,7 +579,29 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // M8 (spec 2026-08-12): GamepadTrace — every gamepad key entering the bus, with the
+        // device/source identity the routing decision uses. Debug-only (Timber.d).
+        if (ExternalController.isGameController(event.device)) {
+            Timber.d(
+                "GamepadTrace: key dev=%s src=0x%x action=%d code=%d repeat=%d",
+                event.device?.name, event.device?.sources ?: 0, event.action, event.keyCode, event.repeatCount,
+            )
+        }
         // Log.d("MainActivity$index", "dispatchKeyEvent(${event.keyCode}):\n$event")
+
+        // Ghost-input gate (evidence: logcat 2026-08-13 — "Wireless Controller Touchpad"
+        // emitted 63 phantom DPAD/B/BACK keys in ~9 min with the real stick idle; a worn
+        // DS4 touchpad reports a mixed JOYSTICK|POINTER source). Pointer-class streams on a
+        // game controller are never physical buttons: consume BEFORE the bus so ghosts
+        // can't reach the game, the overlay or the activity back path. Gated by
+        // PrefManager.ignoreControllerTouchpad (default ON) so a working touchpad can be
+        // re-exposed; a future touchpad→mouse feature plugs into this exact point.
+        if (PrefManager.ignoreControllerTouchpad &&
+            ExternalController.isGameController(event.device) &&
+            (event.source and InputDevice.SOURCE_CLASS_POINTER) != 0
+        ) {
+            return true
+        }
 
         var eventDispatched = PluviaApp.events.emit(AndroidEvent.KeyEvent(event)) { keyEvent ->
             keyEvent.any { it }
@@ -607,7 +631,26 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchGenericMotionEvent(ev: MotionEvent?): Boolean {
+        // M8 (spec 2026-08-12): GamepadTrace — every gamepad motion entering the bus.
+        if (ev != null && ExternalController.isGameController(ev.device)) {
+            Timber.d(
+                "GamepadTrace: motion dev=%s src=0x%x action=%d axes=[x=%.2f y=%.2f hatX=%.2f hatY=%.2f]",
+                ev.device?.name, ev.device?.sources ?: 0, ev.actionMasked,
+                ev.getAxisValue(MotionEvent.AXIS_X), ev.getAxisValue(MotionEvent.AXIS_Y),
+                ev.getAxisValue(MotionEvent.AXIS_HAT_X), ev.getAxisValue(MotionEvent.AXIS_HAT_Y),
+            )
+        }
         // Log.d("MainActivity$index", "dispatchGenericMotionEvent(${ev?.deviceId}:${ev?.device?.name}):\n$ev")
+
+        // Ghost-input gate (same rule and evidence as dispatchKeyEvent): the touchpad's
+        // absolute finger position arrives on AXIS_X/AXIS_Y and would be routed to the
+        // game as phantom stick motion (mag 1.0) while the user isn't touching anything.
+        if (PrefManager.ignoreControllerTouchpad && ev != null &&
+            ExternalController.isGameController(ev.device) &&
+            (ev.source and InputDevice.SOURCE_CLASS_POINTER) != 0
+        ) {
+            return true
+        }
 
         val eventDispatched = PluviaApp.events.emit(AndroidEvent.MotionEvent(ev)) { event ->
             event.any { it }

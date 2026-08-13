@@ -6,27 +6,29 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wno-unused-function -Wimplicit-function
 set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -s")
 
 #add_subdirectory(proot)
-add_subdirectory(virglrenderer)
-add_subdirectory(patchelf)
+# winlator is prebuilt as jniLibs — skip to avoid missing source files
+#add_subdirectory(virglrenderer)
+#add_subdirectory(patchelf)
 add_subdirectory(extras/adrenotools)
 
-add_library(winlator SHARED
-            winlator/drawable.c
-            winlator/sysvshared_memory.c
-            winlator/xconnector_epoll.c
-            winlator/alsa_client.c
-            winlator/patchelf_wrapper.cpp)
-
-target_link_libraries(winlator
-                      log
-                      android
-                      jnigraphics
-                      aaudio
-                      EGL
-                      GLESv2
-                      GLESv3)
-
-target_link_options(winlator PRIVATE -Wl,-z,max-page-size=16384)
+# winlator target is prebuilt — do not compile from source
+#add_library(winlator SHARED
+#            winlator/drawable.c
+#            winlator/sysvshared_memory.c
+#            winlator/xconnector_epoll.c
+#            winlator/alsa_client.c
+#            winlator/patchelf_wrapper.cpp)
+#
+#target_link_libraries(winlator
+#                      log
+#                      android
+#                      jnigraphics
+#                      aaudio
+#                      EGL
+#                      GLESv2
+#                      GLESv3)
+#
+#target_link_options(winlator PRIVATE -Wl,-z,max-page-size=16384)
 
 
 add_custom_command(
@@ -49,10 +51,13 @@ add_library(vulkan_renderer SHARED
             winlator/vulkan_jni.cpp
             winlator/VulkanRendererContext.cpp
             winlator/VulkanRendererScanout.cpp
+            winlator/VulkanLibrashader.cpp
             ${CMAKE_CURRENT_BINARY_DIR}/window_vert.h
             ${CMAKE_CURRENT_BINARY_DIR}/window_frag.h)
 
-target_include_directories(vulkan_renderer PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(vulkan_renderer PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../build/generated/librashader/include)
 
 target_compile_options(vulkan_renderer PRIVATE
                        -Wall -Wextra -fvisibility=hidden -std=c++17)

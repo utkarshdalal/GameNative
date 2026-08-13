@@ -1,5 +1,14 @@
 package app.gamenative.ui.component.dialog
 
+import app.gamenative.ui.component.gamepadAdjustableRow
+
+
+import app.gamenative.ui.component.gamepadBackHandler
+
+
+import app.gamenative.ui.component.GamepadFocusScope
+
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,15 +29,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -63,8 +77,15 @@ fun ShooterModeSettingsDialog(
             dismissOnClickOutside = false,
         ),
     ) {
+        val firstItemFocusRequester = remember { FocusRequester() }
+        GamepadFocusScope(
+            backAction = onDismiss,
+            initialFocusRequester = firstItemFocusRequester,
+        ) {
         Scaffold(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .gamepadBackHandler(onDismiss),
             containerColor = PluviaBackground,
             topBar = {
                 CenterAlignedTopAppBar(
@@ -120,6 +141,7 @@ fun ShooterModeSettingsDialog(
                             values = ShooterModeConfig.MOVEMENT_TYPES,
                             labels = movementTypeLabels(),
                             onValueChange = { config = config.copy(movementType = it) },
+                            focusRequester = firstItemFocusRequester,
                         )
 
                         ShooterDropdownBlock(
@@ -372,6 +394,7 @@ fun ShooterModeSettingsDialog(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -383,6 +406,7 @@ private fun ShooterDropdownBlock(
     labels: List<String>,
     onValueChange: (String) -> Unit,
     compact: Boolean = false,
+    focusRequester: FocusRequester? = null,
 ) {
     val selectedIndex = values.indexOf(value).coerceAtLeast(0)
     val content: @Composable () -> Unit = {
@@ -393,6 +417,7 @@ private fun ShooterDropdownBlock(
             value = selectedIndex,
             items = labels,
             onItemSelected = { index -> onValueChange(values[index]) },
+            modifier = if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier,
         )
     }
 
@@ -414,6 +439,12 @@ private fun SliderSettingBlock(
     compact: Boolean = false,
 ) {
     val content: @Composable () -> Unit = {
+        val interactionSource = remember { MutableInteractionSource() }
+        var isLocked by remember { mutableStateOf(false) }
+        // A-lock (G4): A/DPAD_CENTER locks the row, L/R adjusts in 5%-of-range steps,
+        // raw B unlocks; the lock resets when focus leaves the row.
+        val adjustStep = (valueRange.endInclusive - valueRange.start) / 20f
+
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Text(
                 text = title,
@@ -429,7 +460,18 @@ private fun SliderSettingBlock(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
+                    .padding(top = 8.dp)
+                    .gamepadAdjustableRow(
+                        locked = isLocked,
+                        onLockChange = { isLocked = it },
+                        onAdjust = { delta ->
+                            onValueChange(
+                                (value + delta * adjustStep).coerceIn(valueRange.start, valueRange.endInclusive),
+                            )
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        interactionSource = interactionSource,
+                    ),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -437,13 +479,24 @@ private fun SliderSettingBlock(
                     value = value,
                     onValueChange = onValueChange,
                     valueRange = valueRange,
-                    modifier = Modifier.weight(1f),
+                    // The row is the gamepad focus target; the slider itself must not
+                    // steal focus (its native L/R handling would fight the lock).
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusProperties { canFocus = false },
                 )
                 Text(
                     text = valueText,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                 )
+                if (isLocked) {
+                    Text(
+                        text = stringResource(R.string.quick_menu_locked_indicator),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         }
     }

@@ -94,6 +94,7 @@ internal fun GridViewCard(
     showFocusGlow: Boolean,
     context: Context,
     animateStats: Boolean = true,
+    hasShader: Boolean = false,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
     val isCapsule = paneType == PaneType.GRID_CAPSULE
@@ -349,24 +350,34 @@ internal fun GridViewCard(
                 }
 
                 // Top-right: seed-game badge (store rec), source icon for normal cards
-                if (appInfo.isRecommended && appInfo.recStoreCard) {
-                    if (!appInfo.recSeedIconUrl.isNullOrBlank() || appInfo.recSeedCount >= 2) {
-                        RecSimilarBadge(
-                            iconUrl = appInfo.recSeedIconUrl,
-                            extraCount = (appInfo.recSeedCount - 1).coerceAtLeast(0),
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(top = topOverlayPadding, end = topOverlayPadding),
+                // + M4 shader badge below it (per-game store enabled — spec 2026-08-12).
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = topOverlayPadding, end = topOverlayPadding),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (appInfo.isRecommended && appInfo.recStoreCard) {
+                        if (!appInfo.recSeedIconUrl.isNullOrBlank() || appInfo.recSeedCount >= 2) {
+                            RecSimilarBadge(
+                                iconUrl = appInfo.recSeedIconUrl,
+                                extraCount = (appInfo.recSeedCount - 1).coerceAtLeast(0),
+                            )
+                        }
+                    } else if (!appInfo.isRecommended) {
+                        // Original offset preserved: the icon used `topIconPadding` (10/8dp)
+                        // before the badge Column (4/8dp overlay) wrapped it — compensate the
+                        // difference so the source icon keeps its previous position.
+                        GameSourceIcon(
+                            gameSource = appInfo.gameSource,
+                            modifier = Modifier.padding(top = topIconPadding - topOverlayPadding),
+                            iconSize = if (isCapsule) 14 else 12,
                         )
                     }
-                } else if (!appInfo.isRecommended) {
-                    GameSourceIcon(
-                        gameSource = appInfo.gameSource,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = topIconPadding, end = topIconPadding),
-                        iconSize = if (isCapsule) 14 else 12,
-                    )
+                    if (hasShader) {
+                        ShaderActiveBadge()
+                    }
                 }
             }
         }

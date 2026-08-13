@@ -252,6 +252,24 @@
     <string name="open_navigation_menu">Open Navigation Menu</string>
     <string name="quick_menu_title">Quick Menu</string>
     <string name="quick_menu_back">Back</string>
+    <string name="quick_menu_off">Off</string>
+    <string name="quick_menu_x_multiplier">%1$dx</string>
+    <string name="quick_menu_decimal_x_multiplier">%1$.2fx</string>
+    <string name="quick_menu_locked_indicator">●</string>
+    <string name="quick_menu_minus">-</string>
+    <string name="quick_menu_plus">+</string>
+    <string name="quick_menu_wine_32bit_suffix"> *32</string>
+    <plurals name="quick_menu_n_passes">
+        <item quantity="one">%d pass</item>
+        <item quantity="other">%d passes</item>
+    </plurals>
+    <plurals name="quick_menu_n_presets">
+        <item quantity="one">%d preset</item>
+        <item quantity="other">%d presets</item>
+    </plurals>
+    <string name="action_back">Back</string>
+    <string name="action_switch_tab">Tab</string>
+    <string name="action_page_scroll">Page</string>
     <string name="display_brightness">Display brightness</string>
     <string name="screen_effects">Screen Effects</string>
     <string name="screen_effects_live_preview">Changes apply instantly to the current game.</string>
@@ -1091,6 +1109,10 @@
     <string name="settings_interface_warn_before_exit_subtitle">Require double back press to exit — first press shows a warning</string>
     <string name="settings_interface_show_gamepad_hints_title">Show controller hints</string>
     <string name="settings_interface_show_gamepad_hints_subtitle">Show the controller button hints bar at the bottom of the screen</string>
+    <string name="settings_interface_home_straight_to_game_title">Home button returns to the game</string>
+    <string name="settings_interface_home_straight_to_game_subtitle">With the in-game menu open, Home closes everything and resumes the game instead of showing the Play screen</string>
+    <string name="settings_interface_ignore_controller_touchpad_title">Ignore controller touchpad</string>
+    <string name="settings_interface_ignore_controller_touchpad_subtitle">Silences keys and motion from the controller touchpad — useful when a worn controller sends phantom inputs</string>
     <string name="settings_interface_icon_style">Icon style</string>
     <string name="settings_interface_custom_games">Custom Games</string>
     <string name="settings_interface_custom_game_import_as_steam">Import custom games as Steam games</string>
@@ -1433,6 +1455,57 @@
 
     <!-- Gamepad Actions -->
     <string name="action_select">Select</string>
+    <!-- RetroArch shader panel (localized per project policy; EN default) -->
+    <string name="retroarch_shaders_title">RetroArch Shaders</string>
+    <string name="shader_pick_preset">Pick a preset below</string>
+    <string name="shader_selected_not_downloaded">Not downloaded — re-pick in browser</string>
+    <string name="shader_off">Disabled for this game</string>
+    <string name="shader_search">Search presets…</string>
+    <string name="shader_clear_search">Clear search</string>
+    <string name="shader_renderer_native_title">Renderer-native effects</string>
+    <string name="shader_renderer_native_subtitle">Built into the renderer · complement RetroArch shaders · FSR · Scaling · Toon · FXAA · Vivid · CRT · NTSC</string>
+    <string name="shader_cat_crt">CRT</string>
+    <string name="shader_cat_lcd">LCD</string>
+    <string name="shader_cat_interpolation">Upscaling</string>
+    <string name="shader_cat_misc">Effects &amp; Misc</string>
+    <string name="shader_cat_film">Film</string>
+    <string name="shader_cat_cel">Cel Shading</string>
+    <string name="shader_cat_hdr">HDR</string>
+    <string name="shader_cat_ntsc">NTSC / Composite</string>
+    <string name="shader_cat_reshade">ReShade</string>
+    <string name="shader_cat_nearest">Scaling</string>
+    <string name="shader_cat_bilinear">Scaling</string>
+    <string name="shader_cat_stock">Stock</string>
+    <!-- Full-screen shader browser (spec 2026-08-11-shader-browser-design) -->
+    <string name="shader_browser_title">Shaders</string>
+    <string name="shader_browser_back">Back</string>
+    <string name="shader_browser_action_select">Select</string>
+    <string name="shader_browser_action_close">Back to game</string>
+    <string name="shader_browser_action_prev_page">Prev page</string>
+    <string name="shader_browser_action_next_page">Next page</string>
+    <string name="shader_browse">Browse shaders</string>
+    <string name="shader_browse_subtitle">Explore the full catalog — nothing is pre-installed</string>
+    <string name="shader_load_more">Show more (%1$d more)</string>
+    <string name="shader_no_results">No shaders match "%1$s"</string>
+    <string name="shader_recents">Recently used</string>
+    <string name="shader_favorites">Favorites</string>
+    <string name="shader_favorite">Favorite</string>
+    <string name="shader_browser_action_favorite">Favorite</string>
+    <string name="shader_heavy">Heavy (multi-pass)</string>
+    <string name="library_shader_active">Shader active</string>
+    <string name="shader_not_downloaded">Not downloaded</string>
+    <string name="shader_broken">Unavailable</string>
+    <string name="shader_cat_root">Essentials</string>
+    <string name="shader_family_sections">Sections</string>
+    <string name="shader_catalog_missing">Shader catalog unavailable</string>
+    <string name="shader_downloading">Downloading shader… %1$d%%</string>
+    <string name="shader_download_cancel_hint">B or long-press cancels</string>
+    <string name="shader_double_click_hint">Press again to apply and close</string>
+    <string name="shader_download_failed">Download failed</string>
+    <string name="shader_metered_title">Download on mobile data?</string>
+    <string name="shader_metered_body">You are on a metered connection. Download this shader (%1$s)?</string>
+    <string name="shader_download_confirm">Download</string>
+    <string name="shader_download_no_space_hint">Free at least %1$s to install this shader</string>
     <string name="action_refresh">Refresh</string>
     <string name="action_details">Details</string>
     <string name="action_add_game">Add Game</string>
@@ -2047,8 +2120,10 @@
     <!-- Bionic FG (AI) Frame Generation -->
     <string name="steam_invite_tab_title">Invite</string>
     <string name="steam_invite_header">%1$d friends</string>
+    <string name="steam_invite_no_friends">No friends online right now. Invite from the game\'s friend list instead.</string>
     <string name="steam_invite_joinable">In this game — tap to join</string>
     <string name="steam_invite_unavailable">Steam client not ready</string>
+    <string name="steam_invite_retry">Press X to refresh</string>
     <string name="steam_invite_failed">Invite failed — your game isn\'t in a joinable session</string>
     <string name="steam_join_failed">Couldn\'t join — their session may have closed</string>
     <string name="steam_invite_sent">Invite sent</string>
