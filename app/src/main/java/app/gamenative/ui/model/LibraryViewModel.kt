@@ -1117,28 +1117,31 @@ class LibraryViewModel @Inject constructor(
             favoriteEligibleAppIds = favoriteEligible
 
             _state.update {
-                if (generation != filterGeneration.get()) return@update
-                it.copy(
-                    appInfoList = pagedList,
-                    currentPaginationPage = clampedPage + 1, // visual display is not 0 indexed
-                    lastPaginationPage = lastPageInCurrentFilter + 1,
-                    totalAppsInFilter = totalFound,
-                    isLoading = false, // Loading complete
-                    // Per-source counts for tab badges
-                    // Use user prefs + auth state only (not current tab) so badges stay stable across tab switches
-                    allCount = (if (currentState.showSteamInLibrary) steamEntries.size else 0) +
-                        (if (currentState.showCustomGamesInLibrary) customEntries.size else 0) +
-                        (if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0) +
-                        (if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0) +
-                        (if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0),
-                    steamCount = if (currentState.showSteamInLibrary) steamEntries.size else 0,
-                    gogCount = if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0,
-                    epicCount = if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0,
-                    amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
-                    localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
-                    steamCollectionCounts = steamCollectionCounts,
-                    favoritesCount = FavoritesUtils.countPresent(favoriteIds, favoriteEligible),
-                )
+                if (generation == filterGeneration.get()) {
+                    it.copy(
+                        appInfoList = pagedList,
+                        currentPaginationPage = clampedPage + 1, // visual display is not 0 indexed
+                        lastPaginationPage = lastPageInCurrentFilter + 1,
+                        totalAppsInFilter = totalFound,
+                        isLoading = false, // Loading complete
+                        // Per-source counts for tab badges
+                        // Use user prefs + auth state only (not current tab) so badges stay stable across tab switches
+                        allCount = (if (currentState.showSteamInLibrary) steamEntries.size else 0) +
+                            (if (currentState.showCustomGamesInLibrary) customEntries.size else 0) +
+                            (if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0) +
+                            (if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0) +
+                            (if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0),
+                        steamCount = if (currentState.showSteamInLibrary) steamEntries.size else 0,
+                        gogCount = if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0,
+                        epicCount = if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0,
+                        amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
+                        localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
+                        steamCollectionCounts = steamCollectionCounts,
+                        favoritesCount = FavoritesUtils.countPresent(favoriteIds, favoriteEligible),
+                    )
+                } else {
+                    it
+                }
             }
         }
         filterJob = job

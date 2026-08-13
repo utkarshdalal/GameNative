@@ -80,7 +80,7 @@ object FavoritesManager {
     fun isFavorite(appId: String): Boolean = _favorites.value.contains(appId)
 
     /** Adds the game if it is not a favorite yet, or removes it if it already is. */
-    fun toggle(appId: String): FavoriteMutation? {
+    internal fun toggle(appId: String): FavoriteMutation? {
         synchronized(lock) {
             return setFavoriteLocked(appId, !isFavorite(appId))
         }
@@ -97,7 +97,7 @@ object FavoritesManager {
      * Snackbar actions can outlive several subsequent mutations, so an app id alone is not enough
      * to identify a valid undo target.
      */
-    fun undo(mutation: FavoriteMutation): Boolean {
+    internal fun undo(mutation: FavoriteMutation): Boolean {
         synchronized(lock) {
             val currentFavorite = isFavorite(mutation.appId)
             if (revisions[mutation.appId] != mutation.revision ||
