@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.net.Uri
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
@@ -13,6 +14,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import java.net.URLEncoder
+import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,10 +36,12 @@ object WishlistWebViewAdder {
 
     private const val TAG = "SteamWishlist"
     private const val STORE = "https://store.steampowered.com"
+    private const val STORE_HOST = "store.steampowered.com"
     private const val STORE_UA =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
     private const val TIMEOUT_MS = 15_000L
     private val BLOCKED = Regex("\\.(jpg|jpeg|png|gif|webp|avif|svg|ico|mp4|m4s|webm|ttf|woff2?|css)(\\?|$)")
+    private val STORE_COOKIES = listOf("steamLoginSecure", "birthtime", "lastagecheckage", "wantsmatureconctent")
 
     @SuppressLint("SetJavaScriptEnabled")
     suspend fun add(context: Context, steamId: Long, token: String, appId: Int, campaignId: String): Boolean =
@@ -49,6 +53,9 @@ object WishlistWebViewAdder {
                 return@withContext false
             }
             val done = CompletableDeferred<Boolean>()
+            // Secret shared only with the main frame's injected script; a foreign frame that also
+            // sees the AndroidWishlist bridge cannot fabricate a result without it.
+            val nonce = UUID.randomUUID().toString().replace("-", "")
 
             val cookieManager = CookieManager.getInstance()
             cookieManager.setAcceptCookie(true)
@@ -60,71 +67,97 @@ object WishlistWebViewAdder {
             cookieManager.flush()
 
             val webView = WebView(activity)
-            cookieManager.setAcceptThirdPartyCookies(webView, true)
-            webView.settings.apply {
-                javaScriptEnabled = true
-                domStorageEnabled = true
-                blockNetworkImage = true
-                loadsImagesAutomatically = false
-                mediaPlaybackRequiresUserGesture = true
-                userAgentString = STORE_UA
-            }
-            webView.alpha = 0f
-            parent.addView(webView, ViewGroup.LayoutParams(1, 1))
+            var injectRunnable: Runnable? = null
+            var destroyed = false
+            try {
+                cookieManager.setAcceptThirdPartyCookies(webView, true)
+                webView.settings.apply {
+                    javaScriptEnabled = true
+                    domStorageEnabled = true
+                    blockNetworkImage = true
+                    loadsImagesAutomatically = false
+                    mediaPlaybackRequiresUserGesture = true
+                    userAgentString = STORE_UA
+                }
+                webView.alpha = 0f
+                parent.addView(webView, ViewGroup.LayoutParams(1, 1))
 
-            fun finish(result: Boolean) {
-                if (done.isCompleted) return
-                done.complete(result)
-            }
+                fun finish(result: Boolean) {
+                    if (!done.isCompleted) done.complete(result)
+                }
 
-            webView.addJavascriptInterface(
-                object {
-                    @JavascriptInterface
-                    fun onResult(json: String) {
-                        val ok = try {
-                            JSONObject(json).optBoolean("success")
-                        } catch (e: Exception) {
-                            false
+                webView.addJavascriptInterface(
+                    object {
+                        @JavascriptInterface
+                        fun onResult(callbackNonce: String, json: String) {
+                            if (callbackNonce != nonce) {
+                                Timber.tag(TAG).w("ignoring bridge call with bad nonce")
+                                return
+                            }
+                            val ok = try {
+                                JSONObject(json).optBoolean("success")
+                            } catch (e: Exception) {
+                                false
+                            }
+                            Timber.tag(TAG).i("webview addtowishlist result=$json -> $ok")
+                            finish(ok)
                         }
-                        Timber.tag(TAG).i("webview addtowishlist result=$json -> $ok")
-                        finish(ok)
+                    },
+                    "AndroidWishlist",
+                )
+
+                var posted = false
+                webView.webViewClient = object : WebViewClient() {
+                    override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
+                        val u = request?.url?.toString()?.lowercase() ?: return null
+                        val block = u.contains("/store_trailers/") || u.contains("video.akamai") || BLOCKED.containsMatchIn(u)
+                        return if (block) WebResourceResponse("text/plain", "utf-8", null) else null
                     }
-                },
-                "AndroidWishlist",
-            )
 
-            var posted = false
-            webView.webViewClient = object : WebViewClient() {
-                override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
-                    val u = request?.url?.toString()?.lowercase() ?: return null
-                    val block = u.contains("/store_trailers/") || u.contains("video.akamai") || BLOCKED.containsMatchIn(u)
-                    return if (block) WebResourceResponse("text/plain", "utf-8", null) else null
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        if (posted || view == null || url == null) return
+                        val uri = runCatching { Uri.parse(url) }.getOrNull()
+                        if (uri?.host != STORE_HOST || uri.path?.contains("/app/$appId") != true) return
+                        posted = true
+                        val target = view
+                        // Give Akamai's inline bot-manager script a beat to set bm_sv before the add.
+                        val r = Runnable {
+                            if (!done.isCompleted && !destroyed) {
+                                target.evaluateJavascript(addScript(appId, nonce), null)
+                            }
+                        }
+                        injectRunnable = r
+                        target.postDelayed(r, 800)
+                    }
+
+                    override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+                        Timber.tag(TAG).w("webview renderer gone, aborting add")
+                        finish(false)
+                        return true
+                    }
                 }
 
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    if (posted || view == null || url == null || !url.contains("/app/$appId")) return
-                    posted = true
-                    // Give Akamai's inline bot-manager script a beat to set bm_sv before the add.
-                    view.postDelayed({ view.evaluateJavascript(addScript(appId), null) }, 800)
-                }
+                val utmUrl = "$STORE/app/$appId/?utm_source=gamenative&utm_medium=app" +
+                    "&utm_campaign=${URLEncoder.encode(campaignId, "UTF-8")}"
+                Timber.tag(TAG).i("webview loading $utmUrl")
+                webView.loadUrl(utmUrl)
 
-                override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
-                    Timber.tag(TAG).w("webview renderer gone, aborting add")
-                    finish(false)
-                    return true
+                val result = withTimeoutOrNull(TIMEOUT_MS) { done.await() } ?: false
+                if (!done.isCompleted) Timber.tag(TAG).w("webview wishlist timed out")
+                result
+            } finally {
+                destroyed = true
+                injectRunnable?.let { webView.removeCallbacks(it) }
+                (webView.parent as? ViewGroup)?.removeView(webView)
+                webView.stopLoading()
+                webView.destroy()
+                // Don't leave this account's login cookie in the shared WebView store for the next
+                // WebView (or the next signed-in account) to inherit.
+                STORE_COOKIES.forEach {
+                    cookieManager.setCookie(STORE, "$it=; path=/; domain=.steampowered.com; expires=Thu, 01 Jan 1970 00:00:00 GMT")
                 }
+                cookieManager.flush()
             }
-
-            val utmUrl = "$STORE/app/$appId/?utm_source=gamenative&utm_medium=app&utm_campaign=$campaignId"
-            Timber.tag(TAG).i("webview loading $utmUrl")
-            webView.loadUrl(utmUrl)
-
-            val result = withTimeoutOrNull(TIMEOUT_MS) { done.await() } ?: false
-            if (!done.isCompleted) Timber.tag(TAG).w("webview wishlist timed out")
-            (webView.parent as? ViewGroup)?.removeView(webView)
-            webView.stopLoading()
-            webView.destroy()
-            result
         }
 
     private fun Context.findActivity(): Activity? {
@@ -136,7 +169,7 @@ object WishlistWebViewAdder {
         return null
     }
 
-    private fun addScript(appId: Int): String =
+    private fun addScript(appId: Int, nonce: String): String =
         """
         (function(){
           try {
@@ -148,10 +181,10 @@ object WishlistWebViewAdder {
               body: 'appid=$appId&sessionid=' + encodeURIComponent(sid)
             })
             .then(function(r){ return r.text(); })
-            .then(function(t){ AndroidWishlist.onResult(t); })
-            .catch(function(e){ AndroidWishlist.onResult('{"success":false,"error":"fetch"}'); });
+            .then(function(t){ AndroidWishlist.onResult('$nonce', t); })
+            .catch(function(e){ AndroidWishlist.onResult('$nonce', '{"success":false,"error":"fetch"}'); });
           } catch (e) {
-            AndroidWishlist.onResult('{"success":false,"error":"exc"}');
+            AndroidWishlist.onResult('$nonce', '{"success":false,"error":"exc"}');
           }
         })();
         """.trimIndent()

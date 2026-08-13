@@ -9,6 +9,7 @@ import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesWishlistSteam
 import `in`.dragonbra.javasteam.rpc.service.Wishlist
 import `in`.dragonbra.javasteam.steam.handlers.steamunifiedmessages.SteamUnifiedMessages
 import java.net.URLEncoder
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
@@ -60,6 +61,8 @@ object SteamWishlistService {
             }
             val webOk = try {
                 webAttributedAdd(appId, campaignId)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Timber.tag(TAG).w(e, "attributed add failed")
                 false
@@ -70,6 +73,8 @@ object SteamWishlistService {
     private suspend fun tryWebView(context: Context, steamId: Long, token: String, appId: Int, campaignId: String): Boolean =
         try {
             WishlistWebViewAdder.add(context, steamId, token, appId, campaignId)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "webview attributed add failed")
             false
@@ -83,7 +88,7 @@ object SteamWishlistService {
             val cookie = "steamLoginSecure=$steamId%7C%7C${URLEncoder.encode(token, "UTF-8")}; " +
                 "birthtime=0; lastagecheckage=1-January-1970; wantsmatureconctent=1"
             val utmUrl = "https://store.steampowered.com/app/$appId/" +
-                "?utm_source=gamenative&utm_medium=app&utm_campaign=$campaignId"
+                "?utm_source=gamenative&utm_medium=app&utm_campaign=${URLEncoder.encode(campaignId, "UTF-8")}"
             var sessionId: String? = null
             var loggedIn = false
             Net.http.newCall(
