@@ -14,6 +14,13 @@ class BionicSteamClientFix : GameFix {
         container: Container,
     ): Boolean {
         return try {
+            if (!container.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
+                // The bionic Steam bridge is only bootstrapped by the bionic launcher.
+                // On a glibc container the flag would have no launcher support, so leave it off.
+                Timber.tag("GameFixes").i("Skipping bionic Steam client for game $gameId on non-bionic container")
+                return true
+            }
+
             if (container.isLaunchBionicSteam) {
                 return true
             }
