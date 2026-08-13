@@ -917,7 +917,7 @@ private fun LibraryScreenContent(
                             }
                         }
 
-                        // X button - toggle favorite on modern builds; add a custom game on legacy.
+                        // X button - toggle the favorite for the focused game on every build.
                         KeyEvent.KEYCODE_BUTTON_X -> {
                             if (selectedAppId == null &&
                                 !state.isSearching &&
@@ -925,12 +925,7 @@ private fun LibraryScreenContent(
                                 !isSystemMenuOpen &&
                                 !tabBarHasFocus
                             ) {
-                                if (BuildConfig.MODERN_ANDROID) {
-                                    toggleFocusedFavorite()
-                                } else {
-                                    onAddCustomGameClick()
-                                    true
-                                }
+                                toggleFocusedFavorite()
                             } else {
                                 false
                             }
@@ -1224,23 +1219,15 @@ private fun LibraryScreenContent(
                         onClick = { onIsSearching(true) },
                     ),
                 ) + listOfNotNull(
-                    if (BuildConfig.MODERN_ANDROID) {
-                        focusedLibraryItem()?.let { item ->
-                            GamepadAction(
-                                button = GamepadButton.X,
-                                labelResId = if (item.appId in favorites) {
-                                    R.string.option_remove_from_favorites
-                                } else {
-                                    R.string.option_add_to_favorites
-                                },
-                                onClick = { toggleFocusedFavorite() },
-                            )
-                        }
-                    } else {
+                    focusedLibraryItem()?.let { item ->
                         GamepadAction(
                             button = GamepadButton.X,
-                            labelResId = R.string.action_add_game,
-                            onClick = onAddCustomGameClick,
+                            labelResId = if (item.appId in favorites) {
+                                R.string.option_remove_from_favorites
+                            } else {
+                                R.string.option_add_to_favorites
+                            },
+                            onClick = { toggleFocusedFavorite() },
                         )
                     },
                 )
