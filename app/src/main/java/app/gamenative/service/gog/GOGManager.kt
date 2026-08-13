@@ -596,7 +596,7 @@ class GOGManager @Inject constructor(
         val gameId = libraryItem.gameId.toString()
         try {
             val game = getGameFromDbById(gameId) ?: return@withContext ""
-            val installPath = getGameInstallPath(game.id, game.title)
+            val installPath = game.installPath.ifEmpty { getGameInstallPath(game.id, game.title) }
 
             // Try V2 structure first (game_$gameId subdirectory)
             val v2GameDir = File(installPath, "game_$gameId")
@@ -737,7 +737,7 @@ class GOGManager @Inject constructor(
             return "\"explorer.exe\""
         }
 
-        val gameInstallPath = getGameInstallPath(gameId.toString(), game.title)
+        val gameInstallPath = game.installPath.ifEmpty { getGameInstallPath(gameId.toString(), game.title) }
         val gameDir = File(gameInstallPath)
 
         if (!gameDir.exists()) {
