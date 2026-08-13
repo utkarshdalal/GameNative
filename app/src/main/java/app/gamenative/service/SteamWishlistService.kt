@@ -1,5 +1,6 @@
 package app.gamenative.service
 
+import android.content.Context
 import app.gamenative.PrefManager
 import app.gamenative.utils.Net
 import `in`.dragonbra.javasteam.enums.EResult
@@ -39,17 +40,40 @@ object SteamWishlistService {
         }
     }
 
-    // UTM attribution requires the visit and the wishlist add to happen in the same web session;
-    // a CM add after a web visit is a different "browser" to Valve and may not attribute.
-    suspend fun addToWishlistAttributed(appId: Int, campaignId: String): Outcome = withContext(Dispatchers.IO) {
-        val webOk = try {
-            webAttributedAdd(appId, campaignId)
+    // UTM attribution requires the visit and the wishlist add to happen in the same web session.
+    // A real WebView earns the bot-manager/browserid cookies that let Valve count the visit as
+    // tracked, so it is the primary path; the bare-HTTP add and the CM add are fallbacks.
+    suspend fun addToWishlistAttributed(context: Context, appId: Int, campaignId: String): Outcome =
+        withContext(Dispatchers.IO) {
+            val steamId = SteamService.userSteamId?.convertToUInt64()
+            if (steamId != null && steamId != 0L) {
+                var token = PrefManager.accessToken.ifEmpty { null } ?: refreshAccessToken()
+                if (!token.isNullOrEmpty()) {
+                    if (tryWebView(context, steamId, token, appId, campaignId)) return@withContext Outcome.Success
+                    val fresh = refreshAccessToken()
+                    if (!fresh.isNullOrEmpty() && fresh != token &&
+                        tryWebView(context, steamId, fresh, appId, campaignId)
+                    ) {
+                        return@withContext Outcome.Success
+                    }
+                }
+            }
+            val webOk = try {
+                webAttributedAdd(appId, campaignId)
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "attributed add failed")
+                false
+            }
+            if (webOk) Outcome.Success else addToWishlist(appId)
+        }
+
+    private suspend fun tryWebView(context: Context, steamId: Long, token: String, appId: Int, campaignId: String): Boolean =
+        try {
+            WishlistWebViewAdder.add(context, steamId, token, appId, campaignId)
         } catch (e: Exception) {
-            Timber.tag(TAG).w(e, "attributed add failed")
+            Timber.tag(TAG).w(e, "webview attributed add failed")
             false
         }
-        if (webOk) Outcome.Success else addToWishlist(appId)
-    }
 
     private suspend fun webAttributedAdd(appId: Int, campaignId: String): Boolean {
         val steamId = SteamService.userSteamId?.convertToUInt64() ?: return false
