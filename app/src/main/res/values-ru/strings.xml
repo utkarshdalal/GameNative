@@ -1409,8 +1409,9 @@ https://gamenative.app
 
     <!-- Recommendations -->
     <string name="recommended_badge">Рекомендуемое</string>
-    <string name="recommended_buy_button">Посмотреть игру</string>
-    <string name="recommended_support_message">Покупка по этой ссылке помогает поддержать разработку GameNative.</string>
+    <string name="recommended_buy_button">Купить в GOG</string>
+    <string name="rec_buy_with_price">%1$s · Купить в GOG</string>
+    <string name="recommended_support_message">Мы получаем комиссию с покупок, совершённых по этой ссылке.</string>
     <string name="recommended_about_heading">Об этой игре</string>
     <string name="recommended_review_count">На основе %1$s отзывов</string>
     <string name="review_overwhelmingly_positive">Крайне положительные</string>

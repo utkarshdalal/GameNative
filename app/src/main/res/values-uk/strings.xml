@@ -1477,8 +1477,9 @@
 
     <!-- Recommendations -->
     <string name="recommended_badge">Рекомендовано</string>
-    <string name="recommended_buy_button">Переглянути гру</string>
-    <string name="recommended_support_message">Покупка за цим посиланням допомагає підтримувати розробку GameNative.</string>
+    <string name="recommended_buy_button">Купити в GOG</string>
+    <string name="rec_buy_with_price">%1$s · Купити в GOG</string>
+    <string name="recommended_support_message">Ми отримуємо комісію з покупок, здійснених за цим посиланням.</string>
     <string name="recommended_about_heading">Про цю гру</string>
     <string name="recommended_review_count">На основі %1$s відгуків</string>
     <string name="review_overwhelmingly_positive">Надзвичайно позитивні</string>
