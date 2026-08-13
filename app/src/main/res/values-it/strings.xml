@@ -2180,7 +2180,7 @@
     <string name="steam_invite_offline">Offline</string>
     <string name="tab_favorites">Preferiti</string>
     <string name="favorites_empty_title">Ancora nessun preferito</string>
-    <string name="favorites_empty_message">Tocca la stella oppure premi il pulsante frontale sinistro del controller mentre il gioco è selezionato (X su Xbox, Quadrato su PlayStation o Y con layout Nintendo).</string>
+    <string name="favorites_empty_message">Apri il menu dei dettagli del gioco per aggiungerlo ai preferiti, oppure premi il pulsante frontale sinistro del controller mentre il gioco è selezionato (X su Xbox, Quadrato su PlayStation o Y con layout Nintendo).</string>
     <string name="favorites_empty_action">Sfoglia tutti i giochi</string>
     <string name="favorites_empty_filtered_title">Nessun preferito da mostrare</string>
     <string name="favorites_empty_filtered_message">Nessun gioco preferito corrisponde alla ricerca o ai filtri attuali.</string>

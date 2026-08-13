@@ -2119,7 +2119,7 @@ https://gamenative.app
     <string name="steam_invite_offline">Не в сети</string>
     <string name="tab_favorites">Избранное</string>
     <string name="favorites_empty_title">Пока нет избранного</string>
-    <string name="favorites_empty_message">Нажмите на звёздочку или левую лицевую кнопку контроллера, когда игра выделена (X на Xbox, квадрат на PlayStation или Y при раскладке Nintendo).</string>
+    <string name="favorites_empty_message">Откройте меню сведений об игре, чтобы добавить её в избранное, или нажмите левую лицевую кнопку контроллера, когда игра выделена (X на Xbox, квадрат на PlayStation или Y при раскладке Nintendo).</string>
     <string name="favorites_empty_action">Просмотреть все игры</string>
     <string name="favorites_empty_filtered_title">Нет избранного для показа</string>
     <string name="favorites_empty_filtered_message">Нет избранных игр, соответствующих текущему поиску или фильтрам.</string>

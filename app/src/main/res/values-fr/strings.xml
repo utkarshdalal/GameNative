@@ -2189,7 +2189,7 @@
     <string name="steam_invite_offline">Hors ligne</string>
     <string name="tab_favorites">Favoris</string>
     <string name="favorites_empty_title">Aucun favori pour l’instant</string>
-    <string name="favorites_empty_message">Appuyez sur l’étoile ou sur le bouton de façade gauche de la manette lorsque le jeu est sélectionné (X sur Xbox, Carré sur PlayStation ou Y avec une disposition Nintendo).</string>
+    <string name="favorites_empty_message">Ouvrez le menu des détails du jeu pour l’ajouter aux favoris, ou appuyez sur le bouton de façade gauche de la manette lorsque le jeu est sélectionné (X sur Xbox, Carré sur PlayStation ou Y avec une disposition Nintendo).</string>
     <string name="favorites_empty_action">Parcourir tous les jeux</string>
     <string name="favorites_empty_filtered_title">Aucun favori à afficher</string>
     <string name="favorites_empty_filtered_message">Aucun jeu favori ne correspond à la recherche ou aux filtres actuels.</string>
