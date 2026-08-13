@@ -184,7 +184,7 @@ abstract class PerformanceDriver {
     open fun getDefaultProfile(): PowerProfile {
         // Return a dummy Balanced profile for devices without driver support
         return PowerProfile(
-            enableAutoTuning = true,
+            enableAutoTuning = false,
             enableAdaptiveFpsCap = false,
             enableGamePinning = false,
             name = PerformancePreset.BALANCED.displayName,
