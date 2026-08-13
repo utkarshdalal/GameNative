@@ -993,6 +993,8 @@
     <string name="settings_interface_storage_volume_title">儲存容量</string>
     <string name="settings_interface_download_server_title">Steam 下載伺服器</string>
     <string name="settings_interface_restart_required_title">需要重新啟動</string>
+    <string name="settings_interface_low_detail_library_mode">極簡遊戲庫模式</string>
+    <string name="settings_interface_low_detail_library_mode_subtitle">減少遊戲庫畫面中每張卡片顯示的細節數量</string>
 
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">下載</string>

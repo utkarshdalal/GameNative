@@ -825,6 +825,8 @@
     <string name="settings_interface_storage_volume_title">Lagerenhed</string>
     <string name="settings_interface_download_server_title">Steam-downloadserver</string>
     <string name="settings_interface_restart_required_title">Genstart påkrævet</string>
+    <string name="settings_interface_low_detail_library_mode">Minimalistisk bibliotekstilstand</string>
+    <string name="settings_interface_low_detail_library_mode_subtitle">Reducerer mængden af detaljer på hvert kort på biblioteksskærmen</string>
 
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">Downloads</string>

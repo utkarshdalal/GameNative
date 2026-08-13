@@ -125,7 +125,7 @@ internal fun LibraryListPane(
 ) {
     val context = LocalContext.current
     val snackBarHost = remember { SnackbarHostState() }
-
+    val lowDetailMode = PrefManager.lowDetailLibraryView
     // Calculate installed count based on current filter state
     val installedCount = remember(
         state.appInfoSortType,
@@ -297,6 +297,7 @@ internal fun LibraryListPane(
                                         imageRefreshCounter = state.imageRefreshCounter,
                                         compatibilityStatus = state.compatibilityMap[item.name],
                                         gameStats = state.statsFor(item),
+                                        lowDetailMode = lowDetailMode
                                     )
                                 }
                             }

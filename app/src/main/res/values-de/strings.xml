@@ -973,6 +973,8 @@
     <string name="settings_interface_storage_volume_title">Speichervolumen</string>
     <string name="settings_interface_download_server_title">Steam-Downloadserver</string>
     <string name="settings_interface_restart_required_title">Neustart erforderlich</string>
+    <string name="settings_interface_low_detail_library_mode">Minimalistischer Bibliotheksmodus</string>
+    <string name="settings_interface_low_detail_library_mode_subtitle">Verringert die Menge an Details auf jeder Karte im Bibliotheksbildschirm</string>
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">Downloads</string>
     <!-- Login Screen -->

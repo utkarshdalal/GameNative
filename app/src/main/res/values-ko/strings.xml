@@ -1008,6 +1008,8 @@
     <string name="settings_interface_storage_volume_title">저장소 볼륨</string>
     <string name="settings_interface_download_server_title">Steam 다운로드 서버</string>
     <string name="settings_interface_restart_required_title">재시작 필요</string>
+    <string name="settings_interface_low_detail_library_mode">미니멀 라이브러리 모드</string>
+    <string name="settings_interface_low_detail_library_mode_subtitle">라이브러리 화면의 각 카드에 표시되는 정보량을 줄입니다</string>
 
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">다운로드</string>

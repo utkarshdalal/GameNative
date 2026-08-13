@@ -342,7 +342,7 @@ fun SettingsGroupInterface(
 
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.settings_interface_low_detail_library_mode) },
+            title = { Text(text = stringResource(R.string.settings_interface_low_detail_library_mode)) },
             subtitle = { Text(text = stringResource(R.string.settings_interface_low_detail_library_mode_subtitle)) },
             state = lowDetailLibraryView,
             onCheckedChange = { newValue ->

@@ -991,6 +991,8 @@
     <string name="settings_interface_storage_volume_title">存储容量</string>
     <string name="settings_interface_download_server_title">Steam 下载服务器</string>
     <string name="settings_interface_restart_required_title">需要重新启动</string>
+    <string name="settings_interface_low_detail_library_mode">极简游戏库模式</string>
+    <string name="settings_interface_low_detail_library_mode_subtitle">减少游戏库界面中每张卡片显示的细节数量</string>
 
     <!-- 设置：下载组 -->
     <string name="settings_downloads_title">下载</string>

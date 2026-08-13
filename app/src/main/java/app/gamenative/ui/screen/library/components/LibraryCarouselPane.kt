@@ -241,7 +241,7 @@ internal fun LibraryCarouselPane(
     val horizontalPadding = AdaptivePadding.horizontal()
     val showGamepadHints = shouldShowGamepadUI()
     val hideStatusBar = PrefManager.hideStatusBarWhenNotInGame
-
+    val lowDetailMode = PrefManager.lowDetailLibraryView
     // Fine-Tuned Values by JT, working on both landscape and portrait screens
     val hintBarHeight = if (showGamepadHints) 56.dp else 0.dp
     val extraTopPadding = if (showGamepadHints) 0.dp else 8.dp
@@ -533,6 +533,7 @@ internal fun LibraryCarouselPane(
                                             showFocusGlow = false,
                                             enableFocusScale = false,
                                             animateStats = item.appId == settledBackdropItem?.appId,
+                                            lowDetailMode = lowDetailMode
                                         )
                                     }
                                 }

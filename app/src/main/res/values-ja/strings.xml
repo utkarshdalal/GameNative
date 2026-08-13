@@ -981,6 +981,8 @@
     <string name="settings_interface_storage_volume_title">ストレージボリューム</string>
     <string name="settings_interface_download_server_title">Steamダウンロードサーバー</string>
     <string name="settings_interface_restart_required_title">再起動が必要です</string>
+    <string name="settings_interface_low_detail_library_mode">ミニマルライブラリモード</string>
+    <string name="settings_interface_low_detail_library_mode_subtitle">ライブラリ画面の各カードに表示する情報量を減らします</string>
 
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">ダウンロード &amp; ストレージ</string>
