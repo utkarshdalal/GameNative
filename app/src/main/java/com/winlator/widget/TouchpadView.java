@@ -273,6 +273,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private void updateXform(int outerWidth, int outerHeight, int innerWidth, int innerHeight) {
+        seenUserOffsetVersion = ViewTransformation.getUserOffsetVersion();
         ViewTransformation viewTransformation = new ViewTransformation();
         viewTransformation.update(outerWidth, outerHeight, innerWidth, innerHeight);
         float invAspect = 1.0f / viewTransformation.aspect;
@@ -281,6 +282,16 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
             XForm.scale(this.xform, invAspect, invAspect);
         } else {
             XForm.makeScale(this.xform, invAspect, invAspect);
+        }
+    }
+
+    private int seenUserOffsetVersion = -1;
+
+    private void ensureXformUpToDate() {
+        if (seenUserOffsetVersion != ViewTransformation.getUserOffsetVersion()) {
+            int w = getWidth() > 0 ? getWidth() : AppUtils.getScreenWidth();
+            int h = getHeight() > 0 ? getHeight() : AppUtils.getScreenHeight();
+            updateXform(w, h, xServer.screenInfo.width, xServer.screenInfo.height);
         }
     }
 
@@ -331,6 +342,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        ensureXformUpToDate();
         boolean isStylus = isEventTriggeredByStylus(event);
         if (touchscreenMouseDisabled
                 && !isStylus
@@ -2094,6 +2106,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     public boolean onExternalMouseEvent(MotionEvent event) {
+        ensureXformUpToDate();
         boolean handled = false;
         if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {
             int actionButton = event.getActionButton();

@@ -790,6 +790,12 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     public boolean isFullscreen() { return fullscreen; }
     public void toggleFullscreen() { fullscreen = !fullscreen; synchronized (lock) { updateTransform(); } xServerView.queueEvent(this::updateScene); }
     public void setScreenOffsetYRelativeToCursor(boolean b) { screenOffsetYRelativeToCursor = b; synchronized (lock) { updateTransform(); } }
+
+    public void updateViewTransformation() {
+        if (surfaceWidth <= 0 || surfaceHeight <= 0) return;
+        viewTransformation.update(surfaceWidth, surfaceHeight, xServer.screenInfo.width, xServer.screenInfo.height);
+        synchronized (lock) { if (nativeHandle != 0) updateTransform(); }
+    }
     public boolean isScreenOffsetYRelativeToCursor() { return screenOffsetYRelativeToCursor; }
     public void setMagnifierZoom(float zoom) { magnifierZoom = zoom; }
     public float getMagnifierZoom() { return magnifierZoom; }
