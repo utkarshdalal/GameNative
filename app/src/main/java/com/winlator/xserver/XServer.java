@@ -291,7 +291,7 @@ public class XServer {
         registerExtension(new PresentExtension(),   nextEventId, nextErrorId);
         registerExtension(new SyncExtension(),      nextEventId, nextErrorId);
         if (supportsXInput2(runningFromGlibc)) {
-            if (shouldAdvertiseGenericEvents(runningFromGlibc, mouseDragCompatibilityEnabled)) {
+            if (mouseDragCompatibilityEnabled) {
                 registerExtension(new GenericEventExtension(), nextEventId, nextErrorId);
             }
             registerExtension(new XInput2Extension(),   nextEventId, nextErrorId);

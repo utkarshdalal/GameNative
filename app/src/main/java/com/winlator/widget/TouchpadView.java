@@ -813,8 +813,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         dragButtonPressed = false;
         holdMouseButtonTouchActive = false;
         holdMouseButtonTouchAction = null;
-        relativeDragRemainderX = 0;
-        relativeDragRemainderY = 0;
+        resetRelativeDragRemainder();
         movedBeyondTapThreshold = false;
         multiFingerGestureUsed = false;
         twoFingerDragging = false;
@@ -1522,6 +1521,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         injectRelease(holdMouseButtonTouchAction);
         holdMouseButtonTouchActive = false;
         holdMouseButtonTouchAction = null;
+        resetRelativeDragRemainder();
     }
 
     private String getHoldMouseButtonTouchAction() {
@@ -1855,6 +1855,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private void releaseAllDragButtons() {
         releaseTwoFingerMiddleButton();
         releaseClickDragButtons();
+        resetRelativeDragRemainder();
+    }
+
+    private void resetRelativeDragRemainder() {
+        relativeDragRemainderX = 0;
+        relativeDragRemainderY = 0;
     }
 
     private void performKeyPan(float dx, float dy, XKeycode leftKey, XKeycode rightKey, XKeycode upKey, XKeycode downKey) {
