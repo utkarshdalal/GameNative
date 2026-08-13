@@ -57,6 +57,11 @@ abstract class PerformanceDriver {
     open fun isPerClusterSupported(): Boolean = false
 
     /**
+     * Check if this driver can pin process on specific cpu
+     */
+    open fun isCpuPinningSupported(): Boolean = false
+
+    /**
      * Get the display unit for frequency values
      */
     abstract fun getDisplayUnit(): DisplayUnit
@@ -179,9 +184,9 @@ abstract class PerformanceDriver {
     open fun getDefaultProfile(): PowerProfile {
         // Return a dummy Balanced profile for devices without driver support
         return PowerProfile(
-            enableAutoTuning = DeviceGate.isDeviceSupported(),
-            enableAdaptiveFpsCap = DeviceGate.isDeviceSupported(),
-            enableGamePinning = DeviceGate.isDeviceSupported(),
+            enableAutoTuning = true,
+            enableAdaptiveFpsCap = false,
+            enableGamePinning = false,
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,
             minCpuFreq = 0,

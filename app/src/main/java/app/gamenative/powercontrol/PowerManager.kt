@@ -175,6 +175,11 @@ object PowerManager {
         }
     }
 
+    /**
+     * Get Driver Default Profile
+     */
+    fun getDriverDefaultProfile(): PowerProfile = getDriver().getDefaultProfile()
+
     data class CpuInfo(
         val currentGovernor: String,
         val currentMinValue: Long,
@@ -530,37 +535,33 @@ object PowerManager {
      */
     fun latestTunerCaps(): ClusterTuner.Caps? = clusterTuner?.latestCaps()
 
+    /**
+     * True when driver support fan control and the FanController is usable
+     */
     fun isFanControlAvailable(): Boolean {
-        return FanController.isAvailable(driver)
+        val driver = getDriver()
+        return getDriver().isFanSupported() && FanController.isAvailable(driver)
     }
 
     /**
      * True when this session can hold the game on the fast CPU cores.
      */
-    fun isGamePinningAvailable(): Boolean {
-        return driver is PServerDriver
-    }
+    fun isGamePinningAvailable(): Boolean = getDriver().isCpuPinningSupported()
 
     /**
      * True when auto-tuning caps each CPU cluster separately via [ClusterTuner].
      */
-    fun isClusterTuningAvailable(): Boolean {
-        return driver?.isPerClusterSupported() == true
-    }
+    fun isClusterTuningAvailable(): Boolean = getDriver().isPerClusterSupported()
 
     /**
      * Check if PServer driver is available
      */
-    fun isPServerAvailable(): Boolean {
-        return getDriver().isDriverSupported()
-    }
+    fun isPServerAvailable(): Boolean = getDriver().isDriverSupported()
 
     /**
      * Get display unit preference for frequency values
      */
-    fun getDisplayUnit(): PerformanceDriver.DisplayUnit {
-        return getDriver().getDisplayUnit()
-    }
+    fun getDisplayUnit(): PerformanceDriver.DisplayUnit = getDriver().getDisplayUnit()
 
     /**
      * Begin a batch update session.
@@ -1318,7 +1319,7 @@ object PowerManager {
     }
 
     private fun applyDefaultProfile(logMessage: String?) {
-        currentProfile = getDriver().getDefaultProfile()
+        currentProfile = getDriverDefaultProfile()
         logMessage?.let { Timber.tag("PowerManager").d(it) }
         if (currentProfile?.enableAutoTuning == true) {
             startAutoTuning()

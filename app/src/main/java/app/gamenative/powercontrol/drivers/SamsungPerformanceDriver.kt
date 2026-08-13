@@ -260,9 +260,10 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         // Default: Balanced profile (full range)
 
         return PowerProfile(
-            enableAutoTuning = DeviceGate.isDeviceSupported(),
-            enableAdaptiveFpsCap = DeviceGate.isDeviceSupported(),
-            enableGamePinning = DeviceGate.isDeviceSupported(),
+            enableAdaptiveFpsCap = true,
+            enableAutoTuning = true,
+            enablePerClusterTuning = false,
+            enableGamePinning = false,
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL, // Samsung doesn't use governors, but we need a value
             minCpuFreq = 0, // CPU level 0

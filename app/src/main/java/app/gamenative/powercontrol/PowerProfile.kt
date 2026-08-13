@@ -16,11 +16,11 @@ enum class AutoTuningStrategy(@param:StringRes val displayNameRes: Int, @param:S
 
 @Serializable
 data class PowerProfile(
+    var enableAdaptiveFpsCap: Boolean = true,
     var enableAutoTuning: Boolean = true,
-    var enablePerClusterTuning: Boolean = true,
-    var enableAdaptiveFpsCap: Boolean = false,
+    var enablePerClusterTuning: Boolean = false,
     var tuningStrategy: AutoTuningStrategy = AutoTuningStrategy.BALANCED,
-    var enableFanControl: Boolean = true,
+    var enableFanControl: Boolean = false,
     var enableGamePinning: Boolean = false,
     var name: String,
     var governor: CpuGovernor,
@@ -57,8 +57,6 @@ object PowerProfiles {
     ): List<PowerProfile> {
         if (availableFrequencies.isEmpty()) return emptyList()
 
-        val isTestedDevice = DeviceGate.isDeviceSupported()
-
         val minFreq = availableFrequencies.first()  // Odin 3: 384 MHz, RP6: 307 MHz
         val maxFreq = availableFrequencies.last()   // Odin 3: 3532 MHz, RP6: 2016 MHz
         val midFreq = availableFrequencies[availableFrequencies.size / 2]  // Odin 3: ~2227 MHz, RP6: ~1344 MHz (50%)
@@ -92,15 +90,18 @@ object PowerProfiles {
             maxGpuPowerLevel
         }
 
+        // Use Driver default profile and fill default values, for default profiles, automatic updates are disabled
+        val defaultProfile = PowerManager.getDriverDefaultProfile().copy(
+            enableAutoTuning = false,
+            enablePerClusterTuning = false,
+        )
+
         return buildList {
             // Power Save - lowest frequency range with powersave governor
             // CPU: Odin 3: 384 MHz - 960 MHz, RP6: 307 MHz - 672 MHz
             // GPU: 0 - 25% of max power level
             if (availableGovernors.contains(CpuGovernor.POWERSAVE.governorName)) {
-                add(PowerProfile(
-                    enableAutoTuning = isTestedDevice,
-                    enableAdaptiveFpsCap = isTestedDevice,
-                    enableGamePinning = isTestedDevice,
+                add(defaultProfile.copy(
                     name = PerformancePreset.POWER_SAVE.displayName,
                     governor = CpuGovernor.POWERSAVE,
                     minCpuFreq = minFreq,
@@ -115,10 +116,7 @@ object PowerProfiles {
             // CPU: Odin 3: 2227 MHz - 3532 MHz, RP6: 1344 MHz - 2016 MHz
             // GPU: 50% - 100% of max power level
             if (availableGovernors.contains(CpuGovernor.SCHEDUTIL.governorName)) {
-                add(PowerProfile(
-                    enableAutoTuning = isTestedDevice,
-                    enableAdaptiveFpsCap = isTestedDevice,
-                    enableGamePinning = isTestedDevice,
+                add(defaultProfile.copy(
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.SCHEDUTIL,
                     minCpuFreq = midFreq,
@@ -127,10 +125,7 @@ object PowerProfiles {
                     maxGpuPowerLevel = maxGpuPowerLevel
                 ))
             } else if (availableGovernors.contains(CpuGovernor.CONSERVATIVE.governorName)) {
-                add(PowerProfile(
-                    enableAutoTuning = isTestedDevice,
-                    enableAdaptiveFpsCap = isTestedDevice,
-                    enableGamePinning = isTestedDevice,
+                add(defaultProfile.copy(
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.CONSERVATIVE,
                     minCpuFreq = midFreq,
@@ -139,10 +134,7 @@ object PowerProfiles {
                     maxGpuPowerLevel = maxGpuPowerLevel
                 ))
             } else if (availableGovernors.contains(CpuGovernor.INTERACTIVE.governorName)) {
-                add(PowerProfile(
-                    enableAutoTuning = isTestedDevice,
-                    enableAdaptiveFpsCap = isTestedDevice,
-                    enableGamePinning = isTestedDevice,
+                add(defaultProfile.copy(
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.INTERACTIVE,
                     minCpuFreq = midFreq,
@@ -156,10 +148,7 @@ object PowerProfiles {
             // CPU: Odin 3: 2918 MHz - 3532 MHz, RP6: 1785 MHz - 2016 MHz
             // GPU: 75% - 100% of max power level
             if (availableGovernors.contains(CpuGovernor.PERFORMANCE.governorName)) {
-                add(PowerProfile(
-                    enableAutoTuning = isTestedDevice,
-                    enableAdaptiveFpsCap = isTestedDevice,
-                    enableGamePinning = isTestedDevice,
+                add(defaultProfile.copy(
                     name = PerformancePreset.PERFORMANCE.displayName,
                     governor = CpuGovernor.PERFORMANCE,
                     minCpuFreq = highFreq,
@@ -172,10 +161,7 @@ object PowerProfiles {
             // On Demand - responsive but power-aware (legacy governor, not available on Odin 3 or RP6)
             // CPU: Full range, GPU: Full range
             if (availableGovernors.contains(CpuGovernor.ONDEMAND.governorName)) {
-                add(PowerProfile(
-                    enableAutoTuning = isTestedDevice,
-                    enableAdaptiveFpsCap = isTestedDevice,
-                    enableGamePinning = isTestedDevice,
+                add(defaultProfile.copy(
                     name = PerformancePreset.ON_DEMAND.displayName,
                     governor = CpuGovernor.ONDEMAND,
                     minCpuFreq = minFreq,
@@ -189,10 +175,7 @@ object PowerProfiles {
             // CPU: Odin 3: 384 MHz - 3532 MHz, RP6: 307 MHz - 2016 MHz
             // GPU: Full range
             if (availableGovernors.contains(CpuGovernor.WALT.governorName)) {
-                add(PowerProfile(
-                    enableAutoTuning = isTestedDevice,
-                    enableAdaptiveFpsCap = isTestedDevice,
-                    enableGamePinning = isTestedDevice,
+                add(defaultProfile.copy(
                     name = PerformancePreset.WALT.displayName,
                     governor = CpuGovernor.WALT,
                     minCpuFreq = minFreq,

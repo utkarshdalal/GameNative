@@ -8,9 +8,13 @@ import android.os.Build
  * from the driver and from the nodes it can reach.
  */
 object DeviceGate {
-    private const val RETROID_POCKET_6_MODEL = "retroid pocket 6"
+    private const val MODEL_RETROID_POCKET_6 = "retroid pocket 6"
+    private const val MODEL_AYN_ODIN3 = "odin3"
 
-    private val testedModels = arrayOf(RETROID_POCKET_6_MODEL)
+    private val testedModels = arrayOf(
+        MODEL_RETROID_POCKET_6,
+        MODEL_AYN_ODIN3,
+    )
 
     fun isDeviceSupported(model: String = Build.MODEL ?: ""): Boolean {
         val normalized = normalize(model)

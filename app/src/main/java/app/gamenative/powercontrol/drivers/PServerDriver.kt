@@ -150,7 +150,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Currently not implemented for PServer devices
      */
     override fun isFanSupported(): Boolean {
-        return false
+        return isDriverSupported()
     }
 
     /**
@@ -158,7 +158,15 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Root access to the cpufreq nodes of every policy is what the cluster tuner needs
      */
     override fun isPerClusterSupported(): Boolean {
-        return true
+        return isDriverSupported()
+    }
+
+    /**
+     * Check if cpu pinning is supported
+     * Root access to the taskset command
+     */
+    override fun isCpuPinningSupported(): Boolean {
+        return isDriverSupported()
     }
 
     /**
@@ -1203,19 +1211,25 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val availableFrequencies = getAvailableCpuFrequencies()
         val availableGovernors = getAvailableGovernors()
 
+        val isTestedDevice = DeviceGate.isDeviceSupported()
+
+        val defaultProfile = PowerProfile(
+            enableAdaptiveFpsCap = isTestedDevice,
+            enableAutoTuning = isTestedDevice,
+            enablePerClusterTuning = isTestedDevice,
+            enableGamePinning = isTestedDevice,
+            enableFanControl = isTestedDevice,
+            name = PerformancePreset.BALANCED.displayName,
+            governor = CpuGovernor.SCHEDUTIL,
+            minCpuFreq = getCurrentMinCpuValue(),
+            maxCpuFreq = getCurrentMaxCpuValue(),
+            minGpuPowerLevel = 0,
+            maxGpuPowerLevel = 0
+        )
+
         if (availableFrequencies.isEmpty()) {
             // Fallback to a safe default
-            return PowerProfile(
-                enableAutoTuning = DeviceGate.isDeviceSupported(),
-                enableAdaptiveFpsCap = DeviceGate.isDeviceSupported(),
-                enableGamePinning = DeviceGate.isDeviceSupported(),
-                name = PerformancePreset.BALANCED.displayName,
-                governor = CpuGovernor.SCHEDUTIL,
-                minCpuFreq = getCurrentMinCpuValue(),
-                maxCpuFreq = getCurrentMaxCpuValue(),
-                minGpuPowerLevel = 0,
-                maxGpuPowerLevel = 0
-            )
+            return defaultProfile
         }
 
         val midFreq = availableFrequencies[availableFrequencies.size / 2]
@@ -1237,11 +1251,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             else -> CpuGovernor.SCHEDUTIL
         }
 
-        return PowerProfile(
-            enableAutoTuning = DeviceGate.isDeviceSupported(),
-            enableAdaptiveFpsCap = DeviceGate.isDeviceSupported(),
-            enableGamePinning = DeviceGate.isDeviceSupported(),
-            name = PerformancePreset.BALANCED.displayName,
+        return defaultProfile.copy(
             governor = governor,
             minCpuFreq = midFreq,
             maxCpuFreq = maxFreq,
