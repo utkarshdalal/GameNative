@@ -1423,8 +1423,9 @@
 
     <!-- Recommendations -->
     <string name="recommended_badge">Empfohlen</string>
-    <string name="recommended_buy_button">Spiel ansehen</string>
-    <string name="recommended_support_message">Ein Kauf über diesen Link unterstützt die Entwicklung von GameNative.</string>
+    <string name="recommended_buy_button">Auf GOG kaufen</string>
+    <string name="rec_buy_with_price">%1$s · Auf GOG kaufen</string>
+    <string name="recommended_support_message">Wir erhalten eine Provision für Käufe über diesen Link.</string>
     <string name="recommended_about_heading">Über dieses Spiel</string>
     <string name="recommended_review_count">Basierend auf %1$s Bewertungen</string>
     <string name="review_overwhelmingly_positive">Überwältigend positiv</string>

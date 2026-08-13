@@ -403,8 +403,13 @@ internal fun RecommendedGameScreen(
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                     )
+                    val price = game.priceLabel
                     Text(
-                        text = stringResource(R.string.recommended_buy_button),
+                        text = if (price != null) {
+                            stringResource(R.string.rec_buy_with_price, price)
+                        } else {
+                            stringResource(R.string.recommended_buy_button)
+                        },
                         modifier = Modifier.padding(start = 8.dp),
                         fontWeight = FontWeight.SemiBold,
                     )

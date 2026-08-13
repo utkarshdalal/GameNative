@@ -1995,8 +1995,9 @@
     <string name="nexus_profile_name_duplicate">A profile with that name already exists</string>
     <!-- Recommendations -->
     <string name="recommended_badge">Recommended</string>
-    <string name="recommended_buy_button">Check It Out</string>
-    <string name="recommended_support_message">Purchasing through this link helps support the development of GameNative.</string>
+    <string name="recommended_buy_button">Purchase on GOG</string>
+    <string name="rec_buy_with_price">%1$s · Purchase on GOG</string>
+    <string name="recommended_support_message">We earn a commission on purchases made through this link.</string>
     <string name="recommended_about_heading">About This Game</string>
     <string name="recommended_review_count">Based on %1$s reviews</string>
 

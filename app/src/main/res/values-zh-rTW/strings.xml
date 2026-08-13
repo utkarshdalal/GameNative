@@ -1454,8 +1454,9 @@
 
     <!-- Recommendations -->
     <string name="recommended_badge">推薦</string>
-    <string name="recommended_buy_button">查看遊戲</string>
-    <string name="recommended_support_message">透過此連結購買有助於支持 GameNative 的開發。</string>
+    <string name="recommended_buy_button">在 GOG 購買</string>
+    <string name="rec_buy_with_price">%1$s · 在 GOG 購買</string>
+    <string name="recommended_support_message">透過此連結購買，我們會獲得佣金。</string>
     <string name="recommended_about_heading">關於本遊戲</string>
     <string name="recommended_review_count">基於 %1$s 則評價</string>
     <string name="review_overwhelmingly_positive">壓倒性好評</string>

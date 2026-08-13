@@ -1519,8 +1519,9 @@
     <string name="option_manage_workshop">ワークショップの管理</string>
     <!-- Recommendations -->
     <string name="recommended_badge">推奨</string>
-    <string name="recommended_buy_button">それをチェックしてください</string>
-    <string name="recommended_support_message">このリンクから購入すると、GameNative の開発をサポートできます。</string>
+    <string name="recommended_buy_button">GOGで購入</string>
+    <string name="rec_buy_with_price">%1$s · GOGで購入</string>
+    <string name="recommended_support_message">このリンクから購入された場合、当社は手数料を受け取ります。</string>
     <string name="recommended_about_heading">このゲームについて</string>
     <string name="recommended_review_count">%1$s のレビューに基づく</string>
     <string name="review_overwhelmingly_positive">圧倒的にポジティブ</string>
