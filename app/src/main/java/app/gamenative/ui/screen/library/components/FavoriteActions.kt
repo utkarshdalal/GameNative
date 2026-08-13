@@ -13,9 +13,8 @@ import app.gamenative.ui.util.SnackbarManager
  * null or blank a generic message is shown instead.
  */
 internal fun toggleFavoriteWithUndo(context: Context, appId: String, gameName: String?) {
-    val wasFavorite = FavoritesManager.isFavorite(appId)
-    FavoritesManager.toggle(appId)
-    if (wasFavorite) {
+    val mutation = FavoritesManager.toggle(appId) ?: return
+    if (mutation.previousFavorite) {
         val message = if (gameName.isNullOrBlank()) {
             context.getString(R.string.favorite_removed)
         } else {
@@ -24,7 +23,7 @@ internal fun toggleFavoriteWithUndo(context: Context, appId: String, gameName: S
         SnackbarManager.show(
             message = message,
             actionLabel = context.getString(R.string.undo),
-            onAction = { FavoritesManager.setFavorite(appId, true) },
+            onAction = { FavoritesManager.undo(mutation) },
         )
     } else {
         val message = if (gameName.isNullOrBlank()) {

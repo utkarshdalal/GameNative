@@ -9,6 +9,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+internal data class FavoriteMutation(
+    val appId: String,
+    val previousFavorite: Boolean,
+    val favorite: Boolean,
+    val revision: Long,
+)
+
 /**
  * Keeps track of which games the user has marked as favorite.
  *
@@ -44,6 +51,7 @@ object FavoritesManager {
 
     /** Edits made before the saved set finished loading, kept so they can be replayed on top of it. */
     private val pendingEdits = LinkedHashMap<String, Boolean>()
+    private val revisions = HashMap<String, Long>()
 
     init {
         scope.launch {
@@ -72,19 +80,50 @@ object FavoritesManager {
     fun isFavorite(appId: String): Boolean = _favorites.value.contains(appId)
 
     /** Adds the game if it is not a favorite yet, or removes it if it already is. */
-    fun toggle(appId: String) = setFavorite(appId, !isFavorite(appId))
+    fun toggle(appId: String): FavoriteMutation? {
+        synchronized(lock) {
+            return setFavoriteLocked(appId, !isFavorite(appId))
+        }
+    }
 
     fun setFavorite(appId: String, favorite: Boolean) {
         synchronized(lock) {
-            val updated = FavoritesUtils.apply(_favorites.value, appId, favorite)
-            if (updated == _favorites.value) return
-            _favorites.value = updated
-            if (_loaded.value) {
-                PrefManager.favoriteAppIds = updated
-            } else {
-                // Still loading: record the intent so the load replays it on top of the saved set.
-                pendingEdits[appId] = favorite
-            }
+            setFavoriteLocked(appId, favorite)
         }
+    }
+
+    /**
+     * Reverts a removal only while no newer decision has changed this app's favorite state.
+     * Snackbar actions can outlive several subsequent mutations, so an app id alone is not enough
+     * to identify a valid undo target.
+     */
+    fun undo(mutation: FavoriteMutation): Boolean {
+        synchronized(lock) {
+            val currentFavorite = isFavorite(mutation.appId)
+            if (revisions[mutation.appId] != mutation.revision ||
+                currentFavorite != mutation.favorite
+            ) {
+                return false
+            }
+            setFavoriteLocked(mutation.appId, mutation.previousFavorite)
+            return true
+        }
+    }
+
+    private fun setFavoriteLocked(appId: String, favorite: Boolean): FavoriteMutation? {
+        val previousFavorite = isFavorite(appId)
+        val updated = FavoritesUtils.apply(_favorites.value, appId, favorite)
+        if (updated == _favorites.value) return null
+
+        _favorites.value = updated
+        val revision = (revisions[appId] ?: 0L) + 1L
+        revisions[appId] = revision
+        if (_loaded.value) {
+            PrefManager.favoriteAppIds = updated
+        } else {
+            // Still loading: record the intent so the load replays it on top of the saved set.
+            pendingEdits[appId] = favorite
+        }
+        return FavoriteMutation(appId, previousFavorite, favorite, revision)
     }
 }
