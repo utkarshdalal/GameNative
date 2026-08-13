@@ -1121,15 +1121,16 @@ object PowerManager {
     /**
      * Cores a pinned game runs on.
      * - Single-cluster: all cores
-     * - Dual-cluster: prime cores only, performance cores when the device has no prime cluster
+     * - Dual-cluster: all cores (efficiency + performance)
      * - Tri-cluster and up: performance + prime cores, efficiency left for background work
      */
     private fun gamePinCores(pserver: PServerDriver): List<Int> {
+        val effCores = pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY)
         val perfCores = pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
         val primeCores = pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME)
         return when (pserver.getCpuClusterCount()) {
             1 -> perfCores
-            2 -> primeCores.ifEmpty { perfCores }
+            2 -> effCores + perfCores
             else -> perfCores + primeCores
         }
     }
