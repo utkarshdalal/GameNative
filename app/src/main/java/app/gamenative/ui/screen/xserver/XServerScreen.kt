@@ -5155,6 +5155,8 @@ private suspend fun applyGeneralPatches(
                 onExtractFileListener,
             );
         }
+        Timber.i("Extracting WFM from container_pattern_common.tzst")
+        containerManager.extractContainerPatternCommonWfm(rootDir, onExtractFileListener)
     } else {
         Timber.i("Extracting container_pattern_common.tzst")
         containerManager.extractContainerPatternCommon(rootDir, onExtractFileListener)

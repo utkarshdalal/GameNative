@@ -318,6 +318,23 @@ public class ContainerManager {
     }
 
     public boolean extractContainerPatternCommon(File containerDir, OnExtractFileListener onExtractFileListener) {
+        return extractContainerPatternCommonArchive(containerDir, onExtractFileListener);
+    }
+
+    public boolean extractContainerPatternCommonWfm(File containerDir, OnExtractFileListener onExtractFileListener) {
+        File expectedWfm = new File(
+                containerDir,
+                "home/xuser/.wine/drive_c/windows/wfm.exe"
+        ).getAbsoluteFile();
+        return extractContainerPatternCommonArchive(containerDir, (file, size) -> {
+            if (!file.getAbsoluteFile().equals(expectedWfm)) return null;
+            return onExtractFileListener != null
+                    ? onExtractFileListener.onExtractFile(file, size)
+                    : file;
+        });
+    }
+
+    private boolean extractContainerPatternCommonArchive(File containerDir, OnExtractFileListener onExtractFileListener) {
         Log.d("Extraction", "extracting container_pattern_common.tzst");
         File componentFile = ContainerFilesDownloaderKt.ensureContainerFileAvailableBlocking(context, "container_pattern_common", new ProgressCallback() {
             @Override

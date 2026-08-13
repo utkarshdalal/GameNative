@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -82,6 +83,71 @@ class ContainerFilesDownloaderTest {
         val component = manifest.components.find { it.id == "container_pattern_common" }
         assertNotNull("container_pattern_common should exist in manifest", component)
         assertEquals("Name should match", "container_pattern_common.tzst", component!!.name)
+        assertEquals("Common pattern cache version should be bumped", 2, component.version)
+        assertEquals(
+            "Common pattern hash should match the updated archive",
+            "c62311ac7a10a149f33cd1b2fcdf9f79c8a6b35d8b46066b33108c003b7e85c6",
+            component.sha256,
+        )
+    }
+
+    @Test
+    fun testUnversionedManifestComponentsUseLegacyCacheVersion() {
+        val manifestJson = context.assets.open(ContainerFilesDownloader.CONTAINER_FILES_MANIFEST_FILE).bufferedReader().use { it.readText() }
+        val manifest = Json { ignoreUnknownKeys = true }
+            .decodeFromString<ContainerFilesDownloader.ContainerFilesManifest>(manifestJson)
+
+        val extras = manifest.components.first { it.id == "extras" }
+        assertEquals(ContainerFilesDownloader.LEGACY_CACHE_VERSION, extras.version)
+        assertEquals(null, extras.sha256)
+    }
+
+    @Test
+    fun testVersionedCacheInvalidatesOnlyOutdatedComponent() {
+        cacheDir.mkdirs()
+        val cachedFile = File(cacheDir, "container_pattern_common.tzst")
+        val versionFile = File(cacheDir, "container_pattern_common.version")
+        cachedFile.writeText("cached archive")
+
+        assertTrue(
+            "An existing unmarked cache should remain compatible with version 1",
+            ContainerFilesDownloader.isCachedComponentCurrent(
+                cachedFile,
+                versionFile,
+                ContainerFilesDownloader.LEGACY_CACHE_VERSION,
+            ),
+        )
+        assertFalse(
+            "An existing unmarked cache should be invalidated by version 2",
+            ContainerFilesDownloader.isCachedComponentCurrent(cachedFile, versionFile, 2),
+        )
+
+        versionFile.writeText("2")
+        assertTrue(
+            "A matching version marker should reuse the cache",
+            ContainerFilesDownloader.isCachedComponentCurrent(cachedFile, versionFile, 2),
+        )
+
+        versionFile.writeText("invalid")
+        assertFalse(
+            "A malformed version marker should invalidate the cache",
+            ContainerFilesDownloader.isCachedComponentCurrent(cachedFile, versionFile, 2),
+        )
+    }
+
+    @Test
+    fun testDownloadedComponentHashValidation() {
+        cacheDir.mkdirs()
+        val cachedFile = File(cacheDir, "hash-test.tzst")
+        cachedFile.writeText("abc")
+
+        assertTrue(
+            ContainerFilesDownloader.hasExpectedSha256(
+                cachedFile,
+                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            ),
+        )
+        assertFalse(ContainerFilesDownloader.hasExpectedSha256(cachedFile, "0".repeat(64)))
     }
 
     @Test
@@ -212,6 +278,7 @@ class ContainerFilesDownloaderTest {
         cacheDir.mkdirs()
         val cachedFile = File(cacheDir, "$componentId.tzst")
         cachedFile.writeText("mock cached content")
+        File(cacheDir, "$componentId.version").writeText("2")
 
         val retrievedFile = ContainerFilesDownloader.ensureContainerFileAvailable(
             context,

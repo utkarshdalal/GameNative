@@ -10,6 +10,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.io.File
+import java.io.IOException
+import java.security.MessageDigest
 
 /**
  * Utility for downloading container pattern files (extras, container patterns, proton patterns) from the manifest server.
@@ -19,6 +21,7 @@ object ContainerFilesDownloader {
 
     const val CONTAINER_FILES_MANIFEST_FILE = "container_files_download.json"
     const val CONTAINER_FILES_CACHE_DIR = "assets/container_files"
+    const val LEGACY_CACHE_VERSION = 1
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -33,8 +36,45 @@ object ContainerFilesDownloader {
     data class ContainerFileComponent(
         val id: String,
         val name: String,
-        val url: String
+        val url: String,
+        val version: Int = LEGACY_CACHE_VERSION,
+        val sha256: String? = null
     )
+
+    internal fun getCachedComponentVersion(versionFile: File): Int? {
+        if (!versionFile.exists()) return LEGACY_CACHE_VERSION
+        return runCatching { versionFile.readText().trim().toInt() }.getOrNull()
+    }
+
+    internal fun isCachedComponentCurrent(
+        destination: File,
+        versionFile: File,
+        expectedVersion: Int,
+    ): Boolean {
+        return expectedVersion > 0 &&
+            destination.isFile &&
+            destination.length() > 0 &&
+            getCachedComponentVersion(versionFile) == expectedVersion
+    }
+
+    private fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().buffered().use { stream ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val count = stream.read(buffer)
+                if (count < 0) break
+                if (count > 0) digest.update(buffer, 0, count)
+            }
+        }
+        return digest.digest().joinToString("") {
+            (it.toInt() and 0xff).toString(16).padStart(2, '0')
+        }
+    }
+
+    internal fun hasExpectedSha256(file: File, expectedHash: String): Boolean {
+        return sha256(file).equals(expectedHash, ignoreCase = true)
+    }
 
     /**
      * Ensures a container file component is available, either from cache, server download, or bundled assets.
@@ -53,6 +93,9 @@ object ContainerFilesDownloader {
         val manifest = loadContainerFilesManifest(context)
         val component = manifest.components.find { it.id == componentId }
             ?: throw Exception("Container file $componentId not found in $CONTAINER_FILES_MANIFEST_FILE")
+        require(component.version > 0) {
+            "Container file $componentId has an invalid cache version"
+        }
 
         // Legacy variant: use bundled assets
         if (!BuildConfig.MODERN_ANDROID) {
@@ -62,16 +105,25 @@ object ContainerFilesDownloader {
 
         // Modern variant: download from server
         // Check if already downloaded and cached
-        val destFile = File(context.filesDir, "$CONTAINER_FILES_CACHE_DIR/$componentId.tzst")
-        if (destFile.exists() && destFile.length() > 0) {
+        val cacheDir = File(context.filesDir, CONTAINER_FILES_CACHE_DIR)
+        val destFile = File(cacheDir, "$componentId.tzst")
+        val versionFile = File(cacheDir, "$componentId.version")
+        if (isCachedComponentCurrent(destFile, versionFile, component.version)) {
             Timber.d("Using cached container file: $componentId at ${destFile.absolutePath}")
             return@withContext destFile
+        }
+
+        if (destFile.exists()) {
+            Timber.i(
+                "Cached container file $componentId is outdated; " +
+                    "downloading version ${component.version}",
+            )
         }
 
         // Download from server using local manifest
         Timber.i("Downloading container file: $componentId from server")
 
-        destFile.parentFile?.mkdirs()
+        cacheDir.mkdirs()
 
         try {
             SteamService.fetchFileWithFallback(
@@ -80,6 +132,20 @@ object ContainerFilesDownloader {
                 context = context,
                 onProgress = onProgress
             )
+
+            component.sha256?.let { expectedHash ->
+                if (!hasExpectedSha256(destFile, expectedHash)) {
+                    destFile.delete()
+                    throw IOException(
+                        "Downloaded container file $componentId failed its integrity check",
+                    )
+                }
+            }
+
+            runCatching { versionFile.writeText(component.version.toString()) }
+                .onFailure { error ->
+                    Timber.w(error, "Failed to record cache version for $componentId")
+                }
             Timber.i("Successfully downloaded container file: $componentId")
         } catch (e: Exception) {
             Timber.e(e, "Failed to download container file: $componentId")

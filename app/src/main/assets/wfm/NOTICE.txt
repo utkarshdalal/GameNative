@@ -1,0 +1,15 @@
+Winlator File Manager
+=====================
+
+Source: https://github.com/GameNative/wfm
+Revision: 5c4ca97292067c522cf1ba79ce7ce832beb15a1d
+Branch: gamenative/native-copy-paste
+
+The branch is based on upstream revision
+cb1d078cef36d3d61eec822882febcde828f09e7 to retain the WFM interface and
+behavior previously distributed by GameNative. Its copy implementation avoids
+Wine shell-operation crashes between mapped drives and adds a replace-all
+conflict choice plus filesystem edge-case handling.
+
+Winlator File Manager is licensed under the MIT License. The license is
+included in LICENSE.WFM.txt.
