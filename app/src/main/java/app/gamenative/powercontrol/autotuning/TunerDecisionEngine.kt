@@ -293,6 +293,7 @@ class TunerDecisionEngine(
         frozen.clear()
         clearWatch()
         clearHarvest()
+        clearRenderAverages()
         trimQualifiedCycles = 0
         lastBottleneck = null
     }

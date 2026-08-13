@@ -138,6 +138,26 @@ class TunerHarvestGuardTest {
     }
 
     /**
+     * releaseHolds marks a regime change (a cap probe reopening every clock), so the render
+     * averages from before it must not seed the next harvest baseline. With a stale ~30 fps
+     * baseline the 45 fps damage below would sit inside the drop guard and the trim would
+     * survive; a fresh ~55 fps baseline catches it.
+     */
+    @Test
+    fun `releaseHolds drops the stale render baseline`() {
+        val engine = TunerDecisionEngine()
+        runToTrim(engine, fps = 30f)
+        engine.releaseHolds()
+
+        runToTrim(engine, fps = 55f)
+        val decisions = (0 until 3).map { engine.decide(input(45f)) }
+        assertTrue(
+            "damage after a regime change was judged against the stale baseline: ${decisions.map { it.reason }}",
+            decisions.any { it.action == TunerAction.UNDO },
+        )
+    }
+
+    /**
      * The adaptive FPS cap reads this to tell harvested steps from held-back performance.
      * If a harvest did not report itself, its steps would block the cap step-down and the
      * two features would deadlock.
