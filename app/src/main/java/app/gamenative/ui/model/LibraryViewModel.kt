@@ -73,6 +73,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
@@ -80,6 +81,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicLong
 
 private const val PLAYABLE_FPS_THRESHOLD = 30
 private const val PROVEN_RUNS_THRESHOLD = 5
@@ -142,6 +144,8 @@ class LibraryViewModel @Inject constructor(
     // Track debounce job for search
     private var searchDebounceJob: Job? = null
     private val SEARCH_DEBOUNCE_MS = 500L // 500ms debounce
+    private var filterJob: Job? = null
+    private val filterGeneration = AtomicLong(0L)
 
     // Cache GPU name to avoid repeated calls
     private val gpuName: String by lazy {
@@ -194,9 +198,9 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             FavoritesManager.favorites
                 .drop(1)
-                .collect { favorites ->
+                .collectLatest { favorites ->
                     if (_state.value.currentTab == LibraryTab.FAVORITES) {
-                        onFilterApps(paginationCurrentPage)
+                        onFilterApps(paginationCurrentPage).join()
                     } else {
                         val count = FavoritesUtils.countPresent(favorites, favoriteEligibleAppIds)
                         _state.update { it.copy(favoritesCount = count) }
@@ -622,8 +626,11 @@ class LibraryViewModel @Inject constructor(
     }
 
     private fun onFilterApps(paginationPage: Int = 0): Job {
+        val generation = filterGeneration.incrementAndGet()
         Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
-        return viewModelScope.launch(Dispatchers.IO) {
+        filterJob?.cancel()
+        val job = viewModelScope.launch(Dispatchers.IO) {
+            if (generation != filterGeneration.get()) return@launch
             _state.update { it.copy(isLoading = true) }
 
             val currentState = _state.value
@@ -1022,6 +1029,10 @@ class LibraryViewModel @Inject constructor(
                 entry.item.copy(index = idx, isInstalled = entry.isInstalled)
             }
 
+            // A newer refresh may have taken a snapshot while this pass was doing the expensive
+            // filtering. Never let this pass publish its obsolete list or pagination metadata.
+            if (generation != filterGeneration.get()) return@launch
+
             // Total count for the current filter
             val totalFound = combined.size
 
@@ -1086,6 +1097,8 @@ class LibraryViewModel @Inject constructor(
                 isFirstLoad = false
             }
 
+            if (generation != filterGeneration.get()) return@launch
+
             // Fetch compatibility for current page games
             fetchCompatibilityForPage(pagedList.map { it.name })
 
@@ -1100,9 +1113,11 @@ class LibraryViewModel @Inject constructor(
                 if (EpicService.hasStoredCredentials(context)) addAll(epicEntries)
                 if (AmazonService.hasStoredCredentials(context)) addAll(amazonEntries)
             }.mapTo(mutableSetOf()) { it.item.appId }
+            if (generation != filterGeneration.get()) return@launch
             favoriteEligibleAppIds = favoriteEligible
 
             _state.update {
+                if (generation != filterGeneration.get()) return@update
                 it.copy(
                     appInfoList = pagedList,
                     currentPaginationPage = clampedPage + 1, // visual display is not 0 indexed
@@ -1126,6 +1141,8 @@ class LibraryViewModel @Inject constructor(
                 )
             }
         }
+        filterJob = job
+        return job
     }
 
     /**
