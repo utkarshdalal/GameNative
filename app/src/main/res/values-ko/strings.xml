@@ -2197,5 +2197,7 @@
     <string name="favorite_remove_named">%1$s을(를) 즐겨찾기에서 제거</string>
     <string name="favorite_removed">즐겨찾기에서 제거됨</string>
     <string name="favorite_removed_named">%1$s을(를) 즐겨찾기에서 제거함</string>
+    <string name="favorite_added">즐겨찾기에 추가됨</string>
+    <string name="favorite_added_named">%1$s을(를) 즐겨찾기에 추가함</string>
     <string name="undo">실행 취소</string>
 </resources>

@@ -2204,5 +2204,7 @@
     <string name="favorite_remove_named">Elimină %1$s de la favorite</string>
     <string name="favorite_removed">Eliminat de la favorite</string>
     <string name="favorite_removed_named">%1$s eliminat de la favorite</string>
+    <string name="favorite_added">Adăugat la favorite</string>
+    <string name="favorite_added_named">%1$s adăugat la favorite</string>
     <string name="undo">Anulează</string>
 </resources>

@@ -2208,5 +2208,7 @@
     <string name="favorite_remove_named">將 %1$s 從收藏中移除</string>
     <string name="favorite_removed">已從收藏中移除</string>
     <string name="favorite_removed_named">已將 %1$s 從收藏中移除</string>
+    <string name="favorite_added">已加入收藏</string>
+    <string name="favorite_added_named">已將 %1$s 加入收藏</string>
     <string name="undo">復原</string>
 </resources>

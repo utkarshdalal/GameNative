@@ -2203,5 +2203,7 @@
     <string name="favorite_remove_named">Usuń %1$s z ulubionych</string>
     <string name="favorite_removed">Usunięto z ulubionych</string>
     <string name="favorite_removed_named">Usunięto %1$s z ulubionych</string>
+    <string name="favorite_added">Dodano do ulubionych</string>
+    <string name="favorite_added_named">Dodano %1$s do ulubionych</string>
     <string name="undo">Cofnij</string>
 </resources>
