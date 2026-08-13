@@ -35,10 +35,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
@@ -48,6 +51,8 @@ import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.GameCardStats
+import app.gamenative.ui.enums.PaneType
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +73,7 @@ internal fun ListViewCard(
     compatibilityStatus: GameCompatibilityStatus?,
     gameStats: GameCardStats?,
     context: Context,
+    lowDetailMode: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isItemFocused by interactionSource.collectIsFocusedAsState()
@@ -93,113 +99,114 @@ internal fun ListViewCard(
                     indication = null,
                 ),
             shape = shape,
-        colors = CardDefaults.cardColors(
-            containerColor = if (isFocused) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+            colors = CardDefaults.cardColors(
+                containerColor = if (isFocused) {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                },
+            ),
+            border = when {
+                appInfo.isRecommended -> BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                )
+
+                else -> null
             },
-        ),
-        border = when {
-            appInfo.isRecommended -> BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-            )
-            else -> null
-        },
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Game icon
-            val iconUrl by produceState(
-                initialValue = appInfo.clientIconUrl,
-                key1 = appInfo.appId,
-                key2 = appInfo.clientIconUrl,
-            ) {
-                value = withContext(Dispatchers.IO) {
-                    getListIconUrl(context, appInfo)
-                }
-            }
-
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ListItemImage(
-                    modifier = Modifier.fillMaxSize(),
-                    imageModifier = Modifier.clip(RoundedCornerShape(10.dp)),
-                    image = { iconUrl },
-                )
-            }
-
-            // Game info
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = appInfo.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-
-                // Status row with compact badges
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                // Game icon
+                val iconUrl by produceState(
+                    initialValue = appInfo.clientIconUrl,
+                    key1 = appInfo.appId,
+                    key2 = appInfo.clientIconUrl,
                 ) {
-                    InstallStatusBadge(appInfo = appInfo, isRefreshing = isRefreshing)
-
-                    // Family share indicator
-                    if (appInfo.isShared) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Icon(
-                                Icons.Filled.Face4,
-                                contentDescription = stringResource(R.string.library_family_shared),
-                                tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.size(14.dp),
-                            )
-                            Text(
-                                text = stringResource(R.string.library_shared_short),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.tertiary,
-                            )
-                        }
+                    value = withContext(Dispatchers.IO) {
+                        getListIconUrl(context, appInfo)
                     }
                 }
 
-                GameStatsRow(
-                    stats = gameStats,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                )
-            }
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    ListItemImage(
+                        modifier = Modifier.fillMaxSize(),
+                        imageModifier = Modifier.clip(RoundedCornerShape(10.dp)),
+                        image = { iconUrl },
+                    )
+                }
 
-            val badgeStatus = if (appInfo.isRecommended) {
-                GameCompatibilityStatus.RECOMMENDED
-            } else {
-                compatibilityStatus
-            }
-            badgeStatus?.let { status ->
-                CompatibilityBadge(
-                    status = status,
-                    showLabel = true,
-                )
+                // Game info
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = appInfo.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+
+                    // Status row with compact badges
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        InstallStatusBadge(appInfo = appInfo, isRefreshing = isRefreshing)
+
+                        // Family share indicator
+                        if (appInfo.isShared) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Icon(
+                                    Icons.Filled.Face4,
+                                    contentDescription = stringResource(R.string.library_family_shared),
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                                Text(
+                                    text = stringResource(R.string.library_shared_short),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                )
+                            }
+                        }
+                    }
+
+                    if(!lowDetailMode && !appInfo.isRecommended) GameStatsRow(
+                        stats = gameStats,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                    )
+                }
+
+                val badgeStatus = if (appInfo.isRecommended) {
+                    GameCompatibilityStatus.RECOMMENDED
+                } else {
+                    compatibilityStatus
+                }
+                badgeStatus?.let { status ->
+                    CompatibilityBadge(
+                        status = status,
+                        showLabel = !lowDetailMode,
+                    )
+                }
             }
         }
-    }
     }
 }
 
@@ -286,3 +293,73 @@ private fun getListIconUrl(context: Context, appInfo: LibraryItem): String {
         appInfo.clientIconUrl
     }
 }
+
+@Preview()
+@Composable
+private fun Preview_ListViewCard_recommended() {
+    val context = LocalContext.current
+    PrefManager.init(LocalContext.current)
+    PluviaTheme {
+        ListViewCard(
+            modifier = Modifier,
+            appInfo = LibraryItem(
+                appId = "${GameSource.STEAM.name}_${Int.MAX_VALUE}",
+                name = "Preview Game",
+                iconHash = "",
+                gameSource = GameSource.STEAM,
+                isRecommended = true,
+            ),
+            onClick = { },
+            onFocus = { },
+            onFocusChanged = { },
+            isFocused = true,
+            compatibilityStatus = GameCompatibilityStatus.COMPATIBLE,
+            gameStats = GameCardStats(
+                runsGpu = 1,
+                reviewsDevice = 2,
+                reviewsGpu = 5,
+                fps = 10,
+                sessionSec = 10,
+            ),
+            context = context,
+            isRefreshing = false,
+            lowDetailMode = false,
+        )
+    }
+}
+
+@Preview()
+@Composable
+private fun Preview_ListViewCard_low_detail() {
+    val context = LocalContext.current
+    PrefManager.init(LocalContext.current)
+    PluviaTheme {
+        ListViewCard(
+            modifier = Modifier,
+            appInfo = LibraryItem(
+                appId = "${GameSource.STEAM.name}_${Int.MAX_VALUE}",
+                name = "Preview Game",
+                iconHash = "",
+                gameSource = GameSource.STEAM,
+                isRecommended = true,
+            ),
+            onClick = { },
+            onFocus = { },
+            onFocusChanged = { },
+            isFocused = true,
+            compatibilityStatus = GameCompatibilityStatus.COMPATIBLE,
+            gameStats = GameCardStats(
+                runsGpu = 1,
+                reviewsDevice = 2,
+                reviewsGpu = 5,
+                fps = 10,
+                sessionSec = 10,
+            ),
+            context = context,
+            isRefreshing = false,
+            lowDetailMode = true,
+        )
+    }
+}
+
+

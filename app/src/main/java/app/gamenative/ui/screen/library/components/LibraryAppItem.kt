@@ -7,13 +7,11 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import app.gamenative.R
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -45,13 +43,8 @@ import app.gamenative.ui.icons.Steam
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Face4
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+
 
 /**
  * Library app item that displays a game in either list or grid view.
@@ -74,6 +67,7 @@ internal fun AppItem(
     showFocusGlow: Boolean = true,
     enableFocusScale: Boolean = true,
     animateStats: Boolean = true,
+    lowDetailMode: Boolean = false
 ) {
     val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
@@ -125,6 +119,7 @@ internal fun AppItem(
             compatibilityStatus = compatibilityStatus,
             gameStats = gameStats,
             context = context,
+            lowDetailMode = lowDetailMode
         )
 
         else -> GridViewCard(
@@ -148,6 +143,7 @@ internal fun AppItem(
             showFocusGlow = showFocusGlow,
             context = context,
             animateStats = animateStats,
+            lowDetailMode = lowDetailMode
         )
     }
 }
