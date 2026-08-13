@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>
@@ -2187,4 +2187,43 @@
     <string name="local_mod_copied_progress">Copied %1$s of %2$s</string>
     <string name="nexus_invalid_source_metadata">This managed mod has incomplete source information and cannot be retried.</string>
     <string name="nexus_archive_memory_error">Archive needs more memory than Android allows. Retry after updating GameNative or choose a smaller file.</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Power Control</string>
+    <string name="power_control_info">Control CPU frequency scaling and governor settings. Requires PServer service.</string>
+    <string name="power_control_driver">Driver: %s</string>
+    <string name="power_control_profiles">Power Profiles</string>
+    <string name="power_control_governor">CPU Governor</string>
+    <string name="power_control_current_frequencies">Current Frequencies</string>
+    <string name="power_control_frequencies">Frequency Settings</string>
+    <string name="power_control_cpu_min_freq">Min CPU Frequency</string>
+    <string name="power_control_cpu_max_freq">Max CPU Frequency</string>
+    <string name="power_control_gpu_freq">GPU Frequency</string>
+    <string name="power_control_gpu_min_power">Min GPU Power</string>
+    <string name="power_control_gpu_max_power">Max GPU Power</string>
+    <string name="power_control_ram_min_power">Min RAM Frequency</string>
+    <string name="power_control_ram_max_power">Max RAM Frequency</string>
+    <string name="power_control_available_frequencies">Available Frequencies</string>
+    <string name="power_control_auto_tuning">Auto-Tuning</string>
+    <string name="power_control_auto_tuning_desc">More stable performance, longer battery life, less heat: automatically tunes CPU and GPU for your game. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Automatic FPS reduction</string>
+    <string name="power_control_adaptive_fps_desc">Lowers the FPS cap when the game cannot reach it, for stable pacing. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_tuning_mode">Tuning Mode</string>
+    <string name="power_control_tuning_mode_per_cluster">Per-cluster (verified on Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID Controller</string>
+    <string name="power_control_fan_control">Fan Control</string>
+    <string name="power_control_fan_control_desc">Holds a target temperature with minimum fan noise. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Game Pinning</string>
+    <string name="power_control_game_pinning_desc">Keeps the game on the fast CPU cores. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Show fan speed</string>
+    <string name="power_control_hud_show_tuner">Show tuner clock caps</string>
+    <string name="power_control_tuning_strategy">Tuning Strategy</string>
+    <string name="power_control_strategy_balanced">Balanced</string>
+    <string name="power_control_strategy_balanced_desc">Adjusts all components equally for best overall performance</string>
+    <string name="power_control_strategy_power_efficient">Power Efficient</string>
+    <string name="power_control_strategy_power_efficient_desc">Reduces non-bottleneck components to save power</string>
+    <string name="power_control_strategy_aggressive">Aggressive</string>
+    <string name="power_control_strategy_aggressive_desc">Maximizes performance on detected bottlenecks</string>
+    <string name="power_control_strategy_conservative">Conservative</string>
+    <string name="power_control_strategy_conservative_desc">AdjustsGradual gradually with a focus on stability</string>
 </resources>

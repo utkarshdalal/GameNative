@@ -2144,4 +2144,43 @@
     <string name="steam_invite_joined">あなたのゲームに参加中</string>
     <string name="steam_invite_online">オンライン</string>
     <string name="steam_invite_offline">オフライン</string>
+
+    <!-- Power Control -->
+    <string name="power_control">パフォーマンス制御</string>
+    <string name="power_control_info">CPU周波数スケーリングとガバナー設定を制御します。PServerサービスが必要です。</string>
+    <string name="power_control_driver">ドライバー：%s</string>
+    <string name="power_control_profiles">パフォーマンスプロファイル</string>
+    <string name="power_control_governor">CPUガバナー</string>
+    <string name="power_control_current_frequencies">現在の周波数</string>
+    <string name="power_control_frequencies">周波数設定</string>
+    <string name="power_control_cpu_min_freq">最小CPU周波数</string>
+    <string name="power_control_cpu_max_freq">最大CPU周波数</string>
+    <string name="power_control_gpu_freq">GPU周波数</string>
+    <string name="power_control_gpu_min_power">最小GPUパワー</string>
+    <string name="power_control_gpu_max_power">最大GPUパワー</string>
+    <string name="power_control_ram_min_power">最小RAM周波数</string>
+    <string name="power_control_ram_max_power">最大RAM周波数</string>
+    <string name="power_control_available_frequencies">利用可能な周波数</string>
+    <string name="power_control_auto_tuning">自動調整</string>
+    <string name="power_control_auto_tuning_desc">より安定したパフォーマンス、より長いバッテリー駆動時間、発熱の低減：ゲームに合わせてCPUとGPUを自動調整します。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_adaptive_fps">FPSの自動低減</string>
+    <string name="power_control_adaptive_fps_desc">ゲームがFPS上限に達しない場合は上限を下げ、フレーム間隔を安定させます。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_tuning_mode">調整モード</string>
+    <string name="power_control_tuning_mode_per_cluster">クラスターごと（Retroid Pocket 6で動作確認済み）</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID制御</string>
+    <string name="power_control_fan_control">ファン制御</string>
+    <string name="power_control_fan_control_desc">ファンの騒音を最小限に抑えて目標温度を維持します。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_game_pinning">ゲームのコア固定</string>
+    <string name="power_control_game_pinning_desc">ゲームを高速なCPUコアに固定します。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_hud_show_fan">ファン回転数を表示</string>
+    <string name="power_control_hud_show_tuner">チューニングのクロック上限を表示</string>
+    <string name="power_control_tuning_strategy">調整ストラテジー</string>
+    <string name="power_control_strategy_balanced">バランス</string>
+    <string name="power_control_strategy_balanced_desc">すべてのコンポーネントを均等に調整して最高の総合パフォーマンスを実現</string>
+    <string name="power_control_strategy_power_efficient">省電力</string>
+    <string name="power_control_strategy_power_efficient_desc">ボトルネック以外のコンポーネントを低減して電力を節約</string>
+    <string name="power_control_strategy_aggressive">アグレッシブ</string>
+    <string name="power_control_strategy_aggressive_desc">検出されたボトルネックのパフォーマンスを最大化</string>
+    <string name="power_control_strategy_conservative">保守的</string>
+    <string name="power_control_strategy_conservative_desc">安定性を重視した漸進的な調整</string>
 </resources>

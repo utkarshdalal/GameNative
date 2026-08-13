@@ -17,21 +17,24 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.os.SystemClock
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import app.gamenative.PrefManager
+import app.gamenative.powercontrol.PowerManager
+import app.gamenative.powercontrol.fan.FanController
+import app.gamenative.powercontrol.metrics.CpuUsageSampler
+import app.gamenative.powercontrol.metrics.GpuUsageSampler
+import app.gamenative.powercontrol.metrics.SystemMetricsSources
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.utils.DateTimeUtils.formatRuntimeHours
-import java.io.File
 import java.util.ArrayDeque
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
-import timber.log.Timber
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -108,6 +111,8 @@ class PerformanceHudView(
     private val cpuTempMetric = createMetricViews(MetricId.CPU_TEMP, 0xFFBDBDBD.toInt())
     private val gpuTempMetric = createMetricViews(MetricId.GPU_TEMP, 0xFFBDBDBD.toInt())
     private val batteryTempMetric = createMetricViews(MetricId.BATTERY_TEMP, 0xFFBDBDBD.toInt())
+    private val fanMetric = createMetricViews(MetricId.FAN, 0xFF80DEEA.toInt())
+    private val tuneMetric = createMetricViews(MetricId.TUNE, 0xFFCE93D8.toInt())
 
     private val allMetrics = listOf(
         fpsMetric,
@@ -121,22 +126,15 @@ class PerformanceHudView(
         cpuTempMetric,
         gpuTempMetric,
         batteryTempMetric,
+        fanMetric,
+        tuneMetric,
     )
 
     private val allTextRows = allMetrics.flatMap { listOf(it.stackedText, it.compactText) }
     private val allGraphs = allMetrics.flatMap { listOfNotNull(it.stackedGraph, it.compactGraph) }
 
-    private var lastCpuTotal: Long? = null
-    private var lastCpuIdle: Long? = null
-
-    // ── Mali gpuinfo delta sampling (for devices without a utilisation sysfs node)
-    private var lastMaliGpuInfoMs: Long? = null
-    private var lastMaliGpuInfoWallMs: Long = 0L
-
-    private var thermalZoneDiscoveryLogged = false
-    private var thermalZonesCache: List<Pair<String, String>>? = null
-    private var gpuUsageDiscoveryLogged = false
-    private var gpuUsagePathsCache: List<String>? = null
+    private val cpuSampler = CpuUsageSampler()
+    private val gpuSampler = GpuUsageSampler()
 
     init {
         background = backgroundDrawable
@@ -309,8 +307,8 @@ class PerformanceHudView(
     }
 
     private fun collectSnapshot(currentFps: Float): HudSnapshot {
-        val cpuPercent = readCpuUsagePercent()
-        val gpuPercent = readGpuUsagePercent()
+        val cpuPercent = cpuSampler.sample()?.percent
+        val gpuPercent = gpuSampler.sample()?.percent
         val batterySnapshot = collectBatterySnapshot()
         return HudSnapshot(
             fpsValue = currentFps,
@@ -327,9 +325,28 @@ class PerformanceHudView(
             runtime = batterySnapshot.runtimeText,
             batteryTemp = batterySnapshot.temperatureC?.let { "BAT TEMP ${it}°C" },
             clock = readClockText(),
-            cpuTemp = readCpuTempC()?.let { "CPU TEMP ${it}°C" },
-            gpuTemp = readGpuTempC()?.let { "GPU TEMP ${it}°C" },
+            cpuTemp = SystemMetricsSources.readTemperatureC(SystemMetricsSources.cpuTempPaths())
+                ?.let { "CPU TEMP ${it}°C" },
+            gpuTemp = SystemMetricsSources.readTemperatureC(SystemMetricsSources.gpuTempPaths())
+                ?.let { "GPU TEMP ${it}°C" },
+            fan = readFanText(),
+            tune = readTuneText(),
         )
+    }
+
+    private fun readFanText(): String? {
+        if (!PrefManager.showPerformanceHudFan) return null
+        if (!FanController.isRunning()) return null
+        return FanController.latestSample?.let { "FAN ${it.appliedPercent}%" }
+    }
+
+    private fun readTuneText(): String? {
+        if (!PrefManager.showPerformanceHudTunerCaps) return null
+        val caps = PowerManager.latestTunerCaps() ?: return null
+        val prime = caps.primeKhz?.let { String.format(Locale.US, "%.2f", it / 1_000_000.0) } ?: "-"
+        val performance = caps.performanceKhz?.let { String.format(Locale.US, "%.2f", it / 1_000_000.0) } ?: "-"
+        val gpu = caps.gpuLevel?.toString() ?: "-"
+        return "TUNE $prime/${performance}GHz G$gpu"
     }
 
     private fun collectBatterySnapshot(): BatterySnapshot {
@@ -419,6 +436,8 @@ class PerformanceHudView(
         updateMetricText(clockMetric, snapshot.clock)
         updateMetricText(cpuTempMetric, snapshot.cpuTemp)
         updateMetricText(gpuTempMetric, snapshot.gpuTemp)
+        updateMetricText(fanMetric, snapshot.fan)
+        updateMetricText(tuneMetric, snapshot.tune)
     }
 
     private fun updateMetricText(metric: MetricViews, text: String?) {
@@ -440,6 +459,8 @@ class PerformanceHudView(
             addMetricIfVisible(cpuTempMetric, config.showCpuTemperature)
             addMetricIfVisible(gpuTempMetric, config.showGpuTemperature)
             addMetricIfVisible(batteryTempMetric, config.showBatteryTemperature)
+            addMetricIfVisible(fanMetric, true)
+            addMetricIfVisible(tuneMetric, true)
         }
 
         val signatures = visibleMetrics.map {
@@ -595,181 +616,6 @@ class PerformanceHudView(
         }
     }
 
-    private fun readCpuUsagePercent(): Int? {
-        val parts = readFirstLine("/proc/stat")
-            ?.trim()
-            ?.split(Regex("\\s+"))
-
-        if (parts != null) {
-            if (parts.size < 5 || parts.firstOrNull() != "cpu") {
-                Timber.w("[HUD] /proc/stat unexpected format: ${parts.take(5)}")
-            } else {
-                val values = parts.drop(1).mapNotNull { it.toLongOrNull() }
-                if (values.size >= 4) {
-                    val idle = values.getOrElse(3) { 0L }
-                    val iowait = values.getOrElse(4) { 0L }
-                    val total = values.sum()
-                    val idleTotal = idle + iowait
-
-                    val previousTotal = lastCpuTotal
-                    val previousIdle = lastCpuIdle
-                    lastCpuTotal = total
-                    lastCpuIdle = idleTotal
-
-                    if (previousTotal != null && previousIdle != null) {
-                        val totalDiff = total - previousTotal
-                        val idleDiff = idleTotal - previousIdle
-                        if (totalDiff > 0) {
-                            return (((totalDiff - idleDiff).coerceAtLeast(0L)) * 100L / totalDiff)
-                                .toInt()
-                                .coerceIn(0, 100)
-                        }
-                    }
-                }
-            }
-        }
-
-        val fallback = readCpuUsagePercentFromFrequency()
-        return fallback
-    }
-
-    private fun readCpuUsagePercentFromFrequency(): Int? {
-        var currentTotal = 0L
-        var maxTotal = 0L
-
-        repeat(Runtime.getRuntime().availableProcessors()) { cpuIndex ->
-            val current = readLongFromLine("/sys/devices/system/cpu/cpu$cpuIndex/cpufreq/scaling_cur_freq")
-            val max = readLongFromLine("/sys/devices/system/cpu/cpu$cpuIndex/cpufreq/cpuinfo_max_freq")
-            if (current != null && max != null && max > 0L) {
-                currentTotal += current.coerceIn(0L, max)
-                maxTotal += max
-            }
-        }
-
-        if (maxTotal <= 0L) {
-            return null
-        }
-
-        return ((currentTotal * 100L) / maxTotal).toInt().coerceIn(0, 100)
-    }
-
-    private data class GpuUsageReading(val percent: Int, val source: String)
-
-    private fun readGpuUsagePercent(): Int? {
-        val reading = discoverGpuUsagePaths()
-            .asSequence()
-            .mapNotNull { readGpuUsageSample(it) }
-            .firstOrNull()
-
-        return reading?.percent
-    }
-
-    private fun discoverGpuUsagePaths(): List<String> {
-        gpuUsagePathsCache?.let { return it }
-
-        val candidates = linkedSetOf<String>()
-        fun add(path: String) {
-            if (File(path).canRead()) {
-                candidates += path
-            }
-        }
-
-        listOf(
-            "/sys/class/kgsl/kgsl-3d0/gpubusy",
-            "/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage",
-            "/sys/class/kgsl/kgsl-3d0/devfreq/gpu_load",
-            "/sys/class/misc/mali0/device/utilisation",
-            "/sys/class/misc/mali0/device/utilization",
-            "/sys/class/misc/mali0/device/gpuinfo",
-            "/sys/devices/platform/mali/utilization",
-            "/sys/kernel/gpu/gpu_busy",
-            "/sys/class/misc/pvrsrvkm/device/utilisation",
-            "/sys/class/devfreq/gpu/load",
-        ).forEach(::add)
-
-        listOf(
-            File("/sys/class/devfreq"),
-            File("/sys/devices/virtual/devfreq"),
-        ).forEach { devfreqRoot ->
-            if (!devfreqRoot.isDirectory) return@forEach
-            val nodeDirs = devfreqRoot.listFiles { file -> file.isDirectory } ?: emptyArray<File>()
-            for (nodeDir in nodeDirs) {
-                val nodePath = nodeDir.path.lowercase(Locale.US)
-                val looksLikeGpuNode = listOf("gpu", "mali", "g3d", "kgsl").any { token ->
-                    nodePath.contains(token)
-                }
-                val usageFiles = listOf(
-                    "gpu_busy_percentage",
-                    "gpu_load",
-                    "utilisation",
-                    "utilization",
-                    "load",
-                    "gpuinfo",
-                )
-                for (fileName in usageFiles) {
-                    val file = File(nodeDir, fileName)
-                    if (!file.canRead()) continue
-                    if (looksLikeGpuNode || fileName == "gpu_busy_percentage" || fileName == "gpuinfo") {
-                        candidates += file.path
-                    }
-                }
-            }
-        }
-
-        val paths = candidates.toList()
-        gpuUsagePathsCache = paths
-        if (!gpuUsageDiscoveryLogged) {
-            gpuUsageDiscoveryLogged = true
-            Timber.v("[HUD] Discovered GPU usage paths: %s", paths.joinToString())
-        }
-        return paths
-    }
-
-    private fun readGpuUsageSample(path: String): GpuUsageReading? {
-        val fileName = path.substringAfterLast("/")
-        return when (fileName) {
-            "gpubusy" -> {
-                val raw = readFirstLine(path)?.trim() ?: return null
-                val parts = raw.split(Regex("\\s+"))
-                if (parts.size < 2) return null
-                val busy = parts[0].toLongOrNull() ?: return null
-                val total = parts[1].toLongOrNull() ?: return null
-                if (total <= 0L) return null
-                GpuUsageReading(((busy * 100L) / total).toInt().coerceIn(0, 100), path)
-            }
-            "gpuinfo" -> {
-                val line = readNthLine(path, 1)?.trim() ?: return null
-                val gpuMs = line.split(Regex("\\s+")).lastOrNull()?.toLongOrNull() ?: return null
-                val now = SystemClock.elapsedRealtime()
-                val prevMs = lastMaliGpuInfoMs
-                val prevWall = lastMaliGpuInfoWallMs
-                lastMaliGpuInfoMs = gpuMs
-                lastMaliGpuInfoWallMs = now
-                if (prevMs == null || prevWall <= 0L) return null
-                val wallDelta = now - prevWall
-                if (wallDelta <= 0L) return null
-                val gpuDelta = (gpuMs - prevMs).coerceAtLeast(0L)
-                GpuUsageReading(((gpuDelta * 100L) / wallDelta).toInt().coerceIn(0, 100), path)
-            }
-            else -> readPercentFromLine(path)?.let { percent ->
-                GpuUsageReading(percent, path)
-            }
-        }
-    }
-
-    private fun readPercentFromLine(path: String): Int? {
-        val raw = readFirstLine(path)?.trim() ?: return null
-        val token = raw.split(Regex("\\s+"))
-            .map { it.replace(Regex("[^0-9]"), "") }
-            .firstOrNull { it.isNotEmpty() }
-            ?: return null
-        return token.toIntOrNull()?.coerceIn(0, 100)
-    }
-
-    private fun readLongFromLine(path: String): Long? {
-        return readFirstLine(path)?.trim()?.toLongOrNull()
-    }
-
     private fun readUsedRamText(): String {
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return "—"
         val info = ActivityManager.MemoryInfo()
@@ -781,171 +627,6 @@ class PerformanceHudView(
         } else {
             val usedMb = usedBytes / (1024L * 1024L)
             "${usedMb}MB"
-        }
-    }
-
-    private fun readCpuTempC(): Int? {
-        val reading = readTemperatureCWithSource(
-            discoverPrioritizedCpuTempPaths()
-        )
-        return reading?.celsius
-    }
-
-    private fun readGpuTempC(): Int? {
-        val reading = readTemperatureCWithSource(
-            listOf(
-                "/sys/class/kgsl/kgsl-3d0/temp",
-                "/sys/class/kgsl/kgsl-3d0/devfreq/temp",
-                "/sys/class/misc/mali0/device/temp",
-                "/sys/kernel/gpu/temp",
-            ) + discoverPrioritizedGpuTempPaths(),
-        )
-        return reading?.celsius
-    }
-
-    /**
-     * Discover thermal zones and rank CPU candidates by specificity.
-     *
-     * Priority (highest to lowest):
-     *   1. Zones with "cpu-silicon" in the type  — most representative
-     *   2. Zones with "cpu-0" (cluster 0 / big-core)
-     *   3. Zones with "cpu" in the type (generic)
-     *   4. Zones with "soc" in the type (Samsung/Exynos generic)
-     *   5. Zones with "s5p-tmu" in the type (Samsung)
-     *   6. Zones with "cputop" in the type (MediaTek style)
-     *   7. Zones with "tsens" in the type (Qualcomm generic, last resort)
-     */
-    private fun discoverPrioritizedCpuTempPaths(): List<String> {
-        val zones = discoverAllThermalZones()
-        return prioritizePaths(zones) { type ->
-            when {
-                type.contains("cpu-silicon") -> 0
-                type.contains("cpu-0") -> 1
-                type.contains("cpu") && !type.contains("gpu") -> 2
-                type.contains("soc") -> 3
-                type.contains("s5p-tmu") -> 4
-                type.contains("cputop") -> 5
-                type.contains("tsens") -> 6
-                type.contains("cluster") -> 7
-                type.contains("big") || type.contains("little") -> 8
-                else -> null
-            }
-        }
-    }
-
-    /**
-     * Discover thermal zones and rank GPU candidates by specificity.
-     *
-     * Priority (highest to lowest):
-     *   1. Zones with "gpu-silicon" in the type
-     *   2. Zones with "gpu" in the type (generic)
-     *   3. Zones with "g3d" in the type (some Exynos kernels)
-     *   4. Zones with "kgsl" in the type (Qualcomm Adreno)
-     *   5. Zones with "mali" in the type (ARM Mali / MediaTek)
-     */
-    private fun discoverPrioritizedGpuTempPaths(): List<String> {
-        val zones = discoverAllThermalZones()
-        return prioritizePaths(zones) { type ->
-            when {
-                type.contains("gpu-silicon") -> 0
-                type.contains("gpu") -> 1
-                type.contains("g3d") -> 2
-                type.contains("kgsl") -> 3
-                type.contains("mali") -> 4
-                else -> null
-            }
-        }
-    }
-
-    /**
-     * Read all thermal zones once, cache the discovery log, return (type, tempPath) pairs.
-     */
-    private fun discoverAllThermalZones(): List<Pair<String, String>> {
-        thermalZonesCache?.let { return it }
-
-        val zones = listOf(
-            File("/sys/class/thermal"),
-            File("/sys/devices/virtual/thermal"),
-        ).flatMap { thermalDir ->
-            val zoneDirs = thermalDir.listFiles { file ->
-                file.isDirectory && file.name.startsWith("thermal_zone")
-            } ?: return@flatMap emptyList<Pair<String, String>>()
-
-            zoneDirs.mapNotNull { zone ->
-                val type = readFirstLine(File(zone, "type").path)
-                    ?.trim()
-                    ?.lowercase(Locale.US)
-                    ?: return@mapNotNull null
-                Pair(type, File(zone, "temp").path)
-            }
-        }.distinctBy { it.second }
-
-        thermalZonesCache = zones
-        if (!thermalZoneDiscoveryLogged) {
-            thermalZoneDiscoveryLogged = true
-        }
-
-        return zones
-    }
-
-    /**
-     * Given a list of (type, tempPath) zones, assign a priority via [ranker].
-     * Lower rank = higher priority. Returns paths ordered by rank, then alphabetically
-     * as a tiebreaker for determinism.
-     */
-    private fun prioritizePaths(
-        zones: List<Pair<String, String>>,
-        ranker: (String) -> Int?,
-    ): List<String> {
-        return zones
-            .mapNotNull { (type, path) ->
-                ranker(type)?.let { rank -> Triple(type, path, rank) }
-            }
-            .sortedWith(compareBy({ it.third }, { it.second }))
-            .map { it.second }
-    }
-
-    private data class TempReading(val celsius: Int, val source: String)
-
-    private fun readTemperatureCWithSource(paths: List<String>): TempReading? {
-        for (path in paths.distinct()) {
-            val raw = readFirstLine(path)?.trim()?.toIntOrNull() ?: continue
-            // Round to nearest degree instead of truncating
-            val celsius = if (raw > 1000) (raw + 500) / 1000 else raw
-            if (celsius in 1..150) {
-                val source = path.substringAfterLast("/").let { parent ->
-                    if (parent == "temp") {
-                        // e.g. /sys/class/thermal/thermal_zone12/temp → thermal_zone12
-                        path.substringBeforeLast("/").substringAfterLast("/")
-                    } else {
-                        // e.g. /sys/class/kgsl/kgsl-3d0/temp → kgsl-3d0
-                        path.substringBeforeLast("/").substringAfterLast("/")
-                    }
-                }
-                return TempReading(celsius, source)
-            }
-        }
-        return null
-    }
-
-    private fun readFirstLine(path: String): String? {
-        return try {
-            File(path).bufferedReader().use { it.readLine() }
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    /**
-     * Read the Nth line (0-indexed) from a file, for multi-line sysfs nodes like gpuinfo.
-     */
-    private fun readNthLine(path: String, lineIndex: Int): String? {
-        return try {
-            File(path).bufferedReader().useLines { lines ->
-                lines.drop(lineIndex).firstOrNull()
-            }
-        } catch (_: Exception) {
-            null
         }
     }
 

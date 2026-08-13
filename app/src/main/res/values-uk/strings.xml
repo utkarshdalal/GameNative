@@ -2187,4 +2187,43 @@
     <string name="steam_invite_joined">У вашій грі</string>
     <string name="steam_invite_online">У мережі</string>
     <string name="steam_invite_offline">Не в мережі</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Керування продуктивністю</string>
+    <string name="power_control_info">Керує масштабуванням частоти процесора та налаштуваннями регулятора. Потрібна служба PServer.</string>
+    <string name="power_control_driver">Драйвер: %s</string>
+    <string name="power_control_profiles">Профілі продуктивності</string>
+    <string name="power_control_governor">Регулятор ЦП</string>
+    <string name="power_control_current_frequencies">Поточні частоти</string>
+    <string name="power_control_frequencies">Налаштування частоти</string>
+    <string name="power_control_cpu_min_freq">Мінімальна частота ЦП</string>
+    <string name="power_control_cpu_max_freq">Максимальна частота ЦП</string>
+    <string name="power_control_gpu_freq">Частота ГП</string>
+    <string name="power_control_gpu_min_power">Мінімальна потужність ГП</string>
+    <string name="power_control_gpu_max_power">Максимальна потужність ГП</string>
+    <string name="power_control_ram_min_power">Мінімальна частота ОЗП</string>
+    <string name="power_control_ram_max_power">Максимальна частота ОЗП</string>
+    <string name="power_control_available_frequencies">Доступні частоти</string>
+    <string name="power_control_auto_tuning">Автоналаштування</string>
+    <string name="power_control_auto_tuning_desc">Стабільніша продуктивність, довша робота від батареї, менше нагрівання: автоматично налаштовує CPU та GPU під гру. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Автоматичне зниження FPS</string>
+    <string name="power_control_adaptive_fps_desc">Знижує ліміт FPS, якщо гра не може його досягти, для стабільного темпу кадрів. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_tuning_mode">Режим налаштування</string>
+    <string name="power_control_tuning_mode_per_cluster">За кластерами (перевірено на Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">ПІД-регулятор</string>
+    <string name="power_control_fan_control">Керування вентилятором</string>
+    <string name="power_control_fan_control_desc">Підтримує задану температуру за мінімального шуму вентилятора. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Закріплення гри</string>
+    <string name="power_control_game_pinning_desc">Утримує гру на швидких ядрах CPU. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Показувати швидкість вентилятора</string>
+    <string name="power_control_hud_show_tuner">Показувати межі частот налаштування</string>
+    <string name="power_control_tuning_strategy">Стратегія налаштування</string>
+    <string name="power_control_strategy_balanced">Збалансована</string>
+    <string name="power_control_strategy_balanced_desc">Рівномірно налаштовує всі компоненти для кращої загальної продуктивності</string>
+    <string name="power_control_strategy_power_efficient">Енергоефективна</string>
+    <string name="power_control_strategy_power_efficient_desc">Знижує неблокуючі компоненти для економії енергії</string>
+    <string name="power_control_strategy_aggressive">Агресивна</string>
+    <string name="power_control_strategy_aggressive_desc">Максимізує продуктивність на виявлених вузьких місцях</string>
+    <string name="power_control_strategy_conservative">Консервативна</string>
+    <string name="power_control_strategy_conservative_desc">Поступові налаштування з акцентом на стабільність</string>
 </resources>

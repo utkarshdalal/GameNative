@@ -2196,4 +2196,43 @@
     <string name="steam_invite_joined">在你的遊戲中</string>
     <string name="steam_invite_online">線上</string>
     <string name="steam_invite_offline">離線</string>
+
+    <!-- Power Control -->
+    <string name="power_control">效能控制</string>
+    <string name="power_control_info">控制CPU頻率調節和調速器設定。需要PServer服務。</string>
+    <string name="power_control_driver">驅動程式：%s</string>
+    <string name="power_control_profiles">效能設定檔</string>
+    <string name="power_control_governor">CPU調速器</string>
+    <string name="power_control_current_frequencies">目前頻率</string>
+    <string name="power_control_frequencies">頻率設定</string>
+    <string name="power_control_cpu_min_freq">最低CPU頻率</string>
+    <string name="power_control_cpu_max_freq">最高CPU頻率</string>
+    <string name="power_control_gpu_freq">GPU頻率</string>
+    <string name="power_control_gpu_min_power">最低GPU功率</string>
+    <string name="power_control_gpu_max_power">最高GPU功率</string>
+    <string name="power_control_ram_min_power">最低RAM頻率</string>
+    <string name="power_control_ram_max_power">最高RAM頻率</string>
+    <string name="power_control_available_frequencies">可用頻率</string>
+    <string name="power_control_auto_tuning">自動調整</string>
+    <string name="power_control_auto_tuning_desc">更穩定的效能、更長的續航、更少的發熱：自動為遊戲調節 CPU 和 GPU。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_adaptive_fps">自動降低 FPS</string>
+    <string name="power_control_adaptive_fps_desc">當遊戲無法達到 FPS 上限時降低上限，以獲得穩定的影格間隔。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_tuning_mode">調整模式</string>
+    <string name="power_control_tuning_mode_per_cluster">分叢集（已在 Retroid Pocket 6 上驗證）</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID 控制器</string>
+    <string name="power_control_fan_control">風扇控制</string>
+    <string name="power_control_fan_control_desc">以最低的風扇噪音維持目標溫度。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_game_pinning">遊戲核心綁定</string>
+    <string name="power_control_game_pinning_desc">將遊戲保持在高效能 CPU 核心上。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_hud_show_fan">顯示風扇轉速</string>
+    <string name="power_control_hud_show_tuner">顯示調整的頻率上限</string>
+    <string name="power_control_tuning_strategy">調整策略</string>
+    <string name="power_control_strategy_balanced">平衡</string>
+    <string name="power_control_strategy_balanced_desc">均衡調整所有元件以獲得最佳整體效能</string>
+    <string name="power_control_strategy_power_efficient">節能</string>
+    <string name="power_control_strategy_power_efficient_desc">降低非瓶頸元件以節省電量</string>
+    <string name="power_control_strategy_aggressive">積極</string>
+    <string name="power_control_strategy_aggressive_desc">最大化檢測到的瓶頸效能</string>
+    <string name="power_control_strategy_conservative">保守</string>
+    <string name="power_control_strategy_conservative_desc">漸進式調整，注重穩定性</string>
 </resources>

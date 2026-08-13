@@ -2191,4 +2191,43 @@
     <string name="steam_invite_joined">W twojej grze</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Kontrola wydajności</string>
+    <string name="power_control_info">Kontroluje skalowanie częstotliwości procesora i ustawienia regulatora. Wymaga usługi PServer.</string>
+    <string name="power_control_driver">Sterownik: %s</string>
+    <string name="power_control_profiles">Profile wydajności</string>
+    <string name="power_control_governor">Regulator CPU</string>
+    <string name="power_control_current_frequencies">Bieżące częstotliwości</string>
+    <string name="power_control_frequencies">Ustawienia częstotliwości</string>
+    <string name="power_control_cpu_min_freq">Minimalna częstotliwość CPU</string>
+    <string name="power_control_cpu_max_freq">Maksymalna częstotliwość CPU</string>
+    <string name="power_control_gpu_freq">Częstotliwość GPU</string>
+    <string name="power_control_gpu_min_power">Minimalna moc GPU</string>
+    <string name="power_control_gpu_max_power">Maksymalna moc GPU</string>
+    <string name="power_control_ram_min_power">Minimalna częstotliwość RAM</string>
+    <string name="power_control_ram_max_power">Maksymalna częstotliwość RAM</string>
+    <string name="power_control_available_frequencies">Dostępne częstotliwości</string>
+    <string name="power_control_auto_tuning">Automatyczne dostrajanie</string>
+    <string name="power_control_auto_tuning_desc">Stabilniejsza wydajność, dłuższy czas pracy baterii, mniej ciepła: automatycznie dostraja CPU i GPU do gry. Zweryfikowano na Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Automatyczna redukcja FPS</string>
+    <string name="power_control_adaptive_fps_desc">Obniża limit FPS, gdy gra nie może go osiągnąć, aby zapewnić stabilne tempo klatek. Zweryfikowano na Retroid Pocket 6.</string>
+    <string name="power_control_tuning_mode">Tryb dostrajania</string>
+    <string name="power_control_tuning_mode_per_cluster">Na klaster (zweryfikowano na Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">Regulator PID</string>
+    <string name="power_control_fan_control">Sterowanie wentylatorem</string>
+    <string name="power_control_fan_control_desc">Utrzymuje docelową temperaturę przy minimalnym hałasie wentylatora. Zweryfikowano na Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Przypinanie gry</string>
+    <string name="power_control_game_pinning_desc">Utrzymuje grę na szybkich rdzeniach CPU. Zweryfikowano na Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Pokaż prędkość wentylatora</string>
+    <string name="power_control_hud_show_tuner">Pokaż limity taktowania dostrajania</string>
+    <string name="power_control_tuning_strategy">Strategia dostrajania</string>
+    <string name="power_control_strategy_balanced">Zrównoważona</string>
+    <string name="power_control_strategy_balanced_desc">Dostosowuje wszystkie komponenty równomiernie dla najlepszej ogólnej wydajności</string>
+    <string name="power_control_strategy_power_efficient">Energooszczędna</string>
+    <string name="power_control_strategy_power_efficient_desc">Zmniejsza komponenty niebędące wąskim gardłem, aby oszczędzać energię</string>
+    <string name="power_control_strategy_aggressive">Agresywna</string>
+    <string name="power_control_strategy_aggressive_desc">Maksymalizuje wydajność wykrytych wąskich gardeł</string>
+    <string name="power_control_strategy_conservative">Konserwatywna</string>
+    <string name="power_control_strategy_conservative_desc">Stopniowe dostosowania z naciskiem na stabilność</string>
 </resources>

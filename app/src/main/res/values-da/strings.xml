@@ -2059,4 +2059,43 @@
     <string name="steam_invite_joined">I dit spil</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Ydeevnekontrol</string>
+    <string name="power_control_info">Styrer CPU-frekvensskalering og governor-indstillinger. Kræver PServer-tjenesten.</string>
+    <string name="power_control_driver">Driver: %s</string>
+    <string name="power_control_profiles">Ydeevneprofiler</string>
+    <string name="power_control_governor">CPU-governor</string>
+    <string name="power_control_current_frequencies">Aktuelle frekvenser</string>
+    <string name="power_control_frequencies">Frekvensindstillinger</string>
+    <string name="power_control_cpu_min_freq">Minimum CPU-frekvens</string>
+    <string name="power_control_cpu_max_freq">Maksimum CPU-frekvens</string>
+    <string name="power_control_gpu_freq">GPU-frekvens</string>
+    <string name="power_control_gpu_min_power">Minimum GPU-effekt</string>
+    <string name="power_control_gpu_max_power">Maksimum GPU-effekt</string>
+    <string name="power_control_ram_min_power">Minimum RAM-frekvens</string>
+    <string name="power_control_ram_max_power">Maksimum RAM-frekvens</string>
+    <string name="power_control_available_frequencies">Tilgængelige frekvenser</string>
+    <string name="power_control_auto_tuning">Automatisk justering</string>
+    <string name="power_control_auto_tuning_desc">Mere stabil ydelse, længere batteritid, mindre varme: justerer automatisk CPU og GPU til dit spil. Verificeret på Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Automatisk FPS-reduktion</string>
+    <string name="power_control_adaptive_fps_desc">Sænker FPS-grænsen, når spillet ikke kan nå den, for en stabil billedtakt. Verificeret på Retroid Pocket 6.</string>
+    <string name="power_control_tuning_mode">Justeringstilstand</string>
+    <string name="power_control_tuning_mode_per_cluster">Pr. klynge (verificeret på Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID-regulator</string>
+    <string name="power_control_fan_control">Blæserstyring</string>
+    <string name="power_control_fan_control_desc">Holder en måltemperatur med mindst mulig blæserstøj. Verificeret på Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Spilfastgørelse</string>
+    <string name="power_control_game_pinning_desc">Holder spillet på de hurtige CPU-kerner. Verificeret på Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Vis blæserhastighed</string>
+    <string name="power_control_hud_show_tuner">Vis tunerens frekvensgrænser</string>
+    <string name="power_control_tuning_strategy">Justeringsstrategi</string>
+    <string name="power_control_strategy_balanced">Afbalanceret</string>
+    <string name="power_control_strategy_balanced_desc">Justerer alle komponenter lige meget for bedste samlede ydeevne</string>
+    <string name="power_control_strategy_power_efficient">Strømbesparende</string>
+    <string name="power_control_strategy_power_efficient_desc">Reducerer ikke-flaskehals komponenter for at spare strøm</string>
+    <string name="power_control_strategy_aggressive">Aggressiv</string>
+    <string name="power_control_strategy_aggressive_desc">Maksimerer ydeevnen på opdagede flaskehalse</string>
+    <string name="power_control_strategy_conservative">Konservativ</string>
+    <string name="power_control_strategy_conservative_desc">Gradvise justeringer med fokus på stabilitet</string>
 </resources>

@@ -4,8 +4,6 @@ import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -57,6 +55,7 @@ import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -90,6 +89,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.powercontrol.PowerManager
+import app.gamenative.ui.component.quickMenus.PowerControlQuickMenuTab
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.theme.PluviaTheme
@@ -123,6 +124,7 @@ private object QuickMenuTab {
     const val TOOLS = 4
     const val BFG = 5
     const val INVITE = 6
+    const val POWER = 7
 }
 
 data class QuickMenuItem(
@@ -352,15 +354,17 @@ fun QuickMenu(
     // broken D8 codegen path).
     val bfgMenu = remember(container?.id) { container?.let { BfgMenuState.createIfAvailable(it) } }
     val inviteMenu = remember(container?.id) { SteamInviteState.createIfAvailable(container) }
+    val isPowerControlAvailable = remember { PowerManager.isPServerAvailable() }
 
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
-            if ((PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable) ||
-                (PrefManager.quickMenuLastTab == QuickMenuTab.BFG && bfgMenu == null) ||
-                (PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null)
-            )
-                QuickMenuTab.HUD
-            else PrefManager.quickMenuLastTab
+            when {
+                PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.BFG && bfgMenu == null -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.POWER && !isPowerControlAvailable -> QuickMenuTab.HUD
+                else -> PrefManager.quickMenuLastTab
+            }
         )
     }
     val selectedTabLabelResId = when (selectedTab) {
@@ -370,6 +374,7 @@ fun QuickMenu(
         QuickMenuTab.EFFECTS -> R.string.screen_effects
         QuickMenuTab.TOOLS -> R.string.task_manager
         QuickMenuTab.INVITE -> R.string.steam_invite_tab_title
+        QuickMenuTab.POWER -> R.string.power_control
         else -> R.string.quick_menu_tab_controller
     }
 
@@ -382,6 +387,7 @@ fun QuickMenu(
     val hudTabFocusRequester = remember { FocusRequester() }
     val controllerTabFocusRequester = remember { FocusRequester() }
     val toolsTabFocusRequester = remember { FocusRequester() }
+    val powerTabFocusRequester = remember { FocusRequester() }
     val hudItemFocusRequester = remember { FocusRequester() }
     val effectsItemFocusRequester = remember { FocusRequester() }
     val controllerItemFocusRequester = remember { FocusRequester() }
@@ -409,6 +415,7 @@ fun QuickMenu(
             }
         }
     }
+    val powerItemFocusRequester = remember { FocusRequester() }
 
     val visibleState = remember { MutableTransitionState(false) }
     visibleState.targetState = isVisible
@@ -521,6 +528,20 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = hudTabFocusRequester,
                                 )
+                                if (isPowerControlAvailable) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.BatteryChargingFull,
+                                        contentDescriptionResId = R.string.power_control,
+                                        selected = selectedTab == QuickMenuTab.POWER,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.POWER
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = powerTabFocusRequester,
+                                    )
+                                }
                                 if (isLsfgAvailable) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.Speed,
@@ -740,6 +761,13 @@ fun QuickMenu(
                                         }
                                     }
 
+                                    QuickMenuTab.POWER -> {
+                                        PowerControlQuickMenuTab(
+                                            focusRequester = powerItemFocusRequester,
+                                            modifier = Modifier.fillMaxSize(),
+                                        )
+                                    }
+
                                     QuickMenuTab.TOOLS -> {
                                         ToolsQuickMenuTab(
                                             processes = wineProcesses,
@@ -810,6 +838,7 @@ fun QuickMenu(
                         QuickMenuTab.BFG -> bfgItemFocusRequester.requestFocus()
                         QuickMenuTab.INVITE -> inviteItemFocusRequester.requestFocus()
                         QuickMenuTab.EFFECTS -> effectsItemFocusRequester.requestFocus()
+                        QuickMenuTab.POWER -> powerItemFocusRequester.requestFocus()
                         QuickMenuTab.TOOLS -> toolsItemFocusRequester.requestFocus()
                         else -> controllerItemFocusRequester.requestFocus()
                     }
@@ -1271,6 +1300,30 @@ private fun PerformanceHudQuickMenuTab(
             },
             accentColor = accentColor,
         )
+        if (PowerManager.isFanControlAvailable()) {
+            var showFan by remember { mutableStateOf(PrefManager.showPerformanceHudFan) }
+            QuickMenuToggleRow(
+                title = stringResource(R.string.power_control_hud_show_fan),
+                enabled = showFan,
+                onToggle = {
+                    showFan = !showFan
+                    PrefManager.showPerformanceHudFan = showFan
+                },
+                accentColor = accentColor,
+            )
+        }
+        if (PowerManager.isClusterTuningAvailable()) {
+            var showTunerCaps by remember { mutableStateOf(PrefManager.showPerformanceHudTunerCaps) }
+            QuickMenuToggleRow(
+                title = stringResource(R.string.power_control_hud_show_tuner),
+                enabled = showTunerCaps,
+                onToggle = {
+                    showTunerCaps = !showTunerCaps
+                    PrefManager.showPerformanceHudTunerCaps = showTunerCaps
+                },
+                accentColor = accentColor,
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
     }
@@ -1717,7 +1770,7 @@ private fun QuickMenuChoiceChip(
 }
 
 @Composable
-private fun QuickMenuAdjustmentRow(
+internal fun QuickMenuAdjustmentRow(
     title: String,
     valueText: String,
     progress: Float,
@@ -1968,7 +2021,7 @@ private fun QuickMenuAdjustmentButton(
 }
 
 @Composable
-private fun QuickMenuToggleRow(
+internal fun QuickMenuToggleRow(
     title: String,
     enabled: Boolean,
     onToggle: () -> Unit,

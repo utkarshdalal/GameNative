@@ -2185,4 +2185,43 @@
     <string name="steam_invite_joined">내 게임에 참가 중</string>
     <string name="steam_invite_online">온라인</string>
     <string name="steam_invite_offline">오프라인</string>
+
+    <!-- Power Control -->
+    <string name="power_control">성능 제어</string>
+    <string name="power_control_info">CPU 주파수 스케일링 및 거버너 설정을 제어합니다. PServer 서비스가 필요합니다.</string>
+    <string name="power_control_driver">드라이버: %s</string>
+    <string name="power_control_profiles">성능 프로필</string>
+    <string name="power_control_governor">CPU 거버너</string>
+    <string name="power_control_current_frequencies">현재 주파수</string>
+    <string name="power_control_frequencies">주파수 설정</string>
+    <string name="power_control_cpu_min_freq">최소 CPU 주파수</string>
+    <string name="power_control_cpu_max_freq">최대 CPU 주파수</string>
+    <string name="power_control_gpu_freq">GPU 주파수</string>
+    <string name="power_control_gpu_min_power">최소 GPU 파워</string>
+    <string name="power_control_gpu_max_power">최대 GPU 파워</string>
+    <string name="power_control_ram_min_power">최소 RAM 주파수</string>
+    <string name="power_control_ram_max_power">최대 RAM 주파수</string>
+    <string name="power_control_available_frequencies">사용 가능한 주파수</string>
+    <string name="power_control_auto_tuning">자동 튜닝</string>
+    <string name="power_control_auto_tuning_desc">더 안정적인 성능, 더 긴 배터리 사용 시간, 더 적은 발열: 게임에 맞춰 CPU와 GPU를 자동으로 조정합니다. Retroid Pocket 6에서 검증되었습니다.</string>
+    <string name="power_control_adaptive_fps">FPS 자동 감소</string>
+    <string name="power_control_adaptive_fps_desc">게임이 FPS 상한에 도달하지 못하면 상한을 낮춰 프레임 간격을 안정시킵니다. Retroid Pocket 6에서 검증되었습니다.</string>
+    <string name="power_control_tuning_mode">튜닝 모드</string>
+    <string name="power_control_tuning_mode_per_cluster">클러스터별 (Retroid Pocket 6에서 검증됨)</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID 제어기</string>
+    <string name="power_control_fan_control">팬 제어</string>
+    <string name="power_control_fan_control_desc">팬 소음을 최소화하며 목표 온도를 유지합니다. Retroid Pocket 6에서 검증되었습니다.</string>
+    <string name="power_control_game_pinning">게임 코어 고정</string>
+    <string name="power_control_game_pinning_desc">게임을 빠른 CPU 코어에 고정합니다. Retroid Pocket 6에서 검증되었습니다.</string>
+    <string name="power_control_hud_show_fan">팬 속도 표시</string>
+    <string name="power_control_hud_show_tuner">튜닝 클록 상한 표시</string>
+    <string name="power_control_tuning_strategy">튜닝 전략</string>
+    <string name="power_control_strategy_balanced">균형</string>
+    <string name="power_control_strategy_balanced_desc">모든 구성 요소를 균등하게 조정하여 최고의 전체 성능 달성</string>
+    <string name="power_control_strategy_power_efficient">전력 효율</string>
+    <string name="power_control_strategy_power_efficient_desc">병목 현상이 아닌 구성 요소를 줄여 전력 절약</string>
+    <string name="power_control_strategy_aggressive">공격적</string>
+    <string name="power_control_strategy_aggressive_desc">감지된 병목 현상의 성능을 최대화</string>
+    <string name="power_control_strategy_conservative">보수적</string>
+    <string name="power_control_strategy_conservative_desc">안정성에 중점을 둔 점진적 조정</string>
 </resources>
