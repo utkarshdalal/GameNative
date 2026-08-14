@@ -1102,7 +1102,7 @@
     <string name="settings_interface_storage_volume_title">Storage volume</string>
     <string name="settings_interface_download_server_title">Steam Download Server</string>
     <string name="settings_interface_restart_required_title">Restart Required</string>
-    <string name="settings_interface_low_detail_library_mode">Minamlist Detail Library Mode</string>
+    <string name="settings_interface_low_detail_library_mode">Minimalist Detail Library Mode</string>
     <string name="settings_interface_low_detail_library_mode_subtitle">Reduces the amount of detail on each card in the library screen</string>
 
     <!-- Settings: Downloads Group -->
