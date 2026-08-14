@@ -307,7 +307,7 @@ private fun Preview_ListViewCard_recommended() {
                 name = "Preview Game",
                 iconHash = "",
                 gameSource = GameSource.STEAM,
-                isRecommended = false,
+                isRecommended = true,
             ),
             onClick = { },
             onFocus = { },
