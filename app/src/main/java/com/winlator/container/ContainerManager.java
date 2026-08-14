@@ -337,7 +337,7 @@ public class ContainerManager {
 
     /**
      * Extracts DirectAudio driver files (winedirectaudio.drv and winedirectaudio.so)
-     * from the bundled directaudio-20260812.tzst archive into the Wine installation,
+     * from the bundled DirectAudio archive into the Wine installation,
      * then copies the .drv to the container's system32 directory.
      *
      * Files are placed at:
@@ -349,6 +349,17 @@ public class ContainerManager {
      * @param containerDir The container root directory
      * @return true if extraction succeeded, false otherwise
      */
+    /**
+     * Which DirectAudio build to install. Both archives ship in assets/:
+     *   directaudio-20260813.tzst              - release build (default)
+     *   directaudio-20260813-diagnostics.tzst  - identical driver plus logcat probes
+     *                                            under the "DirectAudio" tag
+     * Point this at the -diagnostics archive when tracing an audio issue on a title.
+     * The release build already logs stream rebuilds ("DirectAudio: reopen: <reason>"),
+     * so the diagnostics build is only needed for per-callback detail.
+     */
+    private static final String DIRECTAUDIO_ASSET = "directaudio-20260813.tzst";
+
     public boolean extractDirectAudio(ImageFs imageFs, File containerDir) {
         try {
             // Extract the archive to a temporary directory
@@ -364,7 +375,7 @@ public class ContainerManager {
             boolean extracted = TarCompressorUtils.extract(
                 TarCompressorUtils.Type.ZSTD,
                 context.getAssets(),
-                "directaudio-20260812.tzst",
+                DIRECTAUDIO_ASSET,
                 tempDir,
                 null
             );
