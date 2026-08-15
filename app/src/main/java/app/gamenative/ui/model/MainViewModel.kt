@@ -551,7 +551,10 @@ class MainViewModel @Inject constructor(
 
             val container = apiJob.await()
 
-            if (container.isLaunchImmersiveMode() && app.gamenative.MainActivity.isMetaQuest(context)) {
+            if (app.gamenative.BuildConfig.MODERN_XR &&
+                container.isLaunchImmersiveMode() &&
+                app.gamenative.MainActivity.isMetaQuest(context)
+            ) {
                 // Immersive/VR launches always boot straight to the executable — there is no
                 // "open the Wine desktop" variant for this entry point. Placed after apiJob so
                 // the Steam DRM/API patch step above (replaceSteamApi/replaceSteamclientDll)

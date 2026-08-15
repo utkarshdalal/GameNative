@@ -321,6 +321,10 @@
     <string name="immersive_reset_effects_button">Reset screen effects</string>
     <string name="immersive_reset_effects_desc">Turns off every effect, filter, and brightness/contrast/gamma adjustment. Takes effect immediately — no restart needed.</string>
     <string name="immersive_onboarding_disable_passthrough">Disable passthrough for better performance</string>
+    <string name="immersive_onboarding_quick_menu">Long-press Start to open/close the quick menu</string>
+    <string name="immersive_onboarding_pointer_toggle">Double-click a thumbstick to switch Xbox controller / XR pointer</string>
+    <string name="immersive_mode_xr_pointer">XR pointer mode</string>
+    <string name="immersive_mode_xbox">Xbox controller mode</string>
     <string name="tools_wine_processes_running_hint">%1$d running, tap/click a process to close</string>
     <string name="tools_wine_processes_empty">No running EXEs detected.</string>
     <string name="performance_hud">Performance HUD</string>

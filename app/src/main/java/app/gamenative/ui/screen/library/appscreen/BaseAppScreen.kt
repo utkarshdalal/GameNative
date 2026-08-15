@@ -1045,9 +1045,9 @@ abstract class BaseAppScreen {
             mutableStateOf(hasLeftoverInstall(context, libraryItem))
         }
 
-        // Immersive/VR launch mode is only offered on Meta Quest.
+        // Immersive/VR launch mode is only offered on the modernXr build running on Meta Quest.
         val isImmersiveModeSupported = remember(libraryItem.appId) {
-            app.gamenative.MainActivity.isMetaQuest(context)
+            app.gamenative.BuildConfig.MODERN_XR && app.gamenative.MainActivity.isMetaQuest(context)
         }
         var isImmersiveModeEnabledState by remember(libraryItem.appId) { mutableStateOf(false) }
         if (isImmersiveModeSupported) {

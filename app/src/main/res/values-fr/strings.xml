@@ -324,6 +324,10 @@
     <string name="immersive_reset_effects_button">Réinitialiser les effets d\'écran</string>
     <string name="immersive_reset_effects_desc">Désactive tous les effets, filtres et réglages contraste/luminosité/gamma. Effet immédiat — aucun redémarrage nécessaire.</string>
     <string name="immersive_onboarding_disable_passthrough">Désactive le passthrough pour de meilleures performances</string>
+    <string name="immersive_onboarding_quick_menu">Fais un appui long sur Start pour ouvrir/fermer le menu rapide</string>
+    <string name="immersive_onboarding_pointer_toggle">Double-clique un joystick pour basculer manette Xbox / manette XR</string>
+    <string name="immersive_mode_xr_pointer">Mode manette XR</string>
+    <string name="immersive_mode_xbox">Mode manette Xbox</string>
     <string name="performance_hud">HUD de performance</string>
     <string name="performance_hud_description">Afficher ou masquer la surcouche en jeu.</string>
     <string name="performance_hud_fps_limiter">Limiteur de FPS</string>

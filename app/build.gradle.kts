@@ -366,7 +366,7 @@ dependencies {
 
     // Official Khronos OpenXR loader (Apache-2.0) for the Meta Quest immersive launch mode's
     // native module (app/src/main/cpp/xrimmersive) — not a Winlator/GameNativeXR dependency.
-    implementation("org.khronos.openxr:openxr_loader_for_android:1.1.61")
+    "modernXrImplementation"("org.khronos.openxr:openxr_loader_for_android:1.1.61")
 
     // Winlator
     implementation(libs.bundles.winlator)

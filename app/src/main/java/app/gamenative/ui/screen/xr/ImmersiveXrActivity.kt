@@ -419,13 +419,6 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                     bootToContainer = false,
                     isOffline = isOffline,
                     registerBackAction = { cb -> backAction = cb },
-                    registerQuickMenuToggle = { toggle -> quickMenuToggle = toggle },
-                    registerQuickMenuStartHeld = { setter -> quickMenuSetStartHeld = setter },
-                    registerQuickMenuFocusManager = { fm -> quickMenuFocusManager = fm },
-                    registerQuickMenuCycleTab = { cycle -> quickMenuCycleTab = cycle },
-                    registerQuickMenuAdjustmentControl = { control -> quickMenuAdjustmentControl = control },
-                    registerQuickMenuFocusTabRail = { action -> quickMenuFocusTabRail = action },
-                    registerQuickMenuFocusedActivate = { getter -> quickMenuFocusedActivate = getter },
                     navigateBack = { finish() },
                     onExit = { onComplete ->
                         viewModel.exitSteamApp(context, appId) {
@@ -441,6 +434,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                         viewModel.onGameLaunchError(error)
                         finish()
                     },
+                    immersiveHooks = ImmersiveSessionHooks(
                     onQuickMenuVisibilityChanged = { visible ->
                         Timber.i("Immersive: quick menu visibility changed to %b", visible)
                         quickMenuVisible = visible
@@ -449,7 +443,14 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                                 ?.isEffectsRequireCompositor()
                         }
                     },
-                    immersiveControls = ImmersiveControls(
+                    registerToggle = { toggle -> quickMenuToggle = toggle },
+                    registerStartHeld = { setter -> quickMenuSetStartHeld = setter },
+                    registerFocusManager = { fm -> quickMenuFocusManager = fm },
+                    registerCycleTab = { cycle -> quickMenuCycleTab = cycle },
+                    registerAdjustmentControl = { control -> quickMenuAdjustmentControl = control },
+                    registerFocusTabRail = { action -> quickMenuFocusTabRail = action },
+                    registerFocusedActivate = { getter -> quickMenuFocusedActivate = getter },
+                    controls = ImmersiveControls(
                         passthroughEnabled = passthroughEnabled,
                         onPassthroughToggle = { enabled ->
                             passthroughEnabled = enabled
@@ -483,6 +484,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                             }
                             Timber.i("Immersive: resize handles toggled %s from quick menu, pointer mode now %s", enabled, enabled)
                         },
+                    ),
                     ),
                 )
 
@@ -1709,11 +1711,11 @@ private fun ImmersiveControlsOnboarding(visible: Boolean, onDismiss: () -> Unit)
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Icon(Icons.Default.Menu, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
-                    Text("Fais un appui long sur Start pour ouvrir/fermer le menu rapide", color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.immersive_onboarding_quick_menu), color = Color.White, style = MaterialTheme.typography.bodyLarge)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     Icon(Icons.Default.SportsEsports, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
-                    Text("Double-clique un joystick pour basculer manette Xbox / manette XR", color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.immersive_onboarding_pointer_toggle), color = Color.White, style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -1757,7 +1759,7 @@ private fun ImmersiveModeChangeIndicator(pointerModeActive: Boolean) {
                         modifier = Modifier.size(36.dp),
                     )
                     Text(
-                        text = if (shownForPointerMode) "Mode manette XR" else "Mode manette Xbox",
+                        text = stringResource(if (shownForPointerMode) R.string.immersive_mode_xr_pointer else R.string.immersive_mode_xbox),
                         color = Color.White,
                         style = MaterialTheme.typography.titleMedium,
                     )

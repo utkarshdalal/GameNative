@@ -3660,7 +3660,9 @@ class SteamService : Service(), IChallengeUrlChanged {
         // MainActivity.kt) — this callback is a separate Android lifecycle hook (fires when a
         // TASK is torn down, not tied to any one Activity's own lifecycle) that was bypassing it
         // entirely, force-stopping Steam out from under an immersive session in progress.
-        if (!hasActiveOperations() && !keepAlive) {
+        // Only the modernXr build needs that immersive protection; other builds keep the
+        // original swipe-away-stops-the-service behavior.
+        if (!hasActiveOperations() && !(BuildConfig.MODERN_XR && keepAlive)) {
             Timber.i("Task removed and no active work — stopping service")
             stopSelf()
         } else {

@@ -1032,20 +1032,22 @@ private fun ScreenEffectAdjustmentRow(
             .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && isFocused) {
                     when {
-                        // A only LOCKS, never toggles off — see QuickMenuAdjustmentRow's identical
-                        // handler for why (a repeated A press must never undo an in-progress
-                        // adjustment). Only BUTTON_B or losing focus unlocks.
-                        !isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_A -> {
-                            isAdjustmentLocked = true
+                        // Immersive only: A only LOCKS, never toggles off — see
+                        // QuickMenuAdjustmentRow's identical handler for why. Flat mode keeps
+                        // the original A-toggles behavior.
+                        keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_A &&
+                            (!inputBypass.active || !isAdjustmentLocked) -> {
+                            isAdjustmentLocked = if (inputBypass.active) true else !isAdjustmentLocked
                             true
                         }
 
-                        // ImmersiveXrActivity's B handler dispatches KEYCODE_BACK, not
-                        // KEYCODE_BUTTON_B — see QuickMenuAdjustmentRow's identical handler for
-                        // why both are checked here.
+                        // Immersive only for the BACK half: ImmersiveXrActivity's B handler
+                        // dispatches KEYCODE_BACK, not KEYCODE_BUTTON_B — see
+                        // QuickMenuAdjustmentRow's identical handler. Flat mode keeps BACK
+                        // unhandled here (it closes the menu as before).
                         isAdjustmentLocked &&
                             (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_B ||
-                                keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BACK) -> {
+                                (inputBypass.active && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BACK)) -> {
                             isAdjustmentLocked = false
                             true
                         }

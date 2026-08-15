@@ -266,6 +266,10 @@ private fun matchesPerformanceHudPreset(
  * costs nothing and needs no `if (immersive)` branching of its own.
  */
 class ImmersiveInputBypass(
+    // True only when the menu is hosted by ImmersiveXrActivity. Rows use this to keep their
+    // pre-immersive key/focus behavior on every other launch, so none of the immersive
+    // workarounds change flat-mode interaction.
+    val active: Boolean = false,
     // Reports (onDecrease, onIncrease) while a row is both focused and lock-toggled (A to lock,
     // DPAD_LEFT/RIGHT to adjust, B or losing focus to unlock) — for slider-style rows.
     val reportAdjustment: (Pair<() -> Unit, () -> Unit>?) -> Unit,
@@ -593,6 +597,7 @@ fun QuickMenu(
 
     CompositionLocalProvider(
         LocalImmersiveInputBypass provides ImmersiveInputBypass(
+            active = immersiveControls != null,
             reportAdjustment = { activeAdjustment = it },
             reportActivate = { activeRadioActivate = it },
         ),
@@ -1047,7 +1052,9 @@ fun QuickMenu(
         onToolsVisibilityChanged(isVisible && selectedTab == QuickMenuTab.TOOLS)
     }
 
-    LaunchedEffect(isVisible, selectedTab) {
+    // Immersive also re-requests content focus on every tab switch (its LB/RB cycling moves
+    // tabs without ever moving focus); flat mode keeps the original open-only behavior.
+    LaunchedEffect(isVisible, if (immersiveControls != null) selectedTab else Unit) {
         if (isVisible) {
             repeat(3) { attempt ->
                 try {
@@ -1876,13 +1883,18 @@ private fun QuickMenuTabButton(
                     Modifier
                 }
             )
-            // Selecting on focus alone (not requiring a click/DPAD_CENTER) was a real hazard once
-            // directional focus movement actually started working (see registerFocusManager):
-            // moving focus onto a rail button recomposes the whole tab content area, which can
-            // reshuffle what's focusable and trigger another focus change, another selection,
-            // another recompose — the tab switch that froze the menu. Selecting only on an
-            // explicit click (still fires from LB/RB now, see registerTabSelector) removes that
-            // whole class of cascade.
+            // Immersive only: selecting on focus alone (not requiring a click/DPAD_CENTER) was a
+            // real hazard once directional focus movement actually started working (see
+            // registerFocusManager): moving focus onto a rail button recomposes the whole tab
+            // content area, which can reshuffle what's focusable and trigger another focus
+            // change, another selection, another recompose — the tab switch that froze the menu.
+            // Flat mode keeps the original select-on-focus behavior, where that cascade was
+            // never observed.
+            .onFocusChanged {
+                if (!inputBypass.active && it.isFocused && !selected) {
+                    onSelected()
+                }
+            }
             .selectable(
                 selected = selected,
                 interactionSource = interactionSource,
@@ -2119,29 +2131,28 @@ internal fun QuickMenuAdjustmentRow(
             .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && isFocused) {
                     when {
-                        // A only LOCKS, never toggles off — a repeated A press (whether the user
-                        // meant to confirm again, or it arrived via the DPAD_CENTER/BUTTON_A
-                        // fallback dispatched for the "nothing else focused" case, see
-                        // ImmersiveXrActivity's BUTTON_A handling) must never undo an in-progress
-                        // adjustment. Only BUTTON_B or losing focus unlocks — see below and
-                        // onFocusChanged. Confirmed via logs: this WAS toggling off mid-adjustment
-                        // ("row lock toggled to false" from a genuine BUTTON_A press, not B),
-                        // exactly matching "one tick works, then I need B to get back in".
-                        !isAdjustmentLocked && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_A -> {
-                            isAdjustmentLocked = true
-                            Timber.i("QuickMenu: row '%s' locked", title)
+                        // Immersive only: A only LOCKS, never toggles off — a repeated A press
+                        // (whether the user meant to confirm again, or it arrived via the
+                        // DPAD_CENTER/BUTTON_A fallback dispatched for the "nothing else focused"
+                        // case, see ImmersiveXrActivity's BUTTON_A handling) must never undo an
+                        // in-progress adjustment there. Flat mode keeps the original A-toggles
+                        // behavior.
+                        keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_A &&
+                            (!inputBypass.active || !isAdjustmentLocked) -> {
+                            isAdjustmentLocked = if (inputBypass.active) true else !isAdjustmentLocked
+                            Timber.i("QuickMenu: row '%s' lock now %b", title, isAdjustmentLocked)
                             true
                         }
 
-                        // ImmersiveXrActivity's B handler dispatches KEYCODE_BACK, not
-                        // KEYCODE_BUTTON_B (see triggerMenuDirection's caller) — this never
+                        // Immersive only: ImmersiveXrActivity's B handler dispatches KEYCODE_BACK,
+                        // not KEYCODE_BUTTON_B (see triggerMenuDirection's caller) — this never
                         // matched before, so B was "working" only by accident: the unconsumed
                         // BACK event propagated further and cleared focus, which onFocusChanged
-                        // then read as an unlock. Checking BACK directly makes this an explicit,
-                        // consumed unlock instead of a side effect of losing focus.
+                        // then read as an unlock. Flat mode keeps BACK unhandled here (it closes
+                        // the menu as before); BUTTON_B unlocks in both modes.
                         isAdjustmentLocked &&
                             (keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BUTTON_B ||
-                                keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BACK) -> {
+                                (inputBypass.active && keyEvent.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_BACK)) -> {
                             isAdjustmentLocked = false
                             true
                         }

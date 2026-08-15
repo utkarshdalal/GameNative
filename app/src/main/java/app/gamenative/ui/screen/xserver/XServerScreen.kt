@@ -358,39 +358,9 @@ fun XServerScreen(
     onWindowMapped: ((Context, Window) -> Unit)? = null,
     onWindowUnmapped: ((Window) -> Unit)? = null,
     onGameLaunchError: ((String) -> Unit)? = null,
-    // Non-null only when hosted by ImmersiveXrActivity — presence alone is what makes the
-    // QuickMenu's "Immersif" tab show up.
-    immersiveControls: app.gamenative.ui.screen.xr.ImmersiveControls? = null,
-    // ImmersiveXrActivity needs to know when the quick menu (or any other non-SurfaceView
-    // overlay) is showing, because it captures the game's SurfaceView directly (the only way
-    // to reliably get real frames out of it — capturing the whole Window can't see SurfaceView
-    // content at all, since it's composited on its own layer) and switches to a whole-window
-    // capture only while such an overlay is up, since the game is paused underneath anyway.
-    onQuickMenuVisibilityChanged: (Boolean) -> Unit = {},
-    // See QuickMenu's registerFocusManager kdoc — only meaningful when hosted by
-    // ImmersiveXrActivity, which needs to drive Compose focus directly since dispatching
-    // synthetic dpad KeyEvents through Activity.dispatchKeyEvent() doesn't reach Compose there.
-    registerQuickMenuFocusManager: ((androidx.compose.ui.focus.FocusManager) -> Unit)? = null,
-    // See QuickMenu's registerCycleTab kdoc — same bypass, for LB/RB tab switching.
-    registerQuickMenuCycleTab: (((Boolean) -> Unit) -> Unit)? = null,
-    // See QuickMenu's registerAdjustmentControl kdoc — same bypass, for a locked slider's
-    // left/right drag.
-    registerQuickMenuAdjustmentControl: ((() -> Pair<() -> Unit, () -> Unit>?) -> Unit)? = null,
-    // See QuickMenu's registerFocusTabRail kdoc — same bypass, for LEFT reliably reaching the tab
-    // rail regardless of the focused row's vertical position.
-    registerQuickMenuFocusTabRail: ((() -> Unit) -> Unit)? = null,
-    // See QuickMenu's registerFocusedActivate kdoc — same bypass, for a plain radio/toggle row
-    // whose default DPAD_CENTER/A click doesn't reliably fire in the immersive activity.
-    registerQuickMenuFocusedActivate: ((() -> (() -> Unit)?) -> Unit)? = null,
-    // Registers toggleQuickMenu (open/close only, no IME/controller-rescan/touchpad side
-    // effects) — see its own kdoc. Used by ImmersiveXrActivity's long-press-Start gesture instead
-    // of the shared, side-effect-heavy registerBackAction handler.
-    registerQuickMenuToggle: ((() -> Unit) -> Unit)? = null,
-    // See QuickMenu's registerStartHeld kdoc — pushes the Menu/Start button's physical-hold
-    // state so QuickMenu can suppress the real Android KeyEvents Horizon OS's own gamepad input
-    // dispatch generates while it's held (a separate path from this Activity's native OpenXR
-    // polling/bypasses, immune to all of them).
-    registerQuickMenuStartHeld: (((Boolean) -> Unit) -> Unit)? = null,
+    // Non-null only when hosted by ImmersiveXrActivity. One bundled parameter, not nine — this
+    // composable sits at the dex verifier's register limit (see ImmersiveSessionHooks' kdoc).
+    immersiveHooks: app.gamenative.ui.screen.xr.ImmersiveSessionHooks? = null,
 ) {
     Timber.i("Starting up XServerScreen")
     val context = LocalContext.current
@@ -563,7 +533,7 @@ fun XServerScreen(
     var shouldForceResumeOnMenuClose by remember { mutableStateOf(false) }
     var showQuickMenu by remember { mutableStateOf(false) }
     LaunchedEffect(showQuickMenu) {
-        onQuickMenuVisibilityChanged(showQuickMenu)
+        immersiveHooks?.onQuickMenuVisibilityChanged?.invoke(showQuickMenu)
     }
     var quickMenuToolsVisible by remember { mutableStateOf(false) }
     var quickMenuWineProcesses by remember { mutableStateOf<List<ProcessInfo>>(emptyList()) }
@@ -1484,7 +1454,7 @@ fun XServerScreen(
 
     DisposableEffect(container) {
         registerBackAction(gameBack)
-        registerQuickMenuToggle?.invoke(toggleQuickMenu)
+        immersiveHooks?.registerToggle?.invoke(toggleQuickMenu)
         if (isLsfgAvailable) {
             LsfgVkManager.startVsyncClock(context, container)
         }
@@ -1501,7 +1471,7 @@ fun XServerScreen(
                 PluviaApp.isOverlayPaused = false
             }
             registerBackAction { }
-            registerQuickMenuToggle?.invoke {}
+            immersiveHooks?.registerToggle?.invoke {}
         }   // preserve suspend state across activity recreation while a game is still running
     }
 
@@ -2740,13 +2710,13 @@ fun XServerScreen(
             onLsfgPerformanceModeChanged = ::applyLsfgPerformanceMode,
             onRequestOpen = { showQuickMenu = true },
             // Immersive tab (tab only visible when hosted by ImmersiveXrActivity)
-            immersiveControls = immersiveControls,
-            registerFocusManager = registerQuickMenuFocusManager,
-            registerCycleTab = registerQuickMenuCycleTab ?: {},
-            registerAdjustmentControl = registerQuickMenuAdjustmentControl ?: {},
-            registerFocusTabRail = registerQuickMenuFocusTabRail ?: {},
-            registerFocusedActivate = registerQuickMenuFocusedActivate ?: {},
-            registerStartHeld = registerQuickMenuStartHeld ?: {},
+            immersiveControls = immersiveHooks?.controls,
+            registerFocusManager = immersiveHooks?.registerFocusManager,
+            registerCycleTab = immersiveHooks?.registerCycleTab ?: {},
+            registerAdjustmentControl = immersiveHooks?.registerAdjustmentControl ?: {},
+            registerFocusTabRail = immersiveHooks?.registerFocusTabRail ?: {},
+            registerFocusedActivate = immersiveHooks?.registerFocusedActivate ?: {},
+            registerStartHeld = immersiveHooks?.registerStartHeld ?: {},
             onAnimationComplete = { isMenuVisible ->
                 if (isMenuVisible) {
                     // An invite dialog the game asked for must not suspend it -- the game has to
