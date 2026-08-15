@@ -312,7 +312,7 @@
     <string name="performance_hud_fps_limiter_target">Цільовий FPS</string>
     <string name="performance_hud_fps_limiter_off">Без обмежень</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Обмежувач вимкнено, поки активний LSFG. Частоту джерела задає множник.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Обмежує базову частоту кадрів. Частота на екрані — це ліміт, помножений на множник LSFG.</string>
     <string name="performance_hud_presets">Набори</string>
     <string name="performance_hud_presets_description">Швидко перемикайтеся між типовими макетами HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1525,6 +1525,8 @@
     <string name="lsfg_flow_scale">Масштаб потоку</string>
     <string name="lsfg_flow_scale_desc">Нижче — стабільніше; вище — плавніше, але можуть з’являтися артефакти.</string>
     <string name="lsfg_performance_mode">Режим продуктивності</string>
+    <string name="lsfg_present_mode">Режим виводу</string>
+    <string name="lsfg_present_mode_desc">Рекомендується Mailbox. FIFO також підходить, коли вихідна частота кадрів (ліміт fps × множник) збігається з частотою оновлення екрана; нижче за неї FIFO може виглядати нерівно.</string>
     <string name="lsfg_not_supported">Для генерації кадрів потрібен контейнер Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling не встановлено. Натисніть для встановлення. Відомо, що працює лише на Adreno 6xx і новіших.</string>
     <string name="lsfg_not_in_library">Lossless Scaling немає у вашій бібліотеці Steam</string>
@@ -2168,16 +2170,6 @@
     <string name="nexus_invalid_source_metadata">Цей керований мод має неповні відомості про джерело, тому повторити операцію неможливо.</string>
     <string name="nexus_archive_memory_error">Архів потребує більше пам’яті, ніж дозволено Android. Повторіть спробу після оновлення GameNative або виберіть менший файл.</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">ШІ-генерація кадрів</string>
-    <string name="bfg_enable">Увімкнути ШІ-генерацію кадрів</string>
-    <string name="bfg_description">Вбудована ШІ-інтерполяція кадрів. Додаткових покупок не потрібно.</string>
-    <string name="bfg_multiplier">Множник кадрів</string>
-    <string name="bfg_flow_scale">Масштаб потоку</string>
-    <string name="bfg_flow_scale_desc">Менше — швидше; більше — краще відстежує рух, але навантажує GPU сильніше.</string>
-    <string name="bfg_model">Модель</string>
-    <string name="bfg_model_desc">Clear чіткіший, але важчий</string>
-    <string name="bfg_model_standard">Стандартна</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">Запросити</string>
     <string name="steam_invite_header">Друзів: %1$d</string>
     <string name="steam_invite_joinable">У цій грі — торкніться, щоб приєднатися</string>

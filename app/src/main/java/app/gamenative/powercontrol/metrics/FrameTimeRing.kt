@@ -84,13 +84,17 @@ fun computeFrameWindowStats(
     count: Int,
     slowFrameThresholdNs: Long,
     deltaScratch: LongArray,
+    sampleStride: Int = 1,
 ): FrameWindowStats {
-    if (count < 2) return FrameWindowStats.EMPTY
+    val stride = sampleStride.coerceAtLeast(1)
+    if (count < stride + 1) return FrameWindowStats.EMPTY
 
     var deltas = 0
     var slowFrames = 0
-    for (index in 1 until count) {
-        val delta = timestampsNs[index] - timestampsNs[index - 1]
+    var index = stride
+    while (index < count) {
+        val delta = timestampsNs[index] - timestampsNs[index - stride]
+        index += stride
         if (delta <= 0L) continue
         deltaScratch[deltas++] = delta
         if (slowFrameThresholdNs > 0L && delta > slowFrameThresholdNs) {

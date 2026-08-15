@@ -309,7 +309,7 @@
     <string name="performance_hud_fps_limiter_target">目标 FPS</string>
     <string name="performance_hud_fps_limiter_off">无限制</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">LSFG 启用时，限制器被覆盖。源帧率由倍数控制。</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">限制基础帧率。屏幕帧率为上限乘以 LSFG 倍数。</string>
     <string name="performance_hud_presets">预设</string>
     <string name="performance_hud_presets_description">快速切换常用 HUD 布局。</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1581,6 +1581,8 @@
     <string name="lsfg_flow_scale">光流缩放</string>
     <string name="lsfg_flow_scale_desc">数值越低越稳定；越高越流畅，但可能出现伪影。</string>
     <string name="lsfg_performance_mode">性能模式</string>
+    <string name="lsfg_present_mode">呈现模式</string>
+    <string name="lsfg_present_mode_desc">推荐使用 Mailbox。当输出帧率（fps 上限 × 倍数）与屏幕刷新率一致时也可使用 FIFO；低于刷新率时 FIFO 可能出现抖动。</string>
     <string name="lsfg_not_supported">帧生成需要 Bionic 容器</string>
     <string name="lsfg_install_prompt">Lossless Scaling 未安装。点击安装。已知仅在 Adreno 6xx 及更高版本上可用。</string>
     <string name="lsfg_not_in_library">Lossless Scaling 不在你的 Steam 库中</string>
@@ -2186,16 +2188,6 @@
     <string name="nexus_invalid_source_metadata">此受管理模组的来源信息不完整，无法重试。</string>
     <string name="nexus_archive_memory_error">此压缩包需要的内存超过 Android 允许的上限。请在更新 GameNative 后重试，或选择较小的文件。</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">AI 补帧</string>
-    <string name="bfg_enable">启用 AI 补帧</string>
-    <string name="bfg_description">内置 AI 补帧。无需额外购买。</string>
-    <string name="bfg_multiplier">帧倍率</string>
-    <string name="bfg_flow_scale">光流缩放</string>
-    <string name="bfg_flow_scale_desc">数值越低速度越快；越高对运动的跟踪越准确，但更耗 GPU。</string>
-    <string name="bfg_model">模型</string>
-    <string name="bfg_model_desc">Clear 更清晰，但开销更大</string>
-    <string name="bfg_model_standard">标准</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">邀请</string>
     <string name="steam_invite_header">%1$d 位好友</string>
     <string name="steam_invite_joinable">正在玩此游戏 — 点按加入</string>

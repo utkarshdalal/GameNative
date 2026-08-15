@@ -316,7 +316,7 @@
     <string name="performance_hud_fps_limiter_target">Target FPS</string>
     <string name="performance_hud_fps_limiter_off">Unlimited</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Limiter overridden while LSFG is active. Source rate is paced by the multiplier.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Caps the base rate. On-screen rate is the cap times the LSFG multiplier.</string>
     <string name="performance_hud_presets">Presets</string>
     <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -2037,6 +2037,8 @@
     <string name="lsfg_flow_scale">Flow scale</string>
     <string name="lsfg_flow_scale_desc">Lower is more stable; higher is smoother but can artifact.</string>
     <string name="lsfg_performance_mode">Performance mode</string>
+    <string name="lsfg_present_mode">Present mode</string>
+    <string name="lsfg_present_mode_desc">Mailbox is recommended. FIFO also works when the output frame rate (fps cap × multiplier) matches the screen refresh rate; below the refresh rate FIFO can look shaky.</string>
     <string name="lsfg_not_supported">Frame generation requires a Bionic container</string>
     <string name="lsfg_install_prompt">Lossless Scaling not installed. Tap to install. Only known to work on Adreno 6xx and above.</string>
     <string name="lsfg_not_in_library">Lossless Scaling not in your Steam library</string>
@@ -2055,16 +2057,6 @@
     <string name="steam_invite_joined">In your game</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
-    <string name="bfg_tab_title">AI FrameGen</string>
-    <string name="bfg_enable">Enable AI frame generation</string>
-    <string name="bfg_description">Built-in AI frame interpolation. No extra purchase needed.</string>
-    <string name="bfg_multiplier">Frame multiplier</string>
-    <string name="bfg_flow_scale">Flow scale</string>
-    <string name="bfg_flow_scale_desc">Lower is faster; higher tracks motion better but costs more GPU.</string>
-    <string name="bfg_model">Model</string>
-    <string name="bfg_model_desc">Clear is sharper but heavier</string>
-    <string name="bfg_model_standard">Standard</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="rec_disclosure_title">Game recommendations</string>
     <string name="rec_disclosure_body">For personalized recommendations, we share the games you play with GOG. Turn off anytime in Settings.</string>
     <string name="rec_disclosure_allow">Allow</string>

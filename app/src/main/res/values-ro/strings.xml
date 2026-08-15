@@ -315,7 +315,7 @@
     <string name="performance_hud_fps_limiter_target">FPS țintă</string>
     <string name="performance_hud_fps_limiter_off">Nelimitat</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Limitatorul este ignorat cât timp LSFG este activ. Rata sursei este controlată de multiplicator.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Limitează rata de bază. Rata de pe ecran este limita înmulțită cu multiplicatorul LSFG.</string>
     <string name="performance_hud_presets">Presetări</string>
     <string name="performance_hud_presets_description">Comută rapid între aspecte HUD comune.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1532,6 +1532,8 @@
     <string name="lsfg_flow_scale">Scară flux</string>
     <string name="lsfg_flow_scale_desc">Mai mic este mai stabil; mai mare este mai fluid, dar poate produce artefacte.</string>
     <string name="lsfg_performance_mode">Mod performanță</string>
+    <string name="lsfg_present_mode">Mod de prezentare</string>
+    <string name="lsfg_present_mode_desc">Mailbox este recomandat. FIFO funcționează și când rata de cadre de ieșire (limita fps × multiplicator) corespunde ratei de reîmprospătare a ecranului; sub aceasta, FIFO poate părea instabil.</string>
     <string name="lsfg_not_supported">Generarea de cadre necesită un container Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling nu este instalat. Atingeți pentru a instala. Se știe că funcționează doar pe Adreno 6xx și mai nou.</string>
     <string name="lsfg_not_in_library">Lossless Scaling nu este în biblioteca dumneavoastră Steam</string>
@@ -2173,16 +2175,6 @@
     <string name="nexus_invalid_source_metadata">Acest mod gestionat are informații incomplete despre sursă și operația nu poate fi reîncercată.</string>
     <string name="nexus_archive_memory_error">Arhiva necesită mai multă memorie decât permite Android. Încearcă din nou după actualizarea GameNative sau alege un fișier mai mic.</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">GenCadre IA</string>
-    <string name="bfg_enable">Activează generarea de cadre cu IA</string>
-    <string name="bfg_description">Interpolare de cadre cu IA, integrată. Fără achiziții suplimentare.</string>
-    <string name="bfg_multiplier">Multiplicator de cadre</string>
-    <string name="bfg_flow_scale">Scara fluxului</string>
-    <string name="bfg_flow_scale_desc">Mai mic este mai rapid; mai mare urmărește mișcarea mai bine, dar consumă mai mult GPU.</string>
-    <string name="bfg_model">Model</string>
-    <string name="bfg_model_desc">Clear este mai clar, dar mai solicitant</string>
-    <string name="bfg_model_standard">Standard</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">Invită</string>
     <string name="steam_invite_header">%1$d prieteni</string>
     <string name="steam_invite_joinable">În acest joc — atinge pentru a te alătura</string>

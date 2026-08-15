@@ -325,7 +325,7 @@
     <string name="performance_hud_fps_limiter_target">Docelowy FPS</string>
     <string name="performance_hud_fps_limiter_off">Bez limitu</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Limiter pomijany gdy LSFG jest aktywny. Tempo źródła kontroluje mnożnik.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Ogranicza bazową liczbę klatek. Liczba klatek na ekranie to limit razy mnożnik LSFG.</string>
     <string name="performance_hud_presets">Presety</string>
     <string name="performance_hud_presets_description">Szybko przełączaj między typowymi układami HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1529,6 +1529,8 @@
     <string name="lsfg_flow_scale">Skala przepływu</string>
     <string name="lsfg_flow_scale_desc">Niższa wartość jest stabilniejsza; wyższa jest płynniejsza, ale może powodować artefakty.</string>
     <string name="lsfg_performance_mode">Tryb wydajności</string>
+    <string name="lsfg_present_mode">Tryb prezentacji</string>
+    <string name="lsfg_present_mode_desc">Zalecany jest Mailbox. FIFO działa również, gdy wyjściowa liczba klatek (limit fps × mnożnik) odpowiada częstotliwości odświeżania ekranu; poniżej niej FIFO może wyglądać niestabilnie.</string>
     <string name="lsfg_not_supported">Generowanie klatek wymaga kontenera Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling nie jest zainstalowany. Dotknij, aby zainstalować. Wiadomo, że działa tylko na Adreno 6xx i nowszych.</string>
     <string name="lsfg_not_in_library">Lossless Scaling nie jest w Twojej bibliotece Steam</string>
@@ -2172,16 +2174,6 @@
     <string name="nexus_invalid_source_metadata">Ten zarządzany mod ma niepełne informacje o źródle i nie można ponowić operacji.</string>
     <string name="nexus_archive_memory_error">Archiwum wymaga więcej pamięci, niż pozwala Android. Spróbuj ponownie po aktualizacji GameNative lub wybierz mniejszy plik.</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">Generowanie AI</string>
-    <string name="bfg_enable">Włącz generowanie klatek przez AI</string>
-    <string name="bfg_description">Wbudowana interpolacja klatek przez AI. Bez dodatkowych zakupów.</string>
-    <string name="bfg_multiplier">Mnożnik klatek</string>
-    <string name="bfg_flow_scale">Skala przepływu</string>
-    <string name="bfg_flow_scale_desc">Niższa jest szybsza; wyższa lepiej śledzi ruch, ale bardziej obciąża GPU.</string>
-    <string name="bfg_model">Model</string>
-    <string name="bfg_model_desc">Clear jest ostrzejszy, ale bardziej wymagający</string>
-    <string name="bfg_model_standard">Standardowy</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">Zaproś</string>
     <string name="steam_invite_header">Znajomi: %1$d</string>
     <string name="steam_invite_joinable">W tej grze — dotknij, aby dołączyć</string>

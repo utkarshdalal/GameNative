@@ -922,7 +922,7 @@ https://gamenative.app
     <string name="performance_hud_fps_limiter_target">Целевой FPS</string>
     <string name="performance_hud_fps_limiter_off">Без ограничений</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Ограничитель отключён, пока активен LSFG. Частоту источника задаёт множитель.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Ограничивает базовую частоту кадров. Частота на экране — это лимит, умноженный на множитель LSFG.</string>
     <string name="performance_hud_presets">Предустановки</string>
     <string name="performance_hud_presets_description">Быстро переключаться между типовыми макетами HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1457,6 +1457,8 @@ https://gamenative.app
     <string name="lsfg_flow_scale">Масштаб потока</string>
     <string name="lsfg_flow_scale_desc">Ниже — стабильнее; выше — плавнее, но могут появляться артефакты.</string>
     <string name="lsfg_performance_mode">Режим производительности</string>
+    <string name="lsfg_present_mode">Режим вывода</string>
+    <string name="lsfg_present_mode_desc">Рекомендуется Mailbox. FIFO также подходит, когда выходная частота кадров (лимит fps × множитель) совпадает с частотой обновления экрана; ниже неё FIFO может выглядеть неровно.</string>
     <string name="lsfg_not_supported">Для генерации кадров требуется контейнер Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling не установлен. Нажмите для установки. Известно, что работает только на Adreno 6xx и новее.</string>
     <string name="lsfg_not_in_library">Lossless Scaling нет в вашей библиотеке Steam</string>
@@ -2100,16 +2102,6 @@ https://gamenative.app
     <string name="nexus_invalid_source_metadata">У этого управляемого мода неполные сведения об источнике, поэтому повторить операцию невозможно.</string>
     <string name="nexus_archive_memory_error">Архиву требуется больше памяти, чем разрешено Android. Повторите попытку после обновления GameNative или выберите файл меньшего размера.</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">ИИ-генерация кадров</string>
-    <string name="bfg_enable">Включить ИИ-генерацию кадров</string>
-    <string name="bfg_description">Встроенная ИИ-интерполяция кадров. Дополнительных покупок не требуется.</string>
-    <string name="bfg_multiplier">Множитель кадров</string>
-    <string name="bfg_flow_scale">Масштаб потока</string>
-    <string name="bfg_flow_scale_desc">Меньше — быстрее; больше — точнее отслеживает движение, но сильнее нагружает GPU.</string>
-    <string name="bfg_model">Модель</string>
-    <string name="bfg_model_desc">Clear чётче, но требовательнее</string>
-    <string name="bfg_model_standard">Стандартная</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">Пригласить</string>
     <string name="steam_invite_header">Друзей: %1$d</string>
     <string name="steam_invite_joinable">В этой игре — нажмите, чтобы присоединиться</string>

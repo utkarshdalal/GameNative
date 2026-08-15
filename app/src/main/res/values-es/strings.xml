@@ -328,7 +328,7 @@
     <string name="performance_hud_fps_limiter_target">FPS objetivo</string>
     <string name="performance_hud_fps_limiter_off">Ilimitado</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Limitador anulado mientras LSFG está activo. La tasa de origen está controlada por el multiplicador.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Limita la tasa base. La tasa en pantalla es el límite multiplicado por el multiplicador de LSFG.</string>
     <string name="performance_hud_presets">Preajustes</string>
     <string name="performance_hud_presets_description">Cambia rápidamente entre diseños de HUD comunes.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1529,6 +1529,8 @@
     <string name="lsfg_flow_scale">Escala de flujo</string>
     <string name="lsfg_flow_scale_desc">Más bajo es más estable; más alto es más fluido pero puede generar artefactos.</string>
     <string name="lsfg_performance_mode">Modo de rendimiento</string>
+    <string name="lsfg_present_mode">Modo de presentación</string>
+    <string name="lsfg_present_mode_desc">Se recomienda Mailbox. FIFO también funciona cuando la tasa de fotogramas de salida (límite de fps × multiplicador) coincide con la tasa de refresco de la pantalla; por debajo de ella, FIFO puede verse inestable.</string>
     <string name="lsfg_not_supported">La generación de fotogramas requiere un contenedor Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling no está instalado. Toca para instalar. Solo se sabe que funciona en Adreno 6xx y posteriores.</string>
     <string name="lsfg_not_in_library">Lossless Scaling no está en tu biblioteca de Steam</string>
@@ -2168,16 +2170,6 @@
     <string name="nexus_invalid_source_metadata">Este mod gestionado tiene información de origen incompleta y no se puede reintentar.</string>
     <string name="nexus_archive_memory_error">El archivo comprimido necesita más memoria de la que permite Android. Vuelve a intentarlo después de actualizar GameNative o elige un archivo más pequeño.</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">GenFotogramas IA</string>
-    <string name="bfg_enable">Activar generación de fotogramas con IA</string>
-    <string name="bfg_description">Interpolación de fotogramas con IA integrada. No requiere compras adicionales.</string>
-    <string name="bfg_multiplier">Multiplicador de fotogramas</string>
-    <string name="bfg_flow_scale">Escala de flujo</string>
-    <string name="bfg_flow_scale_desc">Más bajo es más rápido; más alto sigue mejor el movimiento pero consume más GPU.</string>
-    <string name="bfg_model">Modelo</string>
-    <string name="bfg_model_desc">Clear es más nítido pero más exigente</string>
-    <string name="bfg_model_standard">Estándar</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">Invitar</string>
     <string name="steam_invite_header">%1$d amigos</string>
     <string name="steam_invite_joinable">En este juego: toca para unirte</string>

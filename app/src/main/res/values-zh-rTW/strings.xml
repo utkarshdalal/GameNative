@@ -309,7 +309,7 @@
     <string name="performance_hud_fps_limiter_target">目標 FPS</string>
     <string name="performance_hud_fps_limiter_off">無限制</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">LSFG 啟用時，限制器被覆蓋。來源幀率由倍數控制。</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">限制基礎幀率。螢幕幀率為上限乘以 LSFG 倍數。</string>
     <string name="performance_hud_presets">預設</string>
     <string name="performance_hud_presets_description">快速切換常用 HUD 版面配置。</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1572,6 +1572,8 @@
     <string name="lsfg_flow_scale">光流縮放</string>
     <string name="lsfg_flow_scale_desc">數值越低越穩定；越高越流暢，但可能出現偽影。</string>
     <string name="lsfg_performance_mode">效能模式</string>
+    <string name="lsfg_present_mode">呈現模式</string>
+    <string name="lsfg_present_mode_desc">建議使用 Mailbox。當輸出幀率（fps 上限 × 倍數）與螢幕更新率一致時也可使用 FIFO；低於更新率時 FIFO 可能出現晃動。</string>
     <string name="lsfg_not_supported">幀生成需要 Bionic 容器</string>
     <string name="lsfg_install_prompt">Lossless Scaling 未安裝。點擊安裝。已知僅在 Adreno 6xx 及更高版本上可用。</string>
     <string name="lsfg_not_in_library">Lossless Scaling 不在你的 Steam 庫中</string>
@@ -2177,16 +2179,6 @@
     <string name="nexus_invalid_source_metadata">此受管理模組的來源資訊不完整，無法重試。</string>
     <string name="nexus_archive_memory_error">此壓縮檔需要的記憶體超過 Android 允許的上限。請在更新 GameNative 後重試，或選擇較小的檔案。</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">AI 補幀</string>
-    <string name="bfg_enable">啟用 AI 補幀</string>
-    <string name="bfg_description">內建 AI 補幀。無需額外購買。</string>
-    <string name="bfg_multiplier">影格倍率</string>
-    <string name="bfg_flow_scale">光流縮放</string>
-    <string name="bfg_flow_scale_desc">數值越低速度越快；越高對運動的追蹤越準確，但更耗 GPU。</string>
-    <string name="bfg_model">模型</string>
-    <string name="bfg_model_desc">Clear 更清晰，但負擔更大</string>
-    <string name="bfg_model_standard">標準</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">邀請</string>
     <string name="steam_invite_header">%1$d 位好友</string>
     <string name="steam_invite_joinable">正在玩此遊戲 — 點按加入</string>
