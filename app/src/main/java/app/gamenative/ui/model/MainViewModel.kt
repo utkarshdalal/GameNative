@@ -599,7 +599,9 @@ class MainViewModel @Inject constructor(
 
     private suspend fun handleExitCloudSync(context: Context, appId: String, gameId: Int) {
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-        if (ContainerUtils.isLocalSavesOnly(context, appId) || isOffline.value) {
+        // isOffline is derived from Steam's login state (see PluviaMain's startDestination / onClickPlay)
+        // and is meaningless for GOG/Epic, which check their own auth internally — only gate Steam on it.
+        if (ContainerUtils.isLocalSavesOnly(context, appId) || (gameSource == GameSource.STEAM && isOffline.value)) {
             Timber.tag("Exit").i("Local saves only or offline mode enabled for $appId — skipping cloud sync on exit")
             return
         }
