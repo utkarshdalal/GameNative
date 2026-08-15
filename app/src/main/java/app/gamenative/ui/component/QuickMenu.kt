@@ -530,10 +530,12 @@ fun QuickMenu(
 
     // Only the tabs actually shown in the rail, in on-screen order — mirrors the conditions each
     // QuickMenuTabButton below is gated on (isLsfgAvailable, a renderer being available, etc).
-    val availableTabs = remember(isLsfgAvailable, renderer, glRenderer, immersiveControls) {
+    val availableTabs = remember(isLsfgAvailable, renderer, glRenderer, immersiveControls, inviteMenu, isPowerControlAvailable) {
         buildList {
             add(QuickMenuTab.HUD)
+            if (isPowerControlAvailable) add(QuickMenuTab.POWER)
             if (isLsfgAvailable) add(QuickMenuTab.LSFG)
+            if (inviteMenu != null) add(QuickMenuTab.INVITE)
             if (renderer != null || glRenderer != null) add(QuickMenuTab.EFFECTS)
             add(QuickMenuTab.CONTROLLER)
             add(QuickMenuTab.TOOLS)
