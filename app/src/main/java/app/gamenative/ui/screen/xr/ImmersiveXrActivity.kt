@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import app.gamenative.PluviaApp
@@ -402,12 +403,19 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         }
         currentAppId = appId
 
+        // Set here, not only in onResume(): Horizon OS's immersive handoff (purple-dots
+        // transition) delays this Activity's onResume by several seconds, while XServerScreen's
+        // wine environment setup starts at first composition — MainActivity.onPause() has
+        // already set this false, so setup routinely finished "backgrounded" and paused the
+        // game right at boot (manual suspend policy then demanded an A press to ever start).
+        PluviaApp.isActivityInForeground = true
         AppUtils.keepScreenOn(this)
         loadImmersiveSettings(appId)
 
         setContent {
             PluviaTheme {
                 val context = LocalContext.current
+                val mainState by viewModel.state.collectAsStateWithLifecycle()
 
                 androidx.activity.compose.BackHandler(enabled = backAction != null) {
                     backAction?.invoke()
@@ -488,6 +496,18 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                     ),
                 )
 
+                // Rendered as Compose content in the *other* window layer than the game's
+                // SurfaceView — the overlay capture loop (refreshOverlayLayer's contentView
+                // draw) is what carries it onto the quad, so boot progress is visible in the
+                // headset instead of a black screen while wine boots/installs redists. This
+                // Activity's own MainViewModel instance arms it from every SetBootingSplashText
+                // event XServerScreen emits, and onWindowMapped/errors clear it.
+                app.gamenative.ui.components.BootingSplash(
+                    visible = mainState.showBootingSplash,
+                    text = mainState.bootingSplashText,
+                    heroImageUrl = mainState.bootingSplashHeroImageUrl,
+                )
+
                 ImmersiveControlsOnboarding(
                     visible = showControlsOnboarding,
                     onDismiss = { showControlsOnboarding = false },
@@ -547,6 +567,13 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         // pixel budget. contentScaleX/Y are always 1.0 now (no remap needed) — kept as real JNI
         // parameters rather than removed so this stays a plain revert-to-1.0, not a signature
         // change, should a margin ever come back.
+        // contentScaleY = -1: the direct-render shader maps gameUv through
+        // (v - 0.5) / contentScale + 0.5, so a negative scale flips that axis around the
+        // center — VulkanRenderer's shared AHardwareBuffer samples vertically flipped
+        // (confirmed on device: game showed upside down with mirrored text), and this corrects
+        // it without touching the prebuilt native library. The overlay layer is sampled at raw
+        // UVs and is unaffected, as is the non-direct PixelCopy path (which ignores
+        // contentScale entirely).
         XrNative.nativeSetQuadTransform(
             xrSessionHandle,
             quadHorizontal,
@@ -555,7 +582,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             ImmersiveControls.BASE_WIDTH_METERS * quadScale,
             ImmersiveControls.BASE_HEIGHT_METERS * quadScale,
             1f,
-            1f,
+            -1f,
         )
     }
 
