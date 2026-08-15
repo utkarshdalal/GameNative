@@ -23,12 +23,28 @@ public class ShmFramePacer {
     public static long framePresented(int drawableId) {
         int fps = frameRateLimit;
         if (fps <= 0) return 0;
-        if (timings.size() > MAX_TRACKED_DRAWABLES) timings.clear();
+        if (timings.size() > MAX_TRACKED_DRAWABLES) evictStalest(drawableId);
         Timing t = timings.computeIfAbsent(drawableId, k -> new Timing());
         long now = System.nanoTime();
         if (t.nextNs < now) t.nextNs = now;
         long delay = t.nextNs - now;
         t.nextNs += 1_000_000_000L / fps;
         return delay;
+    }
+
+    // Evicts the longest-idle entry (smallest nextNs), never the presenting
+    // drawable, so an overflow frees one slot without resetting active pacing.
+    private static void evictStalest(int presentingDrawableId) {
+        Integer evict = null;
+        long oldest = Long.MAX_VALUE;
+        for (java.util.Map.Entry<Integer, Timing> e : timings.entrySet()) {
+            if (e.getKey() == presentingDrawableId) continue;
+            long nextNs = e.getValue().nextNs;
+            if (nextNs < oldest) {
+                oldest = nextNs;
+                evict = e.getKey();
+            }
+        }
+        if (evict != null) timings.remove(evict);
     }
 }
