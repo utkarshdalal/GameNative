@@ -259,15 +259,8 @@ object LsfgVkManager {
         val versionFile = File(layerDir, VERSION_FILENAME)
 
         val installedVersion = versionFile.takeIf { it.exists() }?.readText()?.trim().orEmpty()
-        // Debug-only guard against a stale marker: during development the
-        // bundled asset can change without a RUNTIME_VERSION bump, leaving an
-        // old lib installed under a matching marker. Release APKs always have
-        // the two in sync, so they skip the asset read entirely.
-        val assetSizeMismatch = BuildConfig.DEBUG &&
-            libFile.isFile && cachedAssetLibSize(context) > 0 &&
-            libFile.length() != cachedAssetLibSize(context)
         val needsInstall = installedVersion != RUNTIME_VERSION ||
-            !libFile.isFile || !manifestFile.isFile || assetSizeMismatch
+            !libFile.isFile || !manifestFile.isFile
 
         var success = true
 
@@ -450,31 +443,6 @@ object LsfgVkManager {
 
     private fun configFile(container: Container): File =
         File(container.rootDir, CONFIG_RELATIVE_PATH)
-
-    /** Uncompressed size of the bundled layer asset, read once per process. */
-    @Volatile
-    private var assetLibSizeCache: Long = 0L
-
-    private fun cachedAssetLibSize(context: Context): Long {
-        val cached = assetLibSizeCache
-        if (cached != 0L) return cached
-        val size = try {
-            context.assets.open(ASSET_LIB).use { input ->
-                var total = 0L
-                val buffer = ByteArray(64 * 1024)
-                while (true) {
-                    val read = input.read(buffer)
-                    if (read < 0) break
-                    total += read
-                }
-                total
-            }
-        } catch (t: Throwable) {
-            -1L
-        }
-        assetLibSizeCache = size
-        return size
-    }
 
     // The layer rereads conf.toml on mtime change and must never observe a
     // half-written file.
