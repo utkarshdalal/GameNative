@@ -20,6 +20,15 @@ object LsfgQuickMenuHelper {
         performanceMode = LsfgVkManager.performanceMode(container),
     )
 
+    fun presentMode(container: Container): String = LsfgVkManager.presentMode(container)
+
+    /** Persist the present mode and hot-apply it. */
+    fun applyPresentMode(container: Container, mode: String) {
+        container.putExtra(LsfgVkManager.EXTRA_PRESENT_MODE, mode)
+        container.saveData()
+        applySettings(container, readSettings(container))
+    }
+
     fun sanitizeMultiplier(multiplier: Int): Int =
         if (multiplier < 2) 0 else multiplier.coerceIn(2, 4)
 

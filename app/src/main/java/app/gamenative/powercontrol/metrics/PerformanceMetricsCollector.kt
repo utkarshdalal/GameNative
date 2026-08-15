@@ -125,6 +125,7 @@ object PerformanceMetricsCollector {
             frameCount,
             slowFrameThresholdNs(),
             deltaScratch,
+            PowerManager.frameSampleStride,
         )
 
         val cpu = cpuSampler.sample()
