@@ -241,10 +241,7 @@ object EpicCloudSavesManager {
     }
 
     // List available cloud saves
-    // The EGS metadata listing is capped at 1000 entries, so for save-heavy games the chunk
-    // files needed to reconstruct saves can be pushed out of the response entirely. When only
-    // the manifest is needed, pass manifestsOnly = true to hit the "/manifests/" sub-path, which
-    // returns just the manifest files and never hits the cap.
+    // EGS metadata is capped at 1000 entires. Need to parse manifest, especially due to games that are greedy with saves.
     private suspend fun listCloudSaves(
         appName: String,
         context: Context,
@@ -837,12 +834,7 @@ object EpicCloudSavesManager {
         }
     }
 
-    // Request read links for specific files
-    //
-    // Uses the same POST endpoint as requestWriteLinks, but reads the "readLink" field. This lets
-    // us fetch download links for an explicit list of chunk paths, bypassing the 1000-entry cap on
-    // the GET listing. File names must be the relative chunk paths (ChunkInfo.getPath()), matching
-    // the keys used on the upload side.
+    // Request read links from the manifest
     private suspend fun requestReadLinks(
         context: Context,
         appName: String,
@@ -933,6 +925,8 @@ object EpicCloudSavesManager {
 
         // Request read links for the exact chunk paths the manifest references.
         val chunkPaths = chunkInfos.map { it.getPath() }
+
+        // Grab readlinks which we'll download from
         val readLinks = requestReadLinks(context, appName, chunkPaths)
 
         if (readLinks.size < chunkPaths.size) {

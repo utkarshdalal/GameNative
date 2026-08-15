@@ -723,8 +723,6 @@ class EpicDownloadManager @Inject constructor(
                 expectedSize.toInt()
             }
 
-            Timber.tag("Epic").d("Chunk header: magic=0x${magic.toString(16)}, headerVersion=$headerVersion, headerSize=$headerSize, compressedSize=$compressedSize, uncompressedSize=$uncompressedSize, storedAs=0x${storedAs.toString(16)}, isCompressed=$isCompressed, expectedSize=$expectedSize")
-
             outputFile.outputStream().buffered().use { output ->
                 if (isCompressed) {
                     // Streaming decompression
@@ -733,7 +731,6 @@ class EpicDownloadManager @Inject constructor(
                         val inputBuffer = ByteArray(65536) // 64KB compressed read buffer
                         val outputBuffer = ByteArray(65536) // 64KB decompressed write buffer
                         var endOfStream = false
-                        var firstRead = true
 
                         while (totalBytesWritten < uncompressedSize && !endOfStream) {
                             // Feed more input if needed
@@ -748,10 +745,6 @@ class EpicDownloadManager @Inject constructor(
                                     if (now - lastProgressEmitAt >= STREAM_PROGRESS_TIME_INTERVAL_MS) {
                                         downloadInfo.emitProgressChange()
                                         lastProgressEmitAt = now
-                                    }
-                                    if (firstRead) {
-                                        Log.d("Epic", "First compressed data bytes: ${inputBuffer.take(16).joinToString(" ") { "%02x".format(it) }}")
-                                        firstRead = false
                                     }
                                     inflater.setInput(inputBuffer, 0, bytesRead)
                                 }
@@ -803,7 +796,7 @@ class EpicDownloadManager @Inject constructor(
 
         // Verify size
         if (totalBytesWritten != expectedSize) {
-            Timber.tag("Epic").d("Size mismatch: expected=$expectedSize, actual=$totalBytesWritten, diff=${expectedSize - totalBytesWritten}")
+            Timber.tag("Epic").w("Warning - Size mismatch: expected=$expectedSize, actual=$totalBytesWritten, diff=${expectedSize - totalBytesWritten}")
             outputFile.delete()
             throw Exception("Decompressed size mismatch: expected $expectedSize, got $totalBytesWritten")
         }

@@ -606,7 +606,7 @@ class MainViewModel @Inject constructor(
 
         if (gameSource == GameSource.GOG) {
             Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves after close")
-            viewModelScope.launch(Dispatchers.IO) {
+            withContext(Dispatchers.IO) {
                 try {
                     Timber.tag("GOG").d("[Cloud Saves] Starting post-game upload sync for $appId")
                     val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
@@ -619,6 +619,8 @@ class MainViewModel @Inject constructor(
                     } else {
                         Timber.tag("GOG").w("[Cloud Saves] Upload sync failed for $appId")
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Timber.tag("GOG").e(e, "[Cloud Saves] Exception during upload sync for $appId")
                 }
@@ -628,7 +630,7 @@ class MainViewModel @Inject constructor(
 
         if (gameSource == GameSource.EPIC) {
             Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves after close")
-            viewModelScope.launch(Dispatchers.IO) {
+            withContext(Dispatchers.IO) {
                 try {
                     Timber.tag("Epic").d("[Cloud Saves] Starting post-game upload sync for $gameId")
                     val syncSuccess = EpicCloudSavesManager.syncCloudSaves(
@@ -641,6 +643,8 @@ class MainViewModel @Inject constructor(
                     } else {
                         Timber.tag("Epic").w("[Cloud Saves] Upload sync failed for $gameId")
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Timber.tag("Epic").e(e, "[Cloud Saves] Exception during upload sync for $gameId")
                 }
