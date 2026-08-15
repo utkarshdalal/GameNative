@@ -148,6 +148,49 @@ object StorageUtils {
     }
 
     /**
+     * Returns whether [appFilesDir] should be offered as a separate install target.
+     *
+     * Primary storage is not always backed by built-in storage. When Android migrates primary
+     * shared storage to adopted media, the SD-backed volume remains primary but has a non-default
+     * storage UUID.
+     */
+    fun isExternalInstallTarget(storageManager: StorageManager?, appFilesDir: File): Boolean {
+        val volume = storageManager?.getStorageVolume(appFilesDir)
+            ?: return runCatching { Environment.isExternalStorageRemovable(appFilesDir) }.getOrDefault(false)
+        if (!volume.isPrimary) return true
+
+        val resolvedStorageUuid = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            volume.storageUuid
+        } else {
+            try {
+                storageManager.getUuidForPath(appFilesDir)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        return isNonDefaultPrimaryStorage(
+            resolvedStorageUuid = resolvedStorageUuid,
+            legacyVolumeUuid = volume.uuid,
+            isPhysicalPrimary = volume.isRemovable && !volume.isEmulated,
+            allowLegacyUuidFallback = Build.VERSION.SDK_INT < Build.VERSION_CODES.S,
+            defaultStorageUuid = StorageManager.UUID_DEFAULT,
+        )
+    }
+
+    internal fun isNonDefaultPrimaryStorage(
+        resolvedStorageUuid: java.util.UUID?,
+        legacyVolumeUuid: String?,
+        isPhysicalPrimary: Boolean,
+        allowLegacyUuidFallback: Boolean,
+        defaultStorageUuid: java.util.UUID,
+    ): Boolean {
+        if (resolvedStorageUuid != null) return resolvedStorageUuid != defaultStorageUuid
+        if (isPhysicalPrimary) return true
+        return allowLegacyUuidFallback && !legacyVolumeUuid.isNullOrBlank()
+    }
+
+    /**
      * Gets all app-specific external files directories, using StorageManager as a fallback
      * for cases where context.getExternalFilesDirs(null) might return null or incomplete results
      * (e.g. USB OTG drives, which most devices omit from getExternalFilesDirs).
