@@ -9,11 +9,9 @@ import android.os.Build
  */
 object DeviceGate {
     private const val MODEL_RETROID_POCKET_6 = "retroid pocket 6"
-    private const val MODEL_AYN_ODIN3 = "odin3"
 
     private val testedModels = arrayOf(
         MODEL_RETROID_POCKET_6,
-        MODEL_AYN_ODIN3,
     )
 
     fun isDeviceSupported(model: String = Build.MODEL ?: ""): Boolean {

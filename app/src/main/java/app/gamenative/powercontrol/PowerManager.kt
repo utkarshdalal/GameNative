@@ -457,6 +457,7 @@ object PowerManager {
         val apply = Runnable {
             xServerView.setFrameRateLimit(limitFps)
             presentExtension?.setFrameRateLimit(limitFps)
+            com.winlator.xserver.ShmFramePacer.setFrameRateLimit(limitFps)
         }
         if (Looper.myLooper() == Looper.getMainLooper()) {
             apply.run()

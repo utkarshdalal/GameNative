@@ -194,6 +194,7 @@ import com.winlator.xenvironment.components.XServerComponent
 import com.winlator.xserver.Keyboard
 import com.winlator.xserver.Property
 import com.winlator.xserver.ScreenInfo
+import com.winlator.xserver.ShmFramePacer
 import com.winlator.xserver.Window
 import com.winlator.xserver.WindowManager
 import com.winlator.xserver.XServer
@@ -637,6 +638,10 @@ fun XServerScreen(
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
             ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+        // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
+        // presents, so SHM-presenting games never pass through it and would
+        // otherwise run uncapped whenever LSFG is armed.
+        ShmFramePacer.setFrameRateLimit(limit)
         PowerManager.targetFps = limit
         // keeps frame stats in base units while generated frames tick the ring
         PowerManager.frameSampleStride =
@@ -697,6 +702,7 @@ fun XServerScreen(
             if (!isLsfgAvailable || lsfgMultiplier < 2) return@applier false
             PowerManager.targetFps = capFps
             LsfgQuickMenuHelper.applyLiveFpsCap(container, capFps)
+            ShmFramePacer.setFrameRateLimit(capFps)
             true
         }
         val detectedMax = detectMaxRefreshRateHz(context, xServerView as? View)
@@ -781,10 +787,10 @@ fun XServerScreen(
             fpsProvider = {
                 val raw = frameRating?.currentFPS ?: 0f
                 if (isLsfgAvailable && lsfgMultiplier >= 2) {
-                    // Prefer the layer's on-device measurement; it accounts for
-                    // skipped generated frames. Fall back to the naive estimate
-                    // until the stats file is fresh.
-                    LsfgVkManager.readMeasuredFps(container) ?: (raw * lsfgMultiplier)
+                    // Only trust the layer's own measurement; multiplying raw
+                    // fabricates fps for games the layer never attaches to
+                    // (SHM-presenting games have no Vulkan swapchain).
+                    LsfgVkManager.readMeasuredFps(container) ?: raw
                 } else {
                     raw
                 }
@@ -2509,6 +2515,7 @@ fun XServerScreen(
             removePerformanceHud()
             performanceHudHost = null
             shouldTrackDisplayedFrames.set(false)
+            ShmFramePacer.setFrameRateLimit(0)
 
             val releaseBinding = view.tag as? XServerViewReleaseBinding
             releaseBinding?.let { binding ->

@@ -183,8 +183,58 @@ public class XConnectorEpoll implements Runnable {
         return this.connectedClients.get(fd);
     }
 
+    // Frame-pacing back-pressure: the fd leaves epoll until delayNs elapses, so
+    // the client stalls in its own blocking call while the epoll thread stays
+    // free. Single-threaded mode only.
+    // Process-wide daemon scheduler, never shut down: connector teardown must
+    // not be involved — stop() is synchronized and joins the epoll thread, so
+    // any scheduler cleanup on the shutdown path can deadlock against it.
+    private static final class PauseScheduler {
+        static final java.util.concurrent.ScheduledExecutorService INSTANCE =
+                java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                    Thread t = new Thread(r, "XConnectorPause");
+                    t.setDaemon(true);
+                    return t;
+                });
+    }
+
+    public void pauseClientReads(Client client, long delayNs) {
+        if (this.multithreadedClients || !client.connected || !this.running) return;
+        long deadlineNs = System.nanoTime() + delayNs;
+        final java.util.concurrent.ScheduledExecutorService sched = PauseScheduler.INSTANCE;
+        synchronized (client) {
+            // One pending re-arm per client, keyed to the latest deadline; an
+            // earlier task firing first would resume reads before the newest
+            // frame's slot.
+            if (client.pauseTask != null && !client.pauseTask.isDone()) {
+                if (client.pauseDeadlineNs >= deadlineNs) return;
+                client.pauseTask.cancel(false);
+            }
+            removeFdFromEpoll(this.epollFd, client.clientSocket.fd);
+            client.pauseDeadlineNs = deadlineNs;
+            client.pauseTask = sched.schedule(() -> {
+                synchronized (client) {
+                    client.pauseTask = null;
+                    if (client.connected && this.running) {
+                        addFdToEpoll(this.epollFd, client.clientSocket.fd);
+                    }
+                }
+            }, delayNs, java.util.concurrent.TimeUnit.NANOSECONDS);
+        }
+    }
+
+    private void cancelPendingPause(Client client) {
+        synchronized (client) {
+            if (client.pauseTask != null) {
+                client.pauseTask.cancel(false);
+                client.pauseTask = null;
+            }
+        }
+    }
+
     public void killConnection(Client client) {
         client.connected = false;
+        cancelPendingPause(client);
         if (this.multithreadedClients) {
             if (Thread.currentThread() != client.pollThread) {
                 client.requestShutdown();
