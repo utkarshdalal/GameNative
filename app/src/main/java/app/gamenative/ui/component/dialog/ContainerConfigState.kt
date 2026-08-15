@@ -127,6 +127,8 @@ class ContainerConfigState(
     val gpuExtensions: List<String>,
     val inspectionMode: Boolean,
     val isBionicVariant: Boolean,
+    val isAndroidPlatform: Boolean,
+    val hasAndroidVersion: Boolean,
     val nonDeletableDriveLetters: Set<String>,
     val availableDriveLetters: List<String>,
     val launchManifestInstall: (ManifestEntry, String, Boolean, ContentProfile.ContentType?, () -> Unit) -> Unit,

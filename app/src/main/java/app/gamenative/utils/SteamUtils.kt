@@ -114,6 +114,7 @@ object SteamUtils {
         ownedDlc: Map<Int, DepotInfo>?,
         licensedDepotIds: Set<Int>?,
         hasSteamUnlockedBranch: Boolean = false,
+        wantAndroid: Boolean = false,
     ): String {
         // A depot installs once its language is chosen if it passes every check except language
         // and arch. Arch is left out because it is a per-language preference, not a gate.
@@ -126,7 +127,8 @@ object SteamUtils {
                 licensedDepotIds == null || depotId in licensedDepotIds
             // Mirror the SteamChina realm gate in filterForDownloadableDepots, or we could pick a
             // language only the final pass drops and lose the real fallback.
-            return isWindowsCompatible && realm != SteamRealm.SteamChina &&
+            val osCompatible = if (wantAndroid) isAndroidCompatible else isWindowsCompatible
+            return osCompatible && realm != SteamRealm.SteamChina &&
                 hasContent && ownedIfDlc && licensedIfBaseGame
         }
 

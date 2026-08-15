@@ -14,6 +14,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -606,6 +607,12 @@ abstract class BaseAppScreen {
 
     protected open fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean = false
 
+    /** Whether this game also has a native Android (Steam Frame / Lepton) depot available. */
+    open fun hasAndroidVersion(libraryItem: LibraryItem): Boolean = false
+
+    /** Package name of the Android app installed/installing for this game, or null if not applicable. */
+    open fun getAndroidPackageName(context: Context, libraryItem: LibraryItem): String? = null
+
     protected open suspend fun exportSaves(
         context: Context,
         libraryItem: LibraryItem,
@@ -1045,7 +1052,20 @@ abstract class BaseAppScreen {
             mutableStateOf(hasLeftoverInstall(context, libraryItem))
         }
 
+        // hasAndroidVersion() can hit the database (SteamService.getAppInfoOf does a blocking
+        // Room query) — compute it off the main thread once per screen visit, instead of
+        // re-running it synchronously on the main thread every time Edit Container is opened.
+        var hasAndroidVersionState by remember(libraryItem.appId) { mutableStateOf(false) }
+        LaunchedEffect(libraryItem.appId) {
+            hasAndroidVersionState = withContext(Dispatchers.IO) { hasAndroidVersion(libraryItem) }
+        }
+
         val uiScope = rememberCoroutineScope()
+
+        // Increments on every refresh, unlike isDownloadingState/isInstalledState which can flip
+        // true->false within the same recomposition on a very fast download and never be observed
+        // by an effect keyed on them — this always counts as a distinct key.
+        var stateRefreshGeneration by remember(libraryItem.appId) { mutableIntStateOf(0) }
 
         suspend fun performStateRefresh(includeUpdatePending: Boolean) {
             isInstalledState = isInstalled(context, libraryItem)
@@ -1058,6 +1078,7 @@ abstract class BaseAppScreen {
             if (includeUpdatePending) {
                 isUpdatePendingState = isUpdatePendingSuspend(context, libraryItem)
             }
+            stateRefreshGeneration++
         }
 
         fun requestStateRefresh(includeUpdatePending: Boolean) {
@@ -1070,6 +1091,42 @@ abstract class BaseAppScreen {
             performStateRefresh(true)
         }
 
+        // Android platform games: the actual install happens in the system's own installer UI,
+        // outside our control, so listen for its completion broadcast instead of requiring the
+        // user to leave and come back to this screen for the Play button to appear.
+        // Keyed on stateRefreshGeneration: getAndroidPackageName() reads the APK off disk, which
+        // is null until the download finishes, so the effect needs to re-run once that changes
+        // rather than being stuck with the null result from the initial composition.
+        DisposableEffect(libraryItem.appId, stateRefreshGeneration) {
+            val androidPackageName = getAndroidPackageName(context, libraryItem)
+            if (androidPackageName == null) {
+                onDispose { }
+            } else {
+                val receiver = object : android.content.BroadcastReceiver() {
+                    override fun onReceive(ctx: Context, intent: Intent) {
+                        if (intent.data?.schemeSpecificPart == androidPackageName) {
+                            requestStateRefresh(true)
+                        }
+                    }
+                }
+                val filter = android.content.IntentFilter().apply {
+                    addAction(Intent.ACTION_PACKAGE_ADDED)
+                    addAction(Intent.ACTION_PACKAGE_REPLACED)
+                    addAction(Intent.ACTION_PACKAGE_REMOVED)
+                    addDataScheme("package")
+                }
+                androidx.core.content.ContextCompat.registerReceiver(
+                    context,
+                    receiver,
+                    filter,
+                    androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+                )
+                onDispose {
+                    context.unregisterReceiver(receiver)
+                }
+            }
+        }
+
         var showConfigDialog by androidx.compose.runtime.remember {
             androidx.compose.runtime.mutableStateOf(false)
         }
@@ -1078,8 +1135,14 @@ abstract class BaseAppScreen {
         }
 
         val onEditContainer: () -> Unit = {
-            containerData = loadContainerData(context, libraryItem)
-            showConfigDialog = true
+            // loadContainerData() reads/parses the container's JSON off disk (and may create it
+            // on first access) — do that off the main thread so opening this dialog doesn't
+            // freeze the screen while it loads.
+            uiScope.launch {
+                val data = withContext(Dispatchers.IO) { loadContainerData(context, libraryItem) }
+                containerData = data
+                showConfigDialog = true
+            }
         }
 
         // Export for Frontend launcher
@@ -1380,6 +1443,7 @@ abstract class BaseAppScreen {
             ContainerConfigDialog(
                 title = "${displayInfo.name} Config",
                 initialConfig = containerData,
+                hasAndroidVersion = hasAndroidVersionState,
                 onDismissRequest = { showConfigDialog = false },
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)

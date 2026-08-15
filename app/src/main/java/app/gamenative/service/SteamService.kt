@@ -53,6 +53,7 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.utils.AndroidGameLauncher
 import app.gamenative.utils.CaseInsensitiveFileSystem
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
@@ -907,6 +908,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             licensedDepotIds: Set<Int>? = null,
             hasSteamUnlockedBranch: Boolean = false,
             dlcAppIdsWithSingleDepots: Set<Int>? = null,
+            wantAndroid: Boolean = false,
         ): Boolean {
             if (depot.manifests.isEmpty() && depot.encryptedManifests.isNotEmpty() && !hasSteamUnlockedBranch)
                 return false
@@ -916,9 +918,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                 depot.sharedInstall
             if (!hasContent)
                 return false
-            // 2. Supported OS
-            if (!depot.isWindowsCompatible)
+            // 2. Supported OS (Windows/untagged by default, or the Android depot when the
+            // user opted into the Android platform for this container)
+            if (wantAndroid) {
+                if (!depot.isAndroidCompatible)
+                    return false
+            } else if (!depot.isWindowsCompatible) {
                 return false
+            }
             // 3. 64-bit or indeterminate
             // Arch selection: allow 64-bit and Unknown always.
             // Allow 32-bit only when no 64-bit depot exists.
@@ -981,12 +988,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             preferredLanguage: String,
             ownedDlc: Map<Int, DepotInfo>?,
             licensedDepotIds: Set<Int>?,
+            wantAndroid: Boolean = false,
         ): Collection<DepotInfo> {
             val dlcAppIdsWithSingleDepots = getDlcAppIdsWithSingleDepot(depots)
             return depots.values.filter { depot ->
                 filterForDownloadableDepots(depot, prefer64Bit = false, preferNonDeckWindows = false, preferredLanguage,
                     ownedDlc, licensedDepotIds,
-                    dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots
+                    dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots,
+                    wantAndroid = wantAndroid,
                 )
             }
         }
@@ -1001,23 +1010,25 @@ class SteamService : Service(), IChallengeUrlChanged {
             ownedDlc: Map<Int, DepotInfo>?,
             licensedDepotIds: Set<Int>?,
             hasSteamUnlockedBranch: Boolean = false,
+            wantAndroid: Boolean = false,
         ): Map<Int, DepotInfo> {
             val dlcAppIdsWithSingleDepots = getDlcAppIdsWithSingleDepot(depots)
             val effectiveLanguage = SteamUtils.effectiveDepotLanguage(
-                depots, preferredLanguage, ownedDlc, licensedDepotIds, hasSteamUnlockedBranch,
+                depots, preferredLanguage, ownedDlc, licensedDepotIds, hasSteamUnlockedBranch, wantAndroid,
             )
-            val eligible = eligibleDepots(depots, effectiveLanguage, ownedDlc, licensedDepotIds)
+            val eligible = eligibleDepots(depots, effectiveLanguage, ownedDlc, licensedDepotIds, wantAndroid)
             val has64Bit = eligible.any { it.osArch == OSArch.Arch64 }
-            val hasNonDeckWin = eligible.any { !it.steamDeck && it.isWindowsCompatible }
+            val hasNonDeckWin = eligible.any { !it.steamDeck && (if (wantAndroid) it.isAndroidCompatible else it.isWindowsCompatible) }
             return depots.filter { (_, depot) ->
                 filterForDownloadableDepots(depot, has64Bit, hasNonDeckWin, effectiveLanguage,
                     ownedDlc, licensedDepotIds,
-                    dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots
+                    dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots,
+                    wantAndroid = wantAndroid,
                 )
             }
         }
 
-        fun getMainAppDepots(appId: Int, containerLanguage: String): Map<Int, DepotInfo> {
+        fun getMainAppDepots(appId: Int, containerLanguage: String, wantAndroid: Boolean = false): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
             val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
@@ -1040,7 +1051,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 }
             }
 
-            val baseDepots = resolveDownloadableDepots(appInfo.depots, containerLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch)
+            val baseDepots = resolveDownloadableDepots(appInfo.depots, containerLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch, wantAndroid)
 
             // Find in the depots of mainApp, that if any of the depotID is actually belongs to another steam_app entry
             // override the dlcAppId to the corresponding app id
@@ -1061,28 +1072,28 @@ class SteamService : Service(), IChallengeUrlChanged {
          * Get downloadable depots for a given app (default language), including all DLCs
          * @return Map of app ID to depot ID to depot info
          */
-        fun getDownloadableDepots(appId: Int): Map<Int, DepotInfo> {
+        fun getDownloadableDepots(appId: Int, wantAndroid: Boolean = false): Map<Int, DepotInfo> {
             val preferredLanguage = PrefManager.containerLanguage
-            return getDownloadableDepots(appId, preferredLanguage)
+            return getDownloadableDepots(appId, preferredLanguage, wantAndroid)
         }
 
         /**
          * Get downloadable depots for a given app (container language), including all DLCs
          * @return Map of app ID to depot ID to depot info
          */
-        fun getDownloadableDepots(appId: Int, preferredLanguage: String): Map<Int, DepotInfo> {
+        fun getDownloadableDepots(appId: Int, preferredLanguage: String, wantAndroid: Boolean = false): Map<Int, DepotInfo> {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
             val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
             val licensedDepots = getLicensedDepotIds(appId).orEmpty().toMutableSet()
 
-            val map = getMainAppDepots(appId, preferredLanguage).toMutableMap()
+            val map = getMainAppDepots(appId, preferredLanguage, wantAndroid).toMutableMap()
 
             // parent app's arch applies to DLC arch selection
             val mainLanguage = SteamUtils.effectiveDepotLanguage(
-                appInfo.depots, preferredLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch,
+                appInfo.depots, preferredLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch, wantAndroid,
             )
-            val has64Bit = eligibleDepots(appInfo.depots, mainLanguage, ownedDlc, licensedDepots)
+            val has64Bit = eligibleDepots(appInfo.depots, mainLanguage, ownedDlc, licensedDepots, wantAndroid)
                 .any { it.osArch == OSArch.Arch64 }
 
             val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
@@ -1091,15 +1102,16 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val dlcLicensedDepots = getLicensedDepotIds(dlcApp.id)
                 // Resolve the DLC's own language too, so DLC that omits the container language installs.
                 val dlcLanguage = SteamUtils.effectiveDepotLanguage(
-                    dlcApp.depots, preferredLanguage, null, dlcLicensedDepots, hasSteamUnlockedBranch,
+                    dlcApp.depots, preferredLanguage, null, dlcLicensedDepots, hasSteamUnlockedBranch, wantAndroid,
                 )
-                val dlcEligible = eligibleDepots(dlcApp.depots, dlcLanguage, null, dlcLicensedDepots)
-                val dlcHasNonDeckWin = dlcEligible.any { !it.steamDeck && it.isWindowsCompatible }
+                val dlcEligible = eligibleDepots(dlcApp.depots, dlcLanguage, null, dlcLicensedDepots, wantAndroid)
+                val dlcHasNonDeckWin = dlcEligible.any { !it.steamDeck && (if (wantAndroid) it.isAndroidCompatible else it.isWindowsCompatible) }
                 dlcApp.depots
                     .filter { (_, depot) ->
                         filterForDownloadableDepots(depot, has64Bit, dlcHasNonDeckWin, dlcLanguage,
                             null, dlcLicensedDepots, hasSteamUnlockedBranch,
-                            dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots
+                            dlcAppIdsWithSingleDepots = dlcAppIdsWithSingleDepots,
+                            wantAndroid = wantAndroid,
                         )
                     }
                     .forEach { (depotId, depot) ->
@@ -1473,6 +1485,13 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        /** Whether the container for [appId] has the game's Android (Steam Frame / Lepton) depot selected. */
+        fun isAndroidPlatform(appId: Int): Boolean {
+            val context = instance?.applicationContext ?: return false
+            val container = ContainerManager(context).getContainerById("STEAM_${appId}")
+            return container?.platform.equals(Container.PLATFORM_ANDROID, ignoreCase = true)
+        }
+
         fun downloadApp(appId: Int, dlcAppIds: List<Int>, branch: String = "public", isUpdateOrVerify: Boolean): DownloadInfo? {
             if (!checkWifiOrNotify()) return null
             return getAppInfoOf(appId)?.let { appInfo ->
@@ -1482,17 +1501,17 @@ class SteamService : Service(), IChallengeUrlChanged {
                 } else {
                     PrefManager.containerLanguage
                 }
+                val wantAndroid = container?.platform.equals(Container.PLATFORM_ANDROID, ignoreCase = true)
 
-                Timber.tag("SteamService").d("downloadApp: downloading app $appId with language $containerLanguage, branch $branch")
-
-                val depots = getDownloadableDepots(appId = appId, preferredLanguage = containerLanguage)
+                val depots = getDownloadableDepots(appId = appId, preferredLanguage = containerLanguage, wantAndroid = wantAndroid)
                 downloadApp(
                     appId = appId,
                     downloadableDepots = depots,
                     userSelectedDlcAppIds = dlcAppIds,
                     branch = branch,
                     containerLanguage = containerLanguage,
-                    isUpdateOrVerify = isUpdateOrVerify)
+                    isUpdateOrVerify = isUpdateOrVerify,
+                    wantAndroid = wantAndroid)
             }
         }
 
@@ -1792,6 +1811,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             branch: String,
             containerLanguage: String,
             isUpdateOrVerify: Boolean,
+            wantAndroid: Boolean = false,
         ): DownloadInfo? {
             val appDirPath = getAppDirPath(appId)
 
@@ -1807,7 +1827,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             // Depots from Main game
-            val mainDepots = getMainAppDepots(appId, containerLanguage)
+            val mainDepots = getMainAppDepots(appId, containerLanguage, wantAndroid)
             var mainAppDepots = mainDepots.filter { (_, depot) ->
                 depot.dlcAppId == INVALID_APP_ID
             } + mainDepots.filter { (_, depot) ->
@@ -2305,6 +2325,19 @@ class SteamService : Service(), IChallengeUrlChanged {
                             downloadInfo.setPostInstallSyncing(false)
                             downloadInfo.updateStatusMessage(null)
                             PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
+                        }
+                    }
+
+                    // Android platform: the download itself doesn't put the game on the device —
+                    // kick off the system install prompt right away instead of waiting for a
+                    // manual Play click.
+                    if (isAndroidPlatform(appId)) {
+                        when (AndroidGameLauncher.installAndLaunch(svc.applicationContext, appId)) {
+                            AndroidGameLauncher.Result.InstallStarted ->
+                                SnackbarManager.show(svc.getString(R.string.android_game_install_started))
+                            AndroidGameLauncher.Result.Failed ->
+                                SnackbarManager.show(svc.getString(R.string.android_game_launch_failed))
+                            AndroidGameLauncher.Result.Launched -> Unit
                         }
                     }
                 }

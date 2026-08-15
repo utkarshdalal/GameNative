@@ -8,6 +8,7 @@ enum class OS(val code: Int) {
     windows(0x01),
     macos(0x02),
     linux(0x04),
+    android(0x08),
     ;
 
     companion object {

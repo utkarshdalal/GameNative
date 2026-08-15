@@ -328,6 +328,7 @@ object ContainerUtils {
             box64Preset = container.box64Preset,
             desktopTheme = container.desktopTheme,
             containerVariant = container.containerVariant,
+            platform = container.platform,
             wineVersion = container.wineVersion,
             emulator = container.emulator,
             fexcoreVersion = container.fexCoreVersion,
@@ -521,6 +522,7 @@ object ContainerUtils {
         container.desktopTheme = containerData.desktopTheme
         container.graphicsDriverVersion = containerData.graphicsDriverVersion
         container.containerVariant = containerData.containerVariant
+        container.platform = containerData.platform
         container.wineVersion = containerData.wineVersion
         container.emulator = containerData.emulator
         container.fexCoreVersion = containerData.fexcoreVersion
@@ -1101,8 +1103,12 @@ object ContainerUtils {
         return if (containerManager.hasContainer(appId)) {
             val container = containerManager.getContainerById(appId)
 
-            // Apply temporary override if present (without saving to disk)
-            if (IntentLaunchManager.hasTemporaryOverride(appId)) {
+            // Temporary overrides only carry Wine/Winlator settings (graphics driver, dxwrapper,
+            // etc.) and applyToContainer() unconditionally writes to .wine/user.reg — a native
+            // Android container never has a .wine folder, so skip overrides entirely there rather
+            // than risk that write failing before AndroidGameLauncher ever runs.
+            val isAndroidContainer = container.platform.equals(Container.PLATFORM_ANDROID, ignoreCase = true)
+            if (!isAndroidContainer && IntentLaunchManager.hasTemporaryOverride(appId)) {
                 val overrideConfig = IntentLaunchManager.getTemporaryOverride(appId)
                 if (overrideConfig != null) {
                     // Backup original config before applying override (if not already backed up)

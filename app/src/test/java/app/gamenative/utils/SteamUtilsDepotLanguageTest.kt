@@ -48,7 +48,8 @@ class SteamUtilsDepotLanguageTest {
         ownedDlc: Map<Int, DepotInfo>? = null,
         licensedDepotIds: Set<Int>? = null,
         hasSteamUnlockedBranch: Boolean = false,
-    ) = SteamUtils.effectiveDepotLanguage(depots, preferred, ownedDlc, licensedDepotIds, hasSteamUnlockedBranch)
+        wantAndroid: Boolean = false,
+    ) = SteamUtils.effectiveDepotLanguage(depots, preferred, ownedDlc, licensedDepotIds, hasSteamUnlockedBranch, wantAndroid)
 
     // -- Priority 1: requested language wins when available --
 
@@ -194,5 +195,55 @@ class SteamUtilsDepotLanguageTest {
     @Test
     fun `returns preferred language when there are no depots`() {
         assertEquals("french", resolve(emptyMap(), "french"))
+    }
+
+    // -- Android depot selection (wantAndroid) --
+
+    @Test
+    fun `returns requested language when the android depot ships it`() {
+        val depots = depotsOf(
+            depot(depotId = 1, language = "english", osList = EnumSet.of(OS.android)),
+            depot(depotId = 2, language = "french", osList = EnumSet.of(OS.android)),
+        )
+        assertEquals("french", resolve(depots, "french", wantAndroid = true))
+    }
+
+    @Test
+    fun `falls back to english for android depots when requested language is absent`() {
+        val depots = depotsOf(
+            depot(depotId = 1, language = "english", osList = EnumSet.of(OS.android)),
+            depot(depotId = 2, language = "german", osList = EnumSet.of(OS.android)),
+        )
+        assertEquals("english", resolve(depots, "french", wantAndroid = true))
+    }
+
+    @Test
+    fun `an untagged depot is not a neutral fallback for android — windows-only neutrality does not carry over`() {
+        val depots = depotsOf(
+            depot(depotId = 1, language = "german", osList = EnumSet.of(OS.android)),
+            // Untagged (OS.none): counts as installable for Windows (isWindowsCompatible), but
+            // isAndroidCompatible requires an explicit android tag, so this must NOT satisfy the
+            // Android pass and must NOT be treated as a neutral depot there.
+            depot(depotId = 2, language = "", osList = EnumSet.of(OS.none)),
+        )
+        assertEquals("german", resolve(depots, "french", wantAndroid = true))
+    }
+
+    @Test
+    fun `a windows-only depot is ignored when android is requested`() {
+        val depots = depotsOf(
+            depot(depotId = 1, language = "german", osList = EnumSet.of(OS.windows)),
+        )
+        // No android-compatible depot at all -> nothing to steer the language away from preferred.
+        assertEquals("french", resolve(depots, "french", wantAndroid = true))
+    }
+
+    @Test
+    fun `a depot explicitly tagged both android and neutral-language keeps the preferred language`() {
+        val depots = depotsOf(
+            depot(depotId = 1, language = "", osList = EnumSet.of(OS.android)),
+            depot(depotId = 2, language = "german", osList = EnumSet.of(OS.android)),
+        )
+        assertEquals("french", resolve(depots, "french", wantAndroid = true))
     }
 }

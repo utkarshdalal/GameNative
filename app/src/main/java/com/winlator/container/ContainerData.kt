@@ -44,6 +44,8 @@ data class ContainerData(
     val desktopTheme: String = WineThemeManager.DEFAULT_DESKTOP_THEME,
     // container runtime variant (glibc or bionic)
     val containerVariant: String = Container.DEFAULT_VARIANT,
+    // which Steam depot platform to download/install (windows or android)
+    val platform: String = Container.PLATFORM_WINDOWS,
     // wine version identifier (used for bionic variant), defaults to main wine
     val wineVersion: String = WineInfo.MAIN_WINE_VERSION.identifier(),
     // selected 32-bit emulator for WoW64 processes (FEXCore/Box64)
@@ -144,6 +146,7 @@ data class ContainerData(
                     "box64Preset" to state.box64Preset,
                     "desktopTheme" to state.desktopTheme,
                     "containerVariant" to state.containerVariant,
+                    "platform" to state.platform,
                     "wineVersion" to state.wineVersion,
                     "emulator" to state.emulator,
                     "fexcoreVersion" to state.fexcoreVersion,
@@ -214,6 +217,7 @@ data class ContainerData(
                     box64Preset = savedMap["box64Preset"] as String,
                     desktopTheme = savedMap["desktopTheme"] as String,
                     containerVariant = (savedMap["containerVariant"] as? String) ?: Container.DEFAULT_VARIANT,
+                    platform = (savedMap["platform"] as? String) ?: Container.PLATFORM_WINDOWS,
                     wineVersion = (savedMap["wineVersion"] as? String) ?: WineInfo.MAIN_WINE_VERSION.identifier(),
                     emulator = (savedMap["emulator"] as? String) ?: Container.DEFAULT_EMULATOR,
                     fexcoreVersion = (savedMap["fexcoreVersion"] as? String) ?: DefaultVersion.FEXCORE,

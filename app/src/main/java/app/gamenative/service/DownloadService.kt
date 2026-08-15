@@ -98,7 +98,7 @@ object DownloadService {
     }
 
     fun getSizeFromStoreDisplay (appId: Int, branch: String = "public"): String {
-        val depots = SteamService.getDownloadableDepots(appId)
+        val depots = SteamService.getDownloadableDepots(appId, wantAndroid = SteamService.isAndroidPlatform(appId))
         val installBytes = depots.values.sumOf { (it.manifests[branch] ?: it.manifests["public"])?.size ?: 0L }
         return StorageUtils.formatBinarySize(installBytes)
     }

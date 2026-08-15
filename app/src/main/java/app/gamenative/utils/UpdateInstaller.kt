@@ -53,23 +53,24 @@ object UpdateInstaller {
             Timber.i("Download complete: ${destFile.absolutePath}, size: $fileSize bytes")
 
             // Install the APK
-            withContext(Dispatchers.Main) {
+            val installStarted = withContext(Dispatchers.Main) {
                 installApk(context, destFile)
             }
 
-            return@withContext true
+            return@withContext installStarted
         } catch (e: Exception) {
             Timber.e(e, "Error downloading/installing update")
             return@withContext false
         }
     }
 
-    private fun installApk(context: Context, apkFile: File) {
+    /** Returns true only if the system install intent was actually launched. */
+    fun installApk(context: Context, apkFile: File): Boolean {
         try {
             // Verify file exists before attempting installation
             if (!apkFile.exists()) {
                 Timber.e("APK file does not exist: ${apkFile.absolutePath}")
-                return
+                return false
             }
 
             Timber.i("Installing APK from: ${apkFile.absolutePath}, size: ${apkFile.length()} bytes")
@@ -84,7 +85,7 @@ object UpdateInstaller {
                     )
                 } catch (e: Exception) {
                     Timber.e(e, "Error getting FileProvider URI")
-                    return
+                    return false
                 }
             } else {
                 // Use file:// URI for older versions
@@ -114,8 +115,10 @@ object UpdateInstaller {
 
             context.startActivity(intent)
             Timber.i("Install intent launched successfully")
+            return true
         } catch (e: Exception) {
             Timber.e(e, "Error launching install intent")
+            return false
         }
     }
 }

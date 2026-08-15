@@ -3,5 +3,8 @@
     <cache-path name="cache" path="." />
     <external-cache-path name="external_cache" path="." />
     <files-path name="diagnostics" path="imagefs/usr/tmp/" />
+    <!-- Android game APKs are staged into the app's own cache dir before install
+         (AndroidGameLauncher.stageApkForInstall), so the existing cache-path entry above already
+         covers them — no broader access to the install-directory tree is needed. -->
 </paths>
 

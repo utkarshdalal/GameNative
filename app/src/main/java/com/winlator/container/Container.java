@@ -72,6 +72,10 @@ public class Container {
     public static final String STEAM_TYPE_ULTRALIGHT = "ultralight";
     public static final String GLIBC = "glibc";
     public static final String BIONIC = "bionic";
+
+    // Which Steam depot platform to download/install for this game.
+    public static final String PLATFORM_WINDOWS = "windows";
+    public static final String PLATFORM_ANDROID = "android";
     public static final byte MAX_DRIVE_LETTERS = 8;
     public final String id;
     private String name;
@@ -167,6 +171,8 @@ public class Container {
     private boolean portraitMode = false;
 
     private String containerVariant = DEFAULT_VARIANT;
+
+    private String platform = PLATFORM_WINDOWS;
 
     public String getGraphicsDriverVersion() {
         return graphicsDriverVersion;
@@ -512,6 +518,14 @@ public class Container {
         return this.containerVariant;
     }
 
+    public void setPlatform(String platform) {
+        this.platform = platform != null && !platform.isEmpty() ? platform : PLATFORM_WINDOWS;
+    }
+
+    public String getPlatform() {
+        return this.platform;
+    }
+
     public String getExtra(String name) {
         return getExtra(name, "");
     }
@@ -739,6 +753,7 @@ public class Container {
             data.put("steamType", steamType);
             data.put("language", language);
             data.put("containerVariant", containerVariant);
+            data.put("platform", platform);
             data.put("emulator", emulator);
             data.put("fexcoreVersion", fexcoreVersion);
 
@@ -845,6 +860,9 @@ public class Container {
                     break;
                 case "containerVariant" :
                     setContainerVariant(data.getString(key));
+                    break;
+                case "platform" :
+                    setPlatform(data.getString(key));
                     break;
                 case "inputType" :
                     setInputType(data.getInt(key));
