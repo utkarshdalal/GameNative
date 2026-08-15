@@ -695,9 +695,8 @@ fun XServerScreen(
         // limiters must stay at 0 under LSFG.
         PowerManager.fpsCapApplier = applier@{ capFps: Int ->
             if (!isLsfgAvailable || lsfgMultiplier < 2) return@applier false
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                applyFpsLimiterTarget(capFps)
-            }
+            PowerManager.targetFps = capFps
+            LsfgQuickMenuHelper.applyLiveFpsCap(container, capFps)
             true
         }
         val detectedMax = detectMaxRefreshRateHz(context, xServerView as? View)

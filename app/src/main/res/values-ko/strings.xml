@@ -324,6 +324,7 @@
     <string name="performance_hud_fps_limiter_target">목표 FPS</string>
     <string name="performance_hud_fps_limiter_off">무제한</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">기본 프레임 레이트를 제한합니다. 화면 표시 레이트는 제한 × LSFG 배수입니다.</string>
     <string name="performance_hud_presets">프리셋</string>
     <string name="performance_hud_presets_description">일반적인 HUD 레이아웃으로 빠르게 전환합니다.</string>
     <string name="performance_hud_preset_fps_only">1</string>

@@ -204,18 +204,33 @@ object LsfgVkManager {
      * in which case callers should fall back to their own estimate.
      */
     @JvmStatic
+    @Volatile private var cachedMeasuredFps: Float? = null
+    @Volatile private var lastStatsReadMs: Long = 0L
+
+    /** Served from a cache refreshed off the main thread; callers poll ~1/s. */
     fun readMeasuredFps(container: Container): Float? {
-        val statsFile = File(container.rootDir, STATS_RELATIVE_PATH)
-        if (!statsFile.isFile) return null
-        if (System.currentTimeMillis() - statsFile.lastModified() > STATS_FRESHNESS_MS) return null
-        return try {
-            statsFile.readLines()
-                .firstOrNull { it.startsWith("fps=") }
-                ?.substringAfter("fps=")
-                ?.toFloatOrNull()
-        } catch (t: Throwable) {
-            null
+        val now = System.currentTimeMillis()
+        if (now - lastStatsReadMs >= 500L) {
+            lastStatsReadMs = now
+            vsyncWriteExecutor.execute {
+                cachedMeasuredFps = try {
+                    val statsFile = File(container.rootDir, STATS_RELATIVE_PATH)
+                    if (statsFile.isFile &&
+                        System.currentTimeMillis() - statsFile.lastModified() <= STATS_FRESHNESS_MS
+                    ) {
+                        statsFile.readLines()
+                            .firstOrNull { it.startsWith("fps=") }
+                            ?.substringAfter("fps=")
+                            ?.toFloatOrNull()
+                    } else {
+                        null
+                    }
+                } catch (t: Throwable) {
+                    null
+                }
+            }
         }
+        return cachedMeasuredFps
     }
 
     /**
@@ -546,6 +561,7 @@ object LsfgVkManager {
         multiplier: Int,
         flowScale: Float,
         performanceMode: Boolean,
+        fpsLimitOverride: Int? = null,
     ): Boolean {
         if (!isSupported(container)) return false
 
@@ -565,7 +581,7 @@ object LsfgVkManager {
                 multiplier = if (frameGenActive) multiplier.coerceIn(2, 4) else 1,
                 flowScale = flowScale.coerceIn(0.25f, 1.0f),
                 performanceMode = performanceMode && frameGenActive,
-                fpsLimit = fpsLimit(container),
+                fpsLimit = fpsLimitOverride ?: fpsLimit(container),
                 presentMode = presentMode(container),
             )
 

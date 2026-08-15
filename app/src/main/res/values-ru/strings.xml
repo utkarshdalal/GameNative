@@ -922,6 +922,7 @@ https://gamenative.app
     <string name="performance_hud_fps_limiter_target">Целевой FPS</string>
     <string name="performance_hud_fps_limiter_off">Без ограничений</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Ограничивает базовую частоту кадров. Частота на экране — это лимит, умноженный на множитель LSFG.</string>
     <string name="performance_hud_presets">Предустановки</string>
     <string name="performance_hud_presets_description">Быстро переключаться между типовыми макетами HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
