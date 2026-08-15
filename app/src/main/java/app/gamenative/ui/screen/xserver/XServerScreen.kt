@@ -109,6 +109,8 @@ import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.ui.component.LsfgQuickMenuState
+import app.gamenative.ui.component.PerformanceQuickMenuState
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
 import app.gamenative.ui.component.SteamInviteState
@@ -532,9 +534,6 @@ fun XServerScreen(
     var keyboardRequestedFromOverlay by remember { mutableStateOf(false) }
     var shouldForceResumeOnMenuClose by remember { mutableStateOf(false) }
     var showQuickMenu by remember { mutableStateOf(false) }
-    LaunchedEffect(showQuickMenu) {
-        immersiveHooks?.onQuickMenuVisibilityChanged?.invoke(showQuickMenu)
-    }
     var quickMenuToolsVisible by remember { mutableStateOf(false) }
     var quickMenuWineProcesses by remember { mutableStateOf<List<ProcessInfo>>(emptyList()) }
     var quickMenuWineProcessesLoading by remember { mutableStateOf(false) }
@@ -1078,17 +1077,15 @@ fun XServerScreen(
     // deliberately NOT gameBack(): that handler also does IME checks, a controller rescan, and
     // releases touchpad pointer capture on open, none of which belong to "just open/close the
     // quick menu" and were suspected of causing Start to behave like a confirm/select press.
-    // This does nothing but flip showQuickMenu.
-    val toggleQuickMenu: () -> Unit = {
-        Timber.i("toggleQuickMenu: invoked, showQuickMenu=%b", showQuickMenu)
-        if (showQuickMenu) {
-            dismissOverlayMenu()
-        } else {
-            showQuickMenu = true
-        }
-    }
+    // This does nothing but flip showQuickMenu. Registered inline rather than held in a local:
+    // this composable sits at the dex verifier's 255-register limit (see ImmersiveSessionHooks'
+    // kdoc), and a VerifyError from exactly this was reproduced on device.
 
     LaunchedEffect(showQuickMenu, quickMenuToolsVisible, xServerView) {
+        // Piggybacks on this effect rather than its own LaunchedEffect(showQuickMenu) — this
+        // composable is at the dex 255-register limit. Extra fires from the other keys repeat
+        // the same value; the activity's handler is idempotent.
+        immersiveHooks?.onQuickMenuVisibilityChanged?.invoke(showQuickMenu)
         if (!showQuickMenu || !quickMenuToolsVisible) {
             quickMenuWineProcesses = emptyList()
             quickMenuWineProcessesLoading = false
@@ -1454,7 +1451,14 @@ fun XServerScreen(
 
     DisposableEffect(container) {
         registerBackAction(gameBack)
-        immersiveHooks?.registerToggle?.invoke(toggleQuickMenu)
+        immersiveHooks?.registerToggle?.invoke {
+            Timber.i("toggleQuickMenu: invoked, showQuickMenu=%b", showQuickMenu)
+            if (showQuickMenu) {
+                dismissOverlayMenu()
+            } else {
+                showQuickMenu = true
+            }
+        }
         if (isLsfgAvailable) {
             LsfgVkManager.startVsyncClock(context, container)
         }
@@ -2681,14 +2685,16 @@ fun XServerScreen(
                     quickMenuWineProcesses = quickMenuWineProcesses.filterNot { it.pid == process.pid }
                 }
             },
-            isPerformanceHudEnabled = isPerformanceHudEnabled,
-            performanceHudConfig = performanceHudConfig,
-            fpsLimiterEnabled = fpsLimiterEnabled,
-            fpsLimiterTarget = fpsLimiterTarget,
-            fpsLimiterMax = detectedMaxRefreshRateHz,
-            onPerformanceHudConfigChanged = ::applyPerformanceHudConfig,
-            onFpsLimiterEnabledChanged = ::applyFpsLimiterEnabled,
-            onFpsLimiterChanged = ::applyFpsLimiterTarget,
+            performance = PerformanceQuickMenuState(
+                hudEnabled = isPerformanceHudEnabled,
+                hudConfig = performanceHudConfig,
+                fpsLimiterEnabled = fpsLimiterEnabled,
+                fpsLimiterTarget = fpsLimiterTarget,
+                fpsLimiterMax = detectedMaxRefreshRateHz,
+                onHudConfigChanged = ::applyPerformanceHudConfig,
+                onFpsLimiterEnabledChanged = ::applyFpsLimiterEnabled,
+                onFpsLimiterChanged = ::applyFpsLimiterTarget,
+            ),
             hasPhysicalController = hasPhysicalController,
             isTouchscreenModeActive = isTouchscreenModeActive,
             onTouchGestureSettingsClick = { showTouchGestureDialog = true },
@@ -2701,22 +2707,18 @@ fun XServerScreen(
                 if (isDisableMouseInput) add(QuickMenuAction.DISABLE_MOUSE)
             },
             // LSFG hot-reload (tab only visible when enabled in container settings)
-            isLsfgAvailable = isLsfgAvailable,
-            lsfgMultiplier = lsfgMultiplier,
-            lsfgFlowScale = lsfgFlowScale,
-            lsfgPerformanceMode = lsfgPerformanceMode,
-            onLsfgMultiplierChanged = ::applyLsfgMultiplier,
-            onLsfgFlowScaleChanged = ::applyLsfgFlowScale,
-            onLsfgPerformanceModeChanged = ::applyLsfgPerformanceMode,
+            lsfg = LsfgQuickMenuState(
+                isAvailable = isLsfgAvailable,
+                multiplier = lsfgMultiplier,
+                flowScale = lsfgFlowScale,
+                performanceMode = lsfgPerformanceMode,
+                onMultiplierChanged = ::applyLsfgMultiplier,
+                onFlowScaleChanged = ::applyLsfgFlowScale,
+                onPerformanceModeChanged = ::applyLsfgPerformanceMode,
+            ),
             onRequestOpen = { showQuickMenu = true },
             // Immersive tab (tab only visible when hosted by ImmersiveXrActivity)
-            immersiveControls = immersiveHooks?.controls,
-            registerFocusManager = immersiveHooks?.registerFocusManager,
-            registerCycleTab = immersiveHooks?.registerCycleTab ?: {},
-            registerAdjustmentControl = immersiveHooks?.registerAdjustmentControl ?: {},
-            registerFocusTabRail = immersiveHooks?.registerFocusTabRail ?: {},
-            registerFocusedActivate = immersiveHooks?.registerFocusedActivate ?: {},
-            registerStartHeld = immersiveHooks?.registerStartHeld ?: {},
+            immersiveHooks = immersiveHooks,
             onAnimationComplete = { isMenuVisible ->
                 if (isMenuVisible) {
                     // An invite dialog the game asked for must not suspend it -- the game has to
@@ -2746,43 +2748,7 @@ fun XServerScreen(
         }
 
         if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu && !keepPausedForEditor) {
-            val resumeButtonFocusRequester = remember { FocusRequester() }
-            // Not focusable by default touch-only flows don't need it, but a gamepad's
-            // DPAD_CENTER only activates a clickable() that currently has focus — request it
-            // as soon as this button appears so it's reachable without a prior focus target.
-            LaunchedEffect(Unit) {
-                runCatching { resumeButtonFocusRequester.requestFocus() }
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(
-                            color = androidx.compose.ui.graphics.Color.White,
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                        )
-                        .focusRequester(resumeButtonFocusRequester)
-                        .focusable()
-                        .clickable(onClick = ::resumeFromManualButton),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = stringResource(R.string.resume_game),
-                        tint = androidx.compose.ui.graphics.Color.Black,
-                        modifier = Modifier.size(40.dp),
-                    )
-                }
-            }
+            ManualResumeOverlay(onResume = ::resumeFromManualButton)
         }
     }
 
@@ -2964,6 +2930,49 @@ fun XServerScreen(
     //
     //     }
     // }
+}
+
+/** Lives outside XServerScreen because that composable sits at the dex verifier's 255-register
+ * limit — its FocusRequester/effect locals tripped a runtime VerifyError when inlined there. */
+@Composable
+private fun ManualResumeOverlay(onResume: () -> Unit) {
+    val resumeButtonFocusRequester = remember { FocusRequester() }
+    // Not focusable by default touch-only flows don't need it, but a gamepad's
+    // DPAD_CENTER only activates a clickable() that currently has focus — request it
+    // as soon as this button appears so it's reachable without a prior focus target.
+    LaunchedEffect(Unit) {
+        runCatching { resumeButtonFocusRequester.requestFocus() }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {},
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .background(
+                    color = androidx.compose.ui.graphics.Color.White,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                )
+                .focusRequester(resumeButtonFocusRequester)
+                .focusable()
+                .clickable(onClick = onResume),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = stringResource(R.string.resume_game),
+                tint = androidx.compose.ui.graphics.Color.Black,
+                modifier = Modifier.size(40.dp),
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

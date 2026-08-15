@@ -281,6 +281,33 @@ val LocalImmersiveInputBypass = staticCompositionLocalOf {
     ImmersiveInputBypass(reportAdjustment = {}, reportActivate = {})
 }
 
+/** Performance HUD + FPS limiter state/callbacks as one QuickMenu parameter instead of eight —
+ * XServerScreen's call site sits at the dex verifier's 255-register limit, and every argument
+ * of that call costs a register there (a runtime VerifyError from exactly that was reproduced
+ * on device). */
+class PerformanceQuickMenuState(
+    val hudEnabled: Boolean = false,
+    val hudConfig: PerformanceHudConfig = PerformanceHudConfig(),
+    val fpsLimiterEnabled: Boolean = true,
+    val fpsLimiterTarget: Int = 60,
+    val fpsLimiterMax: Int = 60,
+    val onHudConfigChanged: (PerformanceHudConfig) -> Unit = {},
+    val onFpsLimiterEnabledChanged: (Boolean) -> Unit = {},
+    val onFpsLimiterChanged: (Int) -> Unit = {},
+)
+
+/** LSFG hot-reload state/callbacks as one QuickMenu parameter instead of seven — same
+ * register-limit reason as [PerformanceQuickMenuState]. Tab only visible when [isAvailable]. */
+class LsfgQuickMenuState(
+    val isAvailable: Boolean = false,
+    val multiplier: Int = 2,
+    val flowScale: Float = 0.80f,
+    val performanceMode: Boolean = true,
+    val onMultiplierChanged: (Int) -> Unit = {},
+    val onFlowScaleChanged: (Float) -> Unit = {},
+    val onPerformanceModeChanged: (Boolean) -> Unit = {},
+)
+
 @Composable
 fun QuickMenu(
     isVisible: Boolean,
@@ -293,94 +320,60 @@ fun QuickMenu(
     isWineProcessesLoading: Boolean = false,
     onToolsVisibilityChanged: (Boolean) -> Unit = {},
     onEndWineProcess: (ProcessInfo) -> Unit = {},
-    isPerformanceHudEnabled: Boolean = false,
-    performanceHudConfig: PerformanceHudConfig = PerformanceHudConfig(),
-    fpsLimiterEnabled: Boolean = true,
-    fpsLimiterTarget: Int = 60,
-    fpsLimiterMax: Int = 60,
-    onPerformanceHudConfigChanged: (PerformanceHudConfig) -> Unit = {},
-    onFpsLimiterEnabledChanged: (Boolean) -> Unit = {},
-    onFpsLimiterChanged: (Int) -> Unit = {},
+    performance: PerformanceQuickMenuState = PerformanceQuickMenuState(),
     hasPhysicalController: Boolean = false,
     isTouchscreenModeActive: Boolean = false,
     onTouchGestureSettingsClick: () -> Unit = {},
     isShooterModeActive: Boolean = false,
     onShooterModeSettingsClick: () -> Unit = {},
     activeToggleIds: Set<Int> = emptySet(),
-    // LSFG hot-reload state (tab only visible when isLsfgAvailable)
-    isLsfgAvailable: Boolean = false,
-    lsfgMultiplier: Int = 2,
-    lsfgFlowScale: Float = 0.80f,
-    lsfgPerformanceMode: Boolean = true,
-    onLsfgMultiplierChanged: (Int) -> Unit = {},
-    onLsfgFlowScaleChanged: (Float) -> Unit = {},
-    onLsfgPerformanceModeChanged: (Boolean) -> Unit = {},
-    // Immersive tab — only shown when non-null (i.e. hosted by ImmersiveXrActivity)
-    immersiveControls: app.gamenative.ui.screen.xr.ImmersiveControls? = null,
+    lsfg: LsfgQuickMenuState = LsfgQuickMenuState(),
     onAnimationComplete: (Boolean) -> Unit = {},
     /** Lets the menu open itself when the running game asks for its Steam invite dialog. */
     onRequestOpen: () -> Unit = {},
-    // Hands the live FocusManager up to the caller — see its call site's kdoc for why:
-    // dispatching synthetic dpad KeyEvents through Activity.dispatchKeyEvent() turned out to
-    // never reach Compose's key/focus dispatch at all in the immersive activity (confirmed via
-    // logging: dispatchKeyEvent() gets called and returns false, but nothing here ever sees the
-    // event — some other Android View still holds real view-level focus). Calling
-    // FocusManager.moveFocus() directly bypasses that whole broken path.
-    registerFocusManager: ((androidx.compose.ui.focus.FocusManager) -> Unit)? = null,
-    // Same bypass, for the tab rail specifically: LB/RB tab-cycling used to go through
-    // dispatchMenuKeyEvent (KEYCODE_BUTTON_L1/R1) into the SAME broken KeyEvent path — this hands
-    // up a direct "cycle forward/backward through the tabs actually shown right now" action
-    // instead, called straight from ImmersiveXrActivity's LB/RB handling.
-    registerCycleTab: ((Boolean) -> Unit) -> Unit = {},
-    // Same bypass again, for a locked QuickMenuAdjustmentRow's left/right slider drag: arrow-key
-    // movement already skips Compose's key dispatch entirely for this Activity (moveMenuFocus
-    // calls FocusManager.moveFocus() directly, see registerFocusManager's kdoc above) — which
-    // means a locked slider's own onPreviewKeyEvent (listening for DPAD_LEFT/RIGHT) never sees
-    // those presses either, since moveFocus fires first and moves focus away mid-adjustment
-    // instead. Registers a live getter for "is some row currently locked, and if so its
-    // decrease/increase actions" so ImmersiveXrActivity can drive it directly, the same way it
-    // drives tab cycling and focus movement.
-    registerAdjustmentControl: (() -> Pair<() -> Unit, () -> Unit>?) -> Unit = {},
-    // Same bypass again, for LEFT specifically: FocusManager.moveFocus(Left) reaching the tab
-    // rail from tab content turned out to depend on the focused row's vertical position lining
-    // up with a rail icon in Compose's spatial search heuristic — it worked from some rows and
-    // not others, confirmed by comparing logs from a session where it worked against one where it
-    // didn't. A direct requestFocus() on the CURRENTLY SELECTED tab's own rail button is
-    // reliable regardless of where in the content focus currently is, same as registerCycleTab.
-    registerFocusTabRail: (() -> Unit) -> Unit = {},
-    // Same bypass again, for a plain radio/selectable row that only reacts to BUTTON_A/DPAD_CENTER
-    // (e.g. ScreenEffectsPanel's scaling-mode rows): relying on Android's default "click whatever
-    // holds real view focus" behavior for that key turned out to be exactly as unreliable here as
-    // it was for the tab rail and adjustment-row lock — confirmed via logs showing scaling-mode
-    // selection simply not registering in the immersive activity despite Compose showing the row
-    // as focused. Registers a live getter for "is some row focused right now that just wants a
-    // plain activate on A, and if so its action" so ImmersiveXrActivity can invoke it directly.
-    registerFocusedActivate: (() -> (() -> Unit)?) -> Unit = {},
-    // Receives the Menu/Start button's physical-hold state, pushed live from
-    // ImmersiveXrActivity's native polling. While true, this Composable's own onPreviewKeyEvent
-    // consumes any key event it sees — Horizon OS's own gamepad input dispatch generates real
-    // Android KeyEvents (DPAD_CENTER/BUTTON_A/BUTTON_START) while that button is physically held,
-    // a completely separate path from the immersive activity's OpenXR-polling-driven bypasses,
-    // which has no visibility into or control over it.
-    registerStartHeld: ((Boolean) -> Unit) -> Unit = {},
+    // Everything the Meta Quest immersive activity threads in (its tab's controls plus the
+    // input bypass registrations — see ImmersiveSessionHooks' per-field kdocs), null on every
+    // other launch. ONE parameter, not eight: XServerScreen forwards this from its own
+    // signature, and that composable sits at the dex verifier's 255-register limit — every
+    // extra argument in its QuickMenu call site costs a register there (a runtime VerifyError
+    // from exactly that was reproduced on device).
+    immersiveHooks: app.gamenative.ui.screen.xr.ImmersiveSessionHooks? = null,
     modifier: Modifier = Modifier,
 ) {
+    val immersiveControls = immersiveHooks?.controls
+    // Unbundled into the original local names so the body below reads the same as before the
+    // holder classes existed (see PerformanceQuickMenuState's kdoc for why they exist).
+    val isPerformanceHudEnabled = performance.hudEnabled
+    val performanceHudConfig = performance.hudConfig
+    val fpsLimiterEnabled = performance.fpsLimiterEnabled
+    val fpsLimiterTarget = performance.fpsLimiterTarget
+    val fpsLimiterMax = performance.fpsLimiterMax
+    val onPerformanceHudConfigChanged = performance.onHudConfigChanged
+    val onFpsLimiterEnabledChanged = performance.onFpsLimiterEnabledChanged
+    val onFpsLimiterChanged = performance.onFpsLimiterChanged
+    val isLsfgAvailable = lsfg.isAvailable
+    val lsfgMultiplier = lsfg.multiplier
+    val lsfgFlowScale = lsfg.flowScale
+    val lsfgPerformanceMode = lsfg.performanceMode
+    val onLsfgMultiplierChanged = lsfg.onMultiplierChanged
+    val onLsfgFlowScaleChanged = lsfg.onFlowScaleChanged
+    val onLsfgPerformanceModeChanged = lsfg.onPerformanceModeChanged
     val focusManager = LocalFocusManager.current
-    LaunchedEffect(registerFocusManager) {
-        registerFocusManager?.invoke(focusManager)
+    LaunchedEffect(immersiveHooks) {
+        immersiveHooks?.registerFocusManager?.invoke(focusManager)
     }
     val focusTabRailScope = rememberCoroutineScope()
     var activeAdjustment by remember { mutableStateOf<Pair<() -> Unit, () -> Unit>?>(null) }
     var activeRadioActivate by remember { mutableStateOf<(() -> Unit)?>(null) }
     LaunchedEffect(Unit) {
-        registerFocusedActivate { activeRadioActivate }
+        immersiveHooks?.registerFocusedActivate?.invoke { activeRadioActivate }
     }
     var startHeld by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        registerStartHeld { startHeld = it }
+        immersiveHooks?.registerStartHeld?.invoke { startHeld = it }
     }
     LaunchedEffect(Unit) {
-        registerAdjustmentControl { activeAdjustment }
+        immersiveHooks?.registerAdjustmentControl?.invoke { activeAdjustment }
     }
     val exitGameItem = QuickMenuItem(
         id = QuickMenuAction.EXIT_GAME,
@@ -549,7 +542,7 @@ fun QuickMenu(
     }
 
     LaunchedEffect(Unit) {
-        registerFocusTabRail {
+        immersiveHooks?.registerFocusTabRail?.invoke {
             val requester = when (selectedTab) {
                 QuickMenuTab.HUD -> hudTabFocusRequester
                 QuickMenuTab.LSFG -> lsfgTabFocusRequester
@@ -559,7 +552,7 @@ fun QuickMenu(
                 QuickMenuTab.IMMERSIVE -> immersiveTabFocusRequester
                 else -> null
             }
-            if (requester == null) return@registerFocusTabRail
+            if (requester == null) return@invoke
             // A single attempt genuinely failed in practice — "FocusRequester is not
             // initialized" thrown for the rail button's own requester, confirmed via logging —
             // meaning the rail wasn't done composing/attaching yet at that exact instant. The
@@ -583,7 +576,7 @@ fun QuickMenu(
     }
 
     LaunchedEffect(availableTabs) {
-        registerCycleTab { forward ->
+        immersiveHooks?.registerCycleTab?.invoke { forward ->
             val currentIndex = availableTabs.indexOf(selectedTab).takeIf { it >= 0 } ?: 0
             val nextTab = if (forward) {
                 availableTabs[(currentIndex + 1) % availableTabs.size]
