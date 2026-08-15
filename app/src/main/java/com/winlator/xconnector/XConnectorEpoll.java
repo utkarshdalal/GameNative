@@ -183,6 +183,30 @@ public class XConnectorEpoll implements Runnable {
         return this.connectedClients.get(fd);
     }
 
+    // Frame-pacing back-pressure: the fd leaves epoll until delayNs elapses, so
+    // the client stalls in its own blocking call while the epoll thread stays
+    // free. Single-threaded mode only.
+    private java.util.concurrent.ScheduledExecutorService pauseScheduler;
+
+    public void pauseClientReads(Client client, long delayNs) {
+        if (this.multithreadedClients || !client.connected || !this.running) return;
+        removeFdFromEpoll(this.epollFd, client.clientSocket.fd);
+        synchronized (this) {
+            if (pauseScheduler == null) {
+                pauseScheduler = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                    Thread t = new Thread(r, "XConnectorPause");
+                    t.setDaemon(true);
+                    return t;
+                });
+            }
+        }
+        pauseScheduler.schedule(() -> {
+            if (client.connected && this.running) {
+                addFdToEpoll(this.epollFd, client.clientSocket.fd);
+            }
+        }, delayNs, java.util.concurrent.TimeUnit.NANOSECONDS);
+    }
+
     public void killConnection(Client client) {
         client.connected = false;
         if (this.multithreadedClients) {

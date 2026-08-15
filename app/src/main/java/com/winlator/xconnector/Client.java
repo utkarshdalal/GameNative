@@ -29,6 +29,10 @@ public class Client {
         outputStream.setByteOrder(ByteOrder.LITTLE_ENDIAN);
     }
 
+    public XConnectorEpoll getConnector() {
+        return connector;
+    }
+
     public XInputStream getInputStream() {
         return inputStream;
     }
