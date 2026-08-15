@@ -646,10 +646,11 @@ fun XServerScreen(
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
             ?.also {
-                // Immersive sessions must pace by wall clock — see setForceCpuPacer's kdoc
-                // (Choreographer vsync and the SurfaceControl frame-rate hint both stop
-                // working once the OpenXR compositor owns the display).
-                if (immersiveHooks != null) it.setForceCpuPacer(true)
+                // Immersive sessions must pace by suspending the presenting client's reads —
+                // see setReadSuspensionPacing's kdoc (the guest WSI ignores notification
+                // timing, and the SurfaceControl frame-rate hint doesn't exist once the
+                // OpenXR compositor owns the display).
+                if (immersiveHooks != null) it.setReadSuspensionPacing(true)
             }
             ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
         // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain

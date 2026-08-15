@@ -53,23 +53,36 @@ public class PresentExtension implements Extension {
     private volatile boolean eagerIdleRelease = false;
     private int supersededDrops = 0;
 
-    // Immersive-only (see setForceCpuPacer): also pace the CompleteNotify, not just the idle
-    // release. Never set on the normal flat path, which keeps its immediate completes.
-    private volatile boolean pacedCompleteMode = false;
-
     public void setEagerIdleRelease(boolean eager) {
         this.eagerIdleRelease = eager;
+    }
+
+    // Immersive-only (set by XServerScreen when the session is hosted by ImmersiveXrActivity):
+    // pace presents by suspending the presenting client's socket reads — the same mechanism
+    // MITSHMExtension/ShmFramePacer already use — instead of delaying notifications. Measured
+    // live on a Quest (jdb against the running session): with frameRateLimit=60 armed and both
+    // the CompleteNotify and IdleNotify held to a 60fps timeline, the game still ran at ~72 —
+    // the guest vortek WSI waits on neither notification. And the flat path's other lever, the
+    // SurfaceControl refresh-rate hint, doesn't exist once the OpenXR compositor owns the
+    // display. Read suspension back-pressures through the X socket itself, which no WSI can
+    // ignore; the presented frame is still displayed immediately.
+    private volatile boolean readSuspensionPacing = false;
+
+    public void setReadSuspensionPacing(boolean enabled) {
+        this.readSuspensionPacing = enabled;
+    }
+
+    private void pacePresentByReadSuspension(XClient client, Window window) {
+        long delayNs = com.winlator.xserver.ShmFramePacer.framePresented(window.id);
+        if (delayNs > 0 && client.connectorClient != null) {
+            client.connectorClient.getConnector().pauseClientReads(client.connectorClient, delayNs);
+        }
     }
 
     private static class PendingIdle {
         Window window; Pixmap pixmap; int serial; int idleFence;
         long targetNs;
         int  vsyncSkips;    // vsyncs left to skip before firing (for fps < refresh)
-        // Paced-complete mode (immersive): the CompleteNotify is withheld until targetNs too —
-        // DXVK's presenter caps its in-flight presents and waits on completes, so delaying them
-        // is what actually throttles it (idle-notify back-pressure alone proved to have no grip,
-        // measured on device: 60fps cap, steady ~72fps).
-        boolean withComplete; Mode completeMode; int completeFps;
         PendingIdle(Window w, Pixmap p, int s, int f, long t, int sk) {
             window = w; pixmap = p; serial = s; idleFence = f; targetNs = t; vsyncSkips = sk;
         }
@@ -97,31 +110,6 @@ public class PresentExtension implements Extension {
         if (cpuPacerThread != null) {
             cpuPacerThread.interrupt();
             cpuPacerThread = null;
-        }
-    }
-
-    /**
-     * Forces the wall-clock CPU pacer instead of Choreographer-vsync release scheduling. Used by
-     * the Meta Quest immersive session: while the OpenXR compositor owns the display, the
-     * Android view hierarchy leaves SurfaceFlinger's composited path and the Choreographer stops
-     * being a reliable pacing clock (and the SurfaceControl frame-rate hint — the other half of
-     * the limiter — is a no-op there too), so a vsync-scheduled release loop caps nothing.
-     * Any idles already scheduled on the choreographer are released immediately so no pixmap
-     * leaks across the switch — worst case is one uncapped frame.
-     */
-    public void setForceCpuPacer(boolean force) {
-        if (!force) return;
-        pacedCompleteMode = true;
-        synchronized (choreographerLock) {
-            choreographerChecked = true;
-            choreographer = null;
-            startCpuPacer();
-        }
-        for (java.util.Iterator<java.util.Map.Entry<Integer, PendingIdle>> it =
-             pendingIdles.entrySet().iterator(); it.hasNext(); ) {
-            PendingIdle p = it.next().getValue();
-            it.remove();
-            sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
         }
     }
 
@@ -156,7 +144,7 @@ public class PresentExtension implements Extension {
                 long now = System.nanoTime();
                 if (now >= p.targetNs) {
                     if (cpuQueue.remove(p)) {
-                        firePending(p);
+                        sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
                     }
                 } else {
                     long diff = p.targetNs - now;
@@ -240,45 +228,12 @@ public class PresentExtension implements Extension {
             if (eagerIdleRelease) {
                 for (PendingIdle q : cpuQueue) {
                     if (q.window == window && cpuQueue.remove(q)) {
-                        // firePending, not bare sendIdleNotify — a paced-complete entry must
-                        // never lose its CompleteNotify or DXVK stalls waiting for it.
-                        firePending(q);
+                        sendIdleNotify(q.window, q.pixmap, q.serial, q.idleFence);
                     }
                 }
             }
             cpuQueue.offer(new PendingIdle(window, pixmap, serial, idleFence, fireTime, 0));
         }
-    }
-
-    /** Immersive paced-present path (see pacedCompleteMode): withholds BOTH the CompleteNotify
-     * and the idle release until the pace slot on the wall-clock pacer. The frame itself is
-     * displayed immediately by the caller — only the game's knowledge of "present completed"
-     * is delayed, which is what makes DXVK's frame-latency window block at the cap. */
-    private void schedulePacedPresent(Window window, Pixmap pixmap, int serial, int idleFence,
-                                      int targetFps, Mode mode) {
-        final long frameNs = 1_000_000_000L / targetFps;
-        long now = System.nanoTime();
-        WindowTiming wt = windowTimings.computeIfAbsent(window.id, k -> new WindowTiming());
-        if (wt.nextIdleNs <= now - frameNs) {
-            wt.nextIdleNs = now + frameNs;
-        } else {
-            wt.nextIdleNs += frameNs;
-        }
-        PendingIdle p = new PendingIdle(window, pixmap, serial, idleFence, wt.nextIdleNs - FIRE_EARLY_NS, 0);
-        p.withComplete = true;
-        p.completeMode = mode;
-        p.completeFps = targetFps;
-        startCpuPacer();
-        cpuQueue.offer(p);
-    }
-
-    private void firePending(PendingIdle p) {
-        if (p.withComplete) {
-            long ust = System.nanoTime() / 1000;
-            long msc = ust / (1_000_000L / p.completeFps);
-            sendCompleteNotify(p.window, p.serial, Kind.PIXMAP, p.completeMode, ust, msc);
-        }
-        sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
     }
 
     private static abstract class ClientOpcodes {
@@ -397,25 +352,28 @@ public class PresentExtension implements Extension {
                 if (targetFps > 0) scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
                 else sendIdleNotify(window, pixmap, serial, idleFence);
             } else if (vr != null && window.attributes.isMapped()) {
-                if (targetFps > 0 && pacedCompleteMode) {
-                    vr.onUpdateWindowContentDirect(window, pixmap.drawable, xOff, yOff);
-                    schedulePacedPresent(window, pixmap, serial, idleFence, targetFps, Mode.COPY);
+                sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
+                vr.onUpdateWindowContentDirect(window, pixmap.drawable, xOff, yOff);
+                if (targetFps > 0 && readSuspensionPacing) {
+                    sendIdleNotify(window, pixmap, serial, idleFence);
+                    pacePresentByReadSuspension(client, window);
+                } else if (targetFps > 0) {
+                    scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
                 } else {
-                    sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
-                    vr.onUpdateWindowContentDirect(window, pixmap.drawable, xOff, yOff);
-                    if (targetFps > 0) scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
-                    else sendIdleNotify(window, pixmap, serial, idleFence);
+                    sendIdleNotify(window, pixmap, serial, idleFence);
                 }
             } else {
                 // GL Renderer
                 content.copyArea((short)0, (short)0, xOff, yOff,
                         pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);
-                if (targetFps > 0 && pacedCompleteMode) {
-                    schedulePacedPresent(window, pixmap, serial, idleFence, targetFps, Mode.COPY);
+                sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
+                if (targetFps > 0 && readSuspensionPacing) {
+                    sendIdleNotify(window, pixmap, serial, idleFence);
+                    pacePresentByReadSuspension(client, window);
+                } else if (targetFps > 0) {
+                    scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
                 } else {
-                    sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
-                    if (targetFps > 0) scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
-                    else sendIdleNotify(window, pixmap, serial, idleFence);
+                    sendIdleNotify(window, pixmap, serial, idleFence);
                 }
             }
         }
