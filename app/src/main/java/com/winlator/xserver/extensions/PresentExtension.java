@@ -91,6 +91,30 @@ public class PresentExtension implements Extension {
         }
     }
 
+    /**
+     * Forces the wall-clock CPU pacer instead of Choreographer-vsync release scheduling. Used by
+     * the Meta Quest immersive session: while the OpenXR compositor owns the display, the
+     * Android view hierarchy leaves SurfaceFlinger's composited path and the Choreographer stops
+     * being a reliable pacing clock (and the SurfaceControl frame-rate hint — the other half of
+     * the limiter — is a no-op there too), so a vsync-scheduled release loop caps nothing.
+     * Any idles already scheduled on the choreographer are released immediately so no pixmap
+     * leaks across the switch — worst case is one uncapped frame.
+     */
+    public void setForceCpuPacer(boolean force) {
+        if (!force) return;
+        synchronized (choreographerLock) {
+            choreographerChecked = true;
+            choreographer = null;
+            startCpuPacer();
+        }
+        for (java.util.Iterator<java.util.Map.Entry<Integer, PendingIdle>> it =
+             pendingIdles.entrySet().iterator(); it.hasNext(); ) {
+            PendingIdle p = it.next().getValue();
+            it.remove();
+            sendIdleNotify(p.window, p.pixmap, p.serial, p.idleFence);
+        }
+    }
+
     private android.view.Choreographer tryGetChoreographer(VulkanRenderer renderer) {
         if (choreographerChecked) return choreographer;
         synchronized (choreographerLock) {

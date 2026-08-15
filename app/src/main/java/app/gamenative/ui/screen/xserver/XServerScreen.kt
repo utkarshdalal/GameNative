@@ -645,6 +645,12 @@ fun XServerScreen(
         xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
+            ?.also {
+                // Immersive sessions must pace by wall clock — see setForceCpuPacer's kdoc
+                // (Choreographer vsync and the SurfaceControl frame-rate hint both stop
+                // working once the OpenXR compositor owns the display).
+                if (immersiveHooks != null) it.setForceCpuPacer(true)
+            }
             ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
         // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
         // presents, so SHM-presenting games never pass through it and would
