@@ -367,6 +367,14 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     private var quadScale by mutableFloatStateOf(ImmersiveControls.DEFAULT_SCALE)
     private var passthroughEnabled by mutableStateOf(false)
     private var showControlsOnboarding by mutableStateOf(false)
+    // Gates the booting splash on "no wine window is actually on screen" instead of only the
+    // ViewModel's showBootingSplash flag: the boot sequence re-arms that flag on every
+    // splash-text event, and the last "Launching game..." re-arm can land AFTER the game's
+    // window already mapped — leaving the splash stuck over the running game until some later
+    // window-map event happened to clear it (confirmed via device trace). Counting maps/unmaps
+    // also keeps the splash correct between redist steps, where the installer's own window
+    // unmaps before the next step's text arrives.
+    private var mappedWindowCount by androidx.compose.runtime.mutableIntStateOf(0)
     private var cachedContainer: Container? = null
     // Refreshed whenever the quick menu opens (see onQuickMenuVisibilityChanged) and right after
     // the reset button runs — null when the renderer isn't VulkanRenderer at all (the "Immersif"
@@ -435,8 +443,12 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                         }
                     },
                     onWindowMapped = { ctx, window ->
+                        mappedWindowCount++
                         viewModel.onWindowMapped(ctx, window, appId)
                         showControlsOnboarding = true
+                    },
+                    onWindowUnmapped = {
+                        mappedWindowCount = (mappedWindowCount - 1).coerceAtLeast(0)
                     },
                     onGameLaunchError = { error ->
                         viewModel.onGameLaunchError(error)
@@ -503,7 +515,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                 // Activity's own MainViewModel instance arms it from every SetBootingSplashText
                 // event XServerScreen emits, and onWindowMapped/errors clear it.
                 app.gamenative.ui.components.BootingSplash(
-                    visible = mainState.showBootingSplash,
+                    visible = mainState.showBootingSplash && mappedWindowCount == 0,
                     text = mainState.bootingSplashText,
                     heroImageUrl = mainState.bootingSplashHeroImageUrl,
                 )
