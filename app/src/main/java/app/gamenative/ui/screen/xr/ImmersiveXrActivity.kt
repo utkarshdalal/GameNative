@@ -375,6 +375,11 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     // also keeps the splash correct between redist steps, where the installer's own window
     // unmaps before the next step's text arrives.
     private var mappedWindowCount by androidx.compose.runtime.mutableIntStateOf(0)
+    // Mirror of PluviaApp.isOverlayPaused (a plain var, not observable by Compose), refreshed
+    // from the polling thread. The splash must never cover the manual-resume "press A" overlay
+    // — with the game paused pre-window-map (e.g. headset off during a redist install), the
+    // splash otherwise sits opaque on top of the only control that can unstick the boot.
+    private var overlayPausedUi by mutableStateOf(false)
     private var cachedContainer: Container? = null
     // Refreshed whenever the quick menu opens (see onQuickMenuVisibilityChanged) and right after
     // the reset button runs — null when the renderer isn't VulkanRenderer at all (the "Immersif"
@@ -515,7 +520,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                 // Activity's own MainViewModel instance arms it from every SetBootingSplashText
                 // event XServerScreen emits, and onWindowMapped/errors clear it.
                 app.gamenative.ui.components.BootingSplash(
-                    visible = mainState.showBootingSplash && mappedWindowCount == 0,
+                    visible = mainState.showBootingSplash && mappedWindowCount == 0 && !overlayPausedUi,
                     text = mainState.bootingSplashText,
                     heroImageUrl = mainState.bootingSplashHeroImageUrl,
                 )
@@ -715,6 +720,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                         }
                     }
                     val inMenuMode = quickMenuVisible || PluviaApp.isOverlayPaused
+                    overlayPausedUi = PluviaApp.isOverlayPaused
                     if (wasInMenuNavigationMode && !inMenuMode) {
                         // Just exited quick-menu/pause handling — e.g. the same A press that just
                         // dismissed our own "paused" screen and resumed the game is very likely
