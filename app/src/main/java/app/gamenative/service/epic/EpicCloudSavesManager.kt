@@ -36,6 +36,8 @@ object EpicCloudSavesManager {
     private val syncMutex = Mutex()
     private val activeSyncs = mutableSetOf<Int>()
 
+    fun hasActiveSyncs(): Boolean = activeSyncs.isNotEmpty()
+
     // Data classes for API responses
     data class CloudSaveFiles(
         val files: Map<String, CloudFileInfo>,
