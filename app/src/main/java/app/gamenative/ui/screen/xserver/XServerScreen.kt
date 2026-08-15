@@ -702,6 +702,7 @@ fun XServerScreen(
             if (!isLsfgAvailable || lsfgMultiplier < 2) return@applier false
             PowerManager.targetFps = capFps
             LsfgQuickMenuHelper.applyLiveFpsCap(container, capFps)
+            ShmFramePacer.setFrameRateLimit(capFps)
             true
         }
         val detectedMax = detectMaxRefreshRateHz(context, xServerView as? View)
@@ -2514,6 +2515,7 @@ fun XServerScreen(
             removePerformanceHud()
             performanceHudHost = null
             shouldTrackDisplayedFrames.set(false)
+            ShmFramePacer.setFrameRateLimit(0)
 
             val releaseBinding = view.tag as? XServerViewReleaseBinding
             releaseBinding?.let { binding ->

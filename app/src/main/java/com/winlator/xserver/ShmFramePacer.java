@@ -12,18 +12,19 @@ public class ShmFramePacer {
     private static class Timing { long nextNs; }
     private static final ConcurrentHashMap<Integer, Timing> timings = new ConcurrentHashMap<>();
 
+    private static final int MAX_TRACKED_DRAWABLES = 128;
+
     public static void setFrameRateLimit(int limit) {
         frameRateLimit = Math.max(0, limit);
+        if (frameRateLimit == 0) timings.clear();
     }
 
     // Returns how long (ns) the caller should suspend this client's reads, or 0.
     public static long framePresented(int drawableId) {
         int fps = frameRateLimit;
+        if (fps <= 0) return 0;
+        if (timings.size() > MAX_TRACKED_DRAWABLES) timings.clear();
         Timing t = timings.computeIfAbsent(drawableId, k -> new Timing());
-        if (fps <= 0) {
-            t.nextNs = 0;
-            return 0;
-        }
         long now = System.nanoTime();
         if (t.nextNs < now) t.nextNs = now;
         long delay = t.nextNs - now;

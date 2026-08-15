@@ -190,7 +190,8 @@ public class XConnectorEpoll implements Runnable {
 
     public void pauseClientReads(Client client, long delayNs) {
         if (this.multithreadedClients || !client.connected || !this.running) return;
-        removeFdFromEpoll(this.epollFd, client.clientSocket.fd);
+        long deadlineNs = System.nanoTime() + delayNs;
+        final java.util.concurrent.ScheduledExecutorService sched;
         synchronized (this) {
             if (pauseScheduler == null) {
                 pauseScheduler = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
@@ -199,16 +200,46 @@ public class XConnectorEpoll implements Runnable {
                     return t;
                 });
             }
+            sched = pauseScheduler;
         }
-        pauseScheduler.schedule(() -> {
-            if (client.connected && this.running) {
-                addFdToEpoll(this.epollFd, client.clientSocket.fd);
+        synchronized (client) {
+            // One pending re-arm per client, keyed to the latest deadline; an
+            // earlier task firing first would resume reads before the newest
+            // frame's slot.
+            if (client.pauseTask != null && !client.pauseTask.isDone()) {
+                if (client.pauseDeadlineNs >= deadlineNs) return;
+                client.pauseTask.cancel(false);
             }
-        }, delayNs, java.util.concurrent.TimeUnit.NANOSECONDS);
+            removeFdFromEpoll(this.epollFd, client.clientSocket.fd);
+            client.pauseDeadlineNs = deadlineNs;
+            try {
+                client.pauseTask = sched.schedule(() -> {
+                    synchronized (client) {
+                        client.pauseTask = null;
+                        if (client.connected && this.running) {
+                            addFdToEpoll(this.epollFd, client.clientSocket.fd);
+                        }
+                    }
+                }, delayNs, java.util.concurrent.TimeUnit.NANOSECONDS);
+            } catch (java.util.concurrent.RejectedExecutionException e) {
+                client.pauseTask = null;
+                if (client.connected) addFdToEpoll(this.epollFd, client.clientSocket.fd);
+            }
+        }
+    }
+
+    private void cancelPendingPause(Client client) {
+        synchronized (client) {
+            if (client.pauseTask != null) {
+                client.pauseTask.cancel(false);
+                client.pauseTask = null;
+            }
+        }
     }
 
     public void killConnection(Client client) {
         client.connected = false;
+        cancelPendingPause(client);
         if (this.multithreadedClients) {
             if (Thread.currentThread() != client.pollThread) {
                 client.requestShutdown();
@@ -240,6 +271,12 @@ public class XConnectorEpoll implements Runnable {
         closeTrackedFd(this.serverFd);
         closeTrackedFd(this.shutdownFd);
         closeTrackedFd(this.epollFd);
+        synchronized (this) {
+            if (pauseScheduler != null) {
+                pauseScheduler.shutdownNow();
+                pauseScheduler = null;
+            }
+        }
     }
 
     public int getInitialInputBufferCapacity() {

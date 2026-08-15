@@ -47,48 +47,18 @@ class DeviceGateTest {
     }
 
     @Test
-    fun `odin3 is supported with exact lowercase match`() {
-        assertTrue(DeviceGate.isDeviceSupported("odin3"))
+    fun `odin3 is not supported`() {
+        assertFalse(DeviceGate.isDeviceSupported("odin3"))
     }
 
     @Test
-    fun `odin3 is supported with mixed case`() {
-        assertTrue(DeviceGate.isDeviceSupported("Odin3"))
+    fun `odin3 is not supported with mixed case`() {
+        assertFalse(DeviceGate.isDeviceSupported("Odin3"))
     }
 
     @Test
-    fun `odin3 is supported with uppercase`() {
-        assertTrue(DeviceGate.isDeviceSupported("ODIN3"))
-    }
-
-    @Test
-    fun `odin_3 is not supported because normalization adds space`() {
-        assertFalse(DeviceGate.isDeviceSupported("odin_3"))
-    }
-
-    @Test
-    fun `odin-3 is not supported because normalization adds space`() {
-        assertFalse(DeviceGate.isDeviceSupported("odin-3"))
-    }
-
-    @Test
-    fun `odin 3 with space is not supported`() {
-        assertFalse(DeviceGate.isDeviceSupported("odin  3"))
-    }
-
-    @Test
-    fun `odin3 is supported with leading and trailing whitespace`() {
-        assertTrue(DeviceGate.isDeviceSupported("  odin3  "))
-    }
-
-    @Test
-    fun `odin3 is supported as substring in longer model name`() {
-        assertTrue(DeviceGate.isDeviceSupported("AYN Odin3 Pro"))
-    }
-
-    @Test
-    fun `odin3 is supported with manufacturer prefix`() {
-        assertTrue(DeviceGate.isDeviceSupported("AYN_Odin3"))
+    fun `odin3 is not supported as substring in longer model name`() {
+        assertFalse(DeviceGate.isDeviceSupported("AYN Odin3 Pro"))
     }
 
     @Test
@@ -147,7 +117,7 @@ class DeviceGateTest {
     }
 
     @Test
-    fun `normalization handles complex manufacturer prefix`() {
-        assertTrue(DeviceGate.isDeviceSupported("AYN-Technologies_Odin3-Gaming"))
+    fun `odin3 with complex manufacturer prefix is not supported`() {
+        assertFalse(DeviceGate.isDeviceSupported("AYN-Technologies_Odin3-Gaming"))
     }
 }

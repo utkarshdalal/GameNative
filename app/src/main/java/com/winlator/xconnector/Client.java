@@ -15,6 +15,8 @@ public class Client {
     protected Thread pollThread;
     protected int shutdownFd;
     protected boolean connected;
+    protected java.util.concurrent.ScheduledFuture<?> pauseTask;
+    protected long pauseDeadlineNs;
 
     public Client(XConnectorEpoll connector, ClientSocket clientSocket) {
         this.connector = connector;
