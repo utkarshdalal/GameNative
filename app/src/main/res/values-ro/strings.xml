@@ -1010,6 +1010,8 @@
 	<string name="settings_interface_storage_volume_title">Volum de stocare</string>
 	<string name="settings_interface_download_server_title">Server de descărcare Steam</string>
 	<string name="settings_interface_restart_required_title">Este necesară repornirea</string>
+	<string name="settings_interface_low_detail_library_mode">Mod bibliotecă minimalist</string>
+	<string name="settings_interface_low_detail_library_mode_subtitle">Reduce cantitatea de detalii de pe fiecare card din ecranul bibliotecii</string>
 
 	<!-- Settings: Downloads Group -->
 	<string name="settings_downloads_title">Descărcări</string>

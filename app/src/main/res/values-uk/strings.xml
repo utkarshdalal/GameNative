@@ -1004,6 +1004,8 @@
     <string name="settings_interface_storage_volume_title">Обсяг сховища</string>
     <string name="settings_interface_download_server_title">Сервер завантаження Steam</string>
     <string name="settings_interface_restart_required_title">Потрібен перезапуск</string>
+    <string name="settings_interface_low_detail_library_mode">Мінімалістичний режим бібліотеки</string>
+    <string name="settings_interface_low_detail_library_mode_subtitle">Зменшує кількість деталей на кожній картці на екрані бібліотеки</string>
 
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">Завантаження</string>

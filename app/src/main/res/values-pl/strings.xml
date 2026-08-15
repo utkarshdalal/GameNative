@@ -1018,6 +1018,8 @@
     <string name="settings_interface_storage_volume_title">Wolumin pamięci</string>
     <string name="settings_interface_download_server_title">Serwer pobierania Steam</string>
     <string name="settings_interface_restart_required_title">Wymagane ponowne uruchomienie</string>
+    <string name="settings_interface_low_detail_library_mode">Minimalistyczny tryb biblioteki</string>
+    <string name="settings_interface_low_detail_library_mode_subtitle">Zmniejsza ilość szczegółów na każdej karcie na ekranie biblioteki</string>
 
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">Pobieranie</string>

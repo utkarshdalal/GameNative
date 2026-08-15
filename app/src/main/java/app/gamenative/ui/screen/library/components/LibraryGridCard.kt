@@ -47,12 +47,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
@@ -71,6 +74,7 @@ import com.skydoves.landscapist.coil.CoilImage
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.Int
 
 /**
  * Grid card for Hero/Capsule layout views.
@@ -94,6 +98,7 @@ internal fun GridViewCard(
     showFocusGlow: Boolean,
     context: Context,
     animateStats: Boolean = true,
+    lowDetailMode: Boolean = false
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
     val isCapsule = paneType == PaneType.GRID_CAPSULE
@@ -300,7 +305,7 @@ internal fun GridViewCard(
                         }
                     }
 
-                    if (!appInfo.isFeatured) {
+                    if (!appInfo.isFeatured && !lowDetailMode) {
                         GameStatsRow(
                             stats = gameStats,
                             tint = Color.White.copy(alpha = 0.55f),
@@ -340,7 +345,7 @@ internal fun GridViewCard(
                     badgeStatus?.let { status ->
                         CompatibilityBadge(
                             status = status,
-                            showLabel = true,
+                            showLabel = !lowDetailMode,
                             modifier = Modifier
                                 .align(Alignment.TopStart)
                                 .padding(top = topOverlayPadding, start = topOverlayPadding),
@@ -654,5 +659,123 @@ internal fun getGridImageUrl(
                     fallback = appInfo.heroImageUrl,
                 )
         }
+    }
+}
+
+@Preview()
+@Composable
+private fun Preview_GridViewCard() {
+    val context = LocalContext.current
+    PrefManager.init(LocalContext.current)
+    PluviaTheme {
+        GridViewCard(
+            modifier = Modifier,
+            appInfo = LibraryItem(
+                appId = "${GameSource.STEAM.name}_${Int.MAX_VALUE}",
+                name = "Preview Game",
+                iconHash = "",
+                gameSource = GameSource.STEAM,
+            ),
+            onClick = { },
+            onFocus = { },
+            onFocusChanged = { },
+            isFocused = true,
+            scale = 1f,
+            paneType = PaneType.GRID_CAPSULE,
+            imageRefreshCounter = 2000000,
+            hideText = false,
+            imageAlpha = 50.0f,
+            onImageLoadFailed = {},
+            compatibilityStatus = GameCompatibilityStatus.COMPATIBLE,
+            gameStats = GameCardStats(
+                runsGpu = 1,
+                reviewsDevice = 2,
+                reviewsGpu = 5,
+                fps = 10,
+                sessionSec = 10),
+            showFocusGlow = true,
+            context = context,
+            animateStats = true
+        )
+    }
+}
+
+@Preview()
+@Composable
+private fun Preview_GridViewCard_lowDetail() {
+    val context = LocalContext.current
+    PrefManager.init(LocalContext.current)
+    PluviaTheme {
+        GridViewCard(
+            modifier = Modifier,
+            appInfo = LibraryItem(
+                appId = "${GameSource.STEAM.name}_${Int.MAX_VALUE}",
+                name = "Preview Game",
+                iconHash = "",
+                gameSource = GameSource.STEAM,
+                isRecommended = false
+            ),
+            onClick = { },
+            onFocus = { },
+            onFocusChanged = { },
+            isFocused = true,
+            scale = 1f,
+            paneType = PaneType.GRID_CAPSULE,
+            imageRefreshCounter = 2000000,
+            hideText = true,
+            imageAlpha = 50.0f,
+            onImageLoadFailed = {},
+            compatibilityStatus = GameCompatibilityStatus.COMPATIBLE,
+            gameStats = GameCardStats(
+                runsGpu = 1,
+                reviewsDevice = 2,
+                reviewsGpu = 5,
+                fps = 10,
+                sessionSec = 10),
+            showFocusGlow = true,
+            context = context,
+            animateStats = true,
+            lowDetailMode = true
+        )
+    }
+}
+
+@Preview()
+@Composable
+private fun Preview_GridViewCard_recommended() {
+    val context = LocalContext.current
+    PrefManager.init(LocalContext.current)
+    PluviaTheme {
+        GridViewCard(
+            modifier = Modifier,
+            appInfo = LibraryItem(
+                appId = "${GameSource.STEAM.name}_${Int.MAX_VALUE}",
+                name = "Preview Game",
+                iconHash = "",
+                gameSource = GameSource.STEAM,
+                isRecommended = true
+            ),
+            onClick = { },
+            onFocus = { },
+            onFocusChanged = { },
+            isFocused = true,
+            scale = 1f,
+            paneType = PaneType.GRID_CAPSULE,
+            imageRefreshCounter = 2000000,
+            hideText = true,
+            imageAlpha = 50.0f,
+            onImageLoadFailed = {},
+            compatibilityStatus = GameCompatibilityStatus.COMPATIBLE,
+            gameStats = GameCardStats(
+                runsGpu = 1,
+                reviewsDevice = 2,
+                reviewsGpu = 5,
+                fps = 10,
+                sessionSec = 10),
+            showFocusGlow = true,
+            context = context,
+            animateStats = true,
+            lowDetailMode = false
+        )
     }
 }

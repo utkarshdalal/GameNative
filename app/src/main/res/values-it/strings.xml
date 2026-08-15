@@ -1001,6 +1001,8 @@
     <string name="settings_interface_storage_volume_title">Volume archiviazione</string>
     <string name="settings_interface_download_server_title">Server Download Steam</string>
     <string name="settings_interface_restart_required_title">Riavvio Richiesto</string>
+    <string name="settings_interface_low_detail_library_mode">Modalità libreria minimalista</string>
+    <string name="settings_interface_low_detail_library_mode_subtitle">Riduce la quantità di dettagli su ogni scheda nella schermata Libreria</string>
 
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">Download</string>

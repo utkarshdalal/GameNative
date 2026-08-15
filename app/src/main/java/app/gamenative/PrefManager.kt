@@ -1053,6 +1053,14 @@ object PrefManager {
             setPref(SWAP_FACE_BUTTONS, value)
         }
 
+    // Reduces the amount of detail on individual cards for a more minimalist view
+    private val LOW_DETAIL_LIBRARY_VIEW = booleanPreferencesKey("low_detail_library_view")
+    var lowDetailLibraryView: Boolean
+        get() = getPref(LOW_DETAIL_LIBRARY_VIEW, false)
+        set(value) {
+            setPref(LOW_DETAIL_LIBRARY_VIEW, value)
+        }
+
     // Whether to show the on-screen gamepad hints/action bar in the UI
     private val SHOW_GAMEPAD_HINTS = booleanPreferencesKey("show_gamepad_hints")
     var showGamepadHints: Boolean

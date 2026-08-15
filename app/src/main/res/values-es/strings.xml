@@ -1017,6 +1017,8 @@
     <string name="settings_interface_storage_volume_title">Unidad de almacenamiento</string>
     <string name="settings_interface_download_server_title">Servidor de descarga de Steam</string>
     <string name="settings_interface_restart_required_title">Reinicio requerido</string>
+    <string name="settings_interface_low_detail_library_mode">Modo de biblioteca minimalista</string>
+    <string name="settings_interface_low_detail_library_mode_subtitle">Reduce la cantidad de detalles en cada tarjeta de la pantalla de biblioteca</string>
 
     <!-- Settings: Downloads Group -->
     <string name="settings_downloads_title">Descargas</string>

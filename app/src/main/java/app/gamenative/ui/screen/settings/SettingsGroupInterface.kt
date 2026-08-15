@@ -153,6 +153,8 @@ fun SettingsGroupInterface(
     // Controller/gamepad hints visibility
     var showGamepadHints by rememberSaveable { mutableStateOf(PrefManager.showGamepadHints) }
 
+    var lowDetailLibraryView by rememberSaveable { mutableStateOf(PrefManager.lowDetailLibraryView)}
+
     // Achievements
     var showAchievementNotifications by rememberSaveable { mutableStateOf(PrefManager.achievementShowNotification) }
     var playAchievementSound by rememberSaveable { mutableStateOf(PrefManager.achievementPlaySound) }
@@ -335,6 +337,17 @@ fun SettingsGroupInterface(
             onCheckedChange = {
                 warnBeforeExit = it
                 PrefManager.warnBeforeExit = it
+            },
+        )
+
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_low_detail_library_mode)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_low_detail_library_mode_subtitle)) },
+            state = lowDetailLibraryView,
+            onCheckedChange = { newValue ->
+                lowDetailLibraryView = newValue
+                PrefManager.lowDetailLibraryView = newValue
             },
         )
 
