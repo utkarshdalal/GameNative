@@ -2,6 +2,8 @@ package app.gamenative.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import app.gamenative.db.DATABASE_NAME
 import app.gamenative.db.PluviaDatabase
 import app.gamenative.db.dao.AppInfoDao
@@ -20,6 +22,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import java.util.concurrent.Executors
 import javax.inject.Singleton
 
 @InstallIn(SingletonComponent::class)
@@ -38,6 +41,24 @@ class DatabaseModule {
                 ROOM_MIGRATION_V24_to_V25,
             )
             .fallbackToDestructiveMigration(true)
+            // Bound the query thread pool so PICS-sync bursts can't spin up an unbounded
+            // number of threads. Size to at least 4 threads so short queries aren't blocked
+            // behind long-running ones; the transaction executor stays unbounded so writers
+            // (which serialise at the SQLite level) don't deadlock waiting for a thread.
+            .setQueryExecutor(Executors.newFixedThreadPool(maxOf(4, Runtime.getRuntime().availableProcessors() * 2)))
+            .setTransactionExecutor(Executors.newCachedThreadPool())
+            .addCallback(object : RoomDatabase.Callback() {
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS idx_steam_app_dlc_for_app_id " +
+                            "ON steam_app(dlc_for_app_id)",
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS idx_steam_app_package_id " +
+                            "ON steam_app(package_id)",
+                    )
+                }
+            })
             .build()
     }
 
