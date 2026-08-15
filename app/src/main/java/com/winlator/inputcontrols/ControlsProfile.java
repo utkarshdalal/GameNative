@@ -6,6 +6,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import com.winlator.core.FileUtils;
+import com.winlator.math.Mathf;
 import com.winlator.widget.InputControlsView;
 
 import org.json.JSONArray;
@@ -19,9 +20,21 @@ import java.util.List;
 import java.util.Locale;
 
 public class ControlsProfile implements Comparable<ControlsProfile> {
+    /** Bounds for the user-configurable physical stick deadzone and sensitivity. */
+    public static final float MIN_STICK_DEADZONE = 0.1f;
+    public static final float MAX_STICK_DEADZONE = 1.0f;
+    public static final float MIN_STICK_SENSITIVITY = 0.1f;
+    public static final float MAX_STICK_SENSITIVITY = 3.0f;
+    public static final float DEFAULT_STICK_DEADZONE = ControlElement.STICK_DEAD_ZONE;
+    public static final float DEFAULT_STICK_SENSITIVITY = 1.0f;
+
     public final int id;
     private String name;
     private float cursorSpeed = 1.0f;
+    private float leftStickDeadzone = DEFAULT_STICK_DEADZONE;
+    private float rightStickDeadzone = DEFAULT_STICK_DEADZONE;
+    private float leftStickSensitivity = DEFAULT_STICK_SENSITIVITY;
+    private float rightStickSensitivity = DEFAULT_STICK_SENSITIVITY;
     private final ArrayList<ControlElement> elements = new ArrayList<>();
     private final ArrayList<ExternalController> controllers = new ArrayList<>();
     private final ArrayList<RadialMenu> radialMenus = new ArrayList<>();
@@ -52,6 +65,58 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setCursorSpeed(float cursorSpeed) {
         this.cursorSpeed = cursorSpeed;
+    }
+
+    private static float clampDeadzone(float value) {
+        if (Float.isNaN(value)) return DEFAULT_STICK_DEADZONE;
+        return Mathf.clamp(value, MIN_STICK_DEADZONE, MAX_STICK_DEADZONE);
+    }
+
+    private static float clampSensitivity(float value) {
+        if (Float.isNaN(value)) return DEFAULT_STICK_SENSITIVITY;
+        return Mathf.clamp(value, MIN_STICK_SENSITIVITY, MAX_STICK_SENSITIVITY);
+    }
+
+    public float getLeftStickDeadzone() {
+        return leftStickDeadzone;
+    }
+
+    public void setLeftStickDeadzone(float deadzone) {
+        this.leftStickDeadzone = clampDeadzone(deadzone);
+    }
+
+    public float getRightStickDeadzone() {
+        return rightStickDeadzone;
+    }
+
+    public void setRightStickDeadzone(float deadzone) {
+        this.rightStickDeadzone = clampDeadzone(deadzone);
+    }
+
+    public float getLeftStickSensitivity() {
+        return leftStickSensitivity;
+    }
+
+    public void setLeftStickSensitivity(float sensitivity) {
+        this.leftStickSensitivity = clampSensitivity(sensitivity);
+    }
+
+    public float getRightStickSensitivity() {
+        return rightStickSensitivity;
+    }
+
+    public void setRightStickSensitivity(float sensitivity) {
+        this.rightStickSensitivity = clampSensitivity(sensitivity);
+    }
+
+    /**
+     * Rescales an axis value across the remaining travel so the first output past the deadzone is
+     * near zero instead of jumping straight to the deadzone magnitude.
+     */
+    public static float applyStickDeadzone(float value, float deadzone) {
+        float magnitude = Math.abs(value);
+        if (magnitude <= deadzone || deadzone >= 1.0f) return 0;
+        return ((magnitude - deadzone) / (1.0f - deadzone)) * Mathf.sign(value);
     }
 
     public boolean isVirtualGamepad() {
@@ -135,6 +200,10 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             data.put("id", id);
             data.put("name", name);
             data.put("cursorSpeed", Float.valueOf(cursorSpeed));
+            data.put("leftStickDeadzone", (double) leftStickDeadzone);
+            data.put("rightStickDeadzone", (double) rightStickDeadzone);
+            data.put("leftStickSensitivity", (double) leftStickSensitivity);
+            data.put("rightStickSensitivity", (double) rightStickSensitivity);
 
             JSONArray elementsJSONArray = new JSONArray();
             if (!elementsLoaded && file.isFile()) {

@@ -26,6 +26,7 @@ import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalControllerBinding
+import java.util.Locale
 
 /**
  * Data classes for controller configuration
@@ -117,7 +118,14 @@ internal fun PhysicalControllerConfigSection(
         }
     }
 
-    var selectedCategory by remember { mutableStateOf(0) } // 0 = Face, 1 = Shoulder, 2 = Menu, 3 = Thumbstick, 4 = Left Stick, 5 = Right Stick, 6 = D-Pad
+    // Working copies of the stick tuning values (memory only until Save is clicked)
+    var leftStickDeadzone by remember { mutableFloatStateOf(profile.leftStickDeadzone) }
+    var rightStickDeadzone by remember { mutableFloatStateOf(profile.rightStickDeadzone) }
+    var leftStickSensitivity by remember { mutableFloatStateOf(profile.leftStickSensitivity) }
+    var rightStickSensitivity by remember { mutableFloatStateOf(profile.rightStickSensitivity) }
+
+    // 0 = Face, 1 = Shoulder, 2 = Menu, 3 = Thumbstick, 4 = Left Stick, 5 = Right Stick, 6 = D-Pad, 7 = Stick Tuning
+    var selectedCategory by remember { mutableStateOf(0) }
     var showBindingDialog by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var refreshKey by remember { mutableIntStateOf(0) }
 
@@ -253,6 +261,11 @@ internal fun PhysicalControllerConfigSection(
                             workingBindings[KeyEvent.KEYCODE_BUTTON_MODE] = BindingCombo.of(com.winlator.inputcontrols.Binding.OPEN_NAVIGATION_MENU)
                             Log.d("gncontrol", "Set Home button (KEYCODE_BUTTON_MODE) to OPEN_NAVIGATION_MENU")
 
+                            leftStickDeadzone = ControlsProfile.DEFAULT_STICK_DEADZONE
+                            rightStickDeadzone = ControlsProfile.DEFAULT_STICK_DEADZONE
+                            leftStickSensitivity = ControlsProfile.DEFAULT_STICK_SENSITIVITY
+                            rightStickSensitivity = ControlsProfile.DEFAULT_STICK_SENSITIVITY
+
                             refreshKey++
                         }) {
                             Icon(Icons.Default.Refresh, null)
@@ -261,6 +274,12 @@ internal fun PhysicalControllerConfigSection(
                         // Save button
                         IconButton(onClick = {
                             Log.d("gncontrol", "=== Save: Applying ${workingBindings.size} bindings ===")
+
+                            profile.leftStickDeadzone = leftStickDeadzone
+                            profile.rightStickDeadzone = rightStickDeadzone
+                            profile.leftStickSensitivity = leftStickSensitivity
+                            profile.rightStickSensitivity = rightStickSensitivity
+
                             controller?.let { ctrl ->
                                 val existingBindings = ctrl.getControllerBindings().toList()
                                 for (binding in existingBindings) {
@@ -368,6 +387,13 @@ internal fun PhysicalControllerConfigSection(
                             label = stringResource(R.string.dpad_category),
                             isSelected = selectedCategory == 6,
                             onClick = { selectedCategory = 6 }
+                        )
+
+                        // Stick deadzone / sensitivity category
+                        CategoryButton(
+                            label = stringResource(R.string.stick_tuning_category),
+                            isSelected = selectedCategory == 7,
+                            onClick = { selectedCategory = 7 }
                         )
                         }
                     }
@@ -512,6 +538,18 @@ internal fun PhysicalControllerConfigSection(
                                         )
                                     }
                                 }
+                                7 -> {
+                                    StickTuningSection(
+                                        leftStickDeadzone = leftStickDeadzone,
+                                        leftStickSensitivity = leftStickSensitivity,
+                                        rightStickDeadzone = rightStickDeadzone,
+                                        rightStickSensitivity = rightStickSensitivity,
+                                        onLeftStickDeadzoneChange = { leftStickDeadzone = it },
+                                        onLeftStickSensitivityChange = { leftStickSensitivity = it },
+                                        onRightStickDeadzoneChange = { rightStickDeadzone = it },
+                                        onRightStickSensitivityChange = { rightStickSensitivity = it }
+                                    )
+                                }
                             }
                         }
                     }
@@ -610,6 +648,113 @@ private fun ControllerBindingItem(
         }
     }
 }
+
+/**
+ * Deadzone and sensitivity tuning for the physical controller's analog sticks.
+ *
+ * These values are applied to the raw stick axes before they reach the virtual gamepad state, so
+ * they carry through to the guest game (including while shooter mode is active).
+ */
+@Composable
+private fun StickTuningSection(
+    leftStickDeadzone: Float,
+    leftStickSensitivity: Float,
+    rightStickDeadzone: Float,
+    rightStickSensitivity: Float,
+    onLeftStickDeadzoneChange: (Float) -> Unit,
+    onLeftStickSensitivityChange: (Float) -> Unit,
+    onRightStickDeadzoneChange: (Float) -> Unit,
+    onRightStickSensitivityChange: (Float) -> Unit
+) {
+    val deadzoneDescription = stringResource(R.string.stick_deadzone_description)
+    val sensitivityDescription = stringResource(R.string.stick_sensitivity_description)
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        StickAdjustmentSlider(
+            label = stringResource(R.string.left_stick_deadzone),
+            description = deadzoneDescription,
+            value = leftStickDeadzone,
+            valueRange = ControlsProfile.MIN_STICK_DEADZONE..ControlsProfile.MAX_STICK_DEADZONE,
+            steps = DEADZONE_SLIDER_STEPS,
+            onValueChange = onLeftStickDeadzoneChange
+        )
+        StickAdjustmentSlider(
+            label = stringResource(R.string.left_stick_sensitivity),
+            description = sensitivityDescription,
+            value = leftStickSensitivity,
+            valueRange = ControlsProfile.MIN_STICK_SENSITIVITY..ControlsProfile.MAX_STICK_SENSITIVITY,
+            steps = SENSITIVITY_SLIDER_STEPS,
+            onValueChange = onLeftStickSensitivityChange
+        )
+        StickAdjustmentSlider(
+            label = stringResource(R.string.right_stick_deadzone),
+            description = deadzoneDescription,
+            value = rightStickDeadzone,
+            valueRange = ControlsProfile.MIN_STICK_DEADZONE..ControlsProfile.MAX_STICK_DEADZONE,
+            steps = DEADZONE_SLIDER_STEPS,
+            onValueChange = onRightStickDeadzoneChange
+        )
+        StickAdjustmentSlider(
+            label = stringResource(R.string.right_stick_sensitivity),
+            description = sensitivityDescription,
+            value = rightStickSensitivity,
+            valueRange = ControlsProfile.MIN_STICK_SENSITIVITY..ControlsProfile.MAX_STICK_SENSITIVITY,
+            steps = SENSITIVITY_SLIDER_STEPS,
+            onValueChange = onRightStickSensitivityChange
+        )
+    }
+}
+
+@Composable
+private fun StickAdjustmentSlider(
+    label: String,
+    description: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    onValueChange: (Float) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.small
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = String.format(Locale.US, "%.2f", value),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = valueRange,
+                steps = steps
+            )
+        }
+    }
+}
+
+// 0.10 .. 1.0 in 0.05 increments leaves 17 stops between the two endpoints
+private const val DEADZONE_SLIDER_STEPS = 17
+// 0.10 .. 3.0 in 0.10 increments leaves 28 stops between the two endpoints
+private const val SENSITIVITY_SLIDER_STEPS = 28
 
 /**
  * Quick preset buttons for physical controller stick/dpad bindings

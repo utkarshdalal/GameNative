@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.winlator.PrefManager;
+import com.winlator.math.Mathf;
 import com.winlator.winhandler.WinHandler;
 
 import org.json.JSONArray;
@@ -39,6 +40,14 @@ public class ExternalController {
     public static final byte TRIGGER_IS_AXIS = 1;
     public static final byte TRIGGER_IS_BOTH = 2;
 
+    // Stick tuning is intentionally global: controllers for players 2-4 are created on demand by
+    // WinHandler and never belong to a ControlsProfile, but they must honour the same tuning as
+    // player 1. setStickTuning() is called whenever the active profile changes.
+    private static volatile float stickDeadzoneLeft = ControlsProfile.DEFAULT_STICK_DEADZONE;
+    private static volatile float stickDeadzoneRight = ControlsProfile.DEFAULT_STICK_DEADZONE;
+    private static volatile float stickSensitivityLeft = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
+    private static volatile float stickSensitivityRight = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
+
     private String id;
     private String name;
     private int deviceId = -1;
@@ -46,6 +55,21 @@ public class ExternalController {
     private final ArrayList<ExternalControllerBinding> controllerBindings = new ArrayList<>();
     public final GamepadState state = new GamepadState();
     private boolean processTriggerButtonOnMotionEvent = true;
+
+    /** Applies {@code profile}'s stick deadzone/sensitivity to every physical controller. */
+    public static void setStickTuning(ControlsProfile profile) {
+        if (profile == null) {
+            stickDeadzoneLeft = ControlsProfile.DEFAULT_STICK_DEADZONE;
+            stickDeadzoneRight = ControlsProfile.DEFAULT_STICK_DEADZONE;
+            stickSensitivityLeft = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
+            stickSensitivityRight = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
+            return;
+        }
+        stickDeadzoneLeft = profile.getLeftStickDeadzone();
+        stickDeadzoneRight = profile.getRightStickDeadzone();
+        stickSensitivityLeft = profile.getLeftStickSensitivity();
+        stickSensitivityRight = profile.getRightStickSensitivity();
+    }
 
     public String getName() {
         return this.name;
@@ -178,12 +202,17 @@ public class ExternalController {
         return getDeviceId() + " | " + getName();
     }
 
+    private static float tuneStickAxis(float value, float deadzone, float sensitivity) {
+        float adjusted = ControlsProfile.applyStickDeadzone(value, deadzone);
+        return Mathf.clamp(adjusted * sensitivity, -1, 1);
+    }
+
     private void processJoystickInput(MotionEvent event, int historyPos) {
         boolean z = false;
-        this.state.thumbLX = updateAxis(event, MotionEvent.AXIS_X, historyPos, this.state.thumbLX);
-        this.state.thumbLY = updateAxis(event, MotionEvent.AXIS_Y, historyPos, this.state.thumbLY);
-        this.state.thumbRX = updateAxis(event, MotionEvent.AXIS_Z, historyPos, this.state.thumbRX);
-        this.state.thumbRY = updateAxis(event, MotionEvent.AXIS_RZ, historyPos, this.state.thumbRY);
+        this.state.thumbLX = updateAxis(event, MotionEvent.AXIS_X, historyPos, this.state.thumbLX, stickDeadzoneLeft, stickSensitivityLeft);
+        this.state.thumbLY = updateAxis(event, MotionEvent.AXIS_Y, historyPos, this.state.thumbLY, stickDeadzoneLeft, stickSensitivityLeft);
+        this.state.thumbRX = updateAxis(event, MotionEvent.AXIS_Z, historyPos, this.state.thumbRX, stickDeadzoneRight, stickSensitivityRight);
+        this.state.thumbRY = updateAxis(event, MotionEvent.AXIS_RZ, historyPos, this.state.thumbRY, stickDeadzoneRight, stickSensitivityRight);
         if (historyPos == -1 && !JoyConSupport.isJoyCon(event.getDevice())) {
             float axisX = getCenteredAxis(event, MotionEvent.AXIS_HAT_X, historyPos);
             float axisY = getCenteredAxis(event, MotionEvent.AXIS_HAT_Y, historyPos);
@@ -202,10 +231,11 @@ public class ExternalController {
         }
     }
 
-    private static float updateAxis(MotionEvent event, int axis, int historyPos, float retained) {
+    private static float updateAxis(MotionEvent event, int axis, int historyPos, float retained, float deadzone, float sensitivity) {
         InputDevice device = event.getDevice();
         boolean reported = device != null && device.getMotionRange(axis, event.getSource()) != null;
-        return JoyConSupport.axisValue(reported, retained, getCenteredAxis(event, axis, historyPos));
+        float tuned = tuneStickAxis(getCenteredAxis(event, axis, historyPos), deadzone, sensitivity);
+        return JoyConSupport.axisValue(reported, retained, tuned);
     }
 
     private void processTriggerButton(MotionEvent event) {

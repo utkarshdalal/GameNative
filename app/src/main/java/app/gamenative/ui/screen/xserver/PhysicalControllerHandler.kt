@@ -52,6 +52,11 @@ class PhysicalControllerHandler(
         private const val SCROLL_REPEAT_INTERVAL_MS = 90L
         private const val UNKNOWN_DEVICE_ID = -1
         private const val SEQUENCE_PRESS_MS = 80L
+        // LX, LY, RX, RY - the leading entries of the axis array processed in processJoystickInput
+        private const val STICK_AXIS_COUNT = 4
+        // Stick values reaching the mouse-move timer are already deadzone-gated, so this only skips
+        // injection while the sticks are resting.
+        private const val MOUSE_MOVE_IDLE_THRESHOLD = 0.01
     }
 
     private val TAG = "gncontrol"
@@ -124,6 +129,10 @@ class PhysicalControllerHandler(
         }
     }
 
+    init {
+        ExternalController.setStickTuning(profile)
+    }
+
     fun setProfile(profile: ControlsProfile?) {
         releaseActiveBindings(activeButtonBindings)
         releaseActiveBindings(activeTriggerBindings, fromMotion = true)
@@ -136,6 +145,7 @@ class PhysicalControllerHandler(
         activeSequenceTriggerBindings.clear()
         sendGamepadState()
         this.profile = profile
+        ExternalController.setStickTuning(profile)
         Log.d(TAG, "PhysicalControllerHandler: Profile set to ${profile?.name}")
     }
 
@@ -349,9 +359,9 @@ class PhysicalControllerHandler(
             mouseMoveTimer = Timer()
             mouseMoveTimer?.schedule(object : TimerTask() {
                 override fun run() {
-                    // Skip injection if movement is below 8% deadzone to save CPU cycles
+                    // Skip injection while resting to save CPU cycles
                     val magnitude = Math.sqrt((mouseMoveOffset.x * mouseMoveOffset.x + mouseMoveOffset.y * mouseMoveOffset.y).toDouble())
-                    if (magnitude < 0.08) return
+                    if (magnitude < MOUSE_MOVE_IDLE_THRESHOLD) return
 
                     // Look up cursor speed dynamically so it updates when profile changes
                     val cursorSpeed = profile?.cursorSpeed ?: 1f
@@ -495,7 +505,17 @@ class PhysicalControllerHandler(
             val positiveSource = PhysicalInputSource(deviceId, posKeyCode)
             val negativeSource = PhysicalInputSource(deviceId, negKeyCode)
 
-            if (Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE) {
+            // Indices 0..3 are the analog sticks, whose values already had the profile's deadzone
+            // and sensitivity applied by ExternalController, so anything non-zero is live input.
+            // 4..5 are the digital hat axes, which keep the fixed threshold.
+            val isStick = i < STICK_AXIS_COUNT
+            val isActive = if (isStick) {
+                values[i] != 0f
+            } else {
+                Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE
+            }
+
+            if (isActive) {
                 val activeKey = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
                 val oppositeKey = if (activeKey == posKeyCode) negKeyCode else posKeyCode
                 val activeSource = if (activeKey == posKeyCode) positiveSource else negativeSource

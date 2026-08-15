@@ -249,7 +249,10 @@ public class InputControlsManager {
             int profileId = 0;
             String profileName = null;
             float cursorSpeed = Float.NaN;
-            int fieldsRead = 0;
+            float leftStickDeadzone = Float.NaN;
+            float rightStickDeadzone = Float.NaN;
+            float leftStickSensitivity = Float.NaN;
+            float rightStickSensitivity = Float.NaN;
 
             reader.beginObject();
             while (reader.hasNext()) {
@@ -257,18 +260,31 @@ public class InputControlsManager {
 
                 if (name.equals("id")) {
                     profileId = reader.nextInt();
-                    fieldsRead++;
                 }
                 else if (name.equals("name")) {
                     profileName = reader.nextString();
-                    fieldsRead++;
                 }
                 else if (name.equals("cursorSpeed")) {
                     cursorSpeed = (float) reader.nextDouble();
-                    fieldsRead++;
+                }
+                else if (name.equals("leftStickDeadzone")) {
+                    leftStickDeadzone = (float) reader.nextDouble();
+                }
+                else if (name.equals("rightStickDeadzone")) {
+                    rightStickDeadzone = (float) reader.nextDouble();
+                }
+                else if (name.equals("leftStickSensitivity")) {
+                    leftStickSensitivity = (float) reader.nextDouble();
+                }
+                else if (name.equals("rightStickSensitivity")) {
+                    rightStickSensitivity = (float) reader.nextDouble();
+                }
+                else if (name.equals("elements") || name.equals("controllers")) {
+                    // Every scalar field is written before these two arrays, so there is nothing
+                    // left worth parsing - bail out rather than walking the whole element list.
+                    break;
                 }
                 else {
-                    if (fieldsRead == 3) break;
                     reader.skipValue();
                 }
             }
@@ -276,6 +292,10 @@ public class InputControlsManager {
             ControlsProfile profile = new ControlsProfile(context, profileId);
             profile.setName(profileName);
             profile.setCursorSpeed(cursorSpeed);
+            profile.setLeftStickDeadzone(leftStickDeadzone);
+            profile.setRightStickDeadzone(rightStickDeadzone);
+            profile.setLeftStickSensitivity(leftStickSensitivity);
+            profile.setRightStickSensitivity(rightStickSensitivity);
             return profile;
         }
         catch (IOException e) {

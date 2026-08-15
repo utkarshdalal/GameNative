@@ -263,6 +263,13 @@
     <string name="left_stick">Left Stick</string>
     <string name="right_stick">Right Stick</string>
     <string name="dpad_category">D-Pad</string>
+    <string name="stick_tuning_category">Deadzone &amp; Sensitivity</string>
+    <string name="left_stick_deadzone">Left Stick Deadzone</string>
+    <string name="right_stick_deadzone">Right Stick Deadzone</string>
+    <string name="left_stick_sensitivity">Left Stick Sensitivity</string>
+    <string name="right_stick_sensitivity">Right Stick Sensitivity</string>
+    <string name="stick_deadzone_description">How far the stick must move before input registers. Raise it to stop drift.</string>
+    <string name="stick_sensitivity_description">Scales how much stick movement the game sees. Above 1.0 reaches full travel sooner.</string>
     <string name="dpad_up">D-Pad Up</string>
     <string name="dpad_down">D-Pad Down</string>
     <string name="dpad_left">D-Pad Left</string>
