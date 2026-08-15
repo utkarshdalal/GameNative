@@ -579,7 +579,7 @@ object LsfgVkManager {
     private fun deleteLosslessScalingContainerIfExists(context: Context) {
         try {
             val containerManager = ContainerManager(context)
-            val losslessContainer = containerManager.getContainerById(LOSSLESS_SCALING_APP_ID.toString())
+            val losslessContainer = containerManager.getContainerById("STEAM_$LOSSLESS_SCALING_APP_ID")
             if (losslessContainer != null) {
                 Timber.tag(TAG).i("Deleting Lossless Scaling container to save storage")
                 if (FileUtils.delete(losslessContainer.rootDir)) {
