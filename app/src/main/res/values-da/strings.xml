@@ -246,7 +246,7 @@
     <string name="performance_hud_fps_limiter_target">Mål-FPS</string>
     <string name="performance_hud_fps_limiter_off">Ubegrænset</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Begrænser tilsidesat, mens LSFG er aktiv. Kildehastigheden styres af multiplikatoren.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Begrænser basisframeraten. Skærmraten er grænsen gange LSFG-multiplikatoren.</string>
     <string name="performance_hud_presets">Forudindstillinger</string>
     <string name="performance_hud_presets_description">Skift hurtigt mellem almindelige HUD-layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -429,6 +429,8 @@
     <string name="installation_progress">Installationsstatus</string>
     <string name="downloading">Downloader...</string>
     <string name="calculating_time">Beregner...</string>
+    <string name="download_preparing">Forbereder download...</string>
+    <string name="download_preparing_depots">Forbereder depoter (%1$d/%2$d)</string>
     <string name="update_available">Opdatering tilgængelig</string>
     <string name="game_information">Spilinformation</string>
     <string name="status">Status</string>
@@ -1238,6 +1240,11 @@
     <string name="add_custom_game_content_desc">Tilføj tilpasset spil</string>
     <string name="add_custom_game_dialog_title">Tilføj tilpasset spil</string>
     <string name="add_custom_game_dialog_message">Vælg venligst mappen der indeholder spilfilerne du vil tilføje som et tilpasset spil.</string>
+    <string name="custom_game_importing">Importerer spil…</string>
+    <string name="custom_game_import_success">Spil importeret</string>
+    <string name="custom_game_import_failed">Import mislykkedes</string>
+    <string name="custom_game_import_dialog_message">Vælg mappen der indeholder spillet. Det importeres til GameNatives lager, så det kan køre uden nogen lagertilladelse. Store spil kan tage et par minutter.</string>
+    <string name="custom_game_import_remove_original">Fjern originalen efter import</string>
     <string name="add_custom_game_dont_show_again">Vis ikke denne dialog igen</string>
     <string name="base_app_shortcut_created">Genvej oprettet</string>
     <string name="base_app_shortcut_failed">Kunne ikke oprette genvej: %s</string>
@@ -1346,8 +1353,9 @@
 
     <!-- Recommendations -->
     <string name="recommended_badge">Anbefalet</string>
-    <string name="recommended_buy_button">Se spillet</string>
-    <string name="recommended_support_message">Køb via dette link hjælper med at støtte udviklingen af GameNative.</string>
+    <string name="recommended_buy_button">Køb på GOG</string>
+    <string name="rec_buy_with_price">%1$s · Køb på GOG</string>
+    <string name="recommended_support_message">Vi modtager en provision af køb foretaget via dette link.</string>
     <string name="recommended_about_heading">Om dette spil</string>
     <string name="recommended_review_count">Baseret på %1$s anmeldelser</string>
     <string name="review_overwhelmingly_positive">Overvældende positiv</string>
@@ -1393,6 +1401,8 @@
     <string name="lsfg_flow_scale">Flow-skala</string>
     <string name="lsfg_flow_scale_desc">Lavere er mere stabilt; højere er mere flydende men kan give artefakter.</string>
     <string name="lsfg_performance_mode">Ydelsestilstand</string>
+    <string name="lsfg_present_mode">Præsentationstilstand</string>
+    <string name="lsfg_present_mode_desc">Mailbox anbefales. FIFO fungerer også, når outputbilledraten (fps-grænse × multiplikator) matcher skærmens opdateringshastighed; under opdateringshastigheden kan FIFO se hakkende ud.</string>
     <string name="lsfg_not_supported">Billedgenerering kræver en Bionic-container</string>
     <string name="lsfg_install_prompt">Lossless Scaling er ikke installeret. Tryk for at installere. Virkede kun på Adreno 6xx og nyere, så vidt vides.</string>
     <string name="lsfg_not_in_library">Lossless Scaling er ikke i dit Steam-bibliotek</string>
@@ -1796,6 +1806,7 @@
     <string name="nexus_resolving_collection_item">Løsning af opkrævning %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Samling klar: %1$d mods</string>
     <string name="nexus_resolve_collection_failed">Kunne ikke løse Nexus-indsamlingen</string>
+    <string name="nexus_adult_content_blocked">Denne samling er skjult på grund af dine indstillinger for voksenindhold på Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Ingen udvalgte samlingsmods er klar til at downloade</string>
     <string name="nexus_collection_different_file_reused">Samling anmodede om en anden fil; eksisterende installeret fil genbrugt</string>
     <string name="nexus_collection_existing_placement_kept">Eksisterende anbringelse bevares</string>
@@ -1922,8 +1933,8 @@
     <string name="control_stroke_width_default">Standard</string>
     <string name="control_stroke_width_thick">Tyk</string>
     <string name="control_stroke_width_extra_thick">Ekstra tyk</string>
-    <string name="button_shooter_look_through">Shooter-gennemkig</string>
-    <string name="button_shooter_look_through_subtitle">Tillad at denne knapberøring også styrer dynamisk shooter-bevægelse og blik</string>
+    <string name="button_look_through">Gennemkig</string>
+    <string name="button_look_through_subtitle">Tryk på og træk fra denne knap for også at styre bevægelse eller kameravisningen. Ikke tilgængelig i touchscreen-tilstand.</string>
     <string name="preview">Forhåndsvisning</string>
     <string name="active">Aktiv</string>
     <string name="apply_all">Anvend alle</string>
@@ -1940,6 +1951,10 @@
     <string name="featured_badge">Sponsoreret</string>
     <string name="featured_action_wishlist">Ønskeliste</string>
     <string name="featured_action_wishlist_on">Føj til ønskeliste på %1$s</string>
+    <string name="featured_action_wishlisted">På ønskelisten</string>
+    <string name="featured_action_get_demo">Hent demoen</string>
+    <string name="featured_action_in_library">I biblioteket</string>
+    <string name="featured_action_failed">Kunne ikke fuldføres i appen – åbner butikssiden</string>
     <string name="featured_action_preorder">Forudbestil</string>
     <string name="featured_action_preorder_on">Forudbestil på %1$s</string>
     <string name="featured_action_buy">Køb</string>
@@ -2042,16 +2057,6 @@
     <string name="nexus_invalid_source_metadata">Dette administrerede mod har ufuldstændige kildeoplysninger og kan ikke prøves igen.</string>
     <string name="nexus_archive_memory_error">Arkivet kræver mere hukommelse, end Android tillader. Prøv igen efter en opdatering af GameNative, eller vælg en mindre fil.</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">AI-billedgen.</string>
-    <string name="bfg_enable">Aktivér AI-billedgenerering</string>
-    <string name="bfg_description">Indbygget AI-billedinterpolation. Intet ekstra køb nødvendigt.</string>
-    <string name="bfg_multiplier">Billedmultiplikator</string>
-    <string name="bfg_flow_scale">Flowskala</string>
-    <string name="bfg_flow_scale_desc">Lavere er hurtigere; højere følger bevægelser bedre, men koster mere GPU.</string>
-    <string name="bfg_model">Model</string>
-    <string name="bfg_model_desc">Clear er skarpere, men tungere</string>
-    <string name="bfg_model_standard">Standard</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">Inviter</string>
     <string name="steam_invite_header">%1$d venner</string>
     <string name="steam_invite_joinable">I dette spil — tryk for at deltage</string>
@@ -2062,4 +2067,43 @@
     <string name="steam_invite_joined">I dit spil</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Ydeevnekontrol</string>
+    <string name="power_control_info">Styrer CPU-frekvensskalering og governor-indstillinger. Kræver PServer-tjenesten.</string>
+    <string name="power_control_driver">Driver: %s</string>
+    <string name="power_control_profiles">Ydeevneprofiler</string>
+    <string name="power_control_governor">CPU-governor</string>
+    <string name="power_control_current_frequencies">Aktuelle frekvenser</string>
+    <string name="power_control_frequencies">Frekvensindstillinger</string>
+    <string name="power_control_cpu_min_freq">Minimum CPU-frekvens</string>
+    <string name="power_control_cpu_max_freq">Maksimum CPU-frekvens</string>
+    <string name="power_control_gpu_freq">GPU-frekvens</string>
+    <string name="power_control_gpu_min_power">Minimum GPU-effekt</string>
+    <string name="power_control_gpu_max_power">Maksimum GPU-effekt</string>
+    <string name="power_control_ram_min_power">Minimum RAM-frekvens</string>
+    <string name="power_control_ram_max_power">Maksimum RAM-frekvens</string>
+    <string name="power_control_available_frequencies">Tilgængelige frekvenser</string>
+    <string name="power_control_auto_tuning">Automatisk justering</string>
+    <string name="power_control_auto_tuning_desc">Mere stabil ydelse, længere batteritid, mindre varme: justerer automatisk CPU og GPU til dit spil. Verificeret på Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Automatisk FPS-reduktion</string>
+    <string name="power_control_adaptive_fps_desc">Sænker FPS-grænsen, når spillet ikke kan nå den, for en stabil billedtakt. Verificeret på Retroid Pocket 6.</string>
+    <string name="power_control_tuning_mode">Justeringstilstand</string>
+    <string name="power_control_tuning_mode_per_cluster">Pr. klynge (verificeret på Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID-regulator</string>
+    <string name="power_control_fan_control">Blæserstyring</string>
+    <string name="power_control_fan_control_desc">Holder en måltemperatur med mindst mulig blæserstøj. Verificeret på Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Spilfastgørelse</string>
+    <string name="power_control_game_pinning_desc">Holder spillet på de hurtige CPU-kerner. Verificeret på Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Vis blæserhastighed</string>
+    <string name="power_control_hud_show_tuner">Vis tunerens frekvensgrænser</string>
+    <string name="power_control_tuning_strategy">Justeringsstrategi</string>
+    <string name="power_control_strategy_balanced">Afbalanceret</string>
+    <string name="power_control_strategy_balanced_desc">Justerer alle komponenter lige meget for bedste samlede ydeevne</string>
+    <string name="power_control_strategy_power_efficient">Strømbesparende</string>
+    <string name="power_control_strategy_power_efficient_desc">Reducerer ikke-flaskehals komponenter for at spare strøm</string>
+    <string name="power_control_strategy_aggressive">Aggressiv</string>
+    <string name="power_control_strategy_aggressive_desc">Maksimerer ydeevnen på opdagede flaskehalse</string>
+    <string name="power_control_strategy_conservative">Konservativ</string>
+    <string name="power_control_strategy_conservative_desc">Gradvise justeringer med fokus på stabilitet</string>
 </resources>

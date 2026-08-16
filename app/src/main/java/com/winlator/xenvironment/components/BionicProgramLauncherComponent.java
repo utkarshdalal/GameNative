@@ -17,7 +17,6 @@ import androidx.annotation.NonNull;
 
 import com.winlator.PrefManager;
 
-import app.gamenative.utils.BionicFgManager;
 import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
@@ -251,6 +250,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
         envVars.put("TMPDIR", rootDir.getPath() + "/usr/tmp");
+        new File(imageFs.home_path + "/.wine/drive_c" + rootDir.getPath() + "/usr/tmp").mkdirs();
         envVars.put("DISPLAY", ":0");
 
         String winePath = imageFs.getWinePath() + "/bin";
@@ -346,12 +346,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             LsfgVkManager.ensureRuntimeInstalled(environment.getContext(), container);
             LsfgVkManager.writeConfig(container);
             LsfgVkManager.applyLaunchEnv(container, envVars);
-        }
-
-        if (BionicFgManager.isSupported(container)) {
-            BionicFgManager.ensureRuntimeInstalled(environment.getContext(), container);
-            BionicFgManager.writeConfig(container);
-            BionicFgManager.applyLaunchEnv(container, envVars);
         }
 
         Log.d("BionicProgramLauncherComponent", "env vars are " + envVars.toString());

@@ -305,7 +305,7 @@
     <string name="performance_hud_fps_limiter_target">ターゲットFPS</string>
     <string name="performance_hud_fps_limiter_off">無制限</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">LSFG がアクティブな間、リミッターはオーバーライドされます。ソースレートは乗数によって調整されます。</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">ベースフレームレートを制限します。画面上のレートは上限×LSFG倍率です。</string>
     <string name="performance_hud_presets">プリセット</string>
     <string name="performance_hud_presets_description">一般的な HUD レイアウトをすばやく切り替えます。</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -574,6 +574,8 @@
     <string name="downloading">ダウンロード中...</string>
     <string name="calculating_time">計算中...</string>
     <string name="download_failed_try_again">ダウンロードに失敗しました。もう一度試してください。</string>
+    <string name="download_preparing">ダウンロードを準備中...</string>
+    <string name="download_preparing_depots">デポを準備中 (%1$d/%2$d)</string>
     <string name="update_available">利用可能なアップデート</string>
     <string name="game_information">ゲーム情報</string>
     <string name="status">状態</string>
@@ -598,6 +600,11 @@
     <string name="add_custom_game_content_desc">カスタムゲームを追加する</string>
     <string name="add_custom_game_dialog_title">カスタムゲームを追加</string>
     <string name="add_custom_game_dialog_message">カスタム ゲームとして追加するゲーム ファイルが含まれるフォルダーを選択してください。</string>
+    <string name="custom_game_importing">ゲームをインポート中…</string>
+    <string name="custom_game_import_success">ゲームをインポートしました</string>
+    <string name="custom_game_import_failed">インポートに失敗しました</string>
+    <string name="custom_game_import_dialog_message">ゲームが含まれるフォルダーを選択してください。ストレージ権限なしで実行できるように、GameNative のストレージにインポートされます。大きなゲームは数分かかる場合があります。</string>
+    <string name="custom_game_import_remove_original">インポート後に元のファイルを削除</string>
     <string name="add_custom_game_dont_show_again">\'このダイアログを再度表示しないでください</string>
     <string name="base_app_shortcut_created">ショートカットが作成されました</string>
     <string name="base_app_shortcut_failed">ショートカットの作成に失敗しました: %s</string>
@@ -1512,8 +1519,9 @@
     <string name="option_manage_workshop">ワークショップの管理</string>
     <!-- Recommendations -->
     <string name="recommended_badge">推奨</string>
-    <string name="recommended_buy_button">それをチェックしてください</string>
-    <string name="recommended_support_message">このリンクから購入すると、GameNative の開発をサポートできます。</string>
+    <string name="recommended_buy_button">GOGで購入</string>
+    <string name="rec_buy_with_price">%1$s · GOGで購入</string>
+    <string name="recommended_support_message">このリンクから購入された場合、当社は手数料を受け取ります。</string>
     <string name="recommended_about_heading">このゲームについて</string>
     <string name="recommended_review_count">%1$s のレビューに基づく</string>
     <string name="review_overwhelmingly_positive">圧倒的にポジティブ</string>
@@ -1530,6 +1538,8 @@
     <string name="lsfg_flow_scale">流量スケール</string>
     <string name="lsfg_flow_scale_desc">低いほど安定します。高いほどスムーズになりますが、アーティファクトが発生する可能性があります。</string>
     <string name="lsfg_performance_mode">パフォーマンスモード</string>
+    <string name="lsfg_present_mode">プレゼントモード</string>
+    <string name="lsfg_present_mode_desc">Mailbox を推奨します。FIFO は出力フレームレート（fps上限×倍率）が画面のリフレッシュレートと一致する場合にも使えますが、リフレッシュレートを下回ると揺れて見えることがあります。</string>
     <string name="lsfg_not_supported">フレーム生成には Bionic コンテナが必要です</string>
     <string name="lsfg_install_prompt">Lossless Scaling がインストールされていません。タップしてインストールしてください。Adreno 6xx 以降でのみ動作確認されています。</string>
     <string name="lsfg_not_in_library">Lossless Scaling が Steam ライブラリにありません</string>
@@ -1883,6 +1893,7 @@
     <string name="nexus_resolving_collection_item">コレクションの解決 %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">コレクションの準備完了: %1$d 個のMOD</string>
     <string name="nexus_resolve_collection_failed">Nexus コレクションを解決できませんでした</string>
+    <string name="nexus_adult_content_blocked">Nexus Mods の成人向けコンテンツ設定により、このコレクションは非表示になっています。</string>
     <string name="nexus_no_selected_collection_mods_ready">選択されたコレクション MOD はダウンロードする準備ができていません</string>
     <string name="nexus_collection_different_file_reused">コレクションは別のファイルを要求しました。既存のインストールされたファイルが再利用される</string>
     <string name="nexus_collection_existing_placement_kept">既存の配置が維持される</string>
@@ -2009,8 +2020,8 @@
     <string name="control_stroke_width_default">既定</string>
     <string name="control_stroke_width_thick">太い</string>
     <string name="control_stroke_width_extra_thick">極太</string>
-    <string name="button_shooter_look_through">シューター透過操作</string>
-    <string name="button_shooter_look_through_subtitle">このボタンのタッチでも動的シューター移動や視点操作を行う</string>
+    <string name="button_look_through">ドラッグ中の移動・視点操作</string>
+    <string name="button_look_through_subtitle">このボタンを押したままドラッグして、移動やカメラ操作も行います。タッチスクリーンモードでは使用できません。</string>
     <string name="preview">プレビュー</string>
     <string name="active">アクティブ</string>
     <string name="apply_all">すべてに適用</string>
@@ -2027,6 +2038,10 @@
     <string name="featured_badge">スポンサー</string>
     <string name="featured_action_wishlist">ウィッシュリスト</string>
     <string name="featured_action_wishlist_on">%1$s でウィッシュリストに追加</string>
+    <string name="featured_action_wishlisted">ウィッシュリスト追加済み</string>
+    <string name="featured_action_get_demo">デモを入手</string>
+    <string name="featured_action_in_library">ライブラリにあります</string>
+    <string name="featured_action_failed">アプリ内で完了できませんでした。ストアページを開きます</string>
     <string name="featured_action_preorder">予約購入</string>
     <string name="featured_action_preorder_on">%1$s で予約購入</string>
     <string name="featured_action_buy">購入</string>
@@ -2126,16 +2141,6 @@
     <string name="nexus_invalid_source_metadata">この管理対象 Mod はソース情報が不完全なため、再試行できません。</string>
     <string name="nexus_archive_memory_error">このアーカイブには Android の上限を超えるメモリが必要です。GameNative を更新してから再試行するか、より小さいファイルを選択してください。</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">AIフレーム生成</string>
-    <string name="bfg_enable">AIフレーム生成を有効にする</string>
-    <string name="bfg_description">内蔵のAIフレーム補間。追加購入は不要です。</string>
-    <string name="bfg_multiplier">フレーム倍率</string>
-    <string name="bfg_flow_scale">フロースケール</string>
-    <string name="bfg_flow_scale_desc">低いほど高速です。高いほど動きを正確に追跡しますが、GPU負荷が増えます。</string>
-    <string name="bfg_model">モデル</string>
-    <string name="bfg_model_desc">Clear はより鮮明ですが負荷が高くなります</string>
-    <string name="bfg_model_standard">標準</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">招待</string>
     <string name="steam_invite_header">フレンド %1$d 人</string>
     <string name="steam_invite_joinable">このゲームをプレイ中 — タップして参加</string>
@@ -2146,4 +2151,43 @@
     <string name="steam_invite_joined">あなたのゲームに参加中</string>
     <string name="steam_invite_online">オンライン</string>
     <string name="steam_invite_offline">オフライン</string>
+
+    <!-- Power Control -->
+    <string name="power_control">パフォーマンス制御</string>
+    <string name="power_control_info">CPU周波数スケーリングとガバナー設定を制御します。PServerサービスが必要です。</string>
+    <string name="power_control_driver">ドライバー：%s</string>
+    <string name="power_control_profiles">パフォーマンスプロファイル</string>
+    <string name="power_control_governor">CPUガバナー</string>
+    <string name="power_control_current_frequencies">現在の周波数</string>
+    <string name="power_control_frequencies">周波数設定</string>
+    <string name="power_control_cpu_min_freq">最小CPU周波数</string>
+    <string name="power_control_cpu_max_freq">最大CPU周波数</string>
+    <string name="power_control_gpu_freq">GPU周波数</string>
+    <string name="power_control_gpu_min_power">最小GPUパワー</string>
+    <string name="power_control_gpu_max_power">最大GPUパワー</string>
+    <string name="power_control_ram_min_power">最小RAM周波数</string>
+    <string name="power_control_ram_max_power">最大RAM周波数</string>
+    <string name="power_control_available_frequencies">利用可能な周波数</string>
+    <string name="power_control_auto_tuning">自動調整</string>
+    <string name="power_control_auto_tuning_desc">より安定したパフォーマンス、より長いバッテリー駆動時間、発熱の低減：ゲームに合わせてCPUとGPUを自動調整します。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_adaptive_fps">FPSの自動低減</string>
+    <string name="power_control_adaptive_fps_desc">ゲームがFPS上限に達しない場合は上限を下げ、フレーム間隔を安定させます。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_tuning_mode">調整モード</string>
+    <string name="power_control_tuning_mode_per_cluster">クラスターごと（Retroid Pocket 6で動作確認済み）</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID制御</string>
+    <string name="power_control_fan_control">ファン制御</string>
+    <string name="power_control_fan_control_desc">ファンの騒音を最小限に抑えて目標温度を維持します。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_game_pinning">ゲームのコア固定</string>
+    <string name="power_control_game_pinning_desc">ゲームを高速なCPUコアに固定します。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_hud_show_fan">ファン回転数を表示</string>
+    <string name="power_control_hud_show_tuner">チューニングのクロック上限を表示</string>
+    <string name="power_control_tuning_strategy">調整ストラテジー</string>
+    <string name="power_control_strategy_balanced">バランス</string>
+    <string name="power_control_strategy_balanced_desc">すべてのコンポーネントを均等に調整して最高の総合パフォーマンスを実現</string>
+    <string name="power_control_strategy_power_efficient">省電力</string>
+    <string name="power_control_strategy_power_efficient_desc">ボトルネック以外のコンポーネントを低減して電力を節約</string>
+    <string name="power_control_strategy_aggressive">アグレッシブ</string>
+    <string name="power_control_strategy_aggressive_desc">検出されたボトルネックのパフォーマンスを最大化</string>
+    <string name="power_control_strategy_conservative">保守的</string>
+    <string name="power_control_strategy_conservative_desc">安定性を重視した漸進的な調整</string>
 </resources>

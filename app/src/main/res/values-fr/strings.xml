@@ -317,7 +317,7 @@
     <string name="performance_hud_fps_limiter_target">FPS cible</string>
     <string name="performance_hud_fps_limiter_off">Illimité</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Limiteur ignoré tant que LSFG est actif. La fréquence source est contrôlée par le multiplicateur.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Limite la cadence de base. La cadence à l\'écran est la limite multipliée par le multiplicateur LSFG.</string>
     <string name="performance_hud_presets">Préréglages</string>
     <string name="performance_hud_presets_description">Basculer rapidement entre des dispositions HUD courantes.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -564,6 +564,8 @@
     <string name="downloading">Téléchargement…</string>
     <string name="calculating_time">Calcul…</string>
     <string name="download_failed_try_again">Échec du téléchargement. Veuillez réessayer.</string>
+    <string name="download_preparing">Préparation du téléchargement…</string>
+    <string name="download_preparing_depots">Préparation des dépôts (%1$d/%2$d)</string>
     <string name="update_available">Mise à jour disponible</string>
     <string name="game_information">Informations sur le jeu</string>
     <string name="status">Statut</string>
@@ -588,6 +590,11 @@
     <string name="add_custom_game_content_desc">Ajouter un jeu personnalisé</string>
     <string name="add_custom_game_dialog_title">Ajouter un jeu personnalisé</string>
     <string name="add_custom_game_dialog_message">Veuillez sélectionner le dossier contenant les fichiers du jeu que vous souhaitez ajouter comme jeu personnalisé.</string>
+    <string name="custom_game_importing">Importation du jeu…</string>
+    <string name="custom_game_import_success">Jeu importé</string>
+    <string name="custom_game_import_failed">Échec de l\'importation</string>
+    <string name="custom_game_import_dialog_message">Sélectionnez le dossier contenant le jeu. Il sera importé dans le stockage de GameNative afin de pouvoir fonctionner sans aucune permission de stockage. Les jeux volumineux peuvent prendre quelques minutes.</string>
+    <string name="custom_game_import_remove_original">Supprimer l\'original après l\'importation</string>
     <string name="add_custom_game_dont_show_again">Ne plus afficher ce dialogue</string>
     <string name="base_app_shortcut_created">Raccourci créé</string>
     <string name="base_app_shortcut_failed">Échec de la création du raccourci : %s</string>
@@ -1476,8 +1483,9 @@
 
     <!-- Recommendations -->
     <string name="recommended_badge">Recommandé</string>
-    <string name="recommended_buy_button">Voir le jeu</string>
-    <string name="recommended_support_message">Acheter via ce lien aide à soutenir le développement de GameNative.</string>
+    <string name="recommended_buy_button">Acheter sur GOG</string>
+    <string name="rec_buy_with_price">%1$s · Acheter sur GOG</string>
+    <string name="recommended_support_message">Nous percevons une commission sur les achats effectués via ce lien.</string>
     <string name="recommended_about_heading">À propos de ce jeu</string>
     <string name="recommended_review_count">Basé sur %1$s avis</string>
     <string name="review_overwhelmingly_positive">Extrêmement positif</string>
@@ -1523,6 +1531,8 @@
     <string name="lsfg_flow_scale">Échelle de flux</string>
     <string name="lsfg_flow_scale_desc">Plus bas = plus stable ; plus élevé = plus fluide mais peut créer des artefacts.</string>
     <string name="lsfg_performance_mode">Mode performance</string>
+    <string name="lsfg_present_mode">Mode de présentation</string>
+    <string name="lsfg_present_mode_desc">Mailbox est recommandé. FIFO fonctionne aussi lorsque la cadence de sortie (limite fps × multiplicateur) correspond au taux de rafraîchissement de l\'écran ; en dessous, FIFO peut sembler instable.</string>
     <string name="lsfg_not_supported">La génération d\'images nécessite un conteneur Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling n\'est pas installé. Appuyez pour installer. Fonctionne uniquement sur Adreno 6xx et supérieur, à notre connaissance.</string>
     <string name="lsfg_not_in_library">Lossless Scaling n\'est pas dans votre bibliothèque Steam</string>
@@ -1926,6 +1936,7 @@
     <string name="nexus_resolving_collection_item">Résolution du recouvrement %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Collection prête : %1$d mods</string>
     <string name="nexus_resolve_collection_failed">Échec de la résolution de la collection Nexus</string>
+    <string name="nexus_adult_content_blocked">Cette collection est masquée en raison de vos paramètres de contenu pour adultes sur Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Aucun mod de collection sélectionné n\'est prêt à être téléchargé</string>
     <string name="nexus_collection_different_file_reused">La collection a demandé un fichier différent ; fichier installé existant réutilisé</string>
     <string name="nexus_collection_existing_placement_kept">Emplacement existant conservé</string>
@@ -2052,8 +2063,8 @@
     <string name="control_stroke_width_default">Par défaut</string>
     <string name="control_stroke_width_thick">Épais</string>
     <string name="control_stroke_width_extra_thick">Très épais</string>
-    <string name="button_shooter_look_through">Passage du regard shooter</string>
-    <string name="button_shooter_look_through_subtitle">Permettre à ce toucher de bouton de contrôler aussi le mouvement et le regard shooter dynamiques</string>
+    <string name="button_look_through">Contrôle par glissement</string>
+    <string name="button_look_through_subtitle">Appuyez sur ce bouton et faites glisser pour contrôler aussi le déplacement ou la caméra. Indisponible en mode écran tactile.</string>
     <string name="preview">Aperçu</string>
     <string name="active">Actif</string>
     <string name="apply_all">Appliquer à tous</string>
@@ -2070,6 +2081,10 @@
     <string name="featured_badge">Sponsorisé</string>
     <string name="featured_action_wishlist">Liste de souhaits</string>
     <string name="featured_action_wishlist_on">Ajouter sur %1$s</string>
+    <string name="featured_action_wishlisted">Dans la liste de souhaits</string>
+    <string name="featured_action_get_demo">Obtenir la démo</string>
+    <string name="featured_action_in_library">Dans la bibliothèque</string>
+    <string name="featured_action_failed">Impossible dans l\'application – ouverture de la page de la boutique</string>
     <string name="featured_action_preorder">Précommander</string>
     <string name="featured_action_preorder_on">Précommander sur %1$s</string>
     <string name="featured_action_buy">Acheter</string>
@@ -2172,16 +2187,6 @@
     <string name="nexus_invalid_source_metadata">Les informations de source de ce mod géré sont incomplètes et l’opération ne peut pas être relancée.</string>
     <string name="nexus_archive_memory_error">L’archive nécessite plus de mémoire qu’Android ne l’autorise. Réessayez après avoir mis GameNative à jour ou choisissez un fichier plus petit.</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">GenImages IA</string>
-    <string name="bfg_enable">Activer la génération d\'images par IA</string>
-    <string name="bfg_description">Interpolation d\'images par IA intégrée. Aucun achat supplémentaire nécessaire.</string>
-    <string name="bfg_multiplier">Multiplicateur d\'images</string>
-    <string name="bfg_flow_scale">Échelle de flux</string>
-    <string name="bfg_flow_scale_desc">Plus bas est plus rapide ; plus haut suit mieux le mouvement mais coûte plus de GPU.</string>
-    <string name="bfg_model">Modèle</string>
-    <string name="bfg_model_desc">Clear est plus net mais plus lourd</string>
-    <string name="bfg_model_standard">Standard</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">Inviter</string>
     <string name="steam_invite_header">%1$d amis</string>
     <string name="steam_invite_joinable">Dans ce jeu — appuyez pour rejoindre</string>
@@ -2192,4 +2197,43 @@
     <string name="steam_invite_joined">Dans votre partie</string>
     <string name="steam_invite_online">En ligne</string>
     <string name="steam_invite_offline">Hors ligne</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Contrôle des performances</string>
+    <string name="power_control_info">Contrôle la mise à l\'échelle de la fréquence du processeur et les paramètres du gouverneur. Nécessite le service PServer.</string>
+    <string name="power_control_driver">Pilote : %s</string>
+    <string name="power_control_profiles">Profils de performance</string>
+    <string name="power_control_governor">Gouverneur CPU</string>
+    <string name="power_control_current_frequencies">Fréquences actuelles</string>
+    <string name="power_control_frequencies">Paramètres de fréquence</string>
+    <string name="power_control_cpu_min_freq">Fréquence CPU minimale</string>
+    <string name="power_control_cpu_max_freq">Fréquence CPU maximale</string>
+    <string name="power_control_gpu_freq">Fréquence GPU</string>
+    <string name="power_control_gpu_min_power">Puissance GPU minimale</string>
+    <string name="power_control_gpu_max_power">Puissance GPU maximale</string>
+    <string name="power_control_ram_min_power">Fréquence RAM minimale</string>
+    <string name="power_control_ram_max_power">Fréquence RAM maximale</string>
+    <string name="power_control_available_frequencies">Fréquences disponibles</string>
+    <string name="power_control_auto_tuning">Réglage automatique</string>
+    <string name="power_control_auto_tuning_desc">Des performances plus stables, une meilleure autonomie, moins de chaleur : ajuste automatiquement le CPU et le GPU pour votre jeu. Vérifié sur Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Réduction automatique des FPS</string>
+    <string name="power_control_adaptive_fps_desc">Abaisse la limite de FPS lorsque le jeu ne parvient pas à l\'atteindre, pour une cadence stable. Vérifié sur Retroid Pocket 6.</string>
+    <string name="power_control_tuning_mode">Mode de réglage</string>
+    <string name="power_control_tuning_mode_per_cluster">Par cluster (vérifié sur Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">Régulateur PID</string>
+    <string name="power_control_fan_control">Contrôle du ventilateur</string>
+    <string name="power_control_fan_control_desc">Maintient une température cible avec un bruit de ventilateur minimal. Vérifié sur Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Épinglage du jeu</string>
+    <string name="power_control_game_pinning_desc">Maintient le jeu sur les cœurs rapides du CPU. Vérifié sur Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Afficher la vitesse du ventilateur</string>
+    <string name="power_control_hud_show_tuner">Afficher les limites de fréquence du réglage</string>
+    <string name="power_control_tuning_strategy">Stratégie de réglage</string>
+    <string name="power_control_strategy_balanced">Équilibré</string>
+    <string name="power_control_strategy_balanced_desc">Ajuste tous les composants de manière égale pour de meilleures performances globales</string>
+    <string name="power_control_strategy_power_efficient">Économie d\'énergie</string>
+    <string name="power_control_strategy_power_efficient_desc">Réduit les composants non limitants pour économiser l\'énergie</string>
+    <string name="power_control_strategy_aggressive">Agressif</string>
+    <string name="power_control_strategy_aggressive_desc">Maximise les performances sur les goulots d\'étranglement détectés</string>
+    <string name="power_control_strategy_conservative">Conservateur</string>
+    <string name="power_control_strategy_conservative_desc">Ajustements progressifs avec accent sur la stabilité</string>
 </resources>

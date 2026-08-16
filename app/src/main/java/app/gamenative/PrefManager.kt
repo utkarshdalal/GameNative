@@ -439,6 +439,20 @@ object PrefManager {
             setPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, value)
         }
 
+    private val PERFORMANCE_HUD_SHOW_FAN = booleanPreferencesKey("performance_hud_show_fan")
+    var showPerformanceHudFan: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_FAN, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_FAN, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_TUNER_CAPS = booleanPreferencesKey("performance_hud_show_tuner_caps")
+    var showPerformanceHudTunerCaps: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_TUNER_CAPS, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_TUNER_CAPS, value)
+        }
+
     private val PERFORMANCE_HUD_SHOW_FRAME_RATE_GRAPH = booleanPreferencesKey("performance_hud_show_frame_rate_graph")
     var performanceHudShowFrameRateGraph: Boolean
         get() = getPref(PERFORMANCE_HUD_SHOW_FRAME_RATE_GRAPH, false)
@@ -1418,4 +1432,5 @@ object PrefManager {
                 setPref(NEXUS_LAST_PLACEMENT_JSON, value)
             }
         }
+
 }

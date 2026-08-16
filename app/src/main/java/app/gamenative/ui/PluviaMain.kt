@@ -63,6 +63,7 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
+import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
@@ -1624,6 +1625,15 @@ fun preLaunchApp(
 
         // Clear session metadata on every launch to ensure fresh values
         container.clearSessionMetadata()
+
+        // Apply game-specific fixes before anything reads the container config. Some fixes
+        // change launch-mode flags (e.g. bionic Steam) that the download/dependency steps
+        // below and MainViewModel.launchApp consume, so this must run first.
+        try {
+            GameFixesRegistry.applyFor(context, appId, container)
+        } catch (e: Exception) {
+            Timber.tag("GameFixes").w(e, "Game fixes failed in preLaunchApp")
+        }
 
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
         val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)

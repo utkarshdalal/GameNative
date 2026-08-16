@@ -101,6 +101,7 @@ import java.util.EnumSet
 import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
+import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicService
@@ -109,7 +110,6 @@ import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
 import app.gamenative.ui.component.SteamInviteState
 import app.gamenative.ui.component.parseBooleanExtra
-import app.gamenative.utils.BionicFgManager
 import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
@@ -121,6 +121,7 @@ import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.LsfgQuickMenuHelper
+import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
 import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
 import app.gamenative.utils.downloader.DXWrapperDownloader
@@ -193,6 +194,7 @@ import com.winlator.xenvironment.components.XServerComponent
 import com.winlator.xserver.Keyboard
 import com.winlator.xserver.Property
 import com.winlator.xserver.ScreenInfo
+import com.winlator.xserver.ShmFramePacer
 import com.winlator.xserver.Window
 import com.winlator.xserver.WindowManager
 import com.winlator.xserver.XServer
@@ -552,8 +554,6 @@ fun XServerScreen(
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
         container.putExtra(FPS_LIMITER_TARGET_EXTRA, fpsLimiterTarget)
         container.saveData()
-        // The limiter also drives the bionic-fg layer's frame pacing
-        BionicFgManager.updateConfigAtRuntime(container)
     }
 
     fun loadPerformanceHudConfig(): PerformanceHudConfig {
@@ -626,24 +626,45 @@ fun XServerScreen(
     }
 
     fun applyFpsLimiterToEngines(limit: Int) {
-        xServerView?.setFrameRateLimit(limit)
+        // With LSFG active the layer owns ALL pacing (vsync-locked via
+        // vsync.txt) and presents at limit * multiplier. Both the renderer's
+        // SurfaceControl frame-rate hint and the PresentExtension's scheduled
+        // idle-release pacing must stay off: the hint would clamp the display
+        // to the base rate, and the extension's Choreographer-scheduled pixmap
+        // releases mix stale pixmaps under multiplied present traffic
+        // (measured as constant multi-exposure ghosting on the X11/turnip
+        // present path).
+        xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
-            ?.setFrameRateLimit(limit)
-        xServerView?.getxServer()
-            ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
-            ?.setEagerIdleRelease(BionicFgManager.isArmed(container))
+            ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+        // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
+        // presents, so SHM-presenting games never pass through it and would
+        // otherwise run uncapped whenever LSFG is armed.
+        ShmFramePacer.setFrameRateLimit(limit)
+        PowerManager.targetFps = limit
+        // keeps frame stats in base units while generated frames tick the ring
+        PowerManager.frameSampleStride =
+            if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
     }
 
     fun effectiveFpsLimit(): Int =
-        if (isLsfgAvailable && lsfgMultiplier >= 2) 0
-        else if (fpsLimiterEnabled) fpsLimiterTarget
-        else 0
+        if (fpsLimiterEnabled) fpsLimiterTarget else 0
+
+    fun applyLsfgSettings() {
+        LsfgQuickMenuHelper.applySettings(
+            container,
+            LsfgQuickMenuHelper.Settings(lsfgMultiplier, lsfgFlowScale, lsfgPerformanceMode),
+        )
+    }
 
     fun applyFpsLimiterEnabled(enabled: Boolean) {
         fpsLimiterEnabled = enabled
         applyFpsLimiterToEngines(effectiveFpsLimit())
         persistFpsLimiterState()
+        if (isLsfgAvailable && lsfgMultiplier >= 2) {
+            applyLsfgSettings()
+        }
     }
 
     fun applyFpsLimiterTarget(target: Int) {
@@ -653,13 +674,9 @@ fun XServerScreen(
             applyFpsLimiterToEngines(effectiveFpsLimit())
         }
         persistFpsLimiterState()
-    }
-
-    fun applyLsfgSettings() {
-        LsfgQuickMenuHelper.applySettings(
-            container,
-            LsfgQuickMenuHelper.Settings(lsfgMultiplier, lsfgFlowScale, lsfgPerformanceMode),
-        )
+        if (isLsfgAvailable && lsfgMultiplier >= 2) {
+            applyLsfgSettings()
+        }
     }
 
     fun applyLsfgMultiplier(mult: Int) {
@@ -679,6 +696,15 @@ fun XServerScreen(
     }
 
     LaunchedEffect(xServerView) {
+        // Adaptive-cap steps route through the LSFG limiter; the X-server
+        // limiters must stay at 0 under LSFG.
+        PowerManager.fpsCapApplier = applier@{ capFps: Int ->
+            if (!isLsfgAvailable || lsfgMultiplier < 2) return@applier false
+            PowerManager.targetFps = capFps
+            LsfgQuickMenuHelper.applyLiveFpsCap(container, capFps)
+            ShmFramePacer.setFrameRateLimit(capFps)
+            true
+        }
         val detectedMax = detectMaxRefreshRateHz(context, xServerView as? View)
         detectedMaxRefreshRateHz = detectedMax
         val clampedTarget = fpsLimiterTarget.coerceAtMost(detectedMax).coerceAtLeast(5)
@@ -760,11 +786,14 @@ fun XServerScreen(
             context = context,
             fpsProvider = {
                 val raw = frameRating?.currentFPS ?: 0f
-                val mult = when {
-                    isLsfgAvailable && lsfgMultiplier >= 2 -> lsfgMultiplier
-                    else -> 1
+                if (isLsfgAvailable && lsfgMultiplier >= 2) {
+                    // Only trust the layer's own measurement; multiplying raw
+                    // fabricates fps for games the layer never attaches to
+                    // (SHM-presenting games have no Vulkan swapchain).
+                    LsfgVkManager.readMeasuredFps(container) ?: raw
+                } else {
+                    raw
                 }
-                raw * mult
             },
             initialConfig = performanceHudConfig,
             initialCompactMode = PrefManager.performanceHudCompactMode,
@@ -1402,8 +1431,12 @@ fun XServerScreen(
 
     DisposableEffect(container) {
         registerBackAction(gameBack)
+        if (isLsfgAvailable) {
+            LsfgVkManager.startVsyncClock(context, container)
+        }
         onDispose {
             Timber.d("XServerScreen leaving, clearing back action")
+            LsfgVkManager.stopVsyncClock()
             removePerformanceHud()
             performanceHudHost = null
             imeInputReceiver?.hideKeyboard()
@@ -2189,6 +2222,29 @@ fun XServerScreen(
                                 onGameLaunchError,
                                 isOffline
                             )
+
+                            // Start performance driver after environment is set up
+                            PowerManager.start(container.rootDir)
+
+                            // Pin game process to performance cores (CPUs 4-7)
+                            container.executablePath
+                                .substringAfterLast('/')
+                                .substringAfterLast('\\')
+                                .takeIf { it.isNotEmpty() }
+                                ?.let { name ->
+                                    // Remove .exe extension if present, then add it back
+                                    val baseName = name.replace(Regex("\\.exe$", RegexOption.IGNORE_CASE), "")
+                                    PowerManager.pinGameWithRetry(
+                                        processName = "$baseName.exe",
+                                        maxRetries = 10,
+                                        retryDelayMs = 5000
+                                    )
+                                    Timber.tag("XServerScreen").i("Initiated CPU pinning for: $baseName.exe")
+                                }
+
+                            // Pin Background processes for better performance
+                            PowerManager.pinBackgroundProcesses()
+
                             if (!PluviaApp.isActivityInForeground && !neverSuspend) {
                                 PluviaApp.xEnvironment?.onPause()
                                 if (manualResumeMode) {
@@ -2459,6 +2515,7 @@ fun XServerScreen(
             removePerformanceHud()
             performanceHudHost = null
             shouldTrackDisplayedFrames.set(false)
+            ShmFramePacer.setFrameRateLimit(0)
 
             val releaseBinding = view.tag as? XServerViewReleaseBinding
             releaseBinding?.let { binding ->

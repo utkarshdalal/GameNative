@@ -33,6 +33,7 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateInfo
+import app.gamenative.utils.WineProcessSnapshotHelper
 import com.materialkolor.PaletteStyle
 import com.winlator.xserver.Window
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -671,17 +672,26 @@ class MainViewModel @Inject constructor(
             bootingSplashTimeoutJob = null
             setShowBootingSplash(false)
 
+            if (ContainerUtils.extractGameSourceFromContainerId(appId) != GameSource.STEAM) {
+                return@launch
+            }
+
             val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
             SteamService.getAppInfoOf(gameId)?.let { appInfo ->
-                // TODO: this should not be a search, the app should have been launched with a specific launch config that we then use to compare
-                val launchConfig = SteamService.getWindowsLaunchInfos(gameId).firstOrNull {
+                if (ActiveGameRegistry.get()?.appId == gameId) {
+                    return@launch
+                }
+
+                val matchesLaunchConfig = SteamService.getWindowsLaunchInfos(gameId).any {
                     val gameExe = Paths.get(it.executable.replace('\\', '/')).name.lowercase()
                     val windowExe = window.className.lowercase()
                     gameExe == windowExe
                 }
+                val isGameWindow = matchesLaunchConfig ||
+                    (window.isApplicationWindow() && !WineProcessSnapshotHelper.isSystemProcessName(window.className))
 
-                if (launchConfig != null) {
+                if (isGameWindow) {
                     val steamProcessId = Process.myPid()
                     val processes = mutableListOf<AppProcessInfo>()
                     var currentWindow: Window = window

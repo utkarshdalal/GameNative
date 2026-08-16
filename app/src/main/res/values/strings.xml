@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>
@@ -316,7 +316,7 @@
     <string name="performance_hud_fps_limiter_target">Target FPS</string>
     <string name="performance_hud_fps_limiter_off">Unlimited</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Limiter overridden while LSFG is active. Source rate is paced by the multiplier.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Caps the base rate. On-screen rate is the cap times the LSFG multiplier.</string>
     <string name="performance_hud_presets">Presets</string>
     <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -416,8 +416,8 @@
     <string name="control_stroke_width_default">Default</string>
     <string name="control_stroke_width_thick">Thick</string>
     <string name="control_stroke_width_extra_thick">Extra thick</string>
-    <string name="button_shooter_look_through">Shooter Look-through</string>
-    <string name="button_shooter_look_through_subtitle">Allow this button touch to also control dynamic shooter movement/look</string>
+    <string name="button_look_through">Look-through</string>
+    <string name="button_look_through_subtitle">Press and drag from this button to also control movement or camera look. Not available in touchscreen mode.</string>
     <string name="preview">Preview</string>
     <string name="active">Active</string>
     <string name="apply_all">Apply All</string>
@@ -679,6 +679,8 @@
     <string name="downloading">Downloading...</string>
     <string name="calculating_time">Calculating...</string>
     <string name="download_failed_try_again">Download failed. Please try again.</string>
+    <string name="download_preparing">Preparing download...</string>
+    <string name="download_preparing_depots">Preparing depots (%1$d/%2$d)</string>
     <string name="update_available">Update Available</string>
     <string name="game_information">Game Information</string>
     <string name="status">Status</string>
@@ -704,6 +706,11 @@
     <string name="add_custom_game_dialog_title">Add Custom Game</string>
     <string name="add_custom_game_dialog_message">Please select the folder containing the game files you want to add as a custom game.</string>
     <string name="add_custom_game_dont_show_again">Don\'t show this dialog again</string>
+    <string name="custom_game_importing">Importing game…</string>
+    <string name="custom_game_import_success">Game imported</string>
+    <string name="custom_game_import_failed">Import failed</string>
+    <string name="custom_game_import_dialog_message">Select the folder containing the game. It will be imported into GameNative\'s storage so it can run without any storage permission. Large games may take a few minutes.</string>
+    <string name="custom_game_import_remove_original">Remove original after import</string>
     <string name="base_app_shortcut_created">Shortcut created</string>
     <string name="base_app_shortcut_failed">Failed to create shortcut: %s</string>
     <string name="base_app_images_fetched">Images fetched successfully</string>
@@ -1936,6 +1943,7 @@
     <string name="nexus_resolving_collection_item">Resolving collection %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Collection ready: %1$d mod(s)</string>
     <string name="nexus_resolve_collection_failed">Failed to resolve Nexus collection</string>
+    <string name="nexus_adult_content_blocked">This collection is hidden by your Nexus Mods adult-content settings.</string>
     <string name="nexus_no_selected_collection_mods_ready">No selected collection mods are ready to download</string>
     <string name="nexus_collection_different_file_reused">Collection requested a different file; existing installed file reused</string>
     <string name="nexus_collection_existing_placement_kept">Existing placement kept</string>
@@ -1987,8 +1995,9 @@
     <string name="nexus_profile_name_duplicate">A profile with that name already exists</string>
     <!-- Recommendations -->
     <string name="recommended_badge">Recommended</string>
-    <string name="recommended_buy_button">Check It Out</string>
-    <string name="recommended_support_message">Purchasing through this link helps support the development of GameNative.</string>
+    <string name="recommended_buy_button">Purchase on GOG</string>
+    <string name="rec_buy_with_price">%1$s · Purchase on GOG</string>
+    <string name="recommended_support_message">We earn a commission on purchases made through this link.</string>
     <string name="recommended_about_heading">About This Game</string>
     <string name="recommended_review_count">Based on %1$s reviews</string>
 
@@ -1996,6 +2005,10 @@
     <string name="featured_badge">Sponsored</string>
     <string name="featured_action_wishlist">Wishlist</string>
     <string name="featured_action_wishlist_on">Wishlist on %1$s</string>
+    <string name="featured_action_wishlisted">Wishlisted</string>
+    <string name="featured_action_get_demo">Get the Demo</string>
+    <string name="featured_action_in_library">In Library</string>
+    <string name="featured_action_failed">Couldn\'t finish in the app — opening the store page</string>
     <string name="featured_action_preorder">Pre-order</string>
     <string name="featured_action_preorder_on">Pre-order on %1$s</string>
     <string name="featured_action_buy">Buy</string>
@@ -2024,6 +2037,8 @@
     <string name="lsfg_flow_scale">Flow scale</string>
     <string name="lsfg_flow_scale_desc">Lower is more stable; higher is smoother but can artifact.</string>
     <string name="lsfg_performance_mode">Performance mode</string>
+    <string name="lsfg_present_mode">Present mode</string>
+    <string name="lsfg_present_mode_desc">Mailbox is recommended. FIFO also works when the output frame rate (fps cap × multiplier) matches the screen refresh rate; below the refresh rate FIFO can look shaky.</string>
     <string name="lsfg_not_supported">Frame generation requires a Bionic container</string>
     <string name="lsfg_install_prompt">Lossless Scaling not installed. Tap to install. Only known to work on Adreno 6xx and above.</string>
     <string name="lsfg_not_in_library">Lossless Scaling not in your Steam library</string>
@@ -2042,16 +2057,6 @@
     <string name="steam_invite_joined">In your game</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
-    <string name="bfg_tab_title">AI FrameGen</string>
-    <string name="bfg_enable">Enable AI frame generation</string>
-    <string name="bfg_description">Built-in AI frame interpolation. No extra purchase needed.</string>
-    <string name="bfg_multiplier">Frame multiplier</string>
-    <string name="bfg_flow_scale">Flow scale</string>
-    <string name="bfg_flow_scale_desc">Lower is faster; higher tracks motion better but costs more GPU.</string>
-    <string name="bfg_model">Model</string>
-    <string name="bfg_model_desc">Clear is sharper but heavier</string>
-    <string name="bfg_model_standard">Standard</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="rec_disclosure_title">Game recommendations</string>
     <string name="rec_disclosure_body">For personalized recommendations, we share the games you play with GOG. Turn off anytime in Settings.</string>
     <string name="rec_disclosure_allow">Allow</string>
@@ -2191,4 +2196,43 @@
     <string name="achievements_reveal_message">This shows the remaining secret achievements and their details for now. It is not remembered.</string>
     <string name="achievements_reveal_confirm">Reveal</string>
     <string name="achievements_locked">Locked</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Power Control</string>
+    <string name="power_control_info">Control CPU frequency scaling and governor settings. Requires PServer service.</string>
+    <string name="power_control_driver">Driver: %s</string>
+    <string name="power_control_profiles">Power Profiles</string>
+    <string name="power_control_governor">CPU Governor</string>
+    <string name="power_control_current_frequencies">Current Frequencies</string>
+    <string name="power_control_frequencies">Frequency Settings</string>
+    <string name="power_control_cpu_min_freq">Min CPU Frequency</string>
+    <string name="power_control_cpu_max_freq">Max CPU Frequency</string>
+    <string name="power_control_gpu_freq">GPU Frequency</string>
+    <string name="power_control_gpu_min_power">Min GPU Power</string>
+    <string name="power_control_gpu_max_power">Max GPU Power</string>
+    <string name="power_control_ram_min_power">Min RAM Frequency</string>
+    <string name="power_control_ram_max_power">Max RAM Frequency</string>
+    <string name="power_control_available_frequencies">Available Frequencies</string>
+    <string name="power_control_auto_tuning">Auto-Tuning</string>
+    <string name="power_control_auto_tuning_desc">More stable performance, longer battery life, less heat: automatically tunes CPU and GPU for your game. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Automatic FPS reduction</string>
+    <string name="power_control_adaptive_fps_desc">Lowers the FPS cap when the game cannot reach it, for stable pacing. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_tuning_mode">Tuning Mode</string>
+    <string name="power_control_tuning_mode_per_cluster">Per-cluster (verified on Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID Controller</string>
+    <string name="power_control_fan_control">Fan Control</string>
+    <string name="power_control_fan_control_desc">Holds a target temperature with minimum fan noise. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Game Pinning</string>
+    <string name="power_control_game_pinning_desc">Keeps the game on the fast CPU cores. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Show fan speed</string>
+    <string name="power_control_hud_show_tuner">Show tuner clock caps</string>
+    <string name="power_control_tuning_strategy">Tuning Strategy</string>
+    <string name="power_control_strategy_balanced">Balanced</string>
+    <string name="power_control_strategy_balanced_desc">Adjusts all components equally for best overall performance</string>
+    <string name="power_control_strategy_power_efficient">Power Efficient</string>
+    <string name="power_control_strategy_power_efficient_desc">Reduces non-bottleneck components to save power</string>
+    <string name="power_control_strategy_aggressive">Aggressive</string>
+    <string name="power_control_strategy_aggressive_desc">Maximizes performance on detected bottlenecks</string>
+    <string name="power_control_strategy_conservative">Conservative</string>
+    <string name="power_control_strategy_conservative_desc">AdjustsGradual gradually with a focus on stability</string>
 </resources>
