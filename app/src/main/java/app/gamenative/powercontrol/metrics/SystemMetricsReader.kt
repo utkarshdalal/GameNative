@@ -48,7 +48,7 @@ object SystemMetricsSources {
 
         val candidates = linkedSetOf<String>()
         fun add(path: String) {
-            if (File(path).canRead()) {
+            if (File(path).exists()) {
                 candidates += path
             }
         }
