@@ -8,8 +8,8 @@ import android.os.Build
  * from the driver and from the nodes it can reach.
  */
 object DeviceGate {
-    private const val MODEL_RETROID_POCKET_6 = "retroid pocket 6"
-    private const val MODEL_ODIN_3 = "odin3"
+    const val MODEL_RETROID_POCKET_6 = "retroid pocket 6"
+    const val MODEL_ODIN_3 = "odin3"
 
     private val testedModels = arrayOf(
         MODEL_RETROID_POCKET_6,
@@ -19,6 +19,10 @@ object DeviceGate {
     fun isDeviceSupported(model: String = Build.MODEL ?: ""): Boolean {
         val normalized = normalize(model)
         return testedModels.any { normalized.contains(it) }
+    }
+
+    fun normalizedModel(model: String = Build.MODEL ?: ""): String {
+        return normalize(model)
     }
 
     private fun normalize(value: String): String {

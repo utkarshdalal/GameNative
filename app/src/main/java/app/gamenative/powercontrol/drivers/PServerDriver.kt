@@ -1678,7 +1678,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      */
     fun deviceTempC(cpuTempC: Int?, gpuTempC: Int?) : Int? {
         // On Odin 3, cpuTempC is not precise, can only use gpuTemp for the device temperature
-        return if (cpuPolicies.size == 2) {
+        return if (DeviceGate.normalizedModel().contains(DeviceGate.MODEL_ODIN_3)) {
             gpuTempC
         } else {
             listOfNotNull(cpuTempC, gpuTempC).maxOrNull()
