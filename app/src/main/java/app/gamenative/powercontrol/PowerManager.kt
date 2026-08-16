@@ -838,6 +838,19 @@ object PowerManager {
     }
 
     // ========================================
+    // File I/O
+    // ========================================
+
+    /**
+     * Read a file using the driver's file reading capabilities.
+     * For PServerDriver, this uses root access with fallback to direct file read.
+     * For other drivers, returns null.
+     * @param path The absolute path to the file to read
+     * @return The file contents as a trimmed string, or null if the file cannot be read
+     */
+    fun readFile(path: String): String? = getDriver().readFile(path)
+
+    // ========================================
     // Profile Persistence
     // ========================================
 
@@ -902,7 +915,7 @@ object PowerManager {
                     // Choose cores based on cluster configuration
                     val audioCores = when (clusterCount) {
                         1 -> perfCores // Single cluster: use all cores
-                        2 -> effCores  // Dual cluster: use lower-frequency cores, save prime for game
+                        2 -> perfCores  // Dual cluster: use lower-frequency cores, save prime for game
                         else -> effCores + perfCores // Tri+ cluster: use eff + perf, save prime for game
                     }
 
@@ -944,7 +957,7 @@ object PowerManager {
                 // Determine Wine infrastructure cores based on cluster configuration
                 val wineCores = when (clusterCount) {
                     1 -> perfCores // Single cluster: use all cores
-                    2 -> effCores  // Dual cluster: use lower-frequency cores, save prime for game
+                    2 -> perfCores  // Dual cluster: use lower-frequency cores, save prime for game
                     else -> effCores + perfCores // Tri+ cluster: use eff + perf, save prime for game
                 }
 
@@ -1145,7 +1158,7 @@ object PowerManager {
         val primeCores = pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME)
         return when (pserver.getCpuClusterCount()) {
             1 -> perfCores
-            2 -> effCores + perfCores
+            2 -> perfCores + primeCores
             else -> perfCores + primeCores
         }
     }
