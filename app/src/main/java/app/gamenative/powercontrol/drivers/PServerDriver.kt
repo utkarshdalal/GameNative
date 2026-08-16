@@ -405,7 +405,13 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * @param path The absolute path to the file to read
      * @return The file contents as a trimmed string, or null if the file cannot be read
      */
-    override fun readFile(path: String): String? = readSysfsFile(path)
+    override fun readFile(path: String): String? {
+        return if (pserverExecutor != null) {
+            readSysfsFile(path)
+        } else {
+            null
+        }
+    }
 
     /**
      * Attach (or clear) the command that hands the fan back to the vendor controller and

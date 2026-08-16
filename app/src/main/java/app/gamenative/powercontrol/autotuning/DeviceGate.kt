@@ -9,10 +9,12 @@ import android.os.Build
  */
 object DeviceGate {
     const val MODEL_RETROID_POCKET_6 = "retroid pocket 6"
+    const val MODEL_RETROID_POCKET_NOVA = "retroid pocket nova"
     const val MODEL_ODIN_3 = "odin3"
 
     private val testedModels = arrayOf(
         MODEL_RETROID_POCKET_6,
+        MODEL_RETROID_POCKET_NOVA,
         MODEL_ODIN_3,
     )
 
