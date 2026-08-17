@@ -73,6 +73,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -356,14 +357,13 @@ fun QuickMenu(
     var lsfgPresentMode by remember(container?.id) {
         mutableStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.presentMode(it) } ?: "mailbox")
     }
-    val isPowerControlAvailable = remember { PowerManager.isPServerAvailable() }
 
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
             when {
                 PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.HUD
-                PrefManager.quickMenuLastTab == QuickMenuTab.POWER && !isPowerControlAvailable -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.POWER -> QuickMenuTab.HUD
                 else -> PrefManager.quickMenuLastTab
             }
         )
@@ -457,9 +457,15 @@ fun QuickMenu(
             ),
             modifier = Modifier.align(Alignment.CenterStart),
         ) {
+            val panelWidth = if (selectedTab == QuickMenuTab.POWER) {
+                adaptivePanelWidth(800.dp)
+            } else {
+                adaptivePanelWidth(400.dp)
+            }
+
             Surface(
                 modifier = Modifier
-                    .width(adaptivePanelWidth(400.dp))
+                    .width(panelWidth)
                     .fillMaxHeight(),
                 shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
                 color = MaterialTheme.colorScheme.surface,
@@ -525,20 +531,18 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = hudTabFocusRequester,
                                 )
-                                if (isPowerControlAvailable) {
-                                    QuickMenuTabButton(
-                                        icon = Icons.Default.BatteryChargingFull,
-                                        contentDescriptionResId = R.string.power_control,
-                                        selected = selectedTab == QuickMenuTab.POWER,
-                                        accentColor = PluviaTheme.colors.accentPurple,
-                                        onSelected = {
-                                            selectedTab = QuickMenuTab.POWER
-                                            PrefManager.quickMenuLastTab = selectedTab
-                                        },
-                                        modifier = Modifier.width(56.dp),
-                                        focusRequester = powerTabFocusRequester,
-                                    )
-                                }
+                                QuickMenuTabButton(
+                                    icon = Icons.Default.BatteryChargingFull,
+                                    contentDescriptionResId = R.string.power_control,
+                                    selected = selectedTab == QuickMenuTab.POWER,
+                                    accentColor = PluviaTheme.colors.accentPurple,
+                                    onSelected = {
+                                        selectedTab = QuickMenuTab.POWER
+                                        PrefManager.quickMenuLastTab = selectedTab
+                                    },
+                                    modifier = Modifier.width(56.dp),
+                                    focusRequester = powerTabFocusRequester,
+                                )
                                 if (isLsfgAvailable) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.Speed,
@@ -1921,6 +1925,7 @@ private fun QuickMenuAdjustmentButton(
 internal fun QuickMenuToggleRow(
     title: String,
     enabled: Boolean,
+    selectable: Boolean = true,
     onToggle: () -> Unit,
     accentColor: Color,
     modifier: Modifier = Modifier,
@@ -1974,14 +1979,18 @@ internal fun QuickMenuToggleRow(
                 selected = isFocused,
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onToggle,
+                onClick = { if (selectable) onToggle() },
             )
             .focusable(interactionSource = interactionSource)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .then(if (!selectable) Modifier.alpha(0.5f) else Modifier)
+        ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
@@ -1998,10 +2007,14 @@ internal fun QuickMenuToggleRow(
             }
         }
 
-        QuickMenuSwitch(
-            enabled = enabled,
-            accentColor = accentColor,
-        )
+        Box(
+            modifier = if (!selectable) Modifier.alpha(0.5f) else Modifier
+        ) {
+            QuickMenuSwitch(
+                enabled = enabled,
+                accentColor = accentColor,
+            )
+        }
     }
 }
 

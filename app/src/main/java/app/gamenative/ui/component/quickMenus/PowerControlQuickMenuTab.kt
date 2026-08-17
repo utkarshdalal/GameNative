@@ -70,9 +70,11 @@ fun PowerControlQuickMenuTab(
     var refreshTrigger by remember { mutableIntStateOf(0) }
     val uiState by rememberPowerControlState(refreshTrigger)
     val coroutineScope = rememberCoroutineScope()
+    val isDriverSupported = remember { PowerManager.isDriverSupported() }
 
     PowerControlQuickMenuContent(
         uiState = uiState,
+        isDriverSupported = isDriverSupported,
         onFanControlToggled = { enabled ->
             coroutineScope.launch(Dispatchers.IO) {
                 PowerManager.currentProfile?.let { profile ->
@@ -377,6 +379,7 @@ fun PowerControlLoadingPreview() {
     MaterialTheme {
         PowerControlQuickMenuContent(
             uiState = PowerControlUiState.Loading,
+            isDriverSupported = true,
             onAutoTuningToggled = {},
             onTuningStrategySelected = {},
             onProfileSelected = {},
@@ -435,6 +438,7 @@ fun PowerControlSuccessCpuOnlyPreview() {
                 ),
                 ramInfo = null
             ),
+            isDriverSupported = true,
             onAutoTuningToggled = {},
             onTuningStrategySelected = {},
             onProfileSelected = {},
@@ -497,6 +501,7 @@ fun PowerControlSuccessWithGpuPreview() {
                     maxAvailableBusLevel = 4
                 ),
             ),
+            isDriverSupported = true,
             onAutoTuningToggled = {},
             onTuningStrategySelected = {},
             onProfileSelected = {},

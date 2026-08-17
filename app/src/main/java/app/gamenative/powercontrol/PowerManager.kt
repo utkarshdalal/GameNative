@@ -568,9 +568,9 @@ object PowerManager {
     fun isClusterTuningAvailable(): Boolean = getDriver().isPerClusterSupported()
 
     /**
-     * Check if PServer driver is available
+     * Check if driver is supported
      */
-    fun isPServerAvailable(): Boolean = getDriver().isDriverSupported()
+    fun isDriverSupported(): Boolean = getDriver().isDriverSupported()
 
     /**
      * Get display unit preference for frequency values
