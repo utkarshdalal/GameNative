@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import app.gamenative.PrefManager
 import app.gamenative.data.DownloadInfo
+import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.utils.CdnRankingUtils
 import app.gamenative.utils.MarkerUtils
@@ -13,8 +14,11 @@ import app.gamenative.service.epic.manifest.ChunkPart
 import app.gamenative.service.epic.manifest.EpicManifest
 import app.gamenative.service.epic.manifest.ManifestUtils
 import app.gamenative.service.gog.HttpStatusException
+import app.gamenative.utils.ContainerStorageManager
 import app.gamenative.utils.DownloadSpeedConfig
 import app.gamenative.utils.Net
+import app.gamenative.utils.StorageUtils
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -60,6 +64,7 @@ import java.util.concurrent.atomic.AtomicInteger
 @Singleton
 class EpicDownloadManager @Inject constructor(
     private val epicManager: EpicManager,
+    @ApplicationContext private val context: Context,
 ) {
     companion object {
         private const val CHUNK_BUFFER_SIZE = 1024 * 1024 // 1MB buffer for decompression
@@ -224,8 +229,11 @@ class EpicDownloadManager @Inject constructor(
             downloadInfo.setTotalExpectedBytes(totalDownloadSize)
             downloadInfo.updateStatusMessage("Downloading base game...")
 
-            // Download chunks in parallel
-            val chunkCacheDir = File(installPath, ".chunks")
+            // Download chunks in parallel.
+            // Cache lives on internal storage: on exFAT SD cards (dirsync mount) every
+            // create/rename/delete in the cache dir is a synchronous directory flush,
+            // which dominates download time for small chunks.
+            val chunkCacheDir = File(context.cacheDir, "epic_chunks/${File(installPath).name}")
             chunkCacheDir.mkdirs()
 
             Timber.tag("Epic").d(
@@ -240,17 +248,24 @@ class EpicDownloadManager @Inject constructor(
             )
 
             // Build file-ordered chunk queue and run streaming download + assembly
-            val fileChunkIds = files.map { f -> f.chunkParts.map { it.guidStr } }
-            val chunkQueue = buildFileOrderedChunkQueue(manifest, fileChunkIds)
             val installDir = File(installPath)
             installDir.mkdirs()
+
+            // Incremental download: skip files already on disk with matching size and SHA-1
+            val pendingFiles = files.filter { file ->
+                !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
+            }
+            Timber.tag("Epic").d("Skipping ${files.size - pendingFiles.size} existing file(s), downloading ${pendingFiles.size}")
+
+            val fileChunkIds = pendingFiles.map { f -> f.chunkParts.map { it.guidStr } }
+            val chunkQueue = buildFileOrderedChunkQueue(manifest, fileChunkIds)
 
             val downloadResult = downloadAndAssembleEpicChunks(
                 manifest = manifest,
                 cdnUrls = cdnUrls,
                 chunkCacheDir = chunkCacheDir,
                 installDir = installDir,
-                files = files,
+                files = pendingFiles,
                 downloadInfo = downloadInfo,
                 chunkQueue = chunkQueue,
                 chunkDir = chunkDir,
@@ -383,20 +398,26 @@ class EpicDownloadManager @Inject constructor(
             val files = fileManifestList.elements
             val chunkDir = manifest.getChunkDir()
 
-            val fileChunkIds = files.map { f -> f.chunkParts.map { it.guidStr } }
-            val chunkQueue = buildFileOrderedChunkQueue(manifest, fileChunkIds)
-
-            val chunkCacheDir = File(installPath, ".chunks")
+            val chunkCacheDir = File(context.cacheDir, "epic_chunks/${File(installPath).name}")
             chunkCacheDir.mkdirs()
             val installDir = File(installPath)
             installDir.mkdirs()
+
+            // Incremental download: skip files already on disk with matching size and SHA-1
+            val pendingFiles = files.filter { file ->
+                !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
+            }
+            Timber.tag("Epic").d("Skipping ${files.size - pendingFiles.size} existing file(s), downloading ${pendingFiles.size}")
+
+            val fileChunkIds = pendingFiles.map { f -> f.chunkParts.map { it.guidStr } }
+            val chunkQueue = buildFileOrderedChunkQueue(manifest, fileChunkIds)
 
             val dlcDownloadResult = downloadAndAssembleEpicChunks(
                 manifest = manifest,
                 cdnUrls = cdnUrls,
                 chunkCacheDir = chunkCacheDir,
                 installDir = installDir,
-                files = files,
+                files = pendingFiles,
                 downloadInfo = downloadInfo,
                 chunkQueue = chunkQueue,
                 chunkDir = chunkDir,
@@ -449,7 +470,7 @@ class EpicDownloadManager @Inject constructor(
             val chunkDir = manifest.getChunkDir()
 
             val installDir = File(installPath).also { it.mkdirs() }
-            val chunkCacheDir = File(installDir, ".chunks").also { it.mkdirs() }
+            val chunkCacheDir = File(context.cacheDir, "epic_chunks/${installDir.name}").also { it.mkdirs() }
 
             // Dummy DownloadInfo – overlay downloads are small and need no UI progress events
             val dummyDownloadInfo = DownloadInfo(
@@ -844,6 +865,31 @@ class EpicDownloadManager @Inject constructor(
         }
     }
 
+    /**
+     * True when the file on disk matches the manifest's size and full-file SHA-1,
+     * so it can be skipped on resume. An all-zero manifest hash is treated as
+     * unverifiable and the file is re-downloaded.
+     */
+    private fun fileExistsWithCorrectHash(outputFile: File, expectedSize: Long, expectedHash: ByteArray): Boolean {
+        if (!outputFile.exists()) return false
+        if (outputFile.length() != expectedSize) return false
+        if (expectedHash.all { it == 0.toByte() }) return false
+        return try {
+            val digest = MessageDigest.getInstance("SHA-1")
+            outputFile.inputStream().use { input ->
+                val buffer = ByteArray(64 * 1024)
+                var bytesRead: Int
+                while (input.read(buffer).also { bytesRead = it } != -1) {
+                    digest.update(buffer, 0, bytesRead)
+                }
+            }
+            digest.digest().contentEquals(expectedHash)
+        } catch (e: Exception) {
+            Timber.tag("Epic").w(e, "Could not verify existing file ${outputFile.path}, re-downloading")
+            false
+        }
+    }
+
     private fun buildFileOrderedChunkQueue(
         manifest: EpicManifest,
         fileChunkIds: List<List<String>>,
@@ -882,6 +928,25 @@ class EpicDownloadManager @Inject constructor(
 
             // Calculate total expected installed size once (sum of all file sizes)
             val totalExpectedSize = files.sumOf { it.fileSize }
+
+            val onExternalStorage = runCatching {
+                ContainerStorageManager.getStorageLocation(context, GameSource.EPIC, installDir.absolutePath) ==
+                    ContainerStorageManager.StorageLocation.EXTERNAL
+            }.getOrDefault(false)
+            if (onExternalStorage) {
+                val remainingBytes = files.sumOf { file ->
+                    (file.fileSize - File(installDir, file.filename).length()).coerceAtLeast(0L)
+                }
+                val availableBytes = StorageUtils.getAvailableSpaceForUncreatedPath(installDir.absolutePath)
+                if (availableBytes < remainingBytes) {
+                    return@withContext Result.failure(
+                        IOException(
+                            "Not enough free space: need ${StorageUtils.formatBinarySize(remainingBytes)}, " +
+                                "available ${StorageUtils.formatBinarySize(availableBytes)}",
+                        ),
+                    )
+                }
+            }
 
             chunkQueue.forEach { chunkInfo ->
                 chunkUsageCounts[chunkInfo.guidStr] = AtomicInteger(
@@ -1053,8 +1118,14 @@ class EpicDownloadManager @Inject constructor(
 
                     try {
                         // okio resize can OOM for large files on android.
+                        // External volumes are exFAT: no sparse files, so setLength physically
+                        // zero-fills the whole file there. Skip and let offset writes grow it.
                         RandomAccessFile(outputFile.path, "rw").use {
-                            it.setLength(totalSize)
+                            if (!onExternalStorage) {
+                                it.setLength(totalSize)
+                            } else if (it.length() > totalSize) {
+                                it.setLength(totalSize)
+                            }
                         }
                     } catch (e: IOException) {
                         throw IOException("Failed to allocate file ${outputFile.path}: ${e.message}")

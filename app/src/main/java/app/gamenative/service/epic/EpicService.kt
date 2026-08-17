@@ -587,6 +587,9 @@ class EpicService : Service() {
         fun isOverlayInstalled(container: Container): Boolean =
             getInstance()?.epicOverlayManager?.isOverlayInstalled(container) ?: false
 
+        fun isOverlayConfigured(container: Container): Boolean =
+            getInstance()?.epicOverlayManager?.isOverlayConfigured(container) ?: false
+
         /**
          * Remove the EOS overlay from [container] and clear its registry entry.
          */

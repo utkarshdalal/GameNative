@@ -116,6 +116,7 @@ import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.AssetUtils
+import app.gamenative.utils.ContainerStorageManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
@@ -4999,9 +5000,17 @@ private suspend fun setupWineSystemFiles(
     WineStartMenuCreator.create(context, container)
     WineUtils.createDosdevicesSymlinks(context, container)
 
-    val startupSelection = container.startupSelection.toString()
+    // The EOS overlay's CEF browser needs RpcSs and BITS: without them it
+    // crash-loops and EOS login fails. Force normal services only for containers
+    // that actually have the overlay installed, not every Epic container.
+    val isEpicContainer = ContainerStorageManager.detectGameSource(
+        ContainerStorageManager.normalizeContainerId(container.id),
+    ) == GameSource.EPIC
+    val needsOverlayServices = isEpicContainer && EpicService.isOverlayInstalled(container)
+    val effectiveStartupSelection = if (needsOverlayServices) Container.STARTUP_SELECTION_NORMAL else container.startupSelection
+    val startupSelection = effectiveStartupSelection.toString()
     if (startupSelection != container.getExtra("startupSelection")) {
-        WineUtils.changeServicesStatus(container, container.startupSelection != Container.STARTUP_SELECTION_NORMAL)
+        WineUtils.changeServicesStatus(container, effectiveStartupSelection != Container.STARTUP_SELECTION_NORMAL)
         container.putExtra("startupSelection", startupSelection)
         containerDataChanged = true
     }

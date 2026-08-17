@@ -779,7 +779,7 @@ object ContainerStorageManager {
         }
     }
 
-    private fun getStorageLocation(context: Context, gameSource: GameSource, installPath: String): StorageLocation {
+    fun getStorageLocation(context: Context, gameSource: GameSource, installPath: String): StorageLocation {
         val normalizedPath = normalizePath(installPath)
 
         val internalRoots = when (gameSource) {

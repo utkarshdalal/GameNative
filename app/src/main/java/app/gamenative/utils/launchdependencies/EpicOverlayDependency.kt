@@ -24,7 +24,7 @@ object EpicOverlayDependency : LaunchDependency {
         gameSource == GameSource.EPIC
 
     override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean =
-        EpicService.isOverlayInstalled(container)
+        EpicService.isOverlayConfigured(container)
 
     override fun getLoadingMessage(context: Context, container: Container, gameSource: GameSource, gameId: Int): String =
         "Downloading EOS overlay"
