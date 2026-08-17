@@ -1,8 +1,6 @@
 package app.gamenative.service.epic
 
 import android.content.Context
-import android.util.Log
-import app.gamenative.PrefManager
 import app.gamenative.data.DownloadInfo
 import app.gamenative.enums.Marker
 import app.gamenative.utils.CdnRankingUtils
@@ -68,6 +66,7 @@ class EpicDownloadManager @Inject constructor(
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
         private const val STREAM_PROGRESS_TIME_INTERVAL_MS = 200L
+        private const val PROGRESS_UPDATE_GRANULARITY_BYTES = 256 * 1024L
     }
 
     /**
@@ -460,7 +459,8 @@ class EpicDownloadManager @Inject constructor(
                 downloadingAppIds = java.util.concurrent.CopyOnWriteArrayList(),
             )
 
-            val parallelDownloads = PrefManager.downloadSpeed.coerceAtLeast(1)
+            val parallelDownloads = DownloadSpeedConfig().maxDownloads
+                .coerceAtLeast(1)
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 
             var downloadedChunks = 0
@@ -649,6 +649,23 @@ class EpicDownloadManager @Inject constructor(
         val digest = MessageDigest.getInstance("SHA-1")
         var totalBytesWritten = 0L
         var lastProgressEmitAt = System.currentTimeMillis()
+        var pendingProgressBytes = 0L
+
+        fun reportDownloadedBytes(bytes: Long) {
+            if (bytes <= 0L) return
+
+            pendingProgressBytes += bytes
+            if (pendingProgressBytes < PROGRESS_UPDATE_GRANULARITY_BYTES) return
+
+            downloadInfo.updateBytesDownloaded(pendingProgressBytes)
+            pendingProgressBytes = 0L
+
+            val now = System.currentTimeMillis()
+            if (now - lastProgressEmitAt >= STREAM_PROGRESS_TIME_INTERVAL_MS) {
+                downloadInfo.emitProgressChange()
+                lastProgressEmitAt = now
+            }
+        }
 
         inputStream.buffered().use { input ->
             // Read the entire header - determine size dynamically
@@ -725,8 +742,6 @@ class EpicDownloadManager @Inject constructor(
                 expectedSize.toInt()
             }
 
-            Timber.tag("Epic").d("Chunk header: magic=0x${magic.toString(16)}, headerVersion=$headerVersion, headerSize=$headerSize, compressedSize=$compressedSize, uncompressedSize=$uncompressedSize, storedAs=0x${storedAs.toString(16)}, isCompressed=$isCompressed, expectedSize=$expectedSize")
-
             outputFile.outputStream().buffered().use { output ->
                 if (isCompressed) {
                     // Streaming decompression
@@ -735,7 +750,6 @@ class EpicDownloadManager @Inject constructor(
                         val inputBuffer = ByteArray(65536) // 64KB compressed read buffer
                         val outputBuffer = ByteArray(65536) // 64KB decompressed write buffer
                         var endOfStream = false
-                        var firstRead = true
 
                         while (totalBytesWritten < uncompressedSize && !endOfStream) {
                             // Feed more input if needed
@@ -745,16 +759,7 @@ class EpicDownloadManager @Inject constructor(
                                     endOfStream = true
                                     Timber.tag("Epic").d("Unexpected end of stream: read=$totalBytesWritten, expected=$uncompressedSize")
                                 } else {
-                                    downloadInfo.updateBytesDownloaded(bytesRead.toLong())
-                                    val now = System.currentTimeMillis()
-                                    if (now - lastProgressEmitAt >= STREAM_PROGRESS_TIME_INTERVAL_MS) {
-                                        downloadInfo.emitProgressChange()
-                                        lastProgressEmitAt = now
-                                    }
-                                    if (firstRead) {
-                                        Log.d("Epic", "First compressed data bytes: ${inputBuffer.take(16).joinToString(" ") { "%02x".format(it) }}")
-                                        firstRead = false
-                                    }
+                                    reportDownloadedBytes(bytesRead.toLong())
                                     inflater.setInput(inputBuffer, 0, bytesRead)
                                 }
                             }
@@ -788,12 +793,7 @@ class EpicDownloadManager @Inject constructor(
                         val toRead = minOf(remaining, buffer.size)
                         val bytesRead = input.read(buffer, 0, toRead)
                         if (bytesRead == -1) break
-                        downloadInfo.updateBytesDownloaded(bytesRead.toLong())
-                        val now = System.currentTimeMillis()
-                        if (now - lastProgressEmitAt >= STREAM_PROGRESS_TIME_INTERVAL_MS) {
-                            downloadInfo.emitProgressChange()
-                            lastProgressEmitAt = now
-                        }
+                        reportDownloadedBytes(bytesRead.toLong())
                         output.write(buffer, 0, bytesRead)
                         digest.update(buffer, 0, bytesRead)
                         totalBytesWritten += bytesRead
@@ -817,6 +817,10 @@ class EpicDownloadManager @Inject constructor(
             val actualHex = actualHash.joinToString("") { "%02x".format(it) }
             outputFile.delete()
             throw Exception("Chunk hash verification failed: expected $expectedHex, got $actualHex")
+        }
+
+        if (pendingProgressBytes > 0L) {
+            downloadInfo.updateBytesDownloaded(pendingProgressBytes)
         }
 
         // Ensure UI receives a final progress update after this chunk's bytes.
@@ -873,7 +877,9 @@ class EpicDownloadManager @Inject constructor(
             val scope = CoroutineScope(Dispatchers.IO)
             val speedConfig = DownloadSpeedConfig()
             val parallelDownloads = speedConfig.maxDownloads
+                .coerceAtLeast(1)
             val parallelAssemble = speedConfig.maxDecompress
+                .coerceAtLeast(1)
             val downloadHttpClient = Net.httpForParallelDownloads(parallelDownloads)
 
             val totalChunks = chunkQueue.size
@@ -885,10 +891,25 @@ class EpicDownloadManager @Inject constructor(
             // Calculate total expected installed size once (sum of all file sizes)
             val totalExpectedSize = files.sumOf { it.fileSize }
 
+            data class ChunkAssemblyPart(
+                val file: app.gamenative.service.epic.manifest.FileManifest,
+                val chunk: ChunkPart,
+            )
+
+            val mutableChunkPartsByGuid = HashMap<String, MutableList<ChunkAssemblyPart>>(totalChunks)
+            files.forEach { file ->
+                file.chunkParts.forEach { chunk ->
+                    mutableChunkPartsByGuid.getOrPut(chunk.guidStr) { mutableListOf() }
+                        .add(ChunkAssemblyPart(file, chunk))
+                }
+            }
+
+            val chunkPartsByGuid = mutableChunkPartsByGuid.mapValues { it.value.toList() }
+            chunkPartsByGuid.forEach { (guidStr, assemblyParts) ->
+                chunkUsageCounts[guidStr] = AtomicInteger(assemblyParts.size)
+            }
             chunkQueue.forEach { chunkInfo ->
-                chunkUsageCounts[chunkInfo.guidStr] = AtomicInteger(
-                    files.sumOf { file -> file.chunkParts.count { chunk -> chunk.guidStr == chunkInfo.guidStr } }
-                )
+                chunkUsageCounts.putIfAbsent(chunkInfo.guidStr, AtomicInteger(0))
             }
 
             val networkChunkFlow = MutableSharedFlow<app.gamenative.service.epic.manifest.ChunkInfo>(extraBufferCapacity = Int.MAX_VALUE)
@@ -904,29 +925,17 @@ class EpicDownloadManager @Inject constructor(
                     return Result.failure(Exception("Download cancelled"))
                 }
 
-                // 1. Find all files that contain this chunk
-                val matchedFiles = files.filter { file ->
-                    file.chunkParts.any { chunk -> chunk.guidStr == guidStr }
-                }
-
-                // 2. For each file found, try to assemble if all chunks are ready
                 var assemblySuccessCount = 0
 
-                matchedFiles.forEach { file ->
-                    file.chunkParts.withIndex()
-                        .filter { (_, chunk) -> chunk.guidStr == guidStr }
-                        .forEach { (chunkIndex, chunk) ->
-                            val result = assembleFileParallel(file, chunk, chunkCacheDir, installDir)
-                            if (result.isSuccess) {
-                                // 3. If assembly is successful and all chunks in downloadedChunkIds, increment file counter
-                                assemblySuccessCount++
-                            } else {
-                                Timber.tag("EPIC").d(result.exceptionOrNull()?.message ?: "Failed to assemble ${file.filename}")
-                            }
-                        }
+                chunkPartsByGuid[guidStr].orEmpty().forEach { assemblyPart ->
+                    val result = assembleFileParallel(assemblyPart.file, assemblyPart.chunk, chunkCacheDir, installDir)
+                    if (result.isSuccess) {
+                        assemblySuccessCount++
+                    } else {
+                        Timber.tag("EPIC").d(result.exceptionOrNull()?.message ?: "Failed to assemble ${assemblyPart.file.filename}")
+                    }
                 }
 
-                // 4. Decrement usage count only when assembly is successful
                 if (assemblySuccessCount > 0) {
                     val usageCount = chunkUsageCounts[guidStr]?.addAndGet(-assemblySuccessCount)
                     if (usageCount != null && usageCount <= 0) {
@@ -1030,8 +1039,6 @@ class EpicDownloadManager @Inject constructor(
                     return@launch
                 }
 
-                val chunksAdded = mutableListOf<String>()
-
                 // Sort files by total chunk usage (lowest first) - files with less-shared chunks complete faster and free cache sooner
                 val sortedFiles = files.sortedBy { file ->
                     file.chunkParts.sumOf { chunk ->
@@ -1045,8 +1052,6 @@ class EpicDownloadManager @Inject constructor(
                         Timber.tag("EPIC").w("Download cancelled during file iteration")
                         return@launch
                     }
-                    Timber.tag("EPIC").v("Pre-allocating ${file.filename}")
-
                     // Allocating file before download
                     val outputFile = File(installDir, file.filename)
                     outputFile.parentFile?.mkdirs()
@@ -1064,9 +1069,7 @@ class EpicDownloadManager @Inject constructor(
                 }
 
                 chunkQueue.forEach { chunkInfo ->
-                    chunksAdded.add(chunkInfo.guidStr)
                     networkChunkFlow.emit(chunkInfo)
-                    Timber.tag("EPIC").v("Emitted chunk ${chunkInfo.guidStr} to download flow")
                 }
             }
 
