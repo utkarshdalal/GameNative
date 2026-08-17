@@ -1104,7 +1104,9 @@ private fun PerformanceHudQuickMenuTab(
         {
             QuickMenuAdjustmentRow(
                 title = stringResource(R.string.performance_hud_battery_temp_limit),
-                valueText = "${(performanceHudConfig.batteryTemperatureWarningLimit * 100f).roundToInt()} °C",
+                valueText = stringResource(
+                    R.string.performance_hud_percentage_value,
+                    (performanceHudConfig.batteryTemperatureWarningLimit * 100f).roundToInt()),
                 progress = normalizedProgress(performanceHudConfig.batteryTemperatureWarningLimit, 0f, 1f),
                 onDecrease = {
                     onPerformanceHudConfigChanged(

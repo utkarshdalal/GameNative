@@ -161,7 +161,7 @@ class PerformanceHudView(
     private var thermalZonesCache: List<Pair<String, String>>? = null
     private var gpuUsageDiscoveryLogged = false
     private var gpuUsagePathsCache: List<String>? = null
-    
+
     private var toneGenerator: ToneGenerator? = null
 
     private fun getToneGenerator(): ToneGenerator =
@@ -256,7 +256,7 @@ class PerformanceHudView(
                         snapshot.batteryPercent < (config.batteryLevelWarningLimit * 100)
 
                 val tempWarning = snapshot.batteryTempValue != null && config.batteryTemperatureWarningEnabled &&
-                        snapshot.batteryTempValue > (config.batteryTemperatureWarningLimit * 100)
+                        snapshot.batteryTempValue >= (config.batteryTemperatureWarningLimit * 100)
 
                 if (levelWarning) {
                     getToneGenerator().startTone(ToneGenerator.TONE_PROP_ACK, 150)
@@ -389,7 +389,7 @@ class PerformanceHudView(
             },
             runtime = batterySnapshot.runtimeText,
             batteryTemp = batterySnapshot.temperatureC?.let { "BAT TEMP ${it}°C" },
-            batteryTempValue = batterySnapshot.temperatureC ?: 0,
+            batteryTempValue = batterySnapshot.temperatureC,
             clock = readClockText(),
             cpuTemp = readCpuTempC()?.let { "CPU TEMP ${it}°C" },
             gpuTemp = readGpuTempC()?.let { "GPU TEMP ${it}°C" },
