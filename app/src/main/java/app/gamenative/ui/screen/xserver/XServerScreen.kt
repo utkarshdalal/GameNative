@@ -5007,6 +5007,11 @@ private suspend fun setupWineSystemFiles(
         ContainerStorageManager.normalizeContainerId(container.id),
     ) == GameSource.EPIC
     val needsOverlayServices = isEpicContainer && EpicService.isOverlayInstalled(container)
+    if (needsOverlayServices) {
+        // Prefix re-provisioning above (wine/proton version change) replaces user.reg,
+        // so the overlay registry entries must be repaired here, not just at install time.
+        EpicService.ensureOverlayRegistryEntries(container)
+    }
     val effectiveStartupSelection = if (needsOverlayServices) Container.STARTUP_SELECTION_NORMAL else container.startupSelection
     val startupSelection = effectiveStartupSelection.toString()
     if (startupSelection != container.getExtra("startupSelection")) {

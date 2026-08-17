@@ -162,6 +162,19 @@ class EpicOverlayManager @Inject constructor(
     }
 
     /**
+     * Re-write the overlay registry entries if the overlay files are installed but
+     * the keys are missing. Called from the container boot path AFTER prefix
+     * provisioning, because a wine/proton version change re-extracts the prefix
+     * template and replaces user.reg, wiping keys written earlier in the launch.
+     */
+    fun ensureRegistryEntries(container: Container) {
+        if (!isOverlayInstalled(container)) return
+        if (isOverlayConfigured(container)) return
+        Timber.tag("EOSOverlay").i("Overlay registry entries missing (prefix re-provisioned?) — re-writing")
+        writeRegistryEntries(container)
+    }
+
+    /**
      * Remove all overlay files from [container] and clear the registry path.
      */
     suspend fun removeOverlay(context: Context, container: Container): Result<Unit> =
