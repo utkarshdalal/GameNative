@@ -54,15 +54,10 @@ class EpicOverlayManager @Inject constructor(
         // Mirrors legendary/core.py Core.is_overlay_install().
         const val OVERLAY_MARKER_FILE = "EOSOVH-Win64-Shipping.dll"
 
-        // The overlay's CEF browser cannot create a D3D device under Wine; route it
-        // to builtin wined3d with renderer=no3d (per-exe) so CEF falls back to
-        // software rendering while the game keeps DXVK. Same recipe as the Forza
-        // Horizon 4 ForzaWebHelper fix.
-        private val RENDERER_EXES = listOf(
-            "EOSOverlayRenderer-Win64-Shipping.exe",
-            "EOSOverlayRenderer-Win32-Shipping.exe",
-        )
-        private val RENDERER_BUILTIN_DLLS = listOf("d3d11", "d3d9", "dxgi")
+        // Unlike FH4's windowed ForzaWebHelper (which needs the no3d software-rendering
+        // recipe), the EOS overlay renders OFF-SCREEN into shared D3D11 textures that
+        // EOSOVH composites over the game. Forcing no3d breaks that handoff (grey
+        // overlay), so the renderer must use the container's normal D3D (DXVK).
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -154,10 +149,7 @@ class EpicOverlayManager @Inject constructor(
         val userRegFile = File(container.rootDir, ".wine/user.reg")
         if (!userRegFile.isFile) return false
         return WineRegistryEditor(userRegFile).use { editor ->
-            editor.getStringValue(EOS_OVERLAY_REG_KEY, EOS_OVERLAY_REG_VALUE, null) == OVERLAY_WIN_PATH &&
-                RENDERER_EXES.all { exe ->
-                    editor.getStringValue("Software\\Wine\\AppDefaults\\$exe\\Direct3D", "renderer", null) == "no3d"
-                }
+            editor.getStringValue(EOS_OVERLAY_REG_KEY, EOS_OVERLAY_REG_VALUE, null) == OVERLAY_WIN_PATH
         }
     }
 
@@ -205,8 +197,7 @@ class EpicOverlayManager @Inject constructor(
 
     /**
      * Write the EOS overlay path to HKCU\SOFTWARE\Epic Games\EOS\OverlayPath in
-     * [container]'s Wine user.reg, plus the per-exe software-rendering keys for
-     * the overlay's CEF browser.
+     * [container]'s Wine user.reg.
      *
      * Mirrors `add_registry_entries` in legendary/lfs/eos.py for the Wine/prefix
      * code path (HKCU only; Vulkan implicit layers are not set because they do
@@ -217,15 +208,9 @@ class EpicOverlayManager @Inject constructor(
         WineRegistryEditor(userRegFile).use { editor ->
             editor.setCreateKeyIfNotExist(true)
             editor.setStringValue(EOS_OVERLAY_REG_KEY, EOS_OVERLAY_REG_VALUE, OVERLAY_WIN_PATH)
-            for (exe in RENDERER_EXES) {
-                for (dll in RENDERER_BUILTIN_DLLS) {
-                    editor.setStringValue("Software\\Wine\\AppDefaults\\$exe\\DllOverrides", dll, "builtin")
-                }
-                editor.setStringValue("Software\\Wine\\AppDefaults\\$exe\\Direct3D", "renderer", "no3d")
-            }
         }
         Timber.tag("EOSOverlay").d(
-            "Registry updated: HKCU\\$EOS_OVERLAY_REG_KEY\\$EOS_OVERLAY_REG_VALUE = $OVERLAY_WIN_PATH + CEF no3d overrides",
+            "Registry updated: HKCU\\$EOS_OVERLAY_REG_KEY\\$EOS_OVERLAY_REG_VALUE = $OVERLAY_WIN_PATH",
         )
     }
 
