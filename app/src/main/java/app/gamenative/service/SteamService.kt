@@ -57,6 +57,7 @@ import app.gamenative.utils.CaseInsensitiveFileSystem
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.LicenseSerializer
+import app.gamenative.utils.LocaleHelper
 import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
@@ -192,6 +193,13 @@ import java.nio.ByteOrder
 
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
+
+    override fun attachBaseContext(newBase: Context) {
+        PrefManager.init(newBase)
+        val languageCode = PrefManager.appLanguage
+        val context = LocaleHelper.applyLanguage(newBase, languageCode)
+        super.attachBaseContext(context)
+    }
 
     // To view log messages in android logcat properly
     private val logger = object : LogListener {
