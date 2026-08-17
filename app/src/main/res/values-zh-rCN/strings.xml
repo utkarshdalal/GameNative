@@ -2096,6 +2096,8 @@
     <string name="rec_disclosure_body">为提供个性化推荐，我们会将你玩过的游戏分享给 GOG。可随时在设置中关闭。</string>
     <string name="rec_disclosure_allow">允许</string>
     <string name="rec_disclosure_not_now">暂不</string>
+    <string name="rec_teaser_title">发现适合你设备的游戏</string>
+    <string name="rec_teaser_subtitle">点按查看</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">赞助</string>

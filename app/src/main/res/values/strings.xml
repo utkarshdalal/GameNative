@@ -2063,6 +2063,8 @@
     <string name="rec_disclosure_body">For personalized recommendations, we share the games you play with GOG. Turn off anytime in Settings.</string>
     <string name="rec_disclosure_allow">Allow</string>
     <string name="rec_disclosure_not_now">Not now</string>
+    <string name="rec_teaser_title">Discover games for your device</string>
+    <string name="rec_teaser_subtitle">Tap to take a look</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show personalized recommendations. Keeping this on helps support GameNative.</string>
 

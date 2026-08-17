@@ -2072,6 +2072,8 @@
     <string name="rec_disclosure_body">Для персональних рекомендацій ми надаємо ігри, у які ви граєте, сервісу GOG. Вимкнути можна будь-коли в Налаштуваннях.</string>
     <string name="rec_disclosure_allow">Дозволити</string>
     <string name="rec_disclosure_not_now">Не зараз</string>
+    <string name="rec_teaser_title">Відкрийте ігри для вашого пристрою</string>
+    <string name="rec_teaser_subtitle">Торкніться, щоб переглянути</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Спонсовано</string>

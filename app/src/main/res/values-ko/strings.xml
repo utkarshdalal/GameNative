@@ -2076,6 +2076,8 @@
     <string name="rec_disclosure_body">맞춤 추천을 위해 플레이한 게임을 GOG와 공유합니다. 설정에서 언제든지 끌 수 있습니다.</string>
     <string name="rec_disclosure_allow">허용</string>
     <string name="rec_disclosure_not_now">나중에</string>
+    <string name="rec_teaser_title">내 기기에 맞는 게임 찾기</string>
+    <string name="rec_teaser_subtitle">탭하여 살펴보기</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">스폰서</string>

@@ -1199,10 +1199,24 @@ object PrefManager {
         }
 
     private val REC_DISCLOSURE_SHOWN = booleanPreferencesKey("rec_disclosure_shown")
+
+    // Cached in memory because the DataStore write is async: consumers read this back
+    // immediately after granting consent, before the write lands on disk.
+    @Volatile private var recDisclosureShownCache: Boolean? = null
     var recDisclosureShown: Boolean
-        get() = getPref(REC_DISCLOSURE_SHOWN, false)
+        get() = recDisclosureShownCache
+            ?: getPref(REC_DISCLOSURE_SHOWN, false).also { recDisclosureShownCache = it }
         set(value) {
+            recDisclosureShownCache = value
             setPref(REC_DISCLOSURE_SHOWN, value)
+        }
+
+    // Day seed when the user last dismissed the frosted rec teaser ("Not now")
+    private val REC_TEASER_DISMISSED_DAY = longPreferencesKey("rec_teaser_dismissed_day")
+    var recTeaserDismissedDay: Long
+        get() = getPref(REC_TEASER_DISMISSED_DAY, 0L)
+        set(value) {
+            setPref(REC_TEASER_DISMISSED_DAY, value)
         }
 
     // Show dialog when adding custom game folder
