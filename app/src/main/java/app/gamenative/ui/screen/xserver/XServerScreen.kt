@@ -645,13 +645,6 @@ fun XServerScreen(
         xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
-            ?.also {
-                // Immersive sessions must pace by suspending the presenting client's reads —
-                // see setReadSuspensionPacing's kdoc (the guest WSI ignores notification
-                // timing, and the SurfaceControl frame-rate hint doesn't exist once the
-                // OpenXR compositor owns the display).
-                if (immersiveHooks != null) it.setReadSuspensionPacing(true)
-            }
             ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
         // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
         // presents, so SHM-presenting games never pass through it and would

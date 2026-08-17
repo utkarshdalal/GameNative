@@ -57,28 +57,6 @@ public class PresentExtension implements Extension {
         this.eagerIdleRelease = eager;
     }
 
-    // Immersive-only (set by XServerScreen when the session is hosted by ImmersiveXrActivity):
-    // pace presents by suspending the presenting client's socket reads — the same mechanism
-    // MITSHMExtension/ShmFramePacer already use — instead of delaying notifications. Measured
-    // live on a Quest (jdb against the running session): with frameRateLimit=60 armed and both
-    // the CompleteNotify and IdleNotify held to a 60fps timeline, the game still ran at ~72 —
-    // the guest vortek WSI waits on neither notification. And the flat path's other lever, the
-    // SurfaceControl refresh-rate hint, doesn't exist once the OpenXR compositor owns the
-    // display. Read suspension back-pressures through the X socket itself, which no WSI can
-    // ignore; the presented frame is still displayed immediately.
-    private volatile boolean readSuspensionPacing = false;
-
-    public void setReadSuspensionPacing(boolean enabled) {
-        this.readSuspensionPacing = enabled;
-    }
-
-    private void pacePresentByReadSuspension(XClient client, Window window) {
-        long delayNs = com.winlator.xserver.ShmFramePacer.framePresented(window.id);
-        if (delayNs > 0 && client.connectorClient != null) {
-            client.connectorClient.getConnector().pauseClientReads(client.connectorClient, delayNs);
-        }
-    }
-
     private static class PendingIdle {
         Window window; Pixmap pixmap; int serial; int idleFence;
         long targetNs;
@@ -354,27 +332,15 @@ public class PresentExtension implements Extension {
             } else if (vr != null && window.attributes.isMapped()) {
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
                 vr.onUpdateWindowContentDirect(window, pixmap.drawable, xOff, yOff);
-                if (targetFps > 0 && readSuspensionPacing) {
-                    sendIdleNotify(window, pixmap, serial, idleFence);
-                    pacePresentByReadSuspension(client, window);
-                } else if (targetFps > 0) {
-                    scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
-                } else {
-                    sendIdleNotify(window, pixmap, serial, idleFence);
-                }
+                if (targetFps > 0) scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
+                else sendIdleNotify(window, pixmap, serial, idleFence);
             } else {
                 // GL Renderer
                 content.copyArea((short)0, (short)0, xOff, yOff,
                         pixmap.drawable.width, pixmap.drawable.height, pixmap.drawable);
                 sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
-                if (targetFps > 0 && readSuspensionPacing) {
-                    sendIdleNotify(window, pixmap, serial, idleFence);
-                    pacePresentByReadSuspension(client, window);
-                } else if (targetFps > 0) {
-                    scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
-                } else {
-                    sendIdleNotify(window, pixmap, serial, idleFence);
-                }
+                if (targetFps > 0) scheduleIdleNotify(window, pixmap, serial, idleFence, targetFps, vr);
+                else sendIdleNotify(window, pixmap, serial, idleFence);
             }
         }
     }
