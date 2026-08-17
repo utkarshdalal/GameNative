@@ -2067,6 +2067,8 @@
     <string name="rec_disclosure_body">Per consigli personalizzati, condividiamo i giochi a cui giochi con GOG. Puoi disattivarlo in qualsiasi momento nelle Impostazioni.</string>
     <string name="rec_disclosure_allow">Consenti</string>
     <string name="rec_disclosure_not_now">Non ora</string>
+    <string name="rec_teaser_title">Scopri giochi per il tuo dispositivo</string>
+    <string name="rec_teaser_subtitle">Tocca per dare un\'occhiata</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Sponsorizzato</string>

@@ -2077,6 +2077,8 @@
     <string name="rec_disclosure_body">Pentru recomandări personalizate, partajăm jocurile pe care le joci cu GOG. Poți dezactiva oricând din Setări.</string>
     <string name="rec_disclosure_allow">Permite</string>
     <string name="rec_disclosure_not_now">Nu acum</string>
+    <string name="rec_teaser_title">Descoperă jocuri pentru dispozitivul tău</string>
+    <string name="rec_teaser_subtitle">Atinge pentru a arunca o privire</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Sponsorizat</string>

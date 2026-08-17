@@ -1946,6 +1946,8 @@
     <string name="rec_disclosure_body">For personlige anbefalinger deler vi de spil, du spiller, med GOG. Slå fra når som helst i Indstillinger.</string>
     <string name="rec_disclosure_allow">Tillad</string>
     <string name="rec_disclosure_not_now">Ikke nu</string>
+    <string name="rec_teaser_title">Opdag spil til din enhed</string>
+    <string name="rec_teaser_subtitle">Tryk for at kigge</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Sponsoreret</string>

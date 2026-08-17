@@ -1946,6 +1946,8 @@
     <string name="rec_disclosure_body">Para recomendações personalizadas, compartilhamos os jogos que você joga com a GOG. Desative quando quiser nas Configurações.</string>
     <string name="rec_disclosure_allow">Permitir</string>
     <string name="rec_disclosure_not_now">Agora não</string>
+    <string name="rec_teaser_title">Descubra jogos para o seu dispositivo</string>
+    <string name="rec_teaser_subtitle">Toque para dar uma olhada</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Patrocinado</string>

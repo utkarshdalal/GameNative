@@ -2074,6 +2074,8 @@
     <string name="rec_disclosure_body">Aby zapewnić spersonalizowane rekomendacje, udostępniamy ograne przez Ciebie gry serwisowi GOG. Możesz to wyłączyć w Ustawieniach.</string>
     <string name="rec_disclosure_allow">Zezwól</string>
     <string name="rec_disclosure_not_now">Nie teraz</string>
+    <string name="rec_teaser_title">Odkryj gry dla swojego urządzenia</string>
+    <string name="rec_teaser_subtitle">Dotknij, aby zobaczyć</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Sponsorowane</string>

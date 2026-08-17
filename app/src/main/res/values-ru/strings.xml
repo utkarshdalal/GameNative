@@ -2002,6 +2002,8 @@ https://gamenative.app
     <string name="rec_disclosure_body">Для персональных рекомендаций мы передаём игры, в которые вы играете, сервису GOG. Отключить можно в любой момент в Настройках.</string>
     <string name="rec_disclosure_allow">Разрешить</string>
     <string name="rec_disclosure_not_now">Не сейчас</string>
+    <string name="rec_teaser_title">Откройте игры для вашего устройства</string>
+    <string name="rec_teaser_subtitle">Нажмите, чтобы посмотреть</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Спонсировано</string>

@@ -2076,6 +2076,8 @@
     <string name="rec_disclosure_body">Pour des recommandations personnalisées, nous partageons les jeux auxquels vous jouez avec GOG. Désactivable à tout moment dans les Paramètres.</string>
     <string name="rec_disclosure_allow">Autoriser</string>
     <string name="rec_disclosure_not_now">Pas maintenant</string>
+    <string name="rec_teaser_title">Découvrez des jeux pour votre appareil</string>
+    <string name="rec_teaser_subtitle">Appuyez pour jeter un œil</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Sponsorisé</string>
