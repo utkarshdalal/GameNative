@@ -316,7 +316,7 @@
     <string name="performance_hud_fps_limiter_target">Target FPS</string>
     <string name="performance_hud_fps_limiter_off">Unlimited</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Limiter overridden while LSFG is active. Source rate is paced by the multiplier.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Caps the base rate. On-screen rate is the cap times the LSFG multiplier.</string>
     <string name="performance_hud_presets">Presets</string>
     <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -1066,10 +1066,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
-    <string name="settings_info_send_tip_title">Send tip</string>
-    <string name="settings_info_send_tip_subtitle">Contribute to ongoing development</string>
-    <string name="settings_info_ask_tip_title">Ask for tip on startup</string>
-    <string name="settings_info_ask_tip_subtitle">Stops the tip message from appearing</string>
+    <string name="settings_info_send_tip_title">Become a member</string>
+    <string name="settings_info_send_tip_subtitle">Early access to releases, priority help, and more</string>
+    <string name="settings_info_ask_tip_title">Membership offers</string>
+    <string name="settings_info_ask_tip_subtitle">Show occasional offers to become a GameNative member</string>
     <string name="settings_info_source_title">Source code</string>
     <string name="settings_info_source_subtitle">View the source code of this project</string>
     <string name="settings_info_libraries_title">Libraries Used</string>
@@ -1242,9 +1242,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Recent Crash</string>
     <string name="main_recent_crash_message">Sorry about that!\nIt would be nice to know about the recent issue you\'ve had.\nYou can view and export the most recent crash log in the app\'s settings and attach it as a Github issue in the project\'s repository.\nLink to the Github repo is also in settings!</string>
-    <string name="main_thank_you_title">Thank you for using GameNative!</string>
-    <string name="main_thank_you_message">Support open-source PC gaming on Android by sharing the app with your friends or becoming a member on Ko-fi.</string>
-    <string name="main_join_kofi">Join on Ko-fi</string>
+    <string name="main_thank_you_title">Enjoying GameNative?</string>
+    <string name="main_thank_you_message">Become a member today. Members get:\n\n• Early access to new releases\n• Priority help getting your games running\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom $5/month</string>
+    <string name="main_join_kofi">Become a member</string>
+    <string name="pitch_session_title">Enjoying %1$s?</string>
+    <string name="pitch_five_star_title">Glad %1$s ran great!</string>
     <string name="main_share">Share</string>
     <string name="main_share_text">Check out GameNative - play your PC Steam games on Android, with full support for cloud saves!\nhttps://gamenative.app\nJoin the community: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Did the game work?</string>
@@ -2037,6 +2039,8 @@
     <string name="lsfg_flow_scale">Flow scale</string>
     <string name="lsfg_flow_scale_desc">Lower is more stable; higher is smoother but can artifact.</string>
     <string name="lsfg_performance_mode">Performance mode</string>
+    <string name="lsfg_present_mode">Present mode</string>
+    <string name="lsfg_present_mode_desc">Mailbox is recommended. FIFO also works when the output frame rate (fps cap × multiplier) matches the screen refresh rate; below the refresh rate FIFO can look shaky.</string>
     <string name="lsfg_not_supported">Frame generation requires a Bionic container</string>
     <string name="lsfg_install_prompt">Lossless Scaling not installed. Tap to install. Only known to work on Adreno 6xx and above.</string>
     <string name="lsfg_not_in_library">Lossless Scaling not in your Steam library</string>
@@ -2055,20 +2059,12 @@
     <string name="steam_invite_joined">In your game</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
-    <string name="bfg_tab_title">AI FrameGen</string>
-    <string name="bfg_enable">Enable AI frame generation</string>
-    <string name="bfg_description">Built-in AI frame interpolation. No extra purchase needed.</string>
-    <string name="bfg_multiplier">Frame multiplier</string>
-    <string name="bfg_flow_scale">Flow scale</string>
-    <string name="bfg_flow_scale_desc">Lower is faster; higher tracks motion better but costs more GPU.</string>
-    <string name="bfg_model">Model</string>
-    <string name="bfg_model_desc">Clear is sharper but heavier</string>
-    <string name="bfg_model_standard">Standard</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="rec_disclosure_title">Game recommendations</string>
     <string name="rec_disclosure_body">For personalized recommendations, we share the games you play with GOG. Turn off anytime in Settings.</string>
     <string name="rec_disclosure_allow">Allow</string>
     <string name="rec_disclosure_not_now">Not now</string>
+    <string name="rec_teaser_title">Discover games for your device</string>
+    <string name="rec_teaser_subtitle">Tap to take a look</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show personalized recommendations. Keeping this on helps support GameNative.</string>
 

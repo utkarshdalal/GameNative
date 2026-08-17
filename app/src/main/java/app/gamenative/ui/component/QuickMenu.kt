@@ -122,7 +122,6 @@ private object QuickMenuTab {
     const val EFFECTS = 2
     const val CONTROLLER = 3
     const val TOOLS = 4
-    const val BFG = 5
     const val INVITE = 6
     const val POWER = 7
 }
@@ -352,15 +351,17 @@ fun QuickMenu(
     // sits at the dex verifier's register limit and any extra locals there
     // trip a VerifyError at class load (dex methods over 255 registers hit a
     // broken D8 codegen path).
-    val bfgMenu = remember(container?.id) { container?.let { BfgMenuState.createIfAvailable(it) } }
     val inviteMenu = remember(container?.id) { SteamInviteState.createIfAvailable(container) }
+    // Owned here, not plumbed through XServerScreen (register limit; see inviteMenu).
+    var lsfgPresentMode by remember(container?.id) {
+        mutableStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.presentMode(it) } ?: "mailbox")
+    }
     val isPowerControlAvailable = remember { PowerManager.isPServerAvailable() }
 
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
             when {
                 PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
-                PrefManager.quickMenuLastTab == QuickMenuTab.BFG && bfgMenu == null -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.POWER && !isPowerControlAvailable -> QuickMenuTab.HUD
                 else -> PrefManager.quickMenuLastTab
@@ -370,7 +371,6 @@ fun QuickMenu(
     val selectedTabLabelResId = when (selectedTab) {
         QuickMenuTab.HUD -> R.string.performance_hud
         QuickMenuTab.LSFG -> R.string.lsfg_tab_title
-        QuickMenuTab.BFG -> R.string.bfg_tab_title
         QuickMenuTab.EFFECTS -> R.string.screen_effects
         QuickMenuTab.TOOLS -> R.string.task_manager
         QuickMenuTab.INVITE -> R.string.steam_invite_tab_title
@@ -393,9 +393,6 @@ fun QuickMenu(
     val controllerItemFocusRequester = remember { FocusRequester() }
     val toolsItemFocusRequester = remember { FocusRequester() }
     val lsfgItemFocusRequester = remember { FocusRequester() }
-    val bfgScrollState = rememberScrollState()
-    val bfgTabFocusRequester = remember { FocusRequester() }
-    val bfgItemFocusRequester = remember { FocusRequester() }
     val inviteTabFocusRequester = remember { FocusRequester() }
     val inviteItemFocusRequester = remember { FocusRequester() }
 
@@ -556,20 +553,6 @@ fun QuickMenu(
                                         focusRequester = lsfgTabFocusRequester,
                                     )
                                 }
-                                if (bfgMenu != null) {
-                                    QuickMenuTabButton(
-                                        icon = Icons.Default.Speed,
-                                        contentDescriptionResId = R.string.bfg_tab_title,
-                                        selected = selectedTab == QuickMenuTab.BFG,
-                                        accentColor = PluviaTheme.colors.accentPurple,
-                                        onSelected = {
-                                            selectedTab = QuickMenuTab.BFG
-                                            PrefManager.quickMenuLastTab = selectedTab
-                                        },
-                                        modifier = Modifier.width(56.dp),
-                                        focusRequester = bfgTabFocusRequester,
-                                    )
-                                }
                                 if (inviteMenu != null) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.PersonAdd,
@@ -696,26 +679,17 @@ fun QuickMenu(
                                             onMultiplierChanged = onLsfgMultiplierChanged,
                                             onFlowScaleChanged = onLsfgFlowScaleChanged,
                                             onPerformanceModeChanged = onLsfgPerformanceModeChanged,
+                                            presentMode = lsfgPresentMode,
+                                            onPresentModeChanged = { mode ->
+                                                lsfgPresentMode = mode
+                                                container?.let {
+                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyPresentMode(it, mode)
+                                                }
+                                            },
                                             scrollState = lsfgScrollState,
                                             focusRequester = lsfgItemFocusRequester,
                                             modifier = Modifier.fillMaxSize(),
                                         )
-                                    }
-
-                                    QuickMenuTab.BFG -> {
-                                        if (bfgMenu != null) {
-                                            BionicFgQuickMenuTab(
-                                                multiplier = bfgMenu.multiplier,
-                                                flowScale = bfgMenu.flowScale,
-                                                model = bfgMenu.model,
-                                                onMultiplierChanged = bfgMenu::applyMultiplier,
-                                                onFlowScaleChanged = bfgMenu::applyFlowScale,
-                                                onModelChanged = bfgMenu::applyModel,
-                                                scrollState = bfgScrollState,
-                                                focusRequester = bfgItemFocusRequester,
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
-                                        }
                                     }
 
                                     QuickMenuTab.INVITE -> {
@@ -835,7 +809,6 @@ fun QuickMenu(
                     when (selectedTab) {
                         QuickMenuTab.HUD -> hudItemFocusRequester.requestFocus()
                         QuickMenuTab.LSFG -> lsfgItemFocusRequester.requestFocus()
-                        QuickMenuTab.BFG -> bfgItemFocusRequester.requestFocus()
                         QuickMenuTab.INVITE -> inviteItemFocusRequester.requestFocus()
                         QuickMenuTab.EFFECTS -> effectsItemFocusRequester.requestFocus()
                         QuickMenuTab.POWER -> powerItemFocusRequester.requestFocus()
@@ -984,22 +957,20 @@ private fun PerformanceHudQuickMenuTab(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         // ── FPS Limiter (topmost) ────────────────────────────────────────
-        val limiterControlledByLsfg = lsfgMultiplier >= 2
+        val lsfgActive = lsfgMultiplier >= 2
         QuickMenuToggleRow(
             title = stringResource(R.string.performance_hud_fps_limiter),
-            subtitle = if (limiterControlledByLsfg) {
-                stringResource(R.string.performance_hud_fps_limiter_lsfg_override)
+            subtitle = if (lsfgActive) {
+                stringResource(R.string.performance_hud_fps_limiter_lsfg_base)
             } else null,
-            enabled = fpsLimiterEnabled && !limiterControlledByLsfg,
-            onToggle = {
-                if (!limiterControlledByLsfg) onFpsLimiterEnabledChanged(!fpsLimiterEnabled)
-            },
+            enabled = fpsLimiterEnabled,
+            onToggle = { onFpsLimiterEnabledChanged(!fpsLimiterEnabled) },
             accentColor = accentColor,
             focusRequester = focusRequester,
         )
 
         AnimatedVisibility(
-            visible = fpsLimiterEnabled && !limiterControlledByLsfg,
+            visible = fpsLimiterEnabled,
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut(),
         ) {
@@ -1337,6 +1308,8 @@ private fun LsfgQuickMenuTab(
     onMultiplierChanged: (Int) -> Unit,
     onFlowScaleChanged: (Float) -> Unit,
     onPerformanceModeChanged: (Boolean) -> Unit,
+    presentMode: String,
+    onPresentModeChanged: (String) -> Unit,
     scrollState: ScrollState,
     focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
@@ -1405,104 +1378,27 @@ private fun LsfgQuickMenuTab(
                     onToggle = { onPerformanceModeChanged(!performanceMode) },
                     accentColor = accentColor,
                 )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-    }
-}
-
-@Composable
-private fun BionicFgQuickMenuTab(
-    multiplier: Int,
-    flowScale: Float,
-    model: Int,
-    onMultiplierChanged: (Int) -> Unit,
-    onFlowScaleChanged: (Float) -> Unit,
-    onModelChanged: (Int) -> Unit,
-    scrollState: ScrollState,
-    focusRequester: FocusRequester? = null,
-    modifier: Modifier = Modifier,
-) {
-    val accentColor = PluviaTheme.colors.accentPurple
-    val isEnabled = multiplier >= 2
-
-    Column(
-        modifier = modifier
-            .verticalScroll(scrollState)
-            .focusGroup(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        // ── Multiplier (Off / 2x / 3x / 4x) ───────────────────────────────
-        QuickMenuSectionHeader(
-            title = stringResource(R.string.bfg_multiplier),
-        )
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            listOf(0, 2, 3, 4).forEach { value ->
-                QuickMenuChoiceChip(
-                    text = if (value == 0) "Off" else "${value}x",
-                    selected = multiplier == value || (value == 0 && multiplier < 2),
-                    accentColor = accentColor,
-                    onClick = { onMultiplierChanged(value) },
-                    modifier = Modifier.width(56.dp),
-                    focusRequester = if (value == 0) focusRequester else null,
-                )
-            }
-        }
-
-        AnimatedVisibility(
-            visible = isEnabled,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut(),
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // ── Flow Scale ────────────────────────────────────────────
-                QuickMenuAdjustmentRow(
-                    title = stringResource(R.string.bfg_flow_scale),
-                    subtitle = stringResource(R.string.bfg_flow_scale_desc),
-                    valueText = String.format(java.util.Locale.US, "%.2f", flowScale),
-                    progress = (flowScale - 0.2f) / 0.8f, // 0.2..1.0 → 0..1
-                    onDecrease = {
-                        val next = (flowScale - 0.05f).coerceIn(0.2f, 1.0f)
-                        onFlowScaleChanged(String.format(java.util.Locale.US, "%.2f", next).toFloat())
-                    },
-                    onIncrease = {
-                        val next = (flowScale + 0.05f).coerceIn(0.2f, 1.0f)
-                        onFlowScaleChanged(String.format(java.util.Locale.US, "%.2f", next).toFloat())
-                    },
-                    accentColor = accentColor,
-                )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // ── Model (Standard / Clear) ──────────────────────────────
+                // ── Present Mode (Mailbox / FIFO) ─────────────────────────
                 QuickMenuSectionHeader(
-                    title = stringResource(R.string.bfg_model),
-                    subtitle = stringResource(R.string.bfg_model_desc),
+                    title = stringResource(R.string.lsfg_present_mode),
+                    subtitle = stringResource(R.string.lsfg_present_mode_desc),
                 )
                 Row(
                     modifier = Modifier.padding(horizontal = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    QuickMenuChoiceChip(
-                        text = stringResource(R.string.bfg_model_standard),
-                        selected = model == 0,
-                        accentColor = accentColor,
-                        onClick = { onModelChanged(0) },
-                        modifier = Modifier.width(88.dp),
-                    )
-                    QuickMenuChoiceChip(
-                        text = stringResource(R.string.bfg_model_clear),
-                        selected = model == 1,
-                        accentColor = accentColor,
-                        onClick = { onModelChanged(1) },
-                        modifier = Modifier.width(88.dp),
-                    )
+                    listOf("mailbox" to "Mailbox", "fifo" to "FIFO").forEach { (value, label) ->
+                        QuickMenuChoiceChip(
+                            text = label,
+                            selected = presentMode == value,
+                            accentColor = accentColor,
+                            onClick = { onPresentModeChanged(value) },
+                            modifier = Modifier.width(96.dp),
+                        )
+                    }
                 }
             }
         }
@@ -1510,6 +1406,7 @@ private fun BionicFgQuickMenuTab(
         Spacer(modifier = Modifier.height(12.dp))
     }
 }
+
 
 @Composable
 private fun QuickMenuSectionHeader(

@@ -241,6 +241,8 @@ object PowerManager {
         FanController.stop()
         getDriver().stop()
         isGameStarted = false
+        fpsCapApplier = null
+        frameSampleStride = 1
         containerDir = null
         pinnedGameProcessName = null
         pinnedGamePid = null
@@ -436,7 +438,18 @@ object PowerManager {
      * setting stays the ceiling.
      * @return true when the cap reached a running X server view
      */
+    /** Reroutes cap changes while frame generation owns pacing; declining
+     *  falls through to the engine path. Installed by XServerScreen. */
+    @Volatile
+    var fpsCapApplier: ((Int) -> Boolean)? = null
+
+    /** Frame-ring timestamps per base frame (= LSFG multiplier while frame
+     *  generation runs, 1 otherwise) so frame stats stay in base units. */
+    @Volatile
+    var frameSampleStride: Int = 1
+
     internal fun applyFpsCapToEngines(limitFps: Int): Boolean {
+        fpsCapApplier?.let { if (it(limitFps)) return true }
         val xServerView = PluviaApp.xServerView ?: return false
         val presentExtension = xServerView.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
@@ -444,6 +457,7 @@ object PowerManager {
         val apply = Runnable {
             xServerView.setFrameRateLimit(limitFps)
             presentExtension?.setFrameRateLimit(limitFps)
+            com.winlator.xserver.ShmFramePacer.setFrameRateLimit(limitFps)
         }
         if (Looper.myLooper() == Looper.getMainLooper()) {
             apply.run()
