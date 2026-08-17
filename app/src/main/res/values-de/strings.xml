@@ -346,7 +346,7 @@
     <string name="performance_hud_battery_level_warning">Batteriestand Warnung</string>
     <string name="performance_hud_battery_level_limit">Batteriestand Limit</string>
     <string name="performance_hud_battery_temp_warning">Akkutemperatur-Warnung</string>
-    <string name="performance_hud_battery_temp_limit">Batterie Temp Limit</string>
+    <string name="performance_hud_battery_temp_limit">Akkutemperatur-Limit</string>
     <string name="touchpad_help">Touchpad-Hilfe</string>
     <string name="hide_controls_with_controller">On-Screen-Controller bei Gamepad ausblenden</string>
     <string name="hide_controls_with_controller_description">On-Screen-Steuerung automatisch ausblenden, wenn ein physischer Controller verbunden ist</string>
