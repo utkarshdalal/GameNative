@@ -1066,10 +1066,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
-    <string name="settings_info_send_tip_title">Send tip</string>
-    <string name="settings_info_send_tip_subtitle">Contribute to ongoing development</string>
-    <string name="settings_info_ask_tip_title">Ask for tip on startup</string>
-    <string name="settings_info_ask_tip_subtitle">Stops the tip message from appearing</string>
+    <string name="settings_info_send_tip_title">Become a member</string>
+    <string name="settings_info_send_tip_subtitle">Early access to releases, priority help, and more</string>
+    <string name="settings_info_ask_tip_title">Membership offers</string>
+    <string name="settings_info_ask_tip_subtitle">Show occasional offers to become a GameNative member</string>
     <string name="settings_info_source_title">Source code</string>
     <string name="settings_info_source_subtitle">View the source code of this project</string>
     <string name="settings_info_libraries_title">Libraries Used</string>
@@ -1242,9 +1242,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Recent Crash</string>
     <string name="main_recent_crash_message">Sorry about that!\nIt would be nice to know about the recent issue you\'ve had.\nYou can view and export the most recent crash log in the app\'s settings and attach it as a Github issue in the project\'s repository.\nLink to the Github repo is also in settings!</string>
-    <string name="main_thank_you_title">Thank you for using GameNative!</string>
-    <string name="main_thank_you_message">Support open-source PC gaming on Android by sharing the app with your friends or becoming a member on Ko-fi.</string>
-    <string name="main_join_kofi">Join on Ko-fi</string>
+    <string name="main_thank_you_title">Enjoying GameNative?</string>
+    <string name="main_thank_you_message">Become a member today. Members get:\n\n• Early access to new releases\n• Priority help getting your games running\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom $5/month</string>
+    <string name="main_join_kofi">Become a member</string>
+    <string name="pitch_session_title">Enjoying %1$s?</string>
+    <string name="pitch_five_star_title">Glad %1$s ran great!</string>
     <string name="main_share">Share</string>
     <string name="main_share_text">Check out GameNative - play your PC Steam games on Android, with full support for cloud saves!\nhttps://gamenative.app\nJoin the community: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Did the game work?</string>
