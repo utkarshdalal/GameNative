@@ -21,6 +21,8 @@ import java.io.File
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.channels.FileChannel
+import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
 import java.util.zip.Inflater
 import javax.inject.Inject
@@ -1214,19 +1216,27 @@ class EpicDownloadManager @Inject constructor(
             chunkFile.inputStream().use { input ->
                 input.skip(chunk.offset.toLong())
 
-                RandomAccessFile(outputFile.path, "rw").use { randomAccessFile ->
-                    randomAccessFile.seek(chunk.fileOffset)
+                FileChannel.open(
+                    outputFile.toPath(),
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.CREATE
+                ).use { channel ->
+                    channel.position(chunk.fileOffset)
 
                     val buffer = ByteArray(65536) // 64KB buffer for memory efficiency
+                    val byteBuffer = ByteBuffer.wrap(buffer)
                     var remaining = chunk.size.toLong()
 
                     while (remaining > 0) {
                         val toRead = minOf(remaining, buffer.size.toLong()).toInt()
                         val bytesRead = input.read(buffer, 0, toRead)
-
                         if (bytesRead == -1) break
 
-                        randomAccessFile.write(buffer, 0, bytesRead)
+                        byteBuffer.clear()
+                        byteBuffer.limit(bytesRead)
+                        while (byteBuffer.hasRemaining()) {
+                            channel.write(byteBuffer)
+                        }
                         remaining -= bytesRead
                     }
                 }

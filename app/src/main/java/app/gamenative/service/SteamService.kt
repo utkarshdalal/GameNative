@@ -1964,6 +1964,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             maxDecompress = maxDecompress,
                             parentJob = coroutineContext[Job],
                             autoStartDownload = false,
+                            skipLargeFileAllocation = chunkStagingRedirectDir != null,
                             filesystem = CaseInsensitiveFileSystem(
                                 showDebugLog = false,
                                 chunkStagingRedirect = chunkStagingRedirectDir?.absolutePath?.toPath(),

@@ -68,6 +68,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -591,12 +592,44 @@ internal fun AppScreenContent(
     // Calculate parallax offset based on scroll
     val parallaxOffset = scrollState.value * 0.5f
 
+    var downloadTimeLeftText by remember { mutableStateOf("")}
+
+    val progressListener: (Float) -> Unit = {
+        val downloadStatusMessage = downloadInfo?.getCurrentStatusMessage()
+
+        downloadTimeLeftText = run {
+            val etaMs = downloadInfo?.getEstimatedTimeRemaining()
+            if (etaMs != null && etaMs > 0L) {
+                val totalSeconds = etaMs / 1000
+                val minutesLeft = totalSeconds / 60
+                val secondsPart = totalSeconds % 60
+                "${minutesLeft}m ${secondsPart}s left"
+            } else if (isDownloading && downloadProgress >= 1f) {
+                "Unpacking..."
+            } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
+                downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
+            } else {
+                ""
+            }
+        }
+    }
+
     LaunchedEffect(displayInfo.appId) {
         scrollState.animateScrollTo(0)
     }
 
     LaunchedEffect(Unit) {
         playButtonFocusRequester.requestFocus()
+    }
+
+    LaunchedEffect(downloadInfo) {
+        downloadInfo?.addProgressListener(progressListener)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            downloadInfo?.removeProgressListener(progressListener)
+        }
     }
 
     // Restore focus when options menu, dialogs
@@ -634,28 +667,7 @@ internal fun AppScreenContent(
         }
     }
 
-    // Download progress texts hoisted here so they can be shown inside the button
-    val downloadStatusMessageFlow = remember(downloadInfo) { downloadInfo?.getStatusMessageFlow() }
-    val downloadStatusMessage by (
-        downloadStatusMessageFlow?.collectAsState(initial = downloadStatusMessageFlow.value)
-            ?: remember { mutableStateOf<String?>(null) }
-        )
     val downloadingLabel = stringResource(R.string.downloading)
-    val downloadTimeLeftText = remember(displayInfo.appId, downloadProgress, downloadInfo, isDownloading, downloadStatusMessage) {
-        val etaMs = downloadInfo?.getEstimatedTimeRemaining()
-        if (etaMs != null && etaMs > 0L) {
-            val totalSeconds = etaMs / 1000
-            val minutesLeft = totalSeconds / 60
-            val secondsPart = totalSeconds % 60
-            "${minutesLeft}m ${secondsPart}s left"
-        } else if (isDownloading && downloadProgress >= 1f) {
-            downloadStatusMessage?.takeUnless { it.isBlank() } ?: "Unpacking..."
-        } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
-            downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
-        } else {
-            ""
-        }
-    }
     val downloadSizeText = remember(displayInfo.gameId, downloadProgress, downloadInfo) {
         val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
         if (bytesTotal > 0L) {
