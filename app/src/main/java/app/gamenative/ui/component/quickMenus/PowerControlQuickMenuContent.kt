@@ -51,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.powercontrol.AutoTuningStrategy
+import app.gamenative.powercontrol.PowerControlUiState
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.PowerProfile
 import app.gamenative.powercontrol.drivers.PerformanceDriver

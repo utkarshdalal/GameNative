@@ -17,10 +17,14 @@ import app.gamenative.powercontrol.fan.FanController
 import app.gamenative.powercontrol.metrics.MetricsSnapshot
 import app.gamenative.powercontrol.metrics.PerformanceMetricsCollector
 import app.gamenative.powercontrol.profiles.CpuGovernor
+import app.gamenative.powercontrol.profiles.PerformancePreset
 import com.winlator.container.Container
 import com.winlator.core.ProcessHelper
 import com.winlator.winhandler.WinHandler
 import com.winlator.xserver.extensions.PresentExtension
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import timber.log.Timber
@@ -60,6 +64,13 @@ object PowerManager {
      */
     var currentProfile: PowerProfile? = null
         private set
+
+    /**
+     * Observable UI state for the power control quick menu.
+     * Rebuilt by [refreshUiState] after any setting changes.
+     */
+    private val _uiState = MutableStateFlow<PowerControlUiState>(PowerControlUiState.Loading)
+    val uiState: StateFlow<PowerControlUiState> = _uiState.asStateFlow()
 
     var targetFps: Int = 0
         set(value) {
@@ -541,6 +552,113 @@ object PowerManager {
                     unpinGame()
                 }
             }
+        }
+    }
+
+    /**
+     * Rebuild [uiState] from the current driver and profile state.
+     * Performs blocking sysfs/driver reads, so call it from a background thread.
+     */
+    fun refreshUiState() {
+        try {
+            val cpuInfo = getCpuInfo() ?: return
+
+            val availableGovernors = getAvailableGovernors()
+            val availableFrequencies = getAvailableCpuFrequencies()
+
+            val gpuDisplayInfo = if (isGpuSupported()) {
+                val gpuInfo = getGpuInfo()
+                val availableGpuFrequencies = getAvailableGpuFrequencies()
+                if (gpuInfo != null) {
+                    val maxGpuPowerLevel = if (gpuInfo.numGpuPowerLevels > 0) {
+                        gpuInfo.numGpuPowerLevels - 1
+                    } else 0
+                    val currentFreqIndex = if (availableGpuFrequencies.isNotEmpty()) {
+                        availableGpuFrequencies.indexOfFirst {
+                            it >= gpuInfo.currentGpuValue
+                        }.coerceAtLeast(0)
+                    } else {
+                        0
+                    }
+                    GpuDisplayInfo(
+                        availableFrequencies = availableGpuFrequencies,
+                        currentFreqIndex = currentFreqIndex,
+                        minPowerLevel = gpuInfo.minGpuPowerLevel,
+                        maxPowerLevel = gpuInfo.maxGpuPowerLevel,
+                        maxAvailablePowerLevel = maxGpuPowerLevel
+                    )
+                } else null
+            } else null
+
+            val ramDisplayInfo = if (isBusSupported()) {
+                val busInfo = getBusInfo()
+                if (busInfo != null && busInfo.numBusLevels > 0) {
+                    RamDisplayInfo(
+                        minBusLevel = busInfo.minBusLevel,
+                        maxBusLevel = busInfo.maxBusLevel,
+                        maxAvailableBusLevel = busInfo.numBusLevels - 1
+                    )
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
+
+            val selectedMinFreqIndex = availableFrequencies.indexOfFirst {
+                it >= cpuInfo.currentMinValue
+            }.coerceAtLeast(0)
+            val selectedMaxFreqIndex = availableFrequencies.indexOfFirst {
+                it >= cpuInfo.currentMaxValue
+            }.coerceAtLeast(0)
+
+            val maxGpuPowerLevel = gpuDisplayInfo?.maxAvailablePowerLevel ?: 0
+            val profiles = PowerProfiles.getDefaultProfiles(availableGovernors, availableFrequencies, maxGpuPowerLevel)
+
+            val currentGovernor = CpuGovernor.fromString(cpuInfo.currentGovernor)
+
+            // Try to match current settings against available profiles
+            // Match by PowerManager's current profile name
+            val matchingProfile = profiles.find { profile ->
+                profile.name == (currentProfile?.name ?: PerformancePreset.CUSTOM.displayName)
+            }
+
+            val selectedProfile = (matchingProfile ?: PowerProfile(
+                name = PerformancePreset.CUSTOM.displayName,
+                governor = currentGovernor ?: CpuGovernor.SCHEDUTIL,
+                minCpuFreq = cpuInfo.currentMinValue,
+                maxCpuFreq = cpuInfo.currentMaxValue,
+                minGpuPowerLevel = gpuDisplayInfo?.minPowerLevel ?: 0,
+                maxGpuPowerLevel = gpuDisplayInfo?.maxPowerLevel ?: 0,
+                minBusLevel = ramDisplayInfo?.minBusLevel ?: 0,
+                maxBusLevel = ramDisplayInfo?.maxBusLevel ?: 0
+            )).copy(
+                // Preserve enableAutoTuning and tuningStrategy from PowerManager's current profile
+                enableAutoTuning = currentProfile?.enableAutoTuning ?: true,
+                enablePerClusterTuning = currentProfile?.enablePerClusterTuning ?: true,
+                enableAdaptiveFpsCap = currentProfile?.enableAdaptiveFpsCap ?: true,
+                enableFanControl = currentProfile?.enableFanControl ?: true,
+                enableGamePinning = currentProfile?.enableGamePinning ?: false,
+                tuningStrategy = currentProfile?.tuningStrategy ?: AutoTuningStrategy.POWER_EFFICIENT
+            )
+
+            _uiState.value = PowerControlUiState.Success(
+                cpuInfo = CpuDisplayInfo(
+                    currentGovernor = cpuInfo.currentGovernor,
+                    availableGovernors = availableGovernors,
+                    availableFrequencies = availableFrequencies,
+                    currentMinValue = cpuInfo.currentMinValue,
+                    currentMaxValue = cpuInfo.currentMaxValue,
+                    selectedMinFreqIndex = selectedMinFreqIndex,
+                    selectedMaxFreqIndex = selectedMaxFreqIndex
+                ),
+                gpuInfo = gpuDisplayInfo,
+                selectedProfile = selectedProfile,
+                availableProfiles = profiles,
+                ramInfo = ramDisplayInfo,
+            )
+        } catch (e: Exception) {
+            Timber.tag("PowerManager").e(e, "Failed to refresh power control UI state")
         }
     }
 
