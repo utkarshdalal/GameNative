@@ -631,7 +631,7 @@ fun QuickMenu(
                 // here (directional focus search itself, or nothing was focused to move from).
                 Timber.i("QuickMenu: onPreviewKeyEvent keyCode=%d selectedTab=%d", keyEvent.nativeKeyEvent.keyCode, selectedTab)
                 val currentIndex = availableTabs.indexOf(selectedTab).takeIf { it >= 0 } ?: 0
-                val nextTab = when (keyEvent.nativeKeyEvent.keyCode) {
+                val nextTab = if (immersiveHooks == null) null else when (keyEvent.nativeKeyEvent.keyCode) {
                     KeyEvent.KEYCODE_BUTTON_L1 -> availableTabs[(currentIndex - 1 + availableTabs.size) % availableTabs.size]
                     KeyEvent.KEYCODE_BUTTON_R1 -> availableTabs[(currentIndex + 1) % availableTabs.size]
                     else -> null
@@ -660,7 +660,20 @@ fun QuickMenu(
                     // to land on by mistake, which would silently close the whole menu on the
                     // next DPAD_CENTER. pointerInput+detectTapGestures dismisses on tap without
                     // registering any focus node at all.
-                    .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+                    .then(
+                        // Immersive only: .clickable() adds a screen-sized focus target that
+                        // Compose's directional focus search can land on, silently closing the
+                        // menu on the next DPAD_CENTER. Flat mode keeps master's clickable.
+                        if (immersiveHooks != null) {
+                            Modifier.pointerInput(Unit) { detectTapGestures { onDismiss() } }
+                        } else {
+                            Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onDismiss,
+                            )
+                        },
+                    ),
             )
         }
 
@@ -1265,7 +1278,9 @@ private fun PerformanceHudQuickMenuTab(
         Row(
             modifier = Modifier
                 .padding(horizontal = 8.dp)
-                .focusGroup(),
+                // Immersive only: groups the chips so directional focus enters the row as a
+                // unit. Flat mode keeps master's traversal.
+                .then(if (LocalImmersiveInputBypass.current.active) Modifier.focusGroup() else Modifier),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             PerformanceHudPreset.values().forEach { preset ->
@@ -1301,7 +1316,9 @@ private fun PerformanceHudQuickMenuTab(
         Row(
             modifier = Modifier
                 .padding(horizontal = 8.dp)
-                .focusGroup(),
+                // Immersive only: groups the chips so directional focus enters the row as a
+                // unit. Flat mode keeps master's traversal.
+                .then(if (LocalImmersiveInputBypass.current.active) Modifier.focusGroup() else Modifier),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             listOf(
@@ -1585,7 +1602,9 @@ private fun LsfgQuickMenuTab(
         Row(
             modifier = Modifier
                 .padding(horizontal = 8.dp)
-                .focusGroup(),
+                // Immersive only: groups the chips so directional focus enters the row as a
+                // unit. Flat mode keeps master's traversal.
+                .then(if (LocalImmersiveInputBypass.current.active) Modifier.focusGroup() else Modifier),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             listOf(0, 2, 3, 4).forEach { value ->
@@ -1802,6 +1821,9 @@ private fun QuickMenuCloseButton(
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    // Flat mode keeps master's explicit focusable(); the immersive path drops it to
+    // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
+    val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
     val shape = RoundedCornerShape(14.dp)
 
@@ -1821,6 +1843,10 @@ private fun QuickMenuCloseButton(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
+            )
+            .then(
+                // Flat mode keeps master's second focus target; immersive drops it.
+                if (inputBypass.active) Modifier else Modifier.focusable(interactionSource = interactionSource),
             ),
         contentAlignment = Alignment.Center,
     ) {
@@ -1895,6 +1921,10 @@ private fun QuickMenuTabButton(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onSelected,
+            )
+            .then(
+                // Flat mode keeps master's second focus target; immersive drops it.
+                if (inputBypass.active) Modifier else Modifier.focusable(interactionSource = interactionSource),
             ),
         contentAlignment = Alignment.Center,
     ) {
@@ -1918,6 +1948,9 @@ private fun QuickMenuRailActionButton(
     focusRequester: FocusRequester? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    // Flat mode keeps master's explicit focusable(); the immersive path drops it to
+    // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
+    val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
     val accentColor = if (item.accentColor != Color.Unspecified) {
         item.accentColor
@@ -1963,6 +1996,10 @@ private fun QuickMenuRailActionButton(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
+            )
+            .then(
+                // Flat mode keeps master's second focus target; immersive drops it.
+                if (inputBypass.active) Modifier else Modifier.focusable(interactionSource = interactionSource),
             ),
         contentAlignment = Alignment.Center,
     ) {
@@ -2030,6 +2067,10 @@ private fun QuickMenuChoiceChip(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
+            )
+            .then(
+                // Flat mode keeps master's second focus target; immersive drops it.
+                if (inputBypass.active) Modifier else Modifier.focusable(interactionSource = interactionSource),
             )
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
@@ -2339,6 +2380,9 @@ internal fun QuickMenuToggleRow(
     focusRequester: FocusRequester? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    // Flat mode keeps master's explicit focusable(); the immersive path drops it to
+    // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
+    val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
 
     Row(
@@ -2386,6 +2430,10 @@ internal fun QuickMenuToggleRow(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onToggle,
+            )
+            .then(
+                // Flat mode keeps master's second focus target; immersive drops it.
+                if (inputBypass.active) Modifier else Modifier.focusable(interactionSource = interactionSource),
             )
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -2560,6 +2608,9 @@ private fun QuickMenuItemRow(
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    // Flat mode keeps master's explicit focusable(); the immersive path drops it to
+    // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
+    val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
     val isEnabled = item.enabled
 
@@ -2610,6 +2661,11 @@ private fun QuickMenuItemRow(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
+            )
+            .then(
+                // Flat mode keeps master's second focus target; immersive drops it.
+                if (inputBypass.active) Modifier
+                else Modifier.focusable(enabled = isEnabled, interactionSource = interactionSource),
             )
             .padding(horizontal = 12.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,

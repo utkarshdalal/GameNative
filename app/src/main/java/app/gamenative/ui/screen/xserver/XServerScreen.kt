@@ -2748,7 +2748,7 @@ fun XServerScreen(
         }
 
         if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu && !keepPausedForEditor) {
-            ManualResumeOverlay(onResume = ::resumeFromManualButton)
+            ManualResumeOverlay(onResume = ::resumeFromManualButton, immersive = immersiveHooks != null)
         }
     }
 
@@ -2935,13 +2935,18 @@ fun XServerScreen(
 /** Lives outside XServerScreen because that composable sits at the dex verifier's 255-register
  * limit — its FocusRequester/effect locals tripped a runtime VerifyError when inlined there. */
 @Composable
-private fun ManualResumeOverlay(onResume: () -> Unit) {
+private fun ManualResumeOverlay(onResume: () -> Unit, immersive: Boolean) {
     val resumeButtonFocusRequester = remember { FocusRequester() }
     // Not focusable by default touch-only flows don't need it, but a gamepad's
     // DPAD_CENTER only activates a clickable() that currently has focus — request it
     // as soon as this button appears so it's reachable without a prior focus target.
-    LaunchedEffect(Unit) {
-        runCatching { resumeButtonFocusRequester.requestFocus() }
+    // Immersive only: that Activity's synthetic DPAD_CENTER can only activate a clickable()
+    // that already holds focus, and nothing else here ever grabs it. Flat mode keeps master's
+    // behavior (no focus target, no focus steal) — real gamepads there reach it as before.
+    if (immersive) {
+        LaunchedEffect(Unit) {
+            runCatching { resumeButtonFocusRequester.requestFocus() }
+        }
     }
     Box(
         modifier = Modifier
@@ -2960,8 +2965,15 @@ private fun ManualResumeOverlay(onResume: () -> Unit) {
                     color = androidx.compose.ui.graphics.Color.White,
                     shape = androidx.compose.foundation.shape.CircleShape,
                 )
-                .focusRequester(resumeButtonFocusRequester)
-                .focusable()
+                .then(
+                    if (immersive) {
+                        Modifier
+                            .focusRequester(resumeButtonFocusRequester)
+                            .focusable()
+                    } else {
+                        Modifier
+                    },
+                )
                 .clickable(onClick = onResume),
             contentAlignment = Alignment.Center,
         ) {
