@@ -257,7 +257,10 @@ object IntentLaunchManager {
         // Quick return if no actual overrides
         if (override == base) return base
 
-        return ContainerData(
+        // Copy the container's own configuration so every field the intent does not carry
+        // (wine version, container variant, emulator, ...) keeps its stored value instead of
+        // silently falling back to the ContainerData defaults.
+        return base.copy(
             name = override.name.ifEmpty { base.name },
             screenSize = if (override.screenSize != Container.DEFAULT_SCREEN_SIZE) {
                 override.screenSize
@@ -323,7 +326,6 @@ object IntentLaunchManager {
             enableDInput = if (override.enableDInput != true) override.enableDInput else base.enableDInput,
             dinputMapperType = if (override.dinputMapperType != 1.toByte()) override.dinputMapperType else base.dinputMapperType,
             disableMouseInput = if (override.disableMouseInput != false) override.disableMouseInput else base.disableMouseInput,
-            suspendPolicy = base.suspendPolicy,
             shaderBackend = if (override.shaderBackend != "glsl") override.shaderBackend else base.shaderBackend,
             useGLSL = if (override.useGLSL != "enabled") override.useGLSL else base.useGLSL,
         )
