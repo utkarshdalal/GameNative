@@ -17,10 +17,14 @@ import app.gamenative.powercontrol.fan.FanController
 import app.gamenative.powercontrol.metrics.MetricsSnapshot
 import app.gamenative.powercontrol.metrics.PerformanceMetricsCollector
 import app.gamenative.powercontrol.profiles.CpuGovernor
+import app.gamenative.powercontrol.profiles.PerformancePreset
 import com.winlator.container.Container
 import com.winlator.core.ProcessHelper
 import com.winlator.winhandler.WinHandler
 import com.winlator.xserver.extensions.PresentExtension
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import timber.log.Timber
@@ -60,6 +64,13 @@ object PowerManager {
      */
     var currentProfile: PowerProfile? = null
         private set
+
+    /**
+     * Observable UI state for the power control quick menu.
+     * Rebuilt by [refreshUiState] after any setting changes.
+     */
+    private val _uiState = MutableStateFlow<PowerControlUiState>(PowerControlUiState.Loading)
+    val uiState: StateFlow<PowerControlUiState> = _uiState.asStateFlow()
 
     var targetFps: Int = 0
         set(value) {
@@ -545,6 +556,113 @@ object PowerManager {
     }
 
     /**
+     * Rebuild [uiState] from the current driver and profile state.
+     * Performs blocking sysfs/driver reads, so call it from a background thread.
+     */
+    fun refreshUiState() {
+        try {
+            val cpuInfo = getCpuInfo() ?: return
+
+            val availableGovernors = getAvailableGovernors()
+            val availableFrequencies = getAvailableCpuFrequencies()
+
+            val gpuDisplayInfo = if (isGpuSupported()) {
+                val gpuInfo = getGpuInfo()
+                val availableGpuFrequencies = getAvailableGpuFrequencies()
+                if (gpuInfo != null) {
+                    val maxGpuPowerLevel = if (gpuInfo.numGpuPowerLevels > 0) {
+                        gpuInfo.numGpuPowerLevels - 1
+                    } else 0
+                    val currentFreqIndex = if (availableGpuFrequencies.isNotEmpty()) {
+                        availableGpuFrequencies.indexOfFirst {
+                            it >= gpuInfo.currentGpuValue
+                        }.coerceAtLeast(0)
+                    } else {
+                        0
+                    }
+                    GpuDisplayInfo(
+                        availableFrequencies = availableGpuFrequencies,
+                        currentFreqIndex = currentFreqIndex,
+                        minPowerLevel = gpuInfo.minGpuPowerLevel,
+                        maxPowerLevel = gpuInfo.maxGpuPowerLevel,
+                        maxAvailablePowerLevel = maxGpuPowerLevel
+                    )
+                } else null
+            } else null
+
+            val ramDisplayInfo = if (isBusSupported()) {
+                val busInfo = getBusInfo()
+                if (busInfo != null && busInfo.numBusLevels > 0) {
+                    RamDisplayInfo(
+                        minBusLevel = busInfo.minBusLevel,
+                        maxBusLevel = busInfo.maxBusLevel,
+                        maxAvailableBusLevel = busInfo.numBusLevels - 1
+                    )
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
+
+            val selectedMinFreqIndex = availableFrequencies.indexOfFirst {
+                it >= cpuInfo.currentMinValue
+            }.coerceAtLeast(0)
+            val selectedMaxFreqIndex = availableFrequencies.indexOfFirst {
+                it >= cpuInfo.currentMaxValue
+            }.coerceAtLeast(0)
+
+            val maxGpuPowerLevel = gpuDisplayInfo?.maxAvailablePowerLevel ?: 0
+            val profiles = PowerProfiles.getDefaultProfiles(availableGovernors, availableFrequencies, maxGpuPowerLevel)
+
+            val currentGovernor = CpuGovernor.fromString(cpuInfo.currentGovernor)
+
+            // Try to match current settings against available profiles
+            // Match by PowerManager's current profile name
+            val matchingProfile = profiles.find { profile ->
+                profile.name == (currentProfile?.name ?: PerformancePreset.CUSTOM.displayName)
+            }
+
+            val selectedProfile = (matchingProfile ?: PowerProfile(
+                name = PerformancePreset.CUSTOM.displayName,
+                governor = currentGovernor ?: CpuGovernor.SCHEDUTIL,
+                minCpuFreq = cpuInfo.currentMinValue,
+                maxCpuFreq = cpuInfo.currentMaxValue,
+                minGpuPowerLevel = gpuDisplayInfo?.minPowerLevel ?: 0,
+                maxGpuPowerLevel = gpuDisplayInfo?.maxPowerLevel ?: 0,
+                minBusLevel = ramDisplayInfo?.minBusLevel ?: 0,
+                maxBusLevel = ramDisplayInfo?.maxBusLevel ?: 0
+            )).copy(
+                // Preserve enableAutoTuning and tuningStrategy from PowerManager's current profile
+                enableAutoTuning = currentProfile?.enableAutoTuning ?: true,
+                enablePerClusterTuning = currentProfile?.enablePerClusterTuning ?: true,
+                enableAdaptiveFpsCap = currentProfile?.enableAdaptiveFpsCap ?: true,
+                enableFanControl = currentProfile?.enableFanControl ?: true,
+                enableGamePinning = currentProfile?.enableGamePinning ?: false,
+                tuningStrategy = currentProfile?.tuningStrategy ?: AutoTuningStrategy.POWER_EFFICIENT
+            )
+
+            _uiState.value = PowerControlUiState.Success(
+                cpuInfo = CpuDisplayInfo(
+                    currentGovernor = cpuInfo.currentGovernor,
+                    availableGovernors = availableGovernors,
+                    availableFrequencies = availableFrequencies,
+                    currentMinValue = cpuInfo.currentMinValue,
+                    currentMaxValue = cpuInfo.currentMaxValue,
+                    selectedMinFreqIndex = selectedMinFreqIndex,
+                    selectedMaxFreqIndex = selectedMaxFreqIndex
+                ),
+                gpuInfo = gpuDisplayInfo,
+                selectedProfile = selectedProfile,
+                availableProfiles = profiles,
+                ramInfo = ramDisplayInfo,
+            )
+        } catch (e: Exception) {
+            Timber.tag("PowerManager").e(e, "Failed to refresh power control UI state")
+        }
+    }
+
+    /**
      * Caps currently applied by the cluster tuner, or null when it is not running.
      */
     fun latestTunerCaps(): ClusterTuner.Caps? = clusterTuner?.latestCaps()
@@ -568,9 +686,9 @@ object PowerManager {
     fun isClusterTuningAvailable(): Boolean = getDriver().isPerClusterSupported()
 
     /**
-     * Check if PServer driver is available
+     * Check if driver is supported
      */
-    fun isPServerAvailable(): Boolean = getDriver().isDriverSupported()
+    fun isDriverSupported(): Boolean = getDriver().isDriverSupported()
 
     /**
      * Get display unit preference for frequency values
@@ -838,6 +956,19 @@ object PowerManager {
     }
 
     // ========================================
+    // File I/O
+    // ========================================
+
+    /**
+     * Read a file using the driver's file reading capabilities.
+     * For PServerDriver, this uses root access with fallback to direct file read.
+     * For other drivers, returns null.
+     * @param path The absolute path to the file to read
+     * @return The file contents as a trimmed string, or null if the file cannot be read
+     */
+    fun readFile(path: String): String? = getDriver().readFile(path)
+
+    // ========================================
     // Profile Persistence
     // ========================================
 
@@ -878,11 +1009,36 @@ object PowerManager {
     // ========================================
 
     /**
-     * Pin PulseAudio daemon to dedicated cores.
-     * Strategy varies by cluster count:
-     * - Dual-cluster (e.g., Odin 3): Pin to efficiency/lower-frequency cores to free prime cores for game
-     * - Tri-cluster: Pin to efficiency + performance cores, leave prime for game
-     * - Single-cluster: Pin to all available cores
+     * All CPU cores sorted from lowest to highest frequency.
+     * Order is efficiency, performance, then prime. For dual-cluster devices,
+     * PERFORMANCE is the lower-frequency cluster and PRIME is the higher one.
+     */
+    private fun allCpuCoresSorted(pserver: PServerDriver): List<Int> {
+        return pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY) +
+            pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE) +
+            pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME)
+    }
+
+    /**
+     * The N lowest-frequency cores, reserved for non-game processes
+     * (PulseAudio, Wine infrastructure, etc.).
+     */
+    private fun lowestCores(pserver: PServerDriver, count: Int = 2): List<Int> =
+        allCpuCoresSorted(pserver).take(count)
+
+    /**
+     * Cores the game should use: all cores except the 2 lowest-frequency ones
+     * reserved for audio/background.
+     */
+    private fun gameCores(pserver: PServerDriver): List<Int> {
+        val all = allCpuCoresSorted(pserver)
+        return if (all.size <= 2) all else all.drop(2)
+    }
+
+    /**
+     * Pin PulseAudio daemon to the 2 lowest-frequency cores.
+     * The game is pinned to all remaining cores, so PulseAudio never shares
+     * a CPU with the game.
      */
     private fun pinPulseAudioToDedicatedCores() {
         val driver = getDriver()
@@ -895,21 +1051,12 @@ object PowerManager {
 
                 val audioPid = driver.getProcessId("libpulseaudio.so")
                 if (audioPid != null) {
-                    val clusterCount = driver.getCpuClusterCount()
-                    val effCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY)
-                    val perfCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
-
-                    // Choose cores based on cluster configuration
-                    val audioCores = when (clusterCount) {
-                        1 -> perfCores // Single cluster: use all cores
-                        2 -> effCores  // Dual cluster: use lower-frequency cores, save prime for game
-                        else -> effCores + perfCores // Tri+ cluster: use eff + perf, save prime for game
-                    }
+                    val audioCores = lowestCores(driver, 2)
 
                     if (audioCores.isNotEmpty()) {
-                        val success = driver.setCpuAffinityByCores(audioPid, audioCores.take(2))
+                        val success = driver.setCpuAffinityByCores(audioPid, audioCores)
                         if (success) {
-                            Timber.tag("PowerManager").i("Pinned PulseAudio (PID: $audioPid) to CPU ${audioCores.take(2)} ($clusterCount clusters)")
+                            Timber.tag("PowerManager").i("Pinned PulseAudio (PID: $audioPid) to CPU $audioCores")
                         }
                     }
                 } else {
@@ -922,11 +1069,9 @@ object PowerManager {
     }
 
     /**
-     * Pin Background processes for optimal game performance.
-     * Strategy varies by cluster count:
-     * - Dual-cluster (e.g., Odin 3): Pin to efficiency/lower-frequency cores to free prime cores for game
-     * - Tri-cluster: Pin to efficiency + performance cores, leave prime for game
-     * - Single-cluster: Pin to all available cores
+     * Pin Wine/background processes to the 2 lowest-frequency cores.
+     * The game is pinned to all remaining cores, so these processes never
+     * share a CPU with the game.
      */
     fun pinBackgroundProcesses() {
         val driver = getDriver()
@@ -937,68 +1082,52 @@ object PowerManager {
                 // Wait for Wine to fully initialize
                 Thread.sleep(2000)
 
-                val clusterCount = driver.getCpuClusterCount()
-                val effCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY)
-                val perfCores = driver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
+                val backgroundCores = lowestCores(driver, 2)
 
-                // Determine Wine infrastructure cores based on cluster configuration
-                val wineCores = when (clusterCount) {
-                    1 -> perfCores // Single cluster: use all cores
-                    2 -> effCores  // Dual cluster: use lower-frequency cores, save prime for game
-                    else -> effCores + perfCores // Tri+ cluster: use eff + perf, save prime for game
-                }
-
-                if (wineCores.isEmpty()) {
-                    Timber.tag("PowerManager").w("No cores available for Wine pinning")
+                if (backgroundCores.isEmpty()) {
+                    Timber.tag("PowerManager").w("No cores available for background pinning")
                     return@Thread
                 }
 
-                // Pin wineserver to Wine infrastructure cores (critical for Wine IPC)
+                // Pin wineserver to the background cores (critical for Wine IPC)
                 driver.findRunningProcesses("wineserver")
                     .firstOrNull { it.second.endsWith("wineserver") }?.let {
-                    val pid = it.first
-                    val success = driver.setCpuAffinityByCores(pid, wineCores)
-                    if (success) {
-                        Timber.tag("PowerManager").i("Pinned wineserver (PID: $pid) to CPUs ${wineCores.joinToString()}")
-                    }
-                }
-
-                // Pin winhandler to Wine infrastructure cores
-                driver.findRunningProcesses("winhandler.exe")
-                    .firstOrNull { it.second.endsWith("winhandler.exe") }?.let {
-                    val pid = it.first
-                    val success = driver.setCpuAffinityByCores(pid, wineCores)
-                    if (success) {
-                        Timber.tag("PowerManager").i("Pinned winhandler.exe (PID: $pid) to CPUs ${wineCores.joinToString()}")
-                    }
-                }
-
-                // Pin services.exe to first two Wine infrastructure cores
-                driver.findRunningProcesses("services.exe")
-                    .firstOrNull { it.second.endsWith("services.exe") }?.let {
-                    val pid = it.first
-                    val serviceCores = wineCores.take(2)
-                    if (serviceCores.isNotEmpty()) {
-                        val success = driver.setCpuAffinityByCores(pid, serviceCores)
+                        val pid = it.first
+                        val success = driver.setCpuAffinityByCores(pid, backgroundCores)
                         if (success) {
-                            Timber.tag("PowerManager").i("Pinned services.exe (PID: $pid) to CPUs ${serviceCores.joinToString()}")
+                            Timber.tag("PowerManager").i("Pinned wineserver (PID: $pid) to CPUs ${backgroundCores.joinToString()}")
                         }
                     }
-                }
 
-                // Pin libsteambootstrap.so to first two Wine infrastructure cores
+                // Pin winhandler to the background cores
+                driver.findRunningProcesses("winhandler.exe")
+                    .firstOrNull { it.second.endsWith("winhandler.exe") }?.let {
+                        val pid = it.first
+                        val success = driver.setCpuAffinityByCores(pid, backgroundCores)
+                        if (success) {
+                            Timber.tag("PowerManager").i("Pinned winhandler.exe (PID: $pid) to CPUs ${backgroundCores.joinToString()}")
+                        }
+                    }
+
+                // Pin services.exe to the background cores
+                driver.findRunningProcesses("services.exe")
+                    .firstOrNull { it.second.endsWith("services.exe") }?.let {
+                        val pid = it.first
+                        val success = driver.setCpuAffinityByCores(pid, backgroundCores)
+                        if (success) {
+                            Timber.tag("PowerManager").i("Pinned services.exe (PID: $pid) to CPUs ${backgroundCores.joinToString()}")
+                        }
+                    }
+
+                // Pin libsteambootstrap.so to the background cores
                 driver.findRunningProcesses("libsteambootstrap.so")
                     .firstOrNull { it.second.contains("libsteambootstrap.so") }?.let {
                         val pid = it.first
-                        val serviceCores = wineCores.take(2)
-                        if (serviceCores.isNotEmpty()) {
-                            val success = driver.setCpuAffinityByCores(pid, serviceCores)
-                            if (success) {
-                                Timber.tag("PowerManager").i("Pinned libsteambootstrap.so (PID: $pid) to CPUs ${serviceCores.joinToString()}")
-                            }
+                        val success = driver.setCpuAffinityByCores(pid, backgroundCores)
+                        if (success) {
+                            Timber.tag("PowerManager").i("Pinned libsteambootstrap.so (PID: $pid) to CPUs ${backgroundCores.joinToString()}")
                         }
                     }
-
             } catch (e: Exception) {
                 Timber.tag("PowerManager").e(e, "Failed to pin Wine infrastructure")
             }
@@ -1134,20 +1263,12 @@ object PowerManager {
     }
 
     /**
-     * Cores a pinned game runs on.
-     * - Single-cluster: all cores
-     * - Dual-cluster: all cores (efficiency + performance)
-     * - Tri-cluster and up: performance + prime cores, efficiency left for background work
+     * Cores a pinned game runs on: all cores except the 2 lowest-frequency ones,
+     * which are reserved for PulseAudio and other background/Wine processes.
+     * This applies uniformly to single, dual, and tri-cluster devices.
      */
     private fun gamePinCores(pserver: PServerDriver): List<Int> {
-        val effCores = pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY)
-        val perfCores = pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE)
-        val primeCores = pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME)
-        return when (pserver.getCpuClusterCount()) {
-            1 -> perfCores
-            2 -> effCores + perfCores
-            else -> perfCores + primeCores
-        }
+        return gameCores(pserver)
     }
 
     /**
@@ -1165,21 +1286,6 @@ object PowerManager {
                         it.second.startsWith("A:\\$processName", ignoreCase = true)
                     )
         }?.first
-    }
-
-    /**
-     * Re-pins the recorded game process onto [cores] and records the new mask.
-     * @return true when the pin reached the process
-     */
-    internal fun applyGameAffinity(cores: List<Int>): Boolean {
-        if (!ownsGameAffinity) return false
-        val pid = pinnedGamePid ?: return false
-        val processName = pinnedGameProcessName ?: return false
-        if (cores.isEmpty()) return false
-
-        val success = applyAffinity(processName, pid, cores)
-        if (success) pinnedGameCores = cores
-        return success
     }
 
     /**
@@ -1319,11 +1425,6 @@ object PowerManager {
             Timber.tag("PowerManager").w(it, "Failed to read the CPU list of ${dir.absolutePath}")
         }.getOrNull()
     }
-
-    /**
-     * The PServer driver of this session, or null when another driver is in use.
-     */
-    internal fun pserverDriver(): PServerDriver? = driver as? PServerDriver
 
     /**
      * Get the profile file path for the current container
