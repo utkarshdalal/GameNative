@@ -92,6 +92,16 @@ public class WinHandler {
     private RandomAccessFile gamepadRaf;
     private RandomAccessFile[] extraGamepadRafs = new RandomAccessFile[MAX_PLAYERS - 1];
 
+    private static volatile WinHandler activeInstance;
+
+    /**
+     * The handler of the running session, or null while no session is up. Published from
+     * {@link #start()} so code outside the UI layer can reach the live handler.
+     */
+    public static WinHandler getActiveInstance() {
+        return activeInstance;
+    }
+
     private static final int OFF_LX = 4;
     private static final int OFF_LY = 6;
     private static final int OFF_RX = 8;
@@ -493,6 +503,7 @@ public class WinHandler {
 
     public void stop() {
         this.running = false;
+        if (activeInstance == this) activeInstance = null;
         for (int slot = 0; slot < MAX_PLAYERS; slot++) {
             rumbleTeardown(slot);
         }
@@ -738,6 +749,7 @@ public class WinHandler {
         }
         refreshControllerMappings();
         this.running = true;
+        activeInstance = this;
         startSendThread();
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
@@ -1013,6 +1025,7 @@ public class WinHandler {
                 controller = getControllerFromSlot(slot);
             }
             if (controller != null && controller.getDeviceId() == event.getDeviceId()) {
+                if (event.getRepeatCount() > 0) return true;
                 handled = controller.updateStateFromKeyEvent(event); // or motion variant
                 Log.d(TAG, "Key routed deviceId=" + event.getDeviceId()
                         + " keyCode=" + event.getKeyCode()

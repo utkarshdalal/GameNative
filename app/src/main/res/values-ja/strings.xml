@@ -305,7 +305,7 @@
     <string name="performance_hud_fps_limiter_target">ターゲットFPS</string>
     <string name="performance_hud_fps_limiter_off">無制限</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">LSFG がアクティブな間、リミッターはオーバーライドされます。ソースレートは乗数によって調整されます。</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">ベースフレームレートを制限します。画面上のレートは上限×LSFG倍率です。</string>
     <string name="performance_hud_presets">プリセット</string>
     <string name="performance_hud_presets_description">一般的な HUD レイアウトをすばやく切り替えます。</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -574,6 +574,8 @@
     <string name="downloading">ダウンロード中...</string>
     <string name="calculating_time">計算中...</string>
     <string name="download_failed_try_again">ダウンロードに失敗しました。もう一度試してください。</string>
+    <string name="download_preparing">ダウンロードを準備中...</string>
+    <string name="download_preparing_depots">デポを準備中 (%1$d/%2$d)</string>
     <string name="update_available">利用可能なアップデート</string>
     <string name="game_information">ゲーム情報</string>
     <string name="status">状態</string>
@@ -943,10 +945,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">情報</string>
-    <string name="settings_info_send_tip_title">チップを送信する</string>
-    <string name="settings_info_send_tip_subtitle">継続的な開発に貢献する</string>
-    <string name="settings_info_ask_tip_title">起動時にヒントを求める</string>
-    <string name="settings_info_ask_tip_subtitle">ヒントメッセージの表示を停止します</string>
+    <string name="settings_info_send_tip_title">メンバーになる</string>
+    <string name="settings_info_send_tip_subtitle">リリースへの早期アクセス、優先サポートなど</string>
+    <string name="settings_info_ask_tip_title">メンバーシップのご案内</string>
+    <string name="settings_info_ask_tip_subtitle">GameNativeメンバーになるための案内を時々表示します</string>
     <string name="settings_info_source_title">ソースコード</string>
     <string name="settings_info_source_subtitle">このプロジェクトのソースコードを表示する</string>
     <string name="settings_info_libraries_title">使用するライブラリ</string>
@@ -1120,9 +1122,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">最近のクラッシュ</string>
     <string name="main_recent_crash_message">申し訳ありません!\n\' が抱えていた最近の問題について知っていただければ幸いです。\nアプリ\'s の設定で最新のクラッシュ ログを表示およびエクスポートし、プロジェクト ZESC4ZZs リポジトリの Github の問題として添付できます。\nGithub リポジトリへのリンクも設定にあります。</string>
-    <string name="main_thank_you_title">GameNative をご利用いただきありがとうございます。</string>
-    <string name="main_thank_you_message">アプリを友達と共有するか、Ko-fi のメンバーになることで、Android でのオープンソース PC ゲームをサポートします。</string>
-    <string name="main_join_kofi">Ko-fi に参加する</string>
+    <string name="main_thank_you_title">GameNativeを楽しんでいますか？</string>
+    <string name="main_thank_you_message">今すぐメンバーになりましょう。メンバー特典:\n\n• 新リリースへの早期アクセス\n• ゲームを動かすための優先サポート\n• Discordのプレミアムロールと限定チャンネル\n• …その他多数\n\n月額$5から</string>
+    <string name="main_join_kofi">メンバーになる</string>
+    <string name="pitch_session_title">%1$sを楽しんでいますか？</string>
+    <string name="pitch_five_star_title">%1$sが快適に動いてよかったです！</string>
     <string name="main_share">共有</string>
     <string name="main_share_text">GameNative をチェックしてください - クラウド セーブを完全にサポートし、Android で PC Steam ゲームをプレイしましょう!\nhttps://gamenative.app\nコミュニティに参加してください: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">ゲームはうまくいきましたか？</string>
@@ -1517,8 +1521,9 @@
     <string name="option_manage_workshop">ワークショップの管理</string>
     <!-- Recommendations -->
     <string name="recommended_badge">推奨</string>
-    <string name="recommended_buy_button">それをチェックしてください</string>
-    <string name="recommended_support_message">このリンクから購入すると、GameNative の開発をサポートできます。</string>
+    <string name="recommended_buy_button">GOGで購入</string>
+    <string name="rec_buy_with_price">%1$s · GOGで購入</string>
+    <string name="recommended_support_message">このリンクから購入された場合、当社は手数料を受け取ります。</string>
     <string name="recommended_about_heading">このゲームについて</string>
     <string name="recommended_review_count">%1$s のレビューに基づく</string>
     <string name="review_overwhelmingly_positive">圧倒的にポジティブ</string>
@@ -1535,6 +1540,8 @@
     <string name="lsfg_flow_scale">流量スケール</string>
     <string name="lsfg_flow_scale_desc">低いほど安定します。高いほどスムーズになりますが、アーティファクトが発生する可能性があります。</string>
     <string name="lsfg_performance_mode">パフォーマンスモード</string>
+    <string name="lsfg_present_mode">プレゼントモード</string>
+    <string name="lsfg_present_mode_desc">Mailbox を推奨します。FIFO は出力フレームレート（fps上限×倍率）が画面のリフレッシュレートと一致する場合にも使えますが、リフレッシュレートを下回ると揺れて見えることがあります。</string>
     <string name="lsfg_not_supported">フレーム生成には Bionic コンテナが必要です</string>
     <string name="lsfg_install_prompt">Lossless Scaling がインストールされていません。タップしてインストールしてください。Adreno 6xx 以降でのみ動作確認されています。</string>
     <string name="lsfg_not_in_library">Lossless Scaling が Steam ライブラリにありません</string>
@@ -2028,6 +2035,8 @@
     <string name="rec_disclosure_body">パーソナライズされたおすすめのため、プレイしたゲームを GOG と共有します。設定でいつでもオフにできます。</string>
     <string name="rec_disclosure_allow">許可</string>
     <string name="rec_disclosure_not_now">後で</string>
+    <string name="rec_teaser_title">あなたのデバイスに合うゲームを発見</string>
+    <string name="rec_teaser_subtitle">タップしてチェック</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">スポンサー</string>
@@ -2122,16 +2131,6 @@
     <string name="nexus_invalid_source_metadata">この管理対象 Mod はソース情報が不完全なため、再試行できません。</string>
     <string name="nexus_archive_memory_error">このアーカイブには Android の上限を超えるメモリが必要です。GameNative を更新してから再試行するか、より小さいファイルを選択してください。</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">AIフレーム生成</string>
-    <string name="bfg_enable">AIフレーム生成を有効にする</string>
-    <string name="bfg_description">内蔵のAIフレーム補間。追加購入は不要です。</string>
-    <string name="bfg_multiplier">フレーム倍率</string>
-    <string name="bfg_flow_scale">フロースケール</string>
-    <string name="bfg_flow_scale_desc">低いほど高速です。高いほど動きを正確に追跡しますが、GPU負荷が増えます。</string>
-    <string name="bfg_model">モデル</string>
-    <string name="bfg_model_desc">Clear はより鮮明ですが負荷が高くなります</string>
-    <string name="bfg_model_standard">標準</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">招待</string>
     <string name="steam_invite_header">フレンド %1$d 人</string>
     <string name="steam_invite_joinable">このゲームをプレイ中 — タップして参加</string>
@@ -2157,4 +2156,43 @@
     <string name="radial_menu_preset_common">一般</string>
     <string name="radial_menu_preset_weapons">武器</string>
     <string name="gesture_action_open_radial_menu">ラジアルメニューを開く</string>
+
+    <!-- Power Control -->
+    <string name="power_control">パフォーマンス制御</string>
+    <string name="power_control_info">CPU周波数スケーリングとガバナー設定を制御します。PServerサービスが必要です。</string>
+    <string name="power_control_driver">ドライバー：%s</string>
+    <string name="power_control_profiles">パフォーマンスプロファイル</string>
+    <string name="power_control_governor">CPUガバナー</string>
+    <string name="power_control_current_frequencies">現在の周波数</string>
+    <string name="power_control_frequencies">周波数設定</string>
+    <string name="power_control_cpu_min_freq">最小CPU周波数</string>
+    <string name="power_control_cpu_max_freq">最大CPU周波数</string>
+    <string name="power_control_gpu_freq">GPU周波数</string>
+    <string name="power_control_gpu_min_power">最小GPUパワー</string>
+    <string name="power_control_gpu_max_power">最大GPUパワー</string>
+    <string name="power_control_ram_min_power">最小RAM周波数</string>
+    <string name="power_control_ram_max_power">最大RAM周波数</string>
+    <string name="power_control_available_frequencies">利用可能な周波数</string>
+    <string name="power_control_auto_tuning">自動調整</string>
+    <string name="power_control_auto_tuning_desc">より安定したパフォーマンス、より長いバッテリー駆動時間、発熱の低減：ゲームに合わせてCPUとGPUを自動調整します。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_adaptive_fps">FPSの自動低減</string>
+    <string name="power_control_adaptive_fps_desc">ゲームがFPS上限に達しない場合は上限を下げ、フレーム間隔を安定させます。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_tuning_mode">調整モード</string>
+    <string name="power_control_tuning_mode_per_cluster">クラスターごと（Retroid Pocket 6で動作確認済み）</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID制御</string>
+    <string name="power_control_fan_control">ファン制御</string>
+    <string name="power_control_fan_control_desc">ファンの騒音を最小限に抑えて目標温度を維持します。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_game_pinning">ゲームのコア固定</string>
+    <string name="power_control_game_pinning_desc">ゲームを高速なCPUコアに固定します。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_hud_show_fan">ファン回転数を表示</string>
+    <string name="power_control_hud_show_tuner">チューニングのクロック上限を表示</string>
+    <string name="power_control_tuning_strategy">調整ストラテジー</string>
+    <string name="power_control_strategy_balanced">バランス</string>
+    <string name="power_control_strategy_balanced_desc">すべてのコンポーネントを均等に調整して最高の総合パフォーマンスを実現</string>
+    <string name="power_control_strategy_power_efficient">省電力</string>
+    <string name="power_control_strategy_power_efficient_desc">ボトルネック以外のコンポーネントを低減して電力を節約</string>
+    <string name="power_control_strategy_aggressive">アグレッシブ</string>
+    <string name="power_control_strategy_aggressive_desc">検出されたボトルネックのパフォーマンスを最大化</string>
+    <string name="power_control_strategy_conservative">保守的</string>
+    <string name="power_control_strategy_conservative_desc">安定性を重視した漸進的な調整</string>
 </resources>

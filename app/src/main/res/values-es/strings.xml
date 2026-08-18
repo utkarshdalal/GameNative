@@ -328,7 +328,7 @@
     <string name="performance_hud_fps_limiter_target">FPS objetivo</string>
     <string name="performance_hud_fps_limiter_off">Ilimitado</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Limitador anulado mientras LSFG está activo. La tasa de origen está controlada por el multiplicador.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Limita la tasa base. La tasa en pantalla es el límite multiplicado por el multiplicador de LSFG.</string>
     <string name="performance_hud_presets">Preajustes</string>
     <string name="performance_hud_presets_description">Cambia rápidamente entre diseños de HUD comunes.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -608,6 +608,8 @@
     <string name="downloading">Descargando…</string>
     <string name="calculating_time">Calculando…</string>
     <string name="download_failed_try_again">Descarga fallida, inténtalo de nuevo.</string>
+    <string name="download_preparing">Preparando la descarga…</string>
+    <string name="download_preparing_depots">Preparando depósitos (%1$d/%2$d)</string>
     <string name="update_available">Actualización disponible</string>
     <string name="game_information">Información del juego</string>
     <string name="status">Estado</string>
@@ -981,10 +983,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Información</string>
-    <string name="settings_info_send_tip_title">Enviar propina</string>
-    <string name="settings_info_send_tip_subtitle">Contribuye al desarrollo continuo.</string>
-    <string name="settings_info_ask_tip_title">Pedir propina al inicio</string>
-    <string name="settings_info_ask_tip_subtitle">Evita que aparezca el mensaje de propina.</string>
+    <string name="settings_info_send_tip_title">Hazte miembro</string>
+    <string name="settings_info_send_tip_subtitle">Acceso anticipado a versiones, ayuda prioritaria y más</string>
+    <string name="settings_info_ask_tip_title">Ofertas de membresía</string>
+    <string name="settings_info_ask_tip_subtitle">Mostrar ofertas ocasionales para hacerte miembro de GameNative</string>
     <string name="settings_info_source_title">Código fuente</string>
     <string name="settings_info_source_subtitle">Ve el código fuente de este proyecto.</string>
     <string name="settings_info_libraries_title">Librerías utilizadas</string>
@@ -1100,9 +1102,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Fallo reciente</string>
     <string name="main_recent_crash_message">¡Lo sentimos!\nSería de gran ayuda conocer el problema reciente que has tenido.\nPuedes ver y exportar el registro del fallo más reciente en los ajustes de la aplicación y adjuntarlo como un \'issue\' de GitHub en el repositorio del proyecto.\n¡El enlace al repositorio de GitHub también está en los ajustes!</string>
-    <string name="main_thank_you_title">¡Gracias por usar GameNative!</string>
-    <string name="main_thank_you_message">Apoya el proyecto de código abierto para juegos de PC en Android compartiendo la aplicación con tus amigos o haciéndote miembro en Ko-fi.</string>
-    <string name="main_join_kofi">Apoyar en Ko-fi</string>
+    <string name="main_thank_you_title">¿Disfrutas de GameNative?</string>
+    <string name="main_thank_you_message">Hazte miembro hoy. Los miembros obtienen:\n\n• Acceso anticipado a nuevas versiones\n• Ayuda prioritaria para hacer funcionar tus juegos\n• Roles premium y canales exclusivos en Discord\n• …y más\n\nDesde $5/mes</string>
+    <string name="main_join_kofi">Hazte miembro</string>
+    <string name="pitch_session_title">¿Disfrutando de %1$s?</string>
+    <string name="pitch_five_star_title">¡Genial que %1$s haya funcionado de maravilla!</string>
     <string name="main_share">Compartir</string>
     <string name="main_share_text">Descubre GameNative: juega a tus juegos Steam de PC en Android, con soporte completo de guardados en la nube.\nhttps://gamenative.app\nÚnete a la comunidad: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">¿Ha funcionado el juego?</string>
@@ -1479,8 +1483,9 @@
 
     <!-- Recommendations -->
     <string name="recommended_badge">Recomendado</string>
-    <string name="recommended_buy_button">Ver juego</string>
-    <string name="recommended_support_message">Comprar a través de este enlace ayuda a apoyar el desarrollo de GameNative.</string>
+    <string name="recommended_buy_button">Comprar en GOG</string>
+    <string name="rec_buy_with_price">%1$s · Comprar en GOG</string>
+    <string name="recommended_support_message">Recibimos una comisión por las compras realizadas a través de este enlace.</string>
     <string name="recommended_about_heading">Sobre este juego</string>
     <string name="recommended_review_count">Basado en %1$s reseñas</string>
     <string name="review_overwhelmingly_positive">Abrumadoramente positivo</string>
@@ -1526,6 +1531,8 @@
     <string name="lsfg_flow_scale">Escala de flujo</string>
     <string name="lsfg_flow_scale_desc">Más bajo es más estable; más alto es más fluido pero puede generar artefactos.</string>
     <string name="lsfg_performance_mode">Modo de rendimiento</string>
+    <string name="lsfg_present_mode">Modo de presentación</string>
+    <string name="lsfg_present_mode_desc">Se recomienda Mailbox. FIFO también funciona cuando la tasa de fotogramas de salida (límite de fps × multiplicador) coincide con la tasa de refresco de la pantalla; por debajo de ella, FIFO puede verse inestable.</string>
     <string name="lsfg_not_supported">La generación de fotogramas requiere un contenedor Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling no está instalado. Toca para instalar. Solo se sabe que funciona en Adreno 6xx y posteriores.</string>
     <string name="lsfg_not_in_library">Lossless Scaling no está en tu biblioteca de Steam</string>
@@ -2069,6 +2076,8 @@
     <string name="rec_disclosure_body">Para ofrecerte recomendaciones personalizadas, compartimos los juegos que juegas con GOG. Puedes desactivarlo cuando quieras en Ajustes.</string>
     <string name="rec_disclosure_allow">Permitir</string>
     <string name="rec_disclosure_not_now">Ahora no</string>
+    <string name="rec_teaser_title">Descubre juegos para tu dispositivo</string>
+    <string name="rec_teaser_subtitle">Toca para echar un vistazo</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Patrocinado</string>
@@ -2165,16 +2174,6 @@
     <string name="nexus_invalid_source_metadata">Este mod gestionado tiene información de origen incompleta y no se puede reintentar.</string>
     <string name="nexus_archive_memory_error">El archivo comprimido necesita más memoria de la que permite Android. Vuelve a intentarlo después de actualizar GameNative o elige un archivo más pequeño.</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">GenFotogramas IA</string>
-    <string name="bfg_enable">Activar generación de fotogramas con IA</string>
-    <string name="bfg_description">Interpolación de fotogramas con IA integrada. No requiere compras adicionales.</string>
-    <string name="bfg_multiplier">Multiplicador de fotogramas</string>
-    <string name="bfg_flow_scale">Escala de flujo</string>
-    <string name="bfg_flow_scale_desc">Más bajo es más rápido; más alto sigue mejor el movimiento pero consume más GPU.</string>
-    <string name="bfg_model">Modelo</string>
-    <string name="bfg_model_desc">Clear es más nítido pero más exigente</string>
-    <string name="bfg_model_standard">Estándar</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">Invitar</string>
     <string name="steam_invite_header">%1$d amigos</string>
     <string name="steam_invite_joinable">En este juego: toca para unirte</string>
@@ -2200,4 +2199,43 @@
     <string name="radial_menu_preset_common">Común</string>
     <string name="radial_menu_preset_weapons">Armas</string>
     <string name="gesture_action_open_radial_menu">Abrir menú radial</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Control de rendimiento</string>
+    <string name="power_control_info">Controla el escalado de frecuencia de la CPU y la configuración del gobernador. Requiere el servicio PServer.</string>
+    <string name="power_control_driver">Controlador: %s</string>
+    <string name="power_control_profiles">Perfiles de rendimiento</string>
+    <string name="power_control_governor">Gobernador de CPU</string>
+    <string name="power_control_current_frequencies">Frecuencias actuales</string>
+    <string name="power_control_frequencies">Configuración de frecuencia</string>
+    <string name="power_control_cpu_min_freq">Frecuencia mínima de CPU</string>
+    <string name="power_control_cpu_max_freq">Frecuencia máxima de CPU</string>
+    <string name="power_control_gpu_freq">Frecuencia de GPU</string>
+    <string name="power_control_gpu_min_power">Potencia mínima de GPU</string>
+    <string name="power_control_gpu_max_power">Potencia máxima de GPU</string>
+    <string name="power_control_ram_min_power">Frecuencia mínima de RAM</string>
+    <string name="power_control_ram_max_power">Frecuencia máxima de RAM</string>
+    <string name="power_control_available_frequencies">Frecuencias disponibles</string>
+    <string name="power_control_auto_tuning">Ajuste automático</string>
+    <string name="power_control_auto_tuning_desc">Rendimiento más estable, mayor duración de batería, menos calor: ajusta automáticamente la CPU y la GPU para tu juego. Verificado en Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Reducción automática de FPS</string>
+    <string name="power_control_adaptive_fps_desc">Reduce el límite de FPS cuando el juego no puede alcanzarlo, para un ritmo estable. Verificado en Retroid Pocket 6.</string>
+    <string name="power_control_tuning_mode">Modo de ajuste</string>
+    <string name="power_control_tuning_mode_per_cluster">Por clúster (verificado en Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">Controlador PID</string>
+    <string name="power_control_fan_control">Control del ventilador</string>
+    <string name="power_control_fan_control_desc">Mantiene una temperatura objetivo con el mínimo ruido del ventilador. Verificado en Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Anclaje del juego</string>
+    <string name="power_control_game_pinning_desc">Mantiene el juego en los núcleos rápidos de la CPU. Verificado en Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Mostrar velocidad del ventilador</string>
+    <string name="power_control_hud_show_tuner">Mostrar límites de frecuencia del ajuste</string>
+    <string name="power_control_tuning_strategy">Estrategia de ajuste</string>
+    <string name="power_control_strategy_balanced">Equilibrado</string>
+    <string name="power_control_strategy_balanced_desc">Ajusta todos los componentes por igual para el mejor rendimiento general</string>
+    <string name="power_control_strategy_power_efficient">Eficiencia energética</string>
+    <string name="power_control_strategy_power_efficient_desc">Reduce componentes que no son cuellos de botella para ahorrar energía</string>
+    <string name="power_control_strategy_aggressive">Agresivo</string>
+    <string name="power_control_strategy_aggressive_desc">Maximiza el rendimiento en cuellos de botella detectados</string>
+    <string name="power_control_strategy_conservative">Conservador</string>
+    <string name="power_control_strategy_conservative_desc">Ajustes graduales con enfoque en estabilidad</string>
 </resources>

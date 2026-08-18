@@ -10,6 +10,7 @@ import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.extensions.BigReqExtension;
 import com.winlator.xserver.extensions.DRI3Extension;
 import com.winlator.xserver.extensions.Extension;
+import com.winlator.xserver.extensions.GenericEventExtension;
 import com.winlator.xserver.extensions.MITSHMExtension;
 import com.winlator.xserver.extensions.PresentExtension;
 import com.winlator.xserver.extensions.SyncExtension;
@@ -44,10 +45,15 @@ public class XServer {
     private WinHandler winHandler;
     private final EnumMap<Lockable, ReentrantLock> locks = new EnumMap<>(Lockable.class);
     private boolean relativeMouseMovement = false;
+    private final boolean mouseDragCompatibilityEnabled;
     private boolean simulateTouchScreen = false;
-    private boolean runningFromGlibc = false;
+    private final boolean runningFromGlibc;
 
     public XServer(ScreenInfo screenInfo, boolean useGlibcContainer) {
+        this(screenInfo, useGlibcContainer, false);
+    }
+
+    public XServer(ScreenInfo screenInfo, boolean useGlibcContainer, boolean mouseDragCompatibilityEnabled) {
         Log.d("XServer", "Creating xServer " + screenInfo);
         this.screenInfo = screenInfo;
         for (Lockable lockable : Lockable.values()) locks.put(lockable, new ReentrantLock());
@@ -60,6 +66,10 @@ public class XServer {
         inputDeviceManager = new InputDeviceManager(this);
         grabManager = new GrabManager(this);
         runningFromGlibc = useGlibcContainer;
+        this.mouseDragCompatibilityEnabled = shouldAdvertiseGenericEvents(
+                useGlibcContainer,
+                mouseDragCompatibilityEnabled
+        );
 
         DesktopHelper.attachTo(this);
         setupExtensions();
@@ -71,6 +81,10 @@ public class XServer {
 
     public void setRelativeMouseMovement(boolean relativeMouseMovement) {
         this.relativeMouseMovement = relativeMouseMovement;
+    }
+
+    public boolean isMouseDragCompatibilityEnabled() {
+        return mouseDragCompatibilityEnabled;
     }
 
     public boolean isSimulateTouchScreen() { return simulateTouchScreen; }
@@ -276,8 +290,20 @@ public class XServer {
         registerExtension(new DRI3Extension(),      nextEventId, nextErrorId);
         registerExtension(new PresentExtension(),   nextEventId, nextErrorId);
         registerExtension(new SyncExtension(),      nextEventId, nextErrorId);
-        if (!runningFromGlibc)
+        if (supportsXInput2(runningFromGlibc)) {
+            if (mouseDragCompatibilityEnabled) {
+                registerExtension(new GenericEventExtension(), nextEventId, nextErrorId);
+            }
             registerExtension(new XInput2Extension(),   nextEventId, nextErrorId);
+        }
+    }
+
+    static boolean supportsXInput2(boolean useGlibcContainer) {
+        return !useGlibcContainer;
+    }
+
+    static boolean shouldAdvertiseGenericEvents(boolean useGlibcContainer, boolean mouseDragCompatibilityEnabled) {
+        return supportsXInput2(useGlibcContainer) && mouseDragCompatibilityEnabled;
     }
 
     public <T extends Extension> T getExtension(int opcode) {

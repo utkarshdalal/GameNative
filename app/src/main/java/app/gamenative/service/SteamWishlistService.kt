@@ -1,5 +1,6 @@
 package app.gamenative.service
 
+import android.content.Context
 import app.gamenative.PrefManager
 import app.gamenative.utils.Net
 import `in`.dragonbra.javasteam.enums.EResult
@@ -8,6 +9,7 @@ import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesWishlistSteam
 import `in`.dragonbra.javasteam.rpc.service.Wishlist
 import `in`.dragonbra.javasteam.steam.handlers.steamunifiedmessages.SteamUnifiedMessages
 import java.net.URLEncoder
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
@@ -39,17 +41,44 @@ object SteamWishlistService {
         }
     }
 
-    // UTM attribution requires the visit and the wishlist add to happen in the same web session;
-    // a CM add after a web visit is a different "browser" to Valve and may not attribute.
-    suspend fun addToWishlistAttributed(appId: Int, campaignId: String): Outcome = withContext(Dispatchers.IO) {
-        val webOk = try {
-            webAttributedAdd(appId, campaignId)
+    // UTM attribution requires the visit and the wishlist add to happen in the same web session.
+    // A real WebView earns the bot-manager/browserid cookies that let Valve count the visit as
+    // tracked, so it is the primary path; the bare-HTTP add and the CM add are fallbacks.
+    suspend fun addToWishlistAttributed(context: Context, appId: Int, campaignId: String): Outcome =
+        withContext(Dispatchers.IO) {
+            val steamId = SteamService.userSteamId?.convertToUInt64()
+            if (steamId != null && steamId != 0L) {
+                var token = PrefManager.accessToken.ifEmpty { null } ?: refreshAccessToken()
+                if (!token.isNullOrEmpty()) {
+                    if (tryWebView(context, steamId, token, appId, campaignId)) return@withContext Outcome.Success
+                    val fresh = refreshAccessToken()
+                    if (!fresh.isNullOrEmpty() && fresh != token &&
+                        tryWebView(context, steamId, fresh, appId, campaignId)
+                    ) {
+                        return@withContext Outcome.Success
+                    }
+                }
+            }
+            val webOk = try {
+                webAttributedAdd(appId, campaignId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "attributed add failed")
+                false
+            }
+            if (webOk) Outcome.Success else addToWishlist(appId)
+        }
+
+    private suspend fun tryWebView(context: Context, steamId: Long, token: String, appId: Int, campaignId: String): Boolean =
+        try {
+            WishlistWebViewAdder.add(context, steamId, token, appId, campaignId)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Timber.tag(TAG).w(e, "attributed add failed")
+            Timber.tag(TAG).w(e, "webview attributed add failed")
             false
         }
-        if (webOk) Outcome.Success else addToWishlist(appId)
-    }
 
     private suspend fun webAttributedAdd(appId: Int, campaignId: String): Boolean {
         val steamId = SteamService.userSteamId?.convertToUInt64() ?: return false
@@ -59,7 +88,7 @@ object SteamWishlistService {
             val cookie = "steamLoginSecure=$steamId%7C%7C${URLEncoder.encode(token, "UTF-8")}; " +
                 "birthtime=0; lastagecheckage=1-January-1970; wantsmatureconctent=1"
             val utmUrl = "https://store.steampowered.com/app/$appId/" +
-                "?utm_source=gamenative&utm_medium=app&utm_campaign=$campaignId"
+                "?utm_source=gamenative&utm_medium=app&utm_campaign=${URLEncoder.encode(campaignId, "UTF-8")}"
             var sessionId: String? = null
             var loggedIn = false
             Net.http.newCall(

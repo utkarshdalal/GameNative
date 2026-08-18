@@ -324,7 +324,7 @@
     <string name="performance_hud_fps_limiter_target">목표 FPS</string>
     <string name="performance_hud_fps_limiter_off">무제한</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">LSFG 사용 중에는 제한기가 비활성화됩니다. 소스 속도는 배수로 결정됩니다.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">기본 프레임 레이트를 제한합니다. 화면 표시 레이트는 제한 × LSFG 배수입니다.</string>
     <string name="performance_hud_presets">프리셋</string>
     <string name="performance_hud_presets_description">일반적인 HUD 레이아웃으로 빠르게 전환합니다.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -570,6 +570,8 @@
     <string name="downloading">다운로드 중...</string>
     <string name="calculating_time">계산 중...</string>
     <string name="download_failed_try_again">다운로드 실패. 다시 시도해 주세요.</string>
+    <string name="download_preparing">다운로드 준비 중...</string>
+    <string name="download_preparing_depots">디포 준비 중 (%1$d/%2$d)</string>
     <string name="update_available">업데이트 사용 가능</string>
     <string name="game_information">게임 정보</string>
     <string name="status">상태</string>
@@ -972,10 +974,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">정보</string>
-    <string name="settings_info_send_tip_title">팁 보내기</string>
-    <string name="settings_info_send_tip_subtitle">지속적인 개발에 기여</string>
-    <string name="settings_info_ask_tip_title">시작 시 팁 요청</string>
-    <string name="settings_info_ask_tip_subtitle">시작 시 팁 메시지가 나타나지 않도록 중지</string>
+    <string name="settings_info_send_tip_title">멤버 되기</string>
+    <string name="settings_info_send_tip_subtitle">릴리스 조기 이용, 우선 지원 등</string>
+    <string name="settings_info_ask_tip_title">멤버십 안내</string>
+    <string name="settings_info_ask_tip_subtitle">GameNative 멤버가 될 수 있는 안내를 가끔 표시합니다</string>
     <string name="settings_info_source_title">소스 코드</string>
     <string name="settings_info_source_subtitle">이 프로젝트의 소스 코드 보기</string>
     <string name="settings_info_libraries_title">사용된 라이브러리</string>
@@ -1089,9 +1091,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">최근 충돌</string>
     <string name="main_recent_crash_message">죄송합니다!\n최근 발생한 문제에 대해 알려주시면 감사하겠습니다.\n앱 설정에서 가장 최근의 충돌 로그를 보고 내보낼 수 있으며 프로젝트 저장소에 Github 이슈로 첨부할 수 있습니다.\nGithub 저장소 링크도 설정에 있습니다!</string>
-    <string name="main_thank_you_title">GameNative를 사용해 주셔서 감사합니다!</string>
-    <string name="main_thank_you_message">친구들과 앱을 공유하거나 Ko-fi에서 회원이 되어 Android에서 오픈 소스 PC 게임을 지원하세요.</string>
-    <string name="main_join_kofi">Ko-fi에서 참여</string>
+    <string name="main_thank_you_title">GameNative를 즐기고 계신가요?</string>
+    <string name="main_thank_you_message">지금 멤버가 되세요. 멤버 혜택:\n\n• 새 릴리스 조기 이용\n• 게임 실행을 위한 우선 지원\n• Discord 프리미엄 역할 및 전용 채널\n• …그 외 다수\n\n월 $5부터</string>
+    <string name="main_join_kofi">멤버 되기</string>
+    <string name="pitch_session_title">%1$s 재미있으신가요?</string>
+    <string name="pitch_five_star_title">%1$s이(가) 잘 실행되어 다행이에요!</string>
     <string name="main_share">공유</string>
     <string name="main_share_text">GameNative를 확인하세요 - 클라우드 저장을 완전히 지원하며 Android에서 PC Steam 게임을 플레이하세요!\nhttps://gamenative.app\n커뮤니티 참여: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">게임이 작동했나요?</string>
@@ -1457,8 +1461,9 @@
 
     <!-- Recommendations -->
     <string name="recommended_badge">추천</string>
-    <string name="recommended_buy_button">게임 보기</string>
-    <string name="recommended_support_message">이 링크를 통해 구매하시면 GameNative 개발을 지원하는 데 도움이 됩니다.</string>
+    <string name="recommended_buy_button">GOG에서 구매</string>
+    <string name="rec_buy_with_price">%1$s · GOG에서 구매</string>
+    <string name="recommended_support_message">이 링크를 통해 구매하시면 저희가 수수료를 받습니다.</string>
     <string name="recommended_about_heading">이 게임에 대하여</string>
     <string name="recommended_review_count">%1$s개의 리뷰 기반</string>
     <string name="review_overwhelmingly_positive">압도적으로 긍정적</string>
@@ -1492,6 +1497,8 @@
     <string name="lsfg_flow_scale">플로우 스케일</string>
     <string name="lsfg_flow_scale_desc">낮을수록 더 안정적이고, 높을수록 더 부드럽지만 아티팩트가 생길 수 있습니다.</string>
     <string name="lsfg_performance_mode">성능 모드</string>
+    <string name="lsfg_present_mode">프레젠트 모드</string>
+    <string name="lsfg_present_mode_desc">Mailbox를 권장합니다. FIFO는 출력 프레임 레이트(fps 제한 × 배수)가 화면 주사율과 일치할 때도 사용할 수 있지만, 주사율보다 낮으면 화면이 흔들려 보일 수 있습니다.</string>
     <string name="lsfg_not_supported">프레임 생성에는 Bionic 컨테이너가 필요합니다</string>
     <string name="lsfg_install_prompt">Lossless Scaling이 설치되지 않았습니다. 탭하여 설치하세요. Adreno 6xx 이상에서만 작동하는 것으로 알려져 있습니다.</string>
     <string name="lsfg_not_in_library">Lossless Scaling이 Steam 라이브러리에 없습니다</string>
@@ -2069,6 +2076,8 @@
     <string name="rec_disclosure_body">맞춤 추천을 위해 플레이한 게임을 GOG와 공유합니다. 설정에서 언제든지 끌 수 있습니다.</string>
     <string name="rec_disclosure_allow">허용</string>
     <string name="rec_disclosure_not_now">나중에</string>
+    <string name="rec_teaser_title">내 기기에 맞는 게임 찾기</string>
+    <string name="rec_teaser_subtitle">탭하여 살펴보기</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">스폰서</string>
@@ -2163,16 +2172,6 @@
     <string name="nexus_invalid_source_metadata">이 관리 모드에는 원본 정보가 부족하여 다시 시도할 수 없습니다.</string>
     <string name="nexus_archive_memory_error">이 압축 파일에는 Android 허용량보다 많은 메모리가 필요합니다. GameNative를 업데이트한 후 다시 시도하거나 더 작은 파일을 선택하세요.</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">AI 프레임 생성</string>
-    <string name="bfg_enable">AI 프레임 생성 사용</string>
-    <string name="bfg_description">내장 AI 프레임 보간. 추가 구매가 필요 없습니다.</string>
-    <string name="bfg_multiplier">프레임 배수</string>
-    <string name="bfg_flow_scale">플로우 스케일</string>
-    <string name="bfg_flow_scale_desc">낮을수록 빠르고, 높을수록 움직임을 더 잘 추적하지만 GPU를 더 사용합니다.</string>
-    <string name="bfg_model">모델</string>
-    <string name="bfg_model_desc">Clear는 더 선명하지만 부하가 큽니다</string>
-    <string name="bfg_model_standard">표준</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">초대</string>
     <string name="steam_invite_header">친구 %1$d명</string>
     <string name="steam_invite_joinable">이 게임 플레이 중 — 탭하여 참가</string>
@@ -2198,4 +2197,43 @@
     <string name="radial_menu_preset_common">일반</string>
     <string name="radial_menu_preset_weapons">무기</string>
     <string name="gesture_action_open_radial_menu">방사형 메뉴 열기</string>
+
+    <!-- Power Control -->
+    <string name="power_control">성능 제어</string>
+    <string name="power_control_info">CPU 주파수 스케일링 및 거버너 설정을 제어합니다. PServer 서비스가 필요합니다.</string>
+    <string name="power_control_driver">드라이버: %s</string>
+    <string name="power_control_profiles">성능 프로필</string>
+    <string name="power_control_governor">CPU 거버너</string>
+    <string name="power_control_current_frequencies">현재 주파수</string>
+    <string name="power_control_frequencies">주파수 설정</string>
+    <string name="power_control_cpu_min_freq">최소 CPU 주파수</string>
+    <string name="power_control_cpu_max_freq">최대 CPU 주파수</string>
+    <string name="power_control_gpu_freq">GPU 주파수</string>
+    <string name="power_control_gpu_min_power">최소 GPU 파워</string>
+    <string name="power_control_gpu_max_power">최대 GPU 파워</string>
+    <string name="power_control_ram_min_power">최소 RAM 주파수</string>
+    <string name="power_control_ram_max_power">최대 RAM 주파수</string>
+    <string name="power_control_available_frequencies">사용 가능한 주파수</string>
+    <string name="power_control_auto_tuning">자동 튜닝</string>
+    <string name="power_control_auto_tuning_desc">더 안정적인 성능, 더 긴 배터리 사용 시간, 더 적은 발열: 게임에 맞춰 CPU와 GPU를 자동으로 조정합니다. Retroid Pocket 6에서 검증되었습니다.</string>
+    <string name="power_control_adaptive_fps">FPS 자동 감소</string>
+    <string name="power_control_adaptive_fps_desc">게임이 FPS 상한에 도달하지 못하면 상한을 낮춰 프레임 간격을 안정시킵니다. Retroid Pocket 6에서 검증되었습니다.</string>
+    <string name="power_control_tuning_mode">튜닝 모드</string>
+    <string name="power_control_tuning_mode_per_cluster">클러스터별 (Retroid Pocket 6에서 검증됨)</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID 제어기</string>
+    <string name="power_control_fan_control">팬 제어</string>
+    <string name="power_control_fan_control_desc">팬 소음을 최소화하며 목표 온도를 유지합니다. Retroid Pocket 6에서 검증되었습니다.</string>
+    <string name="power_control_game_pinning">게임 코어 고정</string>
+    <string name="power_control_game_pinning_desc">게임을 빠른 CPU 코어에 고정합니다. Retroid Pocket 6에서 검증되었습니다.</string>
+    <string name="power_control_hud_show_fan">팬 속도 표시</string>
+    <string name="power_control_hud_show_tuner">튜닝 클록 상한 표시</string>
+    <string name="power_control_tuning_strategy">튜닝 전략</string>
+    <string name="power_control_strategy_balanced">균형</string>
+    <string name="power_control_strategy_balanced_desc">모든 구성 요소를 균등하게 조정하여 최고의 전체 성능 달성</string>
+    <string name="power_control_strategy_power_efficient">전력 효율</string>
+    <string name="power_control_strategy_power_efficient_desc">병목 현상이 아닌 구성 요소를 줄여 전력 절약</string>
+    <string name="power_control_strategy_aggressive">공격적</string>
+    <string name="power_control_strategy_aggressive_desc">감지된 병목 현상의 성능을 최대화</string>
+    <string name="power_control_strategy_conservative">보수적</string>
+    <string name="power_control_strategy_conservative_desc">안정성에 중점을 둔 점진적 조정</string>
 </resources>

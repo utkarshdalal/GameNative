@@ -63,6 +63,7 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
+import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
@@ -261,6 +262,17 @@ private fun consumePendingSteamLoginError(context: Context) {
     SnackbarManager.show(context.getString(R.string.intent_launch_steam_login_failed))
 }
 
+private const val LAUNCH_PITCH_COOLDOWN_MS = 5 * 24 * 60 * 60 * 1000L
+
+private fun trackMembershipPrompt(event: String, trigger: String) {
+    if (PrefManager.usageAnalyticsEnabled) {
+        PostHog.capture(
+            event = event,
+            properties = mapOf("trigger" to trigger),
+        )
+    }
+}
+
 private fun trackGameLaunched(appId: String) {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val gameName = ContainerUtils.resolveGameName(appId)
@@ -292,6 +304,7 @@ fun PluviaMain(
         mutableStateOf(MessageDialogState(false))
     }
     val setMessageDialogState: (MessageDialogState) -> Unit = { msgDialogState = it }
+    var membershipPitchTrigger by rememberSaveable { mutableStateOf("launch") }
 
     var gameFeedbackState by rememberSaveable(stateSaver = GameFeedbackDialogState.Saver) {
         mutableStateOf(GameFeedbackDialogState(false))
@@ -621,6 +634,25 @@ fun PluviaMain(
                         appId = event.appId,
                     )
                 }
+
+                is MainViewModel.MainUiEvent.ShowMembershipPitch -> {
+                    val gameName = ContainerUtils.resolveGameName(event.appId)
+                    PrefManager.lastWarmPitchTime = System.currentTimeMillis()
+                    membershipPitchTrigger = event.trigger
+                    trackMembershipPrompt("membership_prompt_shown", event.trigger)
+                    msgDialogState = MessageDialogState(
+                        visible = true,
+                        type = DialogType.SUPPORT,
+                        title = if (event.trigger == "five_star") {
+                            context.getString(R.string.pitch_five_star_title, gameName)
+                        } else {
+                            context.getString(R.string.pitch_session_title, gameName)
+                        },
+                        message = context.getString(R.string.main_thank_you_message),
+                        confirmBtnText = context.getString(R.string.main_join_kofi),
+                        dismissBtnText = context.getString(R.string.close),
+                    )
+                }
             }
         }
     }
@@ -793,7 +825,7 @@ fun PluviaMain(
         DialogType.SUPPORT -> {
             onConfirmClick = {
                 uriHandler.openUri(Constants.Misc.KO_FI_LINK)
-                PrefManager.tipped = true
+                trackMembershipPrompt("membership_prompt_clicked", membershipPitchTrigger)
                 msgDialogState = MessageDialogState(visible = false)
             }
             onDismissRequest = {
@@ -801,14 +833,6 @@ fun PluviaMain(
             }
             onDismissClick = {
                 msgDialogState = MessageDialogState(visible = false)
-            }
-            onActionClick = {
-                val shareIntent = Intent().apply {
-                    action = Intent.ACTION_SEND
-                    putExtra(Intent.EXTRA_TEXT, context.getString(R.string.main_share_text))
-                    type = "text/plain"
-                }
-                context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.main_share)))
             }
         }
 
@@ -1258,10 +1282,12 @@ fun PluviaMain(
                         // Close the dialog regardless of success
                         Timber.d("GameFeedback: Closing dialog")
                         gameFeedbackState = GameFeedbackDialogState(visible = false)
+                        viewModel.onGameFeedbackResolved(feedbackState.rating)
                     }
                 },
                 onDismiss = {
                     gameFeedbackState = GameFeedbackDialogState(visible = false)
+                    viewModel.onGameFeedbackResolved(null)
                 },
                 onDiscordSupport = {
                     uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
@@ -1373,8 +1399,15 @@ fun PluviaMain(
                                     message = context.getString(R.string.main_recent_crash_message),
                                     confirmBtnText = context.getString(R.string.ok),
                                 )
-                            } else if (!(PrefManager.tipped || BuildConfig.GOLD)) {
+                            } else if (!(PrefManager.tipped || BuildConfig.GOLD) &&
+                                PrefManager.hasAttemptedGameLaunch &&
+                                !MainViewModel.gamePlayedThisSession &&
+                                System.currentTimeMillis() - PrefManager.lastLaunchPitchTime >= LAUNCH_PITCH_COOLDOWN_MS
+                            ) {
                                 viewModel.setAnnoyingDialogShown(true)
+                                PrefManager.lastLaunchPitchTime = System.currentTimeMillis()
+                                membershipPitchTrigger = "launch"
+                                trackMembershipPrompt("membership_prompt_shown", "launch")
                                 msgDialogState = MessageDialogState(
                                     visible = true,
                                     type = DialogType.SUPPORT,
@@ -1382,7 +1415,6 @@ fun PluviaMain(
                                     message = context.getString(R.string.main_thank_you_message),
                                     confirmBtnText = context.getString(R.string.main_join_kofi),
                                     dismissBtnText = context.getString(R.string.close),
-                                    actionBtnText = context.getString(R.string.main_share),
                                 )
                             }
                         }
@@ -1624,6 +1656,15 @@ fun preLaunchApp(
 
         // Clear session metadata on every launch to ensure fresh values
         container.clearSessionMetadata()
+
+        // Apply game-specific fixes before anything reads the container config. Some fixes
+        // change launch-mode flags (e.g. bionic Steam) that the download/dependency steps
+        // below and MainViewModel.launchApp consume, so this must run first.
+        try {
+            GameFixesRegistry.applyFor(context, appId, container)
+        } catch (e: Exception) {
+            Timber.tag("GameFixes").w(e, "Game fixes failed in preLaunchApp")
+        }
 
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
         val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)

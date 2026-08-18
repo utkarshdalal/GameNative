@@ -312,7 +312,7 @@
     <string name="performance_hud_fps_limiter_target">Цільовий FPS</string>
     <string name="performance_hud_fps_limiter_off">Без обмежень</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Обмежувач вимкнено, поки активний LSFG. Частоту джерела задає множник.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Обмежує базову частоту кадрів. Частота на екрані — це ліміт, помножений на множник LSFG.</string>
     <string name="performance_hud_presets">Набори</string>
     <string name="performance_hud_presets_description">Швидко перемикайтеся між типовими макетами HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -559,6 +559,8 @@
     <string name="downloading">Завантаження...</string>
     <string name="calculating_time">Розрахунок...</string>
     <string name="download_failed_try_again">Помилка завантаження. Спробуйте знову.</string>
+    <string name="download_preparing">Підготовка завантаження...</string>
+    <string name="download_preparing_depots">Підготовка депо (%1$d/%2$d)</string>
     <string name="update_available">Доступне оновлення</string>
     <string name="game_information">Інформація про гру</string>
     <string name="status">Статус</string>
@@ -968,10 +970,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Інформація</string>
-    <string name="settings_info_send_tip_title">Підтримати розробників</string>
-    <string name="settings_info_send_tip_subtitle">Сприяйте подальшому розвитку</string>
-    <string name="settings_info_ask_tip_title">Пропонувати підтримку розробників при запуску</string>
-    <string name="settings_info_ask_tip_subtitle">(ВИМК) Приховує повідомлення з пропозицією підтримки</string>
+    <string name="settings_info_send_tip_title">Стати учасником</string>
+    <string name="settings_info_send_tip_subtitle">Ранній доступ до версій, пріоритетна допомога та інше</string>
+    <string name="settings_info_ask_tip_title">Пропозиції членства</string>
+    <string name="settings_info_ask_tip_subtitle">Час від часу показувати пропозиції стати учасником GameNative</string>
     <string name="settings_info_source_title">Вихідний код</string>
     <string name="settings_info_source_subtitle">Переглянути вихідний код застосунку</string>
     <string name="settings_info_libraries_title">Використані бібліотеки</string>
@@ -1087,9 +1089,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Нещодавній збій</string>
     <string name="main_recent_crash_message">Перепрошуємо!\nБуло б добре дізнатися про проблему, з якою Ви нещодавно зіткнулися.\nВи можете переглянути та експортувати останній журнал збою в налаштуваннях застосунку і додати його як проблему (issue) на GitHub у репозиторії проєкту.\nПосилання на репозиторій GitHub також знаходиться в налаштуваннях!</string>
-    <string name="main_thank_you_title">Дякуємо за користування GameNative!</string>
-    <string name="main_thank_you_message">Підтримайте open-source ПК-ігри на Android, поділившись застосунком із друзями або ставши учасником на Ko-fi.</string>
-    <string name="main_join_kofi">Стати учасником на Ko-fi</string>
+    <string name="main_thank_you_title">Подобається GameNative?</string>
+    <string name="main_thank_you_message">Станьте учасником сьогодні. Учасники отримують:\n\n• Ранній доступ до нових версій\n• Пріоритетну допомогу із запуском ігор\n• Преміум-ролі та ексклюзивні канали в Discord\n• …та інше\n\nВід $5/міс.</string>
+    <string name="main_join_kofi">Стати учасником</string>
+    <string name="pitch_session_title">Подобається %1$s?</string>
+    <string name="pitch_five_star_title">Раді, що %1$s чудово працює!</string>
     <string name="main_share">Поділитися</string>
     <string name="main_share_text">Спробуй GameNative — грай у свої Steam-ігри з ПК на Android з повною підтримкою хмарних збережень!\nhttps://gamenative.app\nПриєднуйся до спільноти: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Чи працювала гра?</string>
@@ -1475,8 +1479,9 @@
 
     <!-- Recommendations -->
     <string name="recommended_badge">Рекомендовано</string>
-    <string name="recommended_buy_button">Переглянути гру</string>
-    <string name="recommended_support_message">Покупка за цим посиланням допомагає підтримувати розробку GameNative.</string>
+    <string name="recommended_buy_button">Купити в GOG</string>
+    <string name="rec_buy_with_price">%1$s · Купити в GOG</string>
+    <string name="recommended_support_message">Ми отримуємо комісію з покупок, здійснених за цим посиланням.</string>
     <string name="recommended_about_heading">Про цю гру</string>
     <string name="recommended_review_count">На основі %1$s відгуків</string>
     <string name="review_overwhelmingly_positive">Надзвичайно позитивні</string>
@@ -1522,6 +1527,8 @@
     <string name="lsfg_flow_scale">Масштаб потоку</string>
     <string name="lsfg_flow_scale_desc">Нижче — стабільніше; вище — плавніше, але можуть з’являтися артефакти.</string>
     <string name="lsfg_performance_mode">Режим продуктивності</string>
+    <string name="lsfg_present_mode">Режим виводу</string>
+    <string name="lsfg_present_mode_desc">Рекомендується Mailbox. FIFO також підходить, коли вихідна частота кадрів (ліміт fps × множник) збігається з частотою оновлення екрана; нижче за неї FIFO може виглядати нерівно.</string>
     <string name="lsfg_not_supported">Для генерації кадрів потрібен контейнер Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling не встановлено. Натисніть для встановлення. Відомо, що працює лише на Adreno 6xx і новіших.</string>
     <string name="lsfg_not_in_library">Lossless Scaling немає у вашій бібліотеці Steam</string>
@@ -2065,6 +2072,8 @@
     <string name="rec_disclosure_body">Для персональних рекомендацій ми надаємо ігри, у які ви граєте, сервісу GOG. Вимкнути можна будь-коли в Налаштуваннях.</string>
     <string name="rec_disclosure_allow">Дозволити</string>
     <string name="rec_disclosure_not_now">Не зараз</string>
+    <string name="rec_teaser_title">Відкрийте ігри для вашого пристрою</string>
+    <string name="rec_teaser_subtitle">Торкніться, щоб переглянути</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Спонсовано</string>
@@ -2165,16 +2174,6 @@
     <string name="nexus_invalid_source_metadata">Цей керований мод має неповні відомості про джерело, тому повторити операцію неможливо.</string>
     <string name="nexus_archive_memory_error">Архів потребує більше пам’яті, ніж дозволено Android. Повторіть спробу після оновлення GameNative або виберіть менший файл.</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">ШІ-генерація кадрів</string>
-    <string name="bfg_enable">Увімкнути ШІ-генерацію кадрів</string>
-    <string name="bfg_description">Вбудована ШІ-інтерполяція кадрів. Додаткових покупок не потрібно.</string>
-    <string name="bfg_multiplier">Множник кадрів</string>
-    <string name="bfg_flow_scale">Масштаб потоку</string>
-    <string name="bfg_flow_scale_desc">Менше — швидше; більше — краще відстежує рух, але навантажує GPU сильніше.</string>
-    <string name="bfg_model">Модель</string>
-    <string name="bfg_model_desc">Clear чіткіший, але важчий</string>
-    <string name="bfg_model_standard">Стандартна</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">Запросити</string>
     <string name="steam_invite_header">Друзів: %1$d</string>
     <string name="steam_invite_joinable">У цій грі — торкніться, щоб приєднатися</string>
@@ -2200,4 +2199,43 @@
     <string name="radial_menu_preset_common">Типові</string>
     <string name="radial_menu_preset_weapons">Зброя</string>
     <string name="gesture_action_open_radial_menu">Відкрити радіальне меню</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Керування продуктивністю</string>
+    <string name="power_control_info">Керує масштабуванням частоти процесора та налаштуваннями регулятора. Потрібна служба PServer.</string>
+    <string name="power_control_driver">Драйвер: %s</string>
+    <string name="power_control_profiles">Профілі продуктивності</string>
+    <string name="power_control_governor">Регулятор ЦП</string>
+    <string name="power_control_current_frequencies">Поточні частоти</string>
+    <string name="power_control_frequencies">Налаштування частоти</string>
+    <string name="power_control_cpu_min_freq">Мінімальна частота ЦП</string>
+    <string name="power_control_cpu_max_freq">Максимальна частота ЦП</string>
+    <string name="power_control_gpu_freq">Частота ГП</string>
+    <string name="power_control_gpu_min_power">Мінімальна потужність ГП</string>
+    <string name="power_control_gpu_max_power">Максимальна потужність ГП</string>
+    <string name="power_control_ram_min_power">Мінімальна частота ОЗП</string>
+    <string name="power_control_ram_max_power">Максимальна частота ОЗП</string>
+    <string name="power_control_available_frequencies">Доступні частоти</string>
+    <string name="power_control_auto_tuning">Автоналаштування</string>
+    <string name="power_control_auto_tuning_desc">Стабільніша продуктивність, довша робота від батареї, менше нагрівання: автоматично налаштовує CPU та GPU під гру. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Автоматичне зниження FPS</string>
+    <string name="power_control_adaptive_fps_desc">Знижує ліміт FPS, якщо гра не може його досягти, для стабільного темпу кадрів. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_tuning_mode">Режим налаштування</string>
+    <string name="power_control_tuning_mode_per_cluster">За кластерами (перевірено на Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">ПІД-регулятор</string>
+    <string name="power_control_fan_control">Керування вентилятором</string>
+    <string name="power_control_fan_control_desc">Підтримує задану температуру за мінімального шуму вентилятора. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Закріплення гри</string>
+    <string name="power_control_game_pinning_desc">Утримує гру на швидких ядрах CPU. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Показувати швидкість вентилятора</string>
+    <string name="power_control_hud_show_tuner">Показувати межі частот налаштування</string>
+    <string name="power_control_tuning_strategy">Стратегія налаштування</string>
+    <string name="power_control_strategy_balanced">Збалансована</string>
+    <string name="power_control_strategy_balanced_desc">Рівномірно налаштовує всі компоненти для кращої загальної продуктивності</string>
+    <string name="power_control_strategy_power_efficient">Енергоефективна</string>
+    <string name="power_control_strategy_power_efficient_desc">Знижує неблокуючі компоненти для економії енергії</string>
+    <string name="power_control_strategy_aggressive">Агресивна</string>
+    <string name="power_control_strategy_aggressive_desc">Максимізує продуктивність на виявлених вузьких місцях</string>
+    <string name="power_control_strategy_conservative">Консервативна</string>
+    <string name="power_control_strategy_conservative_desc">Поступові налаштування з акцентом на стабільність</string>
 </resources>

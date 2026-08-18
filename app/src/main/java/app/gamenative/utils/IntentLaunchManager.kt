@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import android.content.Context
 import android.content.Intent
+import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import com.winlator.container.Container
@@ -189,7 +190,7 @@ object IntentLaunchManager {
         // Only include non-default values to avoid overriding existing container settings
         val config = ContainerData(
             name = if (json.has("name")) json.getString("name") else "",
-            screenSize = if (json.has("screenSize")) json.getString("screenSize") else Container.DEFAULT_SCREEN_SIZE,
+            screenSize = if (json.has("screenSize")) json.getString("screenSize") else PluviaApp.getDefaultScreenSize(),
             envVars = if (json.has("envVars")) json.getString("envVars") else Container.DEFAULT_ENV_VARS,
             graphicsDriver = if (json.has("graphicsDriver")) json.getString("graphicsDriver") else Container.DEFAULT_GRAPHICS_DRIVER,
             graphicsDriverVersion = if (json.has("graphicsDriverVersion")) json.getString("graphicsDriverVersion") else "",
@@ -259,7 +260,7 @@ object IntentLaunchManager {
 
         return ContainerData(
             name = override.name.ifEmpty { base.name },
-            screenSize = if (override.screenSize != Container.DEFAULT_SCREEN_SIZE) {
+            screenSize = if (override.screenSize != base.screenSize) {
                 override.screenSize
             } else {
                 base.screenSize

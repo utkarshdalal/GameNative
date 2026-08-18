@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>
@@ -316,7 +316,7 @@
     <string name="performance_hud_fps_limiter_target">Target FPS</string>
     <string name="performance_hud_fps_limiter_off">Unlimited</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Limiter overridden while LSFG is active. Source rate is paced by the multiplier.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Caps the base rate. On-screen rate is the cap times the LSFG multiplier.</string>
     <string name="performance_hud_presets">Presets</string>
     <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -679,6 +679,8 @@
     <string name="downloading">Downloading...</string>
     <string name="calculating_time">Calculating...</string>
     <string name="download_failed_try_again">Download failed. Please try again.</string>
+    <string name="download_preparing">Preparing download...</string>
+    <string name="download_preparing_depots">Preparing depots (%1$d/%2$d)</string>
     <string name="update_available">Update Available</string>
     <string name="game_information">Game Information</string>
     <string name="status">Status</string>
@@ -1064,10 +1066,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
-    <string name="settings_info_send_tip_title">Send tip</string>
-    <string name="settings_info_send_tip_subtitle">Contribute to ongoing development</string>
-    <string name="settings_info_ask_tip_title">Ask for tip on startup</string>
-    <string name="settings_info_ask_tip_subtitle">Stops the tip message from appearing</string>
+    <string name="settings_info_send_tip_title">Become a member</string>
+    <string name="settings_info_send_tip_subtitle">Early access to releases, priority help, and more</string>
+    <string name="settings_info_ask_tip_title">Membership offers</string>
+    <string name="settings_info_ask_tip_subtitle">Show occasional offers to become a GameNative member</string>
     <string name="settings_info_source_title">Source code</string>
     <string name="settings_info_source_subtitle">View the source code of this project</string>
     <string name="settings_info_libraries_title">Libraries Used</string>
@@ -1240,9 +1242,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Recent Crash</string>
     <string name="main_recent_crash_message">Sorry about that!\nIt would be nice to know about the recent issue you\'ve had.\nYou can view and export the most recent crash log in the app\'s settings and attach it as a Github issue in the project\'s repository.\nLink to the Github repo is also in settings!</string>
-    <string name="main_thank_you_title">Thank you for using GameNative!</string>
-    <string name="main_thank_you_message">Support open-source PC gaming on Android by sharing the app with your friends or becoming a member on Ko-fi.</string>
-    <string name="main_join_kofi">Join on Ko-fi</string>
+    <string name="main_thank_you_title">Enjoying GameNative?</string>
+    <string name="main_thank_you_message">Become a member today. Members get:\n\n• Early access to new releases\n• Priority help getting your games running\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom $5/month</string>
+    <string name="main_join_kofi">Become a member</string>
+    <string name="pitch_session_title">Enjoying %1$s?</string>
+    <string name="pitch_five_star_title">Glad %1$s ran great!</string>
     <string name="main_share">Share</string>
     <string name="main_share_text">Check out GameNative - play your PC Steam games on Android, with full support for cloud saves!\nhttps://gamenative.app\nJoin the community: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Did the game work?</string>
@@ -1993,8 +1997,9 @@
     <string name="nexus_profile_name_duplicate">A profile with that name already exists</string>
     <!-- Recommendations -->
     <string name="recommended_badge">Recommended</string>
-    <string name="recommended_buy_button">Check It Out</string>
-    <string name="recommended_support_message">Purchasing through this link helps support the development of GameNative.</string>
+    <string name="recommended_buy_button">Purchase on GOG</string>
+    <string name="rec_buy_with_price">%1$s · Purchase on GOG</string>
+    <string name="recommended_support_message">We earn a commission on purchases made through this link.</string>
     <string name="recommended_about_heading">About This Game</string>
     <string name="recommended_review_count">Based on %1$s reviews</string>
 
@@ -2034,6 +2039,8 @@
     <string name="lsfg_flow_scale">Flow scale</string>
     <string name="lsfg_flow_scale_desc">Lower is more stable; higher is smoother but can artifact.</string>
     <string name="lsfg_performance_mode">Performance mode</string>
+    <string name="lsfg_present_mode">Present mode</string>
+    <string name="lsfg_present_mode_desc">Mailbox is recommended. FIFO also works when the output frame rate (fps cap × multiplier) matches the screen refresh rate; below the refresh rate FIFO can look shaky.</string>
     <string name="lsfg_not_supported">Frame generation requires a Bionic container</string>
     <string name="lsfg_install_prompt">Lossless Scaling not installed. Tap to install. Only known to work on Adreno 6xx and above.</string>
     <string name="lsfg_not_in_library">Lossless Scaling not in your Steam library</string>
@@ -2052,20 +2059,12 @@
     <string name="steam_invite_joined">In your game</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
-    <string name="bfg_tab_title">AI FrameGen</string>
-    <string name="bfg_enable">Enable AI frame generation</string>
-    <string name="bfg_description">Built-in AI frame interpolation. No extra purchase needed.</string>
-    <string name="bfg_multiplier">Frame multiplier</string>
-    <string name="bfg_flow_scale">Flow scale</string>
-    <string name="bfg_flow_scale_desc">Lower is faster; higher tracks motion better but costs more GPU.</string>
-    <string name="bfg_model">Model</string>
-    <string name="bfg_model_desc">Clear is sharper but heavier</string>
-    <string name="bfg_model_standard">Standard</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="rec_disclosure_title">Game recommendations</string>
     <string name="rec_disclosure_body">For personalized recommendations, we share the games you play with GOG. Turn off anytime in Settings.</string>
     <string name="rec_disclosure_allow">Allow</string>
     <string name="rec_disclosure_not_now">Not now</string>
+    <string name="rec_teaser_title">Discover games for your device</string>
+    <string name="rec_teaser_subtitle">Tap to take a look</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show personalized recommendations. Keeping this on helps support GameNative.</string>
 
@@ -2203,4 +2202,43 @@
     <string name="local_mod_copied_progress">Copied %1$s of %2$s</string>
     <string name="nexus_invalid_source_metadata">This managed mod has incomplete source information and cannot be retried.</string>
     <string name="nexus_archive_memory_error">Archive needs more memory than Android allows. Retry after updating GameNative or choose a smaller file.</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Power Control</string>
+    <string name="power_control_info">Control CPU frequency scaling and governor settings. Requires PServer service.</string>
+    <string name="power_control_driver">Driver: %s</string>
+    <string name="power_control_profiles">Power Profiles</string>
+    <string name="power_control_governor">CPU Governor</string>
+    <string name="power_control_current_frequencies">Current Frequencies</string>
+    <string name="power_control_frequencies">Frequency Settings</string>
+    <string name="power_control_cpu_min_freq">Min CPU Frequency</string>
+    <string name="power_control_cpu_max_freq">Max CPU Frequency</string>
+    <string name="power_control_gpu_freq">GPU Frequency</string>
+    <string name="power_control_gpu_min_power">Min GPU Power</string>
+    <string name="power_control_gpu_max_power">Max GPU Power</string>
+    <string name="power_control_ram_min_power">Min RAM Frequency</string>
+    <string name="power_control_ram_max_power">Max RAM Frequency</string>
+    <string name="power_control_available_frequencies">Available Frequencies</string>
+    <string name="power_control_auto_tuning">Auto-Tuning</string>
+    <string name="power_control_auto_tuning_desc">More stable performance, longer battery life, less heat: automatically tunes CPU and GPU for your game. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Automatic FPS reduction</string>
+    <string name="power_control_adaptive_fps_desc">Lowers the FPS cap when the game cannot reach it, for stable pacing. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_tuning_mode">Tuning Mode</string>
+    <string name="power_control_tuning_mode_per_cluster">Per-cluster (verified on Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID Controller</string>
+    <string name="power_control_fan_control">Fan Control</string>
+    <string name="power_control_fan_control_desc">Holds a target temperature with minimum fan noise. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Game Pinning</string>
+    <string name="power_control_game_pinning_desc">Keeps the game on the fast CPU cores. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Show fan speed</string>
+    <string name="power_control_hud_show_tuner">Show tuner clock caps</string>
+    <string name="power_control_tuning_strategy">Tuning Strategy</string>
+    <string name="power_control_strategy_balanced">Balanced</string>
+    <string name="power_control_strategy_balanced_desc">Adjusts all components equally for best overall performance</string>
+    <string name="power_control_strategy_power_efficient">Power Efficient</string>
+    <string name="power_control_strategy_power_efficient_desc">Reduces non-bottleneck components to save power</string>
+    <string name="power_control_strategy_aggressive">Aggressive</string>
+    <string name="power_control_strategy_aggressive_desc">Maximizes performance on detected bottlenecks</string>
+    <string name="power_control_strategy_conservative">Conservative</string>
+    <string name="power_control_strategy_conservative_desc">AdjustsGradual gradually with a focus on stability</string>
 </resources>

@@ -254,7 +254,10 @@ internal fun LibraryListPane(
                         ) {
                             items(
                                 count = state.appInfoList.size,
-                                key = { listIndex -> state.appInfoList[listIndex].appId },
+                                key = { listIndex ->
+                                    val item = state.appInfoList[listIndex]
+                                    if (item.recSource == "hero") "HERO_SLOT" else item.appId
+                                },
                             ) { listIndex ->
                                 val item = state.appInfoList[listIndex]
                                 val animateFade = remember(item.index) { !listState.isScrollInProgress }

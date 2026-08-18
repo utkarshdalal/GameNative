@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.library
 
+import android.content.Context
 import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -79,7 +80,7 @@ internal fun FeaturedCtaButton(
         } else {
             busy = true
             scope.launch {
-                val ok = cta.run()
+                val ok = cta.run(context)
                 busy = false
                 if (ok) {
                     done = true
@@ -139,19 +140,19 @@ private sealed class InAppCta(
 ) {
     abstract suspend fun isDone(): Boolean?
 
-    abstract suspend fun run(): Boolean
+    abstract suspend fun run(context: Context): Boolean
 
     private class Wishlist(appId: Int, private val campaignId: String) : InAppCta(appId, R.string.featured_action_wishlisted) {
         override suspend fun isDone(): Boolean? = SteamWishlistService.isWishlisted(appId)
 
-        override suspend fun run(): Boolean =
-            SteamWishlistService.addToWishlistAttributed(appId, campaignId) is SteamWishlistService.Outcome.Success
+        override suspend fun run(context: Context): Boolean =
+            SteamWishlistService.addToWishlistAttributed(context, appId, campaignId) is SteamWishlistService.Outcome.Success
     }
 
     private class GetDemo(appId: Int) : InAppCta(appId, R.string.featured_action_in_library) {
         override suspend fun isDone(): Boolean = SteamService.isAppInLibrary(appId)
 
-        override suspend fun run(): Boolean = SteamService.requestFreeLicense(appId)
+        override suspend fun run(context: Context): Boolean = SteamService.requestFreeLicense(appId)
     }
 
     companion object {

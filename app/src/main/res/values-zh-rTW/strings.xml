@@ -309,7 +309,7 @@
     <string name="performance_hud_fps_limiter_target">目標 FPS</string>
     <string name="performance_hud_fps_limiter_off">無限制</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">LSFG 啟用時，限制器被覆蓋。來源幀率由倍數控制。</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">限制基礎幀率。螢幕幀率為上限乘以 LSFG 倍數。</string>
     <string name="performance_hud_presets">預設</string>
     <string name="performance_hud_presets_description">快速切換常用 HUD 版面配置。</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -554,6 +554,8 @@
     <string name="downloading">下載中...</string>
     <string name="calculating_time">計算中...</string>
     <string name="download_failed_try_again">下載失敗, 請再試一次</string>
+    <string name="download_preparing">正在準備下載...</string>
+    <string name="download_preparing_depots">正在準備儲存庫 (%1$d/%2$d)</string>
     <string name="update_available">可用更新</string>
     <string name="game_information">遊戲資訊</string>
     <string name="status">狀態</string>
@@ -960,10 +962,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">資訊</string>
-    <string name="settings_info_send_tip_title">捐款支持</string>
-    <string name="settings_info_send_tip_subtitle">為持續的應用程式開發貢獻力量</string>
-    <string name="settings_info_ask_tip_title">啟動時顯示捐款訊息</string>
-    <string name="settings_info_ask_tip_subtitle">停止顯示捐款訊息</string>
+    <string name="settings_info_send_tip_title">成為會員</string>
+    <string name="settings_info_send_tip_subtitle">版本搶先體驗、優先支援等</string>
+    <string name="settings_info_ask_tip_title">會員優惠</string>
+    <string name="settings_info_ask_tip_subtitle">偶爾顯示成為 GameNative 會員的優惠資訊</string>
     <string name="settings_info_source_title">原始碼</string>
     <string name="settings_info_source_subtitle">檢視此專案的原始碼</string>
     <string name="settings_info_libraries_title">使用的函式庫</string>
@@ -1074,9 +1076,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">最近應用程式當機</string>
     <string name="main_recent_crash_message">若能了解您最近遇到的問題, 將有助於我們改善應用程式.\n您可在應用程式設定中檢視並匯出最近的崩潰日誌, 將其附加至專案原始碼儲存庫的 Github Issue中\nGithub 原始碼儲存庫的連結亦位於設定頁面內</string>
-    <string name="main_thank_you_title">感謝您使用GameNative!</string>
-    <string name="main_thank_you_message">透過與朋友分享應用程式或在Ko-fi成為會員，支持Android平台的開源PC遊戲</string>
-    <string name="main_join_kofi">加入Ko-fi</string>
+    <string name="main_thank_you_title">喜歡 GameNative 嗎？</string>
+    <string name="main_thank_you_message">立即成為會員。會員可享有：\n\n• 新版本搶先體驗\n• 遊戲執行問題優先支援\n• Discord 進階身分組與專屬頻道\n• …還有更多\n\n每月 $5 起</string>
+    <string name="main_join_kofi">成為會員</string>
+    <string name="pitch_session_title">喜歡《%1$s》嗎？</string>
+    <string name="pitch_five_star_title">很高興《%1$s》執行順暢！</string>
     <string name="main_share">分享</string>
     <string name="main_share_text">試試 GameNative - 在 Android 上暢玩您的 PC Steam 遊戲，完整支援雲端存檔！\nhttps://gamenative.app\n加入社群：https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">遊戲運作正常嗎?</string>
@@ -1452,8 +1456,9 @@
 
     <!-- Recommendations -->
     <string name="recommended_badge">推薦</string>
-    <string name="recommended_buy_button">查看遊戲</string>
-    <string name="recommended_support_message">透過此連結購買有助於支持 GameNative 的開發。</string>
+    <string name="recommended_buy_button">在 GOG 購買</string>
+    <string name="rec_buy_with_price">%1$s · 在 GOG 購買</string>
+    <string name="recommended_support_message">透過此連結購買，我們會獲得佣金。</string>
     <string name="recommended_about_heading">關於本遊戲</string>
     <string name="recommended_review_count">基於 %1$s 則評價</string>
     <string name="review_overwhelmingly_positive">壓倒性好評</string>
@@ -1569,6 +1574,8 @@
     <string name="lsfg_flow_scale">光流縮放</string>
     <string name="lsfg_flow_scale_desc">數值越低越穩定；越高越流暢，但可能出現偽影。</string>
     <string name="lsfg_performance_mode">效能模式</string>
+    <string name="lsfg_present_mode">呈現模式</string>
+    <string name="lsfg_present_mode_desc">建議使用 Mailbox。當輸出幀率（fps 上限 × 倍數）與螢幕更新率一致時也可使用 FIFO；低於更新率時 FIFO 可能出現晃動。</string>
     <string name="lsfg_not_supported">幀生成需要 Bionic 容器</string>
     <string name="lsfg_install_prompt">Lossless Scaling 未安裝。點擊安裝。已知僅在 Adreno 6xx 及更高版本上可用。</string>
     <string name="lsfg_not_in_library">Lossless Scaling 不在你的 Steam 庫中</string>
@@ -2080,6 +2087,8 @@
     <string name="rec_disclosure_body">為提供個人化推薦，我們會將你玩過的遊戲分享給 GOG。可隨時在設定中關閉。</string>
     <string name="rec_disclosure_allow">允許</string>
     <string name="rec_disclosure_not_now">暫不</string>
+    <string name="rec_teaser_title">探索適合你裝置的遊戲</string>
+    <string name="rec_teaser_subtitle">點按查看</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">贊助</string>
@@ -2174,16 +2183,6 @@
     <string name="nexus_invalid_source_metadata">此受管理模組的來源資訊不完整，無法重試。</string>
     <string name="nexus_archive_memory_error">此壓縮檔需要的記憶體超過 Android 允許的上限。請在更新 GameNative 後重試，或選擇較小的檔案。</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">AI 補幀</string>
-    <string name="bfg_enable">啟用 AI 補幀</string>
-    <string name="bfg_description">內建 AI 補幀。無需額外購買。</string>
-    <string name="bfg_multiplier">影格倍率</string>
-    <string name="bfg_flow_scale">光流縮放</string>
-    <string name="bfg_flow_scale_desc">數值越低速度越快；越高對運動的追蹤越準確，但更耗 GPU。</string>
-    <string name="bfg_model">模型</string>
-    <string name="bfg_model_desc">Clear 更清晰，但負擔更大</string>
-    <string name="bfg_model_standard">標準</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">邀請</string>
     <string name="steam_invite_header">%1$d 位好友</string>
     <string name="steam_invite_joinable">正在玩此遊戲 — 點按加入</string>
@@ -2209,4 +2208,43 @@
     <string name="radial_menu_preset_common">常用</string>
     <string name="radial_menu_preset_weapons">武器</string>
     <string name="gesture_action_open_radial_menu">開啟徑向選單</string>
+
+    <!-- Power Control -->
+    <string name="power_control">效能控制</string>
+    <string name="power_control_info">控制CPU頻率調節和調速器設定。需要PServer服務。</string>
+    <string name="power_control_driver">驅動程式：%s</string>
+    <string name="power_control_profiles">效能設定檔</string>
+    <string name="power_control_governor">CPU調速器</string>
+    <string name="power_control_current_frequencies">目前頻率</string>
+    <string name="power_control_frequencies">頻率設定</string>
+    <string name="power_control_cpu_min_freq">最低CPU頻率</string>
+    <string name="power_control_cpu_max_freq">最高CPU頻率</string>
+    <string name="power_control_gpu_freq">GPU頻率</string>
+    <string name="power_control_gpu_min_power">最低GPU功率</string>
+    <string name="power_control_gpu_max_power">最高GPU功率</string>
+    <string name="power_control_ram_min_power">最低RAM頻率</string>
+    <string name="power_control_ram_max_power">最高RAM頻率</string>
+    <string name="power_control_available_frequencies">可用頻率</string>
+    <string name="power_control_auto_tuning">自動調整</string>
+    <string name="power_control_auto_tuning_desc">更穩定的效能、更長的續航、更少的發熱：自動為遊戲調節 CPU 和 GPU。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_adaptive_fps">自動降低 FPS</string>
+    <string name="power_control_adaptive_fps_desc">當遊戲無法達到 FPS 上限時降低上限，以獲得穩定的影格間隔。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_tuning_mode">調整模式</string>
+    <string name="power_control_tuning_mode_per_cluster">分叢集（已在 Retroid Pocket 6 上驗證）</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID 控制器</string>
+    <string name="power_control_fan_control">風扇控制</string>
+    <string name="power_control_fan_control_desc">以最低的風扇噪音維持目標溫度。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_game_pinning">遊戲核心綁定</string>
+    <string name="power_control_game_pinning_desc">將遊戲保持在高效能 CPU 核心上。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_hud_show_fan">顯示風扇轉速</string>
+    <string name="power_control_hud_show_tuner">顯示調整的頻率上限</string>
+    <string name="power_control_tuning_strategy">調整策略</string>
+    <string name="power_control_strategy_balanced">平衡</string>
+    <string name="power_control_strategy_balanced_desc">均衡調整所有元件以獲得最佳整體效能</string>
+    <string name="power_control_strategy_power_efficient">節能</string>
+    <string name="power_control_strategy_power_efficient_desc">降低非瓶頸元件以節省電量</string>
+    <string name="power_control_strategy_aggressive">積極</string>
+    <string name="power_control_strategy_aggressive_desc">最大化檢測到的瓶頸效能</string>
+    <string name="power_control_strategy_conservative">保守</string>
+    <string name="power_control_strategy_conservative_desc">漸進式調整，注重穩定性</string>
 </resources>
