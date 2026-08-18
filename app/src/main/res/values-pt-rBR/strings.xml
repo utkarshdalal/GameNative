@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Login do Usuário</string>
     <string name="login_2fa">Dois Fatores</string>
@@ -1031,6 +1031,64 @@
     <string name="best_config_apply_anyway">Aplicar mesmo assim</string>
     <string name="best_config_applied_with_defaults">Configuração aplicada, componentes ausentes substituídos por padrões</string>
     <string name="best_config_apply_failed">Falha ao aplicar config: %s</string>
+    <string name="community_config_title">Configurações da comunidade</string>
+    <string name="community_config_close">Fechar configurações da comunidade</string>
+    <string name="community_config_refresh">Atualizar configurações da comunidade</string>
+    <string name="community_config_retry">Tentar novamente</string>
+    <string name="community_config_unknown_error">Erro desconhecido</string>
+    <string name="community_config_unknown">Desconhecido</string>
+    <string name="community_config_load_failed">Não foi possível carregar as configurações da comunidade: %1$s</string>
+    <string name="community_config_game_not_found">Nenhuma entrada de compatibilidade foi encontrada para %1$s</string>
+    <string name="community_config_gpu_unknown">GPU indisponível</string>
+    <plurals name="community_config_result_count">
+        <item quantity="one">%1$d configuração</item>
+        <item quantity="other">%1$d configurações</item>
+    </plurals>
+    <string name="community_config_highest_rated">Mais bem avaliadas</string>
+    <string name="community_config_newest">Mais recentes</string>
+    <string name="community_config_same_device">Mesmo dispositivo</string>
+    <string name="community_config_this_gpu">Mesma GPU</string>
+    <string name="community_config_compatible_gpus">Compatíveis</string>
+    <string name="community_config_load_more">Carregar mais</string>
+    <string name="community_config_no_device_results">Nenhuma configuração foi encontrada para este dispositivo.</string>
+    <string name="community_config_no_gpu_results">Nenhuma configuração foi encontrada para esta GPU.</string>
+    <string name="community_config_no_compatible_results">Nenhuma configuração foi encontrada para GPUs compatíveis.</string>
+    <string name="community_config_show_this_gpu">Mostrar esta GPU</string>
+    <string name="community_config_show_compatible_gpus">Mostrar GPUs compatíveis</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">Detalhes da configuração</string>
+    <string name="community_config_other_gpu_warning">Este resultado usa outra GPU. As configurações de driver e wrapper específicas da GPU não serão aplicadas.</string>
+    <string name="community_config_run_details">Execução de teste</string>
+    <string name="community_config_rating">Avaliação</string>
+    <string name="community_config_average_fps">Média de FPS</string>
+    <string name="community_config_device">Dispositivo</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">Versão do GameNative</string>
+    <string name="community_config_submitted">Enviado em</string>
+    <string name="community_config_session_length">Duração da sessão</string>
+    <string name="community_config_game_store">Loja do jogo</string>
+    <string name="community_config_custom_game">Jogo personalizado</string>
+    <string name="community_config_settings">Configurações</string>
+    <string name="community_config_additional_launch_settings">Configurações adicionais de inicialização</string>
+    <string name="community_config_apply_launch_arguments">Aplicar argumentos de inicialização</string>
+    <string name="community_config_apply_environment_variables">Aplicar variáveis de ambiente</string>
+    <string name="community_config_replaces_existing_value">Substitui o valor atual</string>
+    <string name="community_config_dependencies">Dependências</string>
+    <string name="community_config_dependencies_apply_check">As dependências serão verificadas quando a configuração for aplicada.</string>
+    <string name="community_config_no_downloads">Nenhum download do manifesto é necessário no momento.</string>
+    <string name="community_config_downloads_required">Estes componentes serão baixados automaticamente:\n%1$s</string>
+    <string name="community_config_tags">Tags</string>
+    <string name="community_config_notes">Observações</string>
+    <string name="community_config_apply">Aplicar configuração</string>
+    <string name="community_config_container">Contêiner</string>
+    <string name="community_config_wine">Wine ou Proton</string>
+    <string name="community_config_emulator">Emulador</string>
+    <string name="community_config_wrapper">Wrapper do DirectX</string>
+    <string name="community_config_box64_preset">Predefinição do Box64</string>
+    <string name="community_config_driver">Driver gráfico</string>
     <string name="import_config">Importar configuração</string>
     <string name="export_config">Exportar configuração</string>
 
@@ -1352,6 +1410,7 @@
     <string name="option_submit_feedback">Enviar feedback</string>
     <string name="option_reset_drm">Redefinir DRM</string>
     <string name="option_use_known_config">Usar configuração conhecida</string>
+    <string name="option_browse_community_configs">Procurar configurações da comunidade</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Recomendado</string>
@@ -2056,6 +2115,21 @@
     <string name="steam_invite_joined">Na sua partida</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
+    <string name="radial_menu">Menu radial</string>
+    <string name="radial_menu_settings_title">Menu radial</string>
+    <string name="radial_menu_cancel">Cancelar</string>
+    <string name="radial_menu_slot_count">Espaços</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d espaços ativados</string>
+    <string name="radial_menu_decrease_slots">Diminuir espaços</string>
+    <string name="radial_menu_increase_slots">Aumentar espaços</string>
+    <string name="radial_menu_slots">Espaços da roda</string>
+    <string name="radial_menu_slot_title">Espaço %1$d</string>
+    <string name="radial_menu_slot_label_hint">Rótulo</string>
+    <string name="radial_menu_slot_binding">Atribuição do espaço %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Atribuição: %1$s</string>
+    <string name="radial_menu_preset_common">Comum</string>
+    <string name="radial_menu_preset_weapons">Armas</string>
+    <string name="gesture_action_open_radial_menu">Abrir menu radial</string>
 
     <!-- Power Control -->
     <string name="power_control">Controle de desempenho</string>

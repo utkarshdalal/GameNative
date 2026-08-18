@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">登录</string>
     <string name="login_2fa">双重验证</string>
@@ -1189,6 +1189,63 @@
     <string name="best_config_apply_anyway">仍然应用</string>
     <string name="best_config_applied_with_defaults">配置已应用，缺失组件已替换为默认值</string>
     <string name="best_config_apply_failed">应用配置失败：%s</string>
+    <string name="community_config_title">社区配置</string>
+    <string name="community_config_close">关闭社区配置</string>
+    <string name="community_config_refresh">刷新社区配置</string>
+    <string name="community_config_retry">重试</string>
+    <string name="community_config_unknown_error">未知错误</string>
+    <string name="community_config_unknown">未知</string>
+    <string name="community_config_load_failed">无法加载社区配置：%1$s</string>
+    <string name="community_config_game_not_found">未找到 %1$s 的兼容性条目</string>
+    <string name="community_config_gpu_unknown">GPU 不可用</string>
+    <plurals name="community_config_result_count">
+        <item quantity="other">%1$d 个配置</item>
+    </plurals>
+    <string name="community_config_highest_rated">评分最高</string>
+    <string name="community_config_newest">最新</string>
+    <string name="community_config_same_device">相同设备</string>
+    <string name="community_config_this_gpu">相同 GPU</string>
+    <string name="community_config_compatible_gpus">兼容</string>
+    <string name="community_config_load_more">加载更多</string>
+    <string name="community_config_no_device_results">未找到适用于此设备的配置。</string>
+    <string name="community_config_no_gpu_results">未找到适用于此 GPU 的配置。</string>
+    <string name="community_config_no_compatible_results">未找到适用于兼容 GPU 的配置。</string>
+    <string name="community_config_show_this_gpu">显示此 GPU</string>
+    <string name="community_config_show_compatible_gpus">显示兼容 GPU</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">配置详情</string>
+    <string name="community_config_other_gpu_warning">此结果使用其他 GPU。不会应用 GPU 专用的驱动程序和封装器设置。</string>
+    <string name="community_config_run_details">测试运行</string>
+    <string name="community_config_rating">评分</string>
+    <string name="community_config_average_fps">平均 FPS</string>
+    <string name="community_config_device">设备</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">GameNative 版本</string>
+    <string name="community_config_submitted">提交时间</string>
+    <string name="community_config_session_length">会话时长</string>
+    <string name="community_config_game_store">游戏商店</string>
+    <string name="community_config_custom_game">自定义游戏</string>
+    <string name="community_config_settings">设置</string>
+    <string name="community_config_additional_launch_settings">其他启动设置</string>
+    <string name="community_config_apply_launch_arguments">应用启动参数</string>
+    <string name="community_config_apply_environment_variables">应用环境变量</string>
+    <string name="community_config_replaces_existing_value">替换当前值</string>
+    <string name="community_config_dependencies">依赖项</string>
+    <string name="community_config_dependencies_apply_check">应用配置时将检查依赖项。</string>
+    <string name="community_config_no_downloads">目前无需从清单下载任何内容。</string>
+    <string name="community_config_downloads_required">将自动下载以下组件：\n%1$s</string>
+    <string name="community_config_tags">标签</string>
+    <string name="community_config_notes">备注</string>
+    <string name="community_config_apply">应用配置</string>
+    <string name="community_config_container">容器</string>
+    <string name="community_config_wine">Wine 或 Proton</string>
+    <string name="community_config_emulator">模拟器</string>
+    <string name="community_config_wrapper">DirectX 封装器</string>
+    <string name="community_config_box64_preset">Box64 预设</string>
+    <string name="community_config_driver">图形驱动程序</string>
     <string name="import_config">导入配置</string>
     <string name="export_config">导出配置</string>
 
@@ -1520,6 +1577,7 @@
     <string name="option_reset_drm">重置 DRM</string>
     <string name="option_update">更新</string>
     <string name="option_use_known_config">使用已知配置</string>
+    <string name="option_browse_community_configs">浏览社区配置</string>
     <string name="option_verify_files">验证文件</string>
 
     <!-- 性能 HUD -->
@@ -2202,6 +2260,21 @@
     <string name="steam_invite_joined">在你的游戏中</string>
     <string name="steam_invite_online">在线</string>
     <string name="steam_invite_offline">离线</string>
+    <string name="radial_menu">径向菜单</string>
+    <string name="radial_menu_settings_title">径向菜单</string>
+    <string name="radial_menu_cancel">取消</string>
+    <string name="radial_menu_slot_count">槽位</string>
+    <string name="radial_menu_slot_count_subtitle">已启用 %1$d 个槽位</string>
+    <string name="radial_menu_decrease_slots">减少槽位</string>
+    <string name="radial_menu_increase_slots">增加槽位</string>
+    <string name="radial_menu_slots">转盘槽位</string>
+    <string name="radial_menu_slot_title">槽位 %1$d</string>
+    <string name="radial_menu_slot_label_hint">标签</string>
+    <string name="radial_menu_slot_binding">槽位 %1$d 绑定</string>
+    <string name="radial_menu_slot_binding_summary">绑定：%1$s</string>
+    <string name="radial_menu_preset_common">常用</string>
+    <string name="radial_menu_preset_weapons">武器</string>
+    <string name="gesture_action_open_radial_menu">打开径向菜单</string>
 
     <!-- Power Control -->
     <string name="power_control">性能控制</string>
