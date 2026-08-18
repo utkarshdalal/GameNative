@@ -4,9 +4,12 @@ import android.content.Context
 import android.content.Intent
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
+import com.winlator.box86_64.Box86_64Preset
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.core.DXVKHelper
+import com.winlator.core.DefaultVersion
+import com.winlator.core.WineThemeManager
 import org.json.JSONObject
 import timber.log.Timber
 
@@ -216,11 +219,11 @@ object IntentLaunchManager {
             } else {
                 Container.STARTUP_SELECTION_ESSENTIAL.toInt().toByte()
             },
-            box86Version = if (json.has("box86Version")) json.getString("box86Version") else "",
-            box64Version = if (json.has("box64Version")) json.getString("box64Version") else "",
-            box86Preset = if (json.has("box86Preset")) json.getString("box86Preset") else "",
-            box64Preset = if (json.has("box64Preset")) json.getString("box64Preset") else "",
-            desktopTheme = if (json.has("desktopTheme")) json.getString("desktopTheme") else "",
+            box86Version = if (json.has("box86Version")) json.getString("box86Version") else DefaultVersion.BOX86,
+            box64Version = if (json.has("box64Version")) json.getString("box64Version") else DefaultVersion.BOX64,
+            box86Preset = if (json.has("box86Preset")) json.getString("box86Preset") else Box86_64Preset.COMPATIBILITY,
+            box64Preset = if (json.has("box64Preset")) json.getString("box64Preset") else Box86_64Preset.COMPATIBILITY,
+            desktopTheme = if (json.has("desktopTheme")) json.getString("desktopTheme") else WineThemeManager.DEFAULT_DESKTOP_THEME,
             csmt = if (json.has("csmt")) json.getBoolean("csmt") else true,
             videoPciDeviceID = if (json.has("videoPciDeviceID")) json.getInt("videoPciDeviceID") else 1728,
             offScreenRenderingMode = if (json.has("offScreenRenderingMode")) json.getString("offScreenRenderingMode") else "fbo",
@@ -306,11 +309,15 @@ object IntentLaunchManager {
             } else {
                 base.startupSelection
             },
-            box86Version = override.box86Version.ifEmpty { base.box86Version },
-            box64Version = override.box64Version.ifEmpty { base.box64Version },
-            box86Preset = override.box86Preset.ifEmpty { base.box86Preset },
-            box64Preset = override.box64Preset.ifEmpty { base.box64Preset },
-            desktopTheme = override.desktopTheme.ifEmpty { base.desktopTheme },
+            box86Version = if (override.box86Version != DefaultVersion.BOX86) override.box86Version else base.box86Version,
+            box64Version = if (override.box64Version != DefaultVersion.BOX64) override.box64Version else base.box64Version,
+            box86Preset = if (override.box86Preset != Box86_64Preset.COMPATIBILITY) override.box86Preset else base.box86Preset,
+            box64Preset = if (override.box64Preset != Box86_64Preset.COMPATIBILITY) override.box64Preset else base.box64Preset,
+            desktopTheme = if (override.desktopTheme != WineThemeManager.DEFAULT_DESKTOP_THEME) {
+                override.desktopTheme
+            } else {
+                base.desktopTheme
+            },
             csmt = if (override.csmt != true) override.csmt else base.csmt,
             videoPciDeviceID = if (override.videoPciDeviceID != 1728) override.videoPciDeviceID else base.videoPciDeviceID,
             offScreenRenderingMode = if (override.offScreenRenderingMode != "fbo") {
