@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="abc_action_bar_up_description">Перейти вверх</string>
     <string name="abc_action_mode_done">Готово</string>
     <string name="abc_capital_off">ВЫКЛ</string>
@@ -2116,6 +2116,21 @@ https://gamenative.app
     <string name="steam_invite_joined">В вашей игре</string>
     <string name="steam_invite_online">В сети</string>
     <string name="steam_invite_offline">Не в сети</string>
+    <string name="radial_menu">Радиальное меню</string>
+    <string name="radial_menu_settings_title">Радиальное меню</string>
+    <string name="radial_menu_cancel">Отмена</string>
+    <string name="radial_menu_slot_count">Слоты</string>
+    <string name="radial_menu_slot_count_subtitle">Активных слотов: %1$d</string>
+    <string name="radial_menu_decrease_slots">Уменьшить число слотов</string>
+    <string name="radial_menu_increase_slots">Увеличить число слотов</string>
+    <string name="radial_menu_slots">Слоты колеса</string>
+    <string name="radial_menu_slot_title">Слот %1$d</string>
+    <string name="radial_menu_slot_label_hint">Метка</string>
+    <string name="radial_menu_slot_binding">Привязка слота %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Привязка: %1$s</string>
+    <string name="radial_menu_preset_common">Общие</string>
+    <string name="radial_menu_preset_weapons">Оружие</string>
+    <string name="gesture_action_open_radial_menu">Открыть радиальное меню</string>
 
     <!-- Power Control -->
     <string name="power_control">Управление производительностью</string>

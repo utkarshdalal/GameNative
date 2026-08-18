@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Logowanie</string>
     <string name="login_2fa">Weryfikacja dwuetapowa</string>
@@ -2188,6 +2188,21 @@
     <string name="steam_invite_joined">W twojej grze</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
+    <string name="radial_menu">Menu radialne</string>
+    <string name="radial_menu_settings_title">Menu radialne</string>
+    <string name="radial_menu_cancel">Anuluj</string>
+    <string name="radial_menu_slot_count">Sloty</string>
+    <string name="radial_menu_slot_count_subtitle">Włączone sloty: %1$d</string>
+    <string name="radial_menu_decrease_slots">Zmniejsz liczbę slotów</string>
+    <string name="radial_menu_increase_slots">Zwiększ liczbę slotów</string>
+    <string name="radial_menu_slots">Sloty koła</string>
+    <string name="radial_menu_slot_title">Slot %1$d</string>
+    <string name="radial_menu_slot_label_hint">Etykieta</string>
+    <string name="radial_menu_slot_binding">Przypisanie slotu %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Przypisanie: %1$s</string>
+    <string name="radial_menu_preset_common">Typowe</string>
+    <string name="radial_menu_preset_weapons">Bronie</string>
+    <string name="gesture_action_open_radial_menu">Otwórz menu radialne</string>
 
     <!-- Power Control -->
     <string name="power_control">Kontrola wydajności</string>

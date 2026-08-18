@@ -142,6 +142,7 @@ data class TouchGestureConfig(
 
         // ── Special actions ──────────────────────────────────────────────
         const val ACTION_SHOW_KEYBOARD = "show_keyboard"
+        const val ACTION_OPEN_RADIAL_MENU = "open_radial_menu"
         const val ACTION_KEY_ESC = "key_ESC"
         const val ACTION_KEY_TILDE = "key_TILDE"
 

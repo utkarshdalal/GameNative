@@ -24,6 +24,7 @@ import app.gamenative.R
 import app.gamenative.data.TouchGestureConfig
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_LEFT_CLICK
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_MIDDLE_CLICK
+import app.gamenative.data.TouchGestureConfig.Companion.ACTION_OPEN_RADIAL_MENU
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_RIGHT_CLICK
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_SHOW_KEYBOARD
 import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_BEHAVIOR_CLICK
@@ -469,6 +470,7 @@ private fun tapHoldActionLabel(action: String): String = when (action) {
     ACTION_RIGHT_CLICK -> stringResource(R.string.gesture_action_right_click)
     ACTION_MIDDLE_CLICK -> stringResource(R.string.gesture_action_middle_click)
     ACTION_SHOW_KEYBOARD -> stringResource(R.string.gesture_action_show_keyboard)
+    ACTION_OPEN_RADIAL_MENU -> stringResource(R.string.gesture_action_open_radial_menu)
     else -> {
         if (action.startsWith("key_")) {
             keyActionLabel(action)
@@ -559,7 +561,10 @@ private fun mouseDragMovementModeLabel(mode: String): String = when (mode) {
 private fun buildActionCategories(): List<SettingsActionCategory> {
     val special = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_special),
-        actions = listOf(ACTION_SHOW_KEYBOARD to stringResource(R.string.gesture_action_show_keyboard))
+        actions = listOf(
+            ACTION_SHOW_KEYBOARD to stringResource(R.string.gesture_action_show_keyboard),
+            ACTION_OPEN_RADIAL_MENU to stringResource(R.string.gesture_action_open_radial_menu),
+        )
     )
     val mouse = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_mouse),

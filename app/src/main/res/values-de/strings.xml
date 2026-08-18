@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Benutzeranmeldung</string>
     <string name="login_2fa">Zwei-Faktor-Authentifizierung</string>
@@ -2126,6 +2126,21 @@
     <string name="steam_invite_joined">In deinem Spiel</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
+    <string name="radial_menu">Radialmenü</string>
+    <string name="radial_menu_settings_title">Radialmenü</string>
+    <string name="radial_menu_cancel">Abbrechen</string>
+    <string name="radial_menu_slot_count">Slots</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d Slots aktiviert</string>
+    <string name="radial_menu_decrease_slots">Slots verringern</string>
+    <string name="radial_menu_increase_slots">Slots erhöhen</string>
+    <string name="radial_menu_slots">Menü-Slots</string>
+    <string name="radial_menu_slot_title">Slot %1$d</string>
+    <string name="radial_menu_slot_label_hint">Beschriftung</string>
+    <string name="radial_menu_slot_binding">Belegung für Slot %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Belegung: %1$s</string>
+    <string name="radial_menu_preset_common">Allgemein</string>
+    <string name="radial_menu_preset_weapons">Waffen</string>
+    <string name="gesture_action_open_radial_menu">Radialmenü öffnen</string>
 
     <!-- Power Control -->
     <string name="power_control">Leistungssteuerung</string>

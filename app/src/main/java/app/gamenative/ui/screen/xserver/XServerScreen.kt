@@ -485,6 +485,8 @@ fun XServerScreen(
 
     DisposableEffect(Unit) {
         onDispose {
+            PluviaApp.radialMenuCoordinator?.detach()
+            PluviaApp.radialMenuCoordinator = null
             physicalControllerHandler?.cleanup()
             physicalControllerHandler = null
             exitWatchJob?.cancel()
@@ -1195,6 +1197,8 @@ fun XServerScreen(
 
                             // Apply the new profile to InputControlsView
                             PluviaApp.inputControlsView?.setProfile(activeProfile)
+                            PluviaApp.radialMenuCoordinator?.setProfile(activeProfile)
+                            physicalControllerHandler?.setProfile(activeProfile)
                         } catch (e: Exception) {
                             Timber.e(e, "Failed to auto-create profile for container %s", container.name)
                             // Fallback to existing profile
@@ -1307,6 +1311,11 @@ fun XServerScreen(
                 keepPausedForEditor = true
                 showPhysicalControllerDialog = true
                 true
+            }
+
+            QuickMenuAction.RADIAL_MENU -> {
+                if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "edit_radial_menu_from_menu")
+                PluviaApp.radialMenuCoordinator?.showSettingsDialog() == true
             }
 
             QuickMenuAction.PERFORMANCE_HUD -> {
@@ -1805,6 +1814,9 @@ fun XServerScreen(
                     }
                 }
 
+                val radialMenuHandled = PluviaApp.radialMenuCoordinator?.onHostTouchEvent(event) == true
+                if (radialMenuHandled) return@pointerInteropFilter true
+
                 val overlayHandled = swapInputOverlay
                     ?.takeIf { it.visibility == View.VISIBLE }
                     ?.dispatchTouchEvent(event) == true
@@ -2290,6 +2302,20 @@ fun XServerScreen(
             gameHost.addView(xServerView as View)
 
             PluviaApp.inputControlsManager = InputControlsManager(context)
+            RadialMenuCoordinator.install(
+                context = context,
+                host = mainRoot,
+                anchor = view,
+                container = container,
+                xServer = xServerView.getxServer(),
+                gameNameProvider = { currentAppInfo?.name ?: container.name },
+                showKeyboard = showSoftKeyboard,
+                openQuickMenu = { showQuickMenu = true },
+                onSettingsVisibilityChanged = { visible ->
+                    keepPausedForEditor = visible
+                    if (!visible) resumeIfAllowedAfterOverlay()
+                },
+            )
 
             // Store the loaded profile for auto-show logic later (declared outside apply block)
             var loadedProfile: ControlsProfile? = null
@@ -2335,7 +2361,9 @@ fun XServerScreen(
 
                     Timber.d("=== Profile Loading Complete ===")
                     setProfile(targetProfile)
+                    PluviaApp.radialMenuCoordinator?.setProfile(targetProfile)
 
+                    val radialMenuCoordinator = PluviaApp.radialMenuCoordinator
                     physicalControllerHandler = PhysicalControllerHandler(
                         targetProfile,
                         xServerView.getxServer(),
@@ -2343,7 +2371,12 @@ fun XServerScreen(
                         onShowKeyboard = {
                             PluviaApp.inputControlsView?.triggerShowKeyboard()
                         },
+                        onRadialMenuButtonStateChanged = radialMenuCoordinator?.let { coordinator ->
+                            { isDown, commit -> coordinator.onRadialMenuButtonStateChanged(isDown, commit) }
+                        },
+                        onRadialMenuVectorChanged = radialMenuCoordinator?.let { it::onRadialMenuVectorChanged },
                     )
+                    radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)
 
                     // Store profile for auto-show logic
                     loadedProfile = targetProfile
@@ -2363,6 +2396,7 @@ fun XServerScreen(
             icView.setShowKeyboardCallback {
                 showSoftKeyboard(icView, "onscreen_keyboard_enabled_from_binding")
             }
+            PluviaApp.radialMenuCoordinator?.bindInputControlsView(icView)
 
             xServerView.getxServer().winHandler.setInputControlsView(PluviaApp.inputControlsView)
 
@@ -2911,6 +2945,7 @@ fun XServerScreen(
                                 PluviaApp.inputControlsView?.setProfile(profile)
                             }
                             physicalControllerHandler?.setProfile(profile)
+                            PluviaApp.radialMenuCoordinator?.setProfile(profile)
                             showPhysicalControllerDialog = false
                             keepPausedForEditor = false
                             resumeIfAllowedAfterOverlay()
@@ -3047,6 +3082,7 @@ private fun EditModeToolbar(
 
 private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, container: Container) {
     profile.setVirtualGamepad(true)
+    PluviaApp.radialMenuCoordinator?.setProfile(profile)
 
     PluviaApp.inputControlsView?.let { icView ->
         icView.setContainerShooterMode(container.isShooterMode)

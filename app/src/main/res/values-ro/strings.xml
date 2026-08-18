@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Autentificare utilizator</string>
     <string name="login_2fa">Autentificare în doi pași</string>
@@ -2189,6 +2189,21 @@
     <string name="steam_invite_joined">În jocul tău</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
+    <string name="radial_menu">Meniu radial</string>
+    <string name="radial_menu_settings_title">Meniu radial</string>
+    <string name="radial_menu_cancel">Anulează</string>
+    <string name="radial_menu_slot_count">Sloturi</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d sloturi activate</string>
+    <string name="radial_menu_decrease_slots">Scade numărul de sloturi</string>
+    <string name="radial_menu_increase_slots">Crește numărul de sloturi</string>
+    <string name="radial_menu_slots">Sloturi ale roții</string>
+    <string name="radial_menu_slot_title">Slot %1$d</string>
+    <string name="radial_menu_slot_label_hint">Etichetă</string>
+    <string name="radial_menu_slot_binding">Asociere slot %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Asociere: %1$s</string>
+    <string name="radial_menu_preset_common">Comune</string>
+    <string name="radial_menu_preset_weapons">Arme</string>
+    <string name="gesture_action_open_radial_menu">Deschide meniul radial</string>
 
     <!-- Power Control -->
     <string name="power_control">Control performanță</string>

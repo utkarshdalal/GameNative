@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Connexion utilisateur</string>
     <string name="login_2fa">Authentification à deux facteurs</string>
@@ -2186,6 +2186,21 @@
     <string name="steam_invite_joined">Dans votre partie</string>
     <string name="steam_invite_online">En ligne</string>
     <string name="steam_invite_offline">Hors ligne</string>
+    <string name="radial_menu">Menu radial</string>
+    <string name="radial_menu_settings_title">Menu radial</string>
+    <string name="radial_menu_cancel">Annuler</string>
+    <string name="radial_menu_slot_count">Emplacements</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d emplacements activés</string>
+    <string name="radial_menu_decrease_slots">Réduire les emplacements</string>
+    <string name="radial_menu_increase_slots">Augmenter les emplacements</string>
+    <string name="radial_menu_slots">Emplacements de la roue</string>
+    <string name="radial_menu_slot_title">Emplacement %1$d</string>
+    <string name="radial_menu_slot_label_hint">Libellé</string>
+    <string name="radial_menu_slot_binding">Action de l’emplacement %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Action : %1$s</string>
+    <string name="radial_menu_preset_common">Commun</string>
+    <string name="radial_menu_preset_weapons">Armes</string>
+    <string name="gesture_action_open_radial_menu">Ouvrir le menu radial</string>
 
     <!-- Power Control -->
     <string name="power_control">Contrôle des performances</string>

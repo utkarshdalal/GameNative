@@ -17,6 +17,7 @@ import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.sync.FrontendSyncManager
+import app.gamenative.ui.screen.xserver.RadialMenuCoordinator
 import app.gamenative.utils.ContainerMigrator
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.PlayIntegrity
@@ -215,6 +216,7 @@ class PluviaApp : SplitCompatApplication() {
         var inputControlsView: InputControlsView? = null
         var inputControlsManager: InputControlsManager? = null
         var touchpadView: TouchpadView? = null
+        var radialMenuCoordinator: RadialMenuCoordinator? = null
         var achievementWatcher: app.gamenative.service.AchievementWatcher? = null
 
         var isOverlayPaused by mutableStateOf(false)
@@ -246,6 +248,8 @@ class PluviaApp : SplitCompatApplication() {
                 .onFailure { Timber.e(it, "shutdownEnvironment: clearCachedAchievements") }
             runCatching { touchpadView?.releasePointerCapture() }
                 .onFailure { Timber.e(it, "shutdownEnvironment: releasePointerCapture") }
+            runCatching { radialMenuCoordinator?.detach() }
+                .onFailure { Timber.e(it, "shutdownEnvironment: radialMenuCoordinator.detach") }
             runCatching { env?.stopEnvironmentComponents() }
                 .onFailure { Timber.e(it, "shutdownEnvironment: stopEnvironmentComponents") }
 
@@ -256,6 +260,7 @@ class PluviaApp : SplitCompatApplication() {
             inputControlsView = null
             inputControlsManager = null
             touchpadView = null
+            radialMenuCoordinator = null
             achievementWatcher = null
             ActiveGameRegistry.clear()
             SteamService.keepAlive = false

@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">登入</string>
     <string name="login_2fa">雙重驗證</string>
@@ -2193,6 +2193,21 @@
     <string name="steam_invite_joined">在你的遊戲中</string>
     <string name="steam_invite_online">線上</string>
     <string name="steam_invite_offline">離線</string>
+    <string name="radial_menu">徑向選單</string>
+    <string name="radial_menu_settings_title">徑向選單</string>
+    <string name="radial_menu_cancel">取消</string>
+    <string name="radial_menu_slot_count">槽位</string>
+    <string name="radial_menu_slot_count_subtitle">已啟用 %1$d 個槽位</string>
+    <string name="radial_menu_decrease_slots">減少槽位</string>
+    <string name="radial_menu_increase_slots">增加槽位</string>
+    <string name="radial_menu_slots">轉盤槽位</string>
+    <string name="radial_menu_slot_title">槽位 %1$d</string>
+    <string name="radial_menu_slot_label_hint">標籤</string>
+    <string name="radial_menu_slot_binding">槽位 %1$d 綁定</string>
+    <string name="radial_menu_slot_binding_summary">綁定：%1$s</string>
+    <string name="radial_menu_preset_common">常用</string>
+    <string name="radial_menu_preset_weapons">武器</string>
+    <string name="gesture_action_open_radial_menu">開啟徑向選單</string>
 
     <!-- Power Control -->
     <string name="power_control">效能控制</string>

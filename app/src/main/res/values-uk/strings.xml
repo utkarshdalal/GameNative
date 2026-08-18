@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Вхід користувача</string>
     <string name="login_2fa">Двофакторна автентифікація</string>
@@ -2184,6 +2184,21 @@
     <string name="steam_invite_joined">У вашій грі</string>
     <string name="steam_invite_online">У мережі</string>
     <string name="steam_invite_offline">Не в мережі</string>
+    <string name="radial_menu">Радіальне меню</string>
+    <string name="radial_menu_settings_title">Радіальне меню</string>
+    <string name="radial_menu_cancel">Скасувати</string>
+    <string name="radial_menu_slot_count">Слоти</string>
+    <string name="radial_menu_slot_count_subtitle">Увімкнено слотів: %1$d</string>
+    <string name="radial_menu_decrease_slots">Зменшити кількість слотів</string>
+    <string name="radial_menu_increase_slots">Збільшити кількість слотів</string>
+    <string name="radial_menu_slots">Слоти колеса</string>
+    <string name="radial_menu_slot_title">Слот %1$d</string>
+    <string name="radial_menu_slot_label_hint">Мітка</string>
+    <string name="radial_menu_slot_binding">Призначення слота %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Призначення: %1$s</string>
+    <string name="radial_menu_preset_common">Типові</string>
+    <string name="radial_menu_preset_weapons">Зброя</string>
+    <string name="gesture_action_open_radial_menu">Відкрити радіальне меню</string>
 
     <!-- Power Control -->
     <string name="power_control">Керування продуктивністю</string>

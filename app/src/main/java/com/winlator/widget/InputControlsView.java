@@ -114,6 +114,16 @@ public class InputControlsView extends View {
     private Runnable showKeyboardCallback;
     // Tracks whether SHOW_KEYBOARD is currently held, so the callback fires once per press (rising edge only)
     private boolean showKeyboardPressed;
+    private RadialMenuListener radialMenuListener;
+    private boolean radialMenuTouchActive;
+    private int radialMenuTouchPointerId = MotionEvent.INVALID_POINTER_ID;
+
+    public interface RadialMenuListener {
+        void onRadialMenuTouchStart(int pointerId, float x, float y);
+        void onRadialMenuTouchMove(int pointerId, float x, float y);
+        void onRadialMenuTouchEnd(int pointerId, boolean commit);
+        void onRadialMenuButtonStateChanged(boolean isDown);
+    }
 
     private static class PendingButtonLook {
         private final float startX;
@@ -152,6 +162,7 @@ public class InputControlsView extends View {
     }
 
     private void cancelTouchRouting() {
+        if (radialMenuTouchActive) handleRadialMenuTouchUp(radialMenuTouchPointerId, false);
         if (profile != null) {
             for (ControlElement element : profile.getElements()) element.cancelTouch();
         }
@@ -481,8 +492,33 @@ public class InputControlsView extends View {
         this.showKeyboardCallback = callback;
     }
 
+    public void setRadialMenuListener(RadialMenuListener listener) {
+        this.radialMenuListener = listener;
+    }
+
     public void triggerShowKeyboard() {
         if (showKeyboardCallback != null) showKeyboardCallback.run();
+    }
+
+    public void handleRadialMenuTouchDown(int pointerId, float x, float y) {
+        radialMenuTouchActive = true;
+        radialMenuTouchPointerId = pointerId;
+        if (radialMenuListener != null) radialMenuListener.onRadialMenuTouchStart(pointerId, x, y);
+    }
+
+    public void handleRadialMenuTouchMove(int pointerId, float x, float y) {
+        if (radialMenuTouchActive && pointerId == radialMenuTouchPointerId && radialMenuListener != null) {
+            radialMenuListener.onRadialMenuTouchMove(pointerId, x, y);
+        }
+    }
+
+    public void handleRadialMenuTouchUp(int pointerId, boolean commit) {
+        if (!radialMenuTouchActive) return;
+        if (radialMenuTouchPointerId != MotionEvent.INVALID_POINTER_ID && pointerId != radialMenuTouchPointerId) return;
+        int finishedPointerId = radialMenuTouchPointerId;
+        radialMenuTouchActive = false;
+        radialMenuTouchPointerId = MotionEvent.INVALID_POINTER_ID;
+        if (radialMenuListener != null) radialMenuListener.onRadialMenuTouchEnd(finishedPointerId, commit);
     }
 
     /** Check if a STICK element should be hidden because container shooter mode replaces it. */
@@ -1378,6 +1414,11 @@ public class InputControlsView extends View {
 
     public void handleInputEvent(Binding binding, boolean isActionDown, float offset) {
         if (binding == null || binding == Binding.NONE) return;
+
+        if (binding == Binding.OPEN_RADIAL_MENU) {
+            if (radialMenuListener != null) radialMenuListener.onRadialMenuButtonStateChanged(isActionDown);
+            return;
+        }
 
         if (binding.isGamepad()) {
             WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;

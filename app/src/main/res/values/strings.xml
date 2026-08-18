@@ -2094,6 +2094,24 @@
     <string name="frontend_sync_resync_complete">Frontend sync complete</string>
     <string name="frontend_sync_pick_directory_cd">Pick directory for %1$s</string>
     <string name="frontend_sync_clear_directory_cd">Clear directory for %1$s</string>
+
+    <!-- Radial Menu -->
+    <string name="radial_menu">Radial Menu</string>
+    <string name="radial_menu_settings_title">Radial Menu</string>
+    <string name="radial_menu_cancel">Cancel</string>
+    <string name="radial_menu_slot_count">Slots</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d slots enabled</string>
+    <string name="radial_menu_decrease_slots">Decrease slots</string>
+    <string name="radial_menu_increase_slots">Increase slots</string>
+    <string name="radial_menu_slots">Wheel Slots</string>
+    <string name="radial_menu_slot_title">Slot %1$d</string>
+    <string name="radial_menu_slot_label_hint">Label</string>
+    <string name="radial_menu_slot_binding">Slot %1$d binding</string>
+    <string name="radial_menu_slot_binding_summary">Binding: %1$s</string>
+    <string name="radial_menu_preset_common">Common</string>
+    <string name="radial_menu_preset_weapons">Weapons</string>
+    <string name="gesture_action_open_radial_menu">Open radial menu</string>
+
     <!-- Game Launch Tips -->
     <string name="game_launch_tip_1">Booting may take a few minutes on first launch</string>
     <string name="game_launch_tip_2">Tip: You can view the game files by pressing \"%s\" in the game settings.</string>

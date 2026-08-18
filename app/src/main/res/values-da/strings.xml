@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Brugerlogin</string>
     <string name="login_2fa">Tofaktorgodkendelse</string>
@@ -2056,6 +2056,21 @@
     <string name="steam_invite_joined">I dit spil</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
+    <string name="radial_menu">Radialmenu</string>
+    <string name="radial_menu_settings_title">Radialmenu</string>
+    <string name="radial_menu_cancel">Annuller</string>
+    <string name="radial_menu_slot_count">Pladser</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d pladser aktiveret</string>
+    <string name="radial_menu_decrease_slots">Reducer pladser</string>
+    <string name="radial_menu_increase_slots">Forøg pladser</string>
+    <string name="radial_menu_slots">Hjulpladser</string>
+    <string name="radial_menu_slot_title">Plads %1$d</string>
+    <string name="radial_menu_slot_label_hint">Etiket</string>
+    <string name="radial_menu_slot_binding">Tilknytning for plads %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Tilknytning: %1$s</string>
+    <string name="radial_menu_preset_common">Almindelige</string>
+    <string name="radial_menu_preset_weapons">Våben</string>
+    <string name="gesture_action_open_radial_menu">Åbn radialmenu</string>
 
     <!-- Power Control -->
     <string name="power_control">Ydeevnekontrol</string>

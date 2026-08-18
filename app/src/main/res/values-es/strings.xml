@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Inicio de sesión</string>
     <string name="login_2fa">Autenticación de dos factores</string>
@@ -2184,6 +2184,21 @@
     <string name="steam_invite_joined">En tu partida</string>
     <string name="steam_invite_online">En línea</string>
     <string name="steam_invite_offline">Desconectado</string>
+    <string name="radial_menu">Menú radial</string>
+    <string name="radial_menu_settings_title">Menú radial</string>
+    <string name="radial_menu_cancel">Cancelar</string>
+    <string name="radial_menu_slot_count">Ranuras</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d ranuras activadas</string>
+    <string name="radial_menu_decrease_slots">Disminuir ranuras</string>
+    <string name="radial_menu_increase_slots">Aumentar ranuras</string>
+    <string name="radial_menu_slots">Ranuras de la rueda</string>
+    <string name="radial_menu_slot_title">Ranura %1$d</string>
+    <string name="radial_menu_slot_label_hint">Etiqueta</string>
+    <string name="radial_menu_slot_binding">Asignación de ranura %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Asignación: %1$s</string>
+    <string name="radial_menu_preset_common">Común</string>
+    <string name="radial_menu_preset_weapons">Armas</string>
+    <string name="gesture_action_open_radial_menu">Abrir menú radial</string>
 
     <!-- Power Control -->
     <string name="power_control">Control de rendimiento</string>

@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">사용자 로그인</string>
     <string name="login_2fa">2단계 인증</string>
@@ -2182,6 +2182,21 @@
     <string name="steam_invite_joined">내 게임에 참가 중</string>
     <string name="steam_invite_online">온라인</string>
     <string name="steam_invite_offline">오프라인</string>
+    <string name="radial_menu">방사형 메뉴</string>
+    <string name="radial_menu_settings_title">방사형 메뉴</string>
+    <string name="radial_menu_cancel">취소</string>
+    <string name="radial_menu_slot_count">슬롯</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d개 슬롯 활성화됨</string>
+    <string name="radial_menu_decrease_slots">슬롯 줄이기</string>
+    <string name="radial_menu_increase_slots">슬롯 늘리기</string>
+    <string name="radial_menu_slots">휠 슬롯</string>
+    <string name="radial_menu_slot_title">슬롯 %1$d</string>
+    <string name="radial_menu_slot_label_hint">레이블</string>
+    <string name="radial_menu_slot_binding">슬롯 %1$d 바인딩</string>
+    <string name="radial_menu_slot_binding_summary">바인딩: %1$s</string>
+    <string name="radial_menu_preset_common">일반</string>
+    <string name="radial_menu_preset_weapons">무기</string>
+    <string name="gesture_action_open_radial_menu">방사형 메뉴 열기</string>
 
     <!-- Power Control -->
     <string name="power_control">성능 제어</string>

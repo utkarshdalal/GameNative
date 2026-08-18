@@ -115,6 +115,7 @@ object QuickMenuAction {
     const val TOUCHSCREEN_MODE = 7
     const val DISABLE_MOUSE = 8
     const val SHOOTER_MODE = 9
+    const val RADIAL_MENU = 10
 }
 
 private object QuickMenuTab {
@@ -343,6 +344,14 @@ fun QuickMenu(
                 id = QuickMenuAction.SHOOTER_MODE,
                 icon = Icons.Default.Gamepad,
                 labelResId = R.string.shooter_mode_toggle,
+                accentColor = PluviaTheme.colors.accentPurple,
+            )
+        )
+        add(
+            QuickMenuItem(
+                id = QuickMenuAction.RADIAL_MENU,
+                icon = Icons.Default.Settings,
+                labelResId = R.string.radial_menu,
                 accentColor = PluviaTheme.colors.accentPurple,
             )
         )
