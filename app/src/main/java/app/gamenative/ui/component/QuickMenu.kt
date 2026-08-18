@@ -458,7 +458,7 @@ fun QuickMenu(
             modifier = Modifier.align(Alignment.CenterStart),
         ) {
             val panelWidth = if (selectedTab == QuickMenuTab.POWER) {
-                adaptivePanelWidth(800.dp)
+                adaptivePanelWidth(800.dp, 0.95f)
             } else {
                 adaptivePanelWidth(400.dp)
             }

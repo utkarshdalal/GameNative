@@ -50,6 +50,13 @@ fun adaptivePanelWidth(preferredWidth: Dp): Dp {
     return minOf(preferredWidth, maxWidth)
 }
 
+@Composable
+fun adaptivePanelWidth(preferredWidth: Dp, maxWidthPercent: Float): Dp {
+    val screenWidthDp = rememberScreenWidthDp()
+    val maxWidth = (screenWidthDp * maxWidthPercent).dp
+    return minOf(preferredWidth, maxWidth)
+}
+
 object AdaptivePadding {
     @Composable
     fun horizontal(): Dp = when (rememberWindowWidthClass()) {
