@@ -268,16 +268,39 @@ private fun matchesPerformanceHudPreset(
  */
 class ImmersiveInputBypass(
     val active: Boolean = false,
+    private val applyAdjustment: (Pair<() -> Unit, () -> Unit>?) -> Unit = {},
+    private val applyActivate: ((() -> Unit)?) -> Unit = {},
+) {
+    private var adjustmentOwner: Any? = null
+    private var activateOwner: Any? = null
+
+    // `owner` must be stable per row, and only the current owner may clear a slot — focus-change
+    // effects from two rows can run in either order.
     // Reports (onDecrease, onIncrease) while a row is both focused and lock-toggled (A to lock,
     // DPAD_LEFT/RIGHT to adjust, B or losing focus to unlock) — for slider-style rows.
-    val reportAdjustment: (Pair<() -> Unit, () -> Unit>?) -> Unit,
+    fun reportAdjustment(owner: Any, actions: Pair<() -> Unit, () -> Unit>?) {
+        if (actions != null) {
+            adjustmentOwner = owner
+            applyAdjustment(actions)
+        } else if (adjustmentOwner === owner) {
+            adjustmentOwner = null
+            applyAdjustment(null)
+        }
+    }
+
     // Reports a row's own click/select action while it's focused — for plain radio/toggle rows
     // that only need a single BUTTON_A/DPAD_CENTER press to activate.
-    val reportActivate: ((() -> Unit)?) -> Unit,
-)
-val LocalImmersiveInputBypass = staticCompositionLocalOf {
-    ImmersiveInputBypass(reportAdjustment = {}, reportActivate = {})
+    fun reportActivate(owner: Any, action: (() -> Unit)?) {
+        if (action != null) {
+            activateOwner = owner
+            applyActivate(action)
+        } else if (activateOwner === owner) {
+            activateOwner = null
+            applyActivate(null)
+        }
+    }
 }
+val LocalImmersiveInputBypass = staticCompositionLocalOf { ImmersiveInputBypass() }
 
 /** Performance HUD + FPS limiter state/callbacks as one QuickMenu parameter instead of eight —
  * XServerScreen's call site sits at the dex verifier's 255-register limit, and every argument
@@ -519,7 +542,7 @@ fun QuickMenu(
 
     // Only the tabs actually shown in the rail, in on-screen order — mirrors the conditions each
     // QuickMenuTabButton below is gated on (isLsfgAvailable, a renderer being available, etc).
-    val availableTabs = remember(isLsfgAvailable, renderer, glRenderer, immersiveControls, inviteMenu) {
+    val availableTabs = remember(isLsfgAvailable, renderer, glRenderer, immersiveControls, inviteMenu)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           {
         buildList {
             add(QuickMenuTab.HUD)
             add(QuickMenuTab.POWER)
@@ -574,11 +597,13 @@ fun QuickMenu(
     }
 
     CompositionLocalProvider(
-        LocalImmersiveInputBypass provides ImmersiveInputBypass(
-            active = immersiveControls != null,
-            reportAdjustment = { activeAdjustment = it },
-            reportActivate = { activeRadioActivate = it },
-        ),
+        LocalImmersiveInputBypass provides remember(immersiveControls != null) {
+            ImmersiveInputBypass(
+                active = immersiveControls != null,
+                applyAdjustment = { activeAdjustment = it },
+                applyActivate = { activeRadioActivate = it },
+            )
+        },
     ) {
     Box(
         modifier = modifier.fillMaxSize()
@@ -1829,7 +1854,7 @@ private fun QuickMenuTabButton(
     val shape = RoundedCornerShape(14.dp)
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused) {
-        inputBypass.reportActivate(if (isFocused) onSelected else null)
+        inputBypass.reportActivate(interactionSource, if (isFocused) onSelected else null)
     }
 
     Box(
@@ -1966,7 +1991,7 @@ private fun QuickMenuChoiceChip(
     val shape = RoundedCornerShape(12.dp)
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused) {
-        inputBypass.reportActivate(if (isFocused) onClick else null)
+        inputBypass.reportActivate(interactionSource, if (isFocused) onClick else null)
     }
 
     Box(
@@ -2042,7 +2067,7 @@ internal fun QuickMenuAdjustmentRow(
     var isAdjustmentLocked by remember { mutableStateOf(false) }
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused, isAdjustmentLocked) {
-        inputBypass.reportAdjustment(if (isFocused && isAdjustmentLocked) (onDecrease to onIncrease) else null)
+        inputBypass.reportAdjustment(interactionSource, if (isFocused && isAdjustmentLocked) (onDecrease to onIncrease) else null)
     }
 
     Column(
@@ -2302,6 +2327,9 @@ internal fun QuickMenuToggleRow(
     // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
     val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
+    LaunchedEffect(isFocused, selectable) {
+        inputBypass.reportActivate(interactionSource, if (isFocused && selectable) onToggle else null)
+    }
 
     Row(
         modifier = modifier

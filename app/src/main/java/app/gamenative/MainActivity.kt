@@ -81,7 +81,7 @@ class MainActivity : ComponentActivity() {
                 Build.MANUFACTURER.equals("Meta", true) ||
                 Build.MANUFACTURER.equals("Pico", true)
 
-        fun isMetaQuest(context: Context): Boolean =
+        fun isMetaQuest(): Boolean =
             Build.MANUFACTURER.equals("Oculus", true) ||
                 Build.MANUFACTURER.equals("Meta", true) ||
                 Build.BRAND.equals("oculus", true)

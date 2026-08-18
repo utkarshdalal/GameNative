@@ -149,9 +149,12 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     void drawScene() {
+        // The effect composer renders the scene into its own target, so the XR bridge must not
+        // rebind the framebuffer underneath it.
+        XrFrameBridge bridge = effectComposer.hasEffects() ? null : xrFrameBridge;
         boolean xrFrame = false;
-        if (xrFrameBridge != null) {
-            int[] xrTargetSize = xrFrameBridge.beginFrame();
+        if (bridge != null) {
+            int[] xrTargetSize = bridge.beginFrame();
             if (xrTargetSize != null) {
                 xrFrame = true;
                 setRenderTargetSizeOverride(xrTargetSize[0], xrTargetSize[1]);
@@ -229,7 +232,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         if ((!magnifierEnabled && !fullscreen) || renderingToOffscreenTarget) GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
 
         if (xrFrame) {
-            xrFrameBridge.endFrame();
+            bridge.endFrame();
             xServerView.requestRender();
         }
     }
@@ -350,8 +353,15 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     /** See {@link XrFrameBridge}. Pass null to detach (e.g. when leaving immersive mode). */
     public void setXrFrameBridge(XrFrameBridge xrFrameBridge) {
         this.xrFrameBridge = xrFrameBridge;
+        if (xrFrameBridge == null) clearRenderTargetSizeOverride();
         viewportNeedsUpdate = true;
         xServerView.requestRender();
+    }
+
+    /** Whether active screen effects are forcing the composer path, which blocks the XR direct
+     * bridge. Mirrors {@link VulkanRenderer#isEffectsRequireCompositor()}. */
+    public boolean isEffectsRequireCompositor() {
+        return effectComposer.hasEffects();
     }
 
     private Drawable createRootCursorDrawable() {

@@ -772,7 +772,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
      * need to hunt through several unrelated settings to get the zero-copy path back. */
     public void resetScreenEffects() {
         setFilterMode(0);
-        setEffect(EFFECT_NONE, 0.0f, SCALE_FIT, 0, 0.0f, 0.0f, 1.0f);
+        setEffect(EFFECT_NONE, 0.0f, outputScalingMode, 0, 0.0f, 0.0f, 1.0f);
     }
     public int getEffectId() { return pendingEffectId; }
     public float getSharpness() { return pendingSharpness; }

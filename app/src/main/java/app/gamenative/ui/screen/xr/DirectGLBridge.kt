@@ -3,7 +3,6 @@ package app.gamenative.ui.screen.xr
 import android.hardware.HardwareBuffer
 import android.opengl.GLES20
 import com.winlator.renderer.GLHardwareBufferImporter
-import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.XrFrameBridge
 import timber.log.Timber
 
@@ -104,10 +103,5 @@ class DirectGLBridge(
         framebuffer = 0
         hardwareBuffer = null
         announcedReady = false
-    }
-
-    companion object {
-        /** Only meaningful for the legacy GL renderer — see this class's kdoc. */
-        fun supportsRenderer(renderer: Any?): Boolean = renderer is GLRenderer
     }
 }

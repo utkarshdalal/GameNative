@@ -41,7 +41,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -77,6 +76,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         private const val POLL_INTERVAL_MS = 11L
         private const val CAPTURE_RETRY_DELAY_MS = 200L
         private const val OVERLAY_REFRESH_INTERVAL_MS = 33L // ~30fps — plenty for a menu/HUD,
+        private const val OVERLAY_CONTENT_GRACE_MS = 2500L
 
         private const val IMMERSIVE_UI_DENSITY = 2.5f
 
@@ -165,6 +165,10 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     private var overlayLayerBitmap: Bitmap? = null
     private var finalFrameBitmap: Bitmap? = null
     private var overlayCaptureLogCounter = 0
+    @Volatile
+    private var bootingSplashVisible = false
+    private var overlayContentLastVisibleAt = 0L
+    private var overlayClearSubmitted = false
     private var pointerGripHeldLogCounter = 0
 
     private var directGLBridge: DirectGLBridge? = null
@@ -330,8 +334,10 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                     ),
                 )
 
+                val splashVisible = mainState.showBootingSplash && mappedWindowCount == 0 && !overlayPausedUi
+                LaunchedEffect(splashVisible) { bootingSplashVisible = splashVisible }
                 app.gamenative.ui.components.BootingSplash(
-                    visible = mainState.showBootingSplash && mappedWindowCount == 0 && !overlayPausedUi,
+                    visible = splashVisible,
                     text = mainState.bootingSplashText,
                     heroImageUrl = mainState.bootingSplashHeroImageUrl,
                 )
@@ -398,6 +404,15 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         )
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val newAppId = intent.getStringExtra(EXTRA_APP_ID) ?: return
+        val runningAppId = currentAppId
+        if (runningAppId == null || newAppId == runningAppId) return
+        viewModel.exitSteamApp(this, runningAppId) { recreate() }
+    }
+
     override fun onResume() {
         super.onResume()
         PluviaApp.isActivityInForeground = true
@@ -457,6 +472,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             val axes = FloatArray(6)
             val handPoses = FloatArray(12)
             val flags = BooleanArray(3)
+            var lastFedGamepad = false
             while (pollingActive.get()) {
                 val winHandler = PluviaApp.xServerView?.getxServer()?.winHandler
                 if (winHandler != null) {
@@ -489,6 +505,9 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                         buttonSuppressMaskUntilRelease = buttons[0]
                     }
                     wasInMenuNavigationMode = inMenuMode
+                    val feedGame = !xrPointerModeActive && !inMenuMode
+                    if (!feedGame && lastFedGamepad) cachedBridge?.reset()
+                    lastFedGamepad = feedGame
                     when {
                         xrPointerModeActive -> handlePointerMode(buttons[0], axes, handPoses, flags[0])
                         inMenuMode && !flags[2] -> handleMenuNavigation(buttons[0], axes)
@@ -507,7 +526,11 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                         runOnUiThread { quickMenuToggle?.invoke() }
                     }
                 }
-                Thread.sleep(POLL_INTERVAL_MS)
+                try {
+                    Thread.sleep(POLL_INTERVAL_MS)
+                } catch (e: InterruptedException) {
+                    break
+                }
             }
         }
     }
@@ -991,6 +1014,8 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         captureThread = HandlerThread("XrFrameCapture").apply { start() }
         captureHandler = Handler(captureThread!!.looper)
         captureActive.set(true)
+        overlayContentLastVisibleAt = android.os.SystemClock.uptimeMillis()
+        overlayClearSubmitted = false
         scheduleNextCapture()
         scheduleNextOverlayRefresh()
     }
@@ -1000,10 +1025,20 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
      * loop rather than once at session start, since the game's XServerView/renderer isn't created
      * yet at that point for a typical launch. */
     private fun setupDirectRenderBridgeIfSupported() {
-        if (directGLBridge != null || directVulkanBridge != null) return
         val actualRenderer = PluviaApp.xServerView?.renderer
-
         val glRenderer = actualRenderer as? GLRenderer
+
+        if (glRenderer != null && glRenderer.isEffectsRequireCompositor()) {
+            if (directRenderBlockedByEffects != true) {
+                directRenderBlockedByEffects = true
+                Timber.i("Immersive: GL screen effects active — direct-render bridge disabled, using PixelCopy")
+            }
+            if (directGLBridge != null) teardownDirectRenderBridge()
+            return
+        }
+
+        if (directGLBridge != null || directVulkanBridge != null) return
+
         if (glRenderer != null) {
             val bridge = DirectGLBridge(
                 onBufferReady = { buffer ->
@@ -1014,6 +1049,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                 },
             )
             directGLBridge = bridge
+            directRenderBlockedByEffects = false
             glRenderer.setXrFrameBridge(bridge)
             Timber.i("Immersive: GLRenderer detected — direct-render bridge attached, buffer import pending first frame")
             return
@@ -1060,7 +1096,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         if (!captureActive.get()) return
         val handler = captureHandler ?: return
 
-        if (directGLBridge == null && directVulkanBridge == null) setupDirectRenderBridgeIfSupported()
+        setupDirectRenderBridgeIfSupported()
 
         val surfaceView = PluviaApp.xServerView as? SurfaceView
         val width = surfaceView?.width ?: 0
@@ -1071,8 +1107,10 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             if (width > 0 && height > 0) {
                 PluviaApp.xServerView?.queueEvent { glBridge.ensureAllocated(width, height) }
             }
-            handler.postDelayed({ scheduleNextCapture() }, CAPTURE_RETRY_DELAY_MS)
-            return
+            if (directRenderActive) {
+                handler.postDelayed({ scheduleNextCapture() }, CAPTURE_RETRY_DELAY_MS)
+                return
+            }
         }
 
         if (directVulkanBridge != null && directRenderActive) {
@@ -1162,6 +1200,33 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                 return@runOnUiThread
             }
 
+            val hasOverlayContent = quickMenuVisible || overlayPausedUi || showControlsOnboarding ||
+                xrPointerModeActive || bootingSplashVisible
+            val now = android.os.SystemClock.uptimeMillis()
+            if (hasOverlayContent) {
+                overlayContentLastVisibleAt = now
+                overlayClearSubmitted = false
+            }
+            // Fade-outs and the mode indicator outlive their flag, so keep drawing for a grace window.
+            if (!hasOverlayContent && now - overlayContentLastVisibleAt > OVERLAY_CONTENT_GRACE_MS) {
+                if (overlayClearSubmitted) {
+                    scheduleNextOverlayRefresh()
+                    return@runOnUiThread
+                }
+                overlayClearSubmitted = true
+                synchronized(overlayLock) {
+                    val bitmap = overlayLayerBitmap?.takeIf { it.width == width && it.height == height }
+                        ?: Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { overlayLayerBitmap = it }
+                    android.graphics.Canvas(bitmap)
+                        .drawColor(android.graphics.Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
+                    if (directRenderActive && xrSessionHandle != 0L) {
+                        XrNative.nativeSubmitFrame(xrSessionHandle, bitmap)
+                    }
+                }
+                scheduleNextOverlayRefresh()
+                return@runOnUiThread
+            }
+
             val surfaceView = PluviaApp.xServerView as? SurfaceView
             val previousAlpha = surfaceView?.alpha ?: 1f
 
@@ -1219,6 +1284,8 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
 
     private fun stopXrSession() {
         pollingActive.set(false)
+        // The thread calls into the native session, so it must be joined before the handle dies.
+        pollingThread?.interrupt()
         pollingThread?.join(500)
         pollingThread = null
         stopFrameCaptureLoop()
@@ -1249,24 +1316,24 @@ private fun ImmersiveControlsOnboarding(visible: Boolean, onDismiss: () -> Unit)
     ) {
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = Color.Black.copy(alpha = 0.65f),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f),
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 28.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Icon(Icons.Default.VisibilityOff, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
-                    Text(stringResource(R.string.immersive_onboarding_disable_passthrough), color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                    Icon(Icons.Default.VisibilityOff, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(28.dp))
+                    Text(stringResource(R.string.immersive_onboarding_disable_passthrough), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge)
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Icon(Icons.Default.Menu, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
-                    Text(stringResource(R.string.immersive_onboarding_quick_menu), color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                    Icon(Icons.Default.Menu, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(28.dp))
+                    Text(stringResource(R.string.immersive_onboarding_quick_menu), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Icon(Icons.Default.SportsEsports, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
-                    Text(stringResource(R.string.immersive_onboarding_pointer_toggle), color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                    Icon(Icons.Default.SportsEsports, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(28.dp))
+                    Text(stringResource(R.string.immersive_onboarding_pointer_toggle), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -1294,7 +1361,7 @@ private fun ImmersiveModeChangeIndicator(pointerModeActive: Boolean) {
         ) {
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = Color.Black.copy(alpha = 0.65f),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.65f),
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 32.dp, vertical = 20.dp),
@@ -1304,12 +1371,12 @@ private fun ImmersiveModeChangeIndicator(pointerModeActive: Boolean) {
                     Icon(
                         imageVector = if (shownForPointerMode) Icons.Default.TouchApp else Icons.Default.SportsEsports,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(36.dp),
                     )
                     Text(
                         text = stringResource(if (shownForPointerMode) R.string.immersive_mode_xr_pointer else R.string.immersive_mode_xbox),
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }

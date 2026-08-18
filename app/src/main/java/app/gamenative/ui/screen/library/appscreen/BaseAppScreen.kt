@@ -47,6 +47,7 @@ import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.Channel
 import com.winlator.container.ContainerData
 import com.winlator.core.GPUInformation
 import java.io.File
@@ -1047,14 +1048,27 @@ abstract class BaseAppScreen {
 
         // Immersive/VR launch mode is only offered on the modernXr build running on Meta Quest.
         val isImmersiveModeSupported = remember(libraryItem.appId) {
-            app.gamenative.BuildConfig.MODERN_XR && app.gamenative.MainActivity.isMetaQuest(context)
+            app.gamenative.BuildConfig.MODERN_XR && app.gamenative.MainActivity.isMetaQuest()
         }
-        var isImmersiveModeEnabledState by remember(libraryItem.appId) { mutableStateOf(isImmersiveModeSupported) }
+        var isImmersiveModeEnabledState by remember(libraryItem.appId) { mutableStateOf<Boolean?>(null) }
+        val immersiveModeSaveRequests = remember(libraryItem.appId) { Channel<Boolean>(Channel.CONFLATED) }
         if (isImmersiveModeSupported) {
             LaunchedEffect(libraryItem.appId) {
-                isImmersiveModeEnabledState = withContext(Dispatchers.IO) {
+                val stored = withContext(Dispatchers.IO) {
                     runCatching { ContainerUtils.getContainer(context, libraryItem.appId).isLaunchImmersiveMode() }
                         .getOrDefault(true)
+                }
+                if (isImmersiveModeEnabledState == null) {
+                    isImmersiveModeEnabledState = stored
+                }
+                for (enabled in immersiveModeSaveRequests) {
+                    withContext(Dispatchers.IO) {
+                        runCatching {
+                            val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                            container.setLaunchImmersiveMode(enabled)
+                            container.saveData()
+                        }
+                    }
                 }
             }
         }
@@ -1348,17 +1362,11 @@ abstract class BaseAppScreen {
             isUpdatePending = isUpdatePendingState,
             downloadInfo = downloadInfo,
             immersiveMode = app.gamenative.ui.screen.library.ImmersiveModeUiState(
-                isSupported = isImmersiveModeSupported,
-                isEnabled = isImmersiveModeEnabledState,
+                isSupported = isImmersiveModeSupported && isImmersiveModeEnabledState != null,
+                isEnabled = isImmersiveModeEnabledState == true,
                 onChange = { enabled ->
                     isImmersiveModeEnabledState = enabled
-                    uiScope.launch(Dispatchers.IO) {
-                        runCatching {
-                            val container = ContainerUtils.getContainer(context, libraryItem.appId)
-                            container.setLaunchImmersiveMode(enabled)
-                            container.saveData()
-                        }
-                    }
+                    immersiveModeSaveRequests.trySend(enabled)
                 },
             ),
             onDownloadInstallClick = {

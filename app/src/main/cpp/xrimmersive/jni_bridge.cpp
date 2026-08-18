@@ -3,6 +3,9 @@
 #include <android/hardware_buffer_jni.h>
 #include <android/log.h>
 
+#include <mutex>
+#include <unordered_set>
+
 #include "xr_immersive.h"
 
 namespace {
@@ -11,6 +14,19 @@ struct NativeHandle {
     xrimmersive::XrImmersiveSession *session;
     jobject activityGlobalRef;
 };
+
+// Lock ordering: gHandleMutex is the outermost lock — it may be held while calling into
+// XrImmersiveSession (which takes its own inner mutexes), never the other way round, and it is
+// never held across XrImmersiveSession::join() or AndroidBitmap_lockPixels/unlockPixels. Every
+// entry point must hold it for the WHOLE call into the session, not just the lookup.
+std::mutex gHandleMutex;
+std::unordered_set<NativeHandle *> gLiveHandles;
+
+NativeHandle *LiveHandle(jlong handlePtr) {
+    auto *handle = reinterpret_cast<NativeHandle *>(handlePtr);
+    if (handle == nullptr) return nullptr;
+    return gLiveHandles.count(handle) != 0 ? handle : nullptr;
+}
 
 #define LOG_TAG "xrimmersive_jni"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -29,12 +45,17 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativeCreate(JNIEnv *env, jclass, jobj
     handle->activityGlobalRef = env->NewGlobalRef(activity);
     handle->session = new xrimmersive::XrImmersiveSession();
     handle->session->initialize(vm, handle->activityGlobalRef);
+    {
+        std::lock_guard<std::mutex> lock(gHandleMutex);
+        gLiveHandles.insert(handle);
+    }
     return reinterpret_cast<jlong>(handle);
 }
 
 JNIEXPORT void JNICALL
 Java_app_gamenative_ui_screen_xr_XrNative_nativeRequestStop(JNIEnv *, jclass, jlong handlePtr) {
-    auto *handle = reinterpret_cast<NativeHandle *>(handlePtr);
+    std::lock_guard<std::mutex> lock(gHandleMutex);
+    auto *handle = LiveHandle(handlePtr);
     if (handle != nullptr) handle->session->requestStop();
 }
 
@@ -42,6 +63,12 @@ JNIEXPORT void JNICALL
 Java_app_gamenative_ui_screen_xr_XrNative_nativeJoinAndDestroy(JNIEnv *env, jclass, jlong handlePtr) {
     auto *handle = reinterpret_cast<NativeHandle *>(handlePtr);
     if (handle == nullptr) return;
+    {
+        // Retiring the handle under the lock means every in-flight caller has already left its
+        // critical section, and no new one can enter, before anything is destroyed.
+        std::lock_guard<std::mutex> lock(gHandleMutex);
+        if (gLiveHandles.erase(handle) == 0) return;
+    }
     handle->session->join();
     delete handle->session;
     env->DeleteGlobalRef(handle->activityGlobalRef);
@@ -65,10 +92,13 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativePollSnapshot(JNIEnv *env, jclass
                                                               jfloatArray outAxes,
                                                               jfloatArray outHandPoses,
                                                               jbooleanArray outFlags) {
-    auto *handle = reinterpret_cast<NativeHandle *>(handlePtr);
-    if (handle == nullptr) return JNI_FALSE;
-
-    xrimmersive::InputSnapshot snapshot = handle->session->pollSnapshot();
+    xrimmersive::InputSnapshot snapshot;
+    {
+        std::lock_guard<std::mutex> lock(gHandleMutex);
+        auto *handle = LiveHandle(handlePtr);
+        if (handle == nullptr) return JNI_FALSE;
+        snapshot = handle->session->pollSnapshot();
+    }
 
     jint buttons[1] = {static_cast<jint>(snapshot.buttons)};
     env->SetIntArrayRegion(outButtons, 0, 1, buttons);
@@ -101,9 +131,6 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativePollSnapshot(JNIEnv *env, jclass
 JNIEXPORT void JNICALL
 Java_app_gamenative_ui_screen_xr_XrNative_nativeSubmitFrame(JNIEnv *env, jclass, jlong handlePtr,
                                                              jobject bitmap) {
-    auto *handle = reinterpret_cast<NativeHandle *>(handlePtr);
-    if (handle == nullptr) return;
-
     AndroidBitmapInfo info;
     if (AndroidBitmap_getInfo(env, bitmap, &info) != ANDROID_BITMAP_RESULT_SUCCESS) return;
     if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) return;
@@ -111,8 +138,16 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativeSubmitFrame(JNIEnv *env, jclass,
     void *pixels = nullptr;
     if (AndroidBitmap_lockPixels(env, bitmap, &pixels) != ANDROID_BITMAP_RESULT_SUCCESS) return;
 
-    handle->session->submitFrame(static_cast<const uint8_t *>(pixels), static_cast<int32_t>(info.width),
-                                  static_cast<int32_t>(info.height));
+    {
+        std::lock_guard<std::mutex> lock(gHandleMutex);
+        auto *handle = LiveHandle(handlePtr);
+        if (handle != nullptr) {
+            handle->session->submitFrame(static_cast<const uint8_t *>(pixels),
+                                          static_cast<int32_t>(info.width),
+                                          static_cast<int32_t>(info.height),
+                                          static_cast<int32_t>(info.stride));
+        }
+    }
 
     AndroidBitmap_unlockPixels(env, bitmap);
 }
@@ -123,7 +158,8 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativeSetQuadTransform(JNIEnv *, jclas
                                                                   jfloat width, jfloat height,
                                                                   jfloat contentScaleX,
                                                                   jfloat contentScaleY) {
-    auto *handle = reinterpret_cast<NativeHandle *>(handlePtr);
+    std::lock_guard<std::mutex> lock(gHandleMutex);
+    auto *handle = LiveHandle(handlePtr);
     if (handle == nullptr) return;
     handle->session->setQuadTransform(x, y, z, width, height, contentScaleX, contentScaleY);
 }
@@ -132,7 +168,8 @@ JNIEXPORT void JNICALL
 Java_app_gamenative_ui_screen_xr_XrNative_nativeSetPassthroughEnabled(JNIEnv *, jclass,
                                                                        jlong handlePtr,
                                                                        jboolean enabled) {
-    auto *handle = reinterpret_cast<NativeHandle *>(handlePtr);
+    std::lock_guard<std::mutex> lock(gHandleMutex);
+    auto *handle = LiveHandle(handlePtr);
     if (handle == nullptr) return;
     handle->session->setPassthroughEnabled(enabled == JNI_TRUE);
 }
@@ -143,10 +180,12 @@ JNIEXPORT void JNICALL
 Java_app_gamenative_ui_screen_xr_XrNative_nativeSetSharedGameBuffer(JNIEnv *env, jclass,
                                                                      jlong handlePtr,
                                                                      jobject hardwareBuffer) {
-    auto *handle = reinterpret_cast<NativeHandle *>(handlePtr);
-    if (handle == nullptr || hardwareBuffer == nullptr) return;
+    if (hardwareBuffer == nullptr) return;
     AHardwareBuffer *buffer = AHardwareBuffer_fromHardwareBuffer(env, hardwareBuffer);
     if (buffer == nullptr) return;
+    std::lock_guard<std::mutex> lock(gHandleMutex);
+    auto *handle = LiveHandle(handlePtr);
+    if (handle == nullptr) return;
     handle->session->setSharedGameBuffer(buffer);
 }
 
@@ -161,8 +200,10 @@ JNIEXPORT void JNICALL
 Java_app_gamenative_ui_screen_xr_XrNative_nativeSetSharedGameBufferPtr(JNIEnv *, jclass,
                                                                         jlong handlePtr,
                                                                         jlong ahbPtr) {
-    auto *handle = reinterpret_cast<NativeHandle *>(handlePtr);
-    if (handle == nullptr || ahbPtr == 0) return;
+    if (ahbPtr == 0) return;
+    std::lock_guard<std::mutex> lock(gHandleMutex);
+    auto *handle = LiveHandle(handlePtr);
+    if (handle == nullptr) return;
     handle->session->setSharedGameBuffer(reinterpret_cast<AHardwareBuffer *>(ahbPtr));
 }
 

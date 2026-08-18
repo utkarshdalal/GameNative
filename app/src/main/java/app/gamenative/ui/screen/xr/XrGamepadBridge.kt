@@ -60,6 +60,23 @@ class XrGamepadBridge(
     }
 
     /**
+     * Clears every button and axis and commits the neutral state, so nothing stays latched in the
+     * game while input is being routed somewhere else (quick menu, XR pointer mode).
+     */
+    fun reset() {
+        for (bit in BUTTON_A..BUTTON_R3) {
+            state.setPressed(bit, false)
+        }
+        state.thumbLX = 0f
+        state.thumbLY = 0f
+        state.thumbRX = 0f
+        state.thumbRY = 0f
+        state.triggerL = 0f
+        state.triggerR = 0f
+        commit()
+    }
+
+    /**
      * Applies one raw snapshot as read from [XrNative.nativePollSnapshot] and commits it.
      * buttonBitmask bit layout matches [BUTTON_A]..[BUTTON_R3]; axes is
      * [leftX, leftY, rightX, rightY, triggerL, triggerR].

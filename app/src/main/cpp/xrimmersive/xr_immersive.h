@@ -87,7 +87,10 @@ public:
     // Called from the JNI bridge with a freshly PixelCopy'd RGBA_8888 frame of the game's
     // actual rendered output (see ImmersiveXrActivity's capture loop). Copies into a
     // double-buffered CPU-side slot; the render thread uploads it to the GPU on its own.
-    void submitFrame(const uint8_t *rgbaPixels, int32_t width, int32_t height);
+    // strideBytes is the source's row pitch (AndroidBitmapInfo::stride), which is not always
+    // width*4 — the copy repacks each row so the pending buffer stays tightly packed.
+    void submitFrame(const uint8_t *rgbaPixels, int32_t width, int32_t height,
+                      int32_t strideBytes);
 
     // Quad position (meters, in the LOCAL reference space; z is negative = in front of the
     // player) and size (meters). x/y/z are reinterpreted as (tangential X offset, tangential Y
@@ -117,7 +120,9 @@ private:
     bool setupInstanceAndSession();
     void teardown();
     void pollXrEvents();
-    void renderFrame();
+    // Returns whether a swapchain image was acquired, rendered and released — false means the
+    // caller must NOT submit a layer referencing it.
+    bool renderFrame();
     void syncControllerInputs(XrTime predictedDisplayTime);
     void submitQuadLayer(XrTime predictedDisplayTime, XrSpace space, XrSwapchain swapchain,
                           int32_t width, int32_t height, bool sessionActive);

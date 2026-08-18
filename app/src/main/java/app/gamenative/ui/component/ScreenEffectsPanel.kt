@@ -976,7 +976,7 @@ private fun ScreenEffectAdjustmentRow(
     var isAdjustmentLocked by remember { mutableStateOf(false) }
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused, isAdjustmentLocked) {
-        inputBypass.reportAdjustment(if (isFocused && isAdjustmentLocked) (onDecrease to onIncrease) else null)
+        inputBypass.reportAdjustment(interactionSource, if (isFocused && isAdjustmentLocked) (onDecrease to onIncrease) else null)
     }
 
     Column(
@@ -1220,6 +1220,10 @@ private fun ScreenEffectToggleRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val accentColor = PluviaTheme.colors.accentPurple
+    val inputBypass = LocalImmersiveInputBypass.current
+    LaunchedEffect(isFocused) {
+        inputBypass.reportActivate(interactionSource, if (isFocused) onToggle else null)
+    }
 
     Row(
         modifier = Modifier
@@ -1298,7 +1302,7 @@ private fun ScreenEffectRadioRow(
     val isFocused by interactionSource.collectIsFocusedAsState()
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused) {
-        inputBypass.reportActivate(if (isFocused) onSelect else null)
+        inputBypass.reportActivate(interactionSource, if (isFocused) onSelect else null)
     }
     val accentColor = PluviaTheme.colors.accentPurple
     val shape = RoundedCornerShape(14.dp)

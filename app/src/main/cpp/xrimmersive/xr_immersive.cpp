@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <memory>
 #include <unistd.h>
 #include <vector>
 
@@ -76,11 +77,23 @@ InputSnapshot XrImmersiveSession::pollSnapshot() {
     return result;
 }
 
-void XrImmersiveSession::submitFrame(const uint8_t *rgbaPixels, int32_t width, int32_t height) {
+void XrImmersiveSession::submitFrame(const uint8_t *rgbaPixels, int32_t width, int32_t height,
+                                      int32_t strideBytes) {
+    if (width <= 0 || height <= 0) return;
     std::lock_guard<std::mutex> lock(frameMutex_);
-    const size_t byteCount = static_cast<size_t>(width) * static_cast<size_t>(height) * 4;
-    pendingFramePixels_.resize(byteCount);
-    std::memcpy(pendingFramePixels_.data(), rgbaPixels, byteCount);
+    const size_t rowBytes = static_cast<size_t>(width) * 4;
+    pendingFramePixels_.resize(rowBytes * static_cast<size_t>(height));
+    if (strideBytes <= 0 || static_cast<size_t>(strideBytes) == rowBytes) {
+        std::memcpy(pendingFramePixels_.data(), rgbaPixels, rowBytes * static_cast<size_t>(height));
+    } else {
+        // pendingFramePixels_ is always tightly packed — uploadPendingGameFrameLocked() feeds it
+        // straight to glTexImage2D/glTexSubImage2D with no unpack row length set.
+        for (int32_t y = 0; y < height; ++y) {
+            std::memcpy(pendingFramePixels_.data() + rowBytes * static_cast<size_t>(y),
+                        rgbaPixels + static_cast<size_t>(strideBytes) * static_cast<size_t>(y),
+                        rowBytes);
+        }
+    }
     pendingFrameWidth_ = width;
     pendingFrameHeight_ = height;
     hasPendingFrame_ = true;
@@ -88,10 +101,17 @@ void XrImmersiveSession::submitFrame(const uint8_t *rgbaPixels, int32_t width, i
 
 void XrImmersiveSession::setSharedGameBuffer(AHardwareBuffer *buffer) {
     std::lock_guard<std::mutex> lock(sharedBufferMutex_);
+    // The renderer republishes the same buffer every frame; re-importing it would destroy and
+    // recreate the EGLImage/texture on the render thread for nothing. Holding a reference on
+    // pendingSharedBuffer_ also keeps its address from being recycled, so pointer identity is a
+    // sound "same buffer" test.
+    if (buffer == pendingSharedBuffer_) return;
     if (pendingSharedBuffer_ != nullptr) {
         AHardwareBuffer_release(pendingSharedBuffer_);
     }
-    AHardwareBuffer_acquire(buffer);
+    if (buffer != nullptr) {
+        AHardwareBuffer_acquire(buffer);
+    }
     pendingSharedBuffer_ = buffer;
     sharedBufferChanged_ = true;
 }
@@ -108,17 +128,30 @@ void XrImmersiveSession::importSharedBufferIfNeeded() {
         if (!sharedBufferChanged_) return;
         buffer = pendingSharedBuffer_;
         sharedBufferChanged_ = false;
+        // Take our own reference before dropping the mutex: a concurrent setSharedGameBuffer()
+        // may release the session's reference while the import below is still running.
+        if (buffer != nullptr) AHardwareBuffer_acquire(buffer);
     }
     if (buffer == nullptr) return;
+    std::unique_ptr<AHardwareBuffer, void (*)(AHardwareBuffer *)> bufferRef(
+        buffer, AHardwareBuffer_release);
 
     if (sharedGameImage_ != EGL_NO_IMAGE_KHR) {
         eglDestroyImageKHR(eglDisplay_, sharedGameImage_);
         sharedGameImage_ = EGL_NO_IMAGE_KHR;
     }
 
+    // setSharedGameBuffer() only re-arms sharedBufferChanged_ when the buffer identity changes,
+    // so a failed import must re-arm it itself or this buffer would never be retried.
+    auto retryNextFrame = [this, buffer] {
+        std::lock_guard<std::mutex> lock(sharedBufferMutex_);
+        if (pendingSharedBuffer_ == buffer) sharedBufferChanged_ = true;
+    };
+
     EGLClientBuffer clientBuffer = eglGetNativeClientBufferANDROID(buffer);
     if (clientBuffer == nullptr) {
         LOGE("Immersive direct-render: eglGetNativeClientBufferANDROID failed");
+        retryNextFrame();
         return;
     }
 
@@ -127,6 +160,7 @@ void XrImmersiveSession::importSharedBufferIfNeeded() {
                                           clientBuffer, attrs);
     if (sharedGameImage_ == EGL_NO_IMAGE_KHR) {
         LOGE("Immersive direct-render: eglCreateImageKHR failed (0x%x)", eglGetError());
+        retryNextFrame();
         return;
     }
 
@@ -170,8 +204,10 @@ void XrImmersiveSession::runLoop() {
         applyPendingPassthroughState();
         syncControllerInputs(frameState.predictedDisplayTime);
 
-        if (frameState.shouldRender) {
-            renderFrame();
+        // Every xrBeginFrame must be matched by an xrEndFrame, but a layer may only reference a
+        // swapchain image that was actually acquired — so a failed renderFrame() still ends the
+        // frame, just with no layers.
+        if (frameState.shouldRender && renderFrame()) {
             submitQuadLayer(frameState.predictedDisplayTime, localSpace_, swapchain_,
                              kSwapchainWidth, kSwapchainHeight, true);
         } else {
@@ -686,12 +722,12 @@ void XrImmersiveSession::uploadPendingGameFrameLocked() {
     hasPendingFrame_ = false;
 }
 
-void XrImmersiveSession::renderFrame() {
+bool XrImmersiveSession::renderFrame() {
     XrSwapchainImageAcquireInfo acquireInfo{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
     uint32_t imageIndex = 0;
     if (!XrCheck(xrAcquireSwapchainImage(swapchain_, &acquireInfo, &imageIndex),
                  "xrAcquireSwapchainImage")) {
-        return;
+        return false;
     }
 
     XrSwapchainImageWaitInfo waitInfo{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
@@ -767,6 +803,7 @@ void XrImmersiveSession::renderFrame() {
 
     XrSwapchainImageReleaseInfo releaseInfo{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
     xrReleaseSwapchainImage(swapchain_, &releaseInfo);
+    return true;
 }
 
 void XrImmersiveSession::submitQuadLayer(XrTime predictedDisplayTime, XrSpace space,
@@ -1134,8 +1171,9 @@ void XrImmersiveSession::syncControllerInputs(XrTime predictedDisplayTime) {
     }
 
     std::lock_guard<std::mutex> lock(snapshotMutex_);
-    // Preserve a quick-menu click that a concurrent pollSnapshot() hasn't consumed yet.
+    // Preserve rising-edge flags that a concurrent pollSnapshot() hasn't consumed yet.
     next.quickMenuClicked = next.quickMenuClicked || snapshot_.quickMenuClicked;
+    next.pointerModeToggled = next.pointerModeToggled || snapshot_.pointerModeToggled;
     snapshot_ = next;
 }
 
