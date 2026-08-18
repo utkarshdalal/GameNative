@@ -1049,9 +1049,6 @@ abstract class BaseAppScreen {
         val isImmersiveModeSupported = remember(libraryItem.appId) {
             app.gamenative.BuildConfig.MODERN_XR && app.gamenative.MainActivity.isMetaQuest(context)
         }
-        // Pre-load/default state mirrors Container's own default (on for the XR build) so the
-        // checkbox never briefly shows the wrong value, and shows the effective default for
-        // games that have no container yet.
         var isImmersiveModeEnabledState by remember(libraryItem.appId) { mutableStateOf(isImmersiveModeSupported) }
         if (isImmersiveModeSupported) {
             LaunchedEffect(libraryItem.appId) {

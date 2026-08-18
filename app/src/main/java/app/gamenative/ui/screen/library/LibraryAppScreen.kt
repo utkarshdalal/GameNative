@@ -289,7 +289,6 @@ private fun PrimaryActionButton(
     }
 }
 
-
 /**
  * Icon-only action button for the overlay action bar
  */
@@ -554,10 +553,6 @@ private fun formatBytes(bytes: Long): String {
     }
 }
 
-// Bundled into one parameter to keep AppScreenContent's own parameter count with headroom
-// below the threshold where Compose starts emitting a second "changed" bitmask int — this
-// composable has crashed with an ART VerifyError on API < 29 (Meta Quest legacyXr) once it
-// crossed that line.
 internal data class ImmersiveModeUiState(
     val isSupported: Boolean = false,
     val isEnabled: Boolean = false,

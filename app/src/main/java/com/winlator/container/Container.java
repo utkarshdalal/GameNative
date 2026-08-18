@@ -90,10 +90,6 @@ public class Container {
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
-    // Default ON for the XR build: an immersive session gets SUSTAINED_HIGH CPU/GPU clock
-    // levels, the XR render-thread scheduling hint, and a fixed 72Hz from the runtime — none of
-    // which a 2D panel app is granted — so it is the better-performing mode on a headset.
-    // Persisted per container, so unchecking the box once sticks.
     private boolean launchImmersiveMode = app.gamenative.BuildConfig.MODERN_XR;
     private boolean launchRealSteam;
     private boolean launchBionicSteam;

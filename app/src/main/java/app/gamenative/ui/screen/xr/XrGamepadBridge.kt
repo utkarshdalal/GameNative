@@ -3,19 +3,7 @@ package app.gamenative.ui.screen.xr
 import com.winlator.inputcontrols.GamepadState
 import com.winlator.winhandler.WinHandler
 
-/**
- * Feeds Meta Quest Touch controller input into Wine as a standard Xbox-layout gamepad.
- *
- * This does not touch Android's InputDevice pipeline at all — [WinHandler.sendVirtualGamepadState]
- * writes straight into the same shared-memory buffer used for real Bluetooth/USB controllers
- * (see [com.winlator.inputcontrols.ExternalController]), so from the Windows game's point of
- * view this is indistinguishable from a physical Xbox controller on slot [slot].
- *
- * The native OpenXR session calls [updateButton]/[updateThumbstick]/[updateTrigger] once per
- * frame for whatever changed, then [commit] to push the accumulated state to Wine. No d-pad:
- * Touch controllers have no physical one, and deriving a fake one from the thumbstick direction
- * fought with the real analog values (games saw the stick as a d-pad instead of an Xbox stick).
- */
+/** Feeds Meta Quest Touch controller input into Wine as a standard Xbox-layout gamepad. */
 class XrGamepadBridge(
     private val winHandler: WinHandler,
     private val slot: Int = 0,

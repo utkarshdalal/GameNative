@@ -1073,14 +1073,6 @@ fun XServerScreen(
         showQuickMenu = false
     }
 
-    // Dedicated open/close toggle for the immersive activity's long-press-Start gesture —
-    // deliberately NOT gameBack(): that handler also does IME checks, a controller rescan, and
-    // releases touchpad pointer capture on open, none of which belong to "just open/close the
-    // quick menu" and were suspected of causing Start to behave like a confirm/select press.
-    // This does nothing but flip showQuickMenu. Registered inline rather than held in a local:
-    // this composable sits at the dex verifier's 255-register limit (see ImmersiveSessionHooks'
-    // kdoc), and a VerifyError from exactly this was reproduced on device.
-
     LaunchedEffect(showQuickMenu, quickMenuToolsVisible, xServerView) {
         // Piggybacks on this effect rather than its own LaunchedEffect(showQuickMenu) — this
         // composable is at the dex 255-register limit. Extra fires from the other keys repeat
@@ -1574,7 +1566,6 @@ fun XServerScreen(
             handled
         }
     }
-
 
     val onMotionEvent: (AndroidEvent.MotionEvent) -> Boolean = {
         val isGamepad = ExternalController.isGameController(it.event?.device)
@@ -2388,8 +2379,6 @@ fun XServerScreen(
 
             xServerView.getxServer().winHandler.setInputControlsView(PluviaApp.inputControlsView)
 
-
-
             // Add InputControlsView (portrait: inside fixed-height container at bottom; landscape: overlay)
             if (isPortrait) {
                 val controlsContainer = FrameLayout(context).apply {
@@ -2937,12 +2926,6 @@ fun XServerScreen(
 @Composable
 private fun ManualResumeOverlay(onResume: () -> Unit, immersive: Boolean) {
     val resumeButtonFocusRequester = remember { FocusRequester() }
-    // Not focusable by default touch-only flows don't need it, but a gamepad's
-    // DPAD_CENTER only activates a clickable() that currently has focus — request it
-    // as soon as this button appears so it's reachable without a prior focus target.
-    // Immersive only: that Activity's synthetic DPAD_CENTER can only activate a clickable()
-    // that already holds focus, and nothing else here ever grabs it. Flat mode keeps master's
-    // behavior (no focus target, no focus steal) — real gamepads there reach it as before.
     if (immersive) {
         LaunchedEffect(Unit) {
             runCatching { resumeButtonFocusRequester.requestFocus() }
@@ -3147,19 +3130,15 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
 
     PluviaApp.touchpadView?.setSensitivity(profile.getCursorSpeed() * 1.0f)
 
-
     // If the selected profile is a virtual gamepad, we must enable the P1 slot.
     if (container.containerVariant.equals(Container.BIONIC) && profile.isVirtualGamepad()) {
         val controllerManager: ControllerManager = ControllerManager.getInstance()
 
-
         // Ensure Player 1 slot is enabled so a vjoy device is created for it.
         controllerManager.setSlotEnabled(0, true)
 
-
         // Clear any physical device from P1 to prevent conflicts.
         controllerManager.unassignSlot(0)
-
 
         // Tell WinHandler to update its internal state.
         winHandler.refreshControllerMappings()
@@ -5353,7 +5332,6 @@ private fun restoreOriginalDllFiles(
         else system32dlls = File(imageFs.getWinePath() + "/lib/wine/x86_64-windows")
 
         syswow64dlls = File(imageFs.getWinePath() + "/lib/wine/i386-windows")
-
 
         for (dll in dlls) {
             var srcFile = File(system32dlls, dll)

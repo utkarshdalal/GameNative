@@ -221,12 +221,6 @@ class MainViewModel @Inject constructor(
         setShowBootingSplash(true)
     }
 
-    // ImmersiveXrActivity hosts its own separate MainViewModel instance (different Activity) —
-    // its exit/onWindowMapped/onGameLaunchError calls only reset *that* instance's splash, while
-    // MainActivity's own (backgrounded but still subscribed to SetBootingSplashText) instance
-    // keeps getting re-armed by every splash-text update XServerScreen emits during the immersive
-    // session's boot sequence, and is never told the session ended. Broadcasting this on the same
-    // global bus lets every subscribed instance — whichever Activity it belongs to — clear itself.
     private val onClearBootingSplash: (AndroidEvent.ClearBootingSplash) -> Unit = {
         bootingSplashTimeoutJob?.cancel()
         bootingSplashTimeoutJob = null
@@ -555,24 +549,9 @@ class MainViewModel @Inject constructor(
                 container.isLaunchImmersiveMode() &&
                 app.gamenative.MainActivity.isMetaQuest(context)
             ) {
-                // Immersive/VR launches always boot straight to the executable — there is no
-                // "open the Wine desktop" variant for this entry point. Placed after apiJob so
-                // the Steam DRM/API patch step above (replaceSteamApi/replaceSteamclientDll)
-                // still runs — skipping it made steamclient_loader_x64.exe fail to find files
-                // it depends on, for every game, not just DRM-heavy ones.
-                //
-                // ImmersiveXrActivity has its own separate MainViewModel instance (different
-                // Activity), so it can't clear *this* instance's booting splash — MainActivity
-                // is about to lose focus to that Activity anyway, so just hide it now instead
-                // of leaving it stuck on "Launching..." forever.
                 bootingSplashTimeoutJob?.cancel()
                 bootingSplashTimeoutJob = null
                 setShowBootingSplash(false)
-                // MainActivity is about to onStop() once ImmersiveXrActivity takes focus; its
-                // onStop/onDestroy checks treat !keepAlive as "nothing running, disconnect Steam"
-                // (see MainActivity.kt onStop/onDestroy), which was silently logging the whole
-                // session off for the entire immersive session — forcing a full relogin + license
-                // resync on return. shutdownEnvironment() already clears this back to false on exit.
                 SteamService.keepAlive = true
                 app.gamenative.ui.screen.xr.ImmersiveXrActivity.start(context, appId, _offline.value)
             } else {
@@ -588,10 +567,6 @@ class MainViewModel @Inject constructor(
                 bootingSplashTimeoutJob?.cancel()
                 bootingSplashTimeoutJob = null
                 setShowBootingSplash(false)
-                // Also broadcast globally: when this runs from ImmersiveXrActivity's own separate
-                // MainViewModel instance, MainActivity's (backgrounded but still subscribed to
-                // SetBootingSplashText) instance never otherwise learns the session ended — see
-                // onClearBootingSplash's kdoc.
                 PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
                 // Check if we have a temporary override before doing anything
                 val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)

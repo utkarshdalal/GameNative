@@ -295,7 +295,6 @@ class SteamService : Service(), IChallengeUrlChanged {
     private lateinit var connectivityManager: ConnectivityManager
     private lateinit var networkCallback: ConnectivityManager.NetworkCallback
 
-
     // Add these as class properties
     private var picsGetProductInfoJob: Job? = null
     private var picsChangesCheckerJob: Job? = null
@@ -956,7 +955,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             return true
         }
-
 
         /**
          * Returns all DLC App IDs that have exactly one depot.
@@ -3656,12 +3654,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        // keepAlive is the same flag MainActivity's onStop/onDestroy already respect (see
-        // MainActivity.kt) — this callback is a separate Android lifecycle hook (fires when a
-        // TASK is torn down, not tied to any one Activity's own lifecycle) that was bypassing it
-        // entirely, force-stopping Steam out from under an immersive session in progress.
-        // Only the modernXr build needs that immersive protection; other builds keep the
-        // original swipe-away-stops-the-service behavior.
         if (!hasActiveOperations() && !(BuildConfig.MODERN_XR && keepAlive)) {
             Timber.i("Task removed and no active work — stopping service")
             stopSelf()

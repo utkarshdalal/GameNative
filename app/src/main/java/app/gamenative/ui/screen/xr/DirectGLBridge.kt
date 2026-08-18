@@ -8,23 +8,10 @@ import com.winlator.renderer.XrFrameBridge
 import timber.log.Timber
 
 /**
- * [XrFrameBridge] implementation for the legacy GL renderer path: allocates a
- * [HardwareBuffer] (Android's cross-process/cross-context shareable GPU memory — the same
- * mechanism Camera2/MediaCodec use to hand frames around without a CPU copy), imports it as a
- * GL texture wrapped in an FBO *inside GLRenderer's own EGL context* (via
- * [GLHardwareBufferImporter] — the public SDK has no usable Java binding for the
- * eglGetNativeClientBufferANDROID/eglCreateImageKHR sequence this needs, so that import happens
- * in native code), and hands the same buffer to the native OpenXR session so it can import it a
- * second time into *its own* context and sample it directly — no PixelCopy, no CPU-side Bitmap,
- * no glTexImage2D upload.
- *
- * Only used for GLRenderer (the legacy GL rendering path). Most containers default to
- * dxvk (D3D->Vulkan), which renders through VulkanRenderer instead — a completely separate,
- * Vulkan-native presentation path this bridge does not cover. That's a distinct, larger
- * follow-up (needs OpenXR's Vulkan interop, not this GLES-based approach) — see the
- * conversation this was scoped in. This class exists to validate the whole
- * "render directly into a GPU buffer the XR session samples" approach end-to-end first, on the
- * simpler of the two renderers.
+ * [XrFrameBridge] for the legacy GL renderer: allocates a [HardwareBuffer], imports it as a
+ * GL texture/FBO inside GLRenderer's own EGL context (via [GLHardwareBufferImporter], since the
+ * public SDK has no binding for that import), and hands the same buffer to the native OpenXR
+ * session to sample directly — no PixelCopy, no CPU-side bitmap.
  */
 class DirectGLBridge(
     private val onBufferReady: (HardwareBuffer) -> Unit,
