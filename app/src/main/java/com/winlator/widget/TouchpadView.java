@@ -116,6 +116,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private float touchDownRawX, touchDownRawY;
     // Last raw coordinates for single-finger drag delta
     private float singleFingerLastRawX, singleFingerLastRawY;
+    // Preserve transformed sub-pixel motion for the title-scoped relative-drag fix.
+    private float relativeDragRemainderX, relativeDragRemainderY;
     // Two-finger gesture mutual exclusion (only pan OR pinch, not both)
     private static final int TWO_FINGER_GESTURE_NONE = 0;
     private static final int TWO_FINGER_GESTURE_PAN = 1;
@@ -811,6 +813,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         dragButtonPressed = false;
         holdMouseButtonTouchActive = false;
         holdMouseButtonTouchAction = null;
+        resetRelativeDragRemainder();
         movedBeyondTapThreshold = false;
         multiFingerGestureUsed = false;
         twoFingerDragging = false;
@@ -1518,6 +1521,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
         injectRelease(holdMouseButtonTouchAction);
         holdMouseButtonTouchActive = false;
         holdMouseButtonTouchAction = null;
+        resetRelativeDragRemainder();
     }
 
     private String getHoldMouseButtonTouchAction() {
@@ -1793,8 +1797,22 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private void moveCursorByRelativeDelta(float dx, float dy) {
         float[] ptOrigin = XForm.transformPoint(xform, 0, 0);
         float[] ptDelta  = XForm.transformPoint(xform, dx, dy);
-        int mx = (int) (ptDelta[0] - ptOrigin[0]);
-        int my = (int) (ptDelta[1] - ptOrigin[1]);
+        float transformedDx = ptDelta[0] - ptOrigin[0];
+        float transformedDy = ptDelta[1] - ptOrigin[1];
+        int mx;
+        int my;
+        if (xServer.isMouseDragCompatibilityEnabled()) {
+            relativeDragRemainderX += transformedDx;
+            relativeDragRemainderY += transformedDy;
+            mx = (int) relativeDragRemainderX;
+            my = (int) relativeDragRemainderY;
+            relativeDragRemainderX -= mx;
+            relativeDragRemainderY -= my;
+            if (mx == 0 && my == 0) return;
+        } else {
+            mx = (int) transformedDx;
+            my = (int) transformedDy;
+        }
         if (xServer.isRelativeMouseMovement()) {
             xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, mx, my, 0);
         } else {
@@ -1837,6 +1855,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private void releaseAllDragButtons() {
         releaseTwoFingerMiddleButton();
         releaseClickDragButtons();
+        resetRelativeDragRemainder();
+    }
+
+    private void resetRelativeDragRemainder() {
+        relativeDragRemainderX = 0;
+        relativeDragRemainderY = 0;
     }
 
     private void performKeyPan(float dx, float dy, XKeycode leftKey, XKeycode rightKey, XKeycode upKey, XKeycode downKey) {
