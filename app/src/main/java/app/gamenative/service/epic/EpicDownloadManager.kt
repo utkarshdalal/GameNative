@@ -25,6 +25,8 @@ import java.io.File
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.channels.FileChannel
+import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
 import java.util.zip.Inflater
 import javax.inject.Inject
@@ -267,7 +269,11 @@ class EpicDownloadManager @Inject constructor(
             // large install — surface it in the UI and honor cancellation between files.
             downloadInfo.updateStatusMessage("Verifying existing files...")
             val pendingFiles = files.filter { file ->
-                if (!downloadInfo.isActive()) return@withContext Result.failure(Exception("Download cancelled"))
+                if (!downloadInfo.isActive()) {
+                    // The enclosing catch never runs on this return path, so clean up here
+                    MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                    return@withContext Result.failure(Exception("Download cancelled"))
+                }
                 !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
             }
             downloadInfo.updateStatusMessage(null)
@@ -424,7 +430,11 @@ class EpicDownloadManager @Inject constructor(
             // large install — surface it in the UI and honor cancellation between files.
             downloadInfo.updateStatusMessage("Verifying existing files...")
             val pendingFiles = files.filter { file ->
-                if (!downloadInfo.isActive()) return@withContext Result.failure(Exception("Download cancelled"))
+                if (!downloadInfo.isActive()) {
+                    // The enclosing catch never runs on this return path, so clean up here
+                    MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                    return@withContext Result.failure(Exception("Download cancelled"))
+                }
                 !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
             }
             downloadInfo.updateStatusMessage(null)
@@ -1297,19 +1307,27 @@ class EpicDownloadManager @Inject constructor(
             chunkFile.inputStream().use { input ->
                 input.skip(chunk.offset.toLong())
 
-                RandomAccessFile(outputFile.path, "rw").use { randomAccessFile ->
-                    randomAccessFile.seek(chunk.fileOffset)
+                FileChannel.open(
+                    outputFile.toPath(),
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.CREATE
+                ).use { channel ->
+                    channel.position(chunk.fileOffset)
 
                     val buffer = ByteArray(65536) // 64KB buffer for memory efficiency
+                    val byteBuffer = ByteBuffer.wrap(buffer)
                     var remaining = chunk.size.toLong()
 
                     while (remaining > 0) {
                         val toRead = minOf(remaining, buffer.size.toLong()).toInt()
                         val bytesRead = input.read(buffer, 0, toRead)
-
                         if (bytesRead == -1) break
 
-                        randomAccessFile.write(buffer, 0, bytesRead)
+                        byteBuffer.clear()
+                        byteBuffer.limit(bytesRead)
+                        while (byteBuffer.hasRemaining()) {
+                            channel.write(byteBuffer)
+                        }
                         remaining -= bytesRead
                     }
                 }
