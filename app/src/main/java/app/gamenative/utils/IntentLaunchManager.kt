@@ -14,7 +14,8 @@ import org.json.JSONObject
 import timber.log.Timber
 
 /**
- * Handles external game launch intents with container configuration overrides.
+ * Handles external game launch intents with container configuration overrides, and the external
+ * intent that registers a custom game folder.
  */
 object IntentLaunchManager {
 
@@ -23,6 +24,8 @@ object IntentLaunchManager {
     private const val EXTRA_GAME_SOURCE = "game_source"
     private const val EXTRA_CONTAINER_CONFIG = "container_config"
     private const val ACTION_LAUNCH_GAME = "app.gamenative.LAUNCH_GAME"
+    private const val EXTRA_FOLDER = "folder"
+    const val ACTION_ADD_CUSTOM_GAME_FOLDER = "app.gamenative.ADD_CUSTOM_GAME_FOLDER"
     private const val MAX_CONFIG_JSON_SIZE = 50000 // 50KB limit to prevent memory exhaustion
 
     data class LaunchRequest(
@@ -69,6 +72,31 @@ object IntentLaunchManager {
         }
 
         return LaunchRequest(appId, containerConfig)
+    }
+
+    /**
+     * Registers the custom game folder named by the [EXTRA_FOLDER] extra, so a launcher that
+     * installs games into its own directories does not need the folder picker. Returns whether
+     * the folder is registered; a folder that is already registered reports success.
+     */
+    fun addCustomGameFolder(context: Context, intent: Intent): Boolean {
+        val folder = intent.getStringExtra(EXTRA_FOLDER)?.trim()
+        if (folder.isNullOrEmpty()) {
+            Timber.w("[IntentLaunchManager]: Missing '$EXTRA_FOLDER' extra in $ACTION_ADD_CUSTOM_GAME_FOLDER intent")
+            return false
+        }
+
+        if (!CustomGameScanner.hasStoragePermission(context, folder)) {
+            Timber.w("[IntentLaunchManager]: Missing storage permission to read custom game folder $folder")
+            return false
+        }
+
+        return try {
+            CustomGameScanner.registerManualFolder(folder)
+        } catch (e: Exception) {
+            Timber.e(e, "[IntentLaunchManager]: Failed to register custom game folder $folder")
+            false
+        }
     }
 
     fun applyTemporaryConfigOverride(context: Context, appId: String, configOverride: ContainerData) {

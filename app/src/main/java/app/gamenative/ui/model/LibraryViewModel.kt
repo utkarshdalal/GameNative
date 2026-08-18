@@ -59,7 +59,6 @@ import app.gamenative.utils.unaccent
 import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.io.File
 import java.util.EnumSet
 import javax.inject.Inject
 import kotlin.math.max
@@ -559,20 +558,10 @@ class LibraryViewModel @Inject constructor(
 
     fun addCustomGameFolder(path: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val normalizedPath = File(path).absolutePath
-            val libraryItem = CustomGameScanner.createLibraryItemFromFolder(normalizedPath)
-            if (libraryItem == null) {
-                Timber.tag("LibraryViewModel").w("Selected folder is not a valid custom game: $normalizedPath")
+            if (!CustomGameScanner.registerManualFolder(path)) {
                 return@launch
             }
 
-            val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
-            if (!manualFolders.contains(normalizedPath)) {
-                manualFolders.add(normalizedPath)
-                PrefManager.customGameManualFolders = manualFolders
-            }
-
-            CustomGameScanner.invalidateCache()
             onFilterApps(paginationCurrentPage)
         }
     }

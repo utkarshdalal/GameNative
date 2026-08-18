@@ -60,6 +60,7 @@ import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
 import com.winlator.inputcontrols.ControllerManager
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.EnumSet
 import kotlin.math.abs
@@ -333,6 +334,17 @@ class MainActivity : ComponentActivity() {
         }
         Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}, isNewIntent=$isNewIntent")
         try {
+            if (intent.action == IntentLaunchManager.ACTION_ADD_CUSTOM_GAME_FOLDER) {
+                // scanning the folder touches the filesystem, so keep it off the main thread
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val added = IntentLaunchManager.addCustomGameFolder(this@MainActivity, intent)
+                    SnackbarManager.show(
+                        getString(if (added) R.string.custom_game_import_success else R.string.custom_game_import_failed),
+                    )
+                }
+                return
+            }
+
             val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
             if (launchRequest != null) {
                 Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")

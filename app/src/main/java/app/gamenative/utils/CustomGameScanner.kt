@@ -692,6 +692,27 @@ object CustomGameScanner {
     }
 
     /**
+     * Registers [folderPath] as a manually added custom game folder.
+     * Returns false if the folder is not a valid custom game; a folder that is already
+     * registered succeeds without changing anything.
+     */
+    fun registerManualFolder(folderPath: String): Boolean {
+        val normalizedPath = File(folderPath).absolutePath
+        if (createLibraryItemFromFolder(normalizedPath) == null) {
+            Timber.tag("CustomGameScanner").w("Folder is not a valid custom game: $normalizedPath")
+            return false
+        }
+
+        val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
+        if (manualFolders.add(normalizedPath)) {
+            PrefManager.customGameManualFolders = manualFolders
+        }
+
+        invalidateCache()
+        return true
+    }
+
+    /**
      * Reads the game ID from the .gamenative file in the given folder.
      * Returns null if the file doesn't exist or doesn't contain a valid ID.
      */
