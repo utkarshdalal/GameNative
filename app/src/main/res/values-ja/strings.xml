@@ -2180,4 +2180,22 @@
     <string name="power_control_strategy_aggressive_desc">検出されたボトルネックのパフォーマンスを最大化</string>
     <string name="power_control_strategy_conservative">保守的</string>
     <string name="power_control_strategy_conservative_desc">安定性を重視した漸進的な調整</string>
+    <string name="launch_immersive_mode">没入モード（VR）で起動</string>
+    <string name="quick_menu_tab_immersive">没入</string>
+    <string name="immersive_passthrough">パススルー</string>
+    <string name="immersive_passthrough_desc">仮想スクリーン越しに現実の周囲を表示します</string>
+    <string name="immersive_passthrough_toggle">パススルーを有効にする</string>
+    <string name="immersive_resize_mode_title">サイズ変更・移動ハンドル</string>
+    <string name="immersive_resize_mode_desc">オンのあいだ、ゲーム画面の内側にグラブハンドルを表示します。余白を設けないほうが画質の劣化を避けられるため、既定ではオフです。</string>
+    <string name="immersive_resize_mode_toggle">サイズ変更・移動ハンドルを表示</string>
+    <string name="immersive_direct_render_title">パフォーマンス</string>
+    <string name="immersive_reset_effects_status_blocked">画面エフェクト、フィルター、または明るさ・コントラスト・ガンマの調整が有効なため、最速の描画パスが使えません。</string>
+    <string name="immersive_reset_effects_status_ok">現在、最速の描画パスを妨げるものはありません。</string>
+    <string name="immersive_reset_effects_button">画面エフェクトをリセット</string>
+    <string name="immersive_reset_effects_desc">すべてのエフェクト、フィルター、明るさ・コントラスト・ガンマの調整をオフにします。再起動不要ですぐに反映されます。</string>
+    <string name="immersive_onboarding_disable_passthrough">パフォーマンス向上のためパススルーを無効にしてください</string>
+    <string name="immersive_onboarding_quick_menu">Start を長押しするとクイックメニューを開閉できます</string>
+    <string name="immersive_onboarding_pointer_toggle">スティックをダブルクリックすると Xbox コントローラーと XR ポインターを切り替えられます</string>
+    <string name="immersive_mode_xr_pointer">XR ポインターモード</string>
+    <string name="immersive_mode_xbox">Xbox コントローラーモード</string>
 </resources>

@@ -2165,4 +2165,22 @@
     <string name="power_control_strategy_aggressive_desc">Leistung bei erkannten Engpässen maximieren</string>
     <string name="power_control_strategy_conservative">Konservativ</string>
     <string name="power_control_strategy_conservative_desc">Schrittweise Anpassungen mit Fokus auf Stabilität</string>
+    <string name="launch_immersive_mode">Im immersiven Modus starten (VR)</string>
+    <string name="quick_menu_tab_immersive">Immersiv</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Sieh deine reale Umgebung durch den virtuellen Bildschirm</string>
+    <string name="immersive_passthrough_toggle">Passthrough aktivieren</string>
+    <string name="immersive_resize_mode_title">Griffe zum Skalieren/Verschieben</string>
+    <string name="immersive_resize_mode_desc">Zeigt Griffe knapp innerhalb der Spielränder an, wenn aktiviert — standardmäßig aus, da ein randloser Bildschirm keine Schärfe an einen Rand verliert.</string>
+    <string name="immersive_resize_mode_toggle">Griffe zum Skalieren/Verschieben anzeigen</string>
+    <string name="immersive_direct_render_title">Leistung</string>
+    <string name="immersive_reset_effects_status_blocked">Ein aktiver Bildschirmeffekt, Filter oder eine Helligkeits-/Kontrast-/Gamma-Anpassung blockiert den schnellsten Renderpfad.</string>
+    <string name="immersive_reset_effects_status_ok">Derzeit blockiert nichts den schnellsten Renderpfad.</string>
+    <string name="immersive_reset_effects_button">Bildschirmeffekte zurücksetzen</string>
+    <string name="immersive_reset_effects_desc">Schaltet alle Effekte, Filter und Helligkeits-/Kontrast-/Gamma-Anpassungen aus. Wirkt sofort — kein Neustart nötig.</string>
+    <string name="immersive_onboarding_disable_passthrough">Passthrough für bessere Leistung deaktivieren</string>
+    <string name="immersive_onboarding_quick_menu">Halte Start gedrückt, um das Schnellmenü zu öffnen/schließen</string>
+    <string name="immersive_onboarding_pointer_toggle">Doppelklicke einen Joystick, um zwischen Xbox-Controller und XR-Zeiger zu wechseln</string>
+    <string name="immersive_mode_xr_pointer">XR-Zeigermodus</string>
+    <string name="immersive_mode_xbox">Xbox-Controller-Modus</string>
 </resources>

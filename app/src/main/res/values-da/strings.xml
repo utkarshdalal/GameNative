@@ -2095,4 +2095,22 @@
     <string name="power_control_strategy_aggressive_desc">Maksimerer ydeevnen på opdagede flaskehalse</string>
     <string name="power_control_strategy_conservative">Konservativ</string>
     <string name="power_control_strategy_conservative_desc">Gradvise justeringer med fokus på stabilitet</string>
+    <string name="launch_immersive_mode">Start i immersiv tilstand (VR)</string>
+    <string name="quick_menu_tab_immersive">Immersiv</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Se dine faktiske omgivelser gennem den virtuelle skærm</string>
+    <string name="immersive_passthrough_toggle">Aktivér passthrough</string>
+    <string name="immersive_resize_mode_title">Håndtag til størrelse/flytning</string>
+    <string name="immersive_resize_mode_desc">Viser gribehåndtag lige inden for spillets egne kanter, når den er slået til — slået fra som standard, da en skærm uden ramme undgår at miste skarphed til en margen.</string>
+    <string name="immersive_resize_mode_toggle">Vis håndtag til størrelse/flytning</string>
+    <string name="immersive_direct_render_title">Ydelse</string>
+    <string name="immersive_reset_effects_status_blocked">En aktiv skærmeffekt, et filter eller en justering af lysstyrke/kontrast/gamma blokerer den hurtigste gengivelsessti.</string>
+    <string name="immersive_reset_effects_status_ok">Intet blokerer i øjeblikket den hurtigste gengivelsessti.</string>
+    <string name="immersive_reset_effects_button">Nulstil skærmeffekter</string>
+    <string name="immersive_reset_effects_desc">Slår alle effekter, filtre og justeringer af lysstyrke/kontrast/gamma fra. Træder i kraft med det samme — ingen genstart nødvendig.</string>
+    <string name="immersive_onboarding_disable_passthrough">Slå passthrough fra for bedre ydelse</string>
+    <string name="immersive_onboarding_quick_menu">Hold Start nede for at åbne/lukke lynmenuen</string>
+    <string name="immersive_onboarding_pointer_toggle">Dobbeltklik på et joystick for at skifte mellem Xbox-controller og XR-pointer</string>
+    <string name="immersive_mode_xr_pointer">XR-pointertilstand</string>
+    <string name="immersive_mode_xbox">Xbox-controllertilstand</string>
 </resources>

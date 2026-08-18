@@ -2241,4 +2241,22 @@
     <string name="power_control_strategy_aggressive_desc">最大化检测到的瓶颈性能</string>
     <string name="power_control_strategy_conservative">保守</string>
     <string name="power_control_strategy_conservative_desc">渐进式调整，注重稳定性</string>
+    <string name="launch_immersive_mode">以沉浸模式启动（VR）</string>
+    <string name="quick_menu_tab_immersive">沉浸</string>
+    <string name="immersive_passthrough">透视</string>
+    <string name="immersive_passthrough_desc">透过虚拟屏幕查看周围的真实环境</string>
+    <string name="immersive_passthrough_toggle">启用透视</string>
+    <string name="immersive_resize_mode_title">缩放/移动控制点</string>
+    <string name="immersive_resize_mode_desc">开启后会在游戏画面边缘内侧显示抓取控制点。默认关闭，因为不留边距可以避免画面变模糊。</string>
+    <string name="immersive_resize_mode_toggle">显示缩放/移动控制点</string>
+    <string name="immersive_direct_render_title">性能</string>
+    <string name="immersive_reset_effects_status_blocked">当前启用的画面效果、滤镜或亮度/对比度/伽马调整正在阻止使用最快的渲染路径。</string>
+    <string name="immersive_reset_effects_status_ok">当前没有任何设置阻止使用最快的渲染路径。</string>
+    <string name="immersive_reset_effects_button">重置画面效果</string>
+    <string name="immersive_reset_effects_desc">关闭所有效果、滤镜以及亮度/对比度/伽马调整。立即生效，无需重启。</string>
+    <string name="immersive_onboarding_disable_passthrough">关闭透视可提升性能</string>
+    <string name="immersive_onboarding_quick_menu">长按 Start 可打开或关闭快捷菜单</string>
+    <string name="immersive_onboarding_pointer_toggle">双击摇杆可在 Xbox 手柄与 XR 指针之间切换</string>
+    <string name="immersive_mode_xr_pointer">XR 指针模式</string>
+    <string name="immersive_mode_xbox">Xbox 手柄模式</string>
 </resources>

@@ -2223,4 +2223,22 @@
     <string name="power_control_strategy_aggressive_desc">Maximiza el rendimiento en cuellos de botella detectados</string>
     <string name="power_control_strategy_conservative">Conservador</string>
     <string name="power_control_strategy_conservative_desc">Ajustes graduales con enfoque en estabilidad</string>
+    <string name="launch_immersive_mode">Iniciar en modo inmersivo (RV)</string>
+    <string name="quick_menu_tab_immersive">Inmersivo</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Ve tu entorno real a través de la pantalla virtual</string>
+    <string name="immersive_passthrough_toggle">Activar passthrough</string>
+    <string name="immersive_resize_mode_title">Controles de tamaño/posición</string>
+    <string name="immersive_resize_mode_desc">Muestra controles justo dentro de los bordes del juego cuando está activado; desactivado por defecto, ya que una pantalla sin borde no pierde nitidez por un margen.</string>
+    <string name="immersive_resize_mode_toggle">Mostrar controles de tamaño/posición</string>
+    <string name="immersive_direct_render_title">Rendimiento</string>
+    <string name="immersive_reset_effects_status_blocked">Un efecto de pantalla, filtro o ajuste de brillo/contraste/gamma activo está bloqueando la ruta de renderizado más rápida.</string>
+    <string name="immersive_reset_effects_status_ok">Nada bloquea actualmente la ruta de renderizado más rápida.</string>
+    <string name="immersive_reset_effects_button">Restablecer efectos de pantalla</string>
+    <string name="immersive_reset_effects_desc">Desactiva todos los efectos, filtros y ajustes de brillo/contraste/gamma. Surte efecto de inmediato: no hace falta reiniciar.</string>
+    <string name="immersive_onboarding_disable_passthrough">Desactiva el passthrough para mejorar el rendimiento</string>
+    <string name="immersive_onboarding_quick_menu">Mantén pulsado Start para abrir o cerrar el menú rápido</string>
+    <string name="immersive_onboarding_pointer_toggle">Haz doble clic en un joystick para cambiar entre mando Xbox y puntero XR</string>
+    <string name="immersive_mode_xr_pointer">Modo puntero XR</string>
+    <string name="immersive_mode_xbox">Modo mando Xbox</string>
 </resources>

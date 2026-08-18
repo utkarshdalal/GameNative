@@ -2228,4 +2228,22 @@
     <string name="power_control_strategy_aggressive_desc">Maximizează performanța la blocajele detectate</string>
     <string name="power_control_strategy_conservative">Conservator</string>
     <string name="power_control_strategy_conservative_desc">Ajustări graduale cu accent pe stabilitate</string>
+    <string name="launch_immersive_mode">Pornește în modul imersiv (VR)</string>
+    <string name="quick_menu_tab_immersive">Imersiv</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Vezi mediul real prin ecranul virtual</string>
+    <string name="immersive_passthrough_toggle">Activează passthrough</string>
+    <string name="immersive_resize_mode_title">Mânere de redimensionare/mutare</string>
+    <string name="immersive_resize_mode_desc">Când este activat, afișează mânere chiar în interiorul marginilor jocului — dezactivat implicit, deoarece un ecran fără margine nu pierde claritate.</string>
+    <string name="immersive_resize_mode_toggle">Afișează mânerele de redimensionare/mutare</string>
+    <string name="immersive_direct_render_title">Performanță</string>
+    <string name="immersive_reset_effects_status_blocked">Un efect de ecran, un filtru sau o ajustare de luminozitate/contrast/gamma activă blochează cea mai rapidă cale de randare.</string>
+    <string name="immersive_reset_effects_status_ok">Momentan nimic nu blochează cea mai rapidă cale de randare.</string>
+    <string name="immersive_reset_effects_button">Resetează efectele de ecran</string>
+    <string name="immersive_reset_effects_desc">Dezactivează toate efectele, filtrele și ajustările de luminozitate/contrast/gamma. Se aplică imediat — fără repornire.</string>
+    <string name="immersive_onboarding_disable_passthrough">Dezactivează passthrough pentru performanță mai bună</string>
+    <string name="immersive_onboarding_quick_menu">Ține apăsat Start pentru a deschide/închide meniul rapid</string>
+    <string name="immersive_onboarding_pointer_toggle">Dă dublu clic pe un joystick pentru a comuta între controller Xbox și indicator XR</string>
+    <string name="immersive_mode_xr_pointer">Mod indicator XR</string>
+    <string name="immersive_mode_xbox">Mod controller Xbox</string>
 </resources>

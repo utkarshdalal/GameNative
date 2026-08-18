@@ -2221,4 +2221,22 @@
     <string name="power_control_strategy_aggressive_desc">감지된 병목 현상의 성능을 최대화</string>
     <string name="power_control_strategy_conservative">보수적</string>
     <string name="power_control_strategy_conservative_desc">안정성에 중점을 둔 점진적 조정</string>
+    <string name="launch_immersive_mode">몰입 모드(VR)로 실행</string>
+    <string name="quick_menu_tab_immersive">몰입</string>
+    <string name="immersive_passthrough">패스스루</string>
+    <string name="immersive_passthrough_desc">가상 화면 너머로 실제 주변 환경을 봅니다</string>
+    <string name="immersive_passthrough_toggle">패스스루 사용</string>
+    <string name="immersive_resize_mode_title">크기 조절/이동 핸들</string>
+    <string name="immersive_resize_mode_desc">켜면 게임 화면 안쪽 가장자리에 잡기 핸들을 표시합니다. 여백 없이 두는 편이 선명도를 유지하므로 기본값은 꺼짐입니다.</string>
+    <string name="immersive_resize_mode_toggle">크기 조절/이동 핸들 표시</string>
+    <string name="immersive_direct_render_title">성능</string>
+    <string name="immersive_reset_effects_status_blocked">화면 효과, 필터 또는 밝기/대비/감마 조정이 활성화되어 가장 빠른 렌더링 경로가 차단되었습니다.</string>
+    <string name="immersive_reset_effects_status_ok">현재 가장 빠른 렌더링 경로를 막는 항목이 없습니다.</string>
+    <string name="immersive_reset_effects_button">화면 효과 초기화</string>
+    <string name="immersive_reset_effects_desc">모든 효과, 필터, 밝기/대비/감마 조정을 끕니다. 다시 시작할 필요 없이 즉시 적용됩니다.</string>
+    <string name="immersive_onboarding_disable_passthrough">성능을 높이려면 패스스루를 끄세요</string>
+    <string name="immersive_onboarding_quick_menu">Start를 길게 누르면 빠른 메뉴가 열리고 닫힙니다</string>
+    <string name="immersive_onboarding_pointer_toggle">스틱을 두 번 누르면 Xbox 컨트롤러와 XR 포인터가 전환됩니다</string>
+    <string name="immersive_mode_xr_pointer">XR 포인터 모드</string>
+    <string name="immersive_mode_xbox">Xbox 컨트롤러 모드</string>
 </resources>
