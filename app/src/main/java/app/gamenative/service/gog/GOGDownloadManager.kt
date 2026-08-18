@@ -828,22 +828,13 @@ class GOGDownloadManager @Inject constructor(
             // Calculate total expected installed size once (sum of all file sizes)
             val totalExpectedSize = files.sumOf { file -> file.chunks.sumOf { it.size } }
 
-            val onExternalStorage = runCatching {
-                ContainerStorageManager.getStorageLocation(context, GameSource.GOG, installDir.absolutePath) ==
-                    ContainerStorageManager.StorageLocation.EXTERNAL
-            }.getOrDefault(false)
+            val onExternalStorage = ContainerStorageManager.isOnExternalStorage(context, GameSource.GOG, installDir.absolutePath)
             if (onExternalStorage) {
                 val remainingBytes = files.sumOf { file ->
                     (file.chunks.sumOf { it.size } - File(installDir, file.path).length()).coerceAtLeast(0L)
                 }
-                val availableBytes = StorageUtils.getAvailableSpaceForUncreatedPath(installDir.absolutePath)
-                if (availableBytes < remainingBytes) {
-                    return@withContext Result.failure(
-                        IOException(
-                            "Not enough free space: need ${StorageUtils.formatBinarySize(remainingBytes)}, " +
-                                "available ${StorageUtils.formatBinarySize(availableBytes)}",
-                        ),
-                    )
+                StorageUtils.downloadSpaceShortfall(installDir, remainingBytes, chunkCacheDir)?.let {
+                    return@withContext Result.failure(IOException(it))
                 }
             }
 
@@ -1268,8 +1259,9 @@ class GOGDownloadManager @Inject constructor(
                 )
                 val chunkUrlCandidates = buildChunkUrlCandidates(depotChunkHashes, rankedDependencyUrls)
 
-                // Create cache directory for this dependency
-                val depotCacheDir = File(installBaseDir, ".gog_dep_${depot.dependencyId}")
+                // Dependency chunk cache also lives on internal storage (same exFAT
+                // dirsync cost as the game chunk cache when installing to SD)
+                val depotCacheDir = File(context.cacheDir, "gog_chunks/dep_${depot.dependencyId}")
                 depotCacheDir.mkdirs()
 
                 val depotInstallDir = installBaseDir

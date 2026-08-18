@@ -67,6 +67,17 @@ class EpicDownloadManager @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     companion object {
+        /**
+         * Internal chunk-cache dir for a download target. Keyed by the full install
+         * path (not just the directory name) so two containers installing the EOS
+         * overlay — whose install dirs are all named "Overlay" — never share a cache.
+         */
+        fun chunkCacheDirFor(context: Context, installPath: String): File {
+            val dir = File(installPath)
+            val key = Integer.toHexString(dir.absolutePath.hashCode())
+            return File(context.cacheDir, "epic_chunks/$key-${dir.name}")
+        }
+
         private const val CHUNK_BUFFER_SIZE = 1024 * 1024 // 1MB buffer for decompression
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
@@ -233,7 +244,7 @@ class EpicDownloadManager @Inject constructor(
             // Cache lives on internal storage: on exFAT SD cards (dirsync mount) every
             // create/rename/delete in the cache dir is a synchronous directory flush,
             // which dominates download time for small chunks.
-            val chunkCacheDir = File(context.cacheDir, "epic_chunks/${File(installPath).name}")
+            val chunkCacheDir = chunkCacheDirFor(context, installPath)
             chunkCacheDir.mkdirs()
 
             Timber.tag("Epic").d(
@@ -398,7 +409,7 @@ class EpicDownloadManager @Inject constructor(
             val files = fileManifestList.elements
             val chunkDir = manifest.getChunkDir()
 
-            val chunkCacheDir = File(context.cacheDir, "epic_chunks/${File(installPath).name}")
+            val chunkCacheDir = chunkCacheDirFor(context, installPath)
             chunkCacheDir.mkdirs()
             val installDir = File(installPath)
             installDir.mkdirs()
@@ -470,7 +481,7 @@ class EpicDownloadManager @Inject constructor(
             val chunkDir = manifest.getChunkDir()
 
             val installDir = File(installPath).also { it.mkdirs() }
-            val chunkCacheDir = File(context.cacheDir, "epic_chunks/${installDir.name}").also { it.mkdirs() }
+            val chunkCacheDir = chunkCacheDirFor(context, installDir.absolutePath).also { it.mkdirs() }
 
             // Dummy DownloadInfo – overlay downloads are small and need no UI progress events
             val dummyDownloadInfo = DownloadInfo(
@@ -929,22 +940,13 @@ class EpicDownloadManager @Inject constructor(
             // Calculate total expected installed size once (sum of all file sizes)
             val totalExpectedSize = files.sumOf { it.fileSize }
 
-            val onExternalStorage = runCatching {
-                ContainerStorageManager.getStorageLocation(context, GameSource.EPIC, installDir.absolutePath) ==
-                    ContainerStorageManager.StorageLocation.EXTERNAL
-            }.getOrDefault(false)
+            val onExternalStorage = ContainerStorageManager.isOnExternalStorage(context, GameSource.EPIC, installDir.absolutePath)
             if (onExternalStorage) {
                 val remainingBytes = files.sumOf { file ->
                     (file.fileSize - File(installDir, file.filename).length()).coerceAtLeast(0L)
                 }
-                val availableBytes = StorageUtils.getAvailableSpaceForUncreatedPath(installDir.absolutePath)
-                if (availableBytes < remainingBytes) {
-                    return@withContext Result.failure(
-                        IOException(
-                            "Not enough free space: need ${StorageUtils.formatBinarySize(remainingBytes)}, " +
-                                "available ${StorageUtils.formatBinarySize(availableBytes)}",
-                        ),
-                    )
+                StorageUtils.downloadSpaceShortfall(installDir, remainingBytes, chunkCacheDir)?.let {
+                    return@withContext Result.failure(IOException(it))
                 }
             }
 

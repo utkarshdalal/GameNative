@@ -104,6 +104,7 @@ import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicOverlayManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.QuickMenu
@@ -116,7 +117,6 @@ import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.AssetUtils
-import app.gamenative.utils.ContainerStorageManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
@@ -3695,6 +3695,10 @@ private fun setupXEnvironment(
                 container.startupSelection = Container.STARTUP_SELECTION_ESSENTIAL
                 container.putExtra("startupSelection", java.lang.String.valueOf(Container.STARTUP_SELECTION_ESSENTIAL))
                 container.saveData()
+            } else if (EpicOverlayManager.isOverlayInstalled(container)) {
+                // The EOS overlay needs RpcSs/BITS; services were forced to normal
+                // in setupWineSystemFiles, so don't kill services.exe here.
+                Timber.d("Keeping services.exe alive for EOS overlay despite aggressive startup selection")
             } else {
                 xServer.winHandler.killProcess("services.exe");
             }
@@ -5002,15 +5006,12 @@ private suspend fun setupWineSystemFiles(
 
     // The EOS overlay's CEF browser needs RpcSs and BITS: without them it
     // crash-loops and EOS login fails. Force normal services only for containers
-    // that actually have the overlay installed, not every Epic container.
-    val isEpicContainer = ContainerStorageManager.detectGameSource(
-        ContainerStorageManager.normalizeContainerId(container.id),
-    ) == GameSource.EPIC
-    val needsOverlayServices = isEpicContainer && EpicService.isOverlayInstalled(container)
+    // that actually have the overlay installed.
+    val needsOverlayServices = EpicOverlayManager.isOverlayInstalled(container)
     if (needsOverlayServices) {
         // Prefix re-provisioning above (wine/proton version change) replaces user.reg,
         // so the overlay registry entries must be repaired here, not just at install time.
-        EpicService.ensureOverlayRegistryEntries(container)
+        EpicOverlayManager.ensureRegistryEntries(container)
     }
     val effectiveStartupSelection = if (needsOverlayServices) Container.STARTUP_SELECTION_NORMAL else container.startupSelection
     val startupSelection = effectiveStartupSelection.toString()

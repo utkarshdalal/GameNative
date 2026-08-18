@@ -58,6 +58,60 @@ class EpicOverlayManager @Inject constructor(
         // recipe), the EOS overlay renders OFF-SCREEN into shared D3D11 textures that
         // EOSOVH composites over the game. Forcing no3d breaks that handoff (grey
         // overlay), so the renderer must use the container's normal D3D (DXVK).
+
+        // The checks and registry writes below are static so boot-path callers
+        // (XServerScreen, launch dependencies) don't depend on EpicService being
+        // alive — routing them through a service instance silently no-ops when
+        // the service is stopped.
+
+        fun overlayDir(container: Container): File =
+            File(container.rootDir, ".wine/$OVERLAY_WINE_RELATIVE_PATH")
+
+        /** True if the overlay marker file exists in the container's Wine prefix. */
+        fun isOverlayInstalled(container: Container): Boolean =
+            File(overlayDir(container), OVERLAY_MARKER_FILE).exists()
+
+        /** True only when the overlay files exist AND OverlayPath is present in user.reg. */
+        fun isOverlayConfigured(container: Container): Boolean {
+            if (!isOverlayInstalled(container)) return false
+            val userRegFile = File(container.rootDir, ".wine/user.reg")
+            if (!userRegFile.isFile) return false
+            return WineRegistryEditor(userRegFile).use { editor ->
+                editor.getStringValue(EOS_OVERLAY_REG_KEY, EOS_OVERLAY_REG_VALUE, null) == OVERLAY_WIN_PATH
+            }
+        }
+
+        /**
+         * Re-write the overlay registry entries if the overlay files are installed but
+         * the keys are missing. Called from the container boot path AFTER prefix
+         * provisioning, because a wine/proton version change re-extracts the prefix
+         * template and replaces user.reg, wiping keys written earlier in the launch.
+         */
+        fun ensureRegistryEntries(container: Container) {
+            if (!isOverlayInstalled(container)) return
+            if (isOverlayConfigured(container)) return
+            Timber.tag("EOSOverlay").i("Overlay registry entries missing (prefix re-provisioned?) — re-writing")
+            writeRegistryEntries(container)
+        }
+
+        /**
+         * Write the EOS overlay path to HKCU\SOFTWARE\Epic Games\EOS\OverlayPath in
+         * [container]'s Wine user.reg.
+         *
+         * Mirrors `add_registry_entries` in legendary/lfs/eos.py for the Wine/prefix
+         * code path (HKCU only; Vulkan implicit layers are not set because they do
+         * not work in Wine).
+         */
+        internal fun writeRegistryEntries(container: Container) {
+            val userRegFile = File(container.rootDir, ".wine/user.reg")
+            WineRegistryEditor(userRegFile).use { editor ->
+                editor.setCreateKeyIfNotExist(true)
+                editor.setStringValue(EOS_OVERLAY_REG_KEY, EOS_OVERLAY_REG_VALUE, OVERLAY_WIN_PATH)
+            }
+            Timber.tag("EOSOverlay").d(
+                "Registry updated: HKCU\\$EOS_OVERLAY_REG_KEY\\$EOS_OVERLAY_REG_VALUE = $OVERLAY_WIN_PATH",
+            )
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -135,38 +189,6 @@ class EpicOverlayManager @Inject constructor(
     }
 
     /**
-     * Returns true if the overlay marker file exists in the container's Wine prefix.
-     */
-    fun isOverlayInstalled(container: Container): Boolean =
-        File(overlayDir(container), OVERLAY_MARKER_FILE).exists()
-
-    /**
-     * Returns true only when the overlay files exist AND the registry entries the
-     * EOS SDK needs to find and render it are present in user.reg.
-     */
-    fun isOverlayConfigured(container: Container): Boolean {
-        if (!isOverlayInstalled(container)) return false
-        val userRegFile = File(container.rootDir, ".wine/user.reg")
-        if (!userRegFile.isFile) return false
-        return WineRegistryEditor(userRegFile).use { editor ->
-            editor.getStringValue(EOS_OVERLAY_REG_KEY, EOS_OVERLAY_REG_VALUE, null) == OVERLAY_WIN_PATH
-        }
-    }
-
-    /**
-     * Re-write the overlay registry entries if the overlay files are installed but
-     * the keys are missing. Called from the container boot path AFTER prefix
-     * provisioning, because a wine/proton version change re-extracts the prefix
-     * template and replaces user.reg, wiping keys written earlier in the launch.
-     */
-    fun ensureRegistryEntries(container: Container) {
-        if (!isOverlayInstalled(container)) return
-        if (isOverlayConfigured(container)) return
-        Timber.tag("EOSOverlay").i("Overlay registry entries missing (prefix re-provisioned?) — re-writing")
-        writeRegistryEntries(container)
-    }
-
-    /**
      * Remove all overlay files from [container] and clear the registry path.
      */
     suspend fun removeOverlay(context: Context, container: Container): Result<Unit> =
@@ -188,31 +210,6 @@ class EpicOverlayManager @Inject constructor(
     // ─────────────────────────────────────────────────────────────────────────────
     // Internal helpers
     // ─────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Returns the overlay install directory inside [container]'s Wine prefix.
-     */
-    private fun overlayDir(container: Container): File =
-        File(container.rootDir, ".wine/$OVERLAY_WINE_RELATIVE_PATH")
-
-    /**
-     * Write the EOS overlay path to HKCU\SOFTWARE\Epic Games\EOS\OverlayPath in
-     * [container]'s Wine user.reg.
-     *
-     * Mirrors `add_registry_entries` in legendary/lfs/eos.py for the Wine/prefix
-     * code path (HKCU only; Vulkan implicit layers are not set because they do
-     * not work in Wine).
-     */
-    private fun writeRegistryEntries(container: Container) {
-        val userRegFile = File(container.rootDir, ".wine/user.reg")
-        WineRegistryEditor(userRegFile).use { editor ->
-            editor.setCreateKeyIfNotExist(true)
-            editor.setStringValue(EOS_OVERLAY_REG_KEY, EOS_OVERLAY_REG_VALUE, OVERLAY_WIN_PATH)
-        }
-        Timber.tag("EOSOverlay").d(
-            "Registry updated: HKCU\\$EOS_OVERLAY_REG_KEY\\$EOS_OVERLAY_REG_VALUE = $OVERLAY_WIN_PATH",
-        )
-    }
 
     /**
      * Clear the EOS overlay path from the Wine user.reg.

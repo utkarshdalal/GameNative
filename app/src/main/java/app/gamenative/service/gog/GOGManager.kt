@@ -512,6 +512,9 @@ class GOGManager @Inject constructor(
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 }
 
+                // Drop any leftover chunk cache (kept on failed downloads for resume)
+                File(context.cacheDir, "gog_chunks/$gameId").deleteRecursively()
+
                 if (game != null) {
                     val updatedGame = game.copy(isInstalled = false, installPath = "")
                     gogGameDao.update(updatedGame)
