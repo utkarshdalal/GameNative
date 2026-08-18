@@ -5,10 +5,10 @@ import app.gamenative.PrefManager
 /**
  * Visibility rules for games the user has hidden on a platform.
  *
- * Hidden games are excluded from the library by default. Steam's built-in Hidden collection can
- * explicitly reveal hidden Steam games, and the "show hidden games by default" setting reveals
- * hidden games everywhere. Missing hidden metadata fails open so a game is never hidden just
- * because the metadata has not loaded yet.
+ * Hidden games stay visible by default so an update never makes existing library entries
+ * disappear. Turning off the "show hidden games by default" setting excludes them again, and
+ * Steam's built-in Hidden collection can still explicitly reveal hidden Steam games. Missing
+ * hidden metadata fails open so a game is never hidden just because the metadata has not loaded.
  */
 object HiddenGameFilter {
     /**

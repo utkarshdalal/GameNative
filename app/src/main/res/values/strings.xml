@@ -2063,7 +2063,7 @@
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show personalized recommendations. Keeping this on helps support GameNative.</string>
     <string name="settings_interface_show_hidden_games_title">Show hidden games by default</string>
-    <string name="settings_interface_show_hidden_games_subtitle">Hidden Steam and GOG games appear in library tabs. Selecting the Hidden Steam collection always shows hidden Steam games.</string>
+    <string name="settings_interface_show_hidden_games_subtitle">Hidden Steam and GOG games stay visible unless you turn this off. Selecting the Hidden Steam collection always shows hidden Steam games.</string>
 
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">Main Story</string>

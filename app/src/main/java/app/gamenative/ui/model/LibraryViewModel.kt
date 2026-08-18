@@ -36,7 +36,6 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonArtwork
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
-import app.gamenative.service.gog.GOGManager
 import app.gamenative.service.gog.GOGService
 import app.gamenative.steam.SteamCollectionFilter
 import app.gamenative.ui.data.LibraryState
@@ -89,7 +88,6 @@ class LibraryViewModel @Inject constructor(
     private val gogGameDao: GOGGameDao,
     private val epicGameDao: EpicGameDao,
     private val amazonGameDao: AmazonGameDao,
-    private val gogManager: GOGManager,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -284,12 +282,6 @@ class LibraryViewModel @Inject constructor(
             SteamCollectionRepository.skippedDynamic.collect { skipped ->
                 _state.update { it.copy(skippedDynamicCollections = skipped) }
             }
-        }
-
-        // Keep hidden metadata fresh even if the GOG background sync is throttled or has not run
-        // since this feature was added; the DAO flow re-emits when flags change and re-filters.
-        viewModelScope.launch(Dispatchers.IO) {
-            gogManager.refreshHiddenIds()
         }
 
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)

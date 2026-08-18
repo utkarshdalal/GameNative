@@ -22,14 +22,11 @@ import com.winlator.xenvironment.components.GuestProgramLauncherComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONObject
@@ -42,26 +39,6 @@ data class GameSizeInfo(
     val downloadSize: Long,
     val diskSize: Long,
 )
-
-/**
- * Tracks hidden-ID refresh generations so a slower, older response cannot overwrite a newer
- * committed one, while a failed newer attempt does not block an older successful response.
- */
-internal class HiddenRefreshCoordinator {
-    private val counter = AtomicLong(0)
-    private val latestCommittedGeneration = AtomicLong(0)
-
-    /** Starts a refresh and returns its generation. */
-    fun begin(): Long = counter.incrementAndGet()
-
-    /** True if [generation] is newer than the newest refresh that has committed successfully. */
-    fun canCommit(generation: Long): Boolean = generation > latestCommittedGeneration.get()
-
-    /** Records [generation] as the newest committed refresh (monotonic). */
-    fun markCommitted(generation: Long) {
-        latestCommittedGeneration.updateAndGet { current -> maxOf(current, generation) }
-    }
-}
 
 /**
  * Unified manager for GOG game and library operations.
@@ -83,16 +60,6 @@ class GOGManager @Inject constructor(
     private val gogGameDao: GOGGameDao,
     @ApplicationContext private val context: Context,
 ) {
-
-    // Serializes hidden-flag refreshes against logout's clear so a refresh that started before
-    // logout cannot restore the previous account's flags afterwards.
-    private val hiddenRefreshMutex = Mutex()
-
-    private val hiddenRefreshCoordinator = HiddenRefreshCoordinator()
-
-    // The newest hidden-ID set that has committed to gog_games. Written under hiddenRefreshMutex;
-    // used to stamp newly inserted rows so a concurrent newer refresh cannot leave them stale.
-    @Volatile private var lastCommittedHiddenIds: Set<String>? = null
 
     // Thread-safe cache for download sizes
     private val downloadSizeCache = ConcurrentHashMap<String, String>()
@@ -191,20 +158,16 @@ class GOGManager @Inject constructor(
     }
 
     /**
-     * Fetches hidden-product IDs and stores them on the matching `gog_games` rows.
+     * Fetches hidden-product IDs once per sync and stores them on the matching `gog_games` rows.
      *
      * Failures leave the existing hidden flags untouched and are logged; this never throws and
-     * never fails the caller.
+     * never fails the caller. Staleness is corrected on the next sync.
      *
      * @return the fetched hidden product IDs, or null when the fetch failed or the user is not
      * authenticated (callers can use it to stamp newly inserted rows).
      */
     suspend fun refreshHiddenIds(): Set<String>? {
-        // Fetch outside the lock so logout's clearHiddenFlags() is never stalled by long network
-        // work. The lock is held only for the credential re-check + DB write.
-        val generation = hiddenRefreshCoordinator.begin()
-        val fetchUserId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
-            ?: return null
+        if (!GOGAuthManager.hasStoredCredentials(context)) return null
         val hiddenIdsResult = GOGApiClient.getHiddenGameIds(context)
         if (hiddenIdsResult.isFailure) {
             Timber.tag("GOG").w(
@@ -214,39 +177,20 @@ class GOGManager @Inject constructor(
             return null
         }
         val hiddenIds = hiddenIdsResult.getOrNull() ?: emptySet()
-
-        return hiddenRefreshMutex.withLock {
-            // Re-validate the account after the fetch: if logout (or an account switch) happened
-            // while we were fetching, do not write the old account's flags.
-            val currentUserId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
-            if (!hiddenRefreshCoordinator.canCommit(generation)) {
-                Timber.tag("GOG").w("Skipping hidden-flag persist: superseded by a newer committed refresh")
-                null
-            } else if (currentUserId != fetchUserId) {
-                Timber.tag("GOG").w("Skipping hidden-flag persist: GOG account changed during fetch")
-                null
-            } else {
-                try {
-                    gogGameDao.applyHiddenFlags(hiddenIds)
-                    hiddenRefreshCoordinator.markCommitted(generation)
-                    lastCommittedHiddenIds = hiddenIds
-                    hiddenIds
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Timber.tag("GOG").e(e, "Failed to persist hidden GOG game IDs; keeping existing hidden flags")
-                    null
-                }
-            }
+        return try {
+            gogGameDao.applyHiddenFlags(hiddenIds)
+            hiddenIds
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Failed to persist hidden GOG game IDs; keeping existing hidden flags")
+            null
         }
     }
 
     /** Clears the hidden flag on every GOG row (used when the logged-out account's metadata is removed). */
     suspend fun clearHiddenFlags() {
-        hiddenRefreshMutex.withLock {
-            gogGameDao.clearHiddenFlags()
-            lastCommittedHiddenIds = null
-        }
+        gogGameDao.clearHiddenFlags()
     }
 
     /**
@@ -348,17 +292,7 @@ class GOGManager @Inject constructor(
 
                 if ((index + 1) % REFRESH_BATCH_SIZE == 0 || index == newGameIds.size - 1) {
                     if (games.isNotEmpty()) {
-                        // Re-stamp hidden from the newest committed refresh so a concurrent newer
-                        // refresh cannot leave newly inserted rows with a stale hidden flag. If
-                        // logout cleared the committed set, new rows fail open instead of
-                        // resurrecting the previous account's flags from the in-flight response.
-                        hiddenRefreshMutex.withLock {
-                            val currentHiddenIds = lastCommittedHiddenIds
-                            val adjustedGames = games.map {
-                                it.copy(hidden = currentHiddenIds?.contains(it.id) == true)
-                            }
-                            gogGameDao.upsertPreservingInstallStatus(adjustedGames)
-                        }
+                        gogGameDao.upsertPreservingInstallStatus(games)
                         Timber.tag("GOG").d("Batch inserted ${games.size} games (processed ${index + 1}/${newGameIds.size})")
                         games.clear()
                     }
@@ -590,17 +524,10 @@ class GOGManager @Inject constructor(
                 Timber.tag("GOG").w("Skipping Invalid GOG App with id: $gameId")
                 return Result.success(null)
             }
-            // Apply the current hidden-ID set so a newly inserted hidden game is not written with
-            // hidden = false. The insert happens under the same lock as hidden-flag commits, using
-            // the newest committed set, so a concurrent newer refresh cannot race the stamp.
-            refreshHiddenIds()
-            val persisted = hiddenRefreshMutex.withLock {
-                val currentHiddenIds = lastCommittedHiddenIds
-                val gameToInsert = game.copy(hidden = currentHiddenIds?.contains(gameId) == true)
-                insertGame(gameToInsert)
-                gogGameDao.getById(gameId) ?: gameToInsert
-            }
-            return Result.success(persisted)
+            // insertGame preserves install state, hidden, and cover; a hidden game that has not
+            // been synced yet fails open (visible) until the next sync.
+            insertGame(game)
+            return Result.success(gogGameDao.getById(gameId) ?: game)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

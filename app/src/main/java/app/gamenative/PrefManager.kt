@@ -1165,12 +1165,12 @@ object PrefManager {
 
     /**
      * Whether games marked hidden on Steam/GOG are shown in the library by default.
-     * Defaults to false so hidden games stay out of the library unless the user explicitly
-     * selects the Steam Hidden collection or turns this setting on.
+     * Defaults to true so previously visible games do not disappear after an update; users can
+     * turn it off to hide them again.
      */
     private val SHOW_HIDDEN_GAMES_BY_DEFAULT = booleanPreferencesKey("show_hidden_games_by_default")
     var showHiddenGamesByDefault: Boolean
-        get() = getPref(SHOW_HIDDEN_GAMES_BY_DEFAULT, false)
+        get() = getPref(SHOW_HIDDEN_GAMES_BY_DEFAULT, true)
         set(value) {
             setPref(SHOW_HIDDEN_GAMES_BY_DEFAULT, value)
         }
