@@ -2199,7 +2199,7 @@
     <string name="favorites_empty_message">開啟遊戲詳細資料選單即可加入收藏，或在遊戲取得焦點時按下控制器左側正面按鍵（Xbox 為 X、PlayStation 為方形鍵、Nintendo 配置為 Y）。</string>
     <string name="favorites_empty_action">瀏覽所有遊戲</string>
     <string name="favorites_empty_filtered_title">沒有可顯示的收藏</string>
-    <string name="favorites_empty_filtered_message">沒有符合目前搜尋或篩選條件的收藏遊戲。</string>
+    <string name="favorites_empty_filtered_message">沒有符合目前搜尋或篩選條件，或在您的遊戲庫中可用的收藏遊戲。</string>
     <string name="option_add_to_favorites">加入收藏</string>
     <string name="option_remove_from_favorites">從收藏中移除</string>
     <string name="favorite_add">加入收藏</string>

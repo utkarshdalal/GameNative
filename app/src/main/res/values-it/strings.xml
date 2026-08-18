@@ -2183,7 +2183,7 @@
     <string name="favorites_empty_message">Apri il menu dei dettagli del gioco per aggiungerlo ai preferiti, oppure premi il pulsante frontale sinistro del controller mentre il gioco è selezionato (X su Xbox, Quadrato su PlayStation o Y con layout Nintendo).</string>
     <string name="favorites_empty_action">Sfoglia tutti i giochi</string>
     <string name="favorites_empty_filtered_title">Nessun preferito da mostrare</string>
-    <string name="favorites_empty_filtered_message">Nessun gioco preferito corrisponde alla ricerca o ai filtri attuali.</string>
+    <string name="favorites_empty_filtered_message">Nessun gioco preferito corrisponde alla ricerca o ai filtri attuali o è disponibile nella tua libreria.</string>
     <string name="option_add_to_favorites">Aggiungi ai preferiti</string>
     <string name="option_remove_from_favorites">Rimuovi dai preferiti</string>
     <string name="favorite_add">Aggiungi ai preferiti</string>

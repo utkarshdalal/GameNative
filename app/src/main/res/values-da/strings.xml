@@ -2062,7 +2062,7 @@
     <string name="favorites_empty_message">Åbn spillets detaljemenu for at føje det til favoritter, eller tryk på controllerens venstre frontknap, mens et spil er i fokus (X på Xbox, firkant på PlayStation eller Y på Nintendo-layout).</string>
     <string name="favorites_empty_action">Gennemse alle spil</string>
     <string name="favorites_empty_filtered_title">Ingen favoritter at vise</string>
-    <string name="favorites_empty_filtered_message">Ingen favoritspil matcher den aktuelle søgning eller filtre.</string>
+    <string name="favorites_empty_filtered_message">Ingen favoritspil matcher den aktuelle søgning eller filtre eller er tilgængelige i dit bibliotek.</string>
     <string name="option_add_to_favorites">Føj til favoritter</string>
     <string name="option_remove_from_favorites">Fjern fra favoritter</string>
     <string name="favorite_add">Føj til favoritter</string>

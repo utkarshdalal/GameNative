@@ -2195,7 +2195,7 @@
     <string name="favorites_empty_message">Deschide meniul de detalii al jocului pentru a-l adăuga la favorite sau apasă butonul frontal din stânga al controlerului când jocul este focalizat (X pe Xbox, Pătrat pe PlayStation sau Y pe un controler cu dispunere Nintendo).</string>
     <string name="favorites_empty_action">Răsfoiește toate jocurile</string>
     <string name="favorites_empty_filtered_title">Nicio favorită de afișat</string>
-    <string name="favorites_empty_filtered_message">Niciun joc favorit nu corespunde căutării sau filtrelor curente.</string>
+    <string name="favorites_empty_filtered_message">Niciun joc favorit nu corespunde căutării sau filtrelor curente sau nu este disponibil în bibliotecă.</string>
     <string name="option_add_to_favorites">Adaugă la favorite</string>
     <string name="option_remove_from_favorites">Elimină de la favorite</string>
     <string name="favorite_add">Adaugă la favorite</string>

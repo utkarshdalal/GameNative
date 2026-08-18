@@ -2147,7 +2147,7 @@
     <string name="favorites_empty_message">ゲームの詳細メニューを開いてお気に入りに追加するか、ゲームにフォーカスした状態でコントローラーの左側フェイスボタンを押します（Xbox は X、PlayStation は四角、Nintendo 配列は Y）。</string>
     <string name="favorites_empty_action">すべてのゲームを見る</string>
     <string name="favorites_empty_filtered_title">表示するお気に入りがありません</string>
-    <string name="favorites_empty_filtered_message">現在の検索やフィルターに一致するお気に入りのゲームはありません。</string>
+    <string name="favorites_empty_filtered_message">現在の検索やフィルターに一致するか、ライブラリで利用できるお気に入りのゲームはありません。</string>
     <string name="option_add_to_favorites">お気に入りに追加</string>
     <string name="option_remove_from_favorites">お気に入りから削除</string>
     <string name="favorite_add">お気に入りに追加</string>

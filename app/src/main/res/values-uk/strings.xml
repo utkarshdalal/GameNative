@@ -2190,7 +2190,7 @@
     <string name="favorites_empty_message">Відкрийте меню відомостей про гру, щоб додати її до вибраного, або натисніть ліву лицьову кнопку контролера, коли гру виділено (X на Xbox, квадрат на PlayStation або Y з розкладкою Nintendo).</string>
     <string name="favorites_empty_action">Переглянути всі ігри</string>
     <string name="favorites_empty_filtered_title">Немає вибраного для показу</string>
-    <string name="favorites_empty_filtered_message">Немає вибраних ігор, що відповідають поточному пошуку або фільтрам.</string>
+    <string name="favorites_empty_filtered_message">Немає вибраних ігор, що відповідають поточному пошуку або фільтрам або доступні у вашій бібліотеці.</string>
     <string name="option_add_to_favorites">Додати до вибраного</string>
     <string name="option_remove_from_favorites">Видалити з вибраного</string>
     <string name="favorite_add">Додати до вибраного</string>

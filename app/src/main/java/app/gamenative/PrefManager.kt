@@ -1302,8 +1302,6 @@ object PrefManager {
             setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
         }
 
-    // Games the user has marked as favorite, stored as a set of LibraryItem.appId values so they
-    // work across every source (Steam, GOG, Epic, Amazon, custom games) without needing an account.
     private val FAVORITE_APP_IDS = stringPreferencesKey("favorite_app_ids")
     var favoriteAppIds: Set<String>
         get() {

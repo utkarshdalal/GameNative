@@ -1,7 +1,6 @@
 package app.gamenative.data
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -54,29 +53,6 @@ class FavoritesUtilsTest {
     }
 
     @Test
-    fun count_matchesTheNumberOfFavoritedItems() {
-        val games = listOf(
-            Game(appId = "1", name = "First"),
-            Game(appId = "2", name = "Second"),
-            Game(appId = "3", name = "Third"),
-        )
-
-        val count = FavoritesUtils.count(games, favorites = setOf("1", "3", "missing")) { it.appId }
-
-        assertEquals(2, count)
-    }
-
-    @Test
-    fun count_ignoresFavoriteIdsThatAreNotInTheList() {
-        val games = listOf(Game(appId = "1", name = "First"))
-
-        val count = FavoritesUtils.count(games, favorites = setOf("99")) { it.appId }
-
-        assertEquals(0, count)
-        assertFalse(count == games.size)
-    }
-
-    @Test
     fun countPresent_countsOnlyFavoritesInEligibleSet() {
         val count = FavoritesUtils.countPresent(
             favorites = setOf("1", "2", "3", "orphan"),
@@ -108,8 +84,6 @@ class FavoritesUtilsTest {
 
     @Test
     fun countPresent_ignoresOrphanedFavoritesNotInEligibleSet() {
-        // Favorited games that have disappeared from the library (uninstalled source, revoked
-        // credentials) must not inflate the badge beyond what the tab can actually show.
         val count = FavoritesUtils.countPresent(
             favorites = setOf("a", "b", "c"),
             eligibleIds = emptySet(),

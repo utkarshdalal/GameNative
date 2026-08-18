@@ -2132,7 +2132,7 @@
     <string name="favorites_empty_message">Öffne das Detailmenü eines Spiels, um es zu den Favoriten hinzuzufügen, oder drücke die linke Aktionstaste des Controllers, während ein Spiel fokussiert ist (X bei Xbox, Quadrat bei PlayStation oder Y bei Nintendo-Tastenlayout).</string>
     <string name="favorites_empty_action">Alle Spiele durchsuchen</string>
     <string name="favorites_empty_filtered_title">Keine Favoriten anzuzeigen</string>
-    <string name="favorites_empty_filtered_message">Keine Favoriten-Spiele entsprechen der aktuellen Suche oder den Filtern.</string>
+    <string name="favorites_empty_filtered_message">Keine Favoriten-Spiele entsprechen der aktuellen Suche oder den Filtern oder sind in deiner Bibliothek verfügbar.</string>
     <string name="option_add_to_favorites">Zu Favoriten hinzufügen</string>
     <string name="option_remove_from_favorites">Aus Favoriten entfernen</string>
     <string name="favorite_add">Zu Favoriten hinzufügen</string>

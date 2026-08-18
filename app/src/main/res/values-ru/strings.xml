@@ -2122,7 +2122,7 @@ https://gamenative.app
     <string name="favorites_empty_message">Откройте меню сведений об игре, чтобы добавить её в избранное, или нажмите левую лицевую кнопку контроллера, когда игра выделена (X на Xbox, квадрат на PlayStation или Y при раскладке Nintendo).</string>
     <string name="favorites_empty_action">Просмотреть все игры</string>
     <string name="favorites_empty_filtered_title">Нет избранного для показа</string>
-    <string name="favorites_empty_filtered_message">Нет избранных игр, соответствующих текущему поиску или фильтрам.</string>
+    <string name="favorites_empty_filtered_message">Нет избранных игр, соответствующих текущему поиску или фильтрам или доступных в вашей библиотеке.</string>
     <string name="option_add_to_favorites">Добавить в избранное</string>
     <string name="option_remove_from_favorites">Удалить из избранного</string>
     <string name="favorite_add">Добавить в избранное</string>

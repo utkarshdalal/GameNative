@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 internal data class FavoriteMutation(
     val appId: String,
@@ -35,7 +36,6 @@ object FavoritesManager {
 
     private val _favorites = MutableStateFlow<Set<String>>(emptySet())
 
-    /** The set of favorited app ids. Observe this to react to changes. */
     val favorites: StateFlow<Set<String>> = _favorites.asStateFlow()
 
     private val _loaded = MutableStateFlow(false)
@@ -49,46 +49,40 @@ object FavoritesManager {
 
     private val lock = Any()
 
-    /** Edits made before the saved set finished loading, kept so they can be replayed on top of it. */
-    private val pendingEdits = LinkedHashMap<String, Boolean>()
     private val revisions = HashMap<String, Long>()
 
     init {
         scope.launch {
-            val stored = PrefManager.favoriteAppIds
-            synchronized(lock) {
-                var result = stored
-                for ((appId, favorite) in pendingEdits) {
-                    result = FavoritesUtils.apply(result, appId, favorite)
+            try {
+                val stored = try {
+                    PrefManager.favoriteAppIds
+                } catch (e: Exception) {
+                    Timber.tag("FavoritesManager").e(e, "Failed to load favorite app ids")
+                    emptySet()
                 }
-                val hadPendingEdits = pendingEdits.isNotEmpty()
-                pendingEdits.clear()
-                // Publish the loaded set before flipping the loaded flag, so an observer that reacts
-                // to `loaded` never sees `true` while `favorites` is still the initial empty set
-                // (which would briefly render the "no favorites yet" empty state).
-                _favorites.value = result
+                synchronized(lock) {
+                    // Publish the loaded set before flipping the loaded flag, so an observer that reacts
+                    // to `loaded` never sees `true` while `favorites` is still the initial empty set
+                    // (which would briefly render the "no favorites yet" empty state).
+                    _favorites.value = stored
+                }
+            } catch (e: Exception) {
+                Timber.tag("FavoritesManager").e(e, "Failed to initialize favorite app ids")
+                synchronized(lock) {
+                    _favorites.value = emptySet()
+                }
+            } finally {
                 _loaded.value = true
-                // Persist inside the lock so a concurrent toggle cannot be overwritten by a stale
-                // snapshot written after the lock is released.
-                if (hadPendingEdits) {
-                    PrefManager.favoriteAppIds = result
-                }
             }
         }
     }
 
     fun isFavorite(appId: String): Boolean = _favorites.value.contains(appId)
 
-    /** Adds the game if it is not a favorite yet, or removes it if it already is. */
     internal fun toggle(appId: String): FavoriteMutation? {
         synchronized(lock) {
+            if (!_loaded.value) return null
             return setFavoriteLocked(appId, !isFavorite(appId))
-        }
-    }
-
-    fun setFavorite(appId: String, favorite: Boolean) {
-        synchronized(lock) {
-            setFavoriteLocked(appId, favorite)
         }
     }
 
@@ -118,12 +112,7 @@ object FavoritesManager {
         _favorites.value = updated
         val revision = (revisions[appId] ?: 0L) + 1L
         revisions[appId] = revision
-        if (_loaded.value) {
-            PrefManager.favoriteAppIds = updated
-        } else {
-            // Still loading: record the intent so the load replays it on top of the saved set.
-            pendingEdits[appId] = favorite
-        }
+        PrefManager.favoriteAppIds = updated
         return FavoriteMutation(appId, previousFavorite, favorite, revision)
     }
 }

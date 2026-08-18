@@ -36,6 +36,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -81,6 +86,40 @@ internal fun ListViewCard(
         appId = appInfo.appId,
         isRecommended = appInfo.isRecommended,
     )
+    val favoriteActionLabel = if (!appInfo.isRecommended) {
+        stringResource(
+            if (favoriteIndicator.isFavorite) {
+                R.string.favorite_remove_named
+            } else {
+                R.string.favorite_add_named
+            },
+            appInfo.name,
+        )
+    } else {
+        null
+    }
+    val favoriteStateDescription = if (!appInfo.isRecommended) {
+        stringResource(
+            if (favoriteIndicator.isFavorite) R.string.favorite_added else R.string.favorite_add,
+        )
+    } else {
+        null
+    }
+    val favoriteSemantics = if (favoriteActionLabel != null && favoriteStateDescription != null) {
+        Modifier.semantics(mergeDescendants = true) {
+            contentDescription = favoriteActionLabel
+            stateDescription = favoriteStateDescription
+            customActions = listOf(
+                CustomAccessibilityAction(favoriteActionLabel) {
+                    toggleFavoriteWithUndo(context, appInfo.appId, appInfo.name)
+                    true
+                },
+            )
+        }
+    } else {
+        Modifier
+    }
+
     val shape = RoundedCornerShape(14.dp)
     Box(
         modifier = modifier
@@ -96,6 +135,7 @@ internal fun ListViewCard(
                     glowAlpha = favoriteIndicator.glowAlpha,
                     shape = shape,
                 )
+                .then(favoriteSemantics)
                 .clickable(
                     onClick = onClick,
                     interactionSource = interactionSource,

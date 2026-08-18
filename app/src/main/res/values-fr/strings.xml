@@ -2192,7 +2192,7 @@
     <string name="favorites_empty_message">Ouvrez le menu des détails du jeu pour l’ajouter aux favoris, ou appuyez sur le bouton de façade gauche de la manette lorsque le jeu est sélectionné (X sur Xbox, Carré sur PlayStation ou Y avec une disposition Nintendo).</string>
     <string name="favorites_empty_action">Parcourir tous les jeux</string>
     <string name="favorites_empty_filtered_title">Aucun favori à afficher</string>
-    <string name="favorites_empty_filtered_message">Aucun jeu favori ne correspond à la recherche ou aux filtres actuels.</string>
+    <string name="favorites_empty_filtered_message">Aucun jeu favori ne correspond à la recherche ou aux filtres actuels ou n’est disponible dans votre bibliothèque.</string>
     <string name="option_add_to_favorites">Ajouter aux favoris</string>
     <string name="option_remove_from_favorites">Retirer des favoris</string>
     <string name="favorite_add">Ajouter aux favoris</string>

@@ -2194,7 +2194,7 @@
     <string name="favorites_empty_message">Otwórz menu szczegółów gry, aby dodać ją do ulubionych, albo naciśnij lewy przycisk główny kontrolera, gdy gra jest zaznaczona (X na Xbox, Kwadrat na PlayStation lub Y w układzie Nintendo).</string>
     <string name="favorites_empty_action">Przeglądaj wszystkie gry</string>
     <string name="favorites_empty_filtered_title">Brak ulubionych do wyświetlenia</string>
-    <string name="favorites_empty_filtered_message">Żadna ulubiona gra nie pasuje do bieżącego wyszukiwania ani filtrów.</string>
+    <string name="favorites_empty_filtered_message">Żadna ulubiona gra nie pasuje do bieżącego wyszukiwania ani filtrów lub nie jest dostępna w bibliotece.</string>
     <string name="option_add_to_favorites">Dodaj do ulubionych</string>
     <string name="option_remove_from_favorites">Usuń z ulubionych</string>
     <string name="favorite_add">Dodaj do ulubionych</string>

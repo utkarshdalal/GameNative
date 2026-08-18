@@ -980,7 +980,9 @@ abstract class BaseAppScreen {
         }
 
         // Always available options
-        menuOptions.add(getFavoriteOption(libraryItem))
+        if (!libraryItem.isRecommended) {
+            menuOptions.add(getFavoriteOption(libraryItem))
+        }
         menuOptions.add(getSubmitFeedbackOption(context, libraryItem))
         menuOptions.add(getGetSupportOption(context))
 

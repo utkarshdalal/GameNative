@@ -23,16 +23,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 
-/**
- * Empty state shown on the Favorites tab. Explains how favorites work and, when the user simply
- * hasn't added any yet, offers a way back to the full library so the tab never reads as broken or
- * still loading.
- *
- * @param titleResId headline shown in bold.
- * @param messageResId supporting line explaining what to do (or why nothing is shown).
- * @param actionLabelResId optional button label; when null no button is shown.
- * @param onAction invoked when the optional button is pressed.
- */
 @Composable
 internal fun LibraryFavoritesEmptyState(
     @StringRes titleResId: Int,
