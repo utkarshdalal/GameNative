@@ -1,5 +1,7 @@
 package app.gamenative.ui.data
 
+import app.gamenative.store.StorePageTarget
+
 /**
  * Common data structure for displaying game information in the UI.
  * This allows both Steam and Custom Games to use the same UI layout.
@@ -23,5 +25,5 @@ data class GameDisplayInfo(
     val compatibilityMessage: String? = null, // Compatibility message text (e.g., "Works on your GPU")
     val compatibilityColor: ULong? = null, // Compatibility message color (ARGB)
     val hltbStats: app.gamenative.utils.HltbService.Stats? = null, // How Long To Beat stats
+    val storePageTarget: StorePageTarget? = null,
 )
-

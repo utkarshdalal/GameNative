@@ -306,7 +306,7 @@ private fun OptionItem(
         )
 
         Text(
-            text = stringResource(option.optionType.title),
+            text = option.title ?: stringResource(option.optionType.title),
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = if (isFocused) FontWeight.Medium else FontWeight.Normal,
             color = when {
