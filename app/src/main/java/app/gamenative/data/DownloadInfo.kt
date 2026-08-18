@@ -59,14 +59,21 @@ data class DownloadInfo(
     }
 
     fun cancel(message: String) {
-        // Persist the most recent progress so a resume can pick up where it left off.
-        persistProgressSnapshot()
         // Mark as inactive and clear speed tracking so a future resume
         // does not use stale samples.
         setActive(false)
         setPostInstallSyncing(false)
         resetSpeedTracking()
-        downloadJob?.cancel(CancellationException(message))
+        // The snapshot write hits the (possibly saturated) install volume and the
+        // job cancel cascades through many continuations; callers include UI click
+        // handlers on the main thread, so both must run off it (ANR otherwise).
+        ioScope.launch {
+            // Signal cancellation before the possibly-slow snapshot write, so a
+            // restarted download for the same path can't overlap the dying job.
+            downloadJob?.cancel(CancellationException(message))
+            // Persist the most recent progress so a resume can pick up where it left off.
+            persistProgressSnapshot()
+        }
     }
 
     fun setDownloadJob(job: Job) {
@@ -311,11 +318,16 @@ data class DownloadInfo(
             return
         }
 
-        // Reserve the next write time and write immediately
+        // Reserve the next write time and write immediately. The generation guard
+        // keeps a late cancel-snapshot from recreating the resume file after
+        // clearPersistedBytesDownloaded() has removed it on completion.
         nextWriteTime.set(now + PERSIST_DEBOUNCE_MS)
+        val currentGen = persistenceGeneration.get()
         persistenceJob?.cancel()
-        ioScope.launch {
-            writePersistedBytes(appDirPath)
+        persistenceJob = ioScope.launch {
+            if (persistenceGeneration.get() == currentGen) {
+                writePersistedBytes(appDirPath)
+            }
         }
     }
 
