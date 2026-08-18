@@ -976,10 +976,10 @@
 
 	<!-- Settings: Info Group -->
 	<string name="settings_info_title">Informații</string>
-	<string name="settings_info_send_tip_title">Trimite un tip</string>
-	<string name="settings_info_send_tip_subtitle">Contribuie la dezvoltarea continuă</string>
-	<string name="settings_info_ask_tip_title">Cere tip la pornire</string>
-	<string name="settings_info_ask_tip_subtitle">Oprește afișarea mesajului de tip</string>
+    <string name="settings_info_send_tip_title">Devino membru</string>
+    <string name="settings_info_send_tip_subtitle">Acces anticipat la versiuni, ajutor prioritar și altele</string>
+    <string name="settings_info_ask_tip_title">Oferte de membru</string>
+    <string name="settings_info_ask_tip_subtitle">Afișează ocazional oferte pentru a deveni membru GameNative</string>
 	<string name="settings_info_source_title">Cod sursă</string>
 	<string name="settings_info_source_subtitle">Vezi codul sursă al acestui proiect</string>
 	<string name="settings_info_libraries_title">Biblioteci utilizate</string>
@@ -1095,9 +1095,11 @@
 	<!-- PluviaMain: Crash & Support -->
 	<string name="main_recent_crash_title">Crash recent</string>
 	<string name="main_recent_crash_message">Ne pare rău!\nAr fi util să știm ce problemă ai întâmpinat.\nPoți vizualiza și exporta cel mai recent crash log din setările aplicației și îl poți atașa ca issue pe Github în repository-ul proiectului.\nLinkul către repo este tot în setări!</string>
-	<string name="main_thank_you_title">Mulțumim că folosești GameNative!</string>
-	<string name="main_thank_you_message">Susține gaming-ul open‑source pe Android distribuind aplicația prietenilor sau devenind membru pe Ko‑fi.</string>
-	<string name="main_join_kofi">Alătură-te pe Ko‑fi</string>
+    <string name="main_thank_you_title">Îți place GameNative?</string>
+    <string name="main_thank_you_message">Devino membru astăzi. Membrii primesc:\n\n• Acces anticipat la versiuni noi\n• Ajutor prioritar pentru a-ți face jocurile să funcționeze\n• Roluri premium și canale exclusive pe Discord\n• …și altele\n\nDe la 5 $/lună</string>
+    <string name="main_join_kofi">Devino membru</string>
+    <string name="pitch_session_title">Îți place %1$s?</string>
+    <string name="pitch_five_star_title">Ne bucurăm că %1$s a mers excelent!</string>
 	<string name="main_share">Distribuie</string>
 	<string name="main_share_text">Descoperă GameNative - joacă jocurile tale Steam pe PC pe Android, cu suport complet pentru salvări în cloud!\nhttps://gamenative.app\nAlătură-te comunității: https://discord.gg/2hKv4VfZfE</string>
 	<string name="main_discord_support_title">A funcționat jocul?</string>
@@ -2077,6 +2079,8 @@
     <string name="rec_disclosure_body">Pentru recomandări personalizate, partajăm jocurile pe care le joci cu GOG. Poți dezactiva oricând din Setări.</string>
     <string name="rec_disclosure_allow">Permite</string>
     <string name="rec_disclosure_not_now">Nu acum</string>
+    <string name="rec_teaser_title">Descoperă jocuri pentru dispozitivul tău</string>
+    <string name="rec_teaser_subtitle">Atinge pentru a arunca o privire</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Sponsorizat</string>

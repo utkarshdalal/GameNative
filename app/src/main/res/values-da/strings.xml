@@ -791,10 +791,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
-    <string name="settings_info_send_tip_title">Send drikkepenge</string>
-    <string name="settings_info_send_tip_subtitle">Bidrag til løbende udvikling</string>
-    <string name="settings_info_ask_tip_title">Spørg efter drikkepenge ved opstart</string>
-    <string name="settings_info_ask_tip_subtitle">Forhindrer drikkepengebeskeden i at vises</string>
+    <string name="settings_info_send_tip_title">Bliv medlem</string>
+    <string name="settings_info_send_tip_subtitle">Tidlig adgang til udgivelser, prioriteret hjælp og mere</string>
+    <string name="settings_info_ask_tip_title">Medlemstilbud</string>
+    <string name="settings_info_ask_tip_subtitle">Vis lejlighedsvise tilbud om at blive GameNative-medlem</string>
     <string name="settings_info_source_title">Kildekode</string>
     <string name="settings_info_source_subtitle">Se kildekoden til dette projekt</string>
     <string name="settings_info_libraries_title">Anvendte biblioteker</string>
@@ -913,9 +913,11 @@
     <!-- TODO: Manual review - PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Nylig crash</string>
     <string name="main_recent_crash_message">Beklager det!\nDet ville være dejligt at vide om det nylige problem, du har haft.\nDu kan se og eksportere den nyeste crash-log i appens indstillinger og vedhæfte den som et Github-problem i projektets repository.\nLink til Github-repo er også i indstillinger!</string>
-    <string name="main_thank_you_title">Tak for at bruge GameNative!</string>
-    <string name="main_thank_you_message">Støt open-source PC-gaming på Android ved at dele appen med dine venner eller ved at blive medlem på Ko-fi.</string>
-    <string name="main_join_kofi">Tilmeld dig på Ko-fi</string>
+    <string name="main_thank_you_title">Nyder du GameNative?</string>
+    <string name="main_thank_you_message">Bliv medlem i dag. Medlemmer får:\n\n• Tidlig adgang til nye udgivelser\n• Prioriteret hjælp til at få dine spil til at køre\n• Premium-roller og eksklusive kanaler på Discord\n• …og mere\n\nFra $5/måned</string>
+    <string name="main_join_kofi">Bliv medlem</string>
+    <string name="pitch_session_title">Nyder du %1$s?</string>
+    <string name="pitch_five_star_title">Godt, at %1$s kørte perfekt!</string>
     <string name="main_share">Del</string>
     <string name="main_share_text">Prøv GameNative - spil dine PC Steam-spil på Android med fuld understøttelse af cloud-gemmer!\nhttps://gamenative.app\nTilmeld dig fællesskabet: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Virkede spillet?</string>
@@ -1946,6 +1948,8 @@
     <string name="rec_disclosure_body">For personlige anbefalinger deler vi de spil, du spiller, med GOG. Slå fra når som helst i Indstillinger.</string>
     <string name="rec_disclosure_allow">Tillad</string>
     <string name="rec_disclosure_not_now">Ikke nu</string>
+    <string name="rec_teaser_title">Opdag spil til din enhed</string>
+    <string name="rec_teaser_subtitle">Tryk for at kigge</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Sponsoreret</string>

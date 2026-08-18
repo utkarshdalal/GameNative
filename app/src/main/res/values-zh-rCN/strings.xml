@@ -960,10 +960,10 @@
 
     <!-- 设置：信息组 -->
     <string name="settings_info_title">信息</string>
-    <string name="settings_info_send_tip_title">捐款支持</string>
-    <string name="settings_info_send_tip_subtitle">为持续的应用程序开发贡献力量</string>
-    <string name="settings_info_ask_tip_title">启动时显示捐款信息</string>
-    <string name="settings_info_ask_tip_subtitle">停止显示捐款信息</string>
+    <string name="settings_info_send_tip_title">成为会员</string>
+    <string name="settings_info_send_tip_subtitle">版本抢先体验、优先支持等</string>
+    <string name="settings_info_ask_tip_title">会员优惠</string>
+    <string name="settings_info_ask_tip_subtitle">偶尔显示成为 GameNative 会员的优惠信息</string>
     <string name="settings_info_source_title">源代码</string>
     <string name="settings_info_source_subtitle">查看此项目的源代码</string>
     <string name="settings_info_libraries_title">使用的库</string>
@@ -1074,9 +1074,11 @@
     <!-- 主界面：崩溃与支持 -->
     <string name="main_recent_crash_title">最近应用程序崩溃</string>
     <string name="main_recent_crash_message">若能了解您最近遇到的问题，将有助于我们改善应用程序。\n您可在应用程序设置中查看并导出最近的崩溃日志，将其附加至项目源代码仓库的 Github Issue中\nGithub 源代码仓库的链接亦位于设置页面内</string>
-    <string name="main_thank_you_title">感谢您使用 GameNative！</string>
-    <string name="main_thank_you_message">通过与朋友分享应用程序或在 Ko-fi 成为会员，支持 Android 平台的开源 PC 游戏</string>
-    <string name="main_join_kofi">加入 Ko-fi</string>
+    <string name="main_thank_you_title">喜欢 GameNative 吗？</string>
+    <string name="main_thank_you_message">立即成为会员。会员可享受：\n\n• 新版本抢先体验\n• 游戏运行问题优先支持\n• Discord 高级身份组和专属频道\n• …以及更多\n\n每月 $5 起</string>
+    <string name="main_join_kofi">成为会员</string>
+    <string name="pitch_session_title">喜欢《%1$s》吗？</string>
+    <string name="pitch_five_star_title">很高兴《%1$s》运行顺畅！</string>
     <string name="main_share">分享</string>
     <string name="main_share_text">试试 GameNative - 在 Android 上畅玩您的 PC Steam 游戏，完整支持云存档！\nhttps://gamenative.app\n加入社区：https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">游戏运行正常吗？</string>
@@ -2094,6 +2096,8 @@
     <string name="rec_disclosure_body">为提供个性化推荐，我们会将你玩过的游戏分享给 GOG。可随时在设置中关闭。</string>
     <string name="rec_disclosure_allow">允许</string>
     <string name="rec_disclosure_not_now">暂不</string>
+    <string name="rec_teaser_title">发现适合你设备的游戏</string>
+    <string name="rec_teaser_subtitle">点按查看</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">赞助</string>

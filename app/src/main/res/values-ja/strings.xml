@@ -945,10 +945,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">情報</string>
-    <string name="settings_info_send_tip_title">チップを送信する</string>
-    <string name="settings_info_send_tip_subtitle">継続的な開発に貢献する</string>
-    <string name="settings_info_ask_tip_title">起動時にヒントを求める</string>
-    <string name="settings_info_ask_tip_subtitle">ヒントメッセージの表示を停止します</string>
+    <string name="settings_info_send_tip_title">メンバーになる</string>
+    <string name="settings_info_send_tip_subtitle">リリースへの早期アクセス、優先サポートなど</string>
+    <string name="settings_info_ask_tip_title">メンバーシップのご案内</string>
+    <string name="settings_info_ask_tip_subtitle">GameNativeメンバーになるための案内を時々表示します</string>
     <string name="settings_info_source_title">ソースコード</string>
     <string name="settings_info_source_subtitle">このプロジェクトのソースコードを表示する</string>
     <string name="settings_info_libraries_title">使用するライブラリ</string>
@@ -1122,9 +1122,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">最近のクラッシュ</string>
     <string name="main_recent_crash_message">申し訳ありません!\n\' が抱えていた最近の問題について知っていただければ幸いです。\nアプリ\'s の設定で最新のクラッシュ ログを表示およびエクスポートし、プロジェクト ZESC4ZZs リポジトリの Github の問題として添付できます。\nGithub リポジトリへのリンクも設定にあります。</string>
-    <string name="main_thank_you_title">GameNative をご利用いただきありがとうございます。</string>
-    <string name="main_thank_you_message">アプリを友達と共有するか、Ko-fi のメンバーになることで、Android でのオープンソース PC ゲームをサポートします。</string>
-    <string name="main_join_kofi">Ko-fi に参加する</string>
+    <string name="main_thank_you_title">GameNativeを楽しんでいますか？</string>
+    <string name="main_thank_you_message">今すぐメンバーになりましょう。メンバー特典:\n\n• 新リリースへの早期アクセス\n• ゲームを動かすための優先サポート\n• Discordのプレミアムロールと限定チャンネル\n• …その他多数\n\n月額$5から</string>
+    <string name="main_join_kofi">メンバーになる</string>
+    <string name="pitch_session_title">%1$sを楽しんでいますか？</string>
+    <string name="pitch_five_star_title">%1$sが快適に動いてよかったです！</string>
     <string name="main_share">共有</string>
     <string name="main_share_text">GameNative をチェックしてください - クラウド セーブを完全にサポートし、Android で PC Steam ゲームをプレイしましょう!\nhttps://gamenative.app\nコミュニティに参加してください: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">ゲームはうまくいきましたか？</string>
@@ -2033,6 +2035,8 @@
     <string name="rec_disclosure_body">パーソナライズされたおすすめのため、プレイしたゲームを GOG と共有します。設定でいつでもオフにできます。</string>
     <string name="rec_disclosure_allow">許可</string>
     <string name="rec_disclosure_not_now">後で</string>
+    <string name="rec_teaser_title">あなたのデバイスに合うゲームを発見</string>
+    <string name="rec_teaser_subtitle">タップしてチェック</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">スポンサー</string>

@@ -970,10 +970,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Інформація</string>
-    <string name="settings_info_send_tip_title">Підтримати розробників</string>
-    <string name="settings_info_send_tip_subtitle">Сприяйте подальшому розвитку</string>
-    <string name="settings_info_ask_tip_title">Пропонувати підтримку розробників при запуску</string>
-    <string name="settings_info_ask_tip_subtitle">(ВИМК) Приховує повідомлення з пропозицією підтримки</string>
+    <string name="settings_info_send_tip_title">Стати учасником</string>
+    <string name="settings_info_send_tip_subtitle">Ранній доступ до версій, пріоритетна допомога та інше</string>
+    <string name="settings_info_ask_tip_title">Пропозиції членства</string>
+    <string name="settings_info_ask_tip_subtitle">Час від часу показувати пропозиції стати учасником GameNative</string>
     <string name="settings_info_source_title">Вихідний код</string>
     <string name="settings_info_source_subtitle">Переглянути вихідний код застосунку</string>
     <string name="settings_info_libraries_title">Використані бібліотеки</string>
@@ -1089,9 +1089,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Нещодавній збій</string>
     <string name="main_recent_crash_message">Перепрошуємо!\nБуло б добре дізнатися про проблему, з якою Ви нещодавно зіткнулися.\nВи можете переглянути та експортувати останній журнал збою в налаштуваннях застосунку і додати його як проблему (issue) на GitHub у репозиторії проєкту.\nПосилання на репозиторій GitHub також знаходиться в налаштуваннях!</string>
-    <string name="main_thank_you_title">Дякуємо за користування GameNative!</string>
-    <string name="main_thank_you_message">Підтримайте open-source ПК-ігри на Android, поділившись застосунком із друзями або ставши учасником на Ko-fi.</string>
-    <string name="main_join_kofi">Стати учасником на Ko-fi</string>
+    <string name="main_thank_you_title">Подобається GameNative?</string>
+    <string name="main_thank_you_message">Станьте учасником сьогодні. Учасники отримують:\n\n• Ранній доступ до нових версій\n• Пріоритетну допомогу із запуском ігор\n• Преміум-ролі та ексклюзивні канали в Discord\n• …та інше\n\nВід $5/міс.</string>
+    <string name="main_join_kofi">Стати учасником</string>
+    <string name="pitch_session_title">Подобається %1$s?</string>
+    <string name="pitch_five_star_title">Раді, що %1$s чудово працює!</string>
     <string name="main_share">Поділитися</string>
     <string name="main_share_text">Спробуй GameNative — грай у свої Steam-ігри з ПК на Android з повною підтримкою хмарних збережень!\nhttps://gamenative.app\nПриєднуйся до спільноти: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Чи працювала гра?</string>
@@ -2070,6 +2072,8 @@
     <string name="rec_disclosure_body">Для персональних рекомендацій ми надаємо ігри, у які ви граєте, сервісу GOG. Вимкнути можна будь-коли в Налаштуваннях.</string>
     <string name="rec_disclosure_allow">Дозволити</string>
     <string name="rec_disclosure_not_now">Не зараз</string>
+    <string name="rec_teaser_title">Відкрийте ігри для вашого пристрою</string>
+    <string name="rec_teaser_subtitle">Торкніться, щоб переглянути</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Спонсовано</string>

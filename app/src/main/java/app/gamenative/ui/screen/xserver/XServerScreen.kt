@@ -93,6 +93,7 @@ import app.gamenative.PrefManager
 import app.gamenative.SteamBootstrap
 import app.gamenative.data.GameSource
 import app.gamenative.gamefixes.GameFixesRegistry
+import app.gamenative.gamefixes.GameInputCompatibility
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.ShooterModeConfig
@@ -107,6 +108,7 @@ import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
+import app.gamenative.service.epic.EpicOverlayManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.LsfgQuickMenuState
@@ -1865,11 +1867,16 @@ fun XServerScreen(
             performanceHudHost = frameLayout
             val appId = appId
             val usrGlibc: Boolean = container.getContainerVariant().equals(Container.GLIBC, ignoreCase = true)
+            val mouseDragCompatibility = GameInputCompatibility.needsMouseDragCompatibility(appId, usrGlibc)
             val existingXServer =
                 PluviaApp.xEnvironment
                     ?.getComponent<XServerComponent>(XServerComponent::class.java)
                     ?.xServer
-            val xServerToUse = existingXServer ?: XServer(ScreenInfo(xServerState.value.screenSize), usrGlibc)
+            val xServerToUse = existingXServer ?: XServer(
+                ScreenInfo(xServerState.value.screenSize),
+                usrGlibc,
+                mouseDragCompatibility,
+            )
             // VirGL containers always need GL (shared EGL context for the
             // VirGL passthrough). Default to the legacy GL renderer for all
             // other containers as well. Uncheck the per-container useLegacyRenderer
@@ -3736,6 +3743,10 @@ private fun setupXEnvironment(
                 container.startupSelection = Container.STARTUP_SELECTION_ESSENTIAL
                 container.putExtra("startupSelection", java.lang.String.valueOf(Container.STARTUP_SELECTION_ESSENTIAL))
                 container.saveData()
+            } else if (EpicOverlayManager.isOverlayInstalled(container)) {
+                // The EOS overlay needs RpcSs/BITS; services were forced to normal
+                // in setupWineSystemFiles, so don't kill services.exe here.
+                Timber.d("Keeping services.exe alive for EOS overlay despite aggressive startup selection")
             } else {
                 xServer.winHandler.killProcess("services.exe");
             }
@@ -5041,9 +5052,19 @@ private suspend fun setupWineSystemFiles(
     WineStartMenuCreator.create(context, container)
     WineUtils.createDosdevicesSymlinks(context, container)
 
-    val startupSelection = container.startupSelection.toString()
+    // The EOS overlay's CEF browser needs RpcSs and BITS: without them it
+    // crash-loops and EOS login fails. Force normal services only for containers
+    // that actually have the overlay installed.
+    val needsOverlayServices = EpicOverlayManager.isOverlayInstalled(container)
+    if (needsOverlayServices) {
+        // Prefix re-provisioning above (wine/proton version change) replaces user.reg,
+        // so the overlay registry entries must be repaired here, not just at install time.
+        EpicOverlayManager.ensureRegistryEntries(container)
+    }
+    val effectiveStartupSelection = if (needsOverlayServices) Container.STARTUP_SELECTION_NORMAL else container.startupSelection
+    val startupSelection = effectiveStartupSelection.toString()
     if (startupSelection != container.getExtra("startupSelection")) {
-        WineUtils.changeServicesStatus(container, container.startupSelection != Container.STARTUP_SELECTION_NORMAL)
+        WineUtils.changeServicesStatus(container, effectiveStartupSelection != Container.STARTUP_SELECTION_NORMAL)
         container.putExtra("startupSelection", startupSelection)
         containerDataChanged = true
     }

@@ -728,7 +728,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="main_downloading_steam">Загрузка Steam...</string>
     <string name="main_installing_bionic">Установка компонентов Bionic...</string>
     <string name="main_installing_glibc">Установка компонентов glibc...</string>
-    <string name="main_join_kofi">Присоединиться на Ko-fi</string>
     <string name="main_keep_local">Сохранить локальное</string>
     <string name="main_keep_remote">Сохранить удалённое</string>
     <string name="main_later_button">Позже</string>
@@ -756,6 +755,11 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="main_save_conflict_title">Конфликт сохранений</string>
     <string name="main_save_conflict_upgrade_v1_title">Выберите версию сохранения</string>
     <string name="main_save_conflict_upgrade_v1_message">Мы исправили обработку путей облачных сохранений для этой игры и обнаружили различия между локальным и облачным сохранением.\n\nЛокальное сохранение:\n\t%1$s\nОблачное сохранение:\n\t%2$s</string>
+    <string name="main_thank_you_title">Нравится GameNative?</string>
+    <string name="main_thank_you_message">Станьте участником сегодня. Участники получают:\n\n• Ранний доступ к новым версиям\n• Приоритетную помощь с запуском игр\n• Премиум-роли и эксклюзивные каналы в Discord\n• …и не только\n\nОт $5/мес.</string>
+    <string name="main_join_kofi">Стать участником</string>
+    <string name="pitch_session_title">Нравится %1$s?</string>
+    <string name="pitch_five_star_title">Рады, что %1$s отлично работает!</string>
     <string name="main_share">Поделиться</string>
     <string name="main_share_text">Проверьте GameNative - играйте в ваши ПК игры Steam на Android, с полной поддержкой облачных сохранений!
 https://gamenative.app
@@ -764,8 +768,6 @@ https://gamenative.app
     <string name="main_sync_in_progress">Синхронизация в процессе. Пожалуйста, попробуйте снова через момент.</string>
     <string name="main_sync_in_progress_launch_anyway_message">Синхронизация облачного сохранения для этой игры уже запущена. Вы можете подождать и попробовать снова, или запустить в любом случае без синхронизации (может вызвать конфликты сохранений).</string>
     <string name="main_sync_in_progress_retry">Операция синхронизации занимает слишком много времени. Пожалуйста, попробуйте запустить игру снова через момент.</string>
-    <string name="main_thank_you_message">Поддержите игры с открытым исходным кодом на Android, поделившись приложением с вашими друзьями или став членом на Ko-fi.</string>
-    <string name="main_thank_you_title">Спасибо за использование GameNative!</string>
     <string name="main_update_available_message">Доступна новая версия (%1$s)!%2$s</string>
     <string name="main_update_available_title">Доступно обновление</string>
     <string name="main_update_button">Обновить</string>
@@ -1051,17 +1053,17 @@ https://gamenative.app
     <string name="settings_emulation_title">Эмуляция</string>
     <string name="settings_emulation_wine_proton_manager_subtitle">Импортировать пользовательские версии Wine/Proton (только Bionic)</string>
     <string name="settings_emulation_wine_proton_manager_title">Менеджер Wine/Proton</string>
-    <string name="settings_info_ask_tip_subtitle">Предотвращает появление сообщения совета</string>
-    <string name="settings_info_ask_tip_title">Спросить совет при запуске</string>
     <string name="settings_info_libraries_subtitle">Узнайте, какие технологии делают GameNative возможным</string>
     <string name="settings_info_libraries_title">Используемые библиотеки</string>
     <string name="settings_info_privacy_subtitle">Открывает ссылку на политику конфиденциальности GameNative</string>
     <string name="settings_info_privacy_title">Политика конфиденциальности</string>
     <string name="settings_info_usage_analytics_title">Аналитика использования</string>
     <string name="settings_info_usage_analytics_subtitle">Мы никогда не отслеживаем личную информацию. Отключение останавливает несущественную аналитику, однако основные данные о производительности игр по-прежнему собираются как законный интерес для улучшения совместимости.</string>
-    <string name="settings_info_send_tip_subtitle">Внесите вклад в продолжающуюся разработку</string>
-    <string name="settings_info_send_tip_title">Отправить чаевые</string>
     <string name="settings_info_source_subtitle">Просмотреть исходный код этого проекта</string>
+    <string name="settings_info_send_tip_title">Стать участником</string>
+    <string name="settings_info_send_tip_subtitle">Ранний доступ к версиям, приоритетная помощь и другое</string>
+    <string name="settings_info_ask_tip_title">Предложения о членстве</string>
+    <string name="settings_info_ask_tip_subtitle">Иногда показывать предложения стать участником GameNative</string>
     <string name="settings_info_source_title">Исходный код</string>
     <string name="settings_info_title">Информация</string>
     <string name="settings_interface_download_server_title">Сервер загрузки Steam</string>
@@ -2002,6 +2004,8 @@ https://gamenative.app
     <string name="rec_disclosure_body">Для персональных рекомендаций мы передаём игры, в которые вы играете, сервису GOG. Отключить можно в любой момент в Настройках.</string>
     <string name="rec_disclosure_allow">Разрешить</string>
     <string name="rec_disclosure_not_now">Не сейчас</string>
+    <string name="rec_teaser_title">Откройте игры для вашего устройства</string>
+    <string name="rec_teaser_subtitle">Нажмите, чтобы посмотреть</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Спонсировано</string>

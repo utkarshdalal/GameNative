@@ -171,7 +171,7 @@ object FanController {
 
         val snapshot = PowerManager.latestMetrics ?: return
         if (System.currentTimeMillis() - snapshot.timestampMs > METRICS_STALE_MS) return
-        val tempC = listOfNotNull(snapshot.cpuTempC, snapshot.gpuTempC).maxOrNull() ?: return
+        val tempC = pserver.deviceTempC(snapshot.cpuTempC, snapshot.gpuTempC) ?: return
 
         tickCount++
         val percent = controller.update(tempC.toDouble(), dtSeconds)

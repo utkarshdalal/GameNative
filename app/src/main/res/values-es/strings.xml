@@ -983,10 +983,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Información</string>
-    <string name="settings_info_send_tip_title">Enviar propina</string>
-    <string name="settings_info_send_tip_subtitle">Contribuye al desarrollo continuo.</string>
-    <string name="settings_info_ask_tip_title">Pedir propina al inicio</string>
-    <string name="settings_info_ask_tip_subtitle">Evita que aparezca el mensaje de propina.</string>
+    <string name="settings_info_send_tip_title">Hazte miembro</string>
+    <string name="settings_info_send_tip_subtitle">Acceso anticipado a versiones, ayuda prioritaria y más</string>
+    <string name="settings_info_ask_tip_title">Ofertas de membresía</string>
+    <string name="settings_info_ask_tip_subtitle">Mostrar ofertas ocasionales para hacerte miembro de GameNative</string>
     <string name="settings_info_source_title">Código fuente</string>
     <string name="settings_info_source_subtitle">Ve el código fuente de este proyecto.</string>
     <string name="settings_info_libraries_title">Librerías utilizadas</string>
@@ -1102,9 +1102,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Fallo reciente</string>
     <string name="main_recent_crash_message">¡Lo sentimos!\nSería de gran ayuda conocer el problema reciente que has tenido.\nPuedes ver y exportar el registro del fallo más reciente en los ajustes de la aplicación y adjuntarlo como un \'issue\' de GitHub en el repositorio del proyecto.\n¡El enlace al repositorio de GitHub también está en los ajustes!</string>
-    <string name="main_thank_you_title">¡Gracias por usar GameNative!</string>
-    <string name="main_thank_you_message">Apoya el proyecto de código abierto para juegos de PC en Android compartiendo la aplicación con tus amigos o haciéndote miembro en Ko-fi.</string>
-    <string name="main_join_kofi">Apoyar en Ko-fi</string>
+    <string name="main_thank_you_title">¿Disfrutas de GameNative?</string>
+    <string name="main_thank_you_message">Hazte miembro hoy. Los miembros obtienen:\n\n• Acceso anticipado a nuevas versiones\n• Ayuda prioritaria para hacer funcionar tus juegos\n• Roles premium y canales exclusivos en Discord\n• …y más\n\nDesde $5/mes</string>
+    <string name="main_join_kofi">Hazte miembro</string>
+    <string name="pitch_session_title">¿Disfrutando de %1$s?</string>
+    <string name="pitch_five_star_title">¡Genial que %1$s haya funcionado de maravilla!</string>
     <string name="main_share">Compartir</string>
     <string name="main_share_text">Descubre GameNative: juega a tus juegos Steam de PC en Android, con soporte completo de guardados en la nube.\nhttps://gamenative.app\nÚnete a la comunidad: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">¿Ha funcionado el juego?</string>
@@ -2074,6 +2076,8 @@
     <string name="rec_disclosure_body">Para ofrecerte recomendaciones personalizadas, compartimos los juegos que juegas con GOG. Puedes desactivarlo cuando quieras en Ajustes.</string>
     <string name="rec_disclosure_allow">Permitir</string>
     <string name="rec_disclosure_not_now">Ahora no</string>
+    <string name="rec_teaser_title">Descubre juegos para tu dispositivo</string>
+    <string name="rec_teaser_subtitle">Toca para echar un vistazo</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Patrocinado</string>

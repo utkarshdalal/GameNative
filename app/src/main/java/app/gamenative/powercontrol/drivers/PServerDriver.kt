@@ -401,6 +401,19 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     fun executeRootCommand(command: String): Result<String?> = executeAsRoot(command)
 
     /**
+     * Read a file using PServer root access with fallback to direct file read.
+     * @param path The absolute path to the file to read
+     * @return The file contents as a trimmed string, or null if the file cannot be read
+     */
+    override fun readFile(path: String): String? {
+        return if (pserverExecutor != null) {
+            readSysfsFile(path)
+        } else {
+            null
+        }
+    }
+
+    /**
      * Attach (or clear) the command that hands the fan back to the vendor controller and
      * rewrite the on-disk artifacts, so the babysitter and any dirty-session recovery
      * carry it too.
@@ -1433,8 +1446,8 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             }
             2 -> {
                 // Dual cluster (big.LITTLE)
-                clusters[CpuCluster.EFFICIENCY] = policiesWithFreq[0].cpuCores.toMutableList()
-                clusters[CpuCluster.PERFORMANCE] = policiesWithFreq[1].cpuCores.toMutableList()
+                clusters[CpuCluster.PERFORMANCE] = policiesWithFreq[0].cpuCores.toMutableList()
+                clusters[CpuCluster.PRIME] = policiesWithFreq[1].cpuCores.toMutableList()
             }
             3 -> {
                 // Tri-cluster (efficiency + performance + prime)
@@ -1663,6 +1676,18 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to find Wine process for $executableName")
             emptyList()
+        }
+    }
+
+    /**
+     * Device Temperature
+     */
+    fun deviceTempC(cpuTempC: Int?, gpuTempC: Int?) : Int? {
+        // On Odin 3, cpuTempC is not precise, can only use gpuTemp for the device temperature
+        return if (DeviceGate.normalizedModel().contains(DeviceGate.MODEL_ODIN_3)) {
+            gpuTempC
+        } else {
+            listOfNotNull(cpuTempC, gpuTempC).maxOrNull()
         }
     }
 

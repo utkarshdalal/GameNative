@@ -1025,6 +1025,7 @@ public class WinHandler {
                 controller = getControllerFromSlot(slot);
             }
             if (controller != null && controller.getDeviceId() == event.getDeviceId()) {
+                if (event.getRepeatCount() > 0) return true;
                 handled = controller.updateStateFromKeyEvent(event); // or motion variant
                 Log.d(TAG, "Key routed deviceId=" + event.getDeviceId()
                         + " keyCode=" + event.getKeyCode()

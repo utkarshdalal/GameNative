@@ -962,10 +962,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">資訊</string>
-    <string name="settings_info_send_tip_title">捐款支持</string>
-    <string name="settings_info_send_tip_subtitle">為持續的應用程式開發貢獻力量</string>
-    <string name="settings_info_ask_tip_title">啟動時顯示捐款訊息</string>
-    <string name="settings_info_ask_tip_subtitle">停止顯示捐款訊息</string>
+    <string name="settings_info_send_tip_title">成為會員</string>
+    <string name="settings_info_send_tip_subtitle">版本搶先體驗、優先支援等</string>
+    <string name="settings_info_ask_tip_title">會員優惠</string>
+    <string name="settings_info_ask_tip_subtitle">偶爾顯示成為 GameNative 會員的優惠資訊</string>
     <string name="settings_info_source_title">原始碼</string>
     <string name="settings_info_source_subtitle">檢視此專案的原始碼</string>
     <string name="settings_info_libraries_title">使用的函式庫</string>
@@ -1076,9 +1076,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">最近應用程式當機</string>
     <string name="main_recent_crash_message">若能了解您最近遇到的問題, 將有助於我們改善應用程式.\n您可在應用程式設定中檢視並匯出最近的崩潰日誌, 將其附加至專案原始碼儲存庫的 Github Issue中\nGithub 原始碼儲存庫的連結亦位於設定頁面內</string>
-    <string name="main_thank_you_title">感謝您使用GameNative!</string>
-    <string name="main_thank_you_message">透過與朋友分享應用程式或在Ko-fi成為會員，支持Android平台的開源PC遊戲</string>
-    <string name="main_join_kofi">加入Ko-fi</string>
+    <string name="main_thank_you_title">喜歡 GameNative 嗎？</string>
+    <string name="main_thank_you_message">立即成為會員。會員可享有：\n\n• 新版本搶先體驗\n• 遊戲執行問題優先支援\n• Discord 進階身分組與專屬頻道\n• …還有更多\n\n每月 $5 起</string>
+    <string name="main_join_kofi">成為會員</string>
+    <string name="pitch_session_title">喜歡《%1$s》嗎？</string>
+    <string name="pitch_five_star_title">很高興《%1$s》執行順暢！</string>
     <string name="main_share">分享</string>
     <string name="main_share_text">試試 GameNative - 在 Android 上暢玩您的 PC Steam 遊戲，完整支援雲端存檔！\nhttps://gamenative.app\n加入社群：https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">遊戲運作正常嗎?</string>
@@ -2085,6 +2087,8 @@
     <string name="rec_disclosure_body">為提供個人化推薦，我們會將你玩過的遊戲分享給 GOG。可隨時在設定中關閉。</string>
     <string name="rec_disclosure_allow">允許</string>
     <string name="rec_disclosure_not_now">暫不</string>
+    <string name="rec_teaser_title">探索適合你裝置的遊戲</string>
+    <string name="rec_teaser_subtitle">點按查看</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">贊助</string>

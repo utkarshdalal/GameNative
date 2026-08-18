@@ -974,10 +974,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">정보</string>
-    <string name="settings_info_send_tip_title">팁 보내기</string>
-    <string name="settings_info_send_tip_subtitle">지속적인 개발에 기여</string>
-    <string name="settings_info_ask_tip_title">시작 시 팁 요청</string>
-    <string name="settings_info_ask_tip_subtitle">시작 시 팁 메시지가 나타나지 않도록 중지</string>
+    <string name="settings_info_send_tip_title">멤버 되기</string>
+    <string name="settings_info_send_tip_subtitle">릴리스 조기 이용, 우선 지원 등</string>
+    <string name="settings_info_ask_tip_title">멤버십 안내</string>
+    <string name="settings_info_ask_tip_subtitle">GameNative 멤버가 될 수 있는 안내를 가끔 표시합니다</string>
     <string name="settings_info_source_title">소스 코드</string>
     <string name="settings_info_source_subtitle">이 프로젝트의 소스 코드 보기</string>
     <string name="settings_info_libraries_title">사용된 라이브러리</string>
@@ -1091,9 +1091,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">최근 충돌</string>
     <string name="main_recent_crash_message">죄송합니다!\n최근 발생한 문제에 대해 알려주시면 감사하겠습니다.\n앱 설정에서 가장 최근의 충돌 로그를 보고 내보낼 수 있으며 프로젝트 저장소에 Github 이슈로 첨부할 수 있습니다.\nGithub 저장소 링크도 설정에 있습니다!</string>
-    <string name="main_thank_you_title">GameNative를 사용해 주셔서 감사합니다!</string>
-    <string name="main_thank_you_message">친구들과 앱을 공유하거나 Ko-fi에서 회원이 되어 Android에서 오픈 소스 PC 게임을 지원하세요.</string>
-    <string name="main_join_kofi">Ko-fi에서 참여</string>
+    <string name="main_thank_you_title">GameNative를 즐기고 계신가요?</string>
+    <string name="main_thank_you_message">지금 멤버가 되세요. 멤버 혜택:\n\n• 새 릴리스 조기 이용\n• 게임 실행을 위한 우선 지원\n• Discord 프리미엄 역할 및 전용 채널\n• …그 외 다수\n\n월 $5부터</string>
+    <string name="main_join_kofi">멤버 되기</string>
+    <string name="pitch_session_title">%1$s 재미있으신가요?</string>
+    <string name="pitch_five_star_title">%1$s이(가) 잘 실행되어 다행이에요!</string>
     <string name="main_share">공유</string>
     <string name="main_share_text">GameNative를 확인하세요 - 클라우드 저장을 완전히 지원하며 Android에서 PC Steam 게임을 플레이하세요!\nhttps://gamenative.app\n커뮤니티 참여: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">게임이 작동했나요?</string>
@@ -2074,6 +2076,8 @@
     <string name="rec_disclosure_body">맞춤 추천을 위해 플레이한 게임을 GOG와 공유합니다. 설정에서 언제든지 끌 수 있습니다.</string>
     <string name="rec_disclosure_allow">허용</string>
     <string name="rec_disclosure_not_now">나중에</string>
+    <string name="rec_teaser_title">내 기기에 맞는 게임 찾기</string>
+    <string name="rec_teaser_subtitle">탭하여 살펴보기</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">스폰서</string>
