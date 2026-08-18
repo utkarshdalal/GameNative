@@ -278,10 +278,14 @@ class GOGDownloadManager @Inject constructor(
             val filesToDownload = if (withDlcs) baseFiles + dlcFiles else baseFiles
             var (gameFiles, supportFiles) = parser.separateSupportFiles(filesToDownload)
 
-            // Filter out files that already exist with correct size (incremental download)
+            // Filter out files that already exist with correct size (incremental download).
+            // On a resume this MD5-reads every completed file, which can take minutes for
+            // a large install — surface it in the UI and honor cancellation between files.
             val gameInstallDir = installPath
+            downloadInfo.updateStatusMessage("Verifying existing files...")
             val beforeCount = gameFiles.size
             gameFiles = gameFiles.filter { file ->
+                if (!downloadInfo.isActive()) return@withContext Result.failure(Exception("Download cancelled"))
                 val outputFile = File(gameInstallDir, file.path)
                 val expectedSize = file.chunks.sumOf { it.size }
                 !fileExistsWithCorrectSize(outputFile, expectedSize, file.md5)
@@ -290,11 +294,13 @@ class GOGDownloadManager @Inject constructor(
 
             val beforeSupportCount = supportFiles.size
             supportFiles = supportFiles.filter { file ->
+                if (!downloadInfo.isActive()) return@withContext Result.failure(Exception("Download cancelled"))
                 val installRelativePath = getSupportInstallPath(file.path)
                 val outputFile = File(gameInstallDir, installRelativePath)
                 val expectedSize = file.chunks.sumOf { it.size }
                 !fileExistsWithCorrectSize(outputFile, expectedSize, file.md5)
             }
+            downloadInfo.updateStatusMessage(null)
             val supportFilesForGameDirAssemble = supportFiles.map { file ->
                 val installRelativePath = getSupportInstallPath(file.path)
                 if (installRelativePath != file.path) file.copy(path = installRelativePath) else file

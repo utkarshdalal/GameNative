@@ -1,7 +1,10 @@
 package app.gamenative.data
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,14 +47,19 @@ data class DownloadInfo(
     }
 
     fun cancel(message: String) {
-        // Persist the most recent progress so a resume can pick up where it left off.
-        persistProgressSnapshot()
         // Mark as inactive and clear speed tracking so a future resume
         // does not use stale samples.
         setActive(false)
         setPostInstallSyncing(false)
         resetSpeedTracking()
-        downloadJob?.cancel(CancellationException(message))
+        // The snapshot write hits the (possibly saturated) install volume and the
+        // job cancel cascades through many continuations; callers include UI click
+        // handlers on the main thread, so both must run off it (ANR otherwise).
+        CoroutineScope(Dispatchers.IO).launch {
+            // Persist the most recent progress so a resume can pick up where it left off.
+            persistProgressSnapshot()
+            downloadJob?.cancel(CancellationException(message))
+        }
     }
 
     fun setDownloadJob(job: Job) {

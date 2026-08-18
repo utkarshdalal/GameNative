@@ -262,10 +262,15 @@ class EpicDownloadManager @Inject constructor(
             val installDir = File(installPath)
             installDir.mkdirs()
 
-            // Incremental download: skip files already on disk with matching size and SHA-1
+            // Incremental download: skip files already on disk with matching size and SHA-1.
+            // On a resume this hashes every completed file, which can take minutes for a
+            // large install — surface it in the UI and honor cancellation between files.
+            downloadInfo.updateStatusMessage("Verifying existing files...")
             val pendingFiles = files.filter { file ->
+                if (!downloadInfo.isActive()) return@withContext Result.failure(Exception("Download cancelled"))
                 !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
             }
+            downloadInfo.updateStatusMessage(null)
             Timber.tag("Epic").d("Skipping ${files.size - pendingFiles.size} existing file(s), downloading ${pendingFiles.size}")
 
             val fileChunkIds = pendingFiles.map { f -> f.chunkParts.map { it.guidStr } }
@@ -414,10 +419,15 @@ class EpicDownloadManager @Inject constructor(
             val installDir = File(installPath)
             installDir.mkdirs()
 
-            // Incremental download: skip files already on disk with matching size and SHA-1
+            // Incremental download: skip files already on disk with matching size and SHA-1.
+            // On a resume this hashes every completed file, which can take minutes for a
+            // large install — surface it in the UI and honor cancellation between files.
+            downloadInfo.updateStatusMessage("Verifying existing files...")
             val pendingFiles = files.filter { file ->
+                if (!downloadInfo.isActive()) return@withContext Result.failure(Exception("Download cancelled"))
                 !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
             }
+            downloadInfo.updateStatusMessage(null)
             Timber.tag("Epic").d("Skipping ${files.size - pendingFiles.size} existing file(s), downloading ${pendingFiles.size}")
 
             val fileChunkIds = pendingFiles.map { f -> f.chunkParts.map { it.guidStr } }
