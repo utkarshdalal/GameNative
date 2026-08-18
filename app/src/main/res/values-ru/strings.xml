@@ -2231,4 +2231,22 @@ https://gamenative.app
     <string name="power_control_strategy_aggressive_desc">Максимизирует производительность на обнаруженных узких местах</string>
     <string name="power_control_strategy_conservative">Консервативная</string>
     <string name="power_control_strategy_conservative_desc">Постепенные настройки с акцентом на стабильность</string>
+    <string name="launch_immersive_mode">Запустить в иммерсивном режиме (VR)</string>
+    <string name="quick_menu_tab_immersive">Иммерсивный</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Видеть реальное окружение сквозь виртуальный экран</string>
+    <string name="immersive_passthrough_toggle">Включить passthrough</string>
+    <string name="immersive_resize_mode_title">Маркеры изменения размера и перемещения</string>
+    <string name="immersive_resize_mode_desc">Когда включено, показывает маркеры захвата у самых краёв изображения игры. По умолчанию выключено: экран без полей не теряет резкость.</string>
+    <string name="immersive_resize_mode_toggle">Показывать маркеры размера и перемещения</string>
+    <string name="immersive_direct_render_title">Производительность</string>
+    <string name="immersive_reset_effects_status_blocked">Активный экранный эффект, фильтр или настройка яркости/контраста/гаммы блокирует самый быстрый путь отрисовки.</string>
+    <string name="immersive_reset_effects_status_ok">Сейчас ничто не блокирует самый быстрый путь отрисовки.</string>
+    <string name="immersive_reset_effects_button">Сбросить экранные эффекты</string>
+    <string name="immersive_reset_effects_desc">Отключает все эффекты, фильтры и настройки яркости/контраста/гаммы. Применяется сразу, перезапуск не нужен.</string>
+    <string name="immersive_onboarding_disable_passthrough">Отключите passthrough для повышения производительности</string>
+    <string name="immersive_onboarding_quick_menu">Удерживайте Start, чтобы открыть или закрыть быстрое меню</string>
+    <string name="immersive_onboarding_pointer_toggle">Дважды нажмите стик, чтобы переключиться между геймпадом Xbox и XR-указателем</string>
+    <string name="immersive_mode_xr_pointer">Режим XR-указателя</string>
+    <string name="immersive_mode_xbox">Режим геймпада Xbox</string>
 </resources>

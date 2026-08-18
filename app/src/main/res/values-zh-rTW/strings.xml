@@ -2305,4 +2305,22 @@
     <string name="power_control_strategy_aggressive_desc">最大化檢測到的瓶頸效能</string>
     <string name="power_control_strategy_conservative">保守</string>
     <string name="power_control_strategy_conservative_desc">漸進式調整，注重穩定性</string>
+    <string name="launch_immersive_mode">以沉浸模式啟動（VR）</string>
+    <string name="quick_menu_tab_immersive">沉浸</string>
+    <string name="immersive_passthrough">透視</string>
+    <string name="immersive_passthrough_desc">透過虛擬螢幕查看周圍的真實環境</string>
+    <string name="immersive_passthrough_toggle">啟用透視</string>
+    <string name="immersive_resize_mode_title">縮放/移動控制點</string>
+    <string name="immersive_resize_mode_desc">開啟後會在遊戲畫面邊緣內側顯示抓取控制點。預設關閉，因為不留邊界可避免畫面變模糊。</string>
+    <string name="immersive_resize_mode_toggle">顯示縮放/移動控制點</string>
+    <string name="immersive_direct_render_title">效能</string>
+    <string name="immersive_reset_effects_status_blocked">目前啟用的畫面效果、濾鏡或亮度/對比/Gamma 調整正在阻擋最快的算繪路徑。</string>
+    <string name="immersive_reset_effects_status_ok">目前沒有任何設定阻擋最快的算繪路徑。</string>
+    <string name="immersive_reset_effects_button">重設畫面效果</string>
+    <string name="immersive_reset_effects_desc">關閉所有效果、濾鏡以及亮度/對比/Gamma 調整。立即生效，無須重新啟動。</string>
+    <string name="immersive_onboarding_disable_passthrough">關閉透視以提升效能</string>
+    <string name="immersive_onboarding_quick_menu">長按 Start 可開啟或關閉快速選單</string>
+    <string name="immersive_onboarding_pointer_toggle">雙擊搖桿可在 Xbox 控制器與 XR 指標之間切換</string>
+    <string name="immersive_mode_xr_pointer">XR 指標模式</string>
+    <string name="immersive_mode_xbox">Xbox 控制器模式</string>
 </resources>

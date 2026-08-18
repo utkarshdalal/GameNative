@@ -2290,4 +2290,22 @@
     <string name="power_control_strategy_aggressive_desc">Massimizza le prestazioni sui colli di bottiglia rilevati</string>
     <string name="power_control_strategy_conservative">Conservativo</string>
     <string name="power_control_strategy_conservative_desc">Regolazioni graduali con focus sulla stabilità</string>
+    <string name="launch_immersive_mode">Avvia in modalità immersiva (VR)</string>
+    <string name="quick_menu_tab_immersive">Immersiva</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Guarda l\'ambiente reale attraverso lo schermo virtuale</string>
+    <string name="immersive_passthrough_toggle">Attiva passthrough</string>
+    <string name="immersive_resize_mode_title">Maniglie di ridimensionamento/spostamento</string>
+    <string name="immersive_resize_mode_desc">Mostra le maniglie appena all\'interno dei bordi del gioco quando è attivo — disattivato per impostazione predefinita, perché uno schermo senza bordo non perde nitidezza per un margine.</string>
+    <string name="immersive_resize_mode_toggle">Mostra maniglie di ridimensionamento/spostamento</string>
+    <string name="immersive_direct_render_title">Prestazioni</string>
+    <string name="immersive_reset_effects_status_blocked">Un effetto schermo, un filtro o una regolazione di luminosità/contrasto/gamma attivi stanno bloccando il percorso di rendering più veloce.</string>
+    <string name="immersive_reset_effects_status_ok">Al momento nulla blocca il percorso di rendering più veloce.</string>
+    <string name="immersive_reset_effects_button">Reimposta effetti schermo</string>
+    <string name="immersive_reset_effects_desc">Disattiva tutti gli effetti, i filtri e le regolazioni di luminosità/contrasto/gamma. Ha effetto immediato — nessun riavvio necessario.</string>
+    <string name="immersive_onboarding_disable_passthrough">Disattiva il passthrough per prestazioni migliori</string>
+    <string name="immersive_onboarding_quick_menu">Tieni premuto Start per aprire/chiudere il menu rapido</string>
+    <string name="immersive_onboarding_pointer_toggle">Fai doppio clic su una levetta per passare da controller Xbox a puntatore XR</string>
+    <string name="immersive_mode_xr_pointer">Modalità puntatore XR</string>
+    <string name="immersive_mode_xbox">Modalità controller Xbox</string>
 </resources>

@@ -304,7 +304,6 @@ class SteamService : Service(), IChallengeUrlChanged {
     private lateinit var connectivityManager: ConnectivityManager
     private lateinit var networkCallback: ConnectivityManager.NetworkCallback
 
-
     // Add these as class properties
     private var picsGetProductInfoJob: Job? = null
     private var picsChangesCheckerJob: Job? = null
@@ -965,7 +964,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             return true
         }
-
 
         /**
          * Returns all DLC App IDs that have exactly one depot.
@@ -3673,11 +3671,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        if (!hasActiveOperations()) {
+        if (!hasActiveOperations() && !(BuildConfig.MODERN_XR && keepAlive)) {
             Timber.i("Task removed and no active work — stopping service")
             stopSelf()
         } else {
-            Timber.i("Task removed but active work exists — keeping service alive")
+            Timber.i("Task removed but active work or keepAlive exists — keeping service alive")
         }
     }
 

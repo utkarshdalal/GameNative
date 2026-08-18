@@ -2169,4 +2169,22 @@
     <string name="power_control_strategy_aggressive_desc">Maximiza o desempenho em gargalos detectados</string>
     <string name="power_control_strategy_conservative">Conservador</string>
     <string name="power_control_strategy_conservative_desc">Ajustes graduais com foco na estabilidade</string>
+    <string name="launch_immersive_mode">Iniciar em modo imersivo (RV)</string>
+    <string name="quick_menu_tab_immersive">Imersivo</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Veja o ambiente real através da tela virtual</string>
+    <string name="immersive_passthrough_toggle">Ativar passthrough</string>
+    <string name="immersive_resize_mode_title">Alças de redimensionar/mover</string>
+    <string name="immersive_resize_mode_desc">Mostra alças logo dentro das bordas do jogo quando ativado — desativado por padrão, já que uma tela sem margem não perde nitidez.</string>
+    <string name="immersive_resize_mode_toggle">Mostrar alças de redimensionar/mover</string>
+    <string name="immersive_direct_render_title">Desempenho</string>
+    <string name="immersive_reset_effects_status_blocked">Um efeito de tela, filtro ou ajuste de brilho/contraste/gama ativo está bloqueando o caminho de renderização mais rápido.</string>
+    <string name="immersive_reset_effects_status_ok">Nada está bloqueando o caminho de renderização mais rápido no momento.</string>
+    <string name="immersive_reset_effects_button">Redefinir efeitos de tela</string>
+    <string name="immersive_reset_effects_desc">Desativa todos os efeitos, filtros e ajustes de brilho/contraste/gama. Vale imediatamente — sem precisar reiniciar.</string>
+    <string name="immersive_onboarding_disable_passthrough">Desative o passthrough para melhor desempenho</string>
+    <string name="immersive_onboarding_quick_menu">Segure Start para abrir/fechar o menu rápido</string>
+    <string name="immersive_onboarding_pointer_toggle">Clique duas vezes em um analógico para alternar entre controle Xbox e ponteiro XR</string>
+    <string name="immersive_mode_xr_pointer">Modo ponteiro XR</string>
+    <string name="immersive_mode_xbox">Modo controle Xbox</string>
 </resources>

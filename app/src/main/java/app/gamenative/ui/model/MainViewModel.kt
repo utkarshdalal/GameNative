@@ -250,6 +250,12 @@ class MainViewModel @Inject constructor(
         setShowBootingSplash(true)
     }
 
+    private val onClearBootingSplash: (AndroidEvent.ClearBootingSplash) -> Unit = {
+        bootingSplashTimeoutJob?.cancel()
+        bootingSplashTimeoutJob = null
+        setShowBootingSplash(false)
+    }
+
     private var bootingSplashTimeoutJob: Job? = null
     private var connectionTimeoutJob: Job? = null
 
@@ -284,6 +290,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.on<AndroidEvent.BackPressed, Unit>(onBackPressed)
         PluviaApp.events.on<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.on<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
+        PluviaApp.events.on<AndroidEvent.ClearBootingSplash, Unit>(onClearBootingSplash)
         PluviaApp.events.on<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.on<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
@@ -310,6 +317,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.off<AndroidEvent.BackPressed, Unit>(onBackPressed)
         PluviaApp.events.off<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.off<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
+        PluviaApp.events.off<AndroidEvent.ClearBootingSplash, Unit>(onClearBootingSplash)
         PluviaApp.events.off<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.off<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
@@ -561,14 +569,26 @@ class MainViewModel @Inject constructor(
                         }
                     }
                 }
+                container
             }
 
             // Small delay to ensure the splash screen is visible before proceeding
             delay(100)
 
-            apiJob.await()
+            val container = apiJob.await()
 
-            _uiEvent.send(MainUiEvent.LaunchApp)
+            if (app.gamenative.BuildConfig.MODERN_XR &&
+                container.isLaunchImmersiveMode() &&
+                app.gamenative.MainActivity.isMetaQuest()
+            ) {
+                bootingSplashTimeoutJob?.cancel()
+                bootingSplashTimeoutJob = null
+                setShowBootingSplash(false)
+                SteamService.keepAlive = true
+                app.gamenative.ui.screen.xr.ImmersiveXrActivity.start(context, appId, _offline.value)
+            } else {
+                _uiEvent.send(MainUiEvent.LaunchApp)
+            }
         }
     }
 
@@ -579,6 +599,7 @@ class MainViewModel @Inject constructor(
                 bootingSplashTimeoutJob?.cancel()
                 bootingSplashTimeoutJob = null
                 setShowBootingSplash(false)
+                PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
                 // Check if we have a temporary override before doing anything
                 val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)
 
@@ -715,6 +736,9 @@ class MainViewModel @Inject constructor(
             bootingSplashTimeoutJob?.cancel()
             bootingSplashTimeoutJob = null
             setShowBootingSplash(false)
+            // See onClearBootingSplash's kdoc — broadcast so MainActivity's own instance clears
+            // too when this call is actually running on ImmersiveXrActivity's separate instance.
+            PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
 
             if (ContainerUtils.extractGameSourceFromContainerId(appId) != GameSource.STEAM) {
                 return@launch
@@ -786,6 +810,9 @@ class MainViewModel @Inject constructor(
             bootingSplashTimeoutJob?.cancel()
             bootingSplashTimeoutJob = null
             setShowBootingSplash(false)
+            // See onClearBootingSplash's kdoc — broadcast so MainActivity's own instance clears
+            // too when this call is actually running on ImmersiveXrActivity's separate instance.
+            PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
 
             // You could also show an error dialog here if needed
             Timber.tag("MainViewModel").e("Game launch error: $error")

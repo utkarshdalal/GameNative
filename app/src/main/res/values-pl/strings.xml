@@ -2303,4 +2303,22 @@
     <string name="power_control_strategy_aggressive_desc">Maksymalizuje wydajność wykrytych wąskich gardeł</string>
     <string name="power_control_strategy_conservative">Konserwatywna</string>
     <string name="power_control_strategy_conservative_desc">Stopniowe dostosowania z naciskiem na stabilność</string>
+    <string name="launch_immersive_mode">Uruchom w trybie immersyjnym (VR)</string>
+    <string name="quick_menu_tab_immersive">Immersyjny</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Zobacz swoje realne otoczenie przez wirtualny ekran</string>
+    <string name="immersive_passthrough_toggle">Włącz passthrough</string>
+    <string name="immersive_resize_mode_title">Uchwyty zmiany rozmiaru/pozycji</string>
+    <string name="immersive_resize_mode_desc">Po włączeniu pokazuje uchwyty tuż przy krawędziach obrazu gry — domyślnie wyłączone, bo ekran bez marginesu nie traci ostrości.</string>
+    <string name="immersive_resize_mode_toggle">Pokaż uchwyty zmiany rozmiaru/pozycji</string>
+    <string name="immersive_direct_render_title">Wydajność</string>
+    <string name="immersive_reset_effects_status_blocked">Aktywny efekt ekranu, filtr lub korekta jasności/kontrastu/gammy blokuje najszybszą ścieżkę renderowania.</string>
+    <string name="immersive_reset_effects_status_ok">Nic obecnie nie blokuje najszybszej ścieżki renderowania.</string>
+    <string name="immersive_reset_effects_button">Zresetuj efekty ekranu</string>
+    <string name="immersive_reset_effects_desc">Wyłącza wszystkie efekty, filtry i korekty jasności/kontrastu/gammy. Działa od razu — bez ponownego uruchamiania.</string>
+    <string name="immersive_onboarding_disable_passthrough">Wyłącz passthrough, aby zwiększyć wydajność</string>
+    <string name="immersive_onboarding_quick_menu">Przytrzymaj Start, aby otworzyć lub zamknąć szybkie menu</string>
+    <string name="immersive_onboarding_pointer_toggle">Kliknij dwukrotnie gałkę, aby przełączyć między padem Xbox a wskaźnikiem XR</string>
+    <string name="immersive_mode_xr_pointer">Tryb wskaźnika XR</string>
+    <string name="immersive_mode_xbox">Tryb pada Xbox</string>
 </resources>

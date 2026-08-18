@@ -29,8 +29,11 @@ import app.gamenative.BuildConfig
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.DropdownMenu
@@ -108,6 +111,8 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicOverlayManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.ui.component.LsfgQuickMenuState
+import app.gamenative.ui.component.PerformanceQuickMenuState
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
 import app.gamenative.ui.component.SteamInviteState
@@ -357,6 +362,9 @@ fun XServerScreen(
     onWindowMapped: ((Context, Window) -> Unit)? = null,
     onWindowUnmapped: ((Window) -> Unit)? = null,
     onGameLaunchError: ((String) -> Unit)? = null,
+    // Non-null only when hosted by ImmersiveXrActivity. One bundled parameter, not nine — this
+    // composable sits at the dex verifier's register limit (see ImmersiveSessionHooks' kdoc).
+    immersiveHooks: app.gamenative.ui.screen.xr.ImmersiveSessionHooks? = null,
 ) {
     Timber.i("Starting up XServerScreen")
     val context = LocalContext.current
@@ -1070,6 +1078,10 @@ fun XServerScreen(
     }
 
     LaunchedEffect(showQuickMenu, quickMenuToolsVisible, xServerView) {
+        // Piggybacks on this effect rather than its own LaunchedEffect(showQuickMenu) — this
+        // composable is at the dex 255-register limit. Extra fires from the other keys repeat
+        // the same value; the activity's handler is idempotent.
+        immersiveHooks?.onQuickMenuVisibilityChanged?.invoke(showQuickMenu)
         if (!showQuickMenu || !quickMenuToolsVisible) {
             quickMenuWineProcesses = emptyList()
             quickMenuWineProcessesLoading = false
@@ -1442,6 +1454,30 @@ fun XServerScreen(
 
     DisposableEffect(container) {
         registerBackAction(gameBack)
+        immersiveHooks?.registerToggle?.invoke {
+            Timber.i("toggleQuickMenu: invoked, showQuickMenu=%b", showQuickMenu)
+            if (showQuickMenu) {
+                dismissOverlayMenu()
+            } else {
+                val imeVisible = ViewCompat.getRootWindowInsets(view)
+                    ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+                if (imeVisible) {
+                    imeInputReceiver?.hideKeyboard()
+                    view.post {
+                        if (Build.VERSION.SDK_INT >= 30) {
+                            view.windowInsetsController?.hide(WindowInsets.Type.ime())
+                        } else {
+                            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                            if (view.windowToken != null) imm.hideSoftInputFromWindow(view.windowToken, 0)
+                        }
+                    }
+                }
+                PluviaApp.touchpadView?.postDelayed({
+                    PluviaApp.touchpadView?.releasePointerCapture()
+                }, 100)
+                showQuickMenu = true
+            }
+        }
         if (isLsfgAvailable) {
             LsfgVkManager.startVsyncClock(context, container)
         }
@@ -1458,6 +1494,7 @@ fun XServerScreen(
                 PluviaApp.isOverlayPaused = false
             }
             registerBackAction { }
+            immersiveHooks?.registerToggle?.invoke {}
         }   // preserve suspend state across activity recreation while a game is still running
     }
 
@@ -1556,7 +1593,6 @@ fun XServerScreen(
             handled
         }
     }
-
 
     val onMotionEvent: (AndroidEvent.MotionEvent) -> Boolean = {
         val isGamepad = ExternalController.isGameController(it.event?.device)
@@ -2400,8 +2436,6 @@ fun XServerScreen(
 
             xServerView.getxServer().winHandler.setInputControlsView(PluviaApp.inputControlsView)
 
-
-
             // Add InputControlsView (portrait: inside fixed-height container at bottom; landscape: overlay)
             if (isPortrait) {
                 val controlsContainer = FrameLayout(context).apply {
@@ -2697,14 +2731,16 @@ fun XServerScreen(
                     quickMenuWineProcesses = quickMenuWineProcesses.filterNot { it.pid == process.pid }
                 }
             },
-            isPerformanceHudEnabled = isPerformanceHudEnabled,
-            performanceHudConfig = performanceHudConfig,
-            fpsLimiterEnabled = fpsLimiterEnabled,
-            fpsLimiterTarget = fpsLimiterTarget,
-            fpsLimiterMax = detectedMaxRefreshRateHz,
-            onPerformanceHudConfigChanged = ::applyPerformanceHudConfig,
-            onFpsLimiterEnabledChanged = ::applyFpsLimiterEnabled,
-            onFpsLimiterChanged = ::applyFpsLimiterTarget,
+            performance = PerformanceQuickMenuState(
+                hudEnabled = isPerformanceHudEnabled,
+                hudConfig = performanceHudConfig,
+                fpsLimiterEnabled = fpsLimiterEnabled,
+                fpsLimiterTarget = fpsLimiterTarget,
+                fpsLimiterMax = detectedMaxRefreshRateHz,
+                onHudConfigChanged = ::applyPerformanceHudConfig,
+                onFpsLimiterEnabledChanged = ::applyFpsLimiterEnabled,
+                onFpsLimiterChanged = ::applyFpsLimiterTarget,
+            ),
             hasPhysicalController = hasPhysicalController,
             isTouchscreenModeActive = isTouchscreenModeActive,
             onTouchGestureSettingsClick = { showTouchGestureDialog = true },
@@ -2717,14 +2753,18 @@ fun XServerScreen(
                 if (isDisableMouseInput) add(QuickMenuAction.DISABLE_MOUSE)
             },
             // LSFG hot-reload (tab only visible when enabled in container settings)
-            isLsfgAvailable = isLsfgAvailable,
-            lsfgMultiplier = lsfgMultiplier,
-            lsfgFlowScale = lsfgFlowScale,
-            lsfgPerformanceMode = lsfgPerformanceMode,
-            onLsfgMultiplierChanged = ::applyLsfgMultiplier,
-            onLsfgFlowScaleChanged = ::applyLsfgFlowScale,
-            onLsfgPerformanceModeChanged = ::applyLsfgPerformanceMode,
+            lsfg = LsfgQuickMenuState(
+                isAvailable = isLsfgAvailable,
+                multiplier = lsfgMultiplier,
+                flowScale = lsfgFlowScale,
+                performanceMode = lsfgPerformanceMode,
+                onMultiplierChanged = ::applyLsfgMultiplier,
+                onFlowScaleChanged = ::applyLsfgFlowScale,
+                onPerformanceModeChanged = ::applyLsfgPerformanceMode,
+            ),
             onRequestOpen = { showQuickMenu = true },
+            // Immersive tab (tab only visible when hosted by ImmersiveXrActivity)
+            immersiveHooks = immersiveHooks,
             onAnimationComplete = { isMenuVisible ->
                 if (isMenuVisible) {
                     // An invite dialog the game asked for must not suspend it -- the game has to
@@ -2754,34 +2794,7 @@ fun XServerScreen(
         }
 
         if (manualResumeMode && PluviaApp.isOverlayPaused && !showQuickMenu && !keepPausedForEditor) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(
-                            color = androidx.compose.ui.graphics.Color.White,
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                        )
-                        .clickable(onClick = ::resumeFromManualButton),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = stringResource(R.string.resume_game),
-                        tint = androidx.compose.ui.graphics.Color.Black,
-                        modifier = Modifier.size(40.dp),
-                    )
-                }
-            }
+            ManualResumeOverlay(onResume = ::resumeFromManualButton, immersive = immersiveHooks != null)
         }
     }
 
@@ -2966,6 +2979,55 @@ fun XServerScreen(
     // }
 }
 
+/** Lives outside XServerScreen because that composable sits at the dex verifier's 255-register
+ * limit — its FocusRequester/effect locals tripped a runtime VerifyError when inlined there. */
+@Composable
+private fun ManualResumeOverlay(onResume: () -> Unit, immersive: Boolean) {
+    val resumeButtonFocusRequester = remember { FocusRequester() }
+    if (immersive) {
+        LaunchedEffect(Unit) {
+            runCatching { resumeButtonFocusRequester.requestFocus() }
+        }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {},
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .background(
+                    color = androidx.compose.ui.graphics.Color.White,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                )
+                .then(
+                    if (immersive) {
+                        Modifier
+                            .focusRequester(resumeButtonFocusRequester)
+                            .focusable()
+                    } else {
+                        Modifier
+                    },
+                )
+                .clickable(onClick = onResume),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = stringResource(R.string.resume_game),
+                tint = androidx.compose.ui.graphics.Color.Black,
+                modifier = Modifier.size(40.dp),
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditModeToolbar(
@@ -3127,19 +3189,15 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
 
     PluviaApp.touchpadView?.setSensitivity(profile.getCursorSpeed() * 1.0f)
 
-
     // If the selected profile is a virtual gamepad, we must enable the P1 slot.
     if (container.containerVariant.equals(Container.BIONIC) && profile.isVirtualGamepad()) {
         val controllerManager: ControllerManager = ControllerManager.getInstance()
 
-
         // Ensure Player 1 slot is enabled so a vjoy device is created for it.
         controllerManager.setSlotEnabled(0, true)
 
-
         // Clear any physical device from P1 to prevent conflicts.
         controllerManager.unassignSlot(0)
-
 
         // Tell WinHandler to update its internal state.
         winHandler.refreshControllerMappings()
@@ -5347,7 +5405,6 @@ private fun restoreOriginalDllFiles(
         else system32dlls = File(imageFs.getWinePath() + "/lib/wine/x86_64-windows")
 
         syswow64dlls = File(imageFs.getWinePath() + "/lib/wine/i386-windows")
-
 
         for (dll in dlls) {
             var srcFile = File(system32dlls, dll)
