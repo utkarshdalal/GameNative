@@ -171,10 +171,9 @@ object GOGApiClient {
      * Fetch IDs of games the user has hidden in their GOG library.
      *
      * Queries `account/getFilteredProducts?hiddenFlag=1` (all pages), where every returned product
-     * is hidden, on the embed host. If the embed host returns no hidden products, the result is
-     * confirmed on the www host before concluding the account has none, so a host quirk cannot
-     * silently clear stored hidden flags. Pagination is all-or-nothing per host: a failure returns
-     * failure and the caller keeps its existing hidden flags until the next sync.
+     * is hidden, on the embed host. A primary failure is returned as-is so callers keep their
+     * existing flags. An empty primary *success* is confirmed on the www host before concluding the
+     * account has none, so a host quirk cannot silently clear stored hidden flags.
      *
      * @param context Application context for auth access
      * @return Result containing the set of hidden game IDs or error
@@ -198,8 +197,11 @@ object GOGApiClient {
             }
 
             val primaryResult = fetchHiddenGameIdsFrom(credentials, GOGConstants.GOG_EMBED_URL)
-            val primaryIds = primaryResult.getOrNull()
-            if (primaryIds != null && primaryIds.isNotEmpty()) {
+            if (primaryResult.isFailure) {
+                return@withContext primaryResult
+            }
+            val primaryIds = primaryResult.getOrNull() ?: emptySet()
+            if (primaryIds.isNotEmpty()) {
                 Timber.tag("GOG").i("Successfully fetched ${primaryIds.size} hidden GOG game IDs")
                 return@withContext Result.success(primaryIds)
             }
@@ -211,7 +213,7 @@ object GOGApiClient {
                 return@withContext fallbackResult
             }
             val mergedIds = buildSet {
-                primaryIds?.let { addAll(it) }
+                addAll(primaryIds)
                 fallbackResult.getOrNull()?.let { addAll(it) }
             }
             Timber.tag("GOG").i("Successfully fetched ${mergedIds.size} hidden GOG game IDs")
