@@ -2,7 +2,9 @@ package app.gamenative.utils.downloader
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
+import com.winlator.container.ContainerManager
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.After
@@ -151,6 +153,48 @@ class ContainerFilesDownloaderTest {
     }
 
     @Test
+    fun testCurrentVersionCacheRequiresExpectedHash() {
+        cacheDir.mkdirs()
+        val cachedFile = File(cacheDir, "hash-test.tzst")
+        val versionFile = File(cacheDir, "hash-test.version")
+        cachedFile.writeText("abc")
+        versionFile.writeText("2")
+
+        assertTrue(
+            ContainerFilesDownloader.isCachedComponentCurrent(
+                cachedFile,
+                versionFile,
+                2,
+                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            ),
+        )
+        assertFalse(
+            ContainerFilesDownloader.isCachedComponentCurrent(
+                cachedFile,
+                versionFile,
+                2,
+                "0".repeat(64),
+            ),
+        )
+    }
+
+    @Test
+    fun testWfmOnlyExtractionCreatesMissingParentDirectories() {
+        if (BuildConfig.MODERN_ANDROID) return
+
+        val destination = File(context.cacheDir, "wfm-only-extraction")
+        destination.deleteRecursively()
+        try {
+            assertTrue(ContainerManager(context).extractContainerPatternCommonWfm(destination, null))
+            val wfm = File(destination, "home/xuser/.wine/drive_c/windows/wfm.exe")
+            assertTrue("WFM should be extracted into a newly created prefix", wfm.isFile)
+            assertEquals("WFM should match the bundled executable", 305_152L, wfm.length())
+        } finally {
+            destination.deleteRecursively()
+        }
+    }
+
+    @Test
     fun testContainerPatternGamenativeExists() {
         val manifestJson = context.assets.open(ContainerFilesDownloader.CONTAINER_FILES_MANIFEST_FILE).bufferedReader().use { it.readText() }
         val manifest = Json { ignoreUnknownKeys = true }
@@ -271,14 +315,16 @@ class ContainerFilesDownloaderTest {
     }
 
     @Test
-    fun testCachedComponentReuse() = runBlocking {
-        val componentId = "container_pattern_common"
+    fun testUnhashedCachedComponentReuse() = runBlocking {
+        val componentId = "extras"
 
         // Create a mock cached file
         cacheDir.mkdirs()
         val cachedFile = File(cacheDir, "$componentId.tzst")
         cachedFile.writeText("mock cached content")
-        File(cacheDir, "$componentId.version").writeText("2")
+        File(cacheDir, "$componentId.version").writeText(
+            ContainerFilesDownloader.LEGACY_CACHE_VERSION.toString(),
+        )
 
         val retrievedFile = ContainerFilesDownloader.ensureContainerFileAvailable(
             context,

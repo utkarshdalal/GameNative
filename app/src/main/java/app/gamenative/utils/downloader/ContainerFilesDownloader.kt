@@ -50,11 +50,19 @@ object ContainerFilesDownloader {
         destination: File,
         versionFile: File,
         expectedVersion: Int,
+        expectedSha256: String? = null,
     ): Boolean {
-        return expectedVersion > 0 &&
+        val versionIsCurrent = expectedVersion > 0 &&
             destination.isFile &&
             destination.length() > 0 &&
             getCachedComponentVersion(versionFile) == expectedVersion
+        if (!versionIsCurrent || expectedSha256 == null) return versionIsCurrent
+
+        return runCatching { hasExpectedSha256(destination, expectedSha256) }
+            .onFailure { error ->
+                Timber.w(error, "Failed to verify cached container file ${destination.name}")
+            }
+            .getOrDefault(false)
     }
 
     private fun sha256(file: File): String {
@@ -108,7 +116,7 @@ object ContainerFilesDownloader {
         val cacheDir = File(context.filesDir, CONTAINER_FILES_CACHE_DIR)
         val destFile = File(cacheDir, "$componentId.tzst")
         val versionFile = File(cacheDir, "$componentId.version")
-        if (isCachedComponentCurrent(destFile, versionFile, component.version)) {
+        if (isCachedComponentCurrent(destFile, versionFile, component.version, component.sha256)) {
             Timber.d("Using cached container file: $componentId at ${destFile.absolutePath}")
             return@withContext destFile
         }

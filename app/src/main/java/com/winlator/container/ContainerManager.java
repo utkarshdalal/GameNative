@@ -326,6 +326,12 @@ public class ContainerManager {
                 containerDir,
                 "home/xuser/.wine/drive_c/windows/wfm.exe"
         ).getAbsoluteFile();
+        File parentDir = expectedWfm.getParentFile();
+        if (parentDir == null ||
+                (!parentDir.isDirectory() && !parentDir.mkdirs() && !parentDir.isDirectory())) {
+            Log.e("Extraction", "Failed to create WFM destination directory");
+            return false;
+        }
         return extractContainerPatternCommonArchive(containerDir, (file, size) -> {
             if (!file.getAbsoluteFile().equals(expectedWfm)) return null;
             return onExtractFileListener != null
