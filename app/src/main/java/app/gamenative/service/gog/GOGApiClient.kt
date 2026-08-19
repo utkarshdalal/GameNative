@@ -171,8 +171,10 @@ object GOGApiClient {
      * Fetch IDs of games the user has hidden in their GOG library.
      *
      * Queries `account/getFilteredProducts?hiddenFlag=1` (all pages), where every returned product
-     * is hidden, on the embed host. Pagination is all-or-nothing: a failure returns failure and the
-     * caller keeps its existing hidden flags until the next sync.
+     * is hidden, on the embed host. If the embed host returns no hidden products, the result is
+     * confirmed on the www host before concluding the account has none, so a host quirk cannot
+     * silently clear stored hidden flags. Pagination is all-or-nothing per host: a failure returns
+     * failure and the caller keeps its existing hidden flags until the next sync.
      *
      * @param context Application context for auth access
      * @return Result containing the set of hidden game IDs or error
@@ -195,11 +197,25 @@ object GOGApiClient {
                 return@withContext Result.failure(Exception("No valid credentials found"))
             }
 
-            val result = fetchHiddenGameIdsFrom(credentials, GOGConstants.GOG_EMBED_URL)
-            if (result.isSuccess) {
-                Timber.tag("GOG").i("Successfully fetched ${result.getOrNull()?.size ?: 0} hidden GOG game IDs")
+            val primaryResult = fetchHiddenGameIdsFrom(credentials, GOGConstants.GOG_EMBED_URL)
+            val primaryIds = primaryResult.getOrNull()
+            if (primaryIds != null && primaryIds.isNotEmpty()) {
+                Timber.tag("GOG").i("Successfully fetched ${primaryIds.size} hidden GOG game IDs")
+                return@withContext Result.success(primaryIds)
             }
-            return@withContext result
+
+            // An empty primary response may mean "no hidden games" or that the host omitted them.
+            // Confirm on www before clearing stored flags.
+            val fallbackResult = fetchHiddenGameIdsFrom(credentials, "https://www.gog.com")
+            if (fallbackResult.isFailure) {
+                return@withContext fallbackResult
+            }
+            val mergedIds = buildSet {
+                primaryIds?.let { addAll(it) }
+                fallbackResult.getOrNull()?.let { addAll(it) }
+            }
+            Timber.tag("GOG").i("Successfully fetched ${mergedIds.size} hidden GOG game IDs")
+            return@withContext Result.success(mergedIds)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
