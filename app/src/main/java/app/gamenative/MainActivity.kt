@@ -49,6 +49,7 @@ import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.SnackbarHostController
 import app.gamenative.utils.AnimatedPngDecoder
 import app.gamenative.data.GameSource
+import app.gamenative.powercontrol.PowerManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
@@ -79,6 +80,11 @@ class MainActivity : ComponentActivity() {
                 Build.MANUFACTURER.equals("Oculus", true) ||
                 Build.MANUFACTURER.equals("Meta", true) ||
                 Build.MANUFACTURER.equals("Pico", true)
+
+        fun isMetaQuest(): Boolean =
+            Build.MANUFACTURER.equals("Oculus", true) ||
+                Build.MANUFACTURER.equals("Meta", true) ||
+                Build.BRAND.equals("oculus", true)
 
         // Store pending launch request to be processed after UI is ready
         @Volatile
@@ -427,6 +433,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        PowerManager.resume()
         PluviaApp.isActivityInForeground = true
 
         lifecycleScope.launch { app.gamenative.launch.LaunchReadiness.refresh() }
@@ -475,6 +482,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        PowerManager.pause()
         PluviaApp.isActivityInForeground = false
         if (hasReadyGameLifecycleState("pause")) {
             when {

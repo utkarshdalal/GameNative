@@ -66,6 +66,12 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private Drawable rootCursorDrawable;
     private Cursor lastCursor = null;
     private boolean xRenderingPausedForScanout = false;
+    private volatile VulkanXrFrameBridge xrFrameBridge = null;
+
+    /** See VulkanXrFrameBridge's kdoc — null except for the Meta Quest immersive path. */
+    public void setVulkanXrFrameBridge(VulkanXrFrameBridge xrFrameBridge) {
+        this.xrFrameBridge = xrFrameBridge;
+    }
 
     private volatile ArrayList<RenderableWindow> renderableWindows = new ArrayList<>();
     private static final java.util.concurrent.atomic.AtomicLong ID_GEN =
@@ -450,6 +456,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                             rx, ry, pixmap.width, pixmap.height, fenceFd);
                         g.lock();
                     } else {
+                        if (xrFrameBridge != null) {
+                            xrFrameBridge.onScanoutBuffer(ahbPtr, pixmap.width, pixmap.height);
+                        }
                         nativeUpdateWindowContentAHB(nativeHandle, targetId, ahbPtr,
                             pixmap.width, pixmap.height, rx, ry);
                     }
@@ -693,8 +702,6 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         synchronized (lock) { if (nativeHandle != 0) nativeDumpRendererInfo(nativeHandle); }
     }
 
-
-
     public void setFilterMode(int mode) {
         pendingFilterMode = mode;
         synchronized (lock) { if (nativeHandle != 0) nativeSetFilterMode(nativeHandle, mode); }
@@ -754,18 +761,26 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             || Math.abs(pendingGamma - 1.0f) > 1e-3f
             || pendingFilterMode != 0;
     }
+
+    /** Whether any active effect/filter/color adjustment is currently forcing the compositor
+     * path, blocking the zero-copy scanout fast-path. See {@link #resetScreenEffects()}. */
+    public boolean isEffectsRequireCompositor() { return effectsRequireCompositor; }
+
+    /** Turns off every effect, filter, and color adjustment (back to defaults), letting scanout
+     * re-establish itself if nothing else is blocking it. Used by the immersive quick-menu tab's
+     * "reset" action — screen effects are the single most common reason a user would otherwise
+     * need to hunt through several unrelated settings to get the zero-copy path back. */
+    public void resetScreenEffects() {
+        setFilterMode(0);
+        setEffect(EFFECT_NONE, 0.0f, outputScalingMode, 0, 0.0f, 0.0f, 1.0f);
+    }
     public int getEffectId() { return pendingEffectId; }
     public float getSharpness() { return pendingSharpness; }
-
-
-
 
     public void setVkPresentMode(int mode) {
         pendingPresentMode = mode;
         synchronized (lock) { if (nativeHandle != 0) nativeSetPresentMode(nativeHandle, mode); }
     }
-
-
 
     private FrameRating hudRef = null;
 

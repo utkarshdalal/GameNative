@@ -207,6 +207,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        // Exposes the openxr_loader_for_android AAR's native headers/lib to CMake, for the
+        // (not yet wired into the default build — see xrimmersive/CMakeLists.txt) immersive
+        // VR native module.
+        prefab = true
     }
 
     packaging {
@@ -314,6 +318,17 @@ android {
     //     }
     // }
 
+    // Meta Quest immersive launch mode's native OpenXR module. Same convention as the
+    // other native modules above: not part of the default build (native libs ship as
+    // prebuilt .so files in jniLibs/) — temporarily uncomment to build+test locally,
+    // then copy the resulting libxrimmersive.so into jniLibs/arm64-v8a/ and re-comment.
+    // externalNativeBuild {
+    //     cmake {
+    //         path = file("src/main/cpp/xrimmersive/CMakeLists.txt")
+    //         version = "3.22.1"
+    //     }
+    // }
+
     // (For now) Uncomment for LeakCanary to work.
     // configurations {
     //     debugImplementation {
@@ -332,8 +347,8 @@ dependencies {
     // JavaSteam
     val localBuild = false // Change to 'true' needed when building JavaSteam manually
     if (localBuild) {
-        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0.1-25-SNAPSHOT.jar"))
-        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0.1-25-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0.1-26-SNAPSHOT.jar"))
+        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0.1-26-SNAPSHOT.jar"))
         implementation(libs.bundles.javasteam.dev)
     } else {
         implementation(libs.javasteam) {
@@ -348,6 +363,10 @@ dependencies {
 
     // Split Modules
     implementation(libs.bundles.google)
+
+    // Official Khronos OpenXR loader (Apache-2.0) for the Meta Quest immersive launch mode's
+    // native module (app/src/main/cpp/xrimmersive) — not a Winlator/GameNativeXR dependency.
+    "modernXrImplementation"("org.khronos.openxr:openxr_loader_for_android:1.1.61")
 
     // Winlator
     implementation(libs.bundles.winlator)
@@ -410,6 +429,9 @@ dependencies {
     implementation("com.posthog:posthog-android:3.8.0")
 
     implementation("com.auth0.android:jwtdecode:2.0.2")
+
+    // Samsung Performance SDK
+    implementation(files("src/main/lib/perfsdk-v1.0.0.jar"))
 
     "modernXrImplementation"("com.meta.horizon.platform.sdk:core-kotlin:0.2.2")
     "modernXrImplementation"("com.meta.horizon.platform.sdk:iap-kotlin:0.2.2")

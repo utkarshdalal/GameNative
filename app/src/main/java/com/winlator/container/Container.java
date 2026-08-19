@@ -36,7 +36,9 @@ public class Container {
     public static final String DEFAULT_EXTERNAL_DISPLAY_MODE = EXTERNAL_DISPLAY_MODE_OFF;
 
     public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact,deck_emu MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform VKD3D_SHADER_MODEL=6_0 PULSE_LATENCY_MSEC=144";
-    public static final String DEFAULT_SCREEN_SIZE = "1280x720";
+    public static final String DEFAULT_SCREEN_SIZE_16_9 = "1280x720";
+    public static final String DEFAULT_SCREEN_SIZE_16_10 = "1280x800";
+    public static final String DEFAULT_SCREEN_SIZE_4_3 = "1280x960";
     public static final String DEFAULT_GRAPHICS_DRIVER = DefaultVersion.DEFAULT_GRAPHICS_DRIVER;
     public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
     public static final String DEFAULT_EMULATOR = "FEXCore";
@@ -75,7 +77,7 @@ public class Container {
     public static final byte MAX_DRIVE_LETTERS = 8;
     public final String id;
     private String name;
-    private String screenSize = DEFAULT_SCREEN_SIZE;
+    private String screenSize = DEFAULT_SCREEN_SIZE_16_9;
     private String envVars = DEFAULT_ENV_VARS;
     private String graphicsDriver = DEFAULT_GRAPHICS_DRIVER;
     private String dxwrapper = DEFAULT_DXWRAPPER;
@@ -90,6 +92,7 @@ public class Container {
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
+    private boolean launchImmersiveMode = app.gamenative.BuildConfig.MODERN_XR;
     private boolean launchRealSteam;
     private boolean launchBionicSteam;
     private boolean allowSteamUpdates;
@@ -346,6 +349,14 @@ public class Container {
 
     public void setShowFPS(boolean showFPS) {
         this.showFPS = showFPS;
+    }
+
+    public boolean isLaunchImmersiveMode() {
+        return launchImmersiveMode;
+    }
+
+    public void setLaunchImmersiveMode(boolean launchImmersiveMode) {
+        this.launchImmersiveMode = launchImmersiveMode;
     }
 
     public boolean isLaunchRealSteam() {
@@ -694,6 +705,7 @@ public class Container {
             data.put("wincomponents", wincomponents);
             data.put("drives", drives);
             data.put("showFPS", showFPS);
+            data.put("launchImmersiveMode", launchImmersiveMode);
             data.put("launchRealSteam", launchRealSteam);
             data.put("launchBionicSteam", launchBionicSteam);
             data.put("allowSteamUpdates", allowSteamUpdates);
@@ -827,6 +839,9 @@ public class Container {
                     break;
                 case "showFPS" :
                     setShowFPS(data.getBoolean(key));
+                    break;
+                case "launchImmersiveMode" :
+                    setLaunchImmersiveMode(data.getBoolean(key));
                     break;
                 case "launchRealSteam" :
                     setLaunchRealSteam(data.getBoolean(key));

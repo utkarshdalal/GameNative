@@ -120,6 +120,7 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.PlatformOAuthHandlers
 import app.gamenative.utils.SteamUtils
+import com.posthog.PostHog
 import kotlinx.coroutines.launch
 import android.os.SystemClock
 
@@ -328,6 +329,17 @@ private fun LibraryScreenContent(
     val isViewWide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var currentPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
     var recDisclosureShown by remember { mutableStateOf(PrefManager.recDisclosureShown) }
+    var showRecTeaserDialog by remember { mutableStateOf(false) }
+    val onRecTeaserTapped = {
+        if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "rec_teaser_tapped")
+        showRecTeaserDialog = true
+    }
+    val recTeaserVisible = state.appInfoList.firstOrNull()?.isRecTeaser == true
+    LaunchedEffect(recTeaserVisible) {
+        if (recTeaserVisible && PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(event = "rec_teaser_shown")
+        }
+    }
 
     // Initialize layout if undecided
     LaunchedEffect(Unit) {
@@ -963,6 +975,21 @@ private fun LibraryScreenContent(
         if (selectedAppId == null) {
             // Use Box to allow content to scroll behind the tab bar
             Box(modifier = Modifier.fillMaxSize()) {
+                if (showRecTeaserDialog) {
+                    RecommendationDisclosureDialog(
+                        onContinue = {
+                            PrefManager.recDisclosureShown = true
+                            recDisclosureShown = true
+                            showRecTeaserDialog = false
+                            PluviaApp.events.emit(AndroidEvent.RecommendationToggleChanged)
+                        },
+                        onDismiss = {
+                            PrefManager.recTeaserDismissedDay = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
+                            showRecTeaserDialog = false
+                        },
+                        source = "hero",
+                    )
+                }
                 // When on Steam/GOG/Epic/Amazon tab and not logged in, or LOCAL tab with no custom games, show splash
                 if (state.currentTab == LibraryTab.RECOMMENDED) {
                     if (recDisclosureShown) {
@@ -1065,8 +1092,15 @@ private fun LibraryScreenContent(
                             listState = carouselListState,
                             onPageChange = onPageChange,
                             onNavigate = { appId ->
-                                selectedAppId = appId
-                                selectedLibraryItem = state.appInfoList.find { it.appId == appId }
+                                val item = state.appInfoList.find { it.appId == appId }
+                                if (item?.isRecTeaser == true) {
+                                    if (!item.isRecLoading && !recDisclosureShown) {
+                                        onRecTeaserTapped()
+                                    }
+                                } else {
+                                    selectedAppId = appId
+                                    selectedLibraryItem = item
+                                }
                             },
                             onRefresh = onRefresh,
                             modifier = Modifier.fillMaxSize(),
@@ -1083,8 +1117,15 @@ private fun LibraryScreenContent(
                             focusTargetListIndex = gridFocusTargetListIndex,
                             onPageChange = onPageChange,
                             onNavigate = { appId ->
-                                selectedAppId = appId
-                                selectedLibraryItem = state.appInfoList.find { it.appId == appId }
+                                val item = state.appInfoList.find { it.appId == appId }
+                                if (item?.isRecTeaser == true) {
+                                    if (!item.isRecLoading && !recDisclosureShown) {
+                                        onRecTeaserTapped()
+                                    }
+                                } else {
+                                    selectedAppId = appId
+                                    selectedLibraryItem = item
+                                }
                             },
                             onRefresh = onRefresh,
                             modifier = Modifier.fillMaxSize(),

@@ -57,6 +57,8 @@ import app.gamenative.utils.CaseInsensitiveFileSystem
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.LicenseSerializer
+import app.gamenative.utils.LocaleHelper
+import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
@@ -95,6 +97,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamapps.GamePlayedInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.License
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.PICSRequest
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.SteamApps
+import `in`.dragonbra.javasteam.steam.handlers.steamapps.callback.DepotKeyCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.callback.LicenseListCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.SteamFriends
@@ -138,6 +141,7 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import kotlin.io.path.pathString
 import kotlin.time.Duration.Companion.seconds
@@ -189,6 +193,13 @@ import java.nio.ByteOrder
 
 @AndroidEntryPoint
 class SteamService : Service(), IChallengeUrlChanged {
+
+    override fun attachBaseContext(newBase: Context) {
+        PrefManager.init(newBase)
+        val languageCode = PrefManager.appLanguage
+        val context = LocaleHelper.applyLanguage(newBase, languageCode)
+        super.attachBaseContext(context)
+    }
 
     // To view log messages in android logcat properly
     private val logger = object : LogListener {
@@ -293,7 +304,6 @@ class SteamService : Service(), IChallengeUrlChanged {
     private lateinit var connectivityManager: ConnectivityManager
     private lateinit var networkCallback: ConnectivityManager.NetworkCallback
 
-
     // Add these as class properties
     private var picsGetProductInfoJob: Job? = null
     private var picsChangesCheckerJob: Job? = null
@@ -364,6 +374,61 @@ class SteamService : Service(), IChallengeUrlChanged {
         /** Apps with a workshop download that was paused (cancelled) by the user. */
         val workshopPausedApps: MutableSet<Int> = ConcurrentHashMap.newKeySet()
 
+        // Depot-key acquisition progress, keyed by appId. Useful for games with many depots like Borderlands 2
+        private val depotKeyPrep = ConcurrentHashMap<Int, DepotKeyPrep>()
+
+        // owner pins the phase to one specific download attempt. A cancelled DepotDownloader can
+        // still deliver a chunk while it unwinds, and depot keys arrive on the callback thread, so
+        // callbacks belonging to a previous download of the same app must not touch a newer
+        // attempt's state — nor may its messages go to a DownloadInfo that has since been replaced.
+        private class DepotKeyPrep(val owner: DownloadInfo, val total: Int) {
+            val resolved = AtomicInteger(0)
+        }
+
+        private val depotKeyOwner = ConcurrentHashMap<Int, Int>()
+
+        // Guards the prep bookkeeping together with the status messages it writes, so a key
+        // callback can never re-post "Preparing depots" after the phase has already been ended.
+        private val depotKeyPrepLock = Any()
+
+        // Begins the depot key prep phase, seeding a status message so the UI never shows a bare 0%
+        private fun beginDepotKeyPrep(appId: Int, depotIds: Set<Int>, downloadInfo: DownloadInfo) {
+            synchronized(depotKeyPrepLock) {
+                depotKeyPrep[appId] = DepotKeyPrep(downloadInfo, depotIds.size)
+                depotIds.forEach { depotId -> depotKeyOwner[depotId] = appId }
+                instance?.let { downloadInfo.updateStatusMessage(it.getString(R.string.download_preparing)) }
+            }
+        }
+
+        /** Called once per depot key Steam returns, from the DepotKeyCallback subscription. */
+        private fun noteDepotKeyResolved(depotId: Int) {
+            val appId = depotKeyOwner[depotId] ?: return
+            val svc = instance ?: return
+            synchronized(depotKeyPrepLock) {
+                val prep = depotKeyPrep[appId] ?: return
+                val done = prep.resolved.incrementAndGet().coerceAtMost(prep.total)
+                prep.owner.updateStatusMessage(
+                    svc.getString(R.string.download_preparing_depots, done, prep.total),
+                )
+            }
+        }
+
+        // Ends the depot key prep phase and clears its status message, once the actual download
+        // begins or the job goes away. Callers that can outlive their own download (the progress
+        // callbacks) must pass [owner]: the phase is then only ended if it still belongs to that
+        // download, so a late callback cannot wipe the message a newer attempt just posted. Omit
+        // [owner] to end the phase whoever owns it, e.g. when tearing the job down.
+        private fun clearDepotKeyPrep(appId: Int, owner: DownloadInfo? = null) {
+            if (!depotKeyPrep.containsKey(appId)) return
+            synchronized(depotKeyPrepLock) {
+                val prep = depotKeyPrep[appId] ?: return
+                if (owner != null && prep.owner !== owner) return
+                depotKeyOwner.entries.removeIf { it.value == appId }
+                depotKeyPrep.remove(appId)
+                prep.owner.updateStatusMessage(null)
+            }
+        }
+
         internal fun notifyDownloadStarted(appId: Int) {
             PluviaApp.events.emit(AndroidEvent.DownloadStatusChanged(appId, true))
         }
@@ -373,6 +438,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         fun removeDownloadJob(appId: Int) {
+            clearDepotKeyPrep(appId)
             val removed = downloadJobs.remove(appId)
             if (removed != null) {
                 notifyDownloadStopped(appId)
@@ -898,7 +964,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             return true
         }
-
 
         /**
          * Returns all DLC App IDs that have exactly one depot.
@@ -1849,6 +1914,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // downloadApp call returns the stale DownloadInfo from the still-populated
                 // map (line ~1666 short-circuit).
                 downloadJobs[appId] = di
+
+                // Depot keys are fetched one per depot before the first chunk arrives, and
+                // nothing in IDownloadListener reports that phase. Seed a status message now
+                // so the UI never shows a bare 0% with no explanation; noteDepotKeyResolved
+                // refines it into a running count as keys resolve. Register before launching,
+                // since keys start arriving almost immediately.
+                beginDepotKeyPrep(appId, selectedDepots.keys, di)
+
                 notifyDownloadStarted(appId)
                 instance?.notifierOrNull?.trackDownload(di, getAppInfoOf(appId)?.name.orEmpty(), NotificationHelper.NOTIFICATION_ID_STEAM)
 
@@ -1889,6 +1962,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             maxDecompress = maxDecompress,
                             parentJob = coroutineContext[Job],
                             autoStartDownload = false,
+                            skipLargeFileAllocation = chunkStagingRedirectDir != null,
                             filesystem = CaseInsensitiveFileSystem(
                                 showDebugLog = false,
                                 chunkStagingRedirect = chunkStagingRedirectDir?.absolutePath?.toPath(),
@@ -2213,33 +2287,40 @@ class SteamService : Service(), IChallengeUrlChanged {
                     val appId = downloadInfo.gameId
                     val steamId = userSteamId
                     val containerId = "${GameSource.STEAM.name}_$appId"
-                    if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, containerId)) {
-                        downloadInfo.setPostInstallSyncing(true)
-                        downloadInfo.updateStatusMessage("Syncing saves...")
-                        PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, true))
-                        try {
-                            val container = ContainerUtils.getOrCreateContainer(svc.applicationContext, containerId)
-                            val prefixToPath: (String) -> String = { prefix ->
-                                PathType.from(prefix).toAbsPath(container, appId, steamId.accountID)
+                    // Skip post-install sync for utility apps (e.g., Lossless Scaling)
+                    val isUtilityApp = appId == LsfgVkManager.LOSSLESS_SCALING_APP_ID
+                    if (!isUtilityApp) {
+                        if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, containerId)) {
+                            downloadInfo.setPostInstallSyncing(true)
+                            downloadInfo.updateStatusMessage("Syncing saves...")
+                            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, true))
+                            try {
+                                val container = ContainerUtils.getOrCreateContainer(svc.applicationContext, containerId)
+                                val prefixToPath: (String) -> String = { prefix ->
+                                    PathType.from(prefix).toAbsPath(container, appId, steamId.accountID)
+                                }
+                                val postSyncInfo = forceSyncUserFiles(
+                                    appId = appId,
+                                    prefixToPath = prefixToPath,
+                                    preferredSave = SaveLocation.Remote,
+                                    parentScope = parentScope,
+                                ).await()
+                                if (postSyncInfo.syncResult !in setOf(SyncResult.Success, SyncResult.UpToDate)) {
+                                    Timber.w("[PostInstallSync] Cloud save sync finished with ${postSyncInfo.syncResult} for app $appId")
+                                }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Timber.e(e, "[PostInstallSync] Cloud save sync failed for app $appId")
+                            } finally {
+                                downloadInfo.setPostInstallSyncing(false)
+                                downloadInfo.updateStatusMessage(null)
+                                PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
                             }
-                            val postSyncInfo = forceSyncUserFiles(
-                                appId = appId,
-                                prefixToPath = prefixToPath,
-                                preferredSave = SaveLocation.Remote,
-                                parentScope = parentScope,
-                            ).await()
-                            if (postSyncInfo.syncResult !in setOf(SyncResult.Success, SyncResult.UpToDate)) {
-                                Timber.w("[PostInstallSync] Cloud save sync finished with ${postSyncInfo.syncResult} for app $appId")
-                            }
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            Timber.e(e, "[PostInstallSync] Cloud save sync failed for app $appId")
-                        } finally {
-                            downloadInfo.setPostInstallSyncing(false)
-                            downloadInfo.updateStatusMessage(null)
-                            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
                         }
+                    } else {
+                        Timber.d("Skipped container creation Lossless Scaling")
+                        PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
                     }
                 }
             }
@@ -2295,6 +2376,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 uncompressedBytes: Long,
             ) {
                 val isFirstCallForDepot = !depotCumulativeCompressedBytes.containsKey(depotId)
+
+                clearDepotKeyPrep(downloadInfo.gameId, owner = downloadInfo)
 
                 val previousBytes = depotCumulativeCompressedBytes[depotId] ?: 0L
                 val deltaBytes = compressedBytes - previousBytes
@@ -3533,6 +3616,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     add(subscribe(PersonaStateCallback::class.java, ::onPersonaStateReceived))
                     add(subscribe(LicenseListCallback::class.java, ::onLicenseList))
                     add(subscribe(PlayingSessionStateCallback::class.java, ::onPlayingSessionState))
+                    add(subscribe(DepotKeyCallback::class.java) { noteDepotKeyResolved(it.depotID) })
                     add(subscribe(GameInviteCallback::class.java, ::onGameInvite))
                 }
             }
@@ -3587,11 +3671,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        if (!hasActiveOperations()) {
+        if (!hasActiveOperations() && !(BuildConfig.MODERN_XR && keepAlive)) {
             Timber.i("Task removed and no active work — stopping service")
             stopSelf()
         } else {
-            Timber.i("Task removed but active work exists — keeping service alive")
+            Timber.i("Task removed but active work or keepAlive exists — keeping service alive")
         }
     }
 

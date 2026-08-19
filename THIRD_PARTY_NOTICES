@@ -349,3 +349,11 @@ Full license text: https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
 **Author**: [Vadim Makes Sound](https://pixabay.com/users/vadim_makes_sound-54823268/)
 **Sound**: [Source](https://pixabay.com/sound-effects/film-special-effects-achievement-badge-pop-sound-1-547860/)
 
+
+## Samsung Performance SDK
+
+This project bundles `app/src/main/lib/perfsdk-v1.0.0.jar`, the Samsung Performance SDK
+(com.samsung.sdk.sperf), used at runtime only on Samsung devices by the experimental
+power-control feature. The SDK is proprietary to Samsung Electronics and is NOT covered by
+this project's GPL-3.0 license; it is used under the terms of Samsung's SDK license
+agreement. If you redistribute this project, verify your right to redistribute the SDK.
