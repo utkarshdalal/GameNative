@@ -2279,8 +2279,6 @@
     <string name="favorites_empty_filtered_message">現在の検索やフィルターに一致するか、ライブラリで利用できるお気に入りのゲームはありません。</string>
     <string name="option_add_to_favorites">お気に入りに追加</string>
     <string name="option_remove_from_favorites">お気に入りから削除</string>
-    <string name="favorite_add">お気に入りに追加</string>
-    <string name="favorite_remove">お気に入りから削除</string>
     <string name="favorite_add_named">%1$s をお気に入りに追加</string>
     <string name="favorite_remove_named">%1$s をお気に入りから削除</string>
     <string name="favorite_removed">お気に入りから削除しました</string>

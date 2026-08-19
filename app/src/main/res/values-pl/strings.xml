@@ -2329,8 +2329,6 @@
     <string name="favorites_empty_filtered_message">Żadna ulubiona gra nie pasuje do bieżącego wyszukiwania ani filtrów lub nie jest dostępna w bibliotece.</string>
     <string name="option_add_to_favorites">Dodaj do ulubionych</string>
     <string name="option_remove_from_favorites">Usuń z ulubionych</string>
-    <string name="favorite_add">Dodaj do ulubionych</string>
-    <string name="favorite_remove">Usuń z ulubionych</string>
     <string name="favorite_add_named">Dodaj %1$s do ulubionych</string>
     <string name="favorite_remove_named">Usuń %1$s z ulubionych</string>
     <string name="favorite_removed">Usunięto z ulubionych</string>

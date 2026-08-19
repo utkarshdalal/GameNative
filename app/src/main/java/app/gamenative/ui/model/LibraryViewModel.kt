@@ -12,9 +12,9 @@ import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
-import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.FavoritesManager
 import app.gamenative.data.FavoritesUtils
+import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
@@ -57,7 +57,6 @@ import app.gamenative.utils.GpuGameStatsCache
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.HardwareUtils
-import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.unaccent
 import com.winlator.core.GPUInformation
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -127,9 +126,9 @@ class LibraryViewModel @Inject constructor(
     @Volatile private var paginationCurrentPage: Int = 0
     @Volatile private var lastPageInCurrentFilter: Int = 0
 
-    // App ids across every source the Favorites tab shows (gated only by credentials), cached from
-    // the last filter pass so a favorite toggle can update the badge count without rebuilding the
-    // whole library list when the user isn't on the Favorites tab.
+    // App ids across every source the Favorites tab shows, cached from the last filter pass so a
+    // favorite toggle can update the badge count without rebuilding the whole library list when
+    // the user isn't on the Favorites tab.
     @Volatile private var favoriteEligibleAppIds: Set<String> = emptySet()
 
     // Complete and unfiltered app list
@@ -957,12 +956,11 @@ class LibraryViewModel @Inject constructor(
             // ALL tab uses user preferences, other tabs override with their presets
             // Use captured currentState (not _state.value) to avoid TOCTOU race
             val currentTab = currentState.currentTab
-            val hasSteamCredentials = SteamUtils.hasStoredCredentials()
-            val includeSteam = (if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
+            val includeSteam = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showSteamInLibrary
             } else {
                 currentTab.showSteam
-            }) && hasSteamCredentials
+            }
             val includeOpen = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showCustomGamesInLibrary
             } else {
@@ -1123,12 +1121,11 @@ class LibraryViewModel @Inject constructor(
             // Fetch compatibility for current page games
             fetchCompatibilityForPage(pagedList.map { it.name })
 
-            // App ids across every source the Favorites tab shows (all sources, gated only by
-            // credentials). Cache it so a later favorite toggle can recount the badge cheaply, and
-            // use it here so the badge matches the tab contents even when a source is hidden from
-            // the library through user preferences.
+            // App ids across every source the Favorites tab shows. Cache it so a later favorite
+            // toggle can recount the badge cheaply, and use it here so the badge matches the tab
+            // contents even when a source is hidden from the library through user preferences.
             val favoriteEligible = buildList {
-                if (hasSteamCredentials) addAll(steamEntries)
+                addAll(steamEntries)
                 addAll(customEntries)
                 if (GOGService.hasStoredCredentials(context)) addAll(gogEntries)
                 if (EpicService.hasStoredCredentials(context)) addAll(epicEntries)
@@ -1138,31 +1135,27 @@ class LibraryViewModel @Inject constructor(
             favoriteEligibleAppIds = favoriteEligible
 
             _state.update {
-                if (generation == filterGeneration.get()) {
-                    it.copy(
-                        appInfoList = pagedList,
-                        currentPaginationPage = clampedPage + 1, // visual display is not 0 indexed
-                        lastPaginationPage = lastPageInCurrentFilter + 1,
-                        totalAppsInFilter = totalFound,
-                        isLoading = false, // Loading complete
-                        // Per-source counts for tab badges
-                        // Use user prefs + auth state only (not current tab) so badges stay stable across tab switches
-                        allCount = (if (currentState.showSteamInLibrary && hasSteamCredentials) steamEntries.size else 0) +
-                            (if (currentState.showCustomGamesInLibrary) customEntries.size else 0) +
-                            (if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0) +
-                            (if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0) +
-                            (if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0),
-                        steamCount = if (currentState.showSteamInLibrary && hasSteamCredentials) steamEntries.size else 0,
-                        gogCount = if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0,
-                        epicCount = if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0,
-                        amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
-                        localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
-                        steamCollectionCounts = steamCollectionCounts,
-                        favoritesCount = FavoritesUtils.countPresent(favoriteIds, favoriteEligible),
-                    )
-                } else {
-                    it
-                }
+                it.copy(
+                    appInfoList = pagedList,
+                    currentPaginationPage = clampedPage + 1, // visual display is not 0 indexed
+                    lastPaginationPage = lastPageInCurrentFilter + 1,
+                    totalAppsInFilter = totalFound,
+                    isLoading = false, // Loading complete
+                    // Per-source counts for tab badges
+                    // Use user prefs + auth state only (not current tab) so badges stay stable across tab switches
+                    allCount = (if (currentState.showSteamInLibrary) steamEntries.size else 0) +
+                        (if (currentState.showCustomGamesInLibrary) customEntries.size else 0) +
+                        (if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0) +
+                        (if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0) +
+                        (if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0),
+                    steamCount = if (currentState.showSteamInLibrary) steamEntries.size else 0,
+                    gogCount = if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0,
+                    epicCount = if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0,
+                    amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
+                    localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
+                    steamCollectionCounts = steamCollectionCounts,
+                    favoritesCount = FavoritesUtils.countPresent(favoriteIds, favoriteEligible),
+                )
             }
         }
         filterJob = job

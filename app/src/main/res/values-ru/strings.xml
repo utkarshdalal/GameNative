@@ -2257,8 +2257,6 @@ https://gamenative.app
     <string name="favorites_empty_filtered_message">Нет избранных игр, соответствующих текущему поиску или фильтрам или доступных в вашей библиотеке.</string>
     <string name="option_add_to_favorites">Добавить в избранное</string>
     <string name="option_remove_from_favorites">Удалить из избранного</string>
-    <string name="favorite_add">Добавить в избранное</string>
-    <string name="favorite_remove">Удалить из избранного</string>
     <string name="favorite_add_named">Добавить %1$s в избранное</string>
     <string name="favorite_remove_named">Удалить %1$s из избранного</string>
     <string name="favorite_removed">Удалено из избранного</string>

@@ -2320,8 +2320,6 @@
     <string name="favorites_empty_filtered_message">현재 검색어나 필터와 일치하거나 라이브러리에서 사용할 수 있는 즐겨찾기 게임이 없습니다.</string>
     <string name="option_add_to_favorites">즐겨찾기에 추가</string>
     <string name="option_remove_from_favorites">즐겨찾기에서 제거</string>
-    <string name="favorite_add">즐겨찾기에 추가</string>
-    <string name="favorite_remove">즐겨찾기에서 제거</string>
     <string name="favorite_add_named">%1$s을(를) 즐겨찾기에 추가</string>
     <string name="favorite_remove_named">%1$s을(를) 즐겨찾기에서 제거</string>
     <string name="favorite_removed">즐겨찾기에서 제거됨</string>

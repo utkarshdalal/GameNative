@@ -38,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -99,17 +98,12 @@ internal fun ListViewCard(
     } else {
         null
     }
-    val favoriteStateDescription = if (!appInfo.isRecommended) {
-        stringResource(
-            if (favoriteIndicator.isFavorite) R.string.favorite_added else R.string.favorite_add,
-        )
-    } else {
-        null
-    }
-    val favoriteSemantics = if (favoriteActionLabel != null && favoriteStateDescription != null) {
+    val favoriteState = if (favoriteIndicator.isFavorite) stringResource(R.string.favorite_added) else null
+    val favoriteSemantics = if (favoriteActionLabel != null) {
         Modifier.semantics(mergeDescendants = true) {
-            contentDescription = favoriteActionLabel
-            stateDescription = favoriteStateDescription
+            if (favoriteState != null) {
+                stateDescription = favoriteState
+            }
             customActions = listOf(
                 CustomAccessibilityAction(favoriteActionLabel) {
                     toggleFavoriteWithUndo(context, appInfo.appId, appInfo.name)
@@ -150,13 +144,12 @@ internal fun ListViewCard(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
             },
         ),
-        border = if (appInfo.isRecommended) {
-            BorderStroke(
+        border = when {
+            appInfo.isRecommended -> BorderStroke(
                 1.dp,
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
             )
-        } else {
-            null
+            else -> null
         },
     ) {
         Row(
@@ -263,7 +256,6 @@ internal fun ListViewCard(
                     showLabel = true,
                 )
             }
-
         }
     }
     }

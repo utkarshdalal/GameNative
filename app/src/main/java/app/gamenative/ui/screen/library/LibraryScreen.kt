@@ -929,7 +929,7 @@ private fun LibraryScreenContent(
                             }
                         }
 
-                        // X button - toggle the favorite for the focused game on every build.
+                        // X button - toggle favorite for the focused game
                         KeyEvent.KEYCODE_BUTTON_X -> {
                             if (selectedAppId == null &&
                                 !state.isSearching &&

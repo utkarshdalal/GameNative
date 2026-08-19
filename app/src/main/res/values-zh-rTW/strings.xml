@@ -2331,8 +2331,6 @@
     <string name="favorites_empty_filtered_message">沒有符合目前搜尋或篩選條件，或在您的遊戲庫中可用的收藏遊戲。</string>
     <string name="option_add_to_favorites">加入收藏</string>
     <string name="option_remove_from_favorites">從收藏中移除</string>
-    <string name="favorite_add">加入收藏</string>
-    <string name="favorite_remove">從收藏中移除</string>
     <string name="favorite_add_named">將 %1$s 加入收藏</string>
     <string name="favorite_remove_named">將 %1$s 從收藏中移除</string>
     <string name="favorite_removed">已從收藏中移除</string>

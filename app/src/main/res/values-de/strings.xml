@@ -2265,8 +2265,6 @@
     <string name="favorites_empty_filtered_message">Keine Favoriten-Spiele entsprechen der aktuellen Suche oder den Filtern oder sind in deiner Bibliothek verfügbar.</string>
     <string name="option_add_to_favorites">Zu Favoriten hinzufügen</string>
     <string name="option_remove_from_favorites">Aus Favoriten entfernen</string>
-    <string name="favorite_add">Zu Favoriten hinzufügen</string>
-    <string name="favorite_remove">Aus Favoriten entfernen</string>
     <string name="favorite_add_named">%1$s zu Favoriten hinzufügen</string>
     <string name="favorite_remove_named">%1$s aus Favoriten entfernen</string>
     <string name="favorite_removed">Aus Favoriten entfernt</string>

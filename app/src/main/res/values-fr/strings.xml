@@ -2325,8 +2325,6 @@
     <string name="favorites_empty_filtered_message">Aucun jeu favori ne correspond à la recherche ou aux filtres actuels ou n’est disponible dans votre bibliothèque.</string>
     <string name="option_add_to_favorites">Ajouter aux favoris</string>
     <string name="option_remove_from_favorites">Retirer des favoris</string>
-    <string name="favorite_add">Ajouter aux favoris</string>
-    <string name="favorite_remove">Retirer des favoris</string>
     <string name="favorite_add_named">Ajouter %1$s aux favoris</string>
     <string name="favorite_remove_named">Retirer %1$s des favoris</string>
     <string name="favorite_removed">Retiré des favoris</string>

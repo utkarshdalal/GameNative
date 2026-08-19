@@ -2195,8 +2195,6 @@
     <string name="favorites_empty_filtered_message">Ingen favoritspil matcher den aktuelle søgning eller filtre eller er tilgængelige i dit bibliotek.</string>
     <string name="option_add_to_favorites">Føj til favoritter</string>
     <string name="option_remove_from_favorites">Fjern fra favoritter</string>
-    <string name="favorite_add">Føj til favoritter</string>
-    <string name="favorite_remove">Fjern fra favoritter</string>
     <string name="favorite_add_named">Føj %1$s til favoritter</string>
     <string name="favorite_remove_named">Fjern %1$s fra favoritter</string>
     <string name="favorite_removed">Fjernet fra favoritter</string>

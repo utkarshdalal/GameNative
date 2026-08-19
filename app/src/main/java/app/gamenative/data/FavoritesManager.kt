@@ -27,9 +27,8 @@ internal data class FavoriteMutation(
  *
  * The saved set is loaded off the main thread, so building this singleton (which happens the first
  * time a card or the detail menu is drawn) never blocks the UI on a disk read. Until the load
- * finishes the set is simply empty. If the user stars a game in that short window, the edit is
- * recorded and replayed on top of the loaded set, so an early toggle can never drop previously
- * saved favorites.
+ * finishes the set is simply empty and [toggle] returns null (the tap is ignored), so an early
+ * toggle can never overwrite previously saved favorites with a partial set.
  */
 object FavoritesManager {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())

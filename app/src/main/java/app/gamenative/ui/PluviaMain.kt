@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
@@ -139,7 +140,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
 private const val PENDING_LAUNCH_TIMEOUT_MS = 10_000L
-private const val SNACKBAR_SHOW_TIMEOUT_MS = 6_000L
+private const val SNACKBAR_SHOW_TIMEOUT_MS = 15_000L
 
 /** Used to suspend preLaunchApp while the user decides on large workshop updates. */
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
@@ -1161,6 +1162,8 @@ fun PluviaMain(
                 snackbarController.hostState.showSnackbar(
                     message = event.message,
                     actionLabel = event.actionLabel,
+                    // An action label defaults the duration to Indefinite; use Long so Undo self-dismisses.
+                    duration = if (event.actionLabel != null) SnackbarDuration.Long else SnackbarDuration.Short,
                 )
             }
             when {

@@ -1713,12 +1713,10 @@
     <string name="option_reset_to_defaults">Reset container</string>
     <string name="option_get_support">Get support</string>
     <string name="option_submit_feedback">Submit feedback</string>
-    <string name="option_add_to_favorites">Add to favorites</string>
-    <string name="option_remove_from_favorites">Remove from favorites</string>
-    <string name="favorite_add">Add to favorites</string>
-    <string name="favorite_remove">Remove from favorites</string>
-    <string name="favorite_add_named">Add %1$s to favorites</string>
-    <string name="favorite_remove_named">Remove %1$s from favorites</string>
+    <string name="option_add_to_favorites">Favorite</string>
+    <string name="option_remove_from_favorites">Unfavorite</string>
+    <string name="favorite_add_named">Favorite %1$s</string>
+    <string name="favorite_remove_named">Unfavorite %1$s</string>
     <string name="favorite_added">Added to favorites</string>
     <string name="favorite_added_named">Added %1$s to favorites</string>
     <string name="favorite_removed">Removed from favorites</string>
