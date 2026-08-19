@@ -10,6 +10,7 @@ import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.ExternalControllerBinding
 import com.winlator.xserver.XServer
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
@@ -23,13 +24,14 @@ class PhysicalControllerHandlerTest {
     @Test
     fun `sequence releases mouse movement without another motion event`() {
         val keyCode = KeyEvent.KEYCODE_BUTTON_A
+        val sequenceDelayMs = 150
         val controllerBinding = ExternalControllerBinding().apply {
             setKeyCode(keyCode)
             setBindingCombo(
                 BindingCombo.fromBindings(
                     listOf(Binding.MOUSE_MOVE_RIGHT, Binding.KEY_E),
                     BindingCombo.Mode.SEQUENCE,
-                    150,
+                    sequenceDelayMs,
                 ),
             )
         }
@@ -45,16 +47,21 @@ class PhysicalControllerHandlerTest {
             shadowOf(Looper.getMainLooper()).idleFor(1, MILLISECONDS)
             assertEquals(1f, mouseMoveOffset(handler).x, 0f)
 
-            shadowOf(Looper.getMainLooper()).idleFor(80, MILLISECONDS)
+            shadowOf(Looper.getMainLooper()).idleFor(sequenceDelayMs.toLong() - 1, MILLISECONDS)
             assertEquals(0f, mouseMoveOffset(handler).x, 0f)
+            assertNull(privateField(handler, "mouseMoveTimer"))
         } finally {
             handler.cleanup()
         }
     }
 
     private fun mouseMoveOffset(handler: PhysicalControllerHandler): PointF {
-        val field = PhysicalControllerHandler::class.java.getDeclaredField("mouseMoveOffset")
+        return privateField(handler, "mouseMoveOffset") as PointF
+    }
+
+    private fun privateField(handler: PhysicalControllerHandler, name: String): Any? {
+        val field = PhysicalControllerHandler::class.java.getDeclaredField(name)
         field.isAccessible = true
-        return field.get(handler) as PointF
+        return field.get(handler)
     }
 }

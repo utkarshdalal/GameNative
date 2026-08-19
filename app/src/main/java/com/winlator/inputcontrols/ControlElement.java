@@ -1265,8 +1265,9 @@ public class ControlElement {
 
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
-                    Binding binding = getBindingAt(i);
-                    if (binding.isGamepad()) {
+                    BindingCombo bindingCombo = getBindingComboAt(i);
+                    Binding binding = bindingCombo.getPrimaryBinding();
+                    if (bindingCombo.containsGamepadBinding()) {
                         value = Mathf.clamp(Math.max(0, Math.abs(value) - 0.01f) * Mathf.sign(value) * STICK_SENSITIVITY, -1, 1);
                         handleBindingInputEvent(i, true, value);
                         this.states[i] = true;
@@ -1311,7 +1312,7 @@ public class ControlElement {
                         }
                         this.states[i] = nextState;
                     }
-                    else if (binding.isGamepad()) {
+                    else if (bindingCombo.containsGamepadBinding()) {
                         if (interpolator == null) interpolator = new CubicBezierInterpolator();
                         if (Math.abs(value) > TRACKPAD_ACCELERATION_THRESHOLD) value *= STICK_SENSITIVITY;
                         interpolator.set(0.075f, 0.95f, 0.45f, 0.95f);

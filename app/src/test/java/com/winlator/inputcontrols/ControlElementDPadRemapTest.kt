@@ -18,6 +18,11 @@ import org.robolectric.RobolectricTestRunner
 class ControlElementDPadRemapTest {
     private data class Fixture(val element: ControlElement, val state: GamepadState)
 
+    private fun mixedGamepadBindingOrders() = listOf(
+        listOf(Binding.GAMEPAD_LEFT_THUMB_RIGHT, Binding.KEY_E),
+        listOf(Binding.KEY_E, Binding.GAMEPAD_LEFT_THUMB_RIGHT),
+    )
+
     private fun fixture(): Fixture {
         val state = GamepadState()
         val view = mock<InputControlsView>()
@@ -188,5 +193,65 @@ class ControlElementDPadRemapTest {
             ),
             events,
         )
+    }
+
+    @Test
+    fun `stick mixed combo scaling does not depend on binding order`() {
+        val scaledOffsets = mixedGamepadBindingOrders().map { bindings ->
+            val offsets = mutableListOf<Float>()
+            val view = mock<InputControlsView>()
+            whenever(view.snappingSize).thenReturn(10)
+            doAnswer { invocation ->
+                offsets += invocation.getArgument<Float>(2)
+                null
+            }.whenever(view).handleInputEvent(any<BindingCombo>(), any(), any())
+            val element = ControlElement(view).apply {
+                setType(ControlElement.Type.STICK)
+                setX(100)
+                setY(100)
+                setBindingComboAt(1, BindingCombo.fromBindings(bindings))
+            }
+
+            assertTrue(element.handleTouchDown(1, 115f, 100f))
+            offsets.single()
+        }
+
+        assertEquals(scaledOffsets.first(), scaledOffsets.last(), 0f)
+        assertTrue(scaledOffsets.first() in 0f..1f)
+    }
+
+    @Test
+    fun `trackpad mixed combo interpolation does not depend on binding order`() {
+        val interpolatedOffsets = mutableListOf<Float>()
+        mixedGamepadBindingOrders().forEach { bindings ->
+            val offsets = mutableListOf<Float>()
+            val touchpad = mock<TouchpadView>()
+            val view = mock<InputControlsView>()
+            whenever(view.snappingSize).thenReturn(10)
+            whenever(view.touchpadView).thenReturn(touchpad)
+            whenever(view.xServer).thenReturn(mock<XServer>())
+            whenever(touchpad.computeDeltaPoint(any(), any(), any(), any())).thenReturn(
+                floatArrayOf(0f, 0f),
+                floatArrayOf(2f, 0f),
+            )
+            doAnswer { invocation ->
+                offsets += invocation.getArgument<Float>(2)
+                null
+            }.whenever(view).handleInputEvent(any<BindingCombo>(), any(), any())
+            val element = ControlElement(view).apply {
+                setType(ControlElement.Type.TRACKPAD)
+                setX(100)
+                setY(100)
+                setBindingComboAt(1, BindingCombo.fromBindings(bindings))
+            }
+
+            assertTrue(element.handleTouchDown(1, 100f, 100f))
+            offsets.clear()
+            assertTrue(element.handleTouchMove(1, 102f, 100f))
+            interpolatedOffsets += offsets.single()
+        }
+
+        assertEquals(interpolatedOffsets.first(), interpolatedOffsets.last(), 0f)
+        assertTrue(interpolatedOffsets.first() in 0f..1f)
     }
 }

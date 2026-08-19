@@ -92,12 +92,6 @@ class PhysicalControllerHandler(
         activeSequenceTriggerBindings.clear()
         this.profile = profile
         Log.d(TAG, "PhysicalControllerHandler: Profile set to ${profile?.name}")
-
-        // Cancel mouse movement timer if profile is null
-        if (profile == null) {
-            mouseMoveTimer?.cancel()
-            mouseMoveTimer = null
-        }
     }
 
     /**
@@ -106,8 +100,6 @@ class PhysicalControllerHandler(
     fun cleanup() {
         releaseActiveAxes()
         cancelActiveSequences()
-        mouseMoveTimer?.cancel()
-        mouseMoveTimer = null
         clearMouseMoveContributions()
         clearScrollRepeats()
         activeSequenceTriggerBindings.clear()
@@ -331,11 +323,17 @@ class PhysicalControllerHandler(
                 mouseMoveOffset.y += contribution
             }
         }
+        if (mouseMoveContributions.isEmpty()) {
+            mouseMoveTimer?.cancel()
+            mouseMoveTimer = null
+        }
     }
 
     private fun clearMouseMoveContributions() {
         mouseMoveContributions.clear()
         mouseMoveOffset.set(0f, 0f)
+        mouseMoveTimer?.cancel()
+        mouseMoveTimer = null
     }
 
     private fun handleScrollBinding(binding: Binding, isActionDown: Boolean): Boolean {
