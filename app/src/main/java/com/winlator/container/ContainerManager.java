@@ -332,12 +332,16 @@ public class ContainerManager {
             Log.e("Extraction", "Failed to create WFM destination directory");
             return false;
         }
-        return extractContainerPatternCommonArchive(containerDir, (file, size) -> {
+        final File[] selectedWfm = {null};
+        boolean extracted = extractContainerPatternCommonArchive(containerDir, (file, size) -> {
             if (!file.getAbsoluteFile().equals(expectedWfm)) return null;
-            return onExtractFileListener != null
+            selectedWfm[0] = onExtractFileListener != null
                     ? onExtractFileListener.onExtractFile(file, size)
                     : file;
+            return selectedWfm[0];
         });
+        return extracted && selectedWfm[0] != null &&
+                selectedWfm[0].isFile() && selectedWfm[0].length() > 0;
     }
 
     private boolean extractContainerPatternCommonArchive(File containerDir, OnExtractFileListener onExtractFileListener) {

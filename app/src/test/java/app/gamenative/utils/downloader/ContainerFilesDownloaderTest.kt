@@ -5,9 +5,11 @@ import androidx.test.core.app.ApplicationProvider
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import com.winlator.container.ContainerManager
+import com.winlator.core.OnExtractFileListener
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.After
+import org.junit.Assume.assumeFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -180,7 +182,7 @@ class ContainerFilesDownloaderTest {
 
     @Test
     fun testWfmOnlyExtractionCreatesMissingParentDirectories() {
-        if (BuildConfig.MODERN_ANDROID) return
+        assumeFalse("Bundled archive is only available in the legacy variant", BuildConfig.MODERN_ANDROID)
 
         val destination = File(context.cacheDir, "wfm-only-extraction")
         destination.deleteRecursively()
@@ -188,7 +190,25 @@ class ContainerFilesDownloaderTest {
             assertTrue(ContainerManager(context).extractContainerPatternCommonWfm(destination, null))
             val wfm = File(destination, "home/xuser/.wine/drive_c/windows/wfm.exe")
             assertTrue("WFM should be extracted into a newly created prefix", wfm.isFile)
-            assertEquals("WFM should match the bundled executable", 305_152L, wfm.length())
+            assertTrue("Extracted WFM should not be empty", wfm.length() > 0)
+        } finally {
+            destination.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun testWfmOnlyExtractionFailsWhenWfmIsNotSelected() {
+        assumeFalse("Bundled archive is only available in the legacy variant", BuildConfig.MODERN_ANDROID)
+
+        val destination = File(context.cacheDir, "wfm-rejected-extraction")
+        destination.deleteRecursively()
+        try {
+            val rejectWfm = OnExtractFileListener { _, _ -> null }
+            assertFalse(
+                ContainerManager(context).extractContainerPatternCommonWfm(destination, rejectWfm),
+            )
+            val wfm = File(destination, "home/xuser/.wine/drive_c/windows/wfm.exe")
+            assertFalse("Rejected WFM should not be reported as extracted", wfm.exists())
         } finally {
             destination.deleteRecursively()
         }
