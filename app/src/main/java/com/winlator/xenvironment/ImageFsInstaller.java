@@ -32,7 +32,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -92,11 +94,26 @@ public abstract class ImageFsInstaller {
     // the tarball-extracted variant so BionicProgramLauncherComponent can find it
     private static void ensureBionicLib(Context context, File imagefs) {
         if (BuildConfig.MODERN_ANDROID) {
-            File wxDest = new File(imagefs, "usr/lib/libredirect-bionic-wx.so");
-            if (!wxDest.exists()) {
-                FileUtils.copy(context, "libredirect-bionic-wx.so", wxDest);
+            File wxDest = new File(imagefs, "usr/lib/" + BuildConfig.PRELOAD_BIONIC_SO);
+            if (!assetContentEquals(context, BuildConfig.PRELOAD_BIONIC_SO, wxDest)) {
+                FileUtils.copy(context, BuildConfig.PRELOAD_BIONIC_SO, wxDest);
                 chmod(wxDest);
             }
+        }
+    }
+
+    private static boolean assetContentEquals(Context context, String assetFile, File target) {
+        if (!target.isFile()) return false;
+        try (InputStream inStream1 = new BufferedInputStream(context.getAssets().open(assetFile));
+             InputStream inStream2 = new BufferedInputStream(new FileInputStream(target))) {
+            int data;
+            while ((data = inStream1.read()) != -1) {
+                if (data != inStream2.read()) return false;
+            }
+            return inStream2.read() == -1;
+        }
+        catch (IOException e) {
+            return false;
         }
     }
 
