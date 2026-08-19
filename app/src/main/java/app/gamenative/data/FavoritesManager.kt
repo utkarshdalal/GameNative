@@ -10,13 +10,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-internal data class FavoriteMutation(
-    val appId: String,
-    val previousFavorite: Boolean,
-    val favorite: Boolean,
-    val revision: Long,
-)
-
 /**
  * Keeps track of which games the user has marked as favorite.
  *
@@ -48,8 +41,6 @@ object FavoritesManager {
 
     private val lock = Any()
 
-    private val revisions = HashMap<String, Long>()
-
     init {
         scope.launch {
             try {
@@ -76,42 +67,16 @@ object FavoritesManager {
         }
     }
 
-    fun isFavorite(appId: String): Boolean = _favorites.value.contains(appId)
-
-    internal fun toggle(appId: String): FavoriteMutation? {
+    /** Returns the new favorite state, or null if the toggle was ignored (set not loaded yet). */
+    internal fun toggle(appId: String): Boolean? {
         synchronized(lock) {
             if (!_loaded.value) return null
-            return setFavoriteLocked(appId, !isFavorite(appId))
+            val favorite = appId !in _favorites.value
+            val updated = FavoritesUtils.apply(_favorites.value, appId, favorite)
+            if (updated == _favorites.value) return null
+            _favorites.value = updated
+            PrefManager.favoriteAppIds = updated
+            return favorite
         }
-    }
-
-    /**
-     * Reverts a removal only while no newer decision has changed this app's favorite state.
-     * Snackbar actions can outlive several subsequent mutations, so an app id alone is not enough
-     * to identify a valid undo target.
-     */
-    internal fun undo(mutation: FavoriteMutation): Boolean {
-        synchronized(lock) {
-            val currentFavorite = isFavorite(mutation.appId)
-            if (revisions[mutation.appId] != mutation.revision ||
-                currentFavorite != mutation.favorite
-            ) {
-                return false
-            }
-            setFavoriteLocked(mutation.appId, mutation.previousFavorite)
-            return true
-        }
-    }
-
-    private fun setFavoriteLocked(appId: String, favorite: Boolean): FavoriteMutation? {
-        val previousFavorite = isFavorite(appId)
-        val updated = FavoritesUtils.apply(_favorites.value, appId, favorite)
-        if (updated == _favorites.value) return null
-
-        _favorites.value = updated
-        val revision = (revisions[appId] ?: 0L) + 1L
-        revisions[appId] = revision
-        PrefManager.favoriteAppIds = updated
-        return FavoriteMutation(appId, previousFavorite, favorite, revision)
     }
 }

@@ -2322,5 +2322,4 @@
     <string name="favorite_removed_named">%1$s rimosso dai preferiti</string>
     <string name="favorite_added">Aggiunto ai preferiti</string>
     <string name="favorite_added_named">%1$s aggiunto ai preferiti</string>
-    <string name="undo">Annulla</string>
 </resources>

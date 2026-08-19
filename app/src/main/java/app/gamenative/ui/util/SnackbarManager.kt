@@ -8,26 +8,11 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import timber.log.Timber
 
 object SnackbarManager {
-    /**
-     * A snackbar request. [actionLabel] and [onAction] are optional; when both are provided the
-     * snackbar shows an action button (e.g. "Undo") that invokes [onAction] when tapped.
-     */
-    data class Event(
-        val message: String,
-        val actionLabel: String? = null,
-        val onAction: (() -> Unit)? = null,
-    )
+    private val _messages = Channel<String>(capacity = Channel.BUFFERED)
+    val messages = _messages.receiveAsFlow()
 
-    private val _events = Channel<Event>(capacity = Channel.BUFFERED)
-    val events = _events.receiveAsFlow()
-
-    fun show(message: String) = show(Event(message))
-
-    fun show(message: String, actionLabel: String?, onAction: () -> Unit) =
-        show(Event(message, actionLabel, onAction))
-
-    fun show(event: Event) {
-        if (_events.trySend(event).isFailure) {
+    fun show(message: String) {
+        if (_messages.trySend(message).isFailure) {
             Timber.w("[Snackbar]: Dropping message because the buffer is full")
         }
     }

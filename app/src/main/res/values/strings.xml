@@ -1721,7 +1721,6 @@
     <string name="favorite_added_named">Added %1$s to favorites</string>
     <string name="favorite_removed">Removed from favorites</string>
     <string name="favorite_removed_named">Removed %1$s from favorites</string>
-    <string name="undo">Undo</string>
     <string name="option_reset_drm">Reset DRM</string>
     <string name="option_use_known_config">Use known config</string>
     <string name="option_browse_community_configs">Browse community configs</string>

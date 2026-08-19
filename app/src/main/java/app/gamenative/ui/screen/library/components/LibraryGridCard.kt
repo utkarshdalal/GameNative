@@ -169,7 +169,7 @@ internal fun GridViewCard(
             }
             customActions = listOf(
                 CustomAccessibilityAction(favoriteActionLabel) {
-                    toggleFavoriteWithUndo(context, appInfo.appId, appInfo.name)
+                    toggleFavorite(context, appInfo.appId, appInfo.name)
                     true
                 },
             )

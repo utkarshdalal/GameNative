@@ -6,31 +6,18 @@ import app.gamenative.data.FavoritesManager
 import app.gamenative.ui.util.SnackbarManager
 
 /**
- * Toggles the favorite state for [appId]. Both actions show confirmation, while removal also offers
- * an "Undo" action because an accidental un-favorite is easy to miss.
+ * Toggles the favorite state for [appId] and shows a confirmation snackbar.
  *
  * [gameName] is used to make the message specific ("Removed <game> from favorites"); when it is
  * null or blank a generic message is shown instead.
  */
-internal fun toggleFavoriteWithUndo(context: Context, appId: String, gameName: String?) {
-    val mutation = FavoritesManager.toggle(appId) ?: return
-    if (mutation.previousFavorite) {
-        val message = if (gameName.isNullOrBlank()) {
-            context.getString(R.string.favorite_removed)
-        } else {
-            context.getString(R.string.favorite_removed_named, gameName)
-        }
-        SnackbarManager.show(
-            message = message,
-            actionLabel = context.getString(R.string.undo),
-            onAction = { FavoritesManager.undo(mutation) },
-        )
-    } else {
-        val message = if (gameName.isNullOrBlank()) {
-            context.getString(R.string.favorite_added)
-        } else {
-            context.getString(R.string.favorite_added_named, gameName)
-        }
-        SnackbarManager.show(message)
+internal fun toggleFavorite(context: Context, appId: String, gameName: String?) {
+    val favorite = FavoritesManager.toggle(appId) ?: return
+    val message = when {
+        favorite && gameName.isNullOrBlank() -> context.getString(R.string.favorite_added)
+        favorite -> context.getString(R.string.favorite_added_named, gameName)
+        gameName.isNullOrBlank() -> context.getString(R.string.favorite_removed)
+        else -> context.getString(R.string.favorite_removed_named, gameName)
     }
+    SnackbarManager.show(message)
 }

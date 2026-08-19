@@ -42,7 +42,7 @@ import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
-import app.gamenative.ui.screen.library.components.toggleFavoriteWithUndo
+import app.gamenative.ui.screen.library.components.toggleFavorite
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
@@ -774,7 +774,7 @@ abstract class BaseAppScreen {
                 AppOptionMenuType.AddToFavorites
             },
             onClick = {
-                toggleFavoriteWithUndo(context, libraryItem.appId, libraryItem.name)
+                toggleFavorite(context, libraryItem.appId, libraryItem.name)
             },
         )
     }

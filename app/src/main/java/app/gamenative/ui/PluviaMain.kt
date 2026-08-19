@@ -6,7 +6,6 @@ import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,12 +15,9 @@ import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -36,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -1157,19 +1152,13 @@ fun PluviaMain(
     var exitSnackbarVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(snackbarController) {
-        SnackbarManager.events.collect { event ->
-            val result = withTimeoutOrNull(SNACKBAR_SHOW_TIMEOUT_MS) {
-                snackbarController.hostState.showSnackbar(
-                    message = event.message,
-                    actionLabel = event.actionLabel,
-                    // An action label defaults the duration to Indefinite; use Long so Undo self-dismisses.
-                    duration = if (event.actionLabel != null) SnackbarDuration.Long else SnackbarDuration.Short,
-                )
-            }
-            when {
-                result == null -> Timber.w("[Snackbar]: Display timed out before dismissal")
-                result == SnackbarResult.ActionPerformed -> event.onAction?.invoke()
-                else -> {}
+        SnackbarManager.messages.collect { message ->
+            if (
+                withTimeoutOrNull(SNACKBAR_SHOW_TIMEOUT_MS) {
+                    snackbarController.hostState.showSnackbar(message)
+                } == null
+            ) {
+                Timber.w("[Snackbar]: Display timed out before dismissal")
             }
             // snackbar dismissed (timeout or new message) — reset exit flag
             exitSnackbarVisible = false
@@ -1605,44 +1594,17 @@ fun PluviaMain(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.BottomCenter,
                     ) {
-                        val actionLabel = data.visuals.actionLabel
                         Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
                             shape = RoundedCornerShape(24.dp),
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             shadowElevation = 4.dp,
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(
-                                    start = 24.dp,
-                                    end = if (actionLabel != null) 8.dp else 24.dp,
-                                ),
-                            ) {
-                                Text(
-                                    text = data.visuals.message,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(vertical = 12.dp),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                if (actionLabel != null) {
-                                    TextButton(onClick = { data.performAction() }) {
-                                        Text(
-                                            text = actionLabel,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            maxLines = 1,
-                                            softWrap = false,
-                                        )
-                                    }
-                                }
-                            }
+                            Text(
+                                text = data.visuals.message,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
                         }
                     }
                 }
