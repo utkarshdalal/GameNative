@@ -194,8 +194,8 @@ public class ControllerManager {
         // caused them to be treated as gamepads. SOURCE_GAMEPAD is queried as well, for
         // drivers that attach the sticks to the gamepad source instead.
         boolean hasAxes =
-                hasControllerAxis(device, android.view.MotionEvent.AXIS_X) ||
-                        hasControllerAxis(device, android.view.MotionEvent.AXIS_Y);
+                ExternalController.hasControllerAxis(device, android.view.MotionEvent.AXIS_X) ||
+                        ExternalController.hasControllerAxis(device, android.view.MotionEvent.AXIS_Y);
 
         boolean[] hasGamepadKeysArray = device.hasKeys(
                 KeyEvent.KEYCODE_BUTTON_A,
@@ -214,11 +214,6 @@ public class ControllerManager {
 
         return (isGamepad && hasGamepadKeys) ||
                 (isJoystick && hasAxes);
-    }
-
-    private static boolean hasControllerAxis(InputDevice device, int axis) {
-        return device.getMotionRange(axis, InputDevice.SOURCE_JOYSTICK) != null ||
-                device.getMotionRange(axis, InputDevice.SOURCE_GAMEPAD) != null;
     }
 
     /**

@@ -395,7 +395,8 @@ public class ExternalController {
                 (isJoystick && hasAxes);
     }
 
-    private static boolean hasControllerAxis(InputDevice device, int axis) {
+    /** Shared with {@link ControllerManager#isGameController(InputDevice)}. */
+    static boolean hasControllerAxis(InputDevice device, int axis) {
         return device.getMotionRange(axis, InputDevice.SOURCE_JOYSTICK) != null ||
                 device.getMotionRange(axis, InputDevice.SOURCE_GAMEPAD) != null;
     }
