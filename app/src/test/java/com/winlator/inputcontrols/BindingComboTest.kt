@@ -104,4 +104,11 @@ class BindingComboTest {
         assertEquals(BindingCombo.Mode.SEQUENCE, combo.mode)
         assertEquals(240, combo.sequenceDelayMs)
     }
+
+    @Test
+    fun `legacy binding object restores single binding`() {
+        val combo = BindingCombo.fromJsonValue(JSONObject().put("binding", "KEY_E"))
+
+        assertEquals(BindingCombo.of(Binding.KEY_E), combo)
+    }
 }

@@ -89,8 +89,12 @@ public final class BindingCombo {
     public static BindingCombo fromJsonValue(Object value) {
         if (value instanceof JSONObject) {
             JSONObject object = (JSONObject)value;
+            JSONArray bindings = object.optJSONArray("bindings");
+            if (bindings == null) {
+                return of(Binding.fromString(object.optString("binding", Binding.NONE.name())));
+            }
             return fromJsonArray(
-                    object.optJSONArray("bindings"),
+                    bindings,
                     Mode.fromJsonName(object.optString(
                             "mode",
                             object.optString("bindingMode", Mode.SIMULTANEOUS.getJsonName()))),

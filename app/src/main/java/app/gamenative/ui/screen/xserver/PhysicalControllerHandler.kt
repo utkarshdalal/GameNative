@@ -30,6 +30,12 @@ class PhysicalControllerHandler(
     private val onRadialMenuButtonStateChanged: ((Boolean, Boolean) -> Unit)? = null,
     private val onRadialMenuVectorChanged: ((Float, Float) -> Unit)? = null,
 ) {
+    private data class MouseMoveSource(
+        val deviceId: Int,
+        val keyCode: Int,
+        val binding: Binding,
+    )
+
     companion object {
         private const val SCROLL_REPEAT_INTERVAL_MS = 90L
         private const val UNKNOWN_DEVICE_ID = -1
@@ -38,6 +44,7 @@ class PhysicalControllerHandler(
 
     private val TAG = "gncontrol"
     private val mouseMoveOffset = PointF(0f, 0f)
+    private val mouseMoveContributions = mutableMapOf<MouseMoveSource, Float>()
     private val sequenceHandler = Handler(Looper.getMainLooper())
     private var mouseMoveTimer: Timer? = null
     private var scrollRepeatTimer: Timer? = null
@@ -79,6 +86,7 @@ class PhysicalControllerHandler(
     fun setProfile(profile: ControlsProfile?) {
         releaseActiveAxes()
         cancelActiveSequences()
+        clearMouseMoveContributions()
         clearScrollRepeats()
         closeRadialMenuIfOpen(commit = false)
         activeSequenceTriggerBindings.clear()
@@ -89,7 +97,6 @@ class PhysicalControllerHandler(
         if (profile == null) {
             mouseMoveTimer?.cancel()
             mouseMoveTimer = null
-            mouseMoveOffset.set(0f, 0f)
         }
     }
 
@@ -101,7 +108,7 @@ class PhysicalControllerHandler(
         cancelActiveSequences()
         mouseMoveTimer?.cancel()
         mouseMoveTimer = null
-        mouseMoveOffset.set(0f, 0f)
+        clearMouseMoveContributions()
         clearScrollRepeats()
         activeSequenceTriggerBindings.clear()
         showKeyboardPressed = false
@@ -288,6 +295,49 @@ class PhysicalControllerHandler(
         }
     }
 
+    private fun updateMouseMoveContribution(
+        binding: Binding,
+        isActionDown: Boolean,
+        offset: Float,
+        sourceKeyCode: Int,
+        sourceDeviceId: Int,
+    ) {
+        if (isActionDown) {
+            val contribution = if (offset != 0f) {
+                offset
+            } else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_UP) {
+                -1f
+            } else {
+                1f
+            }
+            mouseMoveContributions[MouseMoveSource(sourceDeviceId, sourceKeyCode, binding)] = contribution
+            createMouseMoveTimer()
+        } else {
+            mouseMoveContributions.keys.removeAll { source ->
+                source.binding == binding &&
+                    (sourceKeyCode == KeyEvent.KEYCODE_UNKNOWN || source.keyCode == sourceKeyCode) &&
+                    (sourceDeviceId == UNKNOWN_DEVICE_ID || source.deviceId == sourceDeviceId)
+            }
+        }
+        recalculateMouseMoveOffset()
+    }
+
+    private fun recalculateMouseMoveOffset() {
+        mouseMoveOffset.set(0f, 0f)
+        mouseMoveContributions.forEach { (source, contribution) ->
+            if (source.binding == Binding.MOUSE_MOVE_LEFT || source.binding == Binding.MOUSE_MOVE_RIGHT) {
+                mouseMoveOffset.x += contribution
+            } else {
+                mouseMoveOffset.y += contribution
+            }
+        }
+    }
+
+    private fun clearMouseMoveContributions() {
+        mouseMoveContributions.clear()
+        mouseMoveOffset.set(0f, 0f)
+    }
+
     private fun handleScrollBinding(binding: Binding, isActionDown: Boolean): Boolean {
         if (binding != Binding.MOUSE_SCROLL_UP && binding != Binding.MOUSE_SCROLL_DOWN) {
             return false
@@ -348,9 +398,6 @@ class PhysicalControllerHandler(
      * Extracted from InputControlsView.processJoystickInput()
      */
     private fun processJoystickInput(controller: ExternalController, deviceId: Int) {
-        // Reset mouse movement offset at the start - contributions will be added during processing
-        mouseMoveOffset.set(0f, 0f)
-
         val axes = intArrayOf(
             MotionEvent.AXIS_X,
             MotionEvent.AXIS_Y,
@@ -724,21 +771,9 @@ class PhysicalControllerHandler(
                     showKeyboardPressed = false
                 }
             } else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
-                // Handle horizontal mouse movement - ADD contribution from this input
-                if (isActionDown) {
-                    val contribution = if (offset != 0f) offset else if (binding == Binding.MOUSE_MOVE_LEFT) -1f else 1f
-                    mouseMoveOffset.x += contribution
-                    createMouseMoveTimer()
-                }
-                // Don't reset when isActionDown=false - mouseMoveOffset is reset at the start of processJoystickInput
+                updateMouseMoveContribution(binding, isActionDown, offset, sourceKeyCode, sourceDeviceId)
             } else if (binding == Binding.MOUSE_MOVE_DOWN || binding == Binding.MOUSE_MOVE_UP) {
-                // Handle vertical mouse movement - ADD contribution from this input
-                if (isActionDown) {
-                    val contribution = if (offset != 0f) offset else if (binding == Binding.MOUSE_MOVE_UP) -1f else 1f
-                    mouseMoveOffset.y += contribution
-                    createMouseMoveTimer()
-                }
-                // Don't reset when isActionDown=false - mouseMoveOffset is reset at the start of processJoystickInput
+                updateMouseMoveContribution(binding, isActionDown, offset, sourceKeyCode, sourceDeviceId)
             } else if (handleScrollBinding(binding, isActionDown)) {
                 // Mouse wheel events are pulses, not held button state.
             } else {
@@ -775,7 +810,7 @@ class PhysicalControllerHandler(
         releaseActiveAxes(exceptKeyCode)
         neutralizeTrigger(controller, KeyEvent.KEYCODE_BUTTON_L2, exceptKeyCode)
         neutralizeTrigger(controller, KeyEvent.KEYCODE_BUTTON_R2, exceptKeyCode)
-        mouseMoveOffset.set(0f, 0f)
+        clearMouseMoveContributions()
         clearScrollRepeats()
     }
 

@@ -134,6 +134,7 @@ class ControlElementDPadRemapTest {
     @Test
     fun `trackpad mouse movement combo dispatches companion action`() {
         val events = mutableListOf<Pair<Binding, Boolean>>()
+        val offsets = mutableListOf<Pair<Binding, Float>>()
         val touchpad = mock<TouchpadView>()
         val xServer = mock<XServer>()
         val view = mock<InputControlsView>()
@@ -146,7 +147,9 @@ class ControlElementDPadRemapTest {
             floatArrayOf(0f, 0f),
         )
         doAnswer { invocation ->
-            events += invocation.getArgument<Binding>(0) to invocation.getArgument<Boolean>(1)
+            val binding = invocation.getArgument<Binding>(0)
+            events += binding to invocation.getArgument<Boolean>(1)
+            offsets += binding to invocation.getArgument<Float>(2)
             null
         }.whenever(view).handleInputEvent(any<Binding>(), any(), any())
 
@@ -156,18 +159,33 @@ class ControlElementDPadRemapTest {
             setY(100)
             setBindingComboAt(
                 1,
-                BindingCombo.fromBindings(listOf(Binding.KEY_CTRL_L, Binding.MOUSE_MOVE_RIGHT)),
+                BindingCombo.fromBindings(
+                    listOf(
+                        Binding.KEY_CTRL_L,
+                        Binding.GAMEPAD_LEFT_THUMB_RIGHT,
+                        Binding.MOUSE_MOVE_RIGHT,
+                    ),
+                ),
             )
         }
 
         assertTrue(element.handleTouchDown(1, 100f, 100f))
         assertTrue(element.handleTouchMove(1, 107f, 100f))
-        assertEquals(listOf(Binding.KEY_CTRL_L to true), events)
+        assertEquals(
+            listOf(Binding.KEY_CTRL_L to true, Binding.GAMEPAD_LEFT_THUMB_RIGHT to true),
+            events,
+        )
+        assertEquals(1f, offsets.first { it.first == Binding.GAMEPAD_LEFT_THUMB_RIGHT }.second, 0f)
         verify(xServer).injectPointerMoveDelta(any(), any())
 
         assertTrue(element.handleTouchMove(1, 107f, 100f))
         assertEquals(
-            listOf(Binding.KEY_CTRL_L to true, Binding.KEY_CTRL_L to false),
+            listOf(
+                Binding.KEY_CTRL_L to true,
+                Binding.GAMEPAD_LEFT_THUMB_RIGHT to true,
+                Binding.GAMEPAD_LEFT_THUMB_RIGHT to false,
+                Binding.KEY_CTRL_L to false,
+            ),
             events,
         )
     }

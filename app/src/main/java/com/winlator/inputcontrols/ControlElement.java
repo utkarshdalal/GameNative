@@ -1303,7 +1303,11 @@ public class ControlElement {
                         }
                         boolean nextState = states[i];
                         if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
-                            handleSimultaneousBindingMembers(bindingCombo, mouseMoveBinding, nextState, value);
+                            handleSimultaneousBindingMembers(
+                                    bindingCombo,
+                                    mouseMoveBinding,
+                                    nextState,
+                                    Mathf.clamp(value, -1, 1));
                         }
                         this.states[i] = nextState;
                     }
