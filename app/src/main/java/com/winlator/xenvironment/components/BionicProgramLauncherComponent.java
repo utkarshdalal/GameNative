@@ -305,7 +305,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String evshimPath = context.getApplicationInfo().nativeLibraryDir + "/libevshim.so";
         ld_preload += ":" + evshimPath;
 
-        if (BuildConfig.MODERN_ANDROID || BuildConfig.MODERN_XR) {
+        if (BuildConfig.MODERN_ANDROID) {
             String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
             ld_preload += ":" + replacePath;
         }
@@ -676,7 +676,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
-        if (BuildConfig.MODERN_ANDROID || BuildConfig.MODERN_XR) {
+        if (BuildConfig.MODERN_ANDROID) {
             String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
             ld_preload += ":" + replacePath;
         }
