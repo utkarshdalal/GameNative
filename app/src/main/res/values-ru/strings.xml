@@ -1107,6 +1107,11 @@ https://gamenative.app
     <string name="settings_emulation_default_config_subtitle">Начальные настройки контейнера для каждой игры (не влияет на уже установленные игры)</string>
     <string name="settings_emulation_default_config_title">Изменить конфигурацию по умолчанию</string>
     <string name="settings_emulation_driver_manager_subtitle">Установить или удалить пользовательские пакеты графических драйверов</string>
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Производительность</string>
+    <string name="settings_performance_power_control_title">Управление питанием</string>
+    <string name="settings_performance_power_control_subtitle">Включает управление питанием CPU/GPU и показывает вкладку «Питание» в быстром меню в игре</string>
+
     <string name="settings_emulation_driver_manager_title">Менеджер драйверов</string>
     <string name="settings_emulation_orientations_subtitle">Выберите, какие ориентации можно повернуть во время игры</string>
     <string name="settings_emulation_orientations_title">Разрешённые ориентации</string>

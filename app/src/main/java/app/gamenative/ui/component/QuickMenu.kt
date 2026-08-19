@@ -470,6 +470,7 @@ fun QuickMenu(
     // trip a VerifyError at class load (dex methods over 255 registers hit a
     // broken D8 codegen path).
     val inviteMenu = remember(container?.id) { SteamInviteState.createIfAvailable(container) }
+    val isPowerControlEnabled = remember { PowerManager.isEnabled() }
     // Owned here, not plumbed through XServerScreen (register limit; see inviteMenu).
     var lsfgPresentMode by remember(container?.id) {
         mutableStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.presentMode(it) } ?: "mailbox")
@@ -480,7 +481,7 @@ fun QuickMenu(
             when {
                 PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.HUD
-                PrefManager.quickMenuLastTab == QuickMenuTab.POWER -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.POWER && !isPowerControlEnabled -> QuickMenuTab.HUD
                 PrefManager.quickMenuLastTab == QuickMenuTab.IMMERSIVE && immersiveControls == null -> QuickMenuTab.HUD
                 else -> PrefManager.quickMenuLastTab
             }
@@ -551,10 +552,10 @@ fun QuickMenu(
 
     // Only the tabs actually shown in the rail, in on-screen order — mirrors the conditions each
     // QuickMenuTabButton below is gated on (isLsfgAvailable, a renderer being available, etc).
-    val availableTabs = remember(isLsfgAvailable, renderer, glRenderer, immersiveControls, inviteMenu)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           {
+    val availableTabs = remember(isLsfgAvailable, renderer, glRenderer, immersiveControls, inviteMenu, isPowerControlEnabled) {
         buildList {
             add(QuickMenuTab.HUD)
-            add(QuickMenuTab.POWER)
+            if (isPowerControlEnabled) add(QuickMenuTab.POWER)
             if (isLsfgAvailable) add(QuickMenuTab.LSFG)
             if (inviteMenu != null) add(QuickMenuTab.INVITE)
             if (renderer != null || glRenderer != null) add(QuickMenuTab.EFFECTS)
@@ -749,18 +750,20 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = hudTabFocusRequester,
                                 )
-                                QuickMenuTabButton(
-                                    icon = Icons.Default.BatteryChargingFull,
-                                    contentDescriptionResId = R.string.power_control,
-                                    selected = selectedTab == QuickMenuTab.POWER,
-                                    accentColor = PluviaTheme.colors.accentPurple,
-                                    onSelected = {
-                                        selectedTab = QuickMenuTab.POWER
-                                        PrefManager.quickMenuLastTab = selectedTab
-                                    },
-                                    modifier = Modifier.width(56.dp),
-                                    focusRequester = powerTabFocusRequester,
-                                )
+                                if (isPowerControlEnabled) {
+                                    QuickMenuTabButton(
+                                        icon = Icons.Default.BatteryChargingFull,
+                                        contentDescriptionResId = R.string.power_control,
+                                        selected = selectedTab == QuickMenuTab.POWER,
+                                        accentColor = PluviaTheme.colors.accentPurple,
+                                        onSelected = {
+                                            selectedTab = QuickMenuTab.POWER
+                                            PrefManager.quickMenuLastTab = selectedTab
+                                        },
+                                        modifier = Modifier.width(56.dp),
+                                        focusRequester = powerTabFocusRequester,
+                                    )
+                                }
                                 if (isLsfgAvailable) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.Speed,

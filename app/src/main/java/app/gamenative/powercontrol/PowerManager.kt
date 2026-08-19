@@ -7,6 +7,7 @@ import android.os.Looper
 import android.util.AtomicFile
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
 import app.gamenative.powercontrol.autotuning.ClusterTuner
 import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
@@ -145,6 +146,8 @@ object PowerManager {
      * Should be called once during application startup.
      */
     fun initialize(context: Context) {
+        if (!isEnabled()) return
+
         appContext = context.applicationContext
         if (driver != null) return
 
@@ -177,6 +180,11 @@ object PowerManager {
             }
         }
         driver?.reset()
+    }
+
+    fun deinitialize() {
+        Timber.tag("PowerManager").w("PowerManager deinitialized")
+        driver = null
     }
 
     private fun getDriver(): PerformanceDriver {
@@ -219,6 +227,7 @@ object PowerManager {
      * @param containerDir The container directory for saving/restoring per-container profiles
      */
     fun start(containerDir: File? = null) {
+        if (!isEnabled()) return
         this.containerDir = containerDir
         resolveGameAffinityOwnership()
         getDriver().start()
@@ -244,6 +253,7 @@ object PowerManager {
      * Stop the performance driver and save current profile
      */
     fun stop() {
+        if (!isEnabled()) return
         // Save the current profile if available, otherwise read from driver
         saveProfile()
         stopAutoTuning()
@@ -265,6 +275,7 @@ object PowerManager {
      * Pause the performance driver and auto-tuning when app goes to background
      */
     fun pause() {
+        if (!isEnabled()) return
         if (!isGameStarted) return
         saveProfile()
         stopAutoTuning()
@@ -278,6 +289,7 @@ object PowerManager {
      * Resume the performance driver and auto-tuning when app comes to foreground
      */
     fun resume() {
+        if (!isEnabled()) return
         if (!isGameStarted) return
         getDriver().start()
         restoreSavedProfile()
@@ -689,6 +701,11 @@ object PowerManager {
      * Check if driver is supported
      */
     fun isDriverSupported(): Boolean = getDriver().isDriverSupported()
+
+    /**
+     * True when the user has power control enabled in preferences.
+     */
+    fun isEnabled(): Boolean = PrefManager.powerControlEnabled
 
     /**
      * Get display unit preference for frequency values
@@ -1148,6 +1165,8 @@ object PowerManager {
         maxRetries: Int = GAME_PIN_MAX_RETRIES,
         retryDelayMs: Long = GAME_PIN_RETRY_DELAY_MS
     ) {
+        if (!isEnabled()) return
+
         pinnedGameProcessName = processName
         startGamePin(processName, "game start", maxRetries, retryDelayMs)
     }

@@ -919,6 +919,11 @@
     <string name="settings_language_restart_confirm">重新启动</string>
     <string name="settings_language_changing">切换语言并重新启动中...</string>
 
+    <!-- 设置：性能组 -->
+    <string name="settings_performance_title">性能</string>
+    <string name="settings_performance_power_control_title">功耗控制</string>
+    <string name="settings_performance_power_control_subtitle">启用 CPU/GPU 功耗管理，并在游戏内快捷菜单中显示“功耗”标签页</string>
+
     <!-- 设置：模拟组 -->
     <string name="settings_emulation_title">模拟设置</string>
     <string name="settings_emulation_orientations_title">允许的屏幕方向</string>

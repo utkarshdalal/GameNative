@@ -1501,4 +1501,11 @@ object PrefManager {
             }
         }
 
+    private val POWER_CONTROL_ENABLED = booleanPreferencesKey("power_control_enabled")
+    var powerControlEnabled: Boolean
+        get() = getPref(POWER_CONTROL_ENABLED, true)
+        set(value) {
+            // Written synchronously: PowerManager.initialize() checks isEnabled() right after the toggle.
+            runBlocking { dataStore.edit { pref -> pref[POWER_CONTROL_ENABLED] = value } }
+        }
 }

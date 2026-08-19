@@ -935,6 +935,11 @@
 	<string name="settings_language_restart_confirm">Repornește</string>
 	<string name="settings_language_changing">Se schimbă limba și se repornește...</string>
 
+	<!-- Settings: Performance Group -->
+	<string name="settings_performance_title">Performanță</string>
+	<string name="settings_performance_power_control_title">Control alimentare</string>
+	<string name="settings_performance_power_control_subtitle">Activează gestionarea energiei CPU/GPU și afișează fila Alimentare în meniul rapid din joc</string>
+
 	<!-- Settings: Emulation Group -->
 	<string name="settings_emulation_title">Emulare</string>
 	<string name="settings_emulation_orientations_title">Orientări permise</string>

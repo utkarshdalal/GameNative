@@ -921,6 +921,11 @@
     <string name="settings_language_restart_confirm">重新啟動</string>
     <string name="settings_language_changing">切換語言並重新啟動中...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">效能</string>
+    <string name="settings_performance_power_control_title">功耗控制</string>
+    <string name="settings_performance_power_control_subtitle">啟用 CPU/GPU 功耗管理，並在遊戲內快捷選單中顯示「功耗」分頁</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">模擬設定</string>
     <string name="settings_emulation_orientations_title">允許的螢幕方向</string>

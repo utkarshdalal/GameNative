@@ -942,6 +942,11 @@
     <string name="settings_language_restart_confirm">Reiniciar</string>
     <string name="settings_language_changing">Cambiando idioma y reiniciando…</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Rendimiento</string>
+    <string name="settings_performance_power_control_title">Control de energía</string>
+    <string name="settings_performance_power_control_subtitle">Activa la gestión de energía de CPU/GPU y muestra la pestaña Energía en el menú rápido del juego</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulación</string>
     <string name="settings_emulation_orientations_title">Orientaciones de pantalla permitidas</string>

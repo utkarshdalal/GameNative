@@ -935,6 +935,11 @@
     <string name="settings_language_restart_confirm">재시작</string>
     <string name="settings_language_changing">언어 변경 및 재시작 중...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">성능</string>
+    <string name="settings_performance_power_control_title">전원 제어</string>
+    <string name="settings_performance_power_control_subtitle">CPU/GPU 전원 관리를 활성화하고 게임 내 퀵 메뉴에 전원 탭을 표시합니다</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">에뮬레이션</string>
     <string name="settings_emulation_orientations_title">허용된 방향</string>

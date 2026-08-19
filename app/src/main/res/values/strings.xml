@@ -1049,6 +1049,11 @@
     <string name="settings_language_restart_confirm">Restart</string>
     <string name="settings_language_changing">Changing language and restarting...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Performance</string>
+    <string name="settings_performance_power_control_title">Power Control</string>
+    <string name="settings_performance_power_control_subtitle">Enable CPU/GPU power management and show the Power tab in the in-game quick menu</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulation</string>
     <string name="settings_emulation_orientations_title">Allowed Orientations</string>

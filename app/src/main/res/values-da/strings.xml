@@ -752,6 +752,11 @@
     <string name="settings_language_restart_confirm">Genstart</string>
     <string name="settings_language_changing">Ændrer sprog og genstarter...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Ydeevne</string>
+    <string name="settings_performance_power_control_title">Strømstyring</string>
+    <string name="settings_performance_power_control_subtitle">Aktivér CPU/GPU-strømstyring og vis fanen Strøm i hurtigmenuen i spillet</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulering</string>
     <string name="settings_emulation_orientations_title">Tilladte orienteringer</string>

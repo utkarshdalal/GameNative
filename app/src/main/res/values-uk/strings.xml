@@ -929,6 +929,11 @@
     <string name="settings_language_restart_confirm">Перезапустити</string>
     <string name="settings_language_changing">Зміна мови та перезапуск...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Продуктивність</string>
+    <string name="settings_performance_power_control_title">Керування живленням</string>
+    <string name="settings_performance_power_control_subtitle">Вмикає керування живленням CPU/GPU та показує вкладку «Живлення» у швидкому меню в грі</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Емуляція</string>
     <string name="settings_emulation_orientations_title">Дозволені орієнтації екрану</string>

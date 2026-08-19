@@ -943,6 +943,11 @@
     <string name="settings_language_restart_confirm">Uruchom ponownie</string>
     <string name="settings_language_changing">Zmiana języka i ponowne uruchamianie...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Wydajność</string>
+    <string name="settings_performance_power_control_title">Zarządzanie energią</string>
+    <string name="settings_performance_power_control_subtitle">Włącz zarządzanie energią CPU/GPU i pokaż kartę Zasilanie w menu szybkim w grze</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulacja</string>
     <string name="settings_emulation_orientations_title">Dozwolone orientacje</string>

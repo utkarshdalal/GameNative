@@ -901,6 +901,11 @@
     <string name="settings_language_restart_message">Die Änderung der Sprache erfordert einen Neustart der App. Möchtest du fortfahren?</string>
     <string name="settings_language_restart_confirm">Neustart</string>
     <string name="settings_language_changing">Sprache wird geändert und Neustart durchgeführt…</string>
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Leistung</string>
+    <string name="settings_performance_power_control_title">Energieverwaltung</string>
+    <string name="settings_performance_power_control_subtitle">CPU/GPU-Energieverwaltung aktivieren und den Tab „Energie“ im Schnellmenü im Spiel anzeigen</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulation</string>
     <string name="settings_emulation_orientations_title">Erlaubte Ausrichtungen</string>

@@ -904,6 +904,11 @@
     <string name="settings_language_restart_confirm">再起動</string>
     <string name="settings_language_changing">言語を変更して再起動しています…</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">パフォーマンス</string>
+    <string name="settings_performance_power_control_title">電力コントロール</string>
+    <string name="settings_performance_power_control_subtitle">CPU/GPUの電力管理を有効にし、ゲーム内クイックメニューに「電力」タブを表示します</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">エミュレーション</string>
     <string name="settings_emulation_orientations_title">許可される向き</string>
