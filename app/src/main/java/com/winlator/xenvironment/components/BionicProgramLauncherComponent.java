@@ -300,14 +300,15 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
-        String evshimPath = context.getApplicationInfo().nativeLibraryDir + "/libevshim.so";
-        String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
-
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
-
+        String evshimPath = context.getApplicationInfo().nativeLibraryDir + "/libevshim.so";
         ld_preload += ":" + evshimPath;
-        ld_preload += ":" + replacePath;
+
+        if (BuildConfig.MODERN_ANDROID || BuildConfig.MODERN_XR) {
+            String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+            ld_preload += ":" + replacePath;
+        }
 
         envVars.put("LD_PRELOAD", ld_preload);
         envVars.put("EVSHIM_WINE", 1);
@@ -671,12 +672,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("SteamGameId", "0");
 
         String ld_preload = "";
-        String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
-        String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
 
+        String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
-        ld_preload += ":" + replacePath;
+        if (BuildConfig.MODERN_ANDROID || BuildConfig.MODERN_XR) {
+            String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+            ld_preload += ":" + replacePath;
+        }
 
         envVars.put("LD_PRELOAD", ld_preload);
 
