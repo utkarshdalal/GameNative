@@ -46,7 +46,9 @@ public final class BindingCombo {
     private BindingCombo(List<Binding> bindings, Mode mode, int sequenceDelayMs) {
         this.bindings = Collections.unmodifiableList(bindings);
         this.mode = bindings.size() > 1 && mode != null ? mode : Mode.SIMULTANEOUS;
-        this.sequenceDelayMs = normalizeSequenceDelayMs(sequenceDelayMs);
+        this.sequenceDelayMs = this.mode == Mode.SEQUENCE
+                ? normalizeSequenceDelayMs(sequenceDelayMs)
+                : DEFAULT_SEQUENCE_DELAY_MS;
     }
 
     public static BindingCombo none() {
@@ -89,8 +91,14 @@ public final class BindingCombo {
             JSONObject object = (JSONObject)value;
             return fromJsonArray(
                     object.optJSONArray("bindings"),
-                    Mode.fromJsonName(object.optString("mode", Mode.SIMULTANEOUS.getJsonName())),
-                    object.optInt("sequenceDelayMs", object.optInt("delayMs", DEFAULT_SEQUENCE_DELAY_MS))
+                    Mode.fromJsonName(object.optString(
+                            "mode",
+                            object.optString("bindingMode", Mode.SIMULTANEOUS.getJsonName()))),
+                    object.optInt(
+                            "sequenceDelayMs",
+                            object.optInt(
+                                    "bindingDelayMs",
+                                    object.optInt("delayMs", DEFAULT_SEQUENCE_DELAY_MS)))
             );
         }
         if (value instanceof JSONArray) {
@@ -170,10 +178,27 @@ public final class BindingCombo {
         return bindings;
     }
 
+    public boolean contains(Binding binding) {
+        return bindings.contains(binding);
+    }
+
+    public boolean containsGamepadBinding() {
+        for (Binding binding : bindings) if (binding.isGamepad()) return true;
+        return false;
+    }
+
     public boolean isGamepadOnly() {
         if (bindings.isEmpty()) return false;
         for (Binding binding : bindings) if (!binding.isGamepad()) return false;
         return true;
+    }
+
+    public void writeToJsonObject(JSONObject object) throws JSONException {
+        object.put("bindings", toJsonArray());
+        if (mode == Mode.SEQUENCE) {
+            object.put("mode", mode.getJsonName());
+            object.put("sequenceDelayMs", sequenceDelayMs);
+        }
     }
 
     public Object toJsonValue() {
@@ -181,9 +206,7 @@ public final class BindingCombo {
         if (mode == Mode.SEQUENCE) {
             try {
                 JSONObject object = new JSONObject();
-                object.put("mode", mode.getJsonName());
-                object.put("sequenceDelayMs", sequenceDelayMs);
-                object.put("bindings", toJsonArray());
+                writeToJsonObject(object);
                 return object;
             } catch (JSONException e) {
                 return toJsonArray();

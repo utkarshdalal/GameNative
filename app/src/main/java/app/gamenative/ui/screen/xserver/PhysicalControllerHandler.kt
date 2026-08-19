@@ -47,7 +47,7 @@ class PhysicalControllerHandler(
     // accessed only from main thread (MotionEvent dispatch + Compose lifecycle), no sync needed.
     private val activeAxisBindings = mutableSetOf<Int>()
     private val activeSequenceTriggerBindings = mutableSetOf<Int>()
-    private val activeSequenceBindings = mutableSetOf<Binding>()
+    private val activeSequenceBindings = mutableMapOf<Binding, Int>()
 
     // Tracks whether SHOW_KEYBOARD is currently held, so onShowKeyboard fires once per press (rising edge only)
     private var showKeyboardPressed = false
@@ -493,6 +493,18 @@ class PhysicalControllerHandler(
         sourceController: ExternalController? = null,
     ) {
         if (bindingCombo.isEmpty) return
+        if (Binding.OPEN_RADIAL_MENU in bindingCombo.bindings) {
+            handleInputEvent(
+                Binding.OPEN_RADIAL_MENU,
+                isActionDown,
+                offset,
+                fromMotion,
+                sourceKeyCode,
+                sourceDeviceId,
+                sourceController,
+            )
+            return
+        }
         if (bindingCombo.isSequence) {
             if (isActionDown) {
                 performBindingSequence(
@@ -542,6 +554,10 @@ class PhysicalControllerHandler(
         sourceDeviceId: Int,
         sourceController: ExternalController?,
     ) {
+        val pressDurationMs = minOf(
+            SEQUENCE_PRESS_MS,
+            (bindingCombo.sequenceDelayMs - 1).coerceAtLeast(1).toLong(),
+        )
         bindingCombo.bindings.forEachIndexed { index, binding ->
             sequenceHandler.postDelayed({
                 handleInputEvent(
@@ -553,21 +569,26 @@ class PhysicalControllerHandler(
                     sourceDeviceId,
                     sourceController,
                 )
-                activeSequenceBindings.add(binding)
+                activeSequenceBindings[binding] = (activeSequenceBindings[binding] ?: 0) + 1
                 sendGamepadState()
                 sequenceHandler.postDelayed({
-                    handleInputEvent(
-                        binding,
-                        false,
-                        0f,
-                        fromMotion,
-                        sourceKeyCode,
-                        sourceDeviceId,
-                        sourceController,
-                    )
-                    activeSequenceBindings.remove(binding)
-                    sendGamepadState()
-                }, SEQUENCE_PRESS_MS)
+                    val activeCount = activeSequenceBindings[binding] ?: return@postDelayed
+                    if (activeCount > 1) {
+                        activeSequenceBindings[binding] = activeCount - 1
+                    } else {
+                        activeSequenceBindings.remove(binding)
+                        handleInputEvent(
+                            binding,
+                            false,
+                            0f,
+                            fromMotion,
+                            sourceKeyCode,
+                            sourceDeviceId,
+                            sourceController,
+                        )
+                        sendGamepadState()
+                    }
+                }, pressDurationMs)
             }, index * bindingCombo.sequenceDelayMs.toLong())
         }
     }
@@ -575,7 +596,7 @@ class PhysicalControllerHandler(
     private fun cancelActiveSequences() {
         sequenceHandler.removeCallbacksAndMessages(null)
         if (activeSequenceBindings.isEmpty()) return
-        activeSequenceBindings.toList().asReversed().forEach { binding ->
+        activeSequenceBindings.keys.toList().asReversed().forEach { binding ->
             handleInputEvent(binding, false, 0f)
         }
         activeSequenceBindings.clear()

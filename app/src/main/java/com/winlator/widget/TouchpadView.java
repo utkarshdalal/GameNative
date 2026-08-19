@@ -26,7 +26,9 @@ import com.winlator.xserver.XKeycode;
 import com.winlator.xserver.XServer;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class TouchpadView extends View implements View.OnCapturedPointerListener {
     private static final byte MAX_FINGERS = 4;
@@ -65,7 +67,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private String delayedPressAction;
     private Runnable pendingHoldClickRelease;
     private String pendingHoldClickReleaseAction;
-    private final ArrayList<String> activeSequenceActions = new ArrayList<>();
+    private final Map<String, Integer> activeSequenceActions = new LinkedHashMap<>();
     private int actionSequenceGeneration;
 
     private boolean pressExecuted;
@@ -1607,10 +1609,10 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private boolean injectClick(String action) {
         if (action == null) return false;
-        ArrayList<String> parts = actionParts(action);
+        List<String> parts = TouchGestureConfig.actionParts(action);
         if (parts.size() > 1) {
-            if (isActionSequence(action)) {
-                performActionSequence(parts, actionSequenceDelayMs(action));
+            if (TouchGestureConfig.isActionSequence(action)) {
+                performActionSequence(parts, TouchGestureConfig.actionSequenceDelayMs(action));
                 return false;
             }
             boolean held = false;
@@ -1657,8 +1659,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private void injectRelease(String action) {
         if (action == null) return;
-        if (isActionSequence(action)) return;
-        ArrayList<String> parts = actionParts(action);
+        if (TouchGestureConfig.isActionSequence(action)) return;
+        List<String> parts = TouchGestureConfig.actionParts(action);
         if (parts.size() > 1) {
             for (int i = parts.size() - 1; i >= 0; i--) {
                 injectRelease(parts.get(i));
@@ -1716,107 +1718,44 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private boolean isMouseClickAction(String action) {
-        String primaryAction = primaryAction(action);
-        return TouchGestureConfig.ACTION_LEFT_CLICK.equals(primaryAction)
-                || TouchGestureConfig.ACTION_RIGHT_CLICK.equals(primaryAction)
-                || TouchGestureConfig.ACTION_MIDDLE_CLICK.equals(primaryAction);
+        return TouchGestureConfig.containsMouseButtonAction(action);
     }
 
-    private ArrayList<String> actionParts(String action) {
-        ArrayList<String> parts = new ArrayList<>();
-        if (action == null || action.isEmpty()) return parts;
-        boolean isSequence = isActionSequence(action);
-        boolean isCombo = action.startsWith(TouchGestureConfig.ACTION_COMBO_PREFIX);
-        if (!isSequence && !isCombo) {
-            parts.add(action);
-            return parts;
-        }
-        String value = action.substring(isSequence
-                ? TouchGestureConfig.ACTION_SEQUENCE_PREFIX.length()
-                : TouchGestureConfig.ACTION_COMBO_PREFIX.length());
-        if (isSequence) {
-            int delaySeparator = value.indexOf(':');
-            if (delaySeparator > 0 && isDigits(value.substring(0, delaySeparator))) {
-                value = value.substring(delaySeparator + 1);
-            }
-        }
-        String[] split = value.split("\\|");
-        for (String part : split) {
-            if (part == null || part.isEmpty() || parts.contains(part)) continue;
-            parts.add(part);
-        }
-        if (!isSequence) {
-            Collections.sort(parts, (a, b) -> Integer.compare(actionComboSortGroup(a), actionComboSortGroup(b)));
-        }
-        while (parts.size() > TouchGestureConfig.MAX_ACTION_COMBO_SIZE) parts.remove(parts.size() - 1);
-        return parts;
-    }
-
-    private String primaryAction(String action) {
-        ArrayList<String> parts = actionParts(action);
-        return parts.isEmpty() ? action : parts.get(parts.size() - 1);
-    }
-
-    private int actionComboSortGroup(String action) {
-        if ("key_CTRL_L".equals(action) || "key_CTRL_R".equals(action)
-                || "key_SHIFT_L".equals(action) || "key_SHIFT_R".equals(action)
-                || "key_ALT_L".equals(action) || "key_ALT_R".equals(action)) {
-            return 0;
-        }
-        return 1;
-    }
-
-    private boolean isActionSequence(String action) {
-        return action != null && action.startsWith(TouchGestureConfig.ACTION_SEQUENCE_PREFIX);
-    }
-
-    private boolean isDigits(String value) {
-        if (value == null || value.isEmpty()) return false;
-        for (int i = 0; i < value.length(); i++) {
-            if (!Character.isDigit(value.charAt(i))) return false;
-        }
-        return true;
-    }
-
-    private int actionSequenceDelayMs(String action) {
-        if (!isActionSequence(action)) return TouchGestureConfig.DEFAULT_ACTION_SEQUENCE_DELAY_MS;
-        String value = action.substring(TouchGestureConfig.ACTION_SEQUENCE_PREFIX.length());
-        int separator = value.indexOf(':');
-        if (separator <= 0 || !isDigits(value.substring(0, separator))) {
-            return TouchGestureConfig.DEFAULT_ACTION_SEQUENCE_DELAY_MS;
-        }
-        try {
-            int delayMs = Integer.parseInt(value.substring(0, separator));
-            return Math.max(
-                    TouchGestureConfig.MIN_ACTION_SEQUENCE_DELAY_MS,
-                    Math.min(TouchGestureConfig.MAX_ACTION_SEQUENCE_DELAY_MS, delayMs));
-        } catch (NumberFormatException e) {
-            return TouchGestureConfig.DEFAULT_ACTION_SEQUENCE_DELAY_MS;
-        }
-    }
-
-    private void performActionSequence(ArrayList<String> parts, int sequenceDelayMs) {
+    private void performActionSequence(List<String> parts, int sequenceDelayMs) {
         final int generation = actionSequenceGeneration;
+        final int pressDurationMs = Math.min(SEQUENCE_PRESS_MS, Math.max(1, sequenceDelayMs - 1));
         int delay = 0;
         for (String part : parts) {
             postDelayed(() -> {
                 if (generation != actionSequenceGeneration) return;
                 if (injectClick(part)) {
-                    activeSequenceActions.add(part);
+                    activeSequenceActions.merge(part, 1, Integer::sum);
                     postDelayed(() -> {
                         if (generation != actionSequenceGeneration) return;
-                        if (activeSequenceActions.remove(part)) injectRelease(part);
-                    }, SEQUENCE_PRESS_MS);
+                        releaseSequenceAction(part);
+                    }, pressDurationMs);
                 }
             }, delay);
             delay += sequenceDelayMs;
         }
     }
 
+    private void releaseSequenceAction(String action) {
+        Integer count = activeSequenceActions.get(action);
+        if (count == null) return;
+        if (count > 1) {
+            activeSequenceActions.put(action, count - 1);
+            return;
+        }
+        activeSequenceActions.remove(action);
+        injectRelease(action);
+    }
+
     private void cancelActionSequences() {
         actionSequenceGeneration++;
-        for (int i = activeSequenceActions.size() - 1; i >= 0; i--) {
-            injectRelease(activeSequenceActions.get(i));
+        ArrayList<String> actions = new ArrayList<>(activeSequenceActions.keySet());
+        for (int i = actions.size() - 1; i >= 0; i--) {
+            injectRelease(actions.get(i));
         }
         activeSequenceActions.clear();
     }
@@ -1883,7 +1822,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     private void performPanAction(float dx, float dy, String action) {
         pressPanComboModifiers(action);
-        action = primaryAction(action);
+        action = TouchGestureConfig.primaryAction(action);
         switch (action) {
             case TouchGestureConfig.PAN_MIDDLE_MOUSE:
                 performMiddleMousePan(dx, dy);
@@ -1913,7 +1852,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private boolean isClickDragAction(String action) {
-        String primaryAction = primaryAction(action);
+        String primaryAction = TouchGestureConfig.primaryAction(action);
         return TouchGestureConfig.PAN_LEFT_CLICK_DRAG.equals(primaryAction)
                 || TouchGestureConfig.PAN_RIGHT_CLICK_DRAG.equals(primaryAction);
     }
@@ -1923,7 +1862,7 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private Pointer.Button buttonForClickDragAction(String action) {
-        return TouchGestureConfig.PAN_RIGHT_CLICK_DRAG.equals(primaryAction(action))
+        return TouchGestureConfig.PAN_RIGHT_CLICK_DRAG.equals(TouchGestureConfig.primaryAction(action))
                 ? Pointer.Button.BUTTON_RIGHT : Pointer.Button.BUTTON_LEFT;
     }
 
@@ -2037,11 +1976,11 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     }
 
     private void pressPanComboModifiers(String action) {
-        if (isActionSequence(action)) {
+        if (TouchGestureConfig.isActionSequence(action)) {
             releasePanComboModifiers();
             return;
         }
-        ArrayList<String> parts = actionParts(action);
+        ArrayList<String> parts = new ArrayList<>(TouchGestureConfig.actionParts(action));
         if (parts.size() <= 1) {
             releasePanComboModifiers();
             return;

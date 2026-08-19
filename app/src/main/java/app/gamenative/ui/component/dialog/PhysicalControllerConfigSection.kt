@@ -189,21 +189,21 @@ internal fun PhysicalControllerConfigSection(
         )
     }
 
+    fun restoreOriginalBindings() {
+        controller?.let { ctrl ->
+            ctrl.getControllerBindings().toList().forEach(ctrl::removeControllerBinding)
+            for ((keyCode, binding) in originalBindings) {
+                val restoredBinding = ExternalControllerBinding()
+                restoredBinding.setKeyCode(keyCode)
+                restoredBinding.setBindingCombo(binding)
+                ctrl.addControllerBinding(restoredBinding)
+            }
+        }
+    }
+
     Dialog(
         onDismissRequest = {
-            // Cancel: Restore original bindings
-            controller?.let { ctrl ->
-                val existingBindings = ctrl.getControllerBindings().toList()
-                for (binding in existingBindings) {
-                    ctrl.removeControllerBinding(binding)
-                }
-                for ((keyCode, binding) in originalBindings) {
-                    val newBinding = ExternalControllerBinding()
-                    newBinding.setKeyCode(keyCode)
-                    newBinding.setBindingCombo(binding)
-                    ctrl.addControllerBinding(newBinding)
-                }
-            }
+            restoreOriginalBindings()
             onDismiss()
         },
         properties = DialogProperties(
@@ -225,22 +225,10 @@ internal fun PhysicalControllerConfigSection(
                     },
                     navigationIcon = {
                         IconButton(onClick = {
-                            // Cancel: Restore original bindings
-                            controller?.let { ctrl ->
-                                val existingBindings = ctrl.getControllerBindings().toList()
-                                for (binding in existingBindings) {
-                                    ctrl.removeControllerBinding(binding)
-                                }
-                                for ((keyCode, binding) in originalBindings) {
-                                    val newBinding = ExternalControllerBinding()
-                                    newBinding.setKeyCode(keyCode)
-                                    newBinding.setBindingCombo(binding)
-                                    ctrl.addControllerBinding(newBinding)
-                                }
-                            }
+                            restoreOriginalBindings()
                             onDismiss()
                         }) {
-                            Icon(Icons.Default.Close, null)
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                         }
                     },
                     actions = {
@@ -904,7 +892,7 @@ private fun copyElementsIfNeeded(context: android.content.Context, destProfile: 
                         val bindings = element.getJSONArray("bindings")
                         for (j in 0 until bindings.length()) {
                             val binding = BindingCombo.fromJsonValue(bindings.get(j))
-                            if (binding.isGamepadOnly) {
+                            if (binding.containsGamepadBinding()) {
                                 hasGamepadBindings = true
                                 break
                             }

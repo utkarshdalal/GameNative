@@ -349,6 +349,7 @@ data class TouchGestureConfig(
             }
         }
 
+        @JvmStatic
         fun actionParts(action: String?): List<String> {
             if (action.isNullOrBlank()) return emptyList()
             val sequence = action.startsWith(ACTION_SEQUENCE_PREFIX)
@@ -362,10 +363,12 @@ data class TouchGestureConfig(
             return if (sequence) parts else parts.sortedBy { actionComboSortGroup(it) }
         }
 
+        @JvmStatic
         fun isActionSequence(action: String?): Boolean {
             return action?.startsWith(ACTION_SEQUENCE_PREFIX) == true
         }
 
+        @JvmStatic
         fun actionSequenceDelayMs(action: String?): Int {
             if (!isActionSequence(action)) return DEFAULT_ACTION_SEQUENCE_DELAY_MS
             val payload = action.orEmpty().removePrefix(ACTION_SEQUENCE_PREFIX)
@@ -377,8 +380,16 @@ data class TouchGestureConfig(
                 ?: DEFAULT_ACTION_SEQUENCE_DELAY_MS
         }
 
+        @JvmStatic
         fun primaryAction(action: String?): String {
             return actionParts(action).lastOrNull() ?: ACTION_LEFT_CLICK
+        }
+
+        @JvmStatic
+        fun containsMouseButtonAction(action: String?): Boolean {
+            return actionParts(action).any {
+                it == ACTION_LEFT_CLICK || it == ACTION_RIGHT_CLICK || it == ACTION_MIDDLE_CLICK
+            }
         }
 
         private fun actionPayload(action: String, sequence: Boolean): String {

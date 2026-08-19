@@ -46,7 +46,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -63,6 +65,7 @@ public class InputControlsView extends View {
     private boolean readyToDraw = false;
     private boolean moveCursor = false;
     private final Set<BindingCombo> activeSequenceCombos = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final Map<Binding, Integer> activeSequenceBindings = new EnumMap<>(Binding.class);
     private int sequenceGeneration = 0;
     private int snappingSize;
     private float offsetX;
@@ -169,6 +172,7 @@ public class InputControlsView extends View {
     }
 
     private void cancelTouchRouting() {
+        cancelBindingSequences();
         if (radialMenuTouchActive) handleRadialMenuTouchUp(radialMenuTouchPointerId, false);
         if (profile != null) {
             for (ControlElement element : profile.getElements()) element.cancelTouch();
@@ -340,8 +344,6 @@ public class InputControlsView extends View {
 
     public synchronized void setProfile(ControlsProfile profile) {
         cancelTouchRouting();
-        sequenceGeneration++;
-        activeSequenceCombos.clear();
         if (profile != null) {
             this.profile = profile;
             deselectAllElements();
@@ -1452,15 +1454,51 @@ public class InputControlsView extends View {
 
     private void performBindingSequence(BindingCombo bindingCombo, float offset) {
         final int generation = sequenceGeneration;
+        final int pressDurationMs = Math.min(
+                SEQUENCE_PRESS_MS,
+                Math.max(1, bindingCombo.getSequenceDelayMs() - 1));
         long delay = 0;
         for (Binding binding : bindingCombo.getBindings()) {
             postDelayed(() -> {
                 if (generation != sequenceGeneration) return;
                 handleInputEvent(binding, true, offset);
-                postDelayed(() -> handleInputEvent(binding, false, 0), SEQUENCE_PRESS_MS);
+                activeSequenceBindings.merge(binding, 1, Integer::sum);
+                commitGamepadStateIfNeeded(binding);
+                postDelayed(() -> {
+                    if (generation != sequenceGeneration) return;
+                    releaseActiveSequenceBinding(binding);
+                }, pressDurationMs);
             }, delay);
             delay += bindingCombo.getSequenceDelayMs();
         }
+    }
+
+    private void releaseActiveSequenceBinding(Binding binding) {
+        Integer count = activeSequenceBindings.get(binding);
+        if (count == null) return;
+        if (count > 1) {
+            activeSequenceBindings.put(binding, count - 1);
+            return;
+        }
+        activeSequenceBindings.remove(binding);
+        handleInputEvent(binding, false, 0);
+        commitGamepadStateIfNeeded(binding);
+    }
+
+    private void cancelBindingSequences() {
+        sequenceGeneration++;
+        activeSequenceCombos.clear();
+        if (activeSequenceBindings.isEmpty()) return;
+
+        boolean gamepadStateChanged = false;
+        Binding[] bindings = activeSequenceBindings.keySet().toArray(new Binding[0]);
+        for (int i = bindings.length - 1; i >= 0; i--) {
+            Binding binding = bindings[i];
+            handleInputEvent(binding, false, 0);
+            gamepadStateChanged |= binding.isGamepad();
+        }
+        activeSequenceBindings.clear();
+        if (gamepadStateChanged) commitGamepadState();
     }
 
     public void handleInputEvent(Binding binding, boolean isActionDown, float offset) {

@@ -537,8 +537,7 @@ private fun mouseBehaviorLabel(behavior: String): String = when (behavior) {
 }
 
 private fun isMouseButtonAction(action: String): Boolean {
-    val primaryAction = TouchGestureConfig.primaryAction(action)
-    return primaryAction == ACTION_LEFT_CLICK || primaryAction == ACTION_RIGHT_CLICK || primaryAction == ACTION_MIDDLE_CLICK
+    return TouchGestureConfig.containsMouseButtonAction(action)
 }
 
 @Composable
@@ -754,6 +753,7 @@ private fun PanActionPicker(
         dialogTitle = stringResource(R.string.gesture_action_label),
         categories = buildPanActionCategories(),
         allowSequence = false,
+        requiredSingleSelectionActions = PAN_ACTIONS.toSet(),
         actionLabel = { action ->
             if (PAN_ACTIONS.contains(action)) panSingleActionLabel(action) else tapHoldSingleActionLabel(action)
         },
@@ -812,6 +812,7 @@ private fun TouchActionComboPicker(
     dialogTitle: String,
     categories: List<SettingsActionCategory>,
     allowSequence: Boolean = true,
+    requiredSingleSelectionActions: Set<String> = emptySet(),
     actionLabel: @Composable (String) -> String,
     onActionSelected: (String) -> Unit,
 ) {
@@ -850,7 +851,9 @@ private fun TouchActionComboPicker(
     if (showDialog) {
         val selectedActions = remember(currentAction) {
             mutableStateListOf<String>().apply {
-                addAll(TouchGestureConfig.actionParts(currentAction))
+                val parts = TouchGestureConfig.actionParts(currentAction)
+                addAll(parts.filterNot { it in requiredSingleSelectionActions })
+                parts.lastOrNull { it in requiredSingleSelectionActions }?.let(::add)
             }
         }
         var selectedSequence by remember(currentAction) {
@@ -925,14 +928,22 @@ private fun TouchActionComboPicker(
                         }
                         items(category.actions) { (actionKey, actionText) ->
                             val isSelected = actionKey in selectedActions
-                            val enabled = isSelected || selectedActions.size < TouchGestureConfig.MAX_ACTION_COMBO_SIZE
+                            val replacesRequiredAction = actionKey in requiredSingleSelectionActions &&
+                                selectedActions.any { it in requiredSingleSelectionActions }
+                            val enabled = isSelected || replacesRequiredAction ||
+                                selectedActions.size < TouchGestureConfig.MAX_ACTION_COMBO_SIZE
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable(enabled = enabled) {
                                         if (isSelected) {
                                             selectedActions.remove(actionKey)
-                                        } else if (selectedActions.size < TouchGestureConfig.MAX_ACTION_COMBO_SIZE) {
+                                        } else if (replacesRequiredAction ||
+                                            selectedActions.size < TouchGestureConfig.MAX_ACTION_COMBO_SIZE
+                                        ) {
+                                            if (actionKey in requiredSingleSelectionActions) {
+                                                selectedActions.removeAll { it in requiredSingleSelectionActions }
+                                            }
                                             selectedActions.add(actionKey)
                                         }
                                     },
@@ -963,7 +974,9 @@ private fun TouchActionComboPicker(
             },
             confirmButton = {
                 TextButton(
-                    enabled = selectedActions.isNotEmpty(),
+                    enabled = selectedActions.isNotEmpty() &&
+                        (requiredSingleSelectionActions.isEmpty() ||
+                            selectedActions.any { it in requiredSingleSelectionActions }),
                     onClick = {
                         onActionSelected(
                             TouchGestureConfig.actionComboOf(

@@ -1,6 +1,8 @@
 package com.winlator.inputcontrols
 
 import com.winlator.widget.InputControlsView
+import com.winlator.widget.TouchpadView
+import com.winlator.xserver.XServer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -8,6 +10,7 @@ import org.junit.runner.RunWith
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
 
@@ -124,6 +127,47 @@ class ControlElementDPadRemapTest {
         assertTrue(element.handleTouchMove(1, 100f, 40f))
         assertEquals(
             listOf(Binding.MOUSE_MOVE_DOWN to false, Binding.MOUSE_MOVE_UP to true),
+            events,
+        )
+    }
+
+    @Test
+    fun `trackpad mouse movement combo dispatches companion action`() {
+        val events = mutableListOf<Pair<Binding, Boolean>>()
+        val touchpad = mock<TouchpadView>()
+        val xServer = mock<XServer>()
+        val view = mock<InputControlsView>()
+        whenever(view.snappingSize).thenReturn(10)
+        whenever(view.touchpadView).thenReturn(touchpad)
+        whenever(view.xServer).thenReturn(xServer)
+        whenever(touchpad.computeDeltaPoint(any(), any(), any(), any())).thenReturn(
+            floatArrayOf(0f, 0f),
+            floatArrayOf(7f, 0f),
+            floatArrayOf(0f, 0f),
+        )
+        doAnswer { invocation ->
+            events += invocation.getArgument<Binding>(0) to invocation.getArgument<Boolean>(1)
+            null
+        }.whenever(view).handleInputEvent(any<Binding>(), any(), any())
+
+        val element = ControlElement(view).apply {
+            setType(ControlElement.Type.TRACKPAD)
+            setX(100)
+            setY(100)
+            setBindingComboAt(
+                1,
+                BindingCombo.fromBindings(listOf(Binding.KEY_CTRL_L, Binding.MOUSE_MOVE_RIGHT)),
+            )
+        }
+
+        assertTrue(element.handleTouchDown(1, 100f, 100f))
+        assertTrue(element.handleTouchMove(1, 107f, 100f))
+        assertEquals(listOf(Binding.KEY_CTRL_L to true), events)
+        verify(xServer).injectPointerMoveDelta(any(), any())
+
+        assertTrue(element.handleTouchMove(1, 107f, 100f))
+        assertEquals(
+            listOf(Binding.KEY_CTRL_L to true, Binding.KEY_CTRL_L to false),
             events,
         )
     }

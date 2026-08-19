@@ -50,11 +50,7 @@ public class ExternalControllerBinding {
             controllerBindingJSONObject.put("keyCode", (int) this.keyCode);
             controllerBindingJSONObject.put("binding", getBinding().name());
             if (!bindingCombo.isSingleBinding()) {
-                controllerBindingJSONObject.put("bindings", bindingCombo.toJsonArray());
-                if (bindingCombo.isSequence()) {
-                    controllerBindingJSONObject.put("bindingMode", bindingCombo.getMode().getJsonName());
-                    controllerBindingJSONObject.put("bindingDelayMs", bindingCombo.getSequenceDelayMs());
-                }
+                bindingCombo.writeToJsonObject(controllerBindingJSONObject);
             }
             return controllerBindingJSONObject;
         } catch (JSONException e) {

@@ -21,6 +21,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 public class ControlElement {
@@ -265,6 +266,32 @@ public class ControlElement {
             inputControlsView.handleInputEvent(bindingCombo.getPrimaryBinding(), isActionDown, offset);
         }
         else inputControlsView.handleInputEvent(bindingCombo, isActionDown, offset);
+    }
+
+    private void handleSimultaneousBindingMembers(
+            BindingCombo bindingCombo,
+            Binding excludedBinding,
+            boolean isActionDown,
+            float offset) {
+        List<Binding> comboBindings = bindingCombo.getBindings();
+        if (isActionDown) {
+            for (Binding binding : comboBindings) {
+                if (binding != excludedBinding) inputControlsView.handleInputEvent(binding, true, offset);
+            }
+        }
+        else {
+            for (int i = comboBindings.size() - 1; i >= 0; i--) {
+                Binding binding = comboBindings.get(i);
+                if (binding != excludedBinding) inputControlsView.handleInputEvent(binding, false, offset);
+            }
+        }
+    }
+
+    private Binding findMouseMoveBinding(BindingCombo bindingCombo) {
+        for (Binding binding : bindingCombo.getBindings()) {
+            if (binding.isMouseMove()) return binding;
+        }
+        return Binding.NONE;
     }
 
     public String getShooterMovementType() {
@@ -530,7 +557,10 @@ public class ControlElement {
             if (text.length() > 7) {
                 String[] parts = text.split(" ");
                 StringBuilder sb = new StringBuilder();
-                for (String part : parts) sb.append(part.charAt(0));
+                for (String part : parts) {
+                    if (part.isEmpty() || part.equals("+") || part.equals("->")) continue;
+                    sb.append(part.charAt(0));
+                }
                 return (binding.isMouse() ? "M" : "")+ sb;
             }
             else return text;
@@ -1109,12 +1139,15 @@ public class ControlElement {
     }
 
     private boolean isKeepButtonPressedAfterMinTime() {
-        Binding binding = getBindingAt(0);
-        return !toggleSwitch && (binding == Binding.GAMEPAD_BUTTON_L3 || binding == Binding.GAMEPAD_BUTTON_R3);
+        BindingCombo bindingCombo = getBindingComboAt(0);
+        return !toggleSwitch &&
+                (bindingCombo.contains(Binding.GAMEPAD_BUTTON_L3) || bindingCombo.contains(Binding.GAMEPAD_BUTTON_R3));
     }
 
     private boolean isRadialMenuButton() {
-        return type == Type.BUTTON && (getBindingAt(0) == Binding.OPEN_RADIAL_MENU || getBindingAt(1) == Binding.OPEN_RADIAL_MENU);
+        return type == Type.BUTTON &&
+                (getBindingComboAt(0).contains(Binding.OPEN_RADIAL_MENU) ||
+                        getBindingComboAt(1).contains(Binding.OPEN_RADIAL_MENU));
     }
 
     private boolean handleRadialMenuDirectionalMove(int pointerId, boolean[] directionalStates, float x, float y) {
@@ -1125,7 +1158,7 @@ public class ControlElement {
         }
 
         for (byte i = 0; i < directionalStates.length && i < bindings.length; i++) {
-            if (getBindingAt(i) == Binding.OPEN_RADIAL_MENU && directionalStates[i]) {
+            if (getBindingComboAt(i).contains(Binding.OPEN_RADIAL_MENU) && directionalStates[i]) {
                 releaseActiveDirectionalStates();
                 radialMenuTouchActive = true;
                 inputControlsView.handleRadialMenuTouchDown(pointerId, x, y);
@@ -1255,8 +1288,26 @@ public class ControlElement {
 
                 for (byte i = 0; i < 4; i++) {
                     float value = (i == 1 || i == 3 ? deltaX : deltaY);
-                    Binding binding = getBindingAt(i);
-                    if (binding.isGamepad()) {
+                    BindingCombo bindingCombo = getBindingComboAt(i);
+                    Binding binding = bindingCombo.getPrimaryBinding();
+                    Binding mouseMoveBinding = findMouseMoveBinding(bindingCombo);
+                    if (mouseMoveBinding != Binding.NONE && !bindingCombo.isSequence()) {
+                        if (Math.abs(value) > TouchpadView.CURSOR_ACCELERATION_THRESHOLD) {
+                            value *= TouchpadView.CURSOR_ACCELERATION;
+                        }
+                        if (mouseMoveBinding == Binding.MOUSE_MOVE_LEFT || mouseMoveBinding == Binding.MOUSE_MOVE_RIGHT) {
+                            cursorDx = Mathf.roundPoint(value);
+                        }
+                        else {
+                            cursorDy = Mathf.roundPoint(value);
+                        }
+                        boolean nextState = states[i];
+                        if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
+                            handleSimultaneousBindingMembers(bindingCombo, mouseMoveBinding, nextState, value);
+                        }
+                        this.states[i] = nextState;
+                    }
+                    else if (binding.isGamepad()) {
                         if (interpolator == null) interpolator = new CubicBezierInterpolator();
                         if (Math.abs(value) > TRACKPAD_ACCELERATION_THRESHOLD) value *= STICK_SENSITIVITY;
                         interpolator.set(0.075f, 0.95f, 0.45f, 0.95f);
@@ -1265,17 +1316,8 @@ public class ControlElement {
                         this.states[i] = true;
                     }
                     else {
-                        if (Math.abs(value) > TouchpadView.CURSOR_ACCELERATION_THRESHOLD) value *= TouchpadView.CURSOR_ACCELERATION;
-                        if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
-                            cursorDx = Mathf.roundPoint(value);
-                        }
-                        else if (binding == Binding.MOUSE_MOVE_UP || binding == Binding.MOUSE_MOVE_DOWN) {
-                            cursorDy = Mathf.roundPoint(value);
-                        }
-                        else {
-                            handleBindingInputEvent(i, states[i], value);
-                            this.states[i] = states[i];
-                        }
+                        handleBindingInputEvent(i, states[i], value);
+                        this.states[i] = states[i];
                     }
                 }
 

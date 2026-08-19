@@ -77,4 +77,31 @@ class BindingComboTest {
         assertEquals(first, second)
         assertEquals(first.hashCode(), second.hashCode())
     }
+
+    @Test
+    fun `simultaneous combo ignores sequence delay and round trips equally`() {
+        val expected = BindingCombo.fromBindings(
+            listOf(Binding.KEY_CTRL_L, Binding.KEY_1),
+            BindingCombo.Mode.SIMULTANEOUS,
+            800,
+        )
+
+        val actual = BindingCombo.fromJsonValue(expected.toJsonValue())
+
+        assertEquals(BindingCombo.DEFAULT_SEQUENCE_DELAY_MS, expected.sequenceDelayMs)
+        assertEquals(expected, actual)
+    }
+
+    @Test
+    fun `legacy embedded sequence fields still load`() {
+        val json = JSONObject()
+            .put("bindings", JSONArray(listOf("KEY_E", "MOUSE_LEFT_BUTTON")))
+            .put("bindingMode", "sequence")
+            .put("bindingDelayMs", 240)
+
+        val combo = BindingCombo.fromJsonValue(json)
+
+        assertEquals(BindingCombo.Mode.SEQUENCE, combo.mode)
+        assertEquals(240, combo.sequenceDelayMs)
+    }
 }

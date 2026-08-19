@@ -133,9 +133,21 @@ fun DelayTextField(
     }
     var text by remember { mutableStateOf(clampedValue.toString()) }
     var isFocused by remember { mutableStateOf(false) }
+    var lastSubmittedValue by remember { mutableStateOf(clampedValue) }
+
+    fun normalizedDraftValue(draft: String): Int? {
+        if (draft.isEmpty()) return null
+        return draft.toLongOrNull()
+            ?.coerceIn(valueRange.first.toLong(), valueRange.last.toLong())
+            ?.toInt()
+            ?: valueRange.last
+    }
 
     LaunchedEffect(clampedValue, isFocused) {
-        if (!isFocused) text = clampedValue.toString()
+        if (!isFocused || clampedValue != lastSubmittedValue) {
+            text = clampedValue.toString()
+            lastSubmittedValue = clampedValue
+        }
     }
 
     NoExtractOutlinedTextField(
@@ -143,9 +155,9 @@ fun DelayTextField(
         onValueChange = { newText ->
             val filtered = newText.filter { it.isDigit() }
             text = filtered
-            val parsed = filtered.toIntOrNull()
-            if (parsed != null && parsed in valueRange && parsed != value) {
-                onValueChange(parsed)
+            normalizedDraftValue(filtered)?.let { nextValue ->
+                lastSubmittedValue = nextValue
+                if (nextValue != value) onValueChange(nextValue)
             }
         },
         label = { Text(label) },
@@ -157,10 +169,9 @@ fun DelayTextField(
                 val wasFocused = isFocused
                 isFocused = focusState.isFocused
                 if (wasFocused && !focusState.isFocused) {
-                    val nextValue = text.toIntOrNull()
-                        ?.coerceIn(valueRange.first, valueRange.last)
-                        ?: clampedValue
+                    val nextValue = normalizedDraftValue(text) ?: clampedValue
                     text = nextValue.toString()
+                    lastSubmittedValue = nextValue
                     if (nextValue != value) onValueChange(nextValue)
                 }
             }

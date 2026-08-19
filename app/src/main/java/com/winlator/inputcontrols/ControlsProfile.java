@@ -284,15 +284,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     ExternalControllerBinding controllerBinding = new ExternalControllerBinding();
                     controllerBinding.setKeyCode(controllerBindingJSONObject.getInt("keyCode"));
                     if (controllerBindingJSONObject.has("bindings")) {
-                        BindingCombo.Mode mode = BindingCombo.Mode.fromJsonName(
-                                controllerBindingJSONObject.optString("bindingMode", BindingCombo.Mode.SIMULTANEOUS.getJsonName()));
-                        int delayMs = controllerBindingJSONObject.optInt(
-                                "bindingDelayMs",
-                                BindingCombo.DEFAULT_SEQUENCE_DELAY_MS);
-                        controllerBinding.setBindingCombo(BindingCombo.fromJsonArray(
-                                controllerBindingJSONObject.optJSONArray("bindings"),
-                                mode,
-                                delayMs));
+                        controllerBinding.setBindingCombo(BindingCombo.fromJsonValue(controllerBindingJSONObject));
                     }
                     else {
                         controllerBinding.setBinding(Binding.fromString(controllerBindingJSONObject.getString("binding")));

@@ -71,11 +71,7 @@ public class RadialMenu {
             object.put("label", label);
             object.put("binding", getBinding().name());
             if (!bindingCombo.isSingleBinding()) {
-                object.put("bindings", bindingCombo.toJsonArray());
-                if (bindingCombo.isSequence()) {
-                    object.put("bindingMode", bindingCombo.getMode().getJsonName());
-                    object.put("bindingDelayMs", bindingCombo.getSequenceDelayMs());
-                }
+                bindingCombo.writeToJsonObject(object);
             }
             return object;
         }
@@ -84,10 +80,7 @@ public class RadialMenu {
             Slot slot = new Slot();
             slot.setLabel(object.optString("label", ""));
             if (object.has("bindings")) {
-                BindingCombo.Mode mode = BindingCombo.Mode.fromJsonName(
-                        object.optString("bindingMode", BindingCombo.Mode.SIMULTANEOUS.getJsonName()));
-                int delayMs = object.optInt("bindingDelayMs", BindingCombo.DEFAULT_SEQUENCE_DELAY_MS);
-                slot.setBindingCombo(BindingCombo.fromJsonArray(object.optJSONArray("bindings"), mode, delayMs));
+                slot.setBindingCombo(BindingCombo.fromJsonValue(object));
             }
             else {
                 slot.setBinding(Binding.fromString(object.optString("binding", Binding.NONE.name())));

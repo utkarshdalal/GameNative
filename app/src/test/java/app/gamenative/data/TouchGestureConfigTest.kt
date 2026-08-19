@@ -78,4 +78,13 @@ class TouchGestureConfigTest {
         assertEquals(listOf("key_E", TouchGestureConfig.ACTION_LEFT_CLICK), TouchGestureConfig.actionParts(sequence))
         assertEquals(TouchGestureConfig.DEFAULT_ACTION_SEQUENCE_DELAY_MS, TouchGestureConfig.actionSequenceDelayMs(sequence))
     }
+
+    @Test
+    fun `mouse action detection does not depend on combo order`() {
+        val combo = TouchGestureConfig.actionComboOf(
+            listOf(TouchGestureConfig.ACTION_LEFT_CLICK, "key_E"),
+        )
+
+        assertTrue(TouchGestureConfig.containsMouseButtonAction(combo))
+    }
 }

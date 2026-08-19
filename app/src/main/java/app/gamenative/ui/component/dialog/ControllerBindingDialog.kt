@@ -189,13 +189,13 @@ fun ControllerBindingDialog(
                             },
                             modifier = Modifier.size(40.dp)
                         ) {
-                            Icon(Icons.Default.Check, null)
+                            Icon(Icons.Default.Check, stringResource(app.gamenative.R.string.save))
                         }
                         IconButton(
                             onClick = onDismiss,
                             modifier = Modifier.size(40.dp)
                         ) {
-                            Icon(Icons.Default.Close, null)
+                            Icon(Icons.Default.Close, stringResource(app.gamenative.R.string.close))
                         }
                     }
                 }
@@ -455,12 +455,15 @@ fun ControllerBindingDialog(
                             }
                         } else {
                             filteredBindings.forEach { binding ->
+                                val isNone = binding == Binding.NONE
                                 BindingOption(
                                     binding = binding,
-                                    isSelected = binding in selectedBindings,
-                                    enabled = binding in selectedBindings || selectedBindings.size < BindingCombo.MAX_BINDINGS,
+                                    isSelected = if (isNone) selectedBindings.isEmpty() else binding in selectedBindings,
+                                    enabled = isNone || binding in selectedBindings || selectedBindings.size < BindingCombo.MAX_BINDINGS,
                                     onClick = {
-                                        if (binding in selectedBindings) {
+                                        if (isNone) {
+                                            selectedBindings.clear()
+                                        } else if (binding in selectedBindings) {
                                             selectedBindings.remove(binding)
                                         } else if (selectedBindings.size < BindingCombo.MAX_BINDINGS) {
                                             selectedBindings.add(binding)

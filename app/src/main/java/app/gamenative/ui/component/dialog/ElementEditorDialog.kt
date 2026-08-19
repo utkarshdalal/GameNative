@@ -105,7 +105,7 @@ fun ElementEditorDialog(
                     val parts = text.split(" ")
                     val sb = StringBuilder()
                     for (part in parts) {
-                        if (part.isNotEmpty()) sb.append(part[0])
+                        if (part.isNotEmpty() && part != "+" && part != "->") sb.append(part[0])
                     }
                     text = (if (binding.primaryBinding.isMouse) "M" else "") + sb.toString()
                 }
@@ -1068,7 +1068,7 @@ fun ElementEditorDialog(
                             val parts = newBindingText.split(" ")
                             val sb = StringBuilder()
                             for (part in parts) {
-                                if (part.isNotEmpty()) sb.append(part[0])
+                                if (part.isNotEmpty() && part != "+" && part != "->") sb.append(part[0])
                             }
                             (if (bindingCombo?.primaryBinding?.isMouse() == true) "M" else "") + sb.toString()
                         } else {
