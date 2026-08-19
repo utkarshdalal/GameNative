@@ -202,6 +202,11 @@ public enum Binding {
         return name().startsWith("GAMEPAD_");
     }
 
+    public boolean isGamepadAxis() {
+        return ordinal() >= GAMEPAD_LEFT_THUMB_UP.ordinal() &&
+                ordinal() <= GAMEPAD_RIGHT_THUMB_LEFT.ordinal();
+    }
+
     public boolean isExtra() {
         return this == OPEN_NAVIGATION_MENU || this == SHOW_KEYBOARD || this == ALT_ENTER || this == OPEN_RADIAL_MENU;
     }

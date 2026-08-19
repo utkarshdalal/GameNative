@@ -294,6 +294,13 @@ public class ControlElement {
         return Binding.NONE;
     }
 
+    private Binding findGamepadAxisBinding(BindingCombo bindingCombo) {
+        for (Binding binding : bindingCombo.getBindings()) {
+            if (binding.isGamepadAxis()) return binding;
+        }
+        return Binding.NONE;
+    }
+
     public String getShooterMovementType() {
         return shooterMovementType;
     }
@@ -1267,14 +1274,25 @@ public class ControlElement {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
                     BindingCombo bindingCombo = getBindingComboAt(i);
                     Binding binding = bindingCombo.getPrimaryBinding();
-                    if (bindingCombo.containsGamepadBinding()) {
+                    Binding gamepadAxisBinding = findGamepadAxisBinding(bindingCombo);
+                    if (gamepadAxisBinding != Binding.NONE && !bindingCombo.isSequence()) {
                         value = Mathf.clamp(Math.max(0, Math.abs(value) - 0.01f) * Mathf.sign(value) * STICK_SENSITIVITY, -1, 1);
-                        handleBindingInputEvent(i, true, value);
-                        this.states[i] = true;
+                        inputControlsView.handleInputEvent(gamepadAxisBinding, true, value);
+                        boolean nextState = states[i];
+                        if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
+                            handleSimultaneousBindingMembers(
+                                    bindingCombo,
+                                    gamepadAxisBinding,
+                                    nextState,
+                                    value);
+                        }
+                        this.states[i] = bindingCombo.isSingleBinding() || nextState;
                     }
                     else {
                         boolean state = binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i];
-                        handleBindingInputEvent(i, state, value);
+                        if (binding.isMouseMove() || this.states[i] != state) {
+                            handleBindingInputEvent(i, state, value);
+                        }
                         this.states[i] = state;
                     }
                 }
@@ -1312,17 +1330,29 @@ public class ControlElement {
                         }
                         this.states[i] = nextState;
                     }
-                    else if (bindingCombo.containsGamepadBinding()) {
-                        if (interpolator == null) interpolator = new CubicBezierInterpolator();
-                        if (Math.abs(value) > TRACKPAD_ACCELERATION_THRESHOLD) value *= STICK_SENSITIVITY;
-                        interpolator.set(0.075f, 0.95f, 0.45f, 0.95f);
-                        float interpolatedValue = interpolator.getInterpolation(Math.min(1.0f, Math.abs(value / TRACKPAD_MAX_SPEED)));
-                        handleBindingInputEvent(i, true, Mathf.clamp(interpolatedValue * Mathf.sign(value), -1, 1));
-                        this.states[i] = true;
-                    }
                     else {
-                        handleBindingInputEvent(i, states[i], value);
-                        this.states[i] = states[i];
+                        Binding gamepadAxisBinding = findGamepadAxisBinding(bindingCombo);
+                        if (gamepadAxisBinding != Binding.NONE && !bindingCombo.isSequence()) {
+                            if (interpolator == null) interpolator = new CubicBezierInterpolator();
+                            if (Math.abs(value) > TRACKPAD_ACCELERATION_THRESHOLD) value *= STICK_SENSITIVITY;
+                            interpolator.set(0.075f, 0.95f, 0.45f, 0.95f);
+                            float interpolatedValue = interpolator.getInterpolation(Math.min(1.0f, Math.abs(value / TRACKPAD_MAX_SPEED)));
+                            float gamepadOffset = Mathf.clamp(interpolatedValue * Mathf.sign(value), -1, 1);
+                            inputControlsView.handleInputEvent(gamepadAxisBinding, true, gamepadOffset);
+                            boolean nextState = states[i];
+                            if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
+                                handleSimultaneousBindingMembers(
+                                        bindingCombo,
+                                        gamepadAxisBinding,
+                                        nextState,
+                                        gamepadOffset);
+                            }
+                            this.states[i] = bindingCombo.isSingleBinding() || nextState;
+                        }
+                        else if (this.states[i] != states[i]) {
+                            handleBindingInputEvent(i, states[i], value);
+                            this.states[i] = states[i];
+                        }
                     }
                 }
 
