@@ -86,6 +86,7 @@ public class ControlElement {
     private boolean currentPointerActivatedButtonBindings = false;
     private final Rect boundingBox = new Rect();
     private boolean[] states = new boolean[4];
+    private boolean[] gamepadAxisActive = new boolean[4];
     private boolean radialMenuTouchActive = false;
     private boolean boundingBoxNeedsUpdate = true;
     private String text = "";
@@ -180,6 +181,7 @@ public class ControlElement {
         bindings = new BindingCombo[bindingCount];
         setBinding(Binding.NONE);
         states = new boolean[bindingCount];
+        gamepadAxisActive = new boolean[bindingCount];
         boundingBoxNeedsUpdate = true;
     }
 
@@ -243,6 +245,7 @@ public class ControlElement {
             bindings = Arrays.copyOf(bindings, index+1);
             Arrays.fill(bindings, oldLength, bindings.length, BindingCombo.none());
             states = new boolean[bindings.length];
+            gamepadAxisActive = new boolean[bindings.length];
             boundingBoxNeedsUpdate = true;
         }
         bindings[index] = binding != null ? binding : BindingCombo.none();
@@ -1180,7 +1183,14 @@ public class ControlElement {
     private void releaseActiveDirectionalStates() {
         for (byte i = 0; i < states.length && i < bindings.length; i++) {
             if (states[i]) handleBindingInputEvent(i, false);
+            else if (gamepadAxisActive[i]) {
+                Binding gamepadAxisBinding = findGamepadAxisBinding(getBindingComboAt(i));
+                if (gamepadAxisBinding != Binding.NONE) {
+                    inputControlsView.handleInputEvent(gamepadAxisBinding, false, 0);
+                }
+            }
             states[i] = false;
+            gamepadAxisActive[i] = false;
         }
     }
 
@@ -1278,6 +1288,7 @@ public class ControlElement {
                     if (gamepadAxisBinding != Binding.NONE && !bindingCombo.isSequence()) {
                         value = Mathf.clamp(Math.max(0, Math.abs(value) - 0.01f) * Mathf.sign(value) * STICK_SENSITIVITY, -1, 1);
                         inputControlsView.handleInputEvent(gamepadAxisBinding, true, value);
+                        gamepadAxisActive[i] = value != 0;
                         boolean nextState = states[i];
                         if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
                             handleSimultaneousBindingMembers(
@@ -1339,6 +1350,7 @@ public class ControlElement {
                             float interpolatedValue = interpolator.getInterpolation(Math.min(1.0f, Math.abs(value / TRACKPAD_MAX_SPEED)));
                             float gamepadOffset = Mathf.clamp(interpolatedValue * Mathf.sign(value), -1, 1);
                             inputControlsView.handleInputEvent(gamepadAxisBinding, true, gamepadOffset);
+                            gamepadAxisActive[i] = gamepadOffset != 0;
                             boolean nextState = states[i];
                             if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
                                 handleSimultaneousBindingMembers(
@@ -1433,10 +1445,7 @@ public class ControlElement {
                 currentPointerActivatedButtonBindings = false;
             }
             else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
-                for (byte i = 0; i < states.length; i++) {
-                    if (states[i]) handleBindingInputEvent(i, false);
-                    states[i] = false;
-                }
+                releaseActiveDirectionalStates();
 
                 if (type == Type.RANGE_BUTTON) {
                     scroller.handleTouchUp();
@@ -1477,10 +1486,7 @@ public class ControlElement {
             touchTime = null;
         }
         else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
-            for (byte i = 0; i < states.length; i++) {
-                if (states[i]) handleBindingInputEvent(i, false);
-                states[i] = false;
-            }
+            releaseActiveDirectionalStates();
             if (type == Type.RANGE_BUTTON) scroller.handleTouchUp();
             currentPosition = null;
         }

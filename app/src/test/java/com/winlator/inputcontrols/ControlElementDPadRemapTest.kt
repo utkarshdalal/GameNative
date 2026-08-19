@@ -23,18 +23,21 @@ class ControlElementDPadRemapTest {
         listOf(Binding.KEY_E, Binding.GAMEPAD_LEFT_THUMB_RIGHT),
     )
 
-    private fun stickRightOffset(bindings: List<Binding>): Float {
-        val offsets = mutableListOf<Float>()
-        val view = mock<InputControlsView>()
-        whenever(view.snappingSize).thenReturn(10)
+    private fun captureRightAxisEvents(view: InputControlsView): MutableList<Pair<Boolean, Float>> {
+        val events = mutableListOf<Pair<Boolean, Float>>()
         doAnswer { invocation ->
-            if (invocation.getArgument<Binding>(0) == Binding.GAMEPAD_LEFT_THUMB_RIGHT &&
-                invocation.getArgument<Boolean>(1)
-            ) {
-                offsets += invocation.getArgument<Float>(2)
+            if (invocation.getArgument<Binding>(0) == Binding.GAMEPAD_LEFT_THUMB_RIGHT) {
+                events += invocation.getArgument<Boolean>(1) to invocation.getArgument<Float>(2)
             }
             null
         }.whenever(view).handleInputEvent(any<Binding>(), any(), any())
+        return events
+    }
+
+    private fun stickRightOffset(bindings: List<Binding>): Float {
+        val view = mock<InputControlsView>()
+        val events = captureRightAxisEvents(view)
+        whenever(view.snappingSize).thenReturn(10)
         val element = ControlElement(view).apply {
             setType(ControlElement.Type.STICK)
             setX(100)
@@ -43,13 +46,13 @@ class ControlElementDPadRemapTest {
         }
 
         assertTrue(element.handleTouchDown(1, 115f, 100f))
-        return offsets.last()
+        return events.last { it.first }.second
     }
 
     private fun trackpadRightOffset(bindings: List<Binding>): Float {
-        val offsets = mutableListOf<Float>()
         val touchpad = mock<TouchpadView>()
         val view = mock<InputControlsView>()
+        val events = captureRightAxisEvents(view)
         whenever(view.snappingSize).thenReturn(10)
         whenever(view.touchpadView).thenReturn(touchpad)
         whenever(view.xServer).thenReturn(mock<XServer>())
@@ -57,14 +60,6 @@ class ControlElementDPadRemapTest {
             floatArrayOf(0f, 0f),
             floatArrayOf(2f, 0f),
         )
-        doAnswer { invocation ->
-            if (invocation.getArgument<Binding>(0) == Binding.GAMEPAD_LEFT_THUMB_RIGHT &&
-                invocation.getArgument<Boolean>(1)
-            ) {
-                offsets += invocation.getArgument<Float>(2)
-            }
-            null
-        }.whenever(view).handleInputEvent(any<Binding>(), any(), any())
         val element = ControlElement(view).apply {
             setType(ControlElement.Type.TRACKPAD)
             setX(100)
@@ -73,9 +68,9 @@ class ControlElementDPadRemapTest {
         }
 
         assertTrue(element.handleTouchDown(1, 100f, 100f))
-        offsets.clear()
+        events.clear()
         assertTrue(element.handleTouchMove(1, 102f, 100f))
-        return offsets.last()
+        return events.last { it.first }.second
     }
 
     private fun fixture(): Fixture {
@@ -266,6 +261,58 @@ class ControlElementDPadRemapTest {
 
         interpolatedOffsets.forEach { assertEquals(baseline, it, 0f) }
         assertTrue(baseline in 0f..1f)
+    }
+
+    @Test
+    fun `stick releases sub-threshold mixed axis on touch up`() {
+        val view = mock<InputControlsView>()
+        val events = captureRightAxisEvents(view)
+        whenever(view.snappingSize).thenReturn(10)
+        val element = ControlElement(view).apply {
+            setType(ControlElement.Type.STICK)
+            setX(100)
+            setY(100)
+            setBindingComboAt(
+                1,
+                BindingCombo.fromBindings(listOf(Binding.GAMEPAD_LEFT_THUMB_RIGHT, Binding.KEY_E)),
+            )
+        }
+
+        assertTrue(element.handleTouchDown(1, 102f, 100f))
+        assertTrue(events.last().first)
+        assertTrue(events.last().second > 0f)
+        assertTrue(element.handleTouchUp(1))
+        assertEquals(false, events.last().first)
+        assertEquals(0f, events.last().second, 0f)
+    }
+
+    @Test
+    fun `trackpad releases sub-threshold mixed axis on cancellation`() {
+        val touchpad = mock<TouchpadView>()
+        val view = mock<InputControlsView>()
+        val events = captureRightAxisEvents(view)
+        whenever(view.snappingSize).thenReturn(10)
+        whenever(view.touchpadView).thenReturn(touchpad)
+        whenever(view.xServer).thenReturn(mock<XServer>())
+        whenever(touchpad.computeDeltaPoint(any(), any(), any(), any())).thenReturn(
+            floatArrayOf(0.5f, 0f),
+        )
+        val element = ControlElement(view).apply {
+            setType(ControlElement.Type.TRACKPAD)
+            setX(100)
+            setY(100)
+            setBindingComboAt(
+                1,
+                BindingCombo.fromBindings(listOf(Binding.GAMEPAD_LEFT_THUMB_RIGHT, Binding.KEY_E)),
+            )
+        }
+
+        assertTrue(element.handleTouchDown(1, 100f, 100f))
+        assertTrue(events.last().first)
+        assertTrue(events.last().second > 0f)
+        assertTrue(element.cancelTouch())
+        assertEquals(false, events.last().first)
+        assertEquals(0f, events.last().second, 0f)
     }
 
     @Test
