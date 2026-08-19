@@ -2321,4 +2321,18 @@
     <string name="immersive_onboarding_pointer_toggle">Dă dublu clic pe un joystick pentru a comuta între controller Xbox și indicator XR</string>
     <string name="immersive_mode_xr_pointer">Mod indicator XR</string>
     <string name="immersive_mode_xbox">Mod controller Xbox</string>
+    <string name="tab_favorites">Favorite</string>
+    <string name="favorites_empty_title">Încă nu ai favorite</string>
+    <string name="favorites_empty_message">Deschide meniul de detalii al jocului pentru a-l adăuga la favorite sau apasă butonul frontal din stânga al controlerului când jocul este focalizat (X pe Xbox, Pătrat pe PlayStation sau Y pe un controler cu dispunere Nintendo).</string>
+    <string name="favorites_empty_action">Răsfoiește toate jocurile</string>
+    <string name="favorites_empty_filtered_title">Nicio favorită de afișat</string>
+    <string name="favorites_empty_filtered_message">Niciun joc favorit nu corespunde căutării sau filtrelor curente sau nu este disponibil în bibliotecă.</string>
+    <string name="option_add_to_favorites">Adaugă la favorite</string>
+    <string name="option_remove_from_favorites">Elimină de la favorite</string>
+    <string name="favorite_add_named">Adaugă %1$s la favorite</string>
+    <string name="favorite_remove_named">Elimină %1$s de la favorite</string>
+    <string name="favorite_removed">Eliminat de la favorite</string>
+    <string name="favorite_removed_named">%1$s eliminat de la favorite</string>
+    <string name="favorite_added">Adăugat la favorite</string>
+    <string name="favorite_added_named">%1$s adăugat la favorite</string>
 </resources>

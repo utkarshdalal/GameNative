@@ -2312,4 +2312,18 @@
     <string name="immersive_onboarding_pointer_toggle">스틱을 두 번 누르면 Xbox 컨트롤러와 XR 포인터가 전환됩니다</string>
     <string name="immersive_mode_xr_pointer">XR 포인터 모드</string>
     <string name="immersive_mode_xbox">Xbox 컨트롤러 모드</string>
+    <string name="tab_favorites">즐겨찾기</string>
+    <string name="favorites_empty_title">아직 즐겨찾기가 없습니다</string>
+    <string name="favorites_empty_message">게임의 세부 메뉴를 열어 즐겨찾기에 추가하거나, 게임에 포커스한 상태에서 컨트롤러의 왼쪽 페이스 버튼을 누르세요(Xbox는 X, PlayStation은 네모, Nintendo 배열은 Y).</string>
+    <string name="favorites_empty_action">모든 게임 보기</string>
+    <string name="favorites_empty_filtered_title">표시할 즐겨찾기가 없습니다</string>
+    <string name="favorites_empty_filtered_message">현재 검색어나 필터와 일치하거나 라이브러리에서 사용할 수 있는 즐겨찾기 게임이 없습니다.</string>
+    <string name="option_add_to_favorites">즐겨찾기에 추가</string>
+    <string name="option_remove_from_favorites">즐겨찾기에서 제거</string>
+    <string name="favorite_add_named">%1$s을(를) 즐겨찾기에 추가</string>
+    <string name="favorite_remove_named">%1$s을(를) 즐겨찾기에서 제거</string>
+    <string name="favorite_removed">즐겨찾기에서 제거됨</string>
+    <string name="favorite_removed_named">%1$s을(를) 즐겨찾기에서 제거함</string>
+    <string name="favorite_added">즐겨찾기에 추가됨</string>
+    <string name="favorite_added_named">%1$s을(를) 즐겨찾기에 추가함</string>
 </resources>

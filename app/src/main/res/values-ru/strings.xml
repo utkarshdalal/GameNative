@@ -2249,4 +2249,18 @@ https://gamenative.app
     <string name="immersive_onboarding_pointer_toggle">Дважды нажмите стик, чтобы переключиться между геймпадом Xbox и XR-указателем</string>
     <string name="immersive_mode_xr_pointer">Режим XR-указателя</string>
     <string name="immersive_mode_xbox">Режим геймпада Xbox</string>
+    <string name="tab_favorites">Избранное</string>
+    <string name="favorites_empty_title">Пока нет избранного</string>
+    <string name="favorites_empty_message">Откройте меню сведений об игре, чтобы добавить её в избранное, или нажмите левую лицевую кнопку контроллера, когда игра выделена (X на Xbox, квадрат на PlayStation или Y при раскладке Nintendo).</string>
+    <string name="favorites_empty_action">Просмотреть все игры</string>
+    <string name="favorites_empty_filtered_title">Нет избранного для показа</string>
+    <string name="favorites_empty_filtered_message">Нет избранных игр, соответствующих текущему поиску или фильтрам или доступных в вашей библиотеке.</string>
+    <string name="option_add_to_favorites">Добавить в избранное</string>
+    <string name="option_remove_from_favorites">Удалить из избранного</string>
+    <string name="favorite_add_named">Добавить %1$s в избранное</string>
+    <string name="favorite_remove_named">Удалить %1$s из избранного</string>
+    <string name="favorite_removed">Удалено из избранного</string>
+    <string name="favorite_removed_named">%1$s удалено из избранного</string>
+    <string name="favorite_added">Добавлено в избранное</string>
+    <string name="favorite_added_named">%1$s добавлено в избранное</string>
 </resources>

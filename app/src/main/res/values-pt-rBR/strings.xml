@@ -2187,4 +2187,18 @@
     <string name="immersive_onboarding_pointer_toggle">Clique duas vezes em um analógico para alternar entre controle Xbox e ponteiro XR</string>
     <string name="immersive_mode_xr_pointer">Modo ponteiro XR</string>
     <string name="immersive_mode_xbox">Modo controle Xbox</string>
+    <string name="tab_favorites">Favoritos</string>
+    <string name="favorites_empty_title">Ainda não há favoritos</string>
+    <string name="favorites_empty_message">Abra o menu de detalhes do jogo para adicioná-lo aos favoritos ou pressione o botão frontal esquerdo do controle enquanto o jogo estiver em foco (X no Xbox, Quadrado no PlayStation ou Y em controles com layout Nintendo).</string>
+    <string name="favorites_empty_action">Ver todos os jogos</string>
+    <string name="favorites_empty_filtered_title">Nenhum favorito para mostrar</string>
+    <string name="favorites_empty_filtered_message">Nenhum jogo favorito corresponde à busca ou aos filtros atuais ou está disponível na sua biblioteca.</string>
+    <string name="option_add_to_favorites">Adicionar aos favoritos</string>
+    <string name="option_remove_from_favorites">Remover dos favoritos</string>
+    <string name="favorite_add_named">Adicionar %1$s aos favoritos</string>
+    <string name="favorite_remove_named">Remover %1$s dos favoritos</string>
+    <string name="favorite_removed">Removido dos favoritos</string>
+    <string name="favorite_removed_named">%1$s removido dos favoritos</string>
+    <string name="favorite_added">Adicionado aos favoritos</string>
+    <string name="favorite_added_named">%1$s adicionado aos favoritos</string>
 </resources>

@@ -50,6 +50,8 @@ object PrefManager {
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val favoritePersistenceLock = Any()
+    private var favoritePersistenceVersion = 0L
 
     private lateinit var dataStore: DataStore<Preferences>
 
@@ -1347,6 +1349,37 @@ object PrefManager {
         }
         set(value) {
             setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
+        }
+
+    private val FAVORITE_APP_IDS = stringPreferencesKey("favorite_app_ids")
+    var favoriteAppIds: Set<String>
+        get() {
+            val value = getPref(FAVORITE_APP_IDS, "[]")
+            return try {
+                Json.decodeFromString<Set<String>>(value)
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to decode favorite app ids; falling back to empty set")
+                emptySet()
+            }
+        }
+        set(value) {
+            // Keep JSON encoding off the caller thread. The version check prevents an older
+            // serialization from overwriting a newer favorite set if several toggles are queued.
+            val version = synchronized(favoritePersistenceLock) {
+                favoritePersistenceVersion += 1
+                favoritePersistenceVersion
+            }
+            scope.launch {
+                val serialized = Json.encodeToString(value)
+                dataStore.edit { pref ->
+                    val isLatest = synchronized(favoritePersistenceLock) {
+                        version == favoritePersistenceVersion
+                    }
+                    if (isLatest) {
+                        pref[FAVORITE_APP_IDS] = serialized
+                    }
+                }
+            }
         }
 
     // Add new setting for Wine debug logging

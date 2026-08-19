@@ -2323,4 +2323,18 @@
     <string name="immersive_onboarding_pointer_toggle">雙擊搖桿可在 Xbox 控制器與 XR 指標之間切換</string>
     <string name="immersive_mode_xr_pointer">XR 指標模式</string>
     <string name="immersive_mode_xbox">Xbox 控制器模式</string>
+    <string name="tab_favorites">收藏</string>
+    <string name="favorites_empty_title">還沒有收藏</string>
+    <string name="favorites_empty_message">開啟遊戲詳細資料選單即可加入收藏，或在遊戲取得焦點時按下控制器左側正面按鍵（Xbox 為 X、PlayStation 為方形鍵、Nintendo 配置為 Y）。</string>
+    <string name="favorites_empty_action">瀏覽所有遊戲</string>
+    <string name="favorites_empty_filtered_title">沒有可顯示的收藏</string>
+    <string name="favorites_empty_filtered_message">沒有符合目前搜尋或篩選條件，或在您的遊戲庫中可用的收藏遊戲。</string>
+    <string name="option_add_to_favorites">加入收藏</string>
+    <string name="option_remove_from_favorites">從收藏中移除</string>
+    <string name="favorite_add_named">將 %1$s 加入收藏</string>
+    <string name="favorite_remove_named">將 %1$s 從收藏中移除</string>
+    <string name="favorite_removed">已從收藏中移除</string>
+    <string name="favorite_removed_named">已將 %1$s 從收藏中移除</string>
+    <string name="favorite_added">已加入收藏</string>
+    <string name="favorite_added_named">已將 %1$s 加入收藏</string>
 </resources>

@@ -110,6 +110,12 @@
     <string name="tab_recommended">Recommended</string>
     <string name="gog_rec_empty">Add or play some games to get GOG recommendations based on your library.</string>
     <string name="tab_all">All</string>
+    <string name="tab_favorites">Favorites</string>
+    <string name="favorites_empty_title">No favorites yet</string>
+    <string name="favorites_empty_message">Open a game’s details menu to add it to favorites, or press the controller’s west face button while a game is focused (X on Xbox, Square on PlayStation, or Y on Nintendo-style layouts).</string>
+    <string name="favorites_empty_action">Browse all games</string>
+    <string name="favorites_empty_filtered_title">No favorites to show</string>
+    <string name="favorites_empty_filtered_message">No favorite games match the current search or filters, or are available in your library.</string>
     <string name="tab_steam">Steam</string>
     <string name="tab_gog">GOG</string>
     <string name="tab_epic">Epic</string>
@@ -1707,6 +1713,14 @@
     <string name="option_reset_to_defaults">Reset container</string>
     <string name="option_get_support">Get support</string>
     <string name="option_submit_feedback">Submit feedback</string>
+    <string name="option_add_to_favorites">Favorite</string>
+    <string name="option_remove_from_favorites">Unfavorite</string>
+    <string name="favorite_add_named">Favorite %1$s</string>
+    <string name="favorite_remove_named">Unfavorite %1$s</string>
+    <string name="favorite_added">Added to favorites</string>
+    <string name="favorite_added_named">Added %1$s to favorites</string>
+    <string name="favorite_removed">Removed from favorites</string>
+    <string name="favorite_removed_named">Removed %1$s from favorites</string>
     <string name="option_reset_drm">Reset DRM</string>
     <string name="option_use_known_config">Use known config</string>
     <string name="option_browse_community_configs">Browse community configs</string>

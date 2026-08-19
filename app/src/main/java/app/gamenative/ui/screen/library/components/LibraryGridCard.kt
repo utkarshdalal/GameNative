@@ -51,6 +51,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
@@ -141,6 +145,39 @@ internal fun GridViewCard(
         if (isItemFocused) onFocus()
     }
 
+    val favoriteIndicator = rememberFavoriteCardIndicator(
+        appId = appInfo.appId,
+        isRecommended = appInfo.isRecommended,
+    )
+    val favoriteActionLabel = if (!appInfo.isRecommended) {
+        stringResource(
+            if (favoriteIndicator.isFavorite) {
+                R.string.favorite_remove_named
+            } else {
+                R.string.favorite_add_named
+            },
+            appInfo.name,
+        )
+    } else {
+        null
+    }
+    val favoriteState = if (favoriteIndicator.isFavorite) stringResource(R.string.favorite_added) else null
+    val favoriteSemantics = if (favoriteActionLabel != null) {
+        Modifier.semantics(mergeDescendants = true) {
+            if (favoriteState != null) {
+                stateDescription = favoriteState
+            }
+            customActions = listOf(
+                CustomAccessibilityAction(favoriteActionLabel) {
+                    toggleFavorite(context, appInfo.appId, appInfo.name)
+                    true
+                },
+            )
+        }
+    } else {
+        Modifier
+    }
+
     Box(
         modifier = modifier
             .padding(vertical = 4.dp)
@@ -152,6 +189,12 @@ internal fun GridViewCard(
                 .fillMaxWidth()
                 .aspectRatio(aspectRatio)
                 .focusRing(interactionSource, cardShape)
+                .favoriteInnerGlow(
+                    isFavorite = favoriteIndicator.isFavorite,
+                    glowAlpha = favoriteIndicator.glowAlpha,
+                    shape = cardShape,
+                )
+                .then(favoriteSemantics)
                 .clickable(
                     onClick = onClick,
                     interactionSource = interactionSource,

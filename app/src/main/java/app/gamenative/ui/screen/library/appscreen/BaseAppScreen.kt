@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
@@ -29,6 +30,7 @@ import app.gamenative.R
 import app.gamenative.api.isValidCommunityConfig
 import app.gamenative.api.prepareCommunityConfigForApply
 import app.gamenative.data.GameSource
+import app.gamenative.data.FavoritesManager
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.ModContainerResolver
@@ -40,6 +42,7 @@ import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.screen.library.components.toggleFavorite
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
@@ -760,6 +763,23 @@ abstract class BaseAppScreen {
     }
 
     @Composable
+    private fun getFavoriteOption(libraryItem: LibraryItem): AppMenuOption {
+        val context = LocalContext.current
+        val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
+        val isFavorite = favorites.contains(libraryItem.appId)
+        return AppMenuOption(
+            optionType = if (isFavorite) {
+                AppOptionMenuType.RemoveFromFavorites
+            } else {
+                AppOptionMenuType.AddToFavorites
+            },
+            onClick = {
+                toggleFavorite(context, libraryItem.appId, libraryItem.name)
+            },
+        )
+    }
+
+    @Composable
     private fun getSubmitFeedbackOption(context: Context, libraryItem: LibraryItem): AppMenuOption {
         return AppMenuOption(
             optionType = AppOptionMenuType.SubmitFeedback,
@@ -1115,6 +1135,9 @@ abstract class BaseAppScreen {
         }
 
         // Always available options
+        if (!libraryItem.isRecommended) {
+            menuOptions.add(getFavoriteOption(libraryItem))
+        }
         menuOptions.add(getSubmitFeedbackOption(context, libraryItem))
         menuOptions.add(getGetSupportOption(context))
 

@@ -12,6 +12,8 @@ import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.FavoritesManager
+import app.gamenative.data.FavoritesUtils
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
@@ -71,12 +73,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicLong
 
 private const val PLAYABLE_FPS_THRESHOLD = 30
 private const val PROVEN_RUNS_THRESHOLD = 5
@@ -121,6 +126,11 @@ class LibraryViewModel @Inject constructor(
     @Volatile private var paginationCurrentPage: Int = 0
     @Volatile private var lastPageInCurrentFilter: Int = 0
 
+    // App ids across every source the Favorites tab shows, cached from the last filter pass so a
+    // favorite toggle can update the badge count without rebuilding the whole library list when
+    // the user isn't on the Favorites tab.
+    @Volatile private var favoriteEligibleAppIds: Set<String> = emptySet()
+
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()
     private var gogGameList: List<GOGGame> = emptyList()
@@ -142,6 +152,8 @@ class LibraryViewModel @Inject constructor(
     // Track debounce job for search
     private var searchDebounceJob: Job? = null
     private val SEARCH_DEBOUNCE_MS = 500L // 500ms debounce
+    private var filterJob: Job? = null
+    private val filterGeneration = AtomicLong(0L)
 
     // Cache GPU name to avoid repeated calls
     private val gpuName: String by lazy {
@@ -185,6 +197,23 @@ class LibraryViewModel @Inject constructor(
             if (usesStats(_state.value)) {
                 onFilterApps(paginationCurrentPage)
             }
+        }
+
+        // Keep the Favorites tab and its badge in sync as the user stars or unstars games. When the
+        // user is actually viewing the Favorites tab we rebuild the list so its contents change;
+        // otherwise only the badge count can change, so we update that cheaply instead of running a
+        // full (and visibly loading) re-filter of the entire library.
+        viewModelScope.launch(Dispatchers.IO) {
+            FavoritesManager.favorites
+                .drop(1)
+                .collectLatest { favorites ->
+                    if (_state.value.currentTab == LibraryTab.FAVORITES) {
+                        onFilterApps(paginationCurrentPage).join()
+                    } else {
+                        val count = FavoritesUtils.countPresent(favorites, favoriteEligibleAppIds)
+                        _state.update { it.copy(favoritesCount = count) }
+                    }
+                }
         }
 
         @OptIn(ExperimentalCoroutinesApi::class)
@@ -614,8 +643,11 @@ class LibraryViewModel @Inject constructor(
     }
 
     private fun onFilterApps(paginationPage: Int = 0): Job {
+        val generation = filterGeneration.incrementAndGet()
         Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
-        return viewModelScope.launch(Dispatchers.IO) {
+        filterJob?.cancel()
+        val job = viewModelScope.launch(Dispatchers.IO) {
+            if (generation != filterGeneration.get()) return@launch
             _state.update { it.copy(isLoading = true) }
 
             val currentState = _state.value
@@ -996,26 +1028,42 @@ class LibraryViewModel @Inject constructor(
             // sources can't match it — keep them out of the combined list (and their tab counts).
             val steamCollectionSelected = allowedSteamAppIds != null
 
+            val favoriteIds = FavoritesManager.favorites.value
+
             val combined = buildList {
                 if (includeSteam) addAll(steamEntries)
                 if (includeOpen && !steamCollectionSelected) addAll(customEntries)
                 if (includeGOG && !steamCollectionSelected) addAll(gogEntries)
                 if (includeEpic && !steamCollectionSelected) addAll(epicEntries)
                 if (includeAmazon && !steamCollectionSelected) addAll(amazonEntries)
+            }.let { entries ->
+                if (currentTab == app.gamenative.ui.enums.LibraryTab.FAVORITES) {
+                    FavoritesUtils.filter(entries, favoriteIds) { it.item.appId }
+                } else {
+                    entries
+                }
             }.sortedWith(sortComparator).mapIndexed { idx, entry ->
                 entry.item.copy(index = idx, isInstalled = entry.isInstalled)
             }
+
+            // A newer refresh may have taken a snapshot while this pass was doing the expensive
+            // filtering. Never let this pass publish its obsolete list or pagination metadata.
+            if (generation != filterGeneration.get()) return@launch
 
             // Total count for the current filter
             val totalFound = combined.size
 
             // Determine how many pages and slice the list for incremental loading
             val pageSize = PrefManager.itemsPerPage
-            // Update internal pagination state
-            paginationCurrentPage = paginationPage
             lastPageInCurrentFilter = if (totalFound == 0) 0 else (totalFound - 1) / pageSize
+            // Clamp the requested page to the valid range. Removing favorites (or any other filter
+            // change) can shrink the list so the previously shown page no longer exists; without
+            // this the pager could report a current page past the last one.
+            val clampedPage = paginationPage.coerceIn(0, lastPageInCurrentFilter)
+            // Update internal pagination state
+            paginationCurrentPage = clampedPage
             // Calculate how many items to show: (pagesLoaded * pageSize)
-            val endIndex = min((paginationPage + 1) * pageSize, totalFound)
+            val endIndex = min((clampedPage + 1) * pageSize, totalFound)
             var pagedList = combined.take(endIndex)
 
             // Prepend the hero (featured > recommendation) as first item on ALL tab when
@@ -1068,13 +1116,28 @@ class LibraryViewModel @Inject constructor(
                 isFirstLoad = false
             }
 
+            if (generation != filterGeneration.get()) return@launch
+
             // Fetch compatibility for current page games
             fetchCompatibilityForPage(pagedList.map { it.name })
+
+            // App ids across every source the Favorites tab shows. Cache it so a later favorite
+            // toggle can recount the badge cheaply, and use it here so the badge matches the tab
+            // contents even when a source is hidden from the library through user preferences.
+            val favoriteEligible = buildList {
+                addAll(steamEntries)
+                addAll(customEntries)
+                if (GOGService.hasStoredCredentials(context)) addAll(gogEntries)
+                if (EpicService.hasStoredCredentials(context)) addAll(epicEntries)
+                if (AmazonService.hasStoredCredentials(context)) addAll(amazonEntries)
+            }.mapTo(mutableSetOf()) { it.item.appId }
+            if (generation != filterGeneration.get()) return@launch
+            favoriteEligibleAppIds = favoriteEligible
 
             _state.update {
                 it.copy(
                     appInfoList = pagedList,
-                    currentPaginationPage = paginationPage + 1, // visual display is not 0 indexed
+                    currentPaginationPage = clampedPage + 1, // visual display is not 0 indexed
                     lastPaginationPage = lastPageInCurrentFilter + 1,
                     totalAppsInFilter = totalFound,
                     isLoading = false, // Loading complete
@@ -1091,9 +1154,12 @@ class LibraryViewModel @Inject constructor(
                     amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
                     localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
                     steamCollectionCounts = steamCollectionCounts,
+                    favoritesCount = FavoritesUtils.countPresent(favoriteIds, favoriteEligible),
                 )
             }
         }
+        filterJob = job
+        return job
     }
 
     /**

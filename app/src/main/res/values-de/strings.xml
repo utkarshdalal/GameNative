@@ -2257,4 +2257,18 @@
     <string name="immersive_onboarding_pointer_toggle">Doppelklicke einen Joystick, um zwischen Xbox-Controller und XR-Zeiger zu wechseln</string>
     <string name="immersive_mode_xr_pointer">XR-Zeigermodus</string>
     <string name="immersive_mode_xbox">Xbox-Controller-Modus</string>
+    <string name="tab_favorites">Favoriten</string>
+    <string name="favorites_empty_title">Noch keine Favoriten</string>
+    <string name="favorites_empty_message">Öffne das Detailmenü eines Spiels, um es zu den Favoriten hinzuzufügen, oder drücke die linke Aktionstaste des Controllers, während ein Spiel fokussiert ist (X bei Xbox, Quadrat bei PlayStation oder Y bei Nintendo-Tastenlayout).</string>
+    <string name="favorites_empty_action">Alle Spiele durchsuchen</string>
+    <string name="favorites_empty_filtered_title">Keine Favoriten anzuzeigen</string>
+    <string name="favorites_empty_filtered_message">Keine Favoriten-Spiele entsprechen der aktuellen Suche oder den Filtern oder sind in deiner Bibliothek verfügbar.</string>
+    <string name="option_add_to_favorites">Zu Favoriten hinzufügen</string>
+    <string name="option_remove_from_favorites">Aus Favoriten entfernen</string>
+    <string name="favorite_add_named">%1$s zu Favoriten hinzufügen</string>
+    <string name="favorite_remove_named">%1$s aus Favoriten entfernen</string>
+    <string name="favorite_removed">Aus Favoriten entfernt</string>
+    <string name="favorite_removed_named">%1$s aus Favoriten entfernt</string>
+    <string name="favorite_added">Zu Favoriten hinzugefügt</string>
+    <string name="favorite_added_named">%1$s zu Favoriten hinzugefügt</string>
 </resources>
