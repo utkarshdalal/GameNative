@@ -188,9 +188,13 @@ public class ControllerManager {
         boolean isGamepad = device.supportsSource(InputDevice.SOURCE_GAMEPAD);
         boolean isJoystick = device.supportsSource(InputDevice.SOURCE_JOYSTICK);
 
+        // Only consider axes reported under the JOYSTICK source class.
+        // Composite HID devices (e.g. keyboards with built-in touchpads) expose
+        // AXIS_X/AXIS_Y through SOURCE_MOUSE and may wrongly claim SOURCE_JOYSTICK
+        // in their source mask, which caused them to be treated as gamepads.
         boolean hasAxes =
-                device.getMotionRange(android.view.MotionEvent.AXIS_X) != null ||
-                        device.getMotionRange(android.view.MotionEvent.AXIS_Y) != null;
+                device.getMotionRange(android.view.MotionEvent.AXIS_X, InputDevice.SOURCE_JOYSTICK) != null ||
+                        device.getMotionRange(android.view.MotionEvent.AXIS_Y, InputDevice.SOURCE_JOYSTICK) != null;
 
         boolean[] hasGamepadKeysArray = device.hasKeys(
                 KeyEvent.KEYCODE_BUTTON_A,
