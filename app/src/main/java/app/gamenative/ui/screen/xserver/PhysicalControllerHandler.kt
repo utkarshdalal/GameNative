@@ -73,7 +73,7 @@ class PhysicalControllerHandler(
                         sourceController = controller,
                     )
                 }
-            }
+        }
     }
 
     fun setProfile(profile: ControlsProfile?) {

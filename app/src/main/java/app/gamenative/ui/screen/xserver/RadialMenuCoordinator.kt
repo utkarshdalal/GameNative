@@ -42,6 +42,8 @@ class RadialMenuCoordinator(
     private val onSettingsVisibilityChanged: (Boolean) -> Unit,
 ) : InputControlsView.RadialMenuListener {
     companion object {
+        private const val BINDING_PRESS_MS = 70L
+
         fun install(
             context: Context,
             host: ViewGroup,
@@ -91,6 +93,8 @@ class RadialMenuCoordinator(
     private var inputControlSelectionActive = false
     private var activeTouchPointerId = MotionEvent.INVALID_POINTER_ID
     private val wheelCenter = PointF()
+    private val activeDispatchedBindings = mutableListOf<Binding>()
+    private var bindingDispatchGeneration = 0
 
     init {
         host.addView(
@@ -104,6 +108,7 @@ class RadialMenuCoordinator(
 
     fun detach() {
         close(commit = false)
+        cancelBindingDispatches()
         inputControlsView?.setRadialMenuListener(null)
         touchpadView?.setOpenRadialMenuCallback(null)
         settingsDialog?.dismiss()
@@ -114,6 +119,7 @@ class RadialMenuCoordinator(
     }
 
     fun bindInputControlsView(view: InputControlsView?) {
+        cancelBindingDispatches()
         inputControlsView?.setRadialMenuListener(null)
         inputControlsView = view
         view?.let { overlayView.setControlsStyle(it.primaryColor, it.secondaryColor) }
@@ -133,6 +139,7 @@ class RadialMenuCoordinator(
     }
 
     fun setProfile(profile: ControlsProfile?) {
+        cancelBindingDispatches()
         activeControlsProfile = profile
     }
 
@@ -347,6 +354,7 @@ class RadialMenuCoordinator(
     }
 
     private fun applyProfile(profile: ControlsProfile?) {
+        cancelBindingDispatches()
         activeControlsProfile = profile
         if (profile != null) {
             if (inputControlsView?.profile != null) {
@@ -477,31 +485,56 @@ class RadialMenuCoordinator(
 
     private fun dispatchBinding(bindingCombo: BindingCombo) {
         if (bindingCombo.isEmpty || Binding.OPEN_RADIAL_MENU in bindingCombo.bindings) return
+        cancelBindingDispatches()
 
         if (bindingCombo.isSequence) {
             dispatchBindingSequence(bindingCombo)
             return
         }
 
+        val generation = bindingDispatchGeneration
         for (binding in bindingCombo.bindings) {
-            applyBinding(binding, true, bindingOffset(binding))
+            pressDispatchedBinding(binding)
         }
         host.postDelayed({
+            if (generation != bindingDispatchGeneration) return@postDelayed
             bindingCombo.bindings.asReversed().forEach { binding ->
-                applyBinding(binding, false, 0f)
+                releaseDispatchedBinding(binding)
             }
-        }, 70L)
+        }, BINDING_PRESS_MS)
     }
 
     private fun dispatchBindingSequence(bindingCombo: BindingCombo) {
+        val generation = bindingDispatchGeneration
         bindingCombo.bindings.forEachIndexed { index, binding ->
             host.postDelayed({
-                applyBinding(binding, true, bindingOffset(binding))
+                if (generation != bindingDispatchGeneration) return@postDelayed
+                pressDispatchedBinding(binding)
                 host.postDelayed({
-                    applyBinding(binding, false, 0f)
-                }, 70L)
+                    if (generation != bindingDispatchGeneration) return@postDelayed
+                    releaseDispatchedBinding(binding)
+                }, BINDING_PRESS_MS)
             }, index * bindingCombo.sequenceDelayMs.toLong())
         }
+    }
+
+    private fun pressDispatchedBinding(binding: Binding) {
+        applyBinding(binding, true, bindingOffset(binding))
+        if (binding != Binding.OPEN_NAVIGATION_MENU && binding != Binding.SHOW_KEYBOARD) {
+            activeDispatchedBindings.add(binding)
+        }
+    }
+
+    private fun releaseDispatchedBinding(binding: Binding) {
+        if (activeDispatchedBindings.remove(binding)) applyBinding(binding, false, 0f)
+    }
+
+    private fun cancelBindingDispatches() {
+        bindingDispatchGeneration++
+        activeDispatchedBindings.asReversed().forEach { binding ->
+            applyBinding(binding, false, 0f)
+        }
+        activeDispatchedBindings.clear()
     }
 
     private fun bindingOffset(binding: Binding): Float {
