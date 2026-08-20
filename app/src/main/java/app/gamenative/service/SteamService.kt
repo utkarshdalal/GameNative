@@ -3671,7 +3671,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        if (!hasActiveOperations() && !(BuildConfig.MODERN_XR && keepAlive)) {
+        if (!hasActiveOperations() && !(BuildConfig.XR_BUILD && keepAlive)) {
             Timber.i("Task removed and no active work — stopping service")
             stopSelf()
         } else {

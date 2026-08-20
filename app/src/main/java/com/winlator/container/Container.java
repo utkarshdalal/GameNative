@@ -92,7 +92,7 @@ public class Container {
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
-    private boolean launchImmersiveMode = app.gamenative.BuildConfig.MODERN_XR;
+    private boolean launchImmersiveMode = app.gamenative.BuildConfig.XR_BUILD;
     private boolean launchRealSteam;
     private boolean launchBionicSteam;
     private boolean allowSteamUpdates;

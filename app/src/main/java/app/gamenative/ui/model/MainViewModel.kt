@@ -577,7 +577,7 @@ class MainViewModel @Inject constructor(
 
             val container = apiJob.await()
 
-            if (app.gamenative.BuildConfig.MODERN_XR &&
+            if (app.gamenative.BuildConfig.XR_BUILD &&
                 container.isLaunchImmersiveMode() &&
                 app.gamenative.MainActivity.isMetaQuest()
             ) {
