@@ -921,6 +921,11 @@
     <string name="settings_language_restart_confirm">重新啟動</string>
     <string name="settings_language_changing">切換語言並重新啟動中...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">效能</string>
+    <string name="settings_performance_power_control_title">功耗控制</string>
+    <string name="settings_performance_power_control_subtitle">預設啟用遊戲內功耗控制（已在測試裝置上啟用：AYN Odin 3、Retroid Pocket 6/Nova）</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">模擬設定</string>
     <string name="settings_emulation_orientations_title">允許的螢幕方向</string>
@@ -2287,6 +2292,8 @@
     <string name="power_control_auto_tuning_desc">更穩定的效能、更長的續航、更少的發熱：自動為遊戲調節 CPU 和 GPU。已在 Retroid Pocket 6 上驗證。</string>
     <string name="power_control_adaptive_fps">自動降低 FPS</string>
     <string name="power_control_adaptive_fps_desc">當遊戲無法達到 FPS 上限時降低上限，以獲得穩定的影格間隔。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_enable">遊戲內功耗控制</string>
+    <string name="power_control_enable_desc">接管作業系統對 CPU/GPU 頻率的控制</string>
     <string name="power_control_tuning_mode">調整模式</string>
     <string name="power_control_tuning_mode_per_cluster">分叢集（已在 Retroid Pocket 6 上驗證）</string>
     <string name="power_control_tuning_mode_whole_cpu">PID 控制器</string>

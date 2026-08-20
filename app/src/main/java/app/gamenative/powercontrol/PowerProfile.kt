@@ -1,8 +1,8 @@
 package app.gamenative.powercontrol
 
+import app.gamenative.PrefManager
 import androidx.annotation.StringRes
 import app.gamenative.R
-import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
 import kotlinx.serialization.Serializable
@@ -16,6 +16,7 @@ enum class AutoTuningStrategy(@param:StringRes val displayNameRes: Int, @param:S
 
 @Serializable
 data class PowerProfile(
+    var enablePowerControl: Boolean = PrefManager.powerControlDefaultEnabled,
     var enableAdaptiveFpsCap: Boolean = true,
     var enableAutoTuning: Boolean = false,
     var enablePerClusterTuning: Boolean = false,
