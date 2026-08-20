@@ -3839,9 +3839,7 @@ private fun setupXEnvironment(
             Container.drivesIterator(container.drives).asSequence()
                 .firstOrNull { it[0] == "A" }?.let { File(it[1]).canonicalFile.path }
         }.getOrNull() ?: ""
-        if (ffpGameDir.startsWith("/storage/") &&
-            !(gameSource == GameSource.CUSTOM_GAME && ffpGameDir.startsWith("/storage/emulated/"))
-        ) {
+        if (ffpGameDir.startsWith("/storage/") && !ffpGameDir.startsWith("/storage/emulated/")) {
             envVars.put("FFP_ENABLE", "1")
             envVars.put("FFP_MARKERS", "/steamapps/common/;/dosdevices/a:")
         }
