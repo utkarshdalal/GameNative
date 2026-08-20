@@ -61,6 +61,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private boolean sceneInitialized = false;
     private final EffectComposer effectComposer;
     private FrameRating frameRating;
+    private volatile XrFrameBridge xrFrameBridge = null;
 
     public GLRenderer(XServerViewGL xServerView, XServer xServer) {
         this.xServerView = xServerView;
@@ -148,8 +149,17 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     void drawScene() {
+        // The effect composer renders the scene into its own target, so the XR bridge must not
+        // rebind the framebuffer underneath it.
+        XrFrameBridge bridge = effectComposer.hasEffects() ? null : xrFrameBridge;
         boolean xrFrame = false;
-        // if (XrActivity.isSupported()) xrFrame = XrActivity.getInstance().beginFrame(XrActivity.getImmersive(), XrActivity.getSBS());
+        if (bridge != null) {
+            int[] xrTargetSize = bridge.beginFrame();
+            if (xrTargetSize != null) {
+                xrFrame = true;
+                setRenderTargetSizeOverride(xrTargetSize[0], xrTargetSize[1]);
+            }
+        }
 
         int targetWidth = renderTargetWidthOverride > 0 ? renderTargetWidthOverride : surfaceWidth;
         int targetHeight = renderTargetHeightOverride > 0 ? renderTargetHeightOverride : surfaceHeight;
@@ -222,8 +232,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         if ((!magnifierEnabled && !fullscreen) || renderingToOffscreenTarget) GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
 
         if (xrFrame) {
-            // XrActivity.getInstance().endFrame();
-            // XrActivity.updateControllers();
+            bridge.endFrame();
             xServerView.requestRender();
         }
     }
@@ -339,6 +348,20 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     public void setOnFrameRenderedListener(Runnable onFrameRenderedListener) {
         this.onFrameRenderedListener = onFrameRenderedListener;
+    }
+
+    /** See {@link XrFrameBridge}. Pass null to detach (e.g. when leaving immersive mode). */
+    public void setXrFrameBridge(XrFrameBridge xrFrameBridge) {
+        this.xrFrameBridge = xrFrameBridge;
+        if (xrFrameBridge == null) clearRenderTargetSizeOverride();
+        viewportNeedsUpdate = true;
+        xServerView.requestRender();
+    }
+
+    /** Whether active screen effects are forcing the composer path, which blocks the XR direct
+     * bridge. Mirrors {@link VulkanRenderer#isEffectsRequireCompositor()}. */
+    public boolean isEffectsRequireCompositor() {
+        return effectComposer.hasEffects();
     }
 
     private Drawable createRootCursorDrawable() {

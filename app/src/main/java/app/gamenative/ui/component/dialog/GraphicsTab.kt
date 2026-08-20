@@ -540,7 +540,11 @@ private fun LsfgSection(state: ContainerConfigState) {
                     subtitle = { Text(text = stringResource(R.string.lsfg_description)) },
                     state = config.lsfgEnabled,
                     onCheckedChange = {
-                        state.config.value = config.copy(lsfgEnabled = it)
+                        state.config.value = if (it) {
+                            config.copy(lsfgEnabled = true)
+                        } else {
+                            config.copy(lsfgEnabled = false)
+                        }
                     },
                 )
             }
@@ -577,3 +581,4 @@ private fun LsfgSection(state: ContainerConfigState) {
         }
     }
 }
+

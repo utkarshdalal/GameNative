@@ -148,9 +148,6 @@ public class Drawable extends XResource {
 
                 copyArea(srcX, srcY, dstX, dstY, width, height, totalWidth, this.getStride(), data, this.data);
             }
-            this.data.rewind();
-            data.rewind();
-            forceUpdate();
         }
         this.data.rewind();
         data.rewind();

@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>
@@ -85,6 +85,7 @@
     <string name="private_branch_password_success">Branch unlocked!</string>
     <string name="private_branch_password_invalid">Invalid access code</string>
     <string name="run_app">Play</string>
+    <string name="launch_immersive_mode">Launch in immersive mode (VR)</string>
     <string name="download_prompt_title">Install App</string>
     <string name="calculating_space_requirements">Calculating space requirements...</string>
     <string name="delete_prompt_title">Delete App</string>
@@ -109,6 +110,12 @@
     <string name="tab_recommended">Recommended</string>
     <string name="gog_rec_empty">Add or play some games to get GOG recommendations based on your library.</string>
     <string name="tab_all">All</string>
+    <string name="tab_favorites">Favorites</string>
+    <string name="favorites_empty_title">No favorites yet</string>
+    <string name="favorites_empty_message">Open a game’s details menu to add it to favorites, or press the controller’s west face button while a game is focused (X on Xbox, Square on PlayStation, or Y on Nintendo-style layouts).</string>
+    <string name="favorites_empty_action">Browse all games</string>
+    <string name="favorites_empty_filtered_title">No favorites to show</string>
+    <string name="favorites_empty_filtered_message">No favorite games match the current search or filters, or are available in your library.</string>
     <string name="tab_steam">Steam</string>
     <string name="tab_gog">GOG</string>
     <string name="tab_epic">Epic</string>
@@ -314,6 +321,23 @@
     <string name="screen_effects_close">Close</string>
     <string name="quick_menu_tab_general">General</string>
     <string name="quick_menu_tab_controller">Controller</string>
+    <string name="quick_menu_tab_immersive">Immersive</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">See your real surroundings through the virtual screen</string>
+    <string name="immersive_passthrough_toggle">Enable passthrough</string>
+    <string name="immersive_resize_mode_title">Resize / move handles</string>
+    <string name="immersive_resize_mode_desc">Shows grab handles just inside the game\'s own edges while on — off by default, since keeping the screen border-free avoids losing sharpness to a margin.</string>
+    <string name="immersive_resize_mode_toggle">Show resize/move handles</string>
+    <string name="immersive_direct_render_title">Performance</string>
+    <string name="immersive_reset_effects_status_blocked">An active screen effect, filter, or brightness/contrast/gamma adjustment is blocking the fastest rendering path.</string>
+    <string name="immersive_reset_effects_status_ok">Nothing is currently blocking the fastest rendering path.</string>
+    <string name="immersive_reset_effects_button">Reset screen effects</string>
+    <string name="immersive_reset_effects_desc">Turns off every effect, filter, and brightness/contrast/gamma adjustment. Takes effect immediately — no restart needed.</string>
+    <string name="immersive_onboarding_disable_passthrough">Disable passthrough for better performance</string>
+    <string name="immersive_onboarding_quick_menu">Long-press Start to open/close the quick menu</string>
+    <string name="immersive_onboarding_pointer_toggle">Double-click a thumbstick to switch Xbox controller / XR pointer</string>
+    <string name="immersive_mode_xr_pointer">XR pointer mode</string>
+    <string name="immersive_mode_xbox">Xbox controller mode</string>
     <string name="tools_wine_processes_running_hint">%1$d running, tap/click a process to close</string>
     <string name="tools_wine_processes_empty">No running EXEs detected.</string>
     <string name="performance_hud">Performance HUD</string>
@@ -323,7 +347,7 @@
     <string name="performance_hud_fps_limiter_target">Target FPS</string>
     <string name="performance_hud_fps_limiter_off">Unlimited</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Limiter overridden while LSFG is active. Source rate is paced by the multiplier.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Caps the base rate. On-screen rate is the cap times the LSFG multiplier.</string>
     <string name="performance_hud_presets">Presets</string>
     <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -423,8 +447,8 @@
     <string name="control_stroke_width_default">Default</string>
     <string name="control_stroke_width_thick">Thick</string>
     <string name="control_stroke_width_extra_thick">Extra thick</string>
-    <string name="button_shooter_look_through">Shooter Look-through</string>
-    <string name="button_shooter_look_through_subtitle">Allow this button touch to also control dynamic shooter movement/look</string>
+    <string name="button_look_through">Look-through</string>
+    <string name="button_look_through_subtitle">Press and drag from this button to also control movement or camera look. Not available in touchscreen mode.</string>
     <string name="preview">Preview</string>
     <string name="active">Active</string>
     <string name="apply_all">Apply All</string>
@@ -686,6 +710,8 @@
     <string name="downloading">Downloading...</string>
     <string name="calculating_time">Calculating...</string>
     <string name="download_failed_try_again">Download failed. Please try again.</string>
+    <string name="download_preparing">Preparing download...</string>
+    <string name="download_preparing_depots">Preparing depots (%1$d/%2$d)</string>
     <string name="update_available">Update Available</string>
     <string name="game_information">Game Information</string>
     <string name="status">Status</string>
@@ -711,6 +737,11 @@
     <string name="add_custom_game_dialog_title">Add Custom Game</string>
     <string name="add_custom_game_dialog_message">Please select the folder containing the game files you want to add as a custom game.</string>
     <string name="add_custom_game_dont_show_again">Don\'t show this dialog again</string>
+    <string name="custom_game_importing">Importing game…</string>
+    <string name="custom_game_import_success">Game imported</string>
+    <string name="custom_game_import_failed">Import failed</string>
+    <string name="custom_game_import_dialog_message">Select the folder containing the game. It will be imported into GameNative\'s storage so it can run without any storage permission. Large games may take a few minutes.</string>
+    <string name="custom_game_import_remove_original">Remove original after import</string>
     <string name="base_app_shortcut_created">Shortcut created</string>
     <string name="base_app_shortcut_failed">Failed to create shortcut: %s</string>
     <string name="base_app_images_fetched">Images fetched successfully</string>
@@ -1066,10 +1097,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
-    <string name="settings_info_send_tip_title">Send tip</string>
-    <string name="settings_info_send_tip_subtitle">Contribute to ongoing development</string>
-    <string name="settings_info_ask_tip_title">Ask for tip on startup</string>
-    <string name="settings_info_ask_tip_subtitle">Stops the tip message from appearing</string>
+    <string name="settings_info_send_tip_title">Become a member</string>
+    <string name="settings_info_send_tip_subtitle">Early access to releases, priority help, and more</string>
+    <string name="settings_info_ask_tip_title">Membership offers</string>
+    <string name="settings_info_ask_tip_subtitle">Show occasional offers to become a GameNative member</string>
     <string name="settings_info_source_title">Source code</string>
     <string name="settings_info_source_subtitle">View the source code of this project</string>
     <string name="settings_info_libraries_title">Libraries Used</string>
@@ -1242,9 +1273,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Recent Crash</string>
     <string name="main_recent_crash_message">Sorry about that!\nIt would be nice to know about the recent issue you\'ve had.\nYou can view and export the most recent crash log in the app\'s settings and attach it as a Github issue in the project\'s repository.\nLink to the Github repo is also in settings!</string>
-    <string name="main_thank_you_title">Thank you for using GameNative!</string>
-    <string name="main_thank_you_message">Support open-source PC gaming on Android by sharing the app with your friends or becoming a member on Ko-fi.</string>
-    <string name="main_join_kofi">Join on Ko-fi</string>
+    <string name="main_thank_you_title">Enjoying GameNative?</string>
+    <string name="main_thank_you_message">Become a member today. Members get:\n\n• Early access to new releases\n• Priority help getting your games running\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom $5/month</string>
+    <string name="main_join_kofi">Become a member</string>
+    <string name="pitch_session_title">Enjoying %1$s?</string>
+    <string name="pitch_five_star_title">Glad %1$s ran great!</string>
     <string name="main_share">Share</string>
     <string name="main_share_text">Check out GameNative - play your PC Steam games on Android, with full support for cloud saves!\nhttps://gamenative.app\nJoin the community: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Did the game work?</string>
@@ -1369,6 +1402,64 @@
     <string name="best_config_missing_components_message">The following required components are not available:\n\n%1$s</string>
     <string name="best_config_apply_anyway">Apply anyway</string>
     <string name="best_config_applied_with_defaults">Config applied with missing components replaced by defaults</string>
+    <string name="community_config_title">Community configs</string>
+    <string name="community_config_close">Close community configs</string>
+    <string name="community_config_refresh">Refresh community configs</string>
+    <string name="community_config_retry">Retry</string>
+    <string name="community_config_unknown_error">Unknown error</string>
+    <string name="community_config_unknown">Unknown</string>
+    <string name="community_config_load_failed">Could not load community configs: %1$s</string>
+    <string name="community_config_game_not_found">No compatibility entry was found for %1$s</string>
+    <string name="community_config_gpu_unknown">GPU unavailable</string>
+    <plurals name="community_config_result_count">
+        <item quantity="one">%1$d config</item>
+        <item quantity="other">%1$d configs</item>
+    </plurals>
+    <string name="community_config_highest_rated">Highest rated</string>
+    <string name="community_config_newest">Newest</string>
+    <string name="community_config_same_device">Same device</string>
+    <string name="community_config_this_gpu">Same GPU</string>
+    <string name="community_config_compatible_gpus">Compatible</string>
+    <string name="community_config_load_more">Load more</string>
+    <string name="community_config_no_device_results">No configs were found for this device.</string>
+    <string name="community_config_no_gpu_results">No configs were found for this GPU.</string>
+    <string name="community_config_no_compatible_results">No configs were found for compatible GPUs.</string>
+    <string name="community_config_show_this_gpu">Show this GPU</string>
+    <string name="community_config_show_compatible_gpus">Show compatible GPUs</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">Config details</string>
+    <string name="community_config_other_gpu_warning">This result uses another GPU. GPU-specific driver and wrapper settings will not be applied.</string>
+    <string name="community_config_run_details">Test run</string>
+    <string name="community_config_rating">Rating</string>
+    <string name="community_config_average_fps">Average FPS</string>
+    <string name="community_config_device">Device</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">GameNative version</string>
+    <string name="community_config_submitted">Submitted</string>
+    <string name="community_config_session_length">Session length</string>
+    <string name="community_config_game_store">Game store</string>
+    <string name="community_config_custom_game">Custom game</string>
+    <string name="community_config_settings">Settings</string>
+    <string name="community_config_additional_launch_settings">Additional launch settings</string>
+    <string name="community_config_apply_launch_arguments">Apply launch arguments</string>
+    <string name="community_config_apply_environment_variables">Apply environment variables</string>
+    <string name="community_config_replaces_existing_value">Replaces the current value</string>
+    <string name="community_config_dependencies">Dependencies</string>
+    <string name="community_config_dependencies_apply_check">Dependencies will be checked when the config is applied.</string>
+    <string name="community_config_no_downloads">No manifest downloads are currently required.</string>
+    <string name="community_config_downloads_required">These components will be downloaded automatically:\n%1$s</string>
+    <string name="community_config_tags">Tags</string>
+    <string name="community_config_notes">Notes</string>
+    <string name="community_config_apply">Apply config</string>
+    <string name="community_config_container">Container</string>
+    <string name="community_config_wine">Wine or Proton</string>
+    <string name="community_config_emulator">Emulator</string>
+    <string name="community_config_wrapper">DirectX wrapper</string>
+    <string name="community_config_box64_preset">Box64 preset</string>
+    <string name="community_config_driver">Graphics driver</string>
     <string name="import_config">Import config</string>
     <string name="export_config">Export config</string>
     <string name="steam_save_export_success">Saves exported</string>
@@ -1629,8 +1720,17 @@
     <string name="option_reset_to_defaults">Reset container</string>
     <string name="option_get_support">Get support</string>
     <string name="option_submit_feedback">Submit feedback</string>
+    <string name="option_add_to_favorites">Favorite</string>
+    <string name="option_remove_from_favorites">Unfavorite</string>
+    <string name="favorite_add_named">Favorite %1$s</string>
+    <string name="favorite_remove_named">Unfavorite %1$s</string>
+    <string name="favorite_added">Added to favorites</string>
+    <string name="favorite_added_named">Added %1$s to favorites</string>
+    <string name="favorite_removed">Removed from favorites</string>
+    <string name="favorite_removed_named">Removed %1$s from favorites</string>
     <string name="option_reset_drm">Reset DRM</string>
     <string name="option_use_known_config">Use known config</string>
+    <string name="option_browse_community_configs">Browse community configs</string>
     <string name="option_import_saves">Import saves</string>
     <string name="option_export_saves">Export saves</string>
     <string name="option_verify_files">Verify files</string>
@@ -1943,6 +2043,7 @@
     <string name="nexus_resolving_collection_item">Resolving collection %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Collection ready: %1$d mod(s)</string>
     <string name="nexus_resolve_collection_failed">Failed to resolve Nexus collection</string>
+    <string name="nexus_adult_content_blocked">This collection is hidden by your Nexus Mods adult-content settings.</string>
     <string name="nexus_no_selected_collection_mods_ready">No selected collection mods are ready to download</string>
     <string name="nexus_collection_different_file_reused">Collection requested a different file; existing installed file reused</string>
     <string name="nexus_collection_existing_placement_kept">Existing placement kept</string>
@@ -1994,8 +2095,9 @@
     <string name="nexus_profile_name_duplicate">A profile with that name already exists</string>
     <!-- Recommendations -->
     <string name="recommended_badge">Recommended</string>
-    <string name="recommended_buy_button">Check It Out</string>
-    <string name="recommended_support_message">Purchasing through this link helps support the development of GameNative.</string>
+    <string name="recommended_buy_button">Purchase on GOG</string>
+    <string name="rec_buy_with_price">%1$s · Purchase on GOG</string>
+    <string name="recommended_support_message">We earn a commission on purchases made through this link.</string>
     <string name="recommended_about_heading">About This Game</string>
     <string name="recommended_review_count">Based on %1$s reviews</string>
 
@@ -2003,6 +2105,10 @@
     <string name="featured_badge">Sponsored</string>
     <string name="featured_action_wishlist">Wishlist</string>
     <string name="featured_action_wishlist_on">Wishlist on %1$s</string>
+    <string name="featured_action_wishlisted">Wishlisted</string>
+    <string name="featured_action_get_demo">Get the Demo</string>
+    <string name="featured_action_in_library">In Library</string>
+    <string name="featured_action_failed">Couldn\'t finish in the app — opening the store page</string>
     <string name="featured_action_preorder">Pre-order</string>
     <string name="featured_action_preorder_on">Pre-order on %1$s</string>
     <string name="featured_action_buy">Buy</string>
@@ -2031,6 +2137,8 @@
     <string name="lsfg_flow_scale">Flow scale</string>
     <string name="lsfg_flow_scale_desc">Lower is more stable; higher is smoother but can artifact.</string>
     <string name="lsfg_performance_mode">Performance mode</string>
+    <string name="lsfg_present_mode">Present mode</string>
+    <string name="lsfg_present_mode_desc">Mailbox is recommended. FIFO also works when the output frame rate (fps cap × multiplier) matches the screen refresh rate; below the refresh rate FIFO can look shaky.</string>
     <string name="lsfg_not_supported">Frame generation requires a Bionic container</string>
     <string name="lsfg_install_prompt">Lossless Scaling not installed. Tap to install. Only known to work on Adreno 6xx and above.</string>
     <string name="lsfg_not_in_library">Lossless Scaling not in your Steam library</string>
@@ -2038,10 +2146,23 @@
     <string name="lsfg_install_message">This will download Lossless Scaling from Steam to enable frame generation.</string>
     <string name="lsfg_installing">Downloading Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Reduces quality for higher throughput</string>
+    <!-- Bionic FG (AI) Frame Generation -->
+    <string name="steam_invite_tab_title">Invite</string>
+    <string name="steam_invite_header">%1$d friends</string>
+    <string name="steam_invite_joinable">In this game — tap to join</string>
+    <string name="steam_invite_unavailable">Steam client not ready</string>
+    <string name="steam_invite_failed">Invite failed — your game isn\'t in a joinable session</string>
+    <string name="steam_join_failed">Couldn\'t join — their session may have closed</string>
+    <string name="steam_invite_sent">Invite sent</string>
+    <string name="steam_invite_joined">In your game</string>
+    <string name="steam_invite_online">Online</string>
+    <string name="steam_invite_offline">Offline</string>
     <string name="rec_disclosure_title">Game recommendations</string>
     <string name="rec_disclosure_body">For personalized recommendations, we share the games you play with GOG. Turn off anytime in Settings.</string>
     <string name="rec_disclosure_allow">Allow</string>
     <string name="rec_disclosure_not_now">Not now</string>
+    <string name="rec_teaser_title">Discover games for your device</string>
+    <string name="rec_teaser_subtitle">Tap to take a look</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show personalized recommendations. Keeping this on helps support GameNative.</string>
 
@@ -2071,6 +2192,24 @@
     <string name="frontend_sync_resync_complete">Frontend sync complete</string>
     <string name="frontend_sync_pick_directory_cd">Pick directory for %1$s</string>
     <string name="frontend_sync_clear_directory_cd">Clear directory for %1$s</string>
+
+    <!-- Radial Menu -->
+    <string name="radial_menu">Radial Menu</string>
+    <string name="radial_menu_settings_title">Radial Menu</string>
+    <string name="radial_menu_cancel">Cancel</string>
+    <string name="radial_menu_slot_count">Slots</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d slots enabled</string>
+    <string name="radial_menu_decrease_slots">Decrease slots</string>
+    <string name="radial_menu_increase_slots">Increase slots</string>
+    <string name="radial_menu_slots">Wheel Slots</string>
+    <string name="radial_menu_slot_title">Slot %1$d</string>
+    <string name="radial_menu_slot_label_hint">Label</string>
+    <string name="radial_menu_slot_binding">Slot %1$d binding</string>
+    <string name="radial_menu_slot_binding_summary">Binding: %1$s</string>
+    <string name="radial_menu_preset_common">Common</string>
+    <string name="radial_menu_preset_weapons">Weapons</string>
+    <string name="gesture_action_open_radial_menu">Open radial menu</string>
+
     <!-- Game Launch Tips -->
     <string name="game_launch_tip_1">Booting may take a few minutes on first launch</string>
     <string name="game_launch_tip_2">Tip: You can view the game files by pressing \"%s\" in the game settings.</string>
@@ -2161,4 +2300,43 @@
     <string name="local_mod_copied_progress">Copied %1$s of %2$s</string>
     <string name="nexus_invalid_source_metadata">This managed mod has incomplete source information and cannot be retried.</string>
     <string name="nexus_archive_memory_error">Archive needs more memory than Android allows. Retry after updating GameNative or choose a smaller file.</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Power Control</string>
+    <string name="power_control_info">Control CPU frequency scaling and governor settings. Requires PServer service.</string>
+    <string name="power_control_driver">Driver: %s</string>
+    <string name="power_control_profiles">Power Profiles</string>
+    <string name="power_control_governor">CPU Governor</string>
+    <string name="power_control_current_frequencies">Current Frequencies</string>
+    <string name="power_control_frequencies">Frequency Settings</string>
+    <string name="power_control_cpu_min_freq">Min CPU Frequency</string>
+    <string name="power_control_cpu_max_freq">Max CPU Frequency</string>
+    <string name="power_control_gpu_freq">GPU Frequency</string>
+    <string name="power_control_gpu_min_power">Min GPU Power</string>
+    <string name="power_control_gpu_max_power">Max GPU Power</string>
+    <string name="power_control_ram_min_power">Min RAM Frequency</string>
+    <string name="power_control_ram_max_power">Max RAM Frequency</string>
+    <string name="power_control_available_frequencies">Available Frequencies</string>
+    <string name="power_control_auto_tuning">Auto-Tuning</string>
+    <string name="power_control_auto_tuning_desc">More stable performance, longer battery life, less heat: automatically tunes CPU and GPU for your game. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Automatic FPS reduction</string>
+    <string name="power_control_adaptive_fps_desc">Lowers the FPS cap when the game cannot reach it, for stable pacing. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_tuning_mode">Tuning Mode</string>
+    <string name="power_control_tuning_mode_per_cluster">Per-cluster (verified on Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID Controller</string>
+    <string name="power_control_fan_control">Fan Control</string>
+    <string name="power_control_fan_control_desc">Holds a target temperature with minimum fan noise. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Game Pinning</string>
+    <string name="power_control_game_pinning_desc">Keeps the game on the fast CPU cores. Verified on Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Show fan speed</string>
+    <string name="power_control_hud_show_tuner">Show tuner clock caps</string>
+    <string name="power_control_tuning_strategy">Tuning Strategy</string>
+    <string name="power_control_strategy_balanced">Balanced</string>
+    <string name="power_control_strategy_balanced_desc">Adjusts all components equally for best overall performance</string>
+    <string name="power_control_strategy_power_efficient">Power Efficient</string>
+    <string name="power_control_strategy_power_efficient_desc">Reduces non-bottleneck components to save power</string>
+    <string name="power_control_strategy_aggressive">Aggressive</string>
+    <string name="power_control_strategy_aggressive_desc">Maximizes performance on detected bottlenecks</string>
+    <string name="power_control_strategy_conservative">Conservative</string>
+    <string name="power_control_strategy_conservative_desc">AdjustsGradual gradually with a focus on stability</string>
 </resources>

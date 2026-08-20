@@ -430,16 +430,15 @@ class CustomGameAppScreen : BaseAppScreen() {
         )
     }
 
-    /**
-     * For Custom games, only show Export/Import config in the Container section.
-     * We intentionally omit the generic "Use known config" here.
-     */
+    /** Custom games support known, community, and transferred configs. */
     @Composable
     override fun getConfigMenuOptions(
         context: Context,
         libraryItem: LibraryItem,
     ): List<AppMenuOption> {
         return listOfNotNull(
+            getUseKnownConfigOption(context, libraryItem),
+            getBrowseCommunityConfigsOption(context, libraryItem),
             getExportConfigOption(context, libraryItem),
             getImportConfigOption(context, libraryItem),
         )
@@ -516,6 +515,9 @@ class CustomGameAppScreen : BaseAppScreen() {
                                         val folderPath = CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
                                         cleanupNexusModsForApp(context, libraryItem, folderPath?.let(::File))
                                         if (folderPath != null) {
+                                            if (CustomGameScanner.isManagedFolder(folderPath)) {
+                                                File(folderPath).deleteRecursively()
+                                            }
                                             val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
                                             manualFolders.remove(folderPath)
                                             PrefManager.customGameManualFolders = manualFolders

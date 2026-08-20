@@ -50,12 +50,7 @@ import java.util.concurrent.Executors;
 
 import timber.log.Timber;
 
-public class WinHandler implements ControllerManager.OnSlotsChangedListener {
-
-    @Override
-    public void onSlotsChanged() {
-        refreshControllerMappingsForHotplug();
-    }
+public class WinHandler {
 
     private static final String TAG = "WinHandler";
     private final ControllerManager controllerManager;
@@ -96,6 +91,16 @@ public class WinHandler implements ControllerManager.OnSlotsChangedListener {
     private final java.util.Set<Integer> ignoredDeviceIds = new java.util.HashSet<>();
     private RandomAccessFile gamepadRaf;
     private RandomAccessFile[] extraGamepadRafs = new RandomAccessFile[MAX_PLAYERS - 1];
+
+    private static volatile WinHandler activeInstance;
+
+    /**
+     * The handler of the running session, or null while no session is up. Published from
+     * {@link #start()} so code outside the UI layer can reach the live handler.
+     */
+    public static WinHandler getActiveInstance() {
+        return activeInstance;
+    }
 
     private static final int OFF_LX = 4;
     private static final int OFF_LY = 6;
@@ -182,10 +187,6 @@ public class WinHandler implements ControllerManager.OnSlotsChangedListener {
         }
         controllerManager.scanForDevices();
         InputDevice p1Device = controllerManager.getAssignedDeviceForSlot(0);
-        if (p1Device == null && !controllerManager.isSlot0ReservedForVirtual()
-                && !controllerManager.getDetectedDevices().isEmpty()) {
-            p1Device = controllerManager.getDetectedDevices().get(0);
-        }
         if (p1Device != null) {
             currentController = ExternalController.getController(p1Device.getId());
             if (currentController != null) {
@@ -197,30 +198,10 @@ public class WinHandler implements ControllerManager.OnSlotsChangedListener {
         }
         setGamepadSlotConnected(0, currentController != null || isVirtualGamepadActive());
         // Initialize Extra Players (2, 3, 4)
-        java.util.HashSet<Integer> usedDeviceIds = new java.util.HashSet<>();
-        if (p1Device != null) {
-            usedDeviceIds.add(p1Device.getId());
-        }
-        InputDevice[] assignedExtras = new InputDevice[extraControllers.length];
-        for (int i = 0; i < extraControllers.length; i++) {
-            assignedExtras[i] = controllerManager.getAssignedDeviceForSlot(i + 1);
-            if (assignedExtras[i] != null) {
-                usedDeviceIds.add(assignedExtras[i].getId());
-            }
-        }
         for (int i = 0; i < extraControllers.length; i++) {
             // Player 2 is slot 1, which corresponds to extraControllers[0]
-            InputDevice extraDevice = assignedExtras[i];
-            if (extraDevice == null) {
-                for (InputDevice candidate : controllerManager.getDetectedDevices()) {
-                    if (!usedDeviceIds.contains(candidate.getId())) {
-                        extraDevice = candidate;
-                        break;
-                    }
-                }
-            }
+            InputDevice extraDevice = controllerManager.getAssignedDeviceForSlot(i + 1);
             if (extraDevice != null) {
-                usedDeviceIds.add(extraDevice.getId());
                 extraControllers[i] = ExternalController.getController(extraDevice.getId());
                 if (extraControllers[i] != null) {
                     extraControllers[i].setContext(activity);
@@ -522,7 +503,7 @@ public class WinHandler implements ControllerManager.OnSlotsChangedListener {
 
     public void stop() {
         this.running = false;
-        controllerManager.removeOnSlotsChangedListener(this);
+        if (activeInstance == this) activeInstance = null;
         for (int slot = 0; slot < MAX_PLAYERS; slot++) {
             rumbleTeardown(slot);
         }
@@ -731,7 +712,6 @@ public class WinHandler implements ControllerManager.OnSlotsChangedListener {
 
     public void start() {
         try {
-            controllerManager.addOnSlotsChangedListener(this);
             this.localhost = InetAddress.getLocalHost();
             Context context = activity.getApplicationContext();
             File gamepadShmDir = new File(
@@ -769,6 +749,7 @@ public class WinHandler implements ControllerManager.OnSlotsChangedListener {
         }
         refreshControllerMappings();
         this.running = true;
+        activeInstance = this;
         startSendThread();
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
@@ -1044,6 +1025,7 @@ public class WinHandler implements ControllerManager.OnSlotsChangedListener {
                 controller = getControllerFromSlot(slot);
             }
             if (controller != null && controller.getDeviceId() == event.getDeviceId()) {
+                if (event.getRepeatCount() > 0) return true;
                 handled = controller.updateStateFromKeyEvent(event); // or motion variant
                 Log.d(TAG, "Key routed deviceId=" + event.getDeviceId()
                         + " keyCode=" + event.getKeyCode()

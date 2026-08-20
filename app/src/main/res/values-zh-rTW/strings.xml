@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">登入</string>
     <string name="login_2fa">雙重驗證</string>
@@ -309,7 +309,7 @@
     <string name="performance_hud_fps_limiter_target">目標 FPS</string>
     <string name="performance_hud_fps_limiter_off">無限制</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">LSFG 啟用時，限制器被覆蓋。來源幀率由倍數控制。</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">限制基礎幀率。螢幕幀率為上限乘以 LSFG 倍數。</string>
     <string name="performance_hud_presets">預設</string>
     <string name="performance_hud_presets_description">快速切換常用 HUD 版面配置。</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -554,6 +554,8 @@
     <string name="downloading">下載中...</string>
     <string name="calculating_time">計算中...</string>
     <string name="download_failed_try_again">下載失敗, 請再試一次</string>
+    <string name="download_preparing">正在準備下載...</string>
+    <string name="download_preparing_depots">正在準備儲存庫 (%1$d/%2$d)</string>
     <string name="update_available">可用更新</string>
     <string name="game_information">遊戲資訊</string>
     <string name="status">狀態</string>
@@ -578,6 +580,11 @@
     <string name="add_custom_game_content_desc">添加自定義遊戲</string>
     <string name="add_custom_game_dialog_title">添加自定義遊戲</string>
     <string name="add_custom_game_dialog_message">請選擇包含您要添加為自定義遊戲的遊戲的文件夾</string>
+    <string name="custom_game_importing">正在匯入遊戲…</string>
+    <string name="custom_game_import_success">遊戲已匯入</string>
+    <string name="custom_game_import_failed">匯入失敗</string>
+    <string name="custom_game_import_dialog_message">請選擇包含遊戲的資料夾。遊戲將被匯入到 GameNative 的儲存空間，無需任何儲存權限即可執行。大型遊戲可能需要幾分鐘。</string>
+    <string name="custom_game_import_remove_original">匯入後刪除原始檔案</string>
     <string name="add_custom_game_dont_show_again">不再顯示</string>
     <string name="base_app_shortcut_created">已創建捷徑</string>
     <string name="base_app_shortcut_failed">無法創建捷徑：%s</string>
@@ -955,10 +962,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">資訊</string>
-    <string name="settings_info_send_tip_title">捐款支持</string>
-    <string name="settings_info_send_tip_subtitle">為持續的應用程式開發貢獻力量</string>
-    <string name="settings_info_ask_tip_title">啟動時顯示捐款訊息</string>
-    <string name="settings_info_ask_tip_subtitle">停止顯示捐款訊息</string>
+    <string name="settings_info_send_tip_title">成為會員</string>
+    <string name="settings_info_send_tip_subtitle">版本搶先體驗、優先支援等</string>
+    <string name="settings_info_ask_tip_title">會員優惠</string>
+    <string name="settings_info_ask_tip_subtitle">偶爾顯示成為 GameNative 會員的優惠資訊</string>
     <string name="settings_info_source_title">原始碼</string>
     <string name="settings_info_source_subtitle">檢視此專案的原始碼</string>
     <string name="settings_info_libraries_title">使用的函式庫</string>
@@ -1069,9 +1076,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">最近應用程式當機</string>
     <string name="main_recent_crash_message">若能了解您最近遇到的問題, 將有助於我們改善應用程式.\n您可在應用程式設定中檢視並匯出最近的崩潰日誌, 將其附加至專案原始碼儲存庫的 Github Issue中\nGithub 原始碼儲存庫的連結亦位於設定頁面內</string>
-    <string name="main_thank_you_title">感謝您使用GameNative!</string>
-    <string name="main_thank_you_message">透過與朋友分享應用程式或在Ko-fi成為會員，支持Android平台的開源PC遊戲</string>
-    <string name="main_join_kofi">加入Ko-fi</string>
+    <string name="main_thank_you_title">喜歡 GameNative 嗎？</string>
+    <string name="main_thank_you_message">立即成為會員。會員可享有：\n\n• 新版本搶先體驗\n• 遊戲執行問題優先支援\n• Discord 進階身分組與專屬頻道\n• …還有更多\n\n每月 $5 起</string>
+    <string name="main_join_kofi">成為會員</string>
+    <string name="pitch_session_title">喜歡《%1$s》嗎？</string>
+    <string name="pitch_five_star_title">很高興《%1$s》執行順暢！</string>
     <string name="main_share">分享</string>
     <string name="main_share_text">試試 GameNative - 在 Android 上暢玩您的 PC Steam 遊戲，完整支援雲端存檔！\nhttps://gamenative.app\n加入社群：https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">遊戲運作正常嗎?</string>
@@ -1182,6 +1191,63 @@
     <string name="best_config_apply_anyway">仍然套用</string>
     <string name="best_config_applied_with_defaults">設定已套用，缺少的元件已替換為預設值</string>
     <string name="best_config_apply_failed">套用配置失敗: %s</string>
+    <string name="community_config_title">社群設定</string>
+    <string name="community_config_close">關閉社群設定</string>
+    <string name="community_config_refresh">重新整理社群設定</string>
+    <string name="community_config_retry">重試</string>
+    <string name="community_config_unknown_error">未知錯誤</string>
+    <string name="community_config_unknown">未知</string>
+    <string name="community_config_load_failed">無法載入社群設定：%1$s</string>
+    <string name="community_config_game_not_found">找不到 %1$s 的相容性項目</string>
+    <string name="community_config_gpu_unknown">GPU 無法使用</string>
+    <plurals name="community_config_result_count">
+        <item quantity="other">%1$d 個設定</item>
+    </plurals>
+    <string name="community_config_highest_rated">評分最高</string>
+    <string name="community_config_newest">最新</string>
+    <string name="community_config_same_device">相同裝置</string>
+    <string name="community_config_this_gpu">相同 GPU</string>
+    <string name="community_config_compatible_gpus">相容</string>
+    <string name="community_config_load_more">載入更多</string>
+    <string name="community_config_no_device_results">找不到適用於此裝置的設定。</string>
+    <string name="community_config_no_gpu_results">找不到適用於此 GPU 的設定。</string>
+    <string name="community_config_no_compatible_results">找不到適用於相容 GPU 的設定。</string>
+    <string name="community_config_show_this_gpu">顯示此 GPU</string>
+    <string name="community_config_show_compatible_gpus">顯示相容 GPU</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">設定詳細資料</string>
+    <string name="community_config_other_gpu_warning">此結果使用其他 GPU。不會套用 GPU 專用的驅動程式和封裝器設定。</string>
+    <string name="community_config_run_details">測試執行</string>
+    <string name="community_config_rating">評分</string>
+    <string name="community_config_average_fps">平均 FPS</string>
+    <string name="community_config_device">裝置</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">GameNative 版本</string>
+    <string name="community_config_submitted">提交時間</string>
+    <string name="community_config_session_length">遊戲時長</string>
+    <string name="community_config_game_store">遊戲商店</string>
+    <string name="community_config_custom_game">自訂遊戲</string>
+    <string name="community_config_settings">設定</string>
+    <string name="community_config_additional_launch_settings">其他啟動設定</string>
+    <string name="community_config_apply_launch_arguments">套用啟動參數</string>
+    <string name="community_config_apply_environment_variables">套用環境變數</string>
+    <string name="community_config_replaces_existing_value">取代目前的值</string>
+    <string name="community_config_dependencies">相依性</string>
+    <string name="community_config_dependencies_apply_check">套用設定時將檢查相依性。</string>
+    <string name="community_config_no_downloads">目前不需要從資訊清單下載任何內容。</string>
+    <string name="community_config_downloads_required">將自動下載以下元件：\n%1$s</string>
+    <string name="community_config_tags">標籤</string>
+    <string name="community_config_notes">備註</string>
+    <string name="community_config_apply">套用設定</string>
+    <string name="community_config_container">容器</string>
+    <string name="community_config_wine">Wine 或 Proton</string>
+    <string name="community_config_emulator">模擬器</string>
+    <string name="community_config_wrapper">DirectX 封裝器</string>
+    <string name="community_config_box64_preset">Box64 預設</string>
+    <string name="community_config_driver">圖形驅動程式</string>
     <string name="import_config">匯入設定</string>
     <string name="export_config">匯出設定</string>
 
@@ -1447,8 +1513,9 @@
 
     <!-- Recommendations -->
     <string name="recommended_badge">推薦</string>
-    <string name="recommended_buy_button">查看遊戲</string>
-    <string name="recommended_support_message">透過此連結購買有助於支持 GameNative 的開發。</string>
+    <string name="recommended_buy_button">在 GOG 購買</string>
+    <string name="rec_buy_with_price">%1$s · 在 GOG 購買</string>
+    <string name="recommended_support_message">透過此連結購買，我們會獲得佣金。</string>
     <string name="recommended_about_heading">關於本遊戲</string>
     <string name="recommended_review_count">基於 %1$s 則評價</string>
     <string name="review_overwhelmingly_positive">壓倒性好評</string>
@@ -1505,6 +1572,7 @@
     <string name="option_reset_drm">重置 DRM</string>
     <string name="option_update">更新</string>
     <string name="option_use_known_config">使用已知配置</string>
+    <string name="option_browse_community_configs">瀏覽社群設定</string>
     <string name="option_verify_files">驗證檔案完整性</string>
 
     <string name="performance_hud_battery_temperature">電池溫度</string>
@@ -1564,6 +1632,8 @@
     <string name="lsfg_flow_scale">光流縮放</string>
     <string name="lsfg_flow_scale_desc">數值越低越穩定；越高越流暢，但可能出現偽影。</string>
     <string name="lsfg_performance_mode">效能模式</string>
+    <string name="lsfg_present_mode">呈現模式</string>
+    <string name="lsfg_present_mode_desc">建議使用 Mailbox。當輸出幀率（fps 上限 × 倍數）與螢幕更新率一致時也可使用 FIFO；低於更新率時 FIFO 可能出現晃動。</string>
     <string name="lsfg_not_supported">幀生成需要 Bionic 容器</string>
     <string name="lsfg_install_prompt">Lossless Scaling 未安裝。點擊安裝。已知僅在 Adreno 6xx 及更高版本上可用。</string>
     <string name="lsfg_not_in_library">Lossless Scaling 不在你的 Steam 庫中</string>
@@ -1935,6 +2005,7 @@
     <string name="nexus_resolving_collection_item">正在解析收藏 %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">收藏就緒：%1$d 個模組</string>
     <string name="nexus_resolve_collection_failed">無法解析 Nexus 收藏</string>
+    <string name="nexus_adult_content_blocked">此收藏因你的 Nexus Mods 成人內容設定而被隱藏。</string>
     <string name="nexus_no_selected_collection_mods_ready">沒有可供下載的選定收藏模組</string>
     <string name="nexus_collection_different_file_reused">收藏要求不同的檔案；重複使用現有已安裝檔案</string>
     <string name="nexus_collection_existing_placement_kept">保留現有安置</string>
@@ -2061,8 +2132,8 @@
     <string name="control_stroke_width_default">預設</string>
     <string name="control_stroke_width_thick">粗</string>
     <string name="control_stroke_width_extra_thick">特粗</string>
-    <string name="button_shooter_look_through">射擊模式穿透</string>
-    <string name="button_shooter_look_through_subtitle">允許此按鈕觸控同時控制動態射擊移動和視角</string>
+    <string name="button_look_through">拖曳穿透</string>
+    <string name="button_look_through_subtitle">按住此按鈕並拖曳，也可控制移動或鏡頭視角。觸控螢幕模式下無法使用。</string>
     <string name="preview">預覽</string>
     <string name="active">啟用</string>
     <string name="apply_all">全部套用</string>
@@ -2074,11 +2145,17 @@
     <string name="rec_disclosure_body">為提供個人化推薦，我們會將你玩過的遊戲分享給 GOG。可隨時在設定中關閉。</string>
     <string name="rec_disclosure_allow">允許</string>
     <string name="rec_disclosure_not_now">暫不</string>
+    <string name="rec_teaser_title">探索適合你裝置的遊戲</string>
+    <string name="rec_teaser_subtitle">點按查看</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">贊助</string>
     <string name="featured_action_wishlist">願望清單</string>
     <string name="featured_action_wishlist_on">在 %1$s 加入願望清單</string>
+    <string name="featured_action_wishlisted">已加入願望清單</string>
+    <string name="featured_action_get_demo">取得試玩版</string>
+    <string name="featured_action_in_library">已在收藏庫中</string>
+    <string name="featured_action_failed">無法在應用程式內完成，正在開啟商店頁面</string>
     <string name="featured_action_preorder">預購</string>
     <string name="featured_action_preorder_on">在 %1$s 預購</string>
     <string name="featured_action_buy">購買</string>
@@ -2163,4 +2240,101 @@
     <string name="local_mod_copied_progress">已複製 %1$s，共 %2$s</string>
     <string name="nexus_invalid_source_metadata">此受管理模組的來源資訊不完整，無法重試。</string>
     <string name="nexus_archive_memory_error">此壓縮檔需要的記憶體超過 Android 允許的上限。請在更新 GameNative 後重試，或選擇較小的檔案。</string>
+    <!-- Bionic FG (AI) Frame Generation -->
+    <string name="steam_invite_tab_title">邀請</string>
+    <string name="steam_invite_header">%1$d 位好友</string>
+    <string name="steam_invite_joinable">正在玩此遊戲 — 點按加入</string>
+    <string name="steam_invite_unavailable">Steam 用戶端未就緒</string>
+    <string name="steam_invite_failed">邀請失敗 — 你的遊戲不在可加入的工作階段中</string>
+    <string name="steam_join_failed">無法加入 — 對方的工作階段可能已關閉</string>
+    <string name="steam_invite_sent">已傳送邀請</string>
+    <string name="steam_invite_joined">在你的遊戲中</string>
+    <string name="steam_invite_online">線上</string>
+    <string name="steam_invite_offline">離線</string>
+    <string name="radial_menu">徑向選單</string>
+    <string name="radial_menu_settings_title">徑向選單</string>
+    <string name="radial_menu_cancel">取消</string>
+    <string name="radial_menu_slot_count">槽位</string>
+    <string name="radial_menu_slot_count_subtitle">已啟用 %1$d 個槽位</string>
+    <string name="radial_menu_decrease_slots">減少槽位</string>
+    <string name="radial_menu_increase_slots">增加槽位</string>
+    <string name="radial_menu_slots">轉盤槽位</string>
+    <string name="radial_menu_slot_title">槽位 %1$d</string>
+    <string name="radial_menu_slot_label_hint">標籤</string>
+    <string name="radial_menu_slot_binding">槽位 %1$d 綁定</string>
+    <string name="radial_menu_slot_binding_summary">綁定：%1$s</string>
+    <string name="radial_menu_preset_common">常用</string>
+    <string name="radial_menu_preset_weapons">武器</string>
+    <string name="gesture_action_open_radial_menu">開啟徑向選單</string>
+
+    <!-- Power Control -->
+    <string name="power_control">效能控制</string>
+    <string name="power_control_info">控制CPU頻率調節和調速器設定。需要PServer服務。</string>
+    <string name="power_control_driver">驅動程式：%s</string>
+    <string name="power_control_profiles">效能設定檔</string>
+    <string name="power_control_governor">CPU調速器</string>
+    <string name="power_control_current_frequencies">目前頻率</string>
+    <string name="power_control_frequencies">頻率設定</string>
+    <string name="power_control_cpu_min_freq">最低CPU頻率</string>
+    <string name="power_control_cpu_max_freq">最高CPU頻率</string>
+    <string name="power_control_gpu_freq">GPU頻率</string>
+    <string name="power_control_gpu_min_power">最低GPU功率</string>
+    <string name="power_control_gpu_max_power">最高GPU功率</string>
+    <string name="power_control_ram_min_power">最低RAM頻率</string>
+    <string name="power_control_ram_max_power">最高RAM頻率</string>
+    <string name="power_control_available_frequencies">可用頻率</string>
+    <string name="power_control_auto_tuning">自動調整</string>
+    <string name="power_control_auto_tuning_desc">更穩定的效能、更長的續航、更少的發熱：自動為遊戲調節 CPU 和 GPU。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_adaptive_fps">自動降低 FPS</string>
+    <string name="power_control_adaptive_fps_desc">當遊戲無法達到 FPS 上限時降低上限，以獲得穩定的影格間隔。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_tuning_mode">調整模式</string>
+    <string name="power_control_tuning_mode_per_cluster">分叢集（已在 Retroid Pocket 6 上驗證）</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID 控制器</string>
+    <string name="power_control_fan_control">風扇控制</string>
+    <string name="power_control_fan_control_desc">以最低的風扇噪音維持目標溫度。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_game_pinning">遊戲核心綁定</string>
+    <string name="power_control_game_pinning_desc">將遊戲保持在高效能 CPU 核心上。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_hud_show_fan">顯示風扇轉速</string>
+    <string name="power_control_hud_show_tuner">顯示調整的頻率上限</string>
+    <string name="power_control_tuning_strategy">調整策略</string>
+    <string name="power_control_strategy_balanced">平衡</string>
+    <string name="power_control_strategy_balanced_desc">均衡調整所有元件以獲得最佳整體效能</string>
+    <string name="power_control_strategy_power_efficient">節能</string>
+    <string name="power_control_strategy_power_efficient_desc">降低非瓶頸元件以節省電量</string>
+    <string name="power_control_strategy_aggressive">積極</string>
+    <string name="power_control_strategy_aggressive_desc">最大化檢測到的瓶頸效能</string>
+    <string name="power_control_strategy_conservative">保守</string>
+    <string name="power_control_strategy_conservative_desc">漸進式調整，注重穩定性</string>
+    <string name="launch_immersive_mode">以沉浸模式啟動（VR）</string>
+    <string name="quick_menu_tab_immersive">沉浸</string>
+    <string name="immersive_passthrough">透視</string>
+    <string name="immersive_passthrough_desc">透過虛擬螢幕查看周圍的真實環境</string>
+    <string name="immersive_passthrough_toggle">啟用透視</string>
+    <string name="immersive_resize_mode_title">縮放/移動控制點</string>
+    <string name="immersive_resize_mode_desc">開啟後會在遊戲畫面邊緣內側顯示抓取控制點。預設關閉，因為不留邊界可避免畫面變模糊。</string>
+    <string name="immersive_resize_mode_toggle">顯示縮放/移動控制點</string>
+    <string name="immersive_direct_render_title">效能</string>
+    <string name="immersive_reset_effects_status_blocked">目前啟用的畫面效果、濾鏡或亮度/對比/Gamma 調整正在阻擋最快的算繪路徑。</string>
+    <string name="immersive_reset_effects_status_ok">目前沒有任何設定阻擋最快的算繪路徑。</string>
+    <string name="immersive_reset_effects_button">重設畫面效果</string>
+    <string name="immersive_reset_effects_desc">關閉所有效果、濾鏡以及亮度/對比/Gamma 調整。立即生效，無須重新啟動。</string>
+    <string name="immersive_onboarding_disable_passthrough">關閉透視以提升效能</string>
+    <string name="immersive_onboarding_quick_menu">長按 Start 可開啟或關閉快速選單</string>
+    <string name="immersive_onboarding_pointer_toggle">雙擊搖桿可在 Xbox 控制器與 XR 指標之間切換</string>
+    <string name="immersive_mode_xr_pointer">XR 指標模式</string>
+    <string name="immersive_mode_xbox">Xbox 控制器模式</string>
+    <string name="tab_favorites">收藏</string>
+    <string name="favorites_empty_title">還沒有收藏</string>
+    <string name="favorites_empty_message">開啟遊戲詳細資料選單即可加入收藏，或在遊戲取得焦點時按下控制器左側正面按鍵（Xbox 為 X、PlayStation 為方形鍵、Nintendo 配置為 Y）。</string>
+    <string name="favorites_empty_action">瀏覽所有遊戲</string>
+    <string name="favorites_empty_filtered_title">沒有可顯示的收藏</string>
+    <string name="favorites_empty_filtered_message">沒有符合目前搜尋或篩選條件，或在您的遊戲庫中可用的收藏遊戲。</string>
+    <string name="option_add_to_favorites">加入收藏</string>
+    <string name="option_remove_from_favorites">從收藏中移除</string>
+    <string name="favorite_add_named">將 %1$s 加入收藏</string>
+    <string name="favorite_remove_named">將 %1$s 從收藏中移除</string>
+    <string name="favorite_removed">已從收藏中移除</string>
+    <string name="favorite_removed_named">已將 %1$s 從收藏中移除</string>
+    <string name="favorite_added">已加入收藏</string>
+    <string name="favorite_added_named">已將 %1$s 加入收藏</string>
 </resources>

@@ -1041,11 +1041,30 @@ object ContainerUtils {
             }
         }
 
-        if (gameFolderPath != null) {
+        val resolvedGameFolderPath = if (gameSource == GameSource.CUSTOM_GAME) {
+            gameFolderPath
+        } else {
+            StorageUtils.resolveLegacyGameDir(gameFolderPath)
+        }
+
+        if (resolvedGameFolderPath != null && resolvedGameFolderPath != gameFolderPath) {
+            when (gameSource) {
+                GameSource.GOG ->
+                    GOGService.updateInstallPath(extractGameIdFromContainerId(appId).toString(), resolvedGameFolderPath)
+                GameSource.EPIC ->
+                    EpicService.updateInstallPath(extractGameIdFromContainerId(appId), resolvedGameFolderPath)
+                GameSource.AMAZON ->
+                    runCatching { extractGameIdFromContainerId(appId) }.getOrNull()
+                        ?.let { AmazonService.updateInstallPath(it, resolvedGameFolderPath) }
+                else -> {}
+            }
+        }
+
+        if (resolvedGameFolderPath != null) {
             // Check if A: drive is already mapped to the correct path
             var hasCorrectADrive = false
             for (drive in Container.drivesIterator(container.drives)) {
-                if (drive[0] == "A" && drive[1] == gameFolderPath) {
+                if (drive[0] == "A" && drive[1] == resolvedGameFolderPath) {
                     hasCorrectADrive = true
                     break
                 }
@@ -1056,7 +1075,7 @@ object ContainerUtils {
                 val currentDrives = container.drives
                 // Rebuild drives string, excluding existing A: drive and adding new one
                 val drivesBuilder = StringBuilder()
-                drivesBuilder.append("A:$gameFolderPath")
+                drivesBuilder.append("A:$resolvedGameFolderPath")
 
                 // Add all other drives (excluding A:)
                 for (drive in Container.drivesIterator(currentDrives)) {
@@ -1209,10 +1228,8 @@ object ContainerUtils {
         GameSource.GOG,
         GameSource.EPIC,
         GameSource.AMAZON,
-        -> true
-
         GameSource.CUSTOM_GAME,
-        -> false
+        -> true
     }
 
     /**
@@ -1249,7 +1266,7 @@ object ContainerUtils {
     }
 
     /**
-     * Scans the container's A: drive for all .exe files
+     * Scans the container's A: drive for all .exe and .bat files
      */
     fun scanExecutablesInADrive(drives: String): List<String> {
         val executables = mutableListOf<String>()
@@ -1270,7 +1287,7 @@ object ContainerUtils {
 
             Timber.d("Scanning for executables in A: drive: $aDrivePath")
 
-            // Recursively scan for .exe files using listFiles with depth limit.
+            // Recursively scan for .exe/.bat files using listFiles with depth limit.
             // Symlinked directories are skipped to avoid cycles (e.g. GOG ISI rootdir -> game root).
             fun scanRecursive(dir: File, baseDir: File, depth: Int = 0, maxDepth: Int = 10) {
                 if (depth > maxDepth) return
@@ -1279,7 +1296,7 @@ object ContainerUtils {
                     if (file.isDirectory) {
                         if (FileUtils.isSymlink(file)) return@forEach
                         scanRecursive(file, baseDir, depth + 1, maxDepth)
-                    } else if (file.isFile && file.name.lowercase().endsWith(".exe")) {
+                    } else if (file.isFile && (file.name.lowercase().endsWith(".exe") || file.name.lowercase().endsWith(".bat"))) {
                         // Convert to relative Windows path format
                         val relativePath = baseDir.toURI().relativize(file.toURI()).path
                         executables.add(relativePath)
@@ -1315,7 +1332,7 @@ object ContainerUtils {
      */
     fun filterExesForUnpacking(exePaths: List<String>): List<String> = exePaths.filter { path ->
         val fileName = path.substringAfterLast('/').substringAfterLast('\\').lowercase()
-        !isSystemExecutable(fileName)
+        fileName.endsWith(".exe") && !isSystemExecutable(fileName)
     }
 
     /**

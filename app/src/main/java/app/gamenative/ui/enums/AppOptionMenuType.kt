@@ -14,6 +14,7 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     SubmitFeedback(R.string.option_submit_feedback),
     ResetDrm(R.string.option_reset_drm),
     UseKnownConfig(R.string.option_use_known_config),
+    BrowseCommunityConfigs(R.string.option_browse_community_configs),
     ImportConfig(R.string.import_config),
     ExportConfig(R.string.export_config),
     ImportSaves(R.string.option_import_saves),
@@ -35,4 +36,6 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     ManageWorkshop(R.string.option_manage_workshop),
     ManageMods(R.string.option_manage_mods),
     ChangeBranch(R.string.change_branch),
+    AddToFavorites(R.string.option_add_to_favorites),
+    RemoveFromFavorites(R.string.option_remove_from_favorites),
 }

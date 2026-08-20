@@ -10,4 +10,67 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
 
+    <!-- Optional: only used by the Meta Quest immersive launch mode, not required to install/run the app. -->
+    <uses-feature
+        android:name="android.hardware.vr.headtracking"
+        android:version="1"
+        android:required="false" />
+
+    <!-- Required for the Horizon OS OpenXR runtime to advertise XR_FB_passthrough at all — without
+         this it silently omits the extension (confirmed via logcat: "skipping extension=XR_FB_passthrough
+         due to: missing uses-feature string com.oculus.feature.PASSTHROUGH"), so the immersive
+         passthrough toggle stays a no-op even though the code path is otherwise correct. -->
+    <uses-feature
+        android:name="com.oculus.feature.PASSTHROUGH"
+        android:required="false" />
+
+    <application>
+        <!--
+            Meta Quest immersive/VR launch entry point — always boots straight to the game.
+            com.oculus.intent.category.VR is what tells Horizon OS this Activity is an
+            immersive VR experience it should hand the compositor to (purple-dots
+            transition, hiding the 2D panel), not just another windowed task — without it
+            the OS treats it as an ordinary flat panel even though the OpenXR session
+            underneath is running fine.
+
+            Deliberately NOT split into its own process (android:process=":vr", which the
+            official Meta samples usually add alongside this category): this app shares a
+            lot of process-wide state (PluviaApp singletons, SteamService, Room DB access)
+            between the normal flow and this Activity, and splitting processes would break
+            all of that — needs a real cross-process redesign if the category alone turns
+            out not to be enough on its own.
+
+            No android.intent.category.LAUNCHER here on purpose: this must stay reachable
+            only via the in-app checkbox, not as its own icon in the Quest library.
+
+            No taskAffinity override (defaults to the app's package name, same as
+            MainActivity) and no excludeFromRecents: this needs to land in the SAME task as
+            MainActivity, not a separate one. A previous version set excludeFromRecents="true"
+            for a cosmetic reason (avoid a second entry in the Quest dashboard/app-switcher),
+            but that forced Android to create a genuinely separate task for it regardless of
+            matching taskAffinity — and tearing down THAT task on exit fires SteamService's
+            onTaskRemoved() independently of MainActivity's own onStop/onDestroy checks,
+            force-stopping the Steam connection out from under keepAlive=true and causing a
+            slow full reconnect (looks like "stuck on Launching") every time. Confirmed by
+            checking how GameNativeXR (WinlatorXR) handles this: their VR activity shares its
+            default taskAffinity with their main activity for the same reason.
+        -->
+        <activity
+            android:name="app.gamenative.ui.screen.xr.ImmersiveXrActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:resizeableActivity="false"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation|uiMode|colorMode"
+            android:theme="@style/Theme.Pluvia">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="com.oculus.intent.category.VR" />
+            </intent-filter>
+            <meta-data
+                android:name="com.oculus.vrshell.supports_free_resizing"
+                android:value="true" />
+        </activity>
+    </application>
+
 </manifest>

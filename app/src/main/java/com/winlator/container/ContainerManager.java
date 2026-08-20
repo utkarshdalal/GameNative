@@ -95,52 +95,6 @@ public class ContainerManager {
     public Future<Container> createContainerFuture(String containerId, final JSONObject data) {
         return Executors.newSingleThreadExecutor().submit(() -> createContainer(containerId, data));
     }
-    public Future<Container> createDefaultContainerFuture(WineInfo wineInfo, String containerId) {
-        String name = "container_" + containerId;
-        Log.d("XServerScreen", "Creating container $name");
-        String screenSize = Container.DEFAULT_SCREEN_SIZE;
-        String envVars = Container.DEFAULT_ENV_VARS;
-        String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
-        String dxwrapper = Container.DEFAULT_DXWRAPPER;
-        String dxwrapperConfig = "";
-        String audioDriver = Container.DEFAULT_AUDIO_DRIVER;
-        String wincomponents = Container.DEFAULT_WINCOMPONENTS;
-        String drives = "";
-        Boolean showFPS = false;
-        String cpuList = Container.getFallbackCPUList();
-        String cpuListWoW64 = Container.getFallbackCPUListWoW64();
-        Boolean wow64Mode = WineInfo.isMainWineVersion(wineInfo.identifier());
-        // Boolean wow64Mode = false;
-        Byte startupSelection = Container.STARTUP_SELECTION_ESSENTIAL;
-        String box86Preset = Box86_64Preset.COMPATIBILITY;
-        String box64Preset = Box86_64Preset.COMPATIBILITY;
-        String desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME;
-
-        JSONObject data = new JSONObject();
-        try {
-            data.put("name", name);
-            data.put("screenSize", screenSize);
-            data.put("envVars", envVars);
-            data.put("cpuList", cpuList);
-            data.put("cpuListWoW64", cpuListWoW64);
-            data.put("graphicsDriver", graphicsDriver);
-            data.put("dxwrapper", dxwrapper);
-            data.put("dxwrapperConfig", dxwrapperConfig);
-            data.put("audioDriver", audioDriver);
-            data.put("wincomponents", wincomponents);
-            data.put("drives", drives);
-            data.put("showFPS", showFPS);
-            data.put("wow64Mode", wow64Mode);
-            data.put("startupSelection", startupSelection);
-            data.put("box86Preset", box86Preset);
-            data.put("box64Preset", box64Preset);
-            data.put("desktopTheme", desktopTheme);
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
-        }
-
-        return createContainerFuture(containerId, data);
-    }
 
     public void duplicateContainerAsync(Container container, Runnable callback) {
         final Handler handler = new Handler();

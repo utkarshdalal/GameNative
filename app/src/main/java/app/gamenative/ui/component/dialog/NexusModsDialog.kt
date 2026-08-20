@@ -695,6 +695,7 @@ fun NexusModsDialog(
     var diagnosticsPaused by remember { mutableStateOf(false) }
     val nexusAuthenticationUnavailableMessage =
         context.getString(R.string.nexus_integration_temporarily_unavailable)
+    val nexusAdultContentBlockedMessage = context.getString(R.string.nexus_adult_content_blocked)
 
     fun nexusUserMessage(
         error: Throwable,
@@ -707,6 +708,7 @@ fun NexusModsDialog(
                 error = error,
                 expiredAuthorizationMessage = expiredAuthorizationMessage,
                 authenticationMessage = authenticationMessage,
+                adultContentBlockedMessage = nexusAdultContentBlockedMessage,
             )
         } else {
             NexusImportState.userMessage(
@@ -714,6 +716,7 @@ fun NexusModsDialog(
                 fallback = fallback,
                 expiredAuthorizationMessage = expiredAuthorizationMessage,
                 authenticationMessage = authenticationMessage,
+                adultContentBlockedMessage = nexusAdultContentBlockedMessage,
             )
         }
     }
