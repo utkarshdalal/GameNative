@@ -329,12 +329,12 @@ internal fun parseScreenSize(screenSize: String): Pair<Int, Int>? {
 
 internal fun portraitGameHostHeight(
     isPortrait: Boolean,
-    portraitRenderAtTop: Boolean,
+    portraitAvoidCameraHole: Boolean,
     screenWidth: Int,
     availableHeight: Int,
     screenSize: String,
 ): Int {
-    if (!isPortrait || !portraitRenderAtTop) return ViewGroup.LayoutParams.MATCH_PARENT
+    if (!isPortrait || portraitAvoidCameraHole) return ViewGroup.LayoutParams.MATCH_PARENT
     val (renderWidth, renderHeight) = parseScreenSize(screenSize) ?: return ViewGroup.LayoutParams.MATCH_PARENT
     val aspectHeight = ceil(screenWidth * (renderHeight.toFloat() / renderWidth.toFloat())).toInt()
     return if (availableHeight > 0) minOf(aspectHeight, availableHeight) else aspectHeight
@@ -343,14 +343,14 @@ internal fun portraitGameHostHeight(
 private fun updatePortraitGameHostHeight(
     gameHost: View,
     isPortrait: Boolean,
-    portraitRenderAtTop: Boolean,
+    portraitAvoidCameraHole: Boolean,
     screenWidth: Int,
     screenSize: String,
 ) {
     val params = gameHost.layoutParams ?: return
     val height = portraitGameHostHeight(
         isPortrait,
-        portraitRenderAtTop,
+        portraitAvoidCameraHole,
         screenWidth,
         (gameHost.parent as? View)?.height ?: 0,
         screenSize,
@@ -2270,7 +2270,7 @@ fun XServerScreen(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     portraitGameHostHeight(
                         isPortrait,
-                        container.isPortraitRenderAtTop,
+                        container.isPortraitAvoidCameraHole,
                         screenWidth,
                         frameLayout.height,
                         container.screenSize,
@@ -2285,7 +2285,7 @@ fun XServerScreen(
                     updatePortraitGameHostHeight(
                         gameHost,
                         isPortrait,
-                        container.isPortraitRenderAtTop,
+                        container.isPortraitAvoidCameraHole,
                         screenWidth,
                         container.screenSize,
                     )
@@ -2296,13 +2296,13 @@ fun XServerScreen(
                     updatePortraitGameHostHeight(
                         gameHost,
                         isPortrait,
-                        container.isPortraitRenderAtTop,
+                        container.isPortraitAvoidCameraHole,
                         screenWidth,
                         container.screenSize,
                     )
                 }
             }
-            val touchpadHost = if (isPortrait && container.isPortraitRenderAtTop) gameHost else frameLayout
+            val touchpadHost = if (isPortrait && !container.isPortraitAvoidCameraHole) gameHost else frameLayout
             touchpadHost.addView(PluviaApp.touchpadView)
 
             PluviaApp.inputControlsManager = InputControlsManager(context)
@@ -2538,7 +2538,7 @@ fun XServerScreen(
                 updatePortraitGameHostHeight(
                     gameHost,
                     isPortrait,
-                    container.isPortraitRenderAtTop,
+                    container.isPortraitAvoidCameraHole,
                     binding.screenWidth,
                     container.screenSize,
                 )

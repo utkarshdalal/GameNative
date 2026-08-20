@@ -167,7 +167,7 @@ public class Container {
     private boolean portraitMode = false;
 
     // In portrait controller mode, constrain the game surface to the top 16:9 region.
-    private boolean portraitRenderAtTop = false;
+    private boolean portraitAvoidCameraHole = false;
 
     private String containerVariant = DEFAULT_VARIANT;
 
@@ -766,7 +766,7 @@ public class Container {
             // Process suspend policy setting
             data.put("suspendPolicy", suspendPolicy);
             data.put("portraitMode", portraitMode);
-            data.put("portraitRenderAtTop", portraitRenderAtTop);
+            data.put("portraitAvoidCameraHole", portraitAvoidCameraHole);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
@@ -987,8 +987,11 @@ public class Container {
                 case "portraitMode":
                     this.portraitMode = data.getBoolean(key);
                     break;
+                case "portraitAvoidCameraHole":
+                    this.portraitAvoidCameraHole = data.getBoolean(key);
+                    break;
                 case "portraitRenderAtTop":
-                    this.portraitRenderAtTop = data.getBoolean(key);
+                    this.portraitAvoidCameraHole = !data.getBoolean(key);
                     break;
             }
         }
@@ -1133,12 +1136,12 @@ public class Container {
         this.portraitMode = portraitMode;
     }
 
-    public boolean isPortraitRenderAtTop() {
-        return portraitRenderAtTop;
+    public boolean isPortraitAvoidCameraHole() {
+        return portraitAvoidCameraHole;
     }
 
-    public void setPortraitRenderAtTop(boolean portraitRenderAtTop) {
-        this.portraitRenderAtTop = portraitRenderAtTop;
+    public void setPortraitAvoidCameraHole(boolean portraitAvoidCameraHole) {
+        this.portraitAvoidCameraHole = portraitAvoidCameraHole;
     }
 
     public String getContainerJson() {

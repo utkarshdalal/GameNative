@@ -317,10 +317,10 @@ fun GeneralTabContent(
         if (config.portraitMode) {
             SettingsSwitch(
                 colors = settingsTileColorsAlt(),
-                title = { Text(text = stringResource(R.string.portrait_render_at_top)) },
-                subtitle = { Text(text = stringResource(R.string.portrait_render_at_top_description)) },
-                state = config.portraitRenderAtTop,
-                onCheckedChange = { state.config.value = config.copy(portraitRenderAtTop = it) },
+                title = { Text(text = stringResource(R.string.portrait_avoid_camera_hole)) },
+                subtitle = { Text(text = stringResource(R.string.portrait_avoid_camera_hole_description)) },
+                state = config.portraitAvoidCameraHole,
+                onCheckedChange = { state.config.value = config.copy(portraitAvoidCameraHole = it) },
             )
         }
         SettingsListDropdown(

@@ -667,8 +667,8 @@
 	<string name="show_fps">Afișează FPS</string>
 	<string name="portrait_mode">Mod portret</string>
 	<string name="portrait_mode_description">Pentru controlere de tip 8BitDo FlipPad/GameSir Pocket Taco</string>
-	<string name="portrait_render_at_top">Aliniază afișarea jocului sus</string>
-	<string name="portrait_render_at_top_description">Plasează afișarea jocului în partea de sus a ecranului, deasupra controlerului</string>
+	<string name="portrait_avoid_camera_hole">Evită orificiul camerei</string>
+	<string name="portrait_avoid_camera_hole_description">Folosește aspectul vertical original pentru a ține afișarea jocului departe de orificiul camerei</string>
 	<string name="remove_driver_confirmation">Sigur vrei să elimini driverul „%s”? Această acțiune nu poate fi anulată</string>
 
     <!-- Container Configuration: Steam Integration -->
