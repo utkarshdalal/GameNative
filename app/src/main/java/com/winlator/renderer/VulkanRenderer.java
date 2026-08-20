@@ -457,7 +457,11 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                         g.lock();
                     } else {
                         if (xrFrameBridge != null) {
+                            // The immersive session samples this AHB directly; skipping the
+                            // native update leaves the render loop parked on its condvar, so
+                            // no scene is composited or presented to the invisible surface.
                             xrFrameBridge.onScanoutBuffer(ahbPtr, pixmap.width, pixmap.height);
+                            return;
                         }
                         nativeUpdateWindowContentAHB(nativeHandle, targetId, ahbPtr,
                             pixmap.width, pixmap.height, rx, ry);
