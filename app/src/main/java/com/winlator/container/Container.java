@@ -166,7 +166,7 @@ public class Container {
 
     private boolean portraitMode = false;
 
-    // In portrait controller mode, constrain the game surface to the top 16:9 region.
+    // In portrait controller mode, use the original full-height layout to avoid camera-hole overlap.
     private boolean portraitAvoidCameraHole = false;
 
     private String containerVariant = DEFAULT_VARIANT;
