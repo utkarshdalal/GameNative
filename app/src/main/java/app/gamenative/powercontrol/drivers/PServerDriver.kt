@@ -401,19 +401,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     fun executeRootCommand(command: String): Result<String?> = executeAsRoot(command)
 
     /**
-     * Read a file using PServer root access with fallback to direct file read.
-     * @param path The absolute path to the file to read
-     * @return The file contents as a trimmed string, or null if the file cannot be read
-     */
-    override fun readFile(path: String): String? {
-        return if (pserverExecutor != null) {
-            readSysfsFile(path)
-        } else {
-            null
-        }
-    }
-
-    /**
      * Attach (or clear) the command that hands the fan back to the vendor controller and
      * rewrite the on-disk artifacts, so the babysitter and any dirty-session recovery
      * carry it too.

@@ -224,13 +224,4 @@ abstract class PerformanceDriver {
      * Set maximum RAM bus performance level
      */
     open fun setMaxBusLevel(level: Int): Boolean = false
-
-    // ========================================
-    // Utility functions
-    // ========================================
-
-    /**
-     * Read File using driver
-     */
-    open fun readFile(path: String): String? = null
 }

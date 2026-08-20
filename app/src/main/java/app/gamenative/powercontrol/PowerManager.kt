@@ -973,19 +973,6 @@ object PowerManager {
     }
 
     // ========================================
-    // File I/O
-    // ========================================
-
-    /**
-     * Read a file using the driver's file reading capabilities.
-     * For PServerDriver, this uses root access with fallback to direct file read.
-     * For other drivers, returns null.
-     * @param path The absolute path to the file to read
-     * @return The file contents as a trimmed string, or null if the file cannot be read
-     */
-    fun readFile(path: String): String? = getDriver().readFile(path)
-
-    // ========================================
     // Profile Persistence
     // ========================================
 
