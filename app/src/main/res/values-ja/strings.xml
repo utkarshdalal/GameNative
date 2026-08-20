@@ -677,8 +677,6 @@
     <string name="show_fps">FPS を表示</string>
     <string name="portrait_mode">ポートレートモード</string>
     <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco タイプ コントローラー用</string>
-    <string name="portrait_avoid_camera_hole">カメラ穴を避ける</string>
-    <string name="portrait_avoid_camera_hole_description">元の縦向きレイアウトを使用して、ゲーム画面をカメラ穴から離します</string>
     <string name="remove_driver_confirmation">ドライバー「%s」を削除してもよろしいですか?これは元に戻すことはできません</string>
 
     <!-- Container Configuration: Steam Integration -->

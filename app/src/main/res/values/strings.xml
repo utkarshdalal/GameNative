@@ -787,8 +787,6 @@
     <string name="show_fps">Show FPS</string>
     <string name="portrait_mode">Portrait Mode</string>
     <string name="portrait_mode_description">For 8BitDo FlipPad/GameSir Pocket Taco type controllers</string>
-    <string name="portrait_avoid_camera_hole">Avoid Camera Hole</string>
-    <string name="portrait_avoid_camera_hole_description">Uses the original portrait layout to keep the game display away from the camera hole</string>
     <string name="remove_driver_confirmation">Are you sure you want to remove driver "%s"? This cannot be undone</string>
 
     <!-- Container Configuration: Steam Integration -->

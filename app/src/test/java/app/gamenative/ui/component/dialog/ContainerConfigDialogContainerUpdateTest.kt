@@ -673,16 +673,14 @@ class ContainerConfigDialogContainerUpdateTest {
     }
 
     @Test
-    fun portraitTopAlignedRendering_isAppliedCorrectly() {
+    fun portraitMode_isAppliedCorrectly() {
         val containerData = ContainerData(
             portraitMode = true,
-            portraitAvoidCameraHole = true,
         )
 
         ContainerUtils.applyToContainer(context, container, containerData, saveToDisk = false)
 
         assertTrue(container.isPortraitMode)
-        assertTrue(container.isPortraitAvoidCameraHole)
     }
 }
 

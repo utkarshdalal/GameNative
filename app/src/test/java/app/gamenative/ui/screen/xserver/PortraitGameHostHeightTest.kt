@@ -23,10 +23,9 @@ class PortraitGameHostHeightTest {
     }
 
     @Test
-    fun portraitGameHostHeight_usesSelectedAspectRatioByDefault() {
+    fun portraitGameHostHeight_usesSelectedAspectRatioInPortraitMode() {
         assertEquals(900, portraitGameHostHeight(
             isPortrait = true,
-            portraitAvoidCameraHole = false,
             screenWidth = 1200,
             availableHeight = 0,
             screenSize = "800x600",
@@ -37,7 +36,6 @@ class PortraitGameHostHeightTest {
     fun portraitGameHostHeight_clampsToAvailableTopArea() {
         assertEquals(700, portraitGameHostHeight(
             isPortrait = true,
-            portraitAvoidCameraHole = false,
             screenWidth = 1200,
             availableHeight = 700,
             screenSize = "800x600",
@@ -45,24 +43,15 @@ class PortraitGameHostHeightTest {
     }
 
     @Test
-    fun portraitGameHostHeight_fallsBackOutsideDefaultTopAlign() {
+    fun portraitGameHostHeight_fallsBackOutsidePortraitAspectLayout() {
         assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, portraitGameHostHeight(
             isPortrait = false,
-            portraitAvoidCameraHole = false,
             screenWidth = 1200,
             availableHeight = 0,
             screenSize = "800x600",
         ))
         assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, portraitGameHostHeight(
             isPortrait = true,
-            portraitAvoidCameraHole = true,
-            screenWidth = 1200,
-            availableHeight = 0,
-            screenSize = "800x600",
-        ))
-        assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, portraitGameHostHeight(
-            isPortrait = true,
-            portraitAvoidCameraHole = false,
             screenWidth = 1200,
             availableHeight = 0,
             screenSize = "bad",

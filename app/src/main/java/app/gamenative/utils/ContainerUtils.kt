@@ -343,7 +343,6 @@ object ContainerUtils {
             unpackFiles = container.isUnpackFiles(),
             suspendPolicy = container.suspendPolicy,
             portraitMode = container.isPortraitMode,
-            portraitAvoidCameraHole = container.isPortraitAvoidCameraHole,
             enableXInput = enableX,
             enableDInput = enableD,
             dinputMapperType = mapperType,
@@ -542,7 +541,6 @@ object ContainerUtils {
         container.setUnpackFiles(containerData.unpackFiles)
         container.setSuspendPolicy(containerData.suspendPolicy)
         container.setPortraitMode(containerData.portraitMode)
-        container.setPortraitAvoidCameraHole(containerData.portraitAvoidCameraHole)
         if (previousUnpackFiles != containerData.unpackFiles && containerData.unpackFiles) {
             container.setNeedsUnpacking(true)
         }

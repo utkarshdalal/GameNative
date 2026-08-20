@@ -166,9 +166,6 @@ public class Container {
 
     private boolean portraitMode = false;
 
-    // In portrait controller mode, use the original full-height layout to avoid camera-hole overlap.
-    private boolean portraitAvoidCameraHole = false;
-
     private String containerVariant = DEFAULT_VARIANT;
 
     public String getGraphicsDriverVersion() {
@@ -766,7 +763,6 @@ public class Container {
             // Process suspend policy setting
             data.put("suspendPolicy", suspendPolicy);
             data.put("portraitMode", portraitMode);
-            data.put("portraitAvoidCameraHole", portraitAvoidCameraHole);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
             FileUtils.writeString(getConfigFile(), data.toString());
@@ -987,12 +983,6 @@ public class Container {
                 case "portraitMode":
                     this.portraitMode = data.getBoolean(key);
                     break;
-                case "portraitAvoidCameraHole":
-                    this.portraitAvoidCameraHole = data.getBoolean(key);
-                    break;
-                case "portraitRenderAtTop":
-                    this.portraitAvoidCameraHole = !data.getBoolean(key);
-                    break;
             }
         }
 
@@ -1136,13 +1126,6 @@ public class Container {
         this.portraitMode = portraitMode;
     }
 
-    public boolean isPortraitAvoidCameraHole() {
-        return portraitAvoidCameraHole;
-    }
-
-    public void setPortraitAvoidCameraHole(boolean portraitAvoidCameraHole) {
-        this.portraitAvoidCameraHole = portraitAvoidCameraHole;
-    }
 
     public String getContainerJson() {
         String content = FileUtils.readString(getConfigFile());

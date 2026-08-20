@@ -673,8 +673,6 @@
     <string name="show_fps">FPS 표시</string>
     <string name="portrait_mode">세로 모드</string>
     <string name="portrait_mode_description">8BitDo FlipPad/GameSir Pocket Taco 유형 컨트롤러용</string>
-    <string name="portrait_avoid_camera_hole">카메라 구멍 피하기</string>
-    <string name="portrait_avoid_camera_hole_description">기존 세로 레이아웃을 사용하여 게임 화면이 카메라 구멍을 피하도록 합니다</string>
     <string name="remove_driver_confirmation">드라이버 "%s"을(를) 제거하시겠습니까? 이 작업은 실행 취소할 수 없습니다</string>
 
     <!-- Container Configuration: Steam Integration -->
