@@ -1,7 +1,6 @@
 package app.gamenative.powercontrol.metrics
 
 import android.os.SystemClock
-import app.gamenative.powercontrol.PowerManager
 import java.io.File
 import java.util.Locale
 import timber.log.Timber
@@ -48,7 +47,7 @@ object SystemMetricsSources {
 
         val candidates = linkedSetOf<String>()
         fun add(path: String) {
-            if (File(path).exists()) {
+            if (File(path).canRead()) {
                 candidates += path
             }
         }
@@ -87,7 +86,7 @@ object SystemMetricsSources {
                 )
                 for (fileName in usageFiles) {
                     val file = File(nodeDir, fileName)
-                    if (!file.exists()) continue
+                    if (!file.canRead()) continue
                     if (looksLikeGpuNode || fileName == "gpu_busy_percentage" || fileName == "gpuinfo") {
                         candidates += file.path
                     }
@@ -202,8 +201,7 @@ object SystemMetricsSources {
 
     fun readFirstLine(path: String): String? {
         return try {
-            PowerManager.readFile(path)?.lines()?.firstOrNull()
-                ?: File(path).bufferedReader().use { it.readLine() }
+            File(path).bufferedReader().use { it.readLine() }
         } catch (_: Exception) {
             null
         }
@@ -211,10 +209,9 @@ object SystemMetricsSources {
 
     fun readNthLine(path: String, lineIndex: Int): String? {
         return try {
-            PowerManager.readFile(path)?.lines()?.drop(lineIndex)?.firstOrNull()
-                ?: File(path).bufferedReader().useLines { lines ->
-                    lines.drop(lineIndex).firstOrNull()
-                }
+            File(path).bufferedReader().useLines { lines ->
+                lines.drop(lineIndex).firstOrNull()
+            }
         } catch (_: Exception) {
             null
         }
