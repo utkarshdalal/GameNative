@@ -754,8 +754,8 @@
 
     <!-- Settings: Performance Group -->
     <string name="settings_performance_title">Desempenho</string>
-    <string name="settings_performance_power_control_title">Controle de energia</string>
-    <string name="settings_performance_power_control_subtitle">Ativa o controle de energia no jogo por padrão (ativado em dispositivos testados: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_power_control_title">Controle de desempenho</string>
+    <string name="settings_performance_power_control_subtitle">Ativa o controle de desempenho no jogo por padrão (ativado em dispositivos testados: AYN Odin 3, Retroid Pocket 6/Nova)</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulação</string>

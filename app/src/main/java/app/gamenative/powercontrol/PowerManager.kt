@@ -159,12 +159,6 @@ object PowerManager {
     private var gamePinGeneration: Int = 0
 
     /**
-     * Start thread to run in start()
-     */
-    @Volatile
-    private var startThread: Thread? = null
-
-    /**
      * Autostart with contain dir and application context
      */
     fun autoStart(rootDir: File) {
@@ -240,39 +234,31 @@ object PowerManager {
      */
     @Synchronized
     private fun start() {
-        if (startThread?.isAlive == true) return
-
         driver.start()
 
-        startThread = Thread {
-            if (Thread.currentThread().isInterrupted) return@Thread
-            applyCurrentProfile()
+        applyCurrentProfile()
 
-            // Pin PulseAudio to dedicated performance cores if PServer is available
-            pinPulseAudioToDedicatedCores()
-            if (Thread.currentThread().isInterrupted) return@Thread
-            isGameStarted = true
+        // Pin PulseAudio to dedicated performance cores if PServer is available
+        pinPulseAudioToDedicatedCores()
+        isGameStarted = true
 
-            if (currentProfile.enableAdaptiveFpsCap) {
-                AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+        if (currentProfile.enableAdaptiveFpsCap) {
+            AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+        }
+
+        appContext.let { PerformanceMetricsCollector.start(it) }
+
+        // Reset the driver on initialize. For PServer this also restores the recorded
+        // baseline of a session that died without restoring it.
+        (driver as? PServerDriver)?.let {
+            if (it.hasPendingBaseline()) {
+                Timber.tag("PowerControl").i("Power baseline from a previous session found on disk, restoring it")
             }
+        }
 
-            if (Thread.currentThread().isInterrupted) return@Thread
-            appContext.let { PerformanceMetricsCollector.start(it) }
-
-            // Reset the driver on initialize. For PServer this also restores the recorded
-            // baseline of a session that died without restoring it.
-            (driver as? PServerDriver)?.let {
-                if (it.hasPendingBaseline()) {
-                    Timber.tag("PowerControl").i("Power baseline from a previous session found on disk, restoring it")
-                }
-            }
-
-            if (Thread.currentThread().isInterrupted) return@Thread
-            if (currentProfile.enableFanControl) {
-                FanController.start(driver)
-            }
-        }.also { it.start() }
+        if (currentProfile.enableFanControl) {
+            FanController.start(driver)
+        }
     }
 
     /**
@@ -280,8 +266,6 @@ object PowerManager {
      */
     @Synchronized
     fun stop() {
-        startThread?.interrupt()
-        startThread = null
         // Save the current profile if available, otherwise read from driver
         saveProfile()
         stopAutoTuning()
@@ -304,8 +288,6 @@ object PowerManager {
      */
     @Synchronized
     fun pause() {
-        startThread?.interrupt()
-        startThread = null
         if (!isGameStarted) return
         saveProfile()
         stopAutoTuning()

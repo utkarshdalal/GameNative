@@ -937,8 +937,8 @@
 
 	<!-- Settings: Performance Group -->
 	<string name="settings_performance_title">Performanță</string>
-	<string name="settings_performance_power_control_title">Control alimentare</string>
-	<string name="settings_performance_power_control_subtitle">Activează implicit controlul alimentării în joc (activat pe dispozitivele testate: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+	<string name="settings_performance_power_control_title">Control performanță</string>
+	<string name="settings_performance_power_control_subtitle">Activează implicit controlul performanță în joc (activat pe dispozitivele testate: AYN Odin 3, Retroid Pocket 6/Nova)</string>
 
 	<!-- Settings: Emulation Group -->
 	<string name="settings_emulation_title">Emulare</string>

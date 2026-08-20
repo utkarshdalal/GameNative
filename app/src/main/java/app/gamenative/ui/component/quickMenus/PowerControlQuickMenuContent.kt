@@ -451,46 +451,46 @@ private fun FlowRowScope.SuccessView(
             }
         }
 
-        state.cpuInfo?.let { cpuInfo ->
-            SectionHeader(title = "CPU")
+        if (isDriverSupported) {
+            state.cpuInfo?.let { cpuInfo ->
+                SectionHeader(title = "CPU")
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.power_control_governor),
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.power_control_governor),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
 
-                SelectorRow(
-                    valueText = cpuInfo.currentGovernor.replaceFirstChar { it.uppercase() },
-                    accentColor = accentColor,
-                    expanded = isGovernorDropdownExpanded,
-                    onExpandedChange = { isGovernorDropdownExpanded = it },
-                ) { menuFocusRequester ->
-                    cpuInfo.availableGovernors.forEachIndexed { index, governor ->
-                        SelectorMenuItem(
-                            accentColor = accentColor,
-                            focusRequester = if (index == 0) menuFocusRequester else null,
-                            onClick = {
-                                isGovernorDropdownExpanded = false
-                                onGovernorSelected(governor)
-                            },
-                            text = {
-                                Text(
-                                    text = governor.replaceFirstChar { it.uppercase() },
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            },
-                        )
+                    SelectorRow(
+                        valueText = cpuInfo.currentGovernor.replaceFirstChar { it.uppercase() },
+                        accentColor = accentColor,
+                        expanded = isGovernorDropdownExpanded,
+                        onExpandedChange = { isGovernorDropdownExpanded = it },
+                    ) { menuFocusRequester ->
+                        cpuInfo.availableGovernors.forEachIndexed { index, governor ->
+                            SelectorMenuItem(
+                                accentColor = accentColor,
+                                focusRequester = if (index == 0) menuFocusRequester else null,
+                                onClick = {
+                                    isGovernorDropdownExpanded = false
+                                    onGovernorSelected(governor)
+                                },
+                                text = {
+                                    Text(
+                                        text = governor.replaceFirstChar { it.uppercase() },
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                },
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        if (isDriverSupported) {
             // Only show manual controls when auto-tuning is disabled
             if (!state.selectedProfile.enableAutoTuning) {
                 state.cpuInfo?.let { cpuInfo ->

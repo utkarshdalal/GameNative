@@ -42,10 +42,10 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         private const val GPU_DEVFREQ_PATH = "$GPU_BASE_PATH/devfreq"
 
         // CPU policies discovered at initialization (reduces redundant IPC calls)
-        private lateinit var cpuPolicies: List<CpuPolicy>
+        private var cpuPolicies: List<CpuPolicy> = emptyList()
 
         // CPU cluster mapping for affinity control
-        private lateinit var cpuClusters: Map<CpuCluster, List<Int>>
+        private var cpuClusters: Map<CpuCluster, List<Int>> = emptyMap()
 
         /**
          * Check if PServer service is available without maintaining connection

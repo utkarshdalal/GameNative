@@ -1109,8 +1109,8 @@ https://gamenative.app
     <string name="settings_emulation_driver_manager_subtitle">Установить или удалить пользовательские пакеты графических драйверов</string>
     <!-- Settings: Performance Group -->
     <string name="settings_performance_title">Производительность</string>
-    <string name="settings_performance_power_control_title">Управление питанием</string>
-    <string name="settings_performance_power_control_subtitle">Включать управление питанием в игре по умолчанию (включено на протестированных устройствах: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_power_control_title">Управление производительностью</string>
+    <string name="settings_performance_power_control_subtitle">Включать управление производительностью в игре по умолчанию (включено на протестированных устройствах: AYN Odin 3, Retroid Pocket 6/Nova)</string>
 
     <string name="settings_emulation_driver_manager_title">Менеджер драйверов</string>
     <string name="settings_emulation_orientations_subtitle">Выберите, какие ориентации можно повернуть во время игры</string>

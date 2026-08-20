@@ -906,8 +906,8 @@
 
     <!-- Settings: Performance Group -->
     <string name="settings_performance_title">パフォーマンス</string>
-    <string name="settings_performance_power_control_title">電力コントロール</string>
-    <string name="settings_performance_power_control_subtitle">ゲーム内電力コントロールをデフォルトで有効にする（テスト済みデバイスではオン: AYN Odin 3、Retroid Pocket 6/Nova）</string>
+    <string name="settings_performance_power_control_title">パフォーマンス制御</string>
+    <string name="settings_performance_power_control_subtitle">ゲーム内パフォーマンス制御をデフォルトで有効にする（テスト済みデバイスではオン: AYN Odin 3、Retroid Pocket 6/Nova）</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">エミュレーション</string>

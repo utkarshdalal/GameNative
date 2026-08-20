@@ -923,8 +923,8 @@
 
     <!-- Settings: Performance Group -->
     <string name="settings_performance_title">效能</string>
-    <string name="settings_performance_power_control_title">功耗控制</string>
-    <string name="settings_performance_power_control_subtitle">預設啟用遊戲內功耗控制（已在測試裝置上啟用：AYN Odin 3、Retroid Pocket 6/Nova）</string>
+    <string name="settings_performance_power_control_title">效能控制</string>
+    <string name="settings_performance_power_control_subtitle">預設啟用遊戲內效能控制（已在測試裝置上啟用：AYN Odin 3、Retroid Pocket 6/Nova）</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">模擬設定</string>
