@@ -147,8 +147,8 @@ private:
     // pointer-margin softening measurably made overall performance worse (confirmed by the user
     // immediately after that change), and performance matters far more than this margin's
     // sharpness. Revisit only alongside real perf headroom, not before.
-    static constexpr int32_t kSwapchainWidth = 1280;
-    static constexpr int32_t kSwapchainHeight = 720;
+    static constexpr int32_t kSwapchainWidth = 1920;
+    static constexpr int32_t kSwapchainHeight = 1080;
 
     EGLDisplay eglDisplay_ = EGL_NO_DISPLAY;
     EGLContext eglContext_ = EGL_NO_CONTEXT;
@@ -164,6 +164,7 @@ private:
     GLint quadPositionLoc_ = -1;
     GLint quadTexCoordLoc_ = -1;
     GLint quadSamplerLoc_ = -1;
+    GLint quadLinearizeLoc_ = -1;
     int32_t gameTextureWidth_ = 0;
     int32_t gameTextureHeight_ = 0;
 
@@ -187,6 +188,10 @@ private:
     GLint directGameSamplerLoc_ = -1;
     GLint directOverlaySamplerLoc_ = -1;
     GLint directContentScaleLoc_ = -1;
+    GLint directLinearizeLoc_ = -1;
+    // sRGB swapchain chosen: shaders must linearize sampled sRGB content because GLES
+    // re-encodes on write to sRGB color attachments.
+    bool srgbSwapchain_ = false;
 
     void importSharedBufferIfNeeded();
 
