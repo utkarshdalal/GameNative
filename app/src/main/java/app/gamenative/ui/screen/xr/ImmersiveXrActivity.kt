@@ -1074,6 +1074,25 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             return
         }
 
+        val asrRenderer = actualRenderer as? com.winlator.renderer.ASurfaceRenderer
+        if (asrRenderer != null) {
+            val bridge = DirectVulkanBridge(
+                onFrame = { ahbPtr, _, _ ->
+                    if (xrSessionHandle != 0L) {
+                        XrNative.nativeSetSharedGameBufferPtr(xrSessionHandle, ahbPtr)
+                        if (!directRenderActive) {
+                            directRenderActive = true
+                            applyQuadTransform()
+                        }
+                    }
+                },
+            )
+            directVulkanBridge = bridge
+            asrRenderer.setXrFrameBridge(bridge)
+            Timber.i("Immersive: ASurfaceRenderer detected — direct-render bridge attached, waiting for its first AHardwareBuffer (PixelCopy stays as fallback until then)")
+            return
+        }
+
         if (actualRenderer != null && !directRenderProbeLogged) {
             directRenderProbeLogged = true
             Timber.i("Immersive: renderer is %s (unrecognized) — direct GPU render path unavailable, staying on PixelCopy", actualRenderer.javaClass.simpleName)
@@ -1083,6 +1102,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     private fun teardownDirectRenderBridge() {
         directVulkanBridge = null
         (PluviaApp.xServerView?.renderer as? com.winlator.renderer.VulkanRenderer)?.setVulkanXrFrameBridge(null)
+        (PluviaApp.xServerView?.renderer as? com.winlator.renderer.ASurfaceRenderer)?.setXrFrameBridge(null)
         val bridge = directGLBridge
         if (bridge != null) {
             directGLBridge = null
