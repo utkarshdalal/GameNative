@@ -166,8 +166,16 @@ object PowerManager {
         resolveGameAffinityOwnership()
         loadCurrentProfile()
         if (isProfilePowerControlEnabled()) {
-            start()
+            startPowerControl()
         }
+
+        if (currentProfile.enableAdaptiveFpsCap) {
+            AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+        }
+
+        appContext.let { PerformanceMetricsCollector.start(it) }
+
+        isGameStarted = true
     }
 
     /**
@@ -218,9 +226,9 @@ object PowerManager {
         currentProfile = currentProfile.copy(enablePowerControl = enabled)
 
         if (enabled) {
-            start()
+            startPowerControl()
         } else {
-            stop()
+            stopPowerControl()
         }
     }
 
@@ -233,20 +241,12 @@ object PowerManager {
      * Start the performance driver and restore saved profile if available
      */
     @Synchronized
-    private fun start() {
+    private fun startPowerControl() {
         driver.start()
-
         applyCurrentProfile()
 
         // Pin PulseAudio to dedicated performance cores if PServer is available
         pinPulseAudioToDedicatedCores()
-        isGameStarted = true
-
-        if (currentProfile.enableAdaptiveFpsCap) {
-            AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
-        }
-
-        appContext.let { PerformanceMetricsCollector.start(it) }
 
         // Reset the driver on initialize. For PServer this also restores the recorded
         // baseline of a session that died without restoring it.
@@ -255,10 +255,12 @@ object PowerManager {
                 Timber.tag("PowerControl").i("Power baseline from a previous session found on disk, restoring it")
             }
         }
+    }
 
-        if (currentProfile.enableFanControl) {
-            FanController.start(driver)
-        }
+    @Synchronized
+    fun stopPowerControl() {
+        stopAutoTuning()
+        FanController.stop()
     }
 
     /**
@@ -268,10 +270,9 @@ object PowerManager {
     fun stop() {
         // Save the current profile if available, otherwise read from driver
         saveProfile()
-        stopAutoTuning()
         AdaptiveFpsCapController.stop()
         PerformanceMetricsCollector.stop()
-        FanController.stop()
+        stopPowerControl()
         driver.stop()
         isGameStarted = false
         fpsCapApplier = null
@@ -290,10 +291,9 @@ object PowerManager {
     fun pause() {
         if (!isGameStarted) return
         saveProfile()
-        stopAutoTuning()
         AdaptiveFpsCapController.pause()
         PerformanceMetricsCollector.pause()
-        FanController.pause()
+        stopPowerControl()
         driver.stop()
     }
 
@@ -308,9 +308,6 @@ object PowerManager {
             AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
         }
         PerformanceMetricsCollector.resume()
-        if (currentProfile.enableFanControl) {
-            FanController.start(driver)
-        }
     }
 
     /**
@@ -553,13 +550,15 @@ object PowerManager {
             stopAutoTuning()
         }
 
-        if (isGameStarted) {
+        if (previousProfile.enableAdaptiveFpsCap != profile.enableAdaptiveFpsCap) {
             if (profile.enableAdaptiveFpsCap) {
                 AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
             } else {
                 AdaptiveFpsCapController.stop()
             }
+        }
 
+        if (isGameStarted) {
             if (profile.enableFanControl) {
                 FanController.start(driver)
             } else {
@@ -1510,6 +1509,10 @@ object PowerManager {
 
                 if (currentProfile.enableAutoTuning) {
                     startAutoTuning()
+                }
+
+                if (currentProfile.enableFanControl) {
+                    FanController.start(driver)
                 }
             } catch (e: Exception) {
                 Timber.tag("PowerManager").e(e, "Failed to apply current profile")
