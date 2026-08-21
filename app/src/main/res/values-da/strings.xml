@@ -752,6 +752,11 @@
     <string name="settings_language_restart_confirm">Genstart</string>
     <string name="settings_language_changing">Ændrer sprog og genstarter...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Ydeevne</string>
+    <string name="settings_performance_power_control_title">Strømstyring</string>
+    <string name="settings_performance_power_control_subtitle">Aktivér strømstyring i spil som standard (aktiveret på testede enheder: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulering</string>
     <string name="settings_emulation_orientations_title">Tilladte orienteringer</string>
@@ -2151,6 +2156,8 @@
     <string name="power_control_auto_tuning_desc">Mere stabil ydelse, længere batteritid, mindre varme: justerer automatisk CPU og GPU til dit spil. Verificeret på Retroid Pocket 6.</string>
     <string name="power_control_adaptive_fps">Automatisk FPS-reduktion</string>
     <string name="power_control_adaptive_fps_desc">Sænker FPS-grænsen, når spillet ikke kan nå den, for en stabil billedtakt. Verificeret på Retroid Pocket 6.</string>
+    <string name="power_control_enable">Strømstyring i spil</string>
+    <string name="power_control_enable_desc">Overtag CPU/GPU-klokstyring fra styresystemet</string>
     <string name="power_control_tuning_mode">Justeringstilstand</string>
     <string name="power_control_tuning_mode_per_cluster">Pr. klynge (verificeret på Retroid Pocket 6)</string>
     <string name="power_control_tuning_mode_whole_cpu">PID-regulator</string>

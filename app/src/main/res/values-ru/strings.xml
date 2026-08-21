@@ -1107,6 +1107,11 @@ https://gamenative.app
     <string name="settings_emulation_default_config_subtitle">Начальные настройки контейнера для каждой игры (не влияет на уже установленные игры)</string>
     <string name="settings_emulation_default_config_title">Изменить конфигурацию по умолчанию</string>
     <string name="settings_emulation_driver_manager_subtitle">Установить или удалить пользовательские пакеты графических драйверов</string>
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Производительность</string>
+    <string name="settings_performance_power_control_title">Управление производительностью</string>
+    <string name="settings_performance_power_control_subtitle">Включать управление производительностью в игре по умолчанию (включено на протестированных устройствах: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
     <string name="settings_emulation_driver_manager_title">Менеджер драйверов</string>
     <string name="settings_emulation_orientations_subtitle">Выберите, какие ориентации можно повернуть во время игры</string>
     <string name="settings_emulation_orientations_title">Разрешённые ориентации</string>
@@ -2213,6 +2218,8 @@ https://gamenative.app
     <string name="power_control_auto_tuning_desc">Более стабильная производительность, дольше работа от батареи, меньше нагрев: автоматически настраивает CPU и GPU под игру. Проверено на Retroid Pocket 6.</string>
     <string name="power_control_adaptive_fps">Автоматическое снижение FPS</string>
     <string name="power_control_adaptive_fps_desc">Снижает предел FPS, если игра не может его достичь, для стабильного темпа кадров. Проверено на Retroid Pocket 6.</string>
+    <string name="power_control_enable">Управление питанием в игре</string>
+    <string name="power_control_enable_desc">Перехватывает управление частотами CPU/GPU у ОС</string>
     <string name="power_control_tuning_mode">Режим настройки</string>
     <string name="power_control_tuning_mode_per_cluster">По кластерам (проверено на Retroid Pocket 6)</string>
     <string name="power_control_tuning_mode_whole_cpu">ПИД-регулятор</string>

@@ -943,6 +943,11 @@
     <string name="settings_language_restart_confirm">Uruchom ponownie</string>
     <string name="settings_language_changing">Zmiana języka i ponowne uruchamianie...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Wydajność</string>
+    <string name="settings_performance_power_control_title">Kontrola wydajności</string>
+    <string name="settings_performance_power_control_subtitle">Domyślnie włącz kontrolę wydajności w grze (włączone na testowanych urządzeniach: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulacja</string>
     <string name="settings_emulation_orientations_title">Dozwolone orientacje</string>
@@ -2285,6 +2290,8 @@
     <string name="power_control_auto_tuning_desc">Stabilniejsza wydajność, dłuższy czas pracy baterii, mniej ciepła: automatycznie dostraja CPU i GPU do gry. Zweryfikowano na Retroid Pocket 6.</string>
     <string name="power_control_adaptive_fps">Automatyczna redukcja FPS</string>
     <string name="power_control_adaptive_fps_desc">Obniża limit FPS, gdy gra nie może go osiągnąć, aby zapewnić stabilne tempo klatek. Zweryfikowano na Retroid Pocket 6.</string>
+    <string name="power_control_enable">Zarządzanie energią w grze</string>
+    <string name="power_control_enable_desc">Przejmij kontrolę nad taktowaniem CPU/GPU od systemu</string>
     <string name="power_control_tuning_mode">Tryb dostrajania</string>
     <string name="power_control_tuning_mode_per_cluster">Na klaster (zweryfikowano na Retroid Pocket 6)</string>
     <string name="power_control_tuning_mode_whole_cpu">Regulator PID</string>

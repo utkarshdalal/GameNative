@@ -935,6 +935,11 @@
 	<string name="settings_language_restart_confirm">Repornește</string>
 	<string name="settings_language_changing">Se schimbă limba și se repornește...</string>
 
+	<!-- Settings: Performance Group -->
+	<string name="settings_performance_title">Performanță</string>
+	<string name="settings_performance_power_control_title">Control performanței</string>
+	<string name="settings_performance_power_control_subtitle">Activează implicit controlul performanței în joc (activat pe dispozitivele testate: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
 	<!-- Settings: Emulation Group -->
 	<string name="settings_emulation_title">Emulare</string>
 	<string name="settings_emulation_orientations_title">Orientări permise</string>
@@ -2285,6 +2290,8 @@
     <string name="power_control_auto_tuning_desc">Performanță mai stabilă, autonomie mai mare a bateriei, mai puțină căldură: reglează automat CPU și GPU pentru jocul tău. Verificat pe Retroid Pocket 6.</string>
     <string name="power_control_adaptive_fps">Reducere automată a FPS</string>
     <string name="power_control_adaptive_fps_desc">Scade limita de FPS când jocul nu o poate atinge, pentru un ritm stabil. Verificat pe Retroid Pocket 6.</string>
+    <string name="power_control_enable">Control alimentare în joc</string>
+    <string name="power_control_enable_desc">Preia controlul frecvențelor CPU/GPU de la sistemul de operare</string>
     <string name="power_control_tuning_mode">Mod de reglare</string>
     <string name="power_control_tuning_mode_per_cluster">Pe cluster (verificat pe Retroid Pocket 6)</string>
     <string name="power_control_tuning_mode_whole_cpu">Regulator PID</string>

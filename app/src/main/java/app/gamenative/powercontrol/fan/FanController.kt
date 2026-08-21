@@ -67,6 +67,8 @@ object FanController {
         if (running) return
 
         val pserver = candidate as? PServerDriver ?: return
+        driver = pserver
+
         val period = readPeriodTicks(pserver)
         if (period == null) {
             Timber.tag(TAG).d("Fan PWM nodes not readable, fan control disabled")
@@ -80,7 +82,6 @@ object FanController {
         }
         Timber.tag(TAG).i("Captured fan_mode=%s (period=%d ticks)", mode?.toString() ?: "unreadable", period)
 
-        driver = pserver
         capturedMode = mode
         periodTicks = period
         controller.reset()

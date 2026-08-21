@@ -942,6 +942,11 @@
     <string name="settings_language_restart_confirm">Reiniciar</string>
     <string name="settings_language_changing">Cambiando idioma y reiniciando…</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Rendimiento</string>
+    <string name="settings_performance_power_control_title">Control de rendimiento</string>
+    <string name="settings_performance_power_control_subtitle">Activa el control de rendimiento en el juego de forma predeterminada (activado en dispositivos probados: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulación</string>
     <string name="settings_emulation_orientations_title">Orientaciones de pantalla permitidas</string>
@@ -2279,6 +2284,8 @@
     <string name="power_control_auto_tuning_desc">Rendimiento más estable, mayor duración de batería, menos calor: ajusta automáticamente la CPU y la GPU para tu juego. Verificado en Retroid Pocket 6.</string>
     <string name="power_control_adaptive_fps">Reducción automática de FPS</string>
     <string name="power_control_adaptive_fps_desc">Reduce el límite de FPS cuando el juego no puede alcanzarlo, para un ritmo estable. Verificado en Retroid Pocket 6.</string>
+    <string name="power_control_enable">Control de energía en el juego</string>
+    <string name="power_control_enable_desc">Toma el control de las frecuencias de CPU/GPU desde el sistema</string>
     <string name="power_control_tuning_mode">Modo de ajuste</string>
     <string name="power_control_tuning_mode_per_cluster">Por clúster (verificado en Retroid Pocket 6)</string>
     <string name="power_control_tuning_mode_whole_cpu">Controlador PID</string>

@@ -3,11 +3,11 @@ package app.gamenative.powercontrol
 sealed class PowerControlUiState {
     object Loading : PowerControlUiState()
     data class Success(
-        val cpuInfo: CpuDisplayInfo,
+        val selectedProfile: PowerProfile,
+        val availableProfiles: List<PowerProfile>,
+        val cpuInfo: CpuDisplayInfo?,
         val gpuInfo: GpuDisplayInfo?,
         val ramInfo: RamDisplayInfo?,
-        val selectedProfile: PowerProfile,
-        val availableProfiles: List<PowerProfile>
     ) : PowerControlUiState()
 }
 

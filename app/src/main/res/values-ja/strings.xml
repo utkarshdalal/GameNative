@@ -904,6 +904,11 @@
     <string name="settings_language_restart_confirm">再起動</string>
     <string name="settings_language_changing">言語を変更して再起動しています…</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">パフォーマンス</string>
+    <string name="settings_performance_power_control_title">パフォーマンス制御</string>
+    <string name="settings_performance_power_control_subtitle">ゲーム内パフォーマンス制御をデフォルトで有効にする（テスト済みデバイスではオン: AYN Odin 3、Retroid Pocket 6/Nova）</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">エミュレーション</string>
     <string name="settings_emulation_orientations_title">許可される向き</string>
@@ -2235,6 +2240,8 @@
     <string name="power_control_auto_tuning_desc">より安定したパフォーマンス、より長いバッテリー駆動時間、発熱の低減：ゲームに合わせてCPUとGPUを自動調整します。Retroid Pocket 6で動作確認済みです。</string>
     <string name="power_control_adaptive_fps">FPSの自動低減</string>
     <string name="power_control_adaptive_fps_desc">ゲームがFPS上限に達しない場合は上限を下げ、フレーム間隔を安定させます。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_enable">ゲーム内電力コントロール</string>
+    <string name="power_control_enable_desc">OSに代わってCPU/GPUのクロック制御を行います</string>
     <string name="power_control_tuning_mode">調整モード</string>
     <string name="power_control_tuning_mode_per_cluster">クラスターごと（Retroid Pocket 6で動作確認済み）</string>
     <string name="power_control_tuning_mode_whole_cpu">PID制御</string>

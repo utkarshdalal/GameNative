@@ -901,6 +901,11 @@
     <string name="settings_language_restart_message">Die Änderung der Sprache erfordert einen Neustart der App. Möchtest du fortfahren?</string>
     <string name="settings_language_restart_confirm">Neustart</string>
     <string name="settings_language_changing">Sprache wird geändert und Neustart durchgeführt…</string>
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Leistung</string>
+    <string name="settings_performance_power_control_title">Energieverwaltung</string>
+    <string name="settings_performance_power_control_subtitle">Energieverwaltung im Spiel standardmäßig aktivieren (auf getesteten Geräten aktiviert: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulation</string>
     <string name="settings_emulation_orientations_title">Erlaubte Ausrichtungen</string>
@@ -2221,6 +2226,8 @@
     <string name="power_control_auto_tuning_desc">Stabilere Leistung, längere Akkulaufzeit, weniger Wärme: passt CPU und GPU automatisch an dein Spiel an. Auf dem Retroid Pocket 6 verifiziert.</string>
     <string name="power_control_adaptive_fps">Automatische FPS-Reduzierung</string>
     <string name="power_control_adaptive_fps_desc">Senkt die FPS-Grenze, wenn das Spiel sie nicht erreicht, für eine stabile Bildausgabe. Auf dem Retroid Pocket 6 verifiziert.</string>
+    <string name="power_control_enable">Energieverwaltung im Spiel</string>
+    <string name="power_control_enable_desc">Übernimmt die CPU/GPU-Taktsteuerung vom Betriebssystem</string>
     <string name="power_control_tuning_mode">Anpassungsmodus</string>
     <string name="power_control_tuning_mode_per_cluster">Pro Cluster (auf dem Retroid Pocket 6 verifiziert)</string>
     <string name="power_control_tuning_mode_whole_cpu">PID-Regler</string>

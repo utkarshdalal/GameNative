@@ -30,6 +30,25 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
 
+data class CpuInfo(
+    val currentGovernor: String,
+    val currentMinValue: Long,
+    val currentMaxValue: Long
+)
+
+data class GpuInfo(
+    val currentGpuValue: Long,
+    val minGpuPowerLevel: Int,
+    val maxGpuPowerLevel: Int,
+    val numGpuPowerLevels: Int
+)
+
+data class BusInfo(
+    val minBusLevel: Int,
+    val maxBusLevel: Int,
+    val numBusLevels: Int
+)
+
 /**
  * Manager for CPU and GPU performance control.
  * Provides a unified interface for CPU frequency, governor, and GPU power management.
@@ -45,11 +64,11 @@ object PowerManager {
         ignoreUnknownKeys = true
     }
 
-    private var driver: PerformanceDriver? = null
+    private lateinit var appContext: Context
+    private var containerDir: File? = null
+    private lateinit var driver: PerformanceDriver
     private var autoTuner: PerformanceAutoTuner? = null
     private var clusterTuner: ClusterTuner? = null
-    private var containerDir: File? = null
-    private var appContext: Context? = null
 
     /**
      * Flag to track if a game has been started.
@@ -62,8 +81,7 @@ object PowerManager {
      * The currently active power profile.
      * Updated when settings change, used for saving on stop.
      */
-    var currentProfile: PowerProfile? = null
-        private set
+    lateinit var currentProfile: PowerProfile
 
     /**
      * Observable UI state for the power control quick menu.
@@ -141,16 +159,34 @@ object PowerManager {
     private var gamePinGeneration: Int = 0
 
     /**
+     * Autostart with contain dir and application context
+     */
+    fun autoStart(rootDir: File) {
+        containerDir = rootDir
+        resolveGameAffinityOwnership()
+        loadCurrentProfile()
+        if (isProfilePowerControlEnabled()) {
+            startPowerControl()
+        }
+
+        if (currentProfile.enableAdaptiveFpsCap) {
+            AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+        }
+
+        appContext.let { PerformanceMetricsCollector.start(it) }
+
+        isGameStarted = true
+    }
+
+    /**
      * Initialize PowerManager with application context.
      * Should be called once during application startup.
      */
     fun initialize(context: Context) {
         appContext = context.applicationContext
-        if (driver != null) return
-
         driver = when {
             SamsungPerformanceDriver.isSamsungDevice() -> {
-                val samsungDriver = SamsungPerformanceDriver(context.applicationContext)
+                val samsungDriver = SamsungPerformanceDriver(appContext)
                 if (samsungDriver.isDriverSupported()) {
                     Timber.tag("PowerManager").i("Using Samsung Performance Driver")
                     samsungDriver
@@ -159,15 +195,58 @@ object PowerManager {
                     NoOpPerformanceDriver()
                 }
             }
-            PServerDriver(context.applicationContext).isDriverSupported() -> {
+            PServerDriver.checkPServerAvailability() -> {
                 Timber.tag("PowerManager").i("Using PServer Driver")
-                PServerDriver(context.applicationContext)
+                PServerDriver(appContext)
             }
             else -> {
                 Timber.tag("PowerManager").w("No performance driver available")
                 NoOpPerformanceDriver()
             }
         }
+    }
+
+    /**
+     * Get Driver Default Profile
+     */
+    fun getDriverDefaultProfile(): PowerProfile = driver.getDefaultProfile()
+
+    /**
+     * True when the active profile has in-game power control enabled.
+     */
+    fun isProfilePowerControlEnabled(): Boolean = currentProfile.enablePowerControl
+
+    /**
+     * Enable or disable in-game power control at runtime. Disabling stops the
+     * driver and hands clock control back to the OS; enabling re-initializes
+     * and restarts it when a game is running.
+     */
+    fun setPowerControlEnabled(enabled: Boolean) {
+        // Always save the profile
+        currentProfile = currentProfile.copy(enablePowerControl = enabled)
+
+        if (enabled) {
+            startPowerControl()
+        } else {
+            stopPowerControl()
+        }
+    }
+
+
+    // ========================================
+    // General Settings
+    // ========================================
+
+    /**
+     * Start the performance driver and restore saved profile if available
+     */
+    @Synchronized
+    private fun startPowerControl() {
+        driver.start()
+        applyCurrentProfile()
+
+        // Pin PulseAudio to dedicated performance cores if PServer is available
+        pinPulseAudioToDedicatedCores()
 
         // Reset the driver on initialize. For PServer this also restores the recorded
         // baseline of a session that died without restoring it.
@@ -176,81 +255,25 @@ object PowerManager {
                 Timber.tag("PowerControl").i("Power baseline from a previous session found on disk, restoring it")
             }
         }
-        driver?.reset()
     }
 
-    private fun getDriver(): PerformanceDriver {
-        return driver ?: NoOpPerformanceDriver().also {
-            Timber.tag("PowerManager").w("PowerManager not initialized, using NoOpPerformanceDriver as fallback")
-            driver = it
-        }
-    }
-
-    /**
-     * Get Driver Default Profile
-     */
-    fun getDriverDefaultProfile(): PowerProfile = getDriver().getDefaultProfile()
-
-    data class CpuInfo(
-        val currentGovernor: String,
-        val currentMinValue: Long,
-        val currentMaxValue: Long
-    )
-
-    data class GpuInfo(
-        val currentGpuValue: Long,
-        val minGpuPowerLevel: Int,
-        val maxGpuPowerLevel: Int,
-        val numGpuPowerLevels: Int
-    )
-
-    data class BusInfo(
-        val minBusLevel: Int,
-        val maxBusLevel: Int,
-        val numBusLevels: Int
-    )
-
-    // ========================================
-    // General Settings
-    // ========================================
-
-    /**
-     * Start the performance driver and restore saved profile if available
-     * @param containerDir The container directory for saving/restoring per-container profiles
-     */
-    fun start(containerDir: File? = null) {
-        this.containerDir = containerDir
-        resolveGameAffinityOwnership()
-        getDriver().start()
-        restoreSavedProfile()
-
-        // Pin PulseAudio to dedicated performance cores if PServer is available
-        pinPulseAudioToDedicatedCores()
-        isGameStarted = true
-
-        if (currentProfile?.enableAdaptiveFpsCap != false) {
-            AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
-        }
-
-        appContext?.let { PerformanceMetricsCollector.start(it) }
-            ?: Timber.tag("PowerManager").w("No application context, metrics collector not started")
-
-        if (currentProfile?.enableFanControl != false) {
-            FanController.start(getDriver())
-        }
+    @Synchronized
+    fun stopPowerControl() {
+        stopAutoTuning()
+        FanController.stop()
+        driver.stop()
     }
 
     /**
      * Stop the performance driver and save current profile
      */
+    @Synchronized
     fun stop() {
         // Save the current profile if available, otherwise read from driver
         saveProfile()
-        stopAutoTuning()
         AdaptiveFpsCapController.stop()
         PerformanceMetricsCollector.stop()
-        FanController.stop()
-        getDriver().stop()
+        stopPowerControl()
         isGameStarted = false
         fpsCapApplier = null
         frameSampleStride = 1
@@ -264,14 +287,13 @@ object PowerManager {
     /**
      * Pause the performance driver and auto-tuning when app goes to background
      */
+    @Synchronized
     fun pause() {
         if (!isGameStarted) return
         saveProfile()
-        stopAutoTuning()
         AdaptiveFpsCapController.pause()
         PerformanceMetricsCollector.pause()
-        FanController.pause()
-        getDriver().stop()
+        stopPowerControl()
     }
 
     /**
@@ -279,15 +301,12 @@ object PowerManager {
      */
     fun resume() {
         if (!isGameStarted) return
-        getDriver().start()
-        restoreSavedProfile()
-        if (currentProfile?.enableAdaptiveFpsCap != false) {
+        driver.start()
+        applyCurrentProfile()
+        if (currentProfile.enableAdaptiveFpsCap) {
             AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
         }
         PerformanceMetricsCollector.resume()
-        if (currentProfile?.enableFanControl != false) {
-            FanController.start(getDriver())
-        }
     }
 
     /**
@@ -296,14 +315,14 @@ object PowerManager {
      * Works with any driver that supports CPU frequency and GPU power level control.
      */
     fun startAutoTuning() {
-        val driver = getDriver()
+        val driver = driver
 
         if (autoTuner?.isRunning() == true || clusterTuner?.isRunning() == true) {
             Timber.tag("PowerManager").w("Auto-tuning already running")
             return
         }
 
-        val perClusterTuning = currentProfile?.enablePerClusterTuning ?: true
+        val perClusterTuning = currentProfile.enablePerClusterTuning
         val clusterTuningSupported = driver.isPerClusterSupported()
         val pserver = driver as? PServerDriver
         if (perClusterTuning && clusterTuningSupported && pserver != null) {
@@ -330,31 +349,31 @@ object PowerManager {
             availableCpuFreqs = availableCpuFreqs,
             numGpuLevels = numGpuLevels,
             numBusLevels = numBusLevels,
-            onCpuFrequencyChange = { freq ->
-                if (currentProfile?.minCpuFreq != freq || currentProfile?.maxCpuFreq != freq) {
+            onCpuFrequencyChange = { minFreq, maxFreq ->
+                if (currentProfile.minCpuFreq != minFreq || currentProfile.maxCpuFreq != maxFreq) {
                     update {
-                        setMinCpuValue(freq)
-                        setMaxCpuValue(freq)
+                        setMinCpuValue(minFreq)
+                        setMaxCpuValue(maxFreq)
                     }
                 }
             },
-            onGpuLevelChange = { level ->
-                if (currentProfile?.minGpuPowerLevel != level || currentProfile?.maxGpuPowerLevel != level) {
+            onGpuLevelChange = { minLevel, maxLevel ->
+                if (currentProfile.minGpuPowerLevel != minLevel || currentProfile.maxGpuPowerLevel != maxLevel) {
                     update {
-                        setMinGpuPowerLevel(level)
-                        setMaxGpuPowerLevel(level)
+                        setMinGpuPowerLevel(minLevel)
+                        setMaxGpuPowerLevel(maxLevel)
                     }
                 }
             },
-            onBusLevelChange = { level ->
-                if (currentProfile?.minBusLevel != level || currentProfile?.maxBusLevel != level) {
+            onBusLevelChange = { minLevel, maxLevel ->
+                if (currentProfile.minBusLevel != minLevel || currentProfile.maxBusLevel != maxLevel) {
                     update {
-                        setMinBusLevel(level)
-                        setMaxBusLevel(level)
+                        setMinBusLevel(minLevel)
+                        setMaxBusLevel(maxLevel)
                     }
                 }
             },
-            getTuningStrategy = { currentProfile?.tuningStrategy ?: AutoTuningStrategy.BALANCED },
+            getTuningStrategy = { currentProfile.tuningStrategy },
             enableLogging = BuildConfig.DEBUG,
             skipWarmupCycles = isGameStarted
         )
@@ -398,7 +417,7 @@ object PowerManager {
             metricsProvider = { latestMetrics },
             targetFpsProvider = { targetFps },
             fanSampleProvider = { FanController.latestSample },
-            strategyProvider = { currentProfile?.tuningStrategy ?: AutoTuningStrategy.BALANCED },
+            strategyProvider = { currentProfile.tuningStrategy },
             fpsCapProvider = { AdaptiveFpsCapController.snapshot() },
             stateFile = ClusterTuner.stateFileFor(containerDir),
             logDirectory = tunerLogDirectory(),
@@ -412,8 +431,8 @@ object PowerManager {
         return true
     }
 
-    private fun tunerLogDirectory(): File? {
-        return appContext?.let { context ->
+    private fun tunerLogDirectory(): File {
+        return appContext.let { context ->
             File(
                 context.getExternalFilesDir(null) ?: context.filesDir,
                 PowerBaselineScripts.DIRECTORY_NAME
@@ -509,37 +528,45 @@ object PowerManager {
      * Update the current profile reference.
      * Should be called when the UI changes the active profile.
      */
-    fun setCurrentProfile(profile: PowerProfile) {
+    fun setPowerProfile(profile: PowerProfile) {
         val previousProfile = currentProfile
         currentProfile = profile
 
         // Handle auto-tuning based on profile setting
-        if (profile.enableAutoTuning) {
-            if (previousProfile != null && previousProfile.enablePerClusterTuning != profile.enablePerClusterTuning) {
-                Timber.tag("PowerManager").i(
-                    "Per-cluster tuning changed to ${profile.enablePerClusterTuning}, restarting the tuner"
-                )
+        if (profile.enablePowerControl) {
+            if (profile.enableAutoTuning) {
+                if (previousProfile.enablePerClusterTuning != profile.enablePerClusterTuning) {
+                    Timber.tag("PowerManager").i(
+                        "Per-cluster tuning changed to ${profile.enablePerClusterTuning}, restarting the tuner"
+                    )
+                    stopAutoTuning()
+                }
+                startAutoTuning()
+            } else {
                 stopAutoTuning()
             }
-            startAutoTuning()
         } else {
             stopAutoTuning()
         }
 
-        if (isGameStarted) {
+        if (previousProfile.enableAdaptiveFpsCap != profile.enableAdaptiveFpsCap) {
             if (profile.enableAdaptiveFpsCap) {
                 AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
             } else {
                 AdaptiveFpsCapController.stop()
             }
+        }
 
-            if (profile.enableFanControl) {
-                FanController.start(getDriver())
-            } else {
-                FanController.stop()
+        if (isGameStarted) {
+            if (previousProfile.enableFanControl != profile.enableFanControl) {
+                if (profile.enableFanControl) {
+                    FanController.start(driver)
+                } else {
+                    FanController.stop()
+                }
             }
 
-            if (previousProfile != null && previousProfile.enableGamePinning != profile.enableGamePinning) {
+            if (previousProfile.enableGamePinning != profile.enableGamePinning) {
                 val processName = pinnedGameProcessName
                 if (profile.enableGamePinning) {
                     if (processName != null) {
@@ -560,6 +587,17 @@ object PowerManager {
      * Performs blocking sysfs/driver reads, so call it from a background thread.
      */
     fun refreshUiState() {
+        if (!isProfilePowerControlEnabled()) {
+            _uiState.value = PowerControlUiState.Success(
+                selectedProfile = currentProfile,
+                availableProfiles = emptyList(),
+                cpuInfo = null,
+                gpuInfo = null,
+                ramInfo = null,
+            )
+            return
+        }
+
         try {
             val cpuInfo = getCpuInfo() ?: return
 
@@ -620,7 +658,7 @@ object PowerManager {
             // Try to match current settings against available profiles
             // Match by PowerManager's current profile name
             val matchingProfile = profiles.find { profile ->
-                profile.name == (currentProfile?.name ?: PerformancePreset.CUSTOM.displayName)
+                profile.name == (currentProfile.name)
             }
 
             val selectedProfile = (matchingProfile ?: PowerProfile(
@@ -634,15 +672,18 @@ object PowerManager {
                 maxBusLevel = ramDisplayInfo?.maxBusLevel ?: 0
             )).copy(
                 // Preserve enableAutoTuning and tuningStrategy from PowerManager's current profile
-                enableAutoTuning = currentProfile?.enableAutoTuning ?: true,
-                enablePerClusterTuning = currentProfile?.enablePerClusterTuning ?: true,
-                enableAdaptiveFpsCap = currentProfile?.enableAdaptiveFpsCap ?: true,
-                enableFanControl = currentProfile?.enableFanControl ?: true,
-                enableGamePinning = currentProfile?.enableGamePinning ?: false,
-                tuningStrategy = currentProfile?.tuningStrategy ?: AutoTuningStrategy.POWER_EFFICIENT
+                enablePowerControl = currentProfile.enablePowerControl,
+                enableAutoTuning = currentProfile.enableAutoTuning,
+                enablePerClusterTuning = currentProfile.enablePerClusterTuning,
+                enableAdaptiveFpsCap = currentProfile.enableAdaptiveFpsCap,
+                enableFanControl = currentProfile.enableFanControl,
+                enableGamePinning = currentProfile.enableGamePinning,
+                tuningStrategy = currentProfile.tuningStrategy
             )
 
             _uiState.value = PowerControlUiState.Success(
+                selectedProfile = selectedProfile,
+                availableProfiles = profiles,
                 cpuInfo = CpuDisplayInfo(
                     currentGovernor = cpuInfo.currentGovernor,
                     availableGovernors = availableGovernors,
@@ -653,8 +694,6 @@ object PowerManager {
                     selectedMaxFreqIndex = selectedMaxFreqIndex
                 ),
                 gpuInfo = gpuDisplayInfo,
-                selectedProfile = selectedProfile,
-                availableProfiles = profiles,
                 ramInfo = ramDisplayInfo,
             )
         } catch (e: Exception) {
@@ -671,29 +710,29 @@ object PowerManager {
      * True when driver support fan control and the FanController is usable
      */
     fun isFanControlAvailable(): Boolean {
-        val driver = getDriver()
-        return getDriver().isFanSupported() && FanController.isAvailable(driver)
+        val driver = driver
+        return driver.isFanSupported() && FanController.isAvailable(driver)
     }
 
     /**
      * True when this session can hold the game on the fast CPU cores.
      */
-    fun isGamePinningAvailable(): Boolean = getDriver().isCpuPinningSupported()
+    fun isGamePinningAvailable(): Boolean = driver.isCpuPinningSupported()
 
     /**
      * True when auto-tuning caps each CPU cluster separately via [ClusterTuner].
      */
-    fun isClusterTuningAvailable(): Boolean = getDriver().isPerClusterSupported()
+    fun isClusterTuningAvailable(): Boolean = driver.isPerClusterSupported()
 
     /**
      * Check if driver is supported
      */
-    fun isDriverSupported(): Boolean = getDriver().isDriverSupported()
+    fun isDriverSupported(): Boolean = driver.isDriverSupported()
 
     /**
      * Get display unit preference for frequency values
      */
-    fun getDisplayUnit(): PerformanceDriver.DisplayUnit = getDriver().getDisplayUnit()
+    fun getDisplayUnit(): PerformanceDriver.DisplayUnit = driver.getDisplayUnit()
 
     /**
      * Begin a batch update session.
@@ -701,7 +740,7 @@ object PowerManager {
      * For SamsungDriver, this is a no-op as CustomParams already handles batching.
      */
     fun beginUpdate() {
-        getDriver().beginUpdate()
+        driver.beginUpdate()
     }
 
     /**
@@ -710,7 +749,7 @@ object PowerManager {
      * For SamsungDriver, this is a no-op as each setter already calls start(params).
      */
     fun commit(): Boolean {
-        return getDriver().commit()
+        return driver.commit()
     }
 
     /**
@@ -790,9 +829,9 @@ object PowerManager {
     fun getCpuInfo(): CpuInfo? {
         return try {
             CpuInfo(
-                currentGovernor = getDriver().getCurrentGovernor(),
-                currentMinValue = getDriver().getCurrentMinCpuValue(),
-                currentMaxValue = getDriver().getCurrentMaxCpuValue()
+                currentGovernor = driver.getCurrentGovernor(),
+                currentMinValue = driver.getCurrentMinCpuValue(),
+                currentMaxValue = driver.getCurrentMaxCpuValue()
             )
         } catch (e: Exception) {
             Timber.tag("PowerManager").e(e, "Failed to get CPU info")
@@ -804,29 +843,29 @@ object PowerManager {
      * Get list of available CPU governors
      */
     fun getAvailableGovernors(): List<String> {
-        return getDriver().getAvailableGovernors()
+        return driver.getAvailableGovernors()
     }
 
     /**
      * Get list of available CPU frequencies in KHz
      */
     fun getAvailableCpuFrequencies(): List<Long> {
-        return getDriver().getAvailableCpuFrequencies()
+        return driver.getAvailableCpuFrequencies()
     }
 
     fun setProfileName(name: String) {
-        currentProfile?.name = name
+        currentProfile.name = name
     }
 
     /**
      * Set CPU governor
      */
     fun setGovernor(governor: String): Boolean {
-        val result = getDriver().setGovernor(governor)
+        val result = driver.setGovernor(governor)
         if (result) {
             val cpuGovernor = CpuGovernor.fromString(governor)
             if (cpuGovernor != null) {
-                currentProfile?.governor = cpuGovernor
+                currentProfile.governor = cpuGovernor
             }
         }
         return result
@@ -836,9 +875,9 @@ object PowerManager {
      * Set minimum CPU Value in KHz / Integer
      */
     fun setMinCpuValue(frequency: Long): Boolean {
-        val result = getDriver().setMinCpuValue(frequency)
+        val result = driver.setMinCpuValue(frequency)
         if (result) {
-            currentProfile?.minCpuFreq = frequency
+            currentProfile.minCpuFreq = frequency
         }
         return result
     }
@@ -847,9 +886,9 @@ object PowerManager {
      * Set maximum CPU Value in KHz / Integer
      */
     fun setMaxCpuValue(frequency: Long): Boolean {
-        val result = getDriver().setMaxCpuValue(frequency)
+        val result = driver.setMaxCpuValue(frequency)
         if (result) {
-            currentProfile?.maxCpuFreq = frequency
+            currentProfile.maxCpuFreq = frequency
         }
         return result
     }
@@ -862,7 +901,7 @@ object PowerManager {
      * Check if GPU control is supported
      */
     fun isGpuSupported(): Boolean {
-        return getDriver().isGpuSupported()
+        return driver.isGpuSupported()
     }
 
     /**
@@ -870,12 +909,21 @@ object PowerManager {
      */
     fun getGpuInfo(): GpuInfo? {
         return try {
-            if (!getDriver().isGpuSupported()) return null
+            if (!driver.isGpuSupported()) return null
+            // Batched single-round-trip read when the driver supports it
+            (driver as? PServerDriver)?.readGpuState()?.let { state ->
+                return GpuInfo(
+                    currentGpuValue = state.currentFreqKHz,
+                    minGpuPowerLevel = state.minPowerLevel,
+                    maxGpuPowerLevel = state.maxPowerLevel,
+                    numGpuPowerLevels = state.numPowerLevels
+                )
+            }
             GpuInfo(
-                currentGpuValue = getDriver().getCurrentGpuValue(),
-                minGpuPowerLevel = getDriver().getCurrentMinGpuPowerLevel(),
-                maxGpuPowerLevel = getDriver().getCurrentMaxGpuPowerLevel(),
-                numGpuPowerLevels = getDriver().getNumGpuPowerLevels()
+                currentGpuValue = driver.getCurrentGpuValue(),
+                minGpuPowerLevel = driver.getCurrentMinGpuPowerLevel(),
+                maxGpuPowerLevel = driver.getCurrentMaxGpuPowerLevel(),
+                numGpuPowerLevels = driver.getNumGpuPowerLevels()
             )
         } catch (e: Exception) {
             Timber.tag("PowerManager").e(e, "Failed to get GPU info")
@@ -887,16 +935,16 @@ object PowerManager {
      * Get list of available GPU frequencies in KHz
      */
     fun getAvailableGpuFrequencies(): List<Long> {
-        return getDriver().getAvailableGpuFrequencies()
+        return driver.getAvailableGpuFrequencies()
     }
 
     /**
      * Set minimum GPU power level (0 = fastest, higher = slower)
      */
     fun setMinGpuPowerLevel(level: Int): Boolean {
-        val result = getDriver().setMinGpuPowerLevel(level)
+        val result = driver.setMinGpuPowerLevel(level)
         if (result) {
-            currentProfile?.minGpuPowerLevel = level
+            currentProfile.minGpuPowerLevel = level
         }
         return result
     }
@@ -905,9 +953,9 @@ object PowerManager {
      * Set maximum GPU power level (0 = fastest, higher = slower)
      */
     fun setMaxGpuPowerLevel(level: Int): Boolean {
-        val result = getDriver().setMaxGpuPowerLevel(level)
+        val result = driver.setMaxGpuPowerLevel(level)
         if (result) {
-            currentProfile?.maxGpuPowerLevel = level
+            currentProfile.maxGpuPowerLevel = level
         }
         return result
     }
@@ -917,17 +965,17 @@ object PowerManager {
     // ========================================
 
     fun isBusSupported(): Boolean {
-        return getDriver().isBusSupported()
+        return driver.isBusSupported()
     }
 
     fun getBusInfo(): BusInfo? {
         return try {
-            if (!getDriver().isBusSupported()) return null
+            if (!driver.isBusSupported()) return null
 
             BusInfo(
-                minBusLevel = getDriver().getCurrentMinBusLevel(),
-                maxBusLevel = getDriver().getCurrentMaxBusLevel(),
-                numBusLevels = getDriver().getNumBusLevels()
+                minBusLevel = driver.getCurrentMinBusLevel(),
+                maxBusLevel = driver.getCurrentMaxBusLevel(),
+                numBusLevels = driver.getNumBusLevels()
             )
         } catch (e: Exception) {
             Timber.tag("PowerManager").e(e, "Failed to get RAM bus info")
@@ -936,37 +984,24 @@ object PowerManager {
     }
 
     fun setMinBusLevel(level: Int): Boolean {
-        val result = getDriver().setMinBusLevel(level)
+        val result = driver.setMinBusLevel(level)
 
         if (result) {
-            currentProfile?.minBusLevel = level
+            currentProfile.minBusLevel = level
         }
 
         return result
     }
 
     fun setMaxBusLevel(level: Int): Boolean {
-        val result = getDriver().setMaxBusLevel(level)
+        val result = driver.setMaxBusLevel(level)
 
         if (result) {
-            currentProfile?.maxBusLevel = level
+            currentProfile.maxBusLevel = level
         }
 
         return result
     }
-
-    // ========================================
-    // File I/O
-    // ========================================
-
-    /**
-     * Read a file using the driver's file reading capabilities.
-     * For PServerDriver, this uses root access with fallback to direct file read.
-     * For other drivers, returns null.
-     * @param path The absolute path to the file to read
-     * @return The file contents as a trimmed string, or null if the file cannot be read
-     */
-    fun readFile(path: String): String? = getDriver().readFile(path)
 
     // ========================================
     // Profile Persistence
@@ -978,10 +1013,7 @@ object PowerManager {
      */
     fun saveProfile() {
         try {
-            val jsonString = if (currentProfile != null) {
-                json.encodeToString(currentProfile)
-            } else ""
-
+            val jsonString = json.encodeToString(currentProfile)
             val profileFile = getProfileFile()
             if (profileFile != null) {
                 profileFile.parentFile?.mkdirs()
@@ -1041,7 +1073,7 @@ object PowerManager {
      * a CPU with the game.
      */
     private fun pinPulseAudioToDedicatedCores() {
-        val driver = getDriver()
+        val driver = driver
         if (driver !is PServerDriver) return
 
         Thread {
@@ -1074,7 +1106,8 @@ object PowerManager {
      * share a CPU with the game.
      */
     fun pinBackgroundProcesses() {
-        val driver = getDriver()
+        if (!isProfilePowerControlEnabled()) return
+        val driver = driver
         if (driver !is PServerDriver) return
 
         Thread {
@@ -1148,6 +1181,7 @@ object PowerManager {
         maxRetries: Int = GAME_PIN_MAX_RETRIES,
         retryDelayMs: Long = GAME_PIN_RETRY_DELAY_MS
     ) {
+        if (!isProfilePowerControlEnabled()) return
         pinnedGameProcessName = processName
         startGamePin(processName, "game start", maxRetries, retryDelayMs)
     }
@@ -1167,12 +1201,12 @@ object PowerManager {
         val pserver = driver as? PServerDriver
         if (pserver == null) {
             Timber.tag("PowerManager").i(
-                "Game pinning inactive (driver=${driver?.let { it::class.simpleName }}), not pinning $processName"
+                "Game pinning inactive (driver=${driver.let { it::class.simpleName }}), not pinning $processName"
             )
             return
         }
 
-        if (currentProfile?.enableGamePinning != true) {
+        if (!currentProfile.enableGamePinning) {
             Timber.tag("PowerManager").i("Game pinning switched off in the profile, not pinning $processName")
             return
         }
@@ -1433,65 +1467,57 @@ object PowerManager {
         return containerDir?.let { File(it, ".config/.power-profile") }
     }
 
-    private fun applyDefaultProfile(logMessage: String?) {
-        currentProfile = getDriverDefaultProfile()
-        logMessage?.let { Timber.tag("PowerManager").d(it) }
-        if (currentProfile?.enableAutoTuning == true) {
-            startAutoTuning()
+    /**
+     * Load Current Profile
+     */
+    private fun loadCurrentProfile() {
+        val profileFile = getProfileFile()
+
+        currentProfile = if (profileFile == null || !profileFile.exists()) {
+            getDriverDefaultProfile()
+        } else {
+            val jsonString = profileFile.readText()
+            Timber.tag("PowerManager").d("Restoring power profile from ${profileFile.absolutePath}: $jsonString")
+            json.decodeFromString<PowerProfile>(jsonString)
         }
     }
 
     /**
      * Restore the saved power profile from container-specific file
      */
-    private fun restoreSavedProfile() {
-        try {
-            val profileFile = getProfileFile()
-            if (profileFile == null) {
-                applyDefaultProfile("No container directory set, using default profile")
-                return
-            }
-
-            if (!profileFile.exists()) {
-                applyDefaultProfile("No saved profile found at ${profileFile.absolutePath}, using default profile")
-                return
-            }
-
-            val jsonString = profileFile.readText()
-            if (jsonString.isEmpty()) {
-                applyDefaultProfile("Empty profile file, using default profile")
-                return
-            }
-
-            currentProfile = json.decodeFromString<PowerProfile>(jsonString)
-            Timber.tag("PowerManager").d("Restoring power profile from ${profileFile.absolutePath}: $jsonString")
-
-            val success = update {
-                governor(currentProfile!!.governor.governorName)
-                minCpuValue(currentProfile!!.minCpuFreq)
-                maxCpuValue(currentProfile!!.maxCpuFreq)
-                if (isGpuSupported()) {
-                    minGpuPowerLevel(currentProfile!!.minGpuPowerLevel)
-                    maxGpuPowerLevel(currentProfile!!.maxGpuPowerLevel)
+    private fun applyCurrentProfile() {
+        if (currentProfile.enablePowerControl) {
+            try {
+                val success = update {
+                    governor(currentProfile.governor.governorName)
+                    minCpuValue(currentProfile.minCpuFreq)
+                    maxCpuValue(currentProfile.maxCpuFreq)
+                    if (isGpuSupported()) {
+                        minGpuPowerLevel(currentProfile.minGpuPowerLevel)
+                        maxGpuPowerLevel(currentProfile.maxGpuPowerLevel)
+                    }
+                    if (isBusSupported()) {
+                        minBusLevel(currentProfile.minBusLevel)
+                        maxBusLevel(currentProfile.maxBusLevel)
+                    }
                 }
-                if (isBusSupported()) {
-                    minBusLevel(currentProfile!!.minBusLevel)
-                    maxBusLevel(currentProfile!!.maxBusLevel)
+
+                if (success) {
+                    Timber.tag("PowerManager").i("Successfully restored power profile")
+                } else {
+                    Timber.tag("PowerManager").w("Failed to restore power profile")
                 }
-            }
 
-            if (success) {
-                Timber.tag("PowerManager").i("Successfully restored power profile")
-            } else {
-                Timber.tag("PowerManager").w("Failed to restore power profile")
-            }
+                if (currentProfile.enableAutoTuning) {
+                    startAutoTuning()
+                }
 
-            if (currentProfile?.enableAutoTuning == true) {
-                startAutoTuning()
+                if (currentProfile.enableFanControl) {
+                    FanController.start(driver)
+                }
+            } catch (e: Exception) {
+                Timber.tag("PowerManager").e(e, "Failed to apply current profile")
             }
-        } catch (e: Exception) {
-            Timber.tag("PowerManager").e(e, "Failed to restore power profile, falling back to default")
-            applyDefaultProfile(null)
         }
     }
 }

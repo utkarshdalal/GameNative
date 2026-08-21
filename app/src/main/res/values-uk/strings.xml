@@ -929,6 +929,11 @@
     <string name="settings_language_restart_confirm">Перезапустити</string>
     <string name="settings_language_changing">Зміна мови та перезапуск...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Продуктивність</string>
+    <string name="settings_performance_power_control_title">Керування живленням</string>
+    <string name="settings_performance_power_control_subtitle">Вмикати керування живленням у грі за замовчуванням (увімкнено на перевірених пристроях: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Емуляція</string>
     <string name="settings_emulation_orientations_title">Дозволені орієнтації екрану</string>
@@ -2281,6 +2286,8 @@
     <string name="power_control_auto_tuning_desc">Стабільніша продуктивність, довша робота від батареї, менше нагрівання: автоматично налаштовує CPU та GPU під гру. Перевірено на Retroid Pocket 6.</string>
     <string name="power_control_adaptive_fps">Автоматичне зниження FPS</string>
     <string name="power_control_adaptive_fps_desc">Знижує ліміт FPS, якщо гра не може його досягти, для стабільного темпу кадрів. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_enable">Керування живленням у грі</string>
+    <string name="power_control_enable_desc">Перехоплює керування частотами CPU/GPU в ОС</string>
     <string name="power_control_tuning_mode">Режим налаштування</string>
     <string name="power_control_tuning_mode_per_cluster">За кластерами (перевірено на Retroid Pocket 6)</string>
     <string name="power_control_tuning_mode_whole_cpu">ПІД-регулятор</string>

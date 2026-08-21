@@ -935,6 +935,11 @@
     <string name="settings_language_restart_confirm">재시작</string>
     <string name="settings_language_changing">언어 변경 및 재시작 중...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">성능</string>
+    <string name="settings_performance_power_control_title">성능 제어</string>
+    <string name="settings_performance_power_control_subtitle">게임 내 성능 제어를 기본적으로 활성화 (테스트된 기기에서 켜짐: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">에뮬레이션</string>
     <string name="settings_emulation_orientations_title">허용된 방향</string>
@@ -2276,6 +2281,8 @@
     <string name="power_control_auto_tuning_desc">더 안정적인 성능, 더 긴 배터리 사용 시간, 더 적은 발열: 게임에 맞춰 CPU와 GPU를 자동으로 조정합니다. Retroid Pocket 6에서 검증되었습니다.</string>
     <string name="power_control_adaptive_fps">FPS 자동 감소</string>
     <string name="power_control_adaptive_fps_desc">게임이 FPS 상한에 도달하지 못하면 상한을 낮춰 프레임 간격을 안정시킵니다. Retroid Pocket 6에서 검증되었습니다.</string>
+    <string name="power_control_enable">게임 내 전원 제어</string>
+    <string name="power_control_enable_desc">OS 대신 CPU/GPU 클럭을 제어합니다</string>
     <string name="power_control_tuning_mode">튜닝 모드</string>
     <string name="power_control_tuning_mode_per_cluster">클러스터별 (Retroid Pocket 6에서 검증됨)</string>
     <string name="power_control_tuning_mode_whole_cpu">PID 제어기</string>

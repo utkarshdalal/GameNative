@@ -2278,8 +2278,8 @@ fun XServerScreen(
                                 isOffline
                             )
 
-                            // Start performance driver after environment is set up
-                            PowerManager.start(container.rootDir)
+                            // Autostart performance driver after environment is set up
+                            PowerManager.autoStart(container.rootDir)
 
                             // Pin game process to performance cores (CPUs 4-7)
                             container.executablePath
