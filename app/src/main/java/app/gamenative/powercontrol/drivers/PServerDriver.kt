@@ -356,9 +356,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             Timber.tag(TAG).d("Created PServer executor")
         }
 
-        Thread {
-            armSessionBaseline()
-        }.start()
+        armSessionBaseline()
     }
 
     /**
