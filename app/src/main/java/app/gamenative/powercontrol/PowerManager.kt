@@ -261,6 +261,7 @@ object PowerManager {
     fun stopPowerControl() {
         stopAutoTuning()
         FanController.stop()
+        driver.stop()
     }
 
     /**
