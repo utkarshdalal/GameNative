@@ -274,7 +274,6 @@ object PowerManager {
         AdaptiveFpsCapController.stop()
         PerformanceMetricsCollector.stop()
         stopPowerControl()
-        driver.stop()
         isGameStarted = false
         fpsCapApplier = null
         frameSampleStride = 1
@@ -295,7 +294,6 @@ object PowerManager {
         AdaptiveFpsCapController.pause()
         PerformanceMetricsCollector.pause()
         stopPowerControl()
-        driver.stop()
     }
 
     /**
