@@ -93,7 +93,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         if (bridge == null || nativeHandle == 0) return;
         xrTargetAhbPtr = nativeEnableXrTarget(nativeHandle);
         if (xrTargetAhbPtr != 0) {
-            bridge.onScanoutBuffer(xrTargetAhbPtr, xServer.screenInfo.width, xServer.screenInfo.height);
+            long ext = nativeGetXrTargetExtent(nativeHandle);
+            bridge.onScanoutBuffer(xrTargetAhbPtr, (int)(ext >>> 32), (int)(ext & 0xFFFFFFFFL));
         } else {
             android.util.Log.w("VulkanRenderer", "XR scene target unavailable, falling back to per-window forwarding");
         }
@@ -164,6 +165,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         int effectMask, float brightness, float contrast, float gamma);
     private native long nativeEnableXrTarget(long handle);
     private native void nativeDisableXrTarget(long handle);
+    private native long nativeGetXrTargetExtent(long handle);
 
     private static volatile boolean gpuImageChecked = false;
 
@@ -267,7 +269,13 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         surfaceWidth = width; surfaceHeight = height;
         viewTransformation.update(width, height, xServer.screenInfo.width, xServer.screenInfo.height);
         synchronized (lock) {
-            if (nativeHandle != 0) { nativeResize(nativeHandle, width, height); updateTransform(); }
+            if (nativeHandle != 0) {
+                nativeResize(nativeHandle, width, height);
+                updateTransform();
+                // Recreate the XR scene target at the new extent and republish the
+                // replacement buffer; a no-op (same pointer back) when the size is unchanged.
+                if (xrFrameBridge != null) enableXrTargetLocked();
+            }
         }
     }
 

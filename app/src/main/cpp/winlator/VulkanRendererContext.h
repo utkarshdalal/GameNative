@@ -130,6 +130,7 @@ class VulkanRendererContext {
 public:
     int64_t enableXrTarget();
     void disableXrTarget();
+    int64_t xrTargetExtentPacked();
     VulkanRendererContext(ANativeWindow* window, int cWidth, int cHeight, void* adrenotoolsHandle = nullptr);
     ~VulkanRendererContext();
 

@@ -851,6 +851,7 @@ bool VulkanRendererContext::createXrTargetResources(uint32_t w, uint32_t h) {
     VkMemoryDedicatedAllocateInfo ded{};
     ded.sType=VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO; ded.pNext=&imp; ded.image=xrImg;
     uint32_t idx=0; while (idx<32 && !(props.memoryTypeBits&(1u<<idx))) idx++;
+    if (idx>=32) { RLOG_E("xrTarget: no compatible memory type (bits=0x%x)", props.memoryTypeBits); destroyXrTargetResources(); return false; }
     VkMemoryAllocateInfo mai{};
     mai.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO; mai.pNext=&ded;
     mai.allocationSize=props.allocationSize; mai.memoryTypeIndex=idx;
@@ -907,8 +908,17 @@ int64_t VulkanRendererContext::enableXrTarget() {
     std::unique_lock<std::shared_mutex> fl(frameMutex);
     std::lock_guard<std::mutex> lk(renderMutex);
     if (device==VK_NULL_HANDLE) return 0;
-    vk_.DeviceWaitIdle(device);
-    if (xrTargetActive.load()) { destroyXrTargetResources(); xrTargetActive.store(false); }
+    // A surface resize may still be queued for the render loop; process it here so the
+    // target is sized from the current swapchain extent, not the stale one.
+    if (fbResized.load()) {
+        for (auto& f:inFlightFences) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
+        cleanupSwapchain();
+        try {
+            createSwapchain(); createFramebuffers(); createCmdBufs();
+            imgInFlight.assign(swapchainImages.size(),VK_NULL_HANDLE);
+            fbResized.store(false);
+        } catch(...) { return 0; }
+    }
     uint32_t w=swapchainExt.width, h=swapchainExt.height;
     if (w==0||h==0){ w=(uint32_t)surfaceWidth; h=(uint32_t)surfaceHeight; }
     if (w==0||h==0) return 0;
@@ -917,10 +927,19 @@ int64_t VulkanRendererContext::enableXrTarget() {
     float fit = std::min({1920.f/(float)w, 1080.f/(float)h, 1.f});
     w = std::max(16u, (uint32_t)((float)w*fit) & ~1u);
     h = std::max(16u, (uint32_t)((float)h*fit) & ~1u);
+    if (xrTargetActive.load() && xrAhb!=nullptr && xrExt.width==w && xrExt.height==h)
+        return (int64_t)(intptr_t)xrAhb;
+    vk_.DeviceWaitIdle(device);
+    if (xrAhb!=nullptr) { xrTargetActive.store(false); destroyXrTargetResources(); }
     if (!createXrTargetResources(w,h)) return 0;
     xrTargetActive.store(true);
     needsRender.store(true); dirtyCV.notify_one();
     return (int64_t)(intptr_t)xrAhb;
+}
+
+int64_t VulkanRendererContext::xrTargetExtentPacked() {
+    std::lock_guard<std::mutex> lk(renderMutex);
+    return ((int64_t)xrExt.width<<32) | (int64_t)xrExt.height;
 }
 
 void VulkanRendererContext::disableXrTarget() {
@@ -1114,6 +1133,11 @@ ok=true;}catch(...){}
         pi.waitSemaphoreCount=1; pi.pWaitSemaphores=sSem; pi.swapchainCount=1; pi.pSwapchains=scs; pi.pImageIndices=&imgIdx;
         res=vk_.QueuePresentKHR(graphicsQueue,&pi);
         if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR) fbResized.store(true);
+    } else {
+        // The XR session samples xrAhb from its own GL context with no fence handoff;
+        // blocking here means the buffer is fully written whenever this thread is idle,
+        // leaving only the active write window unsynchronized (a tear, not stale data).
+        vk_.WaitForFences(device,1,&inFlightFences[currentFrame],VK_TRUE,UINT64_MAX);
     }
     currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
 }
