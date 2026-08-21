@@ -54,18 +54,6 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
     private Cursor lastCursor = null;
     private boolean surfaceInitialized = false;
     private int renderListSize = 0;
-    private volatile VulkanXrFrameBridge xrFrameBridge = null;
-
-    /**
-     * See VulkanXrFrameBridge's kdoc — null except for the Meta Quest immersive path. Unlike
-     * the Vulkan renderer, ASR keeps posting to SurfaceFlinger while forwarding: the game's
-     * buffer release fences come back through SF, so skipping the post would starve the game
-     * of buffers.
-     */
-    public void setXrFrameBridge(VulkanXrFrameBridge xrFrameBridge) {
-        if (!app.gamenative.BuildConfig.XR_BUILD) return;
-        this.xrFrameBridge = xrFrameBridge;
-    }
     private Rect cachedDesktopDst = null;
     private int cachedDesktopSrcW = 0, cachedDesktopSrcH = 0;
     private Window desktopWindow = null;
@@ -479,8 +467,6 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                     int acquireFence = g.consumeAcquireFence();
                     // Disable swap R/B in cpu path as it is handled with drawable
                     nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), sfCompatMode);
-                    VulkanXrFrameBridge bridge = xrFrameBridge;
-                    if (bridge != null) bridge.onScanoutBuffer(ahbPtr, drawable.width, drawable.height);
                     if (hudRef != null && skipFPSCount.get() >= 1) {
                         hudRef.update();
                         skipFPSCount.set(0);
@@ -506,8 +492,6 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 if (ahbPtr != 0) {
                     // Need to match ahbImage needsRBSwap() for swap R/B
                     nativeSetWindowBuffer(windowId, ahbPtr, -1, windowId, xSerial, null, -1, sfCompatMode);
-                    VulkanXrFrameBridge bridge = xrFrameBridge;
-                    if (bridge != null) bridge.onScanoutBuffer(ahbPtr, drawable.width, drawable.height);
                     if (hudRef != null) hudRef.update();
                 }
             }

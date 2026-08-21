@@ -173,6 +173,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
 
     private var directGLBridge: DirectGLBridge? = null
     private var directVulkanBridge: DirectVulkanBridge? = null
+    private var bridgedRenderer: Any? = null
     @Volatile
     private var directRenderActive = false
     private var directRenderProbeLogged = false
@@ -1037,7 +1038,17 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             return
         }
 
-        if (directGLBridge != null || directVulkanBridge != null) return
+        if (directGLBridge != null || directVulkanBridge != null) {
+            // XServerScreen recreates the XServerView (and its renderer) on configuration
+            // changes; a bridge attached to the old instance forwards nothing. Re-attach
+            // when the live renderer is no longer the one we bridged.
+            if (actualRenderer != null && actualRenderer !== bridgedRenderer) {
+                Timber.i("Immersive: renderer instance changed (%s) — re-attaching direct-render bridge", actualRenderer.javaClass.simpleName)
+                teardownDirectRenderBridge()
+            } else {
+                return
+            }
+        }
 
         if (glRenderer != null) {
             val bridge = DirectGLBridge(
@@ -1049,6 +1060,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                 },
             )
             directGLBridge = bridge
+            bridgedRenderer = glRenderer
             directRenderBlockedByEffects = false
             glRenderer.setXrFrameBridge(bridge)
             Timber.i("Immersive: GLRenderer detected — direct-render bridge attached, buffer import pending first frame")
@@ -1069,27 +1081,9 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                 },
             )
             directVulkanBridge = bridge
+            bridgedRenderer = vulkanRenderer
             vulkanRenderer.setVulkanXrFrameBridge(bridge)
             Timber.i("Immersive: VulkanRenderer detected — direct-render bridge attached, waiting for its first AHardwareBuffer (PixelCopy stays as fallback until then)")
-            return
-        }
-
-        val asrRenderer = actualRenderer as? com.winlator.renderer.ASurfaceRenderer
-        if (asrRenderer != null) {
-            val bridge = DirectVulkanBridge(
-                onFrame = { ahbPtr, _, _ ->
-                    if (xrSessionHandle != 0L) {
-                        XrNative.nativeSetSharedGameBufferPtr(xrSessionHandle, ahbPtr)
-                        if (!directRenderActive) {
-                            directRenderActive = true
-                            applyQuadTransform()
-                        }
-                    }
-                },
-            )
-            directVulkanBridge = bridge
-            asrRenderer.setXrFrameBridge(bridge)
-            Timber.i("Immersive: ASurfaceRenderer detected — direct-render bridge attached, waiting for its first AHardwareBuffer (PixelCopy stays as fallback until then)")
             return
         }
 
@@ -1100,9 +1094,9 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     }
 
     private fun teardownDirectRenderBridge() {
+        bridgedRenderer = null
         directVulkanBridge = null
         (PluviaApp.xServerView?.renderer as? com.winlator.renderer.VulkanRenderer)?.setVulkanXrFrameBridge(null)
-        (PluviaApp.xServerView?.renderer as? com.winlator.renderer.ASurfaceRenderer)?.setXrFrameBridge(null)
         val bridge = directGLBridge
         if (bridge != null) {
             directGLBridge = null
