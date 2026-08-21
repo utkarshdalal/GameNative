@@ -2346,4 +2346,5 @@
     <string name="favorite_removed_named">已将 %1$s 从收藏中移除</string>
     <string name="favorite_added">已添加到收藏</string>
     <string name="favorite_added_named">已将 %1$s 添加到收藏</string>
+    <string name="xr_refresh_rate">VR 刷新率</string>
 </resources>

@@ -78,6 +78,7 @@ struct InputSnapshot {
 // Owns the OpenXR instance/session and its dedicated frame-loop thread.
 class XrImmersiveSession {
 public:
+    void configure(int32_t quadWidth, int32_t quadHeight, float refreshRate);
     bool initialize(JavaVM *vm, jobject activityRef);
     void requestStop();
     void join();
@@ -143,12 +144,11 @@ private:
     XrSessionState sessionState_ = XR_SESSION_STATE_UNKNOWN;
     bool sessionRunning_ = false;
 
-    // Reverted back to 1280x720 — bumping this to 1920x1080 (2.25x the pixels) to reduce
-    // pointer-margin softening measurably made overall performance worse (confirmed by the user
-    // immediately after that change), and performance matters far more than this margin's
-    // sharpness. Revisit only alongside real perf headroom, not before.
-    static constexpr int32_t kSwapchainWidth = 1920;
-    static constexpr int32_t kSwapchainHeight = 1080;
+    // The quad swapchain follows the container's screen size (min width 1280) and the
+    // refresh rate is per-container, both set through configure() before the session starts.
+    int32_t swapchainWidth_ = 1280;
+    int32_t swapchainHeight_ = 720;
+    float requestedRefreshRate_ = 72.0f;
 
     EGLDisplay eglDisplay_ = EGL_NO_DISPLAY;
     EGLContext eglContext_ = EGL_NO_CONTEXT;

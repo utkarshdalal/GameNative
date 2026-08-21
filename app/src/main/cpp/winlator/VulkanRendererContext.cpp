@@ -922,9 +922,12 @@ int64_t VulkanRendererContext::enableXrTarget() {
     uint32_t w=swapchainExt.width, h=swapchainExt.height;
     if (w==0||h==0){ w=(uint32_t)surfaceWidth; h=(uint32_t)surfaceHeight; }
     if (w==0||h==0) return 0;
-    // The immersive quad swapchain is 1920x1080; rendering the scene any larger than that
-    // only burns GPU on pixels the quad downsamples away. Keep the surface aspect.
-    float fit = std::min({1920.f/(float)w, 1080.f/(float)h, 1.f});
+    // The immersive quad swapchain follows the container screen size (min width 1280);
+    // rendering the scene any larger only burns GPU on pixels the quad downsamples away.
+    // Keep the surface aspect.
+    float qw = (float)std::max(containerWidth, 1280);
+    float qh = (float)containerHeight * qw / (float)std::max(containerWidth, 1);
+    float fit = std::min({qw/(float)w, qh/(float)h, 1.f});
     w = std::max(16u, (uint32_t)((float)w*fit) & ~1u);
     h = std::max(16u, (uint32_t)((float)h*fit) & ~1u);
     if (xrTargetActive.load() && xrAhb!=nullptr && xrExt.width==w && xrExt.height==h)

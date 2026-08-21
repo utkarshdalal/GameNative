@@ -99,6 +99,14 @@ void XrImmersiveSession::submitFrame(const uint8_t *rgbaPixels, int32_t width, i
     hasPendingFrame_ = true;
 }
 
+void XrImmersiveSession::configure(int32_t quadWidth, int32_t quadHeight, float refreshRate) {
+    if (quadWidth > 0 && quadHeight > 0) {
+        swapchainWidth_ = quadWidth;
+        swapchainHeight_ = quadHeight;
+    }
+    if (refreshRate > 0.0f) requestedRefreshRate_ = refreshRate;
+}
+
 void XrImmersiveSession::setSharedGameBuffer(AHardwareBuffer *buffer) {
     std::lock_guard<std::mutex> lock(sharedBufferMutex_);
     // The renderer republishes the same buffer every frame; re-importing it would destroy and
@@ -209,7 +217,7 @@ void XrImmersiveSession::runLoop() {
         // frame, just with no layers.
         if (frameState.shouldRender && renderFrame()) {
             submitQuadLayer(frameState.predictedDisplayTime, localSpace_, swapchain_,
-                             kSwapchainWidth, kSwapchainHeight, true);
+                             swapchainWidth_, swapchainHeight_, true);
         } else {
             XrFrameEndInfo endInfo{XR_TYPE_FRAME_END_INFO};
             endInfo.displayTime = frameState.predictedDisplayTime;
@@ -387,6 +395,33 @@ bool XrImmersiveSession::setupInstanceAndSession() {
         }
     }
 
+    if (refreshRateExtensionAvailable_) {
+        PFN_xrEnumerateDisplayRefreshRatesFB enumerateRates = nullptr;
+        PFN_xrRequestDisplayRefreshRateFB requestRate = nullptr;
+        xrGetInstanceProcAddr(instance_, "xrEnumerateDisplayRefreshRatesFB",
+                              reinterpret_cast<PFN_xrVoidFunction *>(&enumerateRates));
+        xrGetInstanceProcAddr(instance_, "xrRequestDisplayRefreshRateFB",
+                              reinterpret_cast<PFN_xrVoidFunction *>(&requestRate));
+        if (enumerateRates != nullptr && requestRate != nullptr) {
+            uint32_t count = 0;
+            enumerateRates(session_, 0, &count, nullptr);
+            std::vector<float> rates(count);
+            if (count > 0 && XR_SUCCEEDED(enumerateRates(session_, count, &count, rates.data()))) {
+                bool supported = false;
+                for (float r : rates) {
+                    if (std::fabs(r - requestedRefreshRate_) < 0.5f) { supported = true; break; }
+                }
+                if (supported) {
+                    XrCheck(requestRate(session_, requestedRefreshRate_), "xrRequestDisplayRefreshRateFB");
+                    LOGI("Requested %.0f Hz display refresh rate", requestedRefreshRate_);
+                } else {
+                    LOGI("Refresh rate %.0f Hz not offered by the runtime — keeping the system default",
+                         requestedRefreshRate_);
+                }
+            }
+        }
+    }
+
     XrReferenceSpaceCreateInfo spaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
     spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
     spaceCreateInfo.poseInReferenceSpace = IdentityPose();
@@ -423,8 +458,8 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     swapchainCreateInfo.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
     swapchainCreateInfo.format = chosenFormat;
     swapchainCreateInfo.sampleCount = 1;
-    swapchainCreateInfo.width = kSwapchainWidth;
-    swapchainCreateInfo.height = kSwapchainHeight;
+    swapchainCreateInfo.width = swapchainWidth_;
+    swapchainCreateInfo.height = swapchainHeight_;
     swapchainCreateInfo.faceCount = 1;
     swapchainCreateInfo.arraySize = 1;
     swapchainCreateInfo.mipCount = 1;
@@ -524,7 +559,7 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     }
 
     LOGI("OpenXR immersive session initialized (%dx%d quad, %u swapchain images)",
-         kSwapchainWidth, kSwapchainHeight, imageCount);
+         swapchainWidth_, swapchainHeight_, imageCount);
     return true;
 }
 
@@ -754,7 +789,7 @@ bool XrImmersiveSession::renderFrame() {
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                             swapchainImages_[imageIndex].image, 0);
-    glViewport(0, 0, kSwapchainWidth, kSwapchainHeight);
+    glViewport(0, 0, swapchainWidth_, swapchainHeight_);
 
     if (hasSharedGameTexture_ && directQuadProgram_ != 0) {
         // GLRenderer wrote this frame's game image straight into sharedGameTexture_ on its own

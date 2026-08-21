@@ -452,8 +452,29 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
 
     private fun startXrSessionIfNeeded() {
         if (xrSessionHandle != 0L) return
+        // Mirror GameNativeXR's model: the XR surface follows the container's screen size
+        // (min width 1280), and the refresh rate is a per-container choice (default 72).
+        var quadW = 1280
+        var quadH = 720
+        var refreshRate = 72f
+        currentAppId?.let { appId ->
+            runCatching { app.gamenative.utils.ContainerUtils.getContainer(this, appId) }.getOrNull()?.let { container ->
+                val parts = container.screenSize.split("x")
+                val w = parts.getOrNull(0)?.trim()?.toIntOrNull()
+                val h = parts.getOrNull(1)?.trim()?.toIntOrNull()
+                if (w != null && h != null && w > 0 && h > 0) {
+                    quadW = w
+                    quadH = h
+                }
+                refreshRate = container.xrRefreshRate.toFloat()
+            }
+        }
+        if (quadW < 1280) {
+            quadH = 1280 * quadH / quadW
+            quadW = 1280
+        }
         xrSessionHandle = try {
-            XrNative.nativeCreate(this)
+            XrNative.nativeCreate(this, quadW, quadH, refreshRate)
         } catch (t: Throwable) {
             Timber.w(t, "Native OpenXR module unavailable — immersive rendering/controller mapping disabled")
             return

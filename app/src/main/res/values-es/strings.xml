@@ -2329,4 +2329,5 @@
     <string name="favorite_removed_named">%1$s quitado de favoritos</string>
     <string name="favorite_added">Añadido a favoritos</string>
     <string name="favorite_added_named">%1$s añadido a favoritos</string>
+    <string name="xr_refresh_rate">Frecuencia de actualización de RV</string>
 </resources>
