@@ -128,6 +128,9 @@ struct WindowPushConstants {
 
 class VulkanRendererContext {
 public:
+    int64_t enableXrTarget();
+    void disableXrTarget();
+    int64_t xrTargetExtentPacked();
     VulkanRendererContext(ANativeWindow* window, int cWidth, int cHeight, void* adrenotoolsHandle = nullptr);
     ~VulkanRendererContext();
 
@@ -308,6 +311,20 @@ private:
     std::vector<VkImage>       swapchainImages;
     std::vector<VkImageView>   swapchainViews;
     std::vector<VkFramebuffer> swapchainFBs;
+
+    // XR offscreen scene target: when active, renderFrame renders the composited scene into
+    // this AHB-backed image (no surface acquire/present) so the immersive session samples it
+    // directly. Enabled/disabled from JNI; resources recreated on resize.
+    AHardwareBuffer*  xrAhb   = nullptr;
+    VkImage           xrImg   = VK_NULL_HANDLE;
+    VkDeviceMemory    xrMem   = VK_NULL_HANDLE;
+    VkImageView       xrView  = VK_NULL_HANDLE;
+    VkFramebuffer     xrFb    = VK_NULL_HANDLE;
+    VkRenderPass      xrRp    = VK_NULL_HANDLE;
+    VkExtent2D        xrExt   {0,0};
+    std::atomic<bool> xrTargetActive{false};
+    bool createXrTargetResources(uint32_t w, uint32_t h);
+    void destroyXrTargetResources();
 
     VkRenderPass          renderPass  = VK_NULL_HANDLE;
     VkDescriptorSetLayout dsLayout    = VK_NULL_HANDLE;

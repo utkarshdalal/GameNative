@@ -99,6 +99,14 @@ void XrImmersiveSession::submitFrame(const uint8_t *rgbaPixels, int32_t width, i
     hasPendingFrame_ = true;
 }
 
+void XrImmersiveSession::configure(int32_t quadWidth, int32_t quadHeight, float refreshRate) {
+    if (quadWidth > 0 && quadHeight > 0) {
+        swapchainWidth_ = quadWidth;
+        swapchainHeight_ = quadHeight;
+    }
+    if (refreshRate > 0.0f) requestedRefreshRate_ = refreshRate;
+}
+
 void XrImmersiveSession::setSharedGameBuffer(AHardwareBuffer *buffer) {
     std::lock_guard<std::mutex> lock(sharedBufferMutex_);
     // The renderer republishes the same buffer every frame; re-importing it would destroy and
@@ -209,7 +217,7 @@ void XrImmersiveSession::runLoop() {
         // frame, just with no layers.
         if (frameState.shouldRender && renderFrame()) {
             submitQuadLayer(frameState.predictedDisplayTime, localSpace_, swapchain_,
-                             kSwapchainWidth, kSwapchainHeight, true);
+                             swapchainWidth_, swapchainHeight_, true);
         } else {
             XrFrameEndInfo endInfo{XR_TYPE_FRAME_END_INFO};
             endInfo.displayTime = frameState.predictedDisplayTime;
@@ -387,15 +395,30 @@ bool XrImmersiveSession::setupInstanceAndSession() {
         }
     }
 
-    // Target 72Hz rather than whatever higher default the runtime picks (90/120Hz) — matches
-    // GameNativeXR's own default. Less frame-budget pressure for a pipeline (game render +
-    // PixelCopy readback + composite + texture upload) that doesn't have headroom to spare.
     if (refreshRateExtensionAvailable_) {
-        PFN_xrRequestDisplayRefreshRateFB requestRefreshRate = nullptr;
+        PFN_xrEnumerateDisplayRefreshRatesFB enumerateRates = nullptr;
+        PFN_xrRequestDisplayRefreshRateFB requestRate = nullptr;
+        xrGetInstanceProcAddr(instance_, "xrEnumerateDisplayRefreshRatesFB",
+                              reinterpret_cast<PFN_xrVoidFunction *>(&enumerateRates));
         xrGetInstanceProcAddr(instance_, "xrRequestDisplayRefreshRateFB",
-                              reinterpret_cast<PFN_xrVoidFunction *>(&requestRefreshRate));
-        if (requestRefreshRate != nullptr) {
-            XrCheck(requestRefreshRate(session_, 72.0f), "xrRequestDisplayRefreshRateFB");
+                              reinterpret_cast<PFN_xrVoidFunction *>(&requestRate));
+        if (enumerateRates != nullptr && requestRate != nullptr) {
+            uint32_t count = 0;
+            enumerateRates(session_, 0, &count, nullptr);
+            std::vector<float> rates(count);
+            if (count > 0 && XR_SUCCEEDED(enumerateRates(session_, count, &count, rates.data()))) {
+                bool supported = false;
+                for (float r : rates) {
+                    if (std::fabs(r - requestedRefreshRate_) < 0.5f) { supported = true; break; }
+                }
+                if (supported) {
+                    XrCheck(requestRate(session_, requestedRefreshRate_), "xrRequestDisplayRefreshRateFB");
+                    LOGI("Requested %.0f Hz display refresh rate", requestedRefreshRate_);
+                } else {
+                    LOGI("Refresh rate %.0f Hz not offered by the runtime — keeping the system default",
+                         requestedRefreshRate_);
+                }
+            }
         }
     }
 
@@ -411,11 +434,23 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     xrEnumerateSwapchainFormats(session_, 0, &formatCount, nullptr);
     std::vector<int64_t> formats(formatCount);
     xrEnumerateSwapchainFormats(session_, formatCount, &formatCount, formats.data());
-    int64_t chosenFormat = formats.empty() ? 0x8058 /* GL_RGBA8 */ : formats[0];
+    // Prefer GL_SRGB8_ALPHA8: the compositor applies the display transfer per the swapchain
+    // format, and the content is sRGB-encoded — submitting it as linear GL_RGBA8 double-applies
+    // gamma (washed-out output).
+    int64_t chosenFormat = formats.empty() ? 0x8C43 /* GL_SRGB8_ALPHA8 */ : formats[0];
     for (int64_t f : formats) {
-        if (f == 0x8058) {
+        if (f == 0x8C43) {
             chosenFormat = f;
+            srgbSwapchain_ = true;
             break;
+        }
+    }
+    if (!srgbSwapchain_) {
+        for (int64_t f : formats) {
+            if (f == 0x8058 /* GL_RGBA8 */) {
+                chosenFormat = f;
+                break;
+            }
         }
     }
 
@@ -423,8 +458,8 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     swapchainCreateInfo.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
     swapchainCreateInfo.format = chosenFormat;
     swapchainCreateInfo.sampleCount = 1;
-    swapchainCreateInfo.width = kSwapchainWidth;
-    swapchainCreateInfo.height = kSwapchainHeight;
+    swapchainCreateInfo.width = swapchainWidth_;
+    swapchainCreateInfo.height = swapchainHeight_;
     swapchainCreateInfo.faceCount = 1;
     swapchainCreateInfo.arraySize = 1;
     swapchainCreateInfo.mipCount = 1;
@@ -524,7 +559,7 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     }
 
     LOGI("OpenXR immersive session initialized (%dx%d quad, %u swapchain images)",
-         kSwapchainWidth, kSwapchainHeight, imageCount);
+         swapchainWidth_, swapchainHeight_, imageCount);
     return true;
 }
 
@@ -576,8 +611,11 @@ constexpr char kQuadFragmentShader[] =
     "in vec2 vTexCoord;\n"
     "out vec4 fragColor;\n"
     "uniform sampler2D uTexture;\n"
+    "uniform float uLinearizeSrc;\n"
+    "vec3 toLinear(vec3 c) { return mix(c, pow(c, vec3(2.2)), uLinearizeSrc); }\n"
     "void main() {\n"
-    "    fragColor = texture(uTexture, vTexCoord);\n"
+    "    vec4 c = texture(uTexture, vTexCoord);\n"
+    "    fragColor = vec4(toLinear(c.rgb), c.a);\n"
     "}\n";
 
 // Direct-render path: uGameTexture is the shared-buffer texture GLRenderer writes into on its
@@ -604,12 +642,14 @@ constexpr char kDirectQuadFragmentShader[] =
     "uniform sampler2D uGameTexture;\n"
     "uniform sampler2D uOverlayTexture;\n"
     "uniform vec2 uContentScale;\n"
+    "uniform float uLinearizeSrc;\n"
+    "vec3 toLinear(vec3 c) { return mix(c, pow(c, vec3(2.2)), uLinearizeSrc); }\n"
     "void main() {\n"
     "    vec2 gameUv = (vTexCoord - 0.5) / uContentScale + 0.5;\n"
     "    bool insideGame = gameUv.x >= 0.0 && gameUv.x <= 1.0 && gameUv.y >= 0.0 && gameUv.y <= 1.0;\n"
     "    vec4 game = insideGame ? texture(uGameTexture, gameUv) : vec4(0.0);\n"
     "    vec4 overlay = texture(uOverlayTexture, vTexCoord);\n"
-    "    vec3 rgb = mix(game.rgb, overlay.rgb, overlay.a);\n"
+    "    vec3 rgb = mix(toLinear(game.rgb), toLinear(overlay.rgb), overlay.a);\n"
     "    float alpha = insideGame ? 1.0 : overlay.a;\n"
     "    fragColor = vec4(rgb, alpha);\n"
     "}\n";
@@ -655,6 +695,10 @@ void XrImmersiveSession::ensureQuadGeometryAndShader() {
     quadPositionLoc_ = 0;
     quadTexCoordLoc_ = 1;
     quadSamplerLoc_ = glGetUniformLocation(quadProgram_, "uTexture");
+    quadLinearizeLoc_ = glGetUniformLocation(quadProgram_, "uLinearizeSrc");
+    glUseProgram(quadProgram_);
+    glUniform1f(quadLinearizeLoc_, srgbSwapchain_ ? 1.0f : 0.0f);
+    glUseProgram(0);
 
     // Full-screen quad (2 triangles as a strip): xy in clip space, uv in texture space.
     // v=0 maps to the bitmap's first (top) row, v=1 to its last (bottom) row — Android
@@ -699,6 +743,10 @@ void XrImmersiveSession::ensureQuadGeometryAndShader() {
         directGameSamplerLoc_ = glGetUniformLocation(directQuadProgram_, "uGameTexture");
         directOverlaySamplerLoc_ = glGetUniformLocation(directQuadProgram_, "uOverlayTexture");
         directContentScaleLoc_ = glGetUniformLocation(directQuadProgram_, "uContentScale");
+        directLinearizeLoc_ = glGetUniformLocation(directQuadProgram_, "uLinearizeSrc");
+        glUseProgram(directQuadProgram_);
+        glUniform1f(directLinearizeLoc_, srgbSwapchain_ ? 1.0f : 0.0f);
+        glUseProgram(0);
     }
     glDeleteShader(directVertexShader);
     glDeleteShader(directFragmentShader);
@@ -741,7 +789,7 @@ bool XrImmersiveSession::renderFrame() {
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                             swapchainImages_[imageIndex].image, 0);
-    glViewport(0, 0, kSwapchainWidth, kSwapchainHeight);
+    glViewport(0, 0, swapchainWidth_, swapchainHeight_);
 
     if (hasSharedGameTexture_ && directQuadProgram_ != 0) {
         // GLRenderer wrote this frame's game image straight into sharedGameTexture_ on its own

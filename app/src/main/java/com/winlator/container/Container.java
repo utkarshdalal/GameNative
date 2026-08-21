@@ -85,6 +85,7 @@ public class Container {
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
     private String rendererPresentMode = "fifo";
     private String displayRenderer = Container.DEFAULT_DISPLAY_RENDERER;
+    private int xrRefreshRate = 72;
     private boolean sfCompatMode = true;
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
@@ -272,6 +273,10 @@ public class Container {
     public void setRendererPresentMode(String v) { this.rendererPresentMode = v != null ? v : "fifo"; }
 
     public String getDisplayRenderer() { return displayRenderer; }
+
+    public int getXrRefreshRate() { return xrRefreshRate; }
+
+    public void setXrRefreshRate(int v) { this.xrRefreshRate = v; }
 
     public void setDisplayRenderer(String v) { this.displayRenderer = v; }
 
@@ -697,6 +702,7 @@ public class Container {
             if (!graphicsDriverConfig.isEmpty()) data.put("graphicsDriverConfig", graphicsDriverConfig);
             data.put("rendererPresentMode", rendererPresentMode);
             data.put("displayRendererMode", displayRenderer);
+            data.put("xrRefreshRate", xrRefreshRate);
             data.put("sfCompatMode", sfCompatMode);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
@@ -821,6 +827,9 @@ public class Container {
                     break;
                 case "displayRendererMode" :
                     setDisplayRenderer(data.getString(key));
+                    break;
+                case "xrRefreshRate" :
+                    setXrRefreshRate(data.getInt(key));
                     break;
                 case "sfCompatMode" :
                     setSfCompatMode(data.getBoolean(key));
