@@ -71,6 +71,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     /** See VulkanXrFrameBridge's kdoc — null except for the Meta Quest immersive path. */
     public void setVulkanXrFrameBridge(VulkanXrFrameBridge xrFrameBridge) {
+        if (!app.gamenative.BuildConfig.XR_BUILD) return;
         this.xrFrameBridge = xrFrameBridge;
         synchronized (lock) {
             if (xrFrameBridge == null) {

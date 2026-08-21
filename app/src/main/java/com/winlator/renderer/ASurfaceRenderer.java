@@ -63,6 +63,7 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
      * of buffers.
      */
     public void setXrFrameBridge(VulkanXrFrameBridge xrFrameBridge) {
+        if (!app.gamenative.BuildConfig.XR_BUILD) return;
         this.xrFrameBridge = xrFrameBridge;
     }
     private Rect cachedDesktopDst = null;
