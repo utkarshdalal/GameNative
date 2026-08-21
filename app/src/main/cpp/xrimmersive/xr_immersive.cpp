@@ -387,18 +387,6 @@ bool XrImmersiveSession::setupInstanceAndSession() {
         }
     }
 
-    // Target 72Hz rather than whatever higher default the runtime picks (90/120Hz) — matches
-    // GameNativeXR's own default. Less frame-budget pressure for a pipeline (game render +
-    // PixelCopy readback + composite + texture upload) that doesn't have headroom to spare.
-    if (refreshRateExtensionAvailable_) {
-        PFN_xrRequestDisplayRefreshRateFB requestRefreshRate = nullptr;
-        xrGetInstanceProcAddr(instance_, "xrRequestDisplayRefreshRateFB",
-                              reinterpret_cast<PFN_xrVoidFunction *>(&requestRefreshRate));
-        if (requestRefreshRate != nullptr) {
-            XrCheck(requestRefreshRate(session_, 72.0f), "xrRequestDisplayRefreshRateFB");
-        }
-    }
-
     XrReferenceSpaceCreateInfo spaceCreateInfo{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
     spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
     spaceCreateInfo.poseInReferenceSpace = IdentityPose();
