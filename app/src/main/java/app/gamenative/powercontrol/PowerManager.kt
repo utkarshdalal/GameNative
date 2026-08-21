@@ -534,22 +534,20 @@ object PowerManager {
         currentProfile = profile
 
         // Handle auto-tuning based on profile setting
-        if (previousProfile.enablePowerControl != profile.enablePowerControl) {
-            if (profile.enablePowerControl) {
-                if (profile.enableAutoTuning) {
-                    if (previousProfile.enablePerClusterTuning != profile.enablePerClusterTuning) {
-                        Timber.tag("PowerManager").i(
-                            "Per-cluster tuning changed to ${profile.enablePerClusterTuning}, restarting the tuner"
-                        )
-                        stopAutoTuning()
-                    }
-                    startAutoTuning()
-                } else {
+        if (profile.enablePowerControl) {
+            if (profile.enableAutoTuning) {
+                if (previousProfile.enablePerClusterTuning != profile.enablePerClusterTuning) {
+                    Timber.tag("PowerManager").i(
+                        "Per-cluster tuning changed to ${profile.enablePerClusterTuning}, restarting the tuner"
+                    )
                     stopAutoTuning()
                 }
+                startAutoTuning()
             } else {
                 stopAutoTuning()
             }
+        } else {
+            stopAutoTuning()
         }
 
         if (previousProfile.enableAdaptiveFpsCap != profile.enableAdaptiveFpsCap) {
