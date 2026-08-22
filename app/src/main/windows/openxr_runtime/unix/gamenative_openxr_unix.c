@@ -17,6 +17,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
 #include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
@@ -2475,6 +2478,124 @@ static int32_t unix_submit_image(void *opaque)
     return 0;
 }
 
+
+/* Control-plane fast path: the PE runtime's winsock round trip to the Kotlin control
+ * server costs ~40ms under Wine+FEX because blocking recv detours through wineserver.
+ * The same request over a plain bionic socket from the unix side is sub-millisecond. */
+static int control_fast_fd = -1;
+static pthread_mutex_t control_fast_mutex = PTHREAD_MUTEX_INITIALIZER;
+static char control_fast_buf[1024];
+static uint32_t control_fast_len, control_fast_off;
+
+static void control_fast_close(void)
+{
+    if (control_fast_fd >= 0) close(control_fast_fd);
+    control_fast_fd = -1;
+    control_fast_len = 0;
+    control_fast_off = 0;
+}
+
+static int control_fast_read_byte(char *value)
+{
+    if (control_fast_off >= control_fast_len) {
+        ssize_t got = recv(control_fast_fd, control_fast_buf, sizeof(control_fast_buf), 0);
+        if (got <= 0) return 0;
+        control_fast_len = (uint32_t)got;
+        control_fast_off = 0;
+    }
+    *value = control_fast_buf[control_fast_off++];
+    return 1;
+}
+
+static int control_fast_read_line(char *out, size_t out_size)
+{
+    size_t offset = 0;
+    char value = 0;
+    while (offset + 1 < out_size) {
+        if (!control_fast_read_byte(&value)) return 0;
+        if (value == '\n') break;
+        out[offset++] = value;
+    }
+    out[offset] = 0;
+    return 1;
+}
+
+static int control_fast_connect(void)
+{
+    if (control_fast_fd >= 0) return 1;
+    const char *port_text = getenv("GAMENATIVE_XR_BRIDGE_PORT");
+    int port = port_text ? atoi(port_text) : 38476;
+    if (port <= 0) port = 38476;
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) return 0;
+    int nodelay = 1;
+    setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+    struct sockaddr_in address;
+    memset(&address, 0, sizeof(address));
+    address.sin_family = AF_INET;
+    address.sin_port = htons((uint16_t)port);
+    address.sin_addr.s_addr = htonl(0x7f000001);
+    if (connect(fd, (struct sockaddr *)&address, sizeof(address)) != 0) {
+        close(fd);
+        return 0;
+    }
+    control_fast_fd = fd;
+    control_fast_len = 0;
+    control_fast_off = 0;
+    char line[128];
+    if (!write_all(fd, "HELLO\n", 6) ||
+        !control_fast_read_line(line, sizeof(line)) ||
+        strncmp(line, "OK", 2) != 0) {
+        control_fast_close();
+        return 0;
+    }
+    log_line("unix control fast path connected");
+    return 1;
+}
+
+static int32_t unix_control_transact(void *opaque)
+{
+    struct gn_unix_control_transact_args *args = opaque;
+    args->request[sizeof(args->request) - 1] = 0;
+    uint32_t lines = args->response_lines ? args->response_lines : 1;
+    if (lines > 8) lines = 8;
+    args->result = GN_UNIX_ERROR_TRANSPORT;
+    pthread_mutex_lock(&control_fast_mutex);
+    if (!control_fast_connect()) {
+        pthread_mutex_unlock(&control_fast_mutex);
+        return 0;
+    }
+    size_t request_length = strlen(args->request);
+    args->request[request_length] = '\n';
+    int sent = write_all(control_fast_fd, args->request, request_length + 1);
+    args->request[request_length] = 0;
+    if (!sent) {
+        control_fast_close();
+        pthread_mutex_unlock(&control_fast_mutex);
+        return 0;
+    }
+    size_t offset = 0;
+    for (uint32_t i = 0; i < lines; ++i) {
+        char line[512];
+        if (!control_fast_read_line(line, sizeof(line))) {
+            control_fast_close();
+            pthread_mutex_unlock(&control_fast_mutex);
+            return 0;
+        }
+        size_t line_length = strlen(line);
+        if (offset + line_length + 2 > sizeof(args->response)) break;
+        if (i) args->response[offset++] = '\n';
+        memcpy(args->response + offset, line, line_length);
+        offset += line_length;
+        /* single-line commands whose reply is an error carry no continuation lines */
+        if (i == 0 && strncmp(line, "OK", 2) != 0) break;
+    }
+    args->response[offset] = 0;
+    args->result = GN_UNIX_SUCCESS;
+    pthread_mutex_unlock(&control_fast_mutex);
+    return 0;
+}
+
 static int32_t unix_submit_stereo(void *opaque)
 {
     struct gn_unix_submit_stereo_args *args = opaque;
@@ -2495,7 +2616,8 @@ const unixlib_entry_t __wine_unix_call_funcs[GN_UNIX_CALL_COUNT] = {
     unix_destroy_swapchain,
     unix_acquire_image,
     unix_submit_image,
-    unix_submit_stereo
+    unix_submit_stereo,
+    unix_control_transact
 };
 
 
@@ -2508,7 +2630,8 @@ const unixlib_entry_t __wine_unix_call_wow64_funcs[GN_UNIX_CALL_COUNT] = {
     unix_destroy_swapchain,
     unix_acquire_image,
     unix_submit_image,
-    unix_submit_stereo
+    unix_submit_stereo,
+    unix_control_transact
 };
 
 __attribute__((destructor))

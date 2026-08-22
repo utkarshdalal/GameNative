@@ -144,9 +144,30 @@ class WindowsVrControlServer(
 
     /** One round-trip for the whole per-frame state: frame timing, view poses, and both
      * hands' input as four lines. Saves three guest-side TCP round trips every frame. */
+    private var frameCount = 0
+    private var frameCountStartMs = 0L
+
+    private var handlerMs = 0L
+
     private fun frameSync(): String {
+        val handlerStart = System.nanoTime()
         val frame = waitFrame()
         if (!frame.startsWith("OK")) return frame
+        handlerMs += (System.nanoTime() - handlerStart) / 1_000_000
+        val now = System.currentTimeMillis()
+        if (frameCountStartMs == 0L) frameCountStartMs = now
+        frameCount++
+        if (now - frameCountStartMs >= 5000) {
+            val fps = frameCount * 1000f / (now - frameCountStartMs)
+            timber.log.Timber.i(
+                "Windows VR game frame rate: %.1f fps (server wait avg %.1f ms)",
+                fps,
+                handlerMs.toFloat() / frameCount,
+            )
+            frameCount = 0
+            handlerMs = 0
+            frameCountStartMs = now
+        }
         return frame + "\n" + locateViews() + "\n" +
             getInput(listOf("GET_INPUT", "hand=0")) + "\n" +
             getInput(listOf("GET_INPUT", "hand=1"))

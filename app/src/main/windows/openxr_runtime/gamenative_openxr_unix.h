@@ -28,6 +28,7 @@ enum gn_unix_call_code {
     GN_UNIX_ACQUIRE_IMAGE,
     GN_UNIX_SUBMIT_IMAGE,
     GN_UNIX_SUBMIT_STEREO,
+    GN_UNIX_CONTROL_TRANSACT,
     GN_UNIX_CALL_COUNT
 };
 
@@ -119,6 +120,13 @@ struct gn_unix_submit_image_args {
     gn_i64 orientation_micro[4];
     gn_i64 position_micro[3];
     gn_i64 fov_micro[4];
+    gn_i32 result;
+};
+
+struct gn_unix_control_transact_args {
+    char request[192];
+    char response[896];
+    gn_u32 response_lines;
     gn_i32 result;
 };
 

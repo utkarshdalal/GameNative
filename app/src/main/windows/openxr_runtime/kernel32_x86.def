@@ -10,3 +10,4 @@ EXPORTS
     GetLastError@0
     FreeLibrary@4
     ExitProcess@4
+    GetTickCount64
