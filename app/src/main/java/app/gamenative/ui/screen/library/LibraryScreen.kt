@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.library
 
 import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -10,8 +11,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -33,6 +36,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
@@ -49,6 +53,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
@@ -74,6 +79,7 @@ import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
+import app.gamenative.data.FavoritesManager
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
@@ -94,11 +100,13 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.screen.library.components.LibraryCarouselPane
 import app.gamenative.ui.screen.library.components.LibraryDetailPane
 import app.gamenative.ui.screen.library.components.LibraryListPane
+import app.gamenative.ui.screen.library.components.LibraryFavoritesEmptyState
 import app.gamenative.ui.screen.library.components.RecommendationDisclosureDialog
 import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
 import app.gamenative.ui.screen.library.components.LibrarySearchBar
 import app.gamenative.ui.screen.library.components.LibrarySourceNotLoggedInSplash
 import app.gamenative.ui.screen.library.components.LibraryTabBar
+import app.gamenative.ui.screen.library.components.toggleFavorite
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.ui.screen.auth.EpicOAuthActivity
 import app.gamenative.ui.screen.auth.GOGOAuthActivity
@@ -112,6 +120,7 @@ import app.gamenative.service.gog.GOGService
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.PlatformOAuthHandlers
 import app.gamenative.utils.SteamUtils
+import com.posthog.PostHog
 import kotlinx.coroutines.launch
 import android.os.SystemClock
 
@@ -130,10 +139,13 @@ fun HomeLibraryScreen(
     isSteamConnected: Boolean = false,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val importState by viewModel.importState.collectAsStateWithLifecycle()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     LibraryScreenContent(
         state = state,
+        importState = importState,
+        onImportCustomGame = viewModel::importCustomGame,
         listState = viewModel.listState,
         sheetState = sheetState,
         onFilterChanged = viewModel::onFilterChanged,
@@ -177,6 +189,8 @@ private fun LibraryScreenContent(
     state: LibraryState,
     listState: LazyGridState,
     sheetState: SheetState,
+    importState: LibraryViewModel.CustomGameImportState = LibraryViewModel.CustomGameImportState(),
+    onImportCustomGame: (Uri, Boolean) -> Unit = { _, _ -> },
     onFilterChanged: (AppFilter) -> Unit,
     onPageChange: (Int) -> Unit,
     onModalBottomSheet: (Boolean) -> Unit,
@@ -315,6 +329,17 @@ private fun LibraryScreenContent(
     val isViewWide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var currentPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
     var recDisclosureShown by remember { mutableStateOf(PrefManager.recDisclosureShown) }
+    var showRecTeaserDialog by remember { mutableStateOf(false) }
+    val onRecTeaserTapped = {
+        if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "rec_teaser_tapped")
+        showRecTeaserDialog = true
+    }
+    val recTeaserVisible = state.appInfoList.firstOrNull()?.isRecTeaser == true
+    LaunchedEffect(recTeaserVisible) {
+        if (recTeaserVisible && PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(event = "rec_teaser_shown")
+        }
+    }
 
     // Initialize layout if undecided
     LaunchedEffect(Unit) {
@@ -340,6 +365,8 @@ private fun LibraryScreenContent(
     var wasOptionsPanelOpen by remember { mutableStateOf(false) }
     // Keep a stable reference to the selected item so detail view doesn't disappear during list refresh/pagination.
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
+    val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
+    val favoritesLoaded by FavoritesManager.loaded.collectAsStateWithLifecycle()
     val filterFabExpanded by remember(currentPaneType, listState, carouselListState) {
         derivedStateOf {
             if (currentPaneType == PaneType.CAROUSEL) {
@@ -445,6 +472,22 @@ private fun LibraryScreenContent(
         } catch (_: IllegalStateException) {}
     }
 
+    fun focusedLibraryItem(): LibraryItem? {
+        if (state.currentTab == LibraryTab.RECOMMENDED) return null
+        val focusedIndex = if (currentPaneType == PaneType.CAROUSEL) {
+            currentCarouselFocusTargetIndex()
+        } else {
+            gridFocusTargetListIndex
+        }
+        return state.appInfoList.getOrNull(focusedIndex)?.takeUnless { it.isRecommended }
+    }
+
+    fun toggleFocusedFavorite(): Boolean {
+        val item = focusedLibraryItem() ?: return false
+        toggleFavorite(context, item.appId, item.name)
+        return true
+    }
+
     val storagePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) { }
@@ -473,9 +516,23 @@ private fun LibraryScreenContent(
         },
     )
 
+    // Modern add path: import the picked folder into app-owned storage via the SAF grant,
+    // since the map-in-place flow needs MANAGE_EXTERNAL_STORAGE
+    var showModernImportDialog by remember { mutableStateOf(false) }
+    var importRemoveOriginal by rememberSaveable { mutableStateOf(false) }
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+    ) { uri ->
+        if (uri != null) {
+            onImportCustomGame(uri, importRemoveOriginal)
+        }
+    }
+
     // Handle opening folder picker (with dialog check)
     val onAddCustomGameClick = {
-        if (PrefManager.showAddCustomGameDialog) {
+        if (BuildConfig.MODERN_ANDROID) {
+            showModernImportDialog = true
+        } else if (PrefManager.showAddCustomGameDialog) {
             showAddCustomGameDialog = true
         } else {
             folderPicker.launchPicker()
@@ -872,11 +929,15 @@ private fun LibraryScreenContent(
                             }
                         }
 
-                        // X button - add custom game
+                        // X button - toggle favorite for the focused game
                         KeyEvent.KEYCODE_BUTTON_X -> {
-                            if (!BuildConfig.MODERN_ANDROID && selectedAppId == null && !state.isSearching && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
-                                onAddCustomGameClick()
-                                true
+                            if (selectedAppId == null &&
+                                !state.isSearching &&
+                                !state.isOptionsPanelOpen &&
+                                !isSystemMenuOpen &&
+                                !tabBarHasFocus
+                            ) {
+                                toggleFocusedFavorite()
                             } else {
                                 false
                             }
@@ -914,6 +975,21 @@ private fun LibraryScreenContent(
         if (selectedAppId == null) {
             // Use Box to allow content to scroll behind the tab bar
             Box(modifier = Modifier.fillMaxSize()) {
+                if (showRecTeaserDialog) {
+                    RecommendationDisclosureDialog(
+                        onContinue = {
+                            PrefManager.recDisclosureShown = true
+                            recDisclosureShown = true
+                            showRecTeaserDialog = false
+                            PluviaApp.events.emit(AndroidEvent.RecommendationToggleChanged)
+                        },
+                        onDismiss = {
+                            PrefManager.recTeaserDismissedDay = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
+                            showRecTeaserDialog = false
+                        },
+                        source = "hero",
+                    )
+                }
                 // When on Steam/GOG/Epic/Amazon tab and not logged in, or LOCAL tab with no custom games, show splash
                 if (state.currentTab == LibraryTab.RECOMMENDED) {
                     if (recDisclosureShown) {
@@ -950,6 +1026,11 @@ private fun LibraryScreenContent(
                     LibraryTab.LOCAL -> PrefManager.customGamesCount == 0
                     else -> false
                 }
+                // Favorites tab has its own empty state. Only show it once favorites have loaded and
+                // the list has settled, so a genuinely empty tab is explained instead of flashing a
+                // blank screen (or the empty message before stored favorites arrive).
+                val showFavoritesEmptyState = state.currentTab == LibraryTab.FAVORITES &&
+                    favoritesLoaded && !state.isLoading && state.appInfoList.isEmpty()
                 if (showEmptyStateSplash) {
                     val (messageResId, buttonResId, onAction) = when (state.currentTab) {
                         LibraryTab.STEAM -> Triple(
@@ -985,6 +1066,24 @@ private fun LibraryScreenContent(
                         onSignInClick = onAction,
                         modifier = Modifier.fillMaxSize(),
                     )
+                } else if (showFavoritesEmptyState) {
+                    if (favorites.isEmpty()) {
+                        LibraryFavoritesEmptyState(
+                            titleResId = R.string.favorites_empty_title,
+                            messageResId = R.string.favorites_empty_message,
+                            actionLabelResId = R.string.favorites_empty_action,
+                            onAction = { onTabChanged(LibraryTab.ALL) },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        // Favorites exist but none are visible — filtered out by the current search
+                        // or unavailable (source logged out / game removed).
+                        LibraryFavoritesEmptyState(
+                            titleResId = R.string.favorites_empty_filtered_title,
+                            messageResId = R.string.favorites_empty_filtered_message,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 } else {
                     // Library list (content scrolls behind tab bar)
                     if (currentPaneType == PaneType.CAROUSEL) {
@@ -993,8 +1092,15 @@ private fun LibraryScreenContent(
                             listState = carouselListState,
                             onPageChange = onPageChange,
                             onNavigate = { appId ->
-                                selectedAppId = appId
-                                selectedLibraryItem = state.appInfoList.find { it.appId == appId }
+                                val item = state.appInfoList.find { it.appId == appId }
+                                if (item?.isRecTeaser == true) {
+                                    if (!item.isRecLoading && !recDisclosureShown) {
+                                        onRecTeaserTapped()
+                                    }
+                                } else {
+                                    selectedAppId = appId
+                                    selectedLibraryItem = item
+                                }
                             },
                             onRefresh = onRefresh,
                             modifier = Modifier.fillMaxSize(),
@@ -1011,11 +1117,19 @@ private fun LibraryScreenContent(
                             focusTargetListIndex = gridFocusTargetListIndex,
                             onPageChange = onPageChange,
                             onNavigate = { appId ->
-                                selectedAppId = appId
-                                selectedLibraryItem = state.appInfoList.find { it.appId == appId }
+                                val item = state.appInfoList.find { it.appId == appId }
+                                if (item?.isRecTeaser == true) {
+                                    if (!item.isRecLoading && !recDisclosureShown) {
+                                        onRecTeaserTapped()
+                                    }
+                                } else {
+                                    selectedAppId = appId
+                                    selectedLibraryItem = item
+                                }
                             },
                             onRefresh = onRefresh,
                             modifier = Modifier.fillMaxSize(),
+                            onFocusedIndexChanged = { gridFocusTargetListIndex = it },
                         )
                     }
                 }
@@ -1049,6 +1163,7 @@ private fun LibraryScreenContent(
                         currentTab = state.currentTab,
                         tabCounts = mapOf(
                             LibraryTab.ALL to state.allCount,
+                            LibraryTab.FAVORITES to state.favoritesCount,
                             LibraryTab.STEAM to state.steamCount,
                             LibraryTab.GOG to state.gogCount,
                             LibraryTab.EPIC to state.epicCount,
@@ -1144,17 +1259,19 @@ private fun LibraryScreenContent(
                         labelResId = R.string.search,
                         onClick = { onIsSearching(true) },
                     ),
-                ) + if (!BuildConfig.MODERN_ANDROID) {
-                    listOf(
+                ) + listOfNotNull(
+                    focusedLibraryItem()?.let { item ->
                         GamepadAction(
                             button = GamepadButton.X,
-                            labelResId = R.string.action_add_game,
-                            onClick = onAddCustomGameClick,
-                        ),
-                    )
-                } else {
-                    emptyList()
-                }
+                            labelResId = if (item.appId in favorites) {
+                                R.string.option_remove_from_favorites
+                            } else {
+                                R.string.option_add_to_favorites
+                            },
+                            onClick = { toggleFocusedFavorite() },
+                        )
+                    },
+                )
             }
 
             GamepadActionBar(
@@ -1235,6 +1352,67 @@ private fun LibraryScreenContent(
                         callbacks = PlatformLogoutCallbacks(),
                     )
                 },
+            )
+        }
+
+        // Pre-import dialog (modern add path)
+        if (showModernImportDialog) {
+            AlertDialog(
+                onDismissRequest = { showModernImportDialog = false },
+                title = { Text(stringResource(R.string.add_custom_game_dialog_title)) },
+                text = {
+                    Column {
+                        Text(stringResource(R.string.custom_game_import_dialog_message))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { importRemoveOriginal = !importRemoveOriginal },
+                        ) {
+                            Checkbox(
+                                checked = importRemoveOriginal,
+                                onCheckedChange = { importRemoveOriginal = it },
+                            )
+                            Text(stringResource(R.string.custom_game_import_remove_original))
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showModernImportDialog = false
+                            importLauncher.launch(null)
+                        },
+                    ) {
+                        Text(stringResource(R.string.continue_action))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showModernImportDialog = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                },
+            )
+        }
+
+        // Import progress dialog (modern add path)
+        if (importState.isImporting) {
+            AlertDialog(
+                onDismissRequest = { },
+                title = { Text(stringResource(R.string.custom_game_importing)) },
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            val mb = (importState.progress?.copiedBytes ?: 0L) / 1_000_000L
+                            Text("$mb MB")
+                            importState.progress?.currentFile?.let {
+                                Text(text = it, maxLines = 1)
+                            }
+                        }
+                    }
+                },
+                confirmButton = { },
             )
         }
 

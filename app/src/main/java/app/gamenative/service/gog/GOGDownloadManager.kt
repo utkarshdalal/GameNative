@@ -2,6 +2,7 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.data.DownloadInfo
+import app.gamenative.data.GameSource
 import app.gamenative.service.gog.api.DepotDirectory
 import app.gamenative.service.gog.api.DepotFile
 import app.gamenative.service.gog.api.DepotLink
@@ -12,7 +13,9 @@ import app.gamenative.service.gog.api.GOGManifestParser
 import app.gamenative.service.gog.api.V1DepotFile
 import app.gamenative.enums.Marker
 import app.gamenative.utils.CdnRankingUtils
+import app.gamenative.utils.ContainerStorageManager
 import app.gamenative.utils.DownloadSpeedConfig
+import app.gamenative.utils.StorageUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
 import org.json.JSONArray
@@ -23,7 +26,10 @@ import java.io.ByteArrayOutputStream
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
 import java.nio.file.Files
+import java.nio.file.StandardOpenOption
 import java.security.DigestOutputStream
 import java.security.MessageDigest
 import java.util.zip.Inflater
@@ -275,10 +281,17 @@ class GOGDownloadManager @Inject constructor(
             val filesToDownload = if (withDlcs) baseFiles + dlcFiles else baseFiles
             var (gameFiles, supportFiles) = parser.separateSupportFiles(filesToDownload)
 
-            // Filter out files that already exist with correct size (incremental download)
+            // Filter out files that already exist with correct size (incremental download).
+            // On a resume this MD5-reads every completed file, which can take minutes for
+            // a large install — surface it in the UI and honor cancellation between files.
             val gameInstallDir = installPath
+            downloadInfo.updateStatusMessage("Verifying existing files...")
             val beforeCount = gameFiles.size
             gameFiles = gameFiles.filter { file ->
+                if (!downloadInfo.isActive()) {
+                    MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                    return@withContext Result.failure(Exception("Download cancelled"))
+                }
                 val outputFile = File(gameInstallDir, file.path)
                 val expectedSize = file.chunks.sumOf { it.size }
                 !fileExistsWithCorrectSize(outputFile, expectedSize, file.md5)
@@ -287,11 +300,16 @@ class GOGDownloadManager @Inject constructor(
 
             val beforeSupportCount = supportFiles.size
             supportFiles = supportFiles.filter { file ->
+                if (!downloadInfo.isActive()) {
+                    MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                    return@withContext Result.failure(Exception("Download cancelled"))
+                }
                 val installRelativePath = getSupportInstallPath(file.path)
                 val outputFile = File(gameInstallDir, installRelativePath)
                 val expectedSize = file.chunks.sumOf { it.size }
                 !fileExistsWithCorrectSize(outputFile, expectedSize, file.md5)
             }
+            downloadInfo.updateStatusMessage(null)
             val supportFilesForGameDirAssemble = supportFiles.map { file ->
                 val installRelativePath = getSupportInstallPath(file.path)
                 if (installRelativePath != file.path) file.copy(path = installRelativePath) else file
@@ -429,7 +447,10 @@ class GOGDownloadManager @Inject constructor(
 
             downloadInfo.updateStatusMessage("Downloading...")
 
-            val chunkCacheDir = File(installPath, ".gog_chunks")
+            // Cache lives on internal storage: on exFAT SD cards (dirsync mount) every
+            // create/rename/delete in the cache dir is a synchronous directory flush,
+            // which dominates download time for small chunks.
+            val chunkCacheDir = File(context.cacheDir, "gog_chunks/$gameId")
             chunkCacheDir.mkdirs()
             gameInstallDir.mkdirs()
 
@@ -445,9 +466,12 @@ class GOGDownloadManager @Inject constructor(
             )
 
             if (downloadAndAssembleResult.isFailure) {
+                // Keep the chunk cache so an interrupted download can resume from it
                 MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 return@withContext downloadAndAssembleResult
             }
+
+            chunkCacheDir.deleteRecursively()
 
             // Create declared directories and symlinks (no chunks, so not handled by the assemble path).
             // Gate by base/DLC ownership the same way files are: only the base product unless DLCs are included.
@@ -819,6 +843,16 @@ class GOGDownloadManager @Inject constructor(
             // Calculate total expected installed size once (sum of all file sizes)
             val totalExpectedSize = files.sumOf { file -> file.chunks.sumOf { it.size } }
 
+            val onExternalStorage = ContainerStorageManager.isOnExternalStorage(context, GameSource.GOG, installDir.absolutePath)
+            if (onExternalStorage) {
+                val remainingBytes = files.sumOf { file ->
+                    (file.chunks.sumOf { it.size } - File(installDir, file.path).length()).coerceAtLeast(0L)
+                }
+                StorageUtils.downloadSpaceShortfall(installDir, remainingBytes, chunkCacheDir)?.let {
+                    return@withContext Result.failure(IOException(it))
+                }
+            }
+
             chunkHashes.forEach { chunkMd5 ->
                 chunkUsageCounts[chunkMd5] = AtomicInteger(
                     files.sumOf { file -> file.chunks.count { chunk -> chunk.compressedMd5 == chunkMd5 } }
@@ -829,6 +863,10 @@ class GOGDownloadManager @Inject constructor(
             val assembleFlow = MutableSharedFlow<Pair<String, Result<File>>>(extraBufferCapacity = Int.MAX_VALUE)
 
             var assemblyFailure: Throwable? = null
+
+            // Remaining chunk positions per file; the full-file MD5 runs once, when this hits zero.
+            val filePendingPositions = ConcurrentHashMap<String, AtomicInteger>()
+            files.forEach { file -> filePendingPositions[file.path] = AtomicInteger(file.chunks.size) }
 
             // assemble every file whose chunks have all arrived (or that has zero chunks)
             suspend fun assembleReady(chunkMd5: String): Result<Unit> {
@@ -844,6 +882,7 @@ class GOGDownloadManager @Inject constructor(
                 // 2. For each file found, write this chunk into its position
                 var expectedCount = 0
                 var assemblySuccessCount = 0
+                val assembledPerFile = mutableMapOf<DepotFile, Int>()
 
                 matchedFiles.forEach { file ->
                     file.chunks.withIndex()
@@ -853,6 +892,7 @@ class GOGDownloadManager @Inject constructor(
                             val result = assembleFile(file, chunk, chunkIndex, chunkCacheDir, installDir)
                             if (result.isSuccess) {
                                 assemblySuccessCount++
+                                assembledPerFile[file] = (assembledPerFile[file] ?: 0) + 1
                             } else {
                                 Timber.tag("GOG").d(result.exceptionOrNull()?.message ?: "Failed to assemble ${file.path}")
                             }
@@ -861,10 +901,19 @@ class GOGDownloadManager @Inject constructor(
 
                 // 3. Only finalize once every position using this chunk has been written; a partial
                 // result is reported as failure so the caller can re-fetch and retry the chunk.
+                // Position counters are only decremented below, on the fully-successful attempt,
+                // so a retried chunk cannot decrement the same position twice.
                 if (assemblySuccessCount < expectedCount) {
                     return Result.failure(
                         Exception("Assembled $assemblySuccessCount/$expectedCount position(s) for chunk $chunkMd5"),
                     )
+                }
+
+                assembledPerFile.forEach { (file, count) ->
+                    val remaining = filePendingPositions[file.path]?.addAndGet(-count)
+                    if (remaining == 0) {
+                        verifyAssembledFile(file, installDir)
+                    }
                 }
 
                 // 4. Free the cached chunk once it has been placed into all of its positions
@@ -1010,8 +1059,14 @@ class GOGDownloadManager @Inject constructor(
 
                     try {
                         // okio resize can OOM for large files on android.
+                        // External volumes are exFAT: no sparse files, so setLength physically
+                        // zero-fills the whole file there. Skip and let offset writes grow it.
                         RandomAccessFile(outputFile.path, "rw").use {
-                            it.setLength(totalSize)
+                            if (!onExternalStorage) {
+                                it.setLength(totalSize)
+                            } else if (it.length() > totalSize) {
+                                it.setLength(totalSize)
+                            }
                         }
 
                         file.chunks.forEach { chunk ->
@@ -1219,8 +1274,9 @@ class GOGDownloadManager @Inject constructor(
                 )
                 val chunkUrlCandidates = buildChunkUrlCandidates(depotChunkHashes, rankedDependencyUrls)
 
-                // Create cache directory for this dependency
-                val depotCacheDir = File(installBaseDir, ".gog_dep_${depot.dependencyId}")
+                // Dependency chunk cache also lives on internal storage (same exFAT
+                // dirsync cost as the game chunk cache when installing to SD)
+                val depotCacheDir = File(context.cacheDir, "gog_chunks/dep_${depot.dependencyId}")
                 depotCacheDir.mkdirs()
 
                 val depotInstallDir = installBaseDir
@@ -1544,27 +1600,28 @@ class GOGDownloadManager @Inject constructor(
                 )
             }
 
-            // Verify final file hash if provided
-            if (file.md5 != null) {
-                val fileMd5 = calculateMd5File(outputFile)
-                if (fileMd5 != file.md5) {
-                    // Timber.tag("GOG").w("File MD5 mismatch: ${file.path}, expected ${file.md5}, got $fileMd5")
-                    // Don't fail - some games have incorrect MD5 in manifest
-                    // And as it is changed to use RandomAccessFile, it happens when not all chunks are completed download
-                } else {
-                    // Move the log here for files finally assembled
-                    Timber.tag("GOG").v("Assembled: ${file.path} (${outputFile.length()} bytes)")
-                }
-            } else {
-                // For md5 is null, likely it does not need to decompress, need to show log here
-                Timber.tag("GOG").v("Assembled: ${file.path} (${outputFile.length()} bytes)")
-            }
-
             Result.success(outputFile)
         } catch (e: Exception) {
             Timber.tag("GOG").e(e, "Failed to assemble file ${file.path}")
             Result.failure(e)
         }
+    }
+
+    /**
+     * Full-file verification, run exactly once per file when its last chunk position lands.
+     * Per-chunk MD5s are already verified in-stream during download.
+     */
+    private fun verifyAssembledFile(file: DepotFile, installDir: File) {
+        val outputFile = File(installDir, file.path)
+        if (file.md5 != null) {
+            val fileMd5 = calculateMd5File(outputFile)
+            if (!fileMd5.equals(file.md5, ignoreCase = true)) {
+                // Don't fail - some games have incorrect MD5 in manifest
+                Timber.tag("GOG").w("File MD5 mismatch: ${file.path}, expected ${file.md5}, got $fileMd5")
+                return
+            }
+        }
+        Timber.tag("GOG").v("Assembled: ${file.path} (${outputFile.length()} bytes)")
     }
 
     /**
@@ -1587,17 +1644,27 @@ class GOGDownloadManager @Inject constructor(
             val md5Digest = MessageDigest.getInstance("MD5")
             var totalBytesWritten = 0L
 
-            RandomAccessFile(outputFile.path, "rw").use { raf ->
-                raf.seek(writeOffset)
+            FileChannel.open(
+                outputFile.toPath(),
+                StandardOpenOption.WRITE,
+                StandardOpenOption.CREATE
+            ).use { channel ->
+                channel.position(writeOffset)
 
                 // If no compressed size specified, data is already uncompressed
                 if (chunk.compressedSize == null) {
                     chunkFile.inputStream().use { input ->
                         val buffer = ByteArray(8192)
+                        val byteBuffer = ByteBuffer.wrap(buffer)
                         var bytesRead: Int
+
                         while (input.read(buffer).also { bytesRead = it } != -1) {
                             md5Digest.update(buffer, 0, bytesRead)
-                            raf.write(buffer, 0, bytesRead)
+                            byteBuffer.clear()
+                            byteBuffer.limit(bytesRead)
+                            while (byteBuffer.hasRemaining()) {
+                                channel.write(byteBuffer)
+                            }
                             totalBytesWritten += bytesRead
                         }
                     }
@@ -1608,6 +1675,7 @@ class GOGDownloadManager @Inject constructor(
                         chunkFile.inputStream().buffered().use { input ->
                             val inputBuffer = ByteArray(8192)
                             val outputBuffer = ByteArray(8192)
+                            val byteBuffer = ByteBuffer.wrap(outputBuffer)
                             var inputBytesRead: Int
 
                             while (input.read(inputBuffer).also { inputBytesRead = it } != -1) {
@@ -1617,7 +1685,11 @@ class GOGDownloadManager @Inject constructor(
                                     val count = inflater.inflate(outputBuffer)
                                     if (count > 0) {
                                         md5Digest.update(outputBuffer, 0, count)
-                                        raf.write(outputBuffer, 0, count)
+                                        byteBuffer.clear()
+                                        byteBuffer.limit(count)
+                                        while (byteBuffer.hasRemaining()) {
+                                            channel.write(byteBuffer)
+                                        }
                                         totalBytesWritten += count
                                     } else {
                                         if (inflater.needsDictionary()) {
@@ -1635,7 +1707,11 @@ class GOGDownloadManager @Inject constructor(
                                 val count = inflater.inflate(outputBuffer)
                                 if (count > 0) {
                                     md5Digest.update(outputBuffer, 0, count)
-                                    raf.write(outputBuffer, 0, count)
+                                    byteBuffer.clear()
+                                    byteBuffer.limit(count)
+                                    while (byteBuffer.hasRemaining()) {
+                                        channel.write(byteBuffer)
+                                    }
                                     totalBytesWritten += count
                                 } else {
                                     if (inflater.needsInput()) {

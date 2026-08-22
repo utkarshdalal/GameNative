@@ -304,6 +304,7 @@ object ContainerUtils {
             graphicsDriverConfig = container.graphicsDriverConfig,
             rendererPresentMode = container.rendererPresentMode,
             displayRenderer = container.displayRenderer,
+            xrRefreshRate = container.xrRefreshRate,
             sfCompatMode = container.sfCompatMode,
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
@@ -365,7 +366,6 @@ object ContainerUtils {
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
             // LSFG Vulkan frame generation
             lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean(),
-            bionicFgEnabled = container.getExtra(BionicFgManager.EXTRA_ARMED, "false").toBoolean(),
         )
     }
 
@@ -488,6 +488,7 @@ object ContainerUtils {
         container.graphicsDriverConfig = containerData.graphicsDriverConfig
         container.rendererPresentMode = containerData.rendererPresentMode
         container.displayRenderer = containerData.displayRenderer
+        container.xrRefreshRate = containerData.xrRefreshRate
         container.sfCompatMode = containerData.sfCompatMode
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig
@@ -549,7 +550,6 @@ object ContainerUtils {
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
         // LSFG Vulkan frame generation
         container.putExtra(LsfgVkManager.EXTRA_ARMED, containerData.lsfgEnabled.toString())
-        container.putExtra(BionicFgManager.EXTRA_ARMED, containerData.bionicFgEnabled.toString())
         try {
             container.language = containerData.language
         } catch (e: Exception) {
@@ -1230,10 +1230,8 @@ object ContainerUtils {
         GameSource.GOG,
         GameSource.EPIC,
         GameSource.AMAZON,
-        -> true
-
         GameSource.CUSTOM_GAME,
-        -> false
+        -> true
     }
 
     /**
@@ -1270,7 +1268,7 @@ object ContainerUtils {
     }
 
     /**
-     * Scans the container's A: drive for all .exe files
+     * Scans the container's A: drive for all .exe and .bat files
      */
     fun scanExecutablesInADrive(drives: String): List<String> {
         val executables = mutableListOf<String>()
@@ -1291,7 +1289,7 @@ object ContainerUtils {
 
             Timber.d("Scanning for executables in A: drive: $aDrivePath")
 
-            // Recursively scan for .exe files using listFiles with depth limit.
+            // Recursively scan for .exe/.bat files using listFiles with depth limit.
             // Symlinked directories are skipped to avoid cycles (e.g. GOG ISI rootdir -> game root).
             fun scanRecursive(dir: File, baseDir: File, depth: Int = 0, maxDepth: Int = 10) {
                 if (depth > maxDepth) return
@@ -1300,7 +1298,7 @@ object ContainerUtils {
                     if (file.isDirectory) {
                         if (FileUtils.isSymlink(file)) return@forEach
                         scanRecursive(file, baseDir, depth + 1, maxDepth)
-                    } else if (file.isFile && file.name.lowercase().endsWith(".exe")) {
+                    } else if (file.isFile && (file.name.lowercase().endsWith(".exe") || file.name.lowercase().endsWith(".bat"))) {
                         // Convert to relative Windows path format
                         val relativePath = baseDir.toURI().relativize(file.toURI()).path
                         executables.add(relativePath)
@@ -1336,7 +1334,7 @@ object ContainerUtils {
      */
     fun filterExesForUnpacking(exePaths: List<String>): List<String> = exePaths.filter { path ->
         val fileName = path.substringAfterLast('/').substringAfterLast('\\').lowercase()
-        !isSystemExecutable(fileName)
+        fileName.endsWith(".exe") && !isSystemExecutable(fileName)
     }
 
     /**

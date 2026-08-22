@@ -17,6 +17,37 @@ object RecommendationRepository {
     private const val API_URL = "https://api.gamenative.app/api/games/hero"
     private const val CACHE_TTL_MS = 24L * 60L * 60L * 1000L
 
+    private const val MOCK_HERO_RESPONSE = false
+
+    internal val MOCK_HERO_JSON = """
+        {
+          "recommendation": null,
+          "featured": {
+            "campaignId": "mock-whisk",
+            "title": "Whisk",
+            "appId": 3602270,
+            "developer": "Double Dusk Inc.",
+            "heroImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/92fb97a2832c9c075165c43d14d974c730ca716b/library_hero.jpg",
+            "capsuleImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/435512f90bdf39498f17fcbd103b19fa1223a430/library_capsule.jpg",
+            "screenshots": [
+              "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/e0a52a09cd85472aecfb430ad086aae040cb100c/ss_e0a52a09cd85472aecfb430ad086aae040cb100c.1920x1080.jpg",
+              "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/77719570b08d1b46facf8477df20aa5b97b54573/ss_77719570b08d1b46facf8477df20aa5b97b54573.1920x1080.jpg",
+              "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/08fd286888a7efb1e782a5106fdb1b1f237bcdb2/ss_08fd286888a7efb1e782a5106fdb1b1f237bcdb2.1920x1080.jpg"
+            ],
+            "tags": ["Action", "Indie"],
+            "status": "COMING_SOON",
+            "description": {
+              "en": "Whisk is a two-player platformer about shared movement and communication. Coordinate jumps, climbs and throws with a partner to get every Dreamcat home."
+            },
+            "actions": [
+              { "type": "WISHLIST", "url": "https://store.steampowered.com/app/3602270/", "store": "Steam", "style": "primary" },
+              { "type": "GET_DEMO", "url": "https://store.steampowered.com/app/3602270/", "appId": 4320000 },
+              { "type": "VISIT", "url": "https://store.steampowered.com/app/3602270/" }
+            ]
+          }
+        }
+    """.trimIndent()
+
     private val json = Json { ignoreUnknownKeys = true }
 
     // Latest featured from the most recent fetch. Kept in memory (not the disk cache) so the
@@ -30,7 +61,7 @@ object RecommendationRepository {
      */
     suspend fun getHero(context: Context): HeroResponse =
         withContext(Dispatchers.IO) {
-            val fetched = fetchRemote()
+            val fetched = if (MOCK_HERO_RESPONSE) parseHero(MOCK_HERO_JSON) else fetchRemote()
             if (fetched != null) {
                 lastFeatured = fetched.featured
                 return@withContext HeroResponse(

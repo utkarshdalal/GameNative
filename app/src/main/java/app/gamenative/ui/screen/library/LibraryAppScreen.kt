@@ -61,6 +61,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -68,6 +70,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -286,7 +289,6 @@ private fun PrimaryActionButton(
         }
     }
 }
-
 
 /**
  * Icon-only action button for the overlay action bar
@@ -552,6 +554,12 @@ private fun formatBytes(bytes: Long): String {
     }
 }
 
+internal data class ImmersiveModeUiState(
+    val isSupported: Boolean = false,
+    val isEnabled: Boolean = false,
+    val onChange: (Boolean) -> Unit = {},
+)
+
 @Composable
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
@@ -571,6 +579,7 @@ internal fun AppScreenContent(
     onBack: () -> Unit = {},
     optionsMenu: List<AppMenuOption>,
     dialogOpen: Boolean = false,
+    immersiveMode: ImmersiveModeUiState = ImmersiveModeUiState(),
 ) {
     val context = LocalContext.current
     // reactive — recomposes when network state changes
@@ -591,12 +600,44 @@ internal fun AppScreenContent(
     // Calculate parallax offset based on scroll
     val parallaxOffset = scrollState.value * 0.5f
 
+    var downloadTimeLeftText by remember { mutableStateOf("")}
+
+    val progressListener: (Float) -> Unit = {
+        val downloadStatusMessage = downloadInfo?.getCurrentStatusMessage()
+
+        downloadTimeLeftText = run {
+            val etaMs = downloadInfo?.getEstimatedTimeRemaining()
+            if (etaMs != null && etaMs > 0L) {
+                val totalSeconds = etaMs / 1000
+                val minutesLeft = totalSeconds / 60
+                val secondsPart = totalSeconds % 60
+                "${minutesLeft}m ${secondsPart}s left"
+            } else if (isDownloading && downloadProgress >= 1f) {
+                "Unpacking..."
+            } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
+                downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
+            } else {
+                ""
+            }
+        }
+    }
+
     LaunchedEffect(displayInfo.appId) {
         scrollState.animateScrollTo(0)
     }
 
     LaunchedEffect(Unit) {
         playButtonFocusRequester.requestFocus()
+    }
+
+    LaunchedEffect(downloadInfo) {
+        downloadInfo?.addProgressListener(progressListener)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            downloadInfo?.removeProgressListener(progressListener)
+        }
     }
 
     // Restore focus when options menu, dialogs
@@ -634,28 +675,7 @@ internal fun AppScreenContent(
         }
     }
 
-    // Download progress texts hoisted here so they can be shown inside the button
-    val downloadStatusMessageFlow = remember(downloadInfo) { downloadInfo?.getStatusMessageFlow() }
-    val downloadStatusMessage by (
-        downloadStatusMessageFlow?.collectAsState(initial = downloadStatusMessageFlow.value)
-            ?: remember { mutableStateOf<String?>(null) }
-        )
     val downloadingLabel = stringResource(R.string.downloading)
-    val downloadTimeLeftText = remember(displayInfo.appId, downloadProgress, downloadInfo, isDownloading, downloadStatusMessage) {
-        val etaMs = downloadInfo?.getEstimatedTimeRemaining()
-        if (etaMs != null && etaMs > 0L) {
-            val totalSeconds = etaMs / 1000
-            val minutesLeft = totalSeconds / 60
-            val secondsPart = totalSeconds % 60
-            "${minutesLeft}m ${secondsPart}s left"
-        } else if (isDownloading && downloadProgress >= 1f) {
-            downloadStatusMessage?.takeUnless { it.isBlank() } ?: "Unpacking..."
-        } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
-            downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
-        } else {
-            ""
-        }
-    }
     val downloadSizeText = remember(displayInfo.gameId, downloadProgress, downloadInfo) {
         val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
         if (bytesTotal > 0L) {
@@ -967,6 +987,29 @@ internal fun AppScreenContent(
                                 icon = Icons.Default.Delete,
                                 contentDescription = if (isInstalled || hasLeftoverInstall) stringResource(R.string.uninstall) else stringResource(R.string.delete_app),
                                 onClick = onDeleteDownloadClick,
+                            )
+                        }
+                    }
+
+                    if (immersiveMode.isSupported && isInstalled) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp)
+                                .clickable { immersiveMode.onChange(!immersiveMode.isEnabled) },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = immersiveMode.isEnabled,
+                                onCheckedChange = immersiveMode.onChange,
+                                colors = CheckboxDefaults.colors(
+                                    uncheckedColor = Color.White.copy(alpha = 0.7f),
+                                ),
+                            )
+                            Text(
+                                text = stringResource(R.string.launch_immersive_mode),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White,
                             )
                         }
                     }

@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Вхід користувача</string>
     <string name="login_2fa">Двофакторна автентифікація</string>
@@ -312,7 +312,7 @@
     <string name="performance_hud_fps_limiter_target">Цільовий FPS</string>
     <string name="performance_hud_fps_limiter_off">Без обмежень</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Обмежувач вимкнено, поки активний LSFG. Частоту джерела задає множник.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Обмежує базову частоту кадрів. Частота на екрані — це ліміт, помножений на множник LSFG.</string>
     <string name="performance_hud_presets">Набори</string>
     <string name="performance_hud_presets_description">Швидко перемикайтеся між типовими макетами HUD.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -559,6 +559,8 @@
     <string name="downloading">Завантаження...</string>
     <string name="calculating_time">Розрахунок...</string>
     <string name="download_failed_try_again">Помилка завантаження. Спробуйте знову.</string>
+    <string name="download_preparing">Підготовка завантаження...</string>
+    <string name="download_preparing_depots">Підготовка депо (%1$d/%2$d)</string>
     <string name="update_available">Доступне оновлення</string>
     <string name="game_information">Інформація про гру</string>
     <string name="status">Статус</string>
@@ -583,6 +585,11 @@
     <string name="add_custom_game_content_desc">Додати власну гру</string>
     <string name="add_custom_game_dialog_title">Додати власну гру</string>
     <string name="add_custom_game_dialog_message">Будь ласка, виберіть папку з файлами гри, яку ви хочете додати як власну гру.</string>
+    <string name="custom_game_importing">Імпорт гри…</string>
+    <string name="custom_game_import_success">Гру імпортовано</string>
+    <string name="custom_game_import_failed">Не вдалося імпортувати</string>
+    <string name="custom_game_import_dialog_message">Виберіть папку з грою. Її буде імпортовано до сховища GameNative, щоб вона могла працювати без дозволу на доступ до сховища. Імпорт великих ігор може тривати кілька хвилин.</string>
+    <string name="custom_game_import_remove_original">Видалити оригінал після імпорту</string>
     <string name="add_custom_game_dont_show_again">Більше не показувати</string>
     <string name="base_app_shortcut_created">Ярлик створено</string>
     <string name="base_app_shortcut_failed">Не вдалося створити ярлик: %s</string>
@@ -922,6 +929,11 @@
     <string name="settings_language_restart_confirm">Перезапустити</string>
     <string name="settings_language_changing">Зміна мови та перезапуск...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Продуктивність</string>
+    <string name="settings_performance_power_control_title">Керування живленням</string>
+    <string name="settings_performance_power_control_subtitle">Вмикати керування живленням у грі за замовчуванням (увімкнено на перевірених пристроях: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Емуляція</string>
     <string name="settings_emulation_orientations_title">Дозволені орієнтації екрану</string>
@@ -963,10 +975,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Інформація</string>
-    <string name="settings_info_send_tip_title">Підтримати розробників</string>
-    <string name="settings_info_send_tip_subtitle">Сприяйте подальшому розвитку</string>
-    <string name="settings_info_ask_tip_title">Пропонувати підтримку розробників при запуску</string>
-    <string name="settings_info_ask_tip_subtitle">(ВИМК) Приховує повідомлення з пропозицією підтримки</string>
+    <string name="settings_info_send_tip_title">Стати учасником</string>
+    <string name="settings_info_send_tip_subtitle">Ранній доступ до версій, пріоритетна допомога та інше</string>
+    <string name="settings_info_ask_tip_title">Пропозиції членства</string>
+    <string name="settings_info_ask_tip_subtitle">Час від часу показувати пропозиції стати учасником GameNative</string>
     <string name="settings_info_source_title">Вихідний код</string>
     <string name="settings_info_source_subtitle">Переглянути вихідний код застосунку</string>
     <string name="settings_info_libraries_title">Використані бібліотеки</string>
@@ -1082,9 +1094,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Нещодавній збій</string>
     <string name="main_recent_crash_message">Перепрошуємо!\nБуло б добре дізнатися про проблему, з якою Ви нещодавно зіткнулися.\nВи можете переглянути та експортувати останній журнал збою в налаштуваннях застосунку і додати його як проблему (issue) на GitHub у репозиторії проєкту.\nПосилання на репозиторій GitHub також знаходиться в налаштуваннях!</string>
-    <string name="main_thank_you_title">Дякуємо за користування GameNative!</string>
-    <string name="main_thank_you_message">Підтримайте open-source ПК-ігри на Android, поділившись застосунком із друзями або ставши учасником на Ko-fi.</string>
-    <string name="main_join_kofi">Стати учасником на Ko-fi</string>
+    <string name="main_thank_you_title">Подобається GameNative?</string>
+    <string name="main_thank_you_message">Станьте учасником сьогодні. Учасники отримують:\n\n• Ранній доступ до нових версій\n• Пріоритетну допомогу із запуском ігор\n• Преміум-ролі та ексклюзивні канали в Discord\n• …та інше\n\nВід $5/міс.</string>
+    <string name="main_join_kofi">Стати учасником</string>
+    <string name="pitch_session_title">Подобається %1$s?</string>
+    <string name="pitch_five_star_title">Раді, що %1$s чудово працює!</string>
     <string name="main_share">Поділитися</string>
     <string name="main_share_text">Спробуй GameNative — грай у свої Steam-ігри з ПК на Android з повною підтримкою хмарних збережень!\nhttps://gamenative.app\nПриєднуйся до спільноти: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Чи працювала гра?</string>
@@ -1198,6 +1212,66 @@
     <string name="best_config_apply_anyway">Застосувати все одно</string>
     <string name="best_config_applied_with_defaults">Конфігурацію застосовано, відсутні компоненти замінено значеннями за замовчуванням</string>
     <string name="best_config_apply_failed">Не вдалося застосувати конфігурацію: %s</string>
+    <string name="community_config_title">Конфігурації спільноти</string>
+    <string name="community_config_close">Закрити конфігурації спільноти</string>
+    <string name="community_config_refresh">Оновити конфігурації спільноти</string>
+    <string name="community_config_retry">Повторити</string>
+    <string name="community_config_unknown_error">Невідома помилка</string>
+    <string name="community_config_unknown">Невідомо</string>
+    <string name="community_config_load_failed">Не вдалося завантажити конфігурації спільноти: %1$s</string>
+    <string name="community_config_game_not_found">Для %1$s не знайдено запису про сумісність</string>
+    <string name="community_config_gpu_unknown">GPU недоступний</string>
+    <plurals name="community_config_result_count">
+        <item quantity="one">%1$d конфігурація</item>
+        <item quantity="few">%1$d конфігурації</item>
+        <item quantity="many">%1$d конфігурацій</item>
+        <item quantity="other">%1$d конфігурації</item>
+    </plurals>
+    <string name="community_config_highest_rated">За рейтингом</string>
+    <string name="community_config_newest">Найновіші</string>
+    <string name="community_config_same_device">Той самий пристрій</string>
+    <string name="community_config_this_gpu">Той самий GPU</string>
+    <string name="community_config_compatible_gpus">Сумісні</string>
+    <string name="community_config_load_more">Завантажити ще</string>
+    <string name="community_config_no_device_results">Для цього пристрою не знайдено конфігурацій.</string>
+    <string name="community_config_no_gpu_results">Для цього GPU не знайдено конфігурацій.</string>
+    <string name="community_config_no_compatible_results">Конфігурацій для сумісних GPU не знайдено.</string>
+    <string name="community_config_show_this_gpu">Показати цей GPU</string>
+    <string name="community_config_show_compatible_gpus">Показати сумісні GPU</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">Відомості про конфігурацію</string>
+    <string name="community_config_other_gpu_warning">Цей результат отримано з іншим GPU. Налаштування драйвера та обгортки, що залежать від GPU, не буде застосовано.</string>
+    <string name="community_config_run_details">Тестовий запуск</string>
+    <string name="community_config_rating">Оцінка</string>
+    <string name="community_config_average_fps">Середній FPS</string>
+    <string name="community_config_device">Пристрій</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">Версія GameNative</string>
+    <string name="community_config_submitted">Надіслано</string>
+    <string name="community_config_session_length">Тривалість сеансу</string>
+    <string name="community_config_game_store">Магазин гри</string>
+    <string name="community_config_custom_game">Користувацька гра</string>
+    <string name="community_config_settings">Налаштування</string>
+    <string name="community_config_additional_launch_settings">Додаткові параметри запуску</string>
+    <string name="community_config_apply_launch_arguments">Застосувати аргументи запуску</string>
+    <string name="community_config_apply_environment_variables">Застосувати змінні середовища</string>
+    <string name="community_config_replaces_existing_value">Замінює поточне значення</string>
+    <string name="community_config_dependencies">Залежності</string>
+    <string name="community_config_dependencies_apply_check">Залежності буде перевірено під час застосування конфігурації.</string>
+    <string name="community_config_no_downloads">Зараз завантаження компонентів із маніфесту не потрібне.</string>
+    <string name="community_config_downloads_required">Ці компоненти буде завантажено автоматично:\n%1$s</string>
+    <string name="community_config_tags">Теги</string>
+    <string name="community_config_notes">Примітки</string>
+    <string name="community_config_apply">Застосувати конфігурацію</string>
+    <string name="community_config_container">Контейнер</string>
+    <string name="community_config_wine">Wine або Proton</string>
+    <string name="community_config_emulator">Емулятор</string>
+    <string name="community_config_wrapper">Обгортка DirectX</string>
+    <string name="community_config_box64_preset">Передналаштування Box64</string>
+    <string name="community_config_driver">Графічний драйвер</string>
     <string name="import_config">Імпортувати конфігурацію</string>
     <string name="export_config">Експортувати конфігурацію</string>
     <string name="library_app_type">Тип застосунку</string>
@@ -1467,11 +1541,13 @@
     <string name="option_submit_feedback">Надіслати відгук</string>
     <string name="option_reset_drm">Скинути DRM</string>
     <string name="option_use_known_config">Використати відому конфігурацію</string>
+    <string name="option_browse_community_configs">Переглянути конфігурації спільноти</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Рекомендовано</string>
-    <string name="recommended_buy_button">Переглянути гру</string>
-    <string name="recommended_support_message">Покупка за цим посиланням допомагає підтримувати розробку GameNative.</string>
+    <string name="recommended_buy_button">Купити в GOG</string>
+    <string name="rec_buy_with_price">%1$s · Купити в GOG</string>
+    <string name="recommended_support_message">Ми отримуємо комісію з покупок, здійснених за цим посиланням.</string>
     <string name="recommended_about_heading">Про цю гру</string>
     <string name="recommended_review_count">На основі %1$s відгуків</string>
     <string name="review_overwhelmingly_positive">Надзвичайно позитивні</string>
@@ -1517,6 +1593,8 @@
     <string name="lsfg_flow_scale">Масштаб потоку</string>
     <string name="lsfg_flow_scale_desc">Нижче — стабільніше; вище — плавніше, але можуть з’являтися артефакти.</string>
     <string name="lsfg_performance_mode">Режим продуктивності</string>
+    <string name="lsfg_present_mode">Режим виводу</string>
+    <string name="lsfg_present_mode_desc">Рекомендується Mailbox. FIFO також підходить, коли вихідна частота кадрів (ліміт fps × множник) збігається з частотою оновлення екрана; нижче за неї FIFO може виглядати нерівно.</string>
     <string name="lsfg_not_supported">Для генерації кадрів потрібен контейнер Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling не встановлено. Натисніть для встановлення. Відомо, що працює лише на Adreno 6xx і новіших.</string>
     <string name="lsfg_not_in_library">Lossless Scaling немає у вашій бібліотеці Steam</string>
@@ -1920,6 +1998,7 @@
     <string name="nexus_resolving_collection_item">Розв\'язка колекції %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Колекція готова: %1$d модів</string>
     <string name="nexus_resolve_collection_failed">Не вдалося вирішити колекцію Nexus</string>
+    <string name="nexus_adult_content_blocked">Цю колекцію приховано через ваші налаштування вмісту для дорослих у Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Жодна вибрана колекція модів не готова для завантаження</string>
     <string name="nexus_collection_different_file_reused">Колекція запитала інший файл; існуючий встановлений файл повторно використаний</string>
     <string name="nexus_collection_existing_placement_kept">Існуюче розміщення збережено</string>
@@ -2046,8 +2125,8 @@
     <string name="control_stroke_width_default">За замовчуванням</string>
     <string name="control_stroke_width_thick">Товста</string>
     <string name="control_stroke_width_extra_thick">Дуже товста</string>
-    <string name="button_shooter_look_through">Наскрізне введення shooter</string>
-    <string name="button_shooter_look_through_subtitle">Дозволити цьому дотику кнопки також керувати динамічним рухом і оглядом shooter</string>
+    <string name="button_look_through">Наскрізне керування</string>
+    <string name="button_look_through_subtitle">Натисніть цю кнопку й проведіть від неї, щоб також керувати рухом або камерою. Недоступно в режимі сенсорного екрана.</string>
     <string name="preview">Попередній перегляд</string>
     <string name="active">Активно</string>
     <string name="apply_all">Застосувати до всіх</string>
@@ -2059,11 +2138,17 @@
     <string name="rec_disclosure_body">Для персональних рекомендацій ми надаємо ігри, у які ви граєте, сервісу GOG. Вимкнути можна будь-коли в Налаштуваннях.</string>
     <string name="rec_disclosure_allow">Дозволити</string>
     <string name="rec_disclosure_not_now">Не зараз</string>
+    <string name="rec_teaser_title">Відкрийте ігри для вашого пристрою</string>
+    <string name="rec_teaser_subtitle">Торкніться, щоб переглянути</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Спонсовано</string>
     <string name="featured_action_wishlist">Список бажань</string>
     <string name="featured_action_wishlist_on">До списку бажань у %1$s</string>
+    <string name="featured_action_wishlisted">У списку бажаного</string>
+    <string name="featured_action_get_demo">Отримати демо</string>
+    <string name="featured_action_in_library">У бібліотеці</string>
+    <string name="featured_action_failed">Не вдалося виконати в застосунку — відкривається сторінка крамниці</string>
     <string name="featured_action_preorder">Передзамовити</string>
     <string name="featured_action_preorder_on">Передзамовити у %1$s</string>
     <string name="featured_action_buy">Придбати</string>
@@ -2155,14 +2240,103 @@
     <string name="nexus_invalid_source_metadata">Цей керований мод має неповні відомості про джерело, тому повторити операцію неможливо.</string>
     <string name="nexus_archive_memory_error">Архів потребує більше пам’яті, ніж дозволено Android. Повторіть спробу після оновлення GameNative або виберіть менший файл.</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">ШІ-генерація кадрів</string>
-    <string name="bfg_enable">Увімкнути ШІ-генерацію кадрів</string>
-    <string name="bfg_description">Вбудована ШІ-інтерполяція кадрів. Додаткових покупок не потрібно.</string>
-    <string name="bfg_multiplier">Множник кадрів</string>
-    <string name="bfg_flow_scale">Масштаб потоку</string>
-    <string name="bfg_flow_scale_desc">Менше — швидше; більше — краще відстежує рух, але навантажує GPU сильніше.</string>
-    <string name="bfg_model">Модель</string>
-    <string name="bfg_model_desc">Clear чіткіший, але важчий</string>
-    <string name="bfg_model_standard">Стандартна</string>
-    <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">Запросити</string>
+    <string name="steam_invite_header">Друзів: %1$d</string>
+    <string name="steam_invite_joinable">У цій грі — торкніться, щоб приєднатися</string>
+    <string name="steam_invite_unavailable">Клієнт Steam не готовий</string>
+    <string name="steam_invite_failed">Не вдалося запросити — ваша гра не в сесії, до якої можна приєднатися</string>
+    <string name="steam_join_failed">Не вдалося приєднатися — сесію могло бути закрито</string>
+    <string name="steam_invite_sent">Запрошення надіслано</string>
+    <string name="steam_invite_joined">У вашій грі</string>
+    <string name="steam_invite_online">У мережі</string>
+    <string name="steam_invite_offline">Не в мережі</string>
+    <string name="radial_menu">Радіальне меню</string>
+    <string name="radial_menu_settings_title">Радіальне меню</string>
+    <string name="radial_menu_cancel">Скасувати</string>
+    <string name="radial_menu_slot_count">Слоти</string>
+    <string name="radial_menu_slot_count_subtitle">Увімкнено слотів: %1$d</string>
+    <string name="radial_menu_decrease_slots">Зменшити кількість слотів</string>
+    <string name="radial_menu_increase_slots">Збільшити кількість слотів</string>
+    <string name="radial_menu_slots">Слоти колеса</string>
+    <string name="radial_menu_slot_title">Слот %1$d</string>
+    <string name="radial_menu_slot_label_hint">Мітка</string>
+    <string name="radial_menu_slot_binding">Призначення слота %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Призначення: %1$s</string>
+    <string name="radial_menu_preset_common">Типові</string>
+    <string name="radial_menu_preset_weapons">Зброя</string>
+    <string name="gesture_action_open_radial_menu">Відкрити радіальне меню</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Керування продуктивністю</string>
+    <string name="power_control_info">Керує масштабуванням частоти процесора та налаштуваннями регулятора. Потрібна служба PServer.</string>
+    <string name="power_control_driver">Драйвер: %s</string>
+    <string name="power_control_profiles">Профілі продуктивності</string>
+    <string name="power_control_governor">Регулятор ЦП</string>
+    <string name="power_control_current_frequencies">Поточні частоти</string>
+    <string name="power_control_frequencies">Налаштування частоти</string>
+    <string name="power_control_cpu_min_freq">Мінімальна частота ЦП</string>
+    <string name="power_control_cpu_max_freq">Максимальна частота ЦП</string>
+    <string name="power_control_gpu_freq">Частота ГП</string>
+    <string name="power_control_gpu_min_power">Мінімальна потужність ГП</string>
+    <string name="power_control_gpu_max_power">Максимальна потужність ГП</string>
+    <string name="power_control_ram_min_power">Мінімальна частота ОЗП</string>
+    <string name="power_control_ram_max_power">Максимальна частота ОЗП</string>
+    <string name="power_control_available_frequencies">Доступні частоти</string>
+    <string name="power_control_auto_tuning">Автоналаштування</string>
+    <string name="power_control_auto_tuning_desc">Стабільніша продуктивність, довша робота від батареї, менше нагрівання: автоматично налаштовує CPU та GPU під гру. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Автоматичне зниження FPS</string>
+    <string name="power_control_adaptive_fps_desc">Знижує ліміт FPS, якщо гра не може його досягти, для стабільного темпу кадрів. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_enable">Керування живленням у грі</string>
+    <string name="power_control_enable_desc">Перехоплює керування частотами CPU/GPU в ОС</string>
+    <string name="power_control_tuning_mode">Режим налаштування</string>
+    <string name="power_control_tuning_mode_per_cluster">За кластерами (перевірено на Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">ПІД-регулятор</string>
+    <string name="power_control_fan_control">Керування вентилятором</string>
+    <string name="power_control_fan_control_desc">Підтримує задану температуру за мінімального шуму вентилятора. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Закріплення гри</string>
+    <string name="power_control_game_pinning_desc">Утримує гру на швидких ядрах CPU. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Показувати швидкість вентилятора</string>
+    <string name="power_control_hud_show_tuner">Показувати межі частот налаштування</string>
+    <string name="power_control_tuning_strategy">Стратегія налаштування</string>
+    <string name="power_control_strategy_balanced">Збалансована</string>
+    <string name="power_control_strategy_balanced_desc">Рівномірно налаштовує всі компоненти для кращої загальної продуктивності</string>
+    <string name="power_control_strategy_power_efficient">Енергоефективна</string>
+    <string name="power_control_strategy_power_efficient_desc">Знижує неблокуючі компоненти для економії енергії</string>
+    <string name="power_control_strategy_aggressive">Агресивна</string>
+    <string name="power_control_strategy_aggressive_desc">Максимізує продуктивність на виявлених вузьких місцях</string>
+    <string name="power_control_strategy_conservative">Консервативна</string>
+    <string name="power_control_strategy_conservative_desc">Поступові налаштування з акцентом на стабільність</string>
+    <string name="launch_immersive_mode">Запустити в іммерсивному режимі (VR)</string>
+    <string name="quick_menu_tab_immersive">Іммерсивний</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Бачити реальне оточення крізь віртуальний екран</string>
+    <string name="immersive_passthrough_toggle">Увімкнути passthrough</string>
+    <string name="immersive_resize_mode_title">Маркери зміни розміру та переміщення</string>
+    <string name="immersive_resize_mode_desc">Коли увімкнено, показує маркери захоплення біля самих країв зображення гри. Типово вимкнено: екран без полів не втрачає різкості.</string>
+    <string name="immersive_resize_mode_toggle">Показувати маркери розміру та переміщення</string>
+    <string name="immersive_direct_render_title">Продуктивність</string>
+    <string name="immersive_reset_effects_status_blocked">Активний екранний ефект, фільтр або налаштування яскравості/контрасту/гами блокує найшвидший шлях відтворення.</string>
+    <string name="immersive_reset_effects_status_ok">Наразі ніщо не блокує найшвидший шлях відтворення.</string>
+    <string name="immersive_reset_effects_button">Скинути екранні ефекти</string>
+    <string name="immersive_reset_effects_desc">Вимикає всі ефекти, фільтри та налаштування яскравості/контрасту/гами. Діє одразу, перезапуск не потрібен.</string>
+    <string name="immersive_onboarding_disable_passthrough">Вимкніть passthrough для кращої продуктивності</string>
+    <string name="immersive_onboarding_quick_menu">Утримуйте Start, щоб відкрити або закрити швидке меню</string>
+    <string name="immersive_onboarding_pointer_toggle">Двічі натисніть стик, щоб перемкнутися між геймпадом Xbox і XR-вказівником</string>
+    <string name="immersive_mode_xr_pointer">Режим XR-вказівника</string>
+    <string name="immersive_mode_xbox">Режим геймпада Xbox</string>
+    <string name="tab_favorites">Вибране</string>
+    <string name="favorites_empty_title">Ще немає вибраного</string>
+    <string name="favorites_empty_message">Відкрийте меню відомостей про гру, щоб додати її до вибраного, або натисніть ліву лицьову кнопку контролера, коли гру виділено (X на Xbox, квадрат на PlayStation або Y з розкладкою Nintendo).</string>
+    <string name="favorites_empty_action">Переглянути всі ігри</string>
+    <string name="favorites_empty_filtered_title">Немає вибраного для показу</string>
+    <string name="favorites_empty_filtered_message">Немає вибраних ігор, що відповідають поточному пошуку або фільтрам або доступні у вашій бібліотеці.</string>
+    <string name="option_add_to_favorites">Додати до вибраного</string>
+    <string name="option_remove_from_favorites">Видалити з вибраного</string>
+    <string name="favorite_add_named">Додати %1$s до вибраного</string>
+    <string name="favorite_remove_named">Видалити %1$s з вибраного</string>
+    <string name="favorite_removed">Видалено з вибраного</string>
+    <string name="favorite_removed_named">%1$s видалено з вибраного</string>
+    <string name="favorite_added">Додано до вибраного</string>
+    <string name="favorite_added_named">%1$s додано до вибраного</string>
+    <string name="xr_refresh_rate">Частота оновлення VR</string>
 </resources>

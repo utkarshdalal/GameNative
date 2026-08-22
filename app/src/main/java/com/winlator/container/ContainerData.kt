@@ -1,6 +1,7 @@
 package com.winlator.container
 
 import androidx.compose.runtime.saveable.mapSaver
+import app.gamenative.PluviaApp
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.core.DefaultVersion
 import com.winlator.core.WineInfo
@@ -11,13 +12,14 @@ import kotlin.String
 
 data class ContainerData(
     val name: String = "",
-    val screenSize: String = Container.DEFAULT_SCREEN_SIZE,
+    val screenSize: String = PluviaApp.getDefaultScreenSize(),
     val envVars: String = Container.DEFAULT_ENV_VARS,
     val graphicsDriver: String = Container.DEFAULT_GRAPHICS_DRIVER,
     val graphicsDriverVersion: String = "",
     val graphicsDriverConfig: String = "",
     val rendererPresentMode: String = "fifo",
     val displayRenderer: String = Container.DEFAULT_DISPLAY_RENDERER,
+    val xrRefreshRate: Int = 72,
     val sfCompatMode: Boolean = true,
     var dxwrapper: String = Container.DEFAULT_DXWRAPPER,
     val dxwrapperConfig: String = "",
@@ -106,8 +108,6 @@ data class ContainerData(
     // LSFG Vulkan frame generation
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
-    /** Whether bionic-fg AI frame generation is enabled for this container */
-    val bionicFgEnabled: Boolean = false,
 ) {
     companion object {
         val Saver = mapSaver(
@@ -121,6 +121,7 @@ data class ContainerData(
                     "graphicsDriverConfig" to state.graphicsDriverConfig,
                     "rendererPresentMode" to state.rendererPresentMode,
                     "displayRenderer" to state.displayRenderer,
+                    "xrRefreshRate" to state.xrRefreshRate,
                     "sfCompatMode" to state.sfCompatMode,
                     "dxwrapper" to state.dxwrapper,
                     "dxwrapperConfig" to state.dxwrapperConfig,
@@ -179,7 +180,6 @@ data class ContainerData(
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
                     "lsfgEnabled" to state.lsfgEnabled,
-                    "bionicFgEnabled" to state.bionicFgEnabled,
                 )
             },
             restore = { savedMap ->
@@ -192,6 +192,7 @@ data class ContainerData(
                     graphicsDriverConfig = (savedMap["graphicsDriverConfig"] as? String) ?: "",
                     rendererPresentMode = (savedMap["rendererPresentMode"] as? String) ?: "fifo",
                     displayRenderer = (savedMap["displayRenderer"] as? String) ?: "vulkan",
+                    xrRefreshRate = (savedMap["xrRefreshRate"] as? Int) ?: 72,
                     sfCompatMode = (savedMap["sfCompatMode"] as? Boolean) ?: true,
                     dxwrapper = savedMap["dxwrapper"] as String,
                     dxwrapperConfig = savedMap["dxwrapperConfig"] as String,
@@ -250,7 +251,6 @@ data class ContainerData(
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
-                    bionicFgEnabled = (savedMap["bionicFgEnabled"] as? Boolean) ?: false,
                 )
             },
         )

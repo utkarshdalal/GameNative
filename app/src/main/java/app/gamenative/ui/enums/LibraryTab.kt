@@ -3,8 +3,8 @@ package app.gamenative.ui.enums
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.ui.graphics.vector.ImageVector
-import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.R
 
@@ -36,6 +36,16 @@ enum class LibraryTab(
         showEpic = true,
         showAmazon = true,
         installedOnly = false,
+    ),
+    FAVORITES(
+        labelResId = R.string.tab_favorites,
+        showCustom = true,
+        showSteam = true,
+        showGoG = true,
+        showEpic = true,
+        showAmazon = true,
+        installedOnly = false,
+        icon = Icons.Rounded.Star,
     ),
     STEAM(
         labelResId = R.string.tab_steam,
@@ -85,12 +95,12 @@ enum class LibraryTab(
 
     companion object {
         /**
-         * Tabs shown in the UI. Custom (LOCAL) games rely on all-files access, which only the
-         * legacy storage flavors have, so the tab is hidden on modern (scoped-storage) builds.
+         * Tabs shown in the UI. Custom (LOCAL) games work on all flavors: legacy maps folders
+         * in place via all-files access, modern imports them into app-owned storage.
          */
         val visibleEntries: List<LibraryTab>
             get() {
-                var result = if (BuildConfig.MODERN_ANDROID) entries.filter { it != LOCAL } else entries.toList()
+                var result = entries.toList()
                 if (!PrefManager.showRecommendations) result = result.filter { it != RECOMMENDED }
                 return result
             }

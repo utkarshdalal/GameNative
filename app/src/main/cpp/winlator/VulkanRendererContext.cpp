@@ -39,6 +39,7 @@ VulkanRendererContext::~VulkanRendererContext() {
         if (wt.stg  != VK_NULL_HANDLE) { vk_.DestroyBuffer(device, wt.stg, nullptr); vk_.FreeMemory(device, wt.stgMem, nullptr); }
     }
     deleteQueue.clear();
+    destroyXrTargetResources();
     cleanupSwapchain(); cleanupCursorTex();
     
     vk_.DestroySampler(device, sampler, nullptr);
@@ -746,14 +747,22 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
             0, 0, nullptr, 0, nullptr, (uint32_t)postUpload.size(), postUpload.data());
 
 
+    bool toXr = xrTargetActive.load() && xrFb!=VK_NULL_HANDLE;
+    VkExtent2D tgtExt = toXr ? xrExt : swapchainExt;
     VkRenderPassBeginInfo rpi{}; rpi.sType=VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rpi.renderPass=renderPass; rpi.framebuffer=swapchainFBs[imgIdx]; rpi.renderArea={{0,0},swapchainExt};
+    rpi.renderPass = toXr ? xrRp : renderPass;
+    rpi.framebuffer = toXr ? xrFb : swapchainFBs[imgIdx];
+    rpi.renderArea={{0,0},tgtExt};
     VkClearValue clr={{{0.f,0.f,0.f,1.f}}}; rpi.clearValueCount=1; rpi.pClearValues=&clr;
 
     vk_.CmdBeginRenderPass(cb, &rpi, VK_SUBPASS_CONTENTS_INLINE);
-    VkViewport vp{0,0,(float)swapchainExt.width,(float)swapchainExt.height,0,1};
+    // The immersive quad flips vertically to suit the per-window game buffers, so the scene
+    // target must match their orientation: render it upside down via a negative viewport.
+    VkViewport vp = toXr
+        ? VkViewport{0,(float)tgtExt.height,(float)tgtExt.width,-(float)tgtExt.height,0,1}
+        : VkViewport{0,0,(float)tgtExt.width,(float)tgtExt.height,0,1};
     vk_.CmdSetViewport(cb, 0, 1, &vp);
-    VkRect2D sc{{0,0},swapchainExt}; vk_.CmdSetScissor(cb, 0, 1, &sc);
+    VkRect2D sc{{0,0},tgtExt}; vk_.CmdSetScissor(cb, 0, 1, &sc);
 
     vk_.CmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     for (auto& d : draws) {
@@ -773,8 +782,8 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
         pc.brightness = activeBrightness;
         pc.contrast = activeContrast;
         pc.gamma = activeGamma;
-        pc.outW = std::max(1.0f, (float)d.w * sx / cw * (float)swapchainExt.width);
-        pc.outH = std::max(1.0f, (float)d.h * sy / ch * (float)swapchainExt.height);
+        pc.outW = std::max(1.0f, (float)d.w * sx / cw * (float)tgtExt.width);
+        pc.outH = std::max(1.0f, (float)d.h * sy / ch * (float)tgtExt.height);
         vk_.CmdPushConstants(cb, pipeLayout, VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         vk_.CmdDraw(cb, 4, 1, 0, 0);
     }
@@ -808,6 +817,142 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
             (int)endStatus, (int)swapRB, draws.size(), imgIdx);
         throw std::runtime_error("end cb");
     }
+}
+
+
+bool VulkanRendererContext::createXrTargetResources(uint32_t w, uint32_t h) {
+    AHardwareBuffer_Desc d{};
+    d.width=w; d.height=h; d.layers=1;
+    d.format=AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+    d.usage=AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE|AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER;
+    if (AHardwareBuffer_allocate(&d,&xrAhb)!=0||!xrAhb) { RLOG_E("xrTarget: AHB alloc %ux%u failed",w,h); return false; }
+
+    VkAndroidHardwareBufferPropertiesANDROID props{};
+    props.sType=VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID;
+    if (!vk_.GetAndroidHardwareBufferPropertiesANDROID ||
+        vk_.GetAndroidHardwareBufferPropertiesANDROID(device,xrAhb,&props)!=VK_SUCCESS) {
+        RLOG_E("xrTarget: AHB props failed"); destroyXrTargetResources(); return false;
+    }
+
+    VkExternalMemoryImageCreateInfo emi{};
+    emi.sType=VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+    emi.handleTypes=VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+    VkImageCreateInfo ii{};
+    ii.sType=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO; ii.pNext=&emi;
+    ii.imageType=VK_IMAGE_TYPE_2D; ii.format=VK_FORMAT_R8G8B8A8_UNORM;
+    ii.extent={w,h,1}; ii.mipLevels=1; ii.arrayLayers=1; ii.samples=VK_SAMPLE_COUNT_1_BIT;
+    ii.tiling=VK_IMAGE_TILING_OPTIMAL;
+    ii.usage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|VK_IMAGE_USAGE_SAMPLED_BIT;
+    ii.sharingMode=VK_SHARING_MODE_EXCLUSIVE; ii.initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+    if (vk_.CreateImage(device,&ii,nullptr,&xrImg)!=VK_SUCCESS) { RLOG_E("xrTarget: image"); destroyXrTargetResources(); return false; }
+
+    VkImportAndroidHardwareBufferInfoANDROID imp{};
+    imp.sType=VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID; imp.buffer=xrAhb;
+    VkMemoryDedicatedAllocateInfo ded{};
+    ded.sType=VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO; ded.pNext=&imp; ded.image=xrImg;
+    uint32_t idx=0; while (idx<32 && !(props.memoryTypeBits&(1u<<idx))) idx++;
+    if (idx>=32) { RLOG_E("xrTarget: no compatible memory type (bits=0x%x)", props.memoryTypeBits); destroyXrTargetResources(); return false; }
+    VkMemoryAllocateInfo mai{};
+    mai.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO; mai.pNext=&ded;
+    mai.allocationSize=props.allocationSize; mai.memoryTypeIndex=idx;
+    if (vk_.AllocateMemory(device,&mai,nullptr,&xrMem)!=VK_SUCCESS ||
+        vk_.BindImageMemory(device,xrImg,xrMem,0)!=VK_SUCCESS) {
+        RLOG_E("xrTarget: memory"); destroyXrTargetResources(); return false;
+    }
+
+    VkImageViewCreateInfo vi{};
+    vi.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    vi.image=xrImg; vi.viewType=VK_IMAGE_VIEW_TYPE_2D; vi.format=VK_FORMAT_R8G8B8A8_UNORM;
+    vi.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+    if (vk_.CreateImageView(device,&vi,nullptr,&xrView)!=VK_SUCCESS) { RLOG_E("xrTarget: view"); destroyXrTargetResources(); return false; }
+
+    VkAttachmentDescription att{};
+    att.format=VK_FORMAT_R8G8B8A8_UNORM; att.samples=VK_SAMPLE_COUNT_1_BIT;
+    att.loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR; att.storeOp=VK_ATTACHMENT_STORE_OP_STORE;
+    att.stencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE; att.stencilStoreOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    att.initialLayout=VK_IMAGE_LAYOUT_UNDEFINED; att.finalLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkAttachmentReference ref{0,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkSubpassDescription sub{}; sub.pipelineBindPoint=VK_PIPELINE_BIND_POINT_GRAPHICS;
+    sub.colorAttachmentCount=1; sub.pColorAttachments=&ref;
+    VkSubpassDependency dep{}; dep.srcSubpass=VK_SUBPASS_EXTERNAL; dep.dstSubpass=0;
+    dep.srcStageMask=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; dep.srcAccessMask=0;
+    dep.dstStageMask=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dep.dstAccessMask=VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    VkRenderPassCreateInfo rci{}; rci.sType=VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    rci.attachmentCount=1; rci.pAttachments=&att; rci.subpassCount=1; rci.pSubpasses=&sub;
+    rci.dependencyCount=1; rci.pDependencies=&dep;
+    if (vk_.CreateRenderPass(device,&rci,nullptr,&xrRp)!=VK_SUCCESS) { RLOG_E("xrTarget: renderpass"); destroyXrTargetResources(); return false; }
+
+    VkFramebufferCreateInfo fi{};
+    fi.sType=VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    fi.renderPass=xrRp; fi.attachmentCount=1; fi.pAttachments=&xrView;
+    fi.width=w; fi.height=h; fi.layers=1;
+    if (vk_.CreateFramebuffer(device,&fi,nullptr,&xrFb)!=VK_SUCCESS) { RLOG_E("xrTarget: framebuffer"); destroyXrTargetResources(); return false; }
+
+    xrExt={w,h};
+    RLOG("xrTarget: created %ux%u ahb=%p", w, h, (void*)xrAhb);
+    return true;
+}
+
+void VulkanRendererContext::destroyXrTargetResources() {
+    if (xrFb  !=VK_NULL_HANDLE){vk_.DestroyFramebuffer(device,xrFb,nullptr); xrFb=VK_NULL_HANDLE;}
+    if (xrRp  !=VK_NULL_HANDLE){vk_.DestroyRenderPass(device,xrRp,nullptr);  xrRp=VK_NULL_HANDLE;}
+    if (xrView!=VK_NULL_HANDLE){vk_.DestroyImageView(device,xrView,nullptr); xrView=VK_NULL_HANDLE;}
+    if (xrImg !=VK_NULL_HANDLE){vk_.DestroyImage(device,xrImg,nullptr);      xrImg=VK_NULL_HANDLE;}
+    if (xrMem !=VK_NULL_HANDLE){vk_.FreeMemory(device,xrMem,nullptr);        xrMem=VK_NULL_HANDLE;}
+    if (xrAhb){AHardwareBuffer_release(xrAhb); xrAhb=nullptr;}
+    xrExt={0,0};
+}
+
+int64_t VulkanRendererContext::enableXrTarget() {
+    std::unique_lock<std::shared_mutex> fl(frameMutex);
+    std::lock_guard<std::mutex> lk(renderMutex);
+    if (device==VK_NULL_HANDLE) return 0;
+    // A surface resize may still be queued for the render loop; process it here so the
+    // target is sized from the current swapchain extent, not the stale one.
+    if (fbResized.load()) {
+        for (auto& f:inFlightFences) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
+        cleanupSwapchain();
+        try {
+            createSwapchain(); createFramebuffers(); createCmdBufs();
+            imgInFlight.assign(swapchainImages.size(),VK_NULL_HANDLE);
+            fbResized.store(false);
+        } catch(...) { return 0; }
+    }
+    uint32_t w=swapchainExt.width, h=swapchainExt.height;
+    if (w==0||h==0){ w=(uint32_t)surfaceWidth; h=(uint32_t)surfaceHeight; }
+    if (w==0||h==0) return 0;
+    // The immersive quad swapchain follows the container screen size (min width 1280);
+    // rendering the scene any larger only burns GPU on pixels the quad downsamples away.
+    // Keep the surface aspect.
+    float qw = (float)std::max(containerWidth, 1280);
+    float qh = (float)containerHeight * qw / (float)std::max(containerWidth, 1);
+    float fit = std::min({qw/(float)w, qh/(float)h, 1.f});
+    w = std::max(16u, (uint32_t)((float)w*fit) & ~1u);
+    h = std::max(16u, (uint32_t)((float)h*fit) & ~1u);
+    if (xrTargetActive.load() && xrAhb!=nullptr && xrExt.width==w && xrExt.height==h)
+        return (int64_t)(intptr_t)xrAhb;
+    vk_.DeviceWaitIdle(device);
+    if (xrAhb!=nullptr) { xrTargetActive.store(false); destroyXrTargetResources(); }
+    if (!createXrTargetResources(w,h)) return 0;
+    xrTargetActive.store(true);
+    needsRender.store(true); dirtyCV.notify_one();
+    return (int64_t)(intptr_t)xrAhb;
+}
+
+int64_t VulkanRendererContext::xrTargetExtentPacked() {
+    std::lock_guard<std::mutex> lk(renderMutex);
+    return ((int64_t)xrExt.width<<32) | (int64_t)xrExt.height;
+}
+
+void VulkanRendererContext::disableXrTarget() {
+    std::unique_lock<std::shared_mutex> fl(frameMutex);
+    std::lock_guard<std::mutex> lk(renderMutex);
+    if (!xrTargetActive.load() && xrAhb==nullptr) return;
+    if (device!=VK_NULL_HANDLE) vk_.DeviceWaitIdle(device);
+    xrTargetActive.store(false);
+    destroyXrTargetResources();
+    needsRender.store(true); dirtyCV.notify_one();
 }
 
 void VulkanRendererContext::renderLoop() {
@@ -873,30 +1018,37 @@ ok=true;}catch(...){}
     }
 
     if (currentFrame >= cmdBufs.size() || cmdBufs[currentFrame] == VK_NULL_HANDLE) return;
+    bool toXr = xrTargetActive.load() && xrFb!=VK_NULL_HANDLE;
     bool currentFenceWaited = false;
-    if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, inFlightFences[currentFrame]) == VK_NOT_READY) {
+    if (toXr) {
+        for (auto& f:inFlightFences) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
+        currentFenceWaited = true;
+    } else if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, inFlightFences[currentFrame]) == VK_NOT_READY) {
         vk_.WaitForFences(device,1,&inFlightFences[currentFrame],VK_TRUE,UINT64_MAX);
         currentFenceWaited = true;
     }
 
-    uint32_t imgIdx;
-    VkResult res=vk_.AcquireNextImageKHR(device,swapchain,UINT64_MAX,imgAvailSems[currentFrame],VK_NULL_HANDLE,&imgIdx);
-    if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR){fbResized.store(true);return;}
-    if (res!=VK_SUCCESS&&res!=VK_SUBOPTIMAL_KHR) return;
-    if (imgIdx >= swapchainFBs.size() || imgIdx >= swapchainImages.size()) {
-        RLOG_E("renderFrame: invalid acquired image index=%u (fb=%zu images=%zu)",
-            imgIdx, swapchainFBs.size(), swapchainImages.size());
-        return;
-    }
-
-    if (imgInFlight.size()!=swapchainImages.size()) imgInFlight.assign(swapchainImages.size(),VK_NULL_HANDLE);
-    if (imgInFlight[imgIdx]!=VK_NULL_HANDLE &&
-        (!currentFenceWaited || imgInFlight[imgIdx] != inFlightFences[currentFrame])) {
-        if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, imgInFlight[imgIdx]) == VK_NOT_READY) {
-            vk_.WaitForFences(device,1,&imgInFlight[imgIdx],VK_TRUE,UINT64_MAX);
+    uint32_t imgIdx = 0;
+    VkResult res = VK_SUCCESS;
+    if (!toXr) {
+        res=vk_.AcquireNextImageKHR(device,swapchain,UINT64_MAX,imgAvailSems[currentFrame],VK_NULL_HANDLE,&imgIdx);
+        if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR){fbResized.store(true);return;}
+        if (res!=VK_SUCCESS&&res!=VK_SUBOPTIMAL_KHR) return;
+        if (imgIdx >= swapchainFBs.size() || imgIdx >= swapchainImages.size()) {
+            RLOG_E("renderFrame: invalid acquired image index=%u (fb=%zu images=%zu)",
+                imgIdx, swapchainFBs.size(), swapchainImages.size());
+            return;
         }
+
+        if (imgInFlight.size()!=swapchainImages.size()) imgInFlight.assign(swapchainImages.size(),VK_NULL_HANDLE);
+        if (imgInFlight[imgIdx]!=VK_NULL_HANDLE &&
+            (!currentFenceWaited || imgInFlight[imgIdx] != inFlightFences[currentFrame])) {
+            if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, imgInFlight[imgIdx]) == VK_NOT_READY) {
+                vk_.WaitForFences(device,1,&imgInFlight[imgIdx],VK_TRUE,UINT64_MAX);
+            }
+        }
+        imgInFlight[imgIdx]=inFlightFences[currentFrame];
     }
-    imgInFlight[imgIdx]=inFlightFences[currentFrame];
 
     vk_.ResetCommandBuffer(cmdBufs[currentFrame],0);
 
@@ -965,9 +1117,11 @@ ok=true;}catch(...){}
     VkSemaphore wSem[]={imgAvailSems[currentFrame]}, sSem[]={renderDoneSems[currentFrame]};
     VkPipelineStageFlags wStage[]={VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.waitSemaphoreCount=1; si.pWaitSemaphores=wSem; si.pWaitDstStageMask=wStage;
+    if (!toXr) {
+        si.waitSemaphoreCount=1; si.pWaitSemaphores=wSem; si.pWaitDstStageMask=wStage;
+        si.signalSemaphoreCount=1; si.pSignalSemaphores=sSem;
+    }
     si.commandBufferCount=1; si.pCommandBuffers=&cmdBufs[currentFrame];
-    si.signalSemaphoreCount=1; si.pSignalSemaphores=sSem;
 
     vk_.ResetFences(device,1,&inFlightFences[currentFrame]);
     if (vk_.QueueSubmit(graphicsQueue,1,&si,inFlightFences[currentFrame])!=VK_SUCCESS) {
@@ -976,11 +1130,18 @@ ok=true;}catch(...){}
         vk_.CreateFence(device,&fi,nullptr,&inFlightFences[currentFrame]);
         return;
     }
-    VkSwapchainKHR scs[]={swapchain};
-    VkPresentInfoKHR pi{}; pi.sType=VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    pi.waitSemaphoreCount=1; pi.pWaitSemaphores=sSem; pi.swapchainCount=1; pi.pSwapchains=scs; pi.pImageIndices=&imgIdx;
-    res=vk_.QueuePresentKHR(graphicsQueue,&pi);
-    if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR) fbResized.store(true);
+    if (!toXr) {
+        VkSwapchainKHR scs[]={swapchain};
+        VkPresentInfoKHR pi{}; pi.sType=VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        pi.waitSemaphoreCount=1; pi.pWaitSemaphores=sSem; pi.swapchainCount=1; pi.pSwapchains=scs; pi.pImageIndices=&imgIdx;
+        res=vk_.QueuePresentKHR(graphicsQueue,&pi);
+        if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR) fbResized.store(true);
+    } else {
+        // The XR session samples xrAhb from its own GL context with no fence handoff;
+        // blocking here means the buffer is fully written whenever this thread is idle,
+        // leaving only the active write window unsynchronized (a tear, not stale data).
+        vk_.WaitForFences(device,1,&inFlightFences[currentFrame],VK_TRUE,UINT64_MAX);
+    }
     currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
 }
 

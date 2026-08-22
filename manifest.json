@@ -4,6 +4,24 @@
   "items": {
     "driver": [
       {
+        "id": "Turnip Gen8 V34",
+        "name": "Turnip_Gen8_V34",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_Gen8_V34.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip v26.3.0-R3",
+        "name": "Turnip_v26.3.0-R3",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_v26.3.0-R3.zip",
+        "variant": "bionic"
+      },
+      {
+        "id": "Turnip Adreno Driver T30 (@Mr_Purple_666)",
+        "name": "Turnip Adreno Driver T30 (@Mr_Purple_666)",
+        "url": "https://downloads.gamenative.app/drivers/turnip_mrpurple_T30-toasted.adpkg.zip",
+        "variant": "bionic"
+      },
+      {
         "id": "Turnip v26.1.0 A12 Fix",
         "name": "Turnip_v26.1.0_A12Fix",
         "url": "https://downloads.gamenative.app/drivers/Turnip_v26.1.0_A12Fix.zip",
@@ -832,13 +850,39 @@
     ],
     "fexcore": [
       {
+        "id": "2607-0",
+        "name": "FEX 2607",
+        "url": "https://downloads.gamenative.app/FEXCore-2607.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2608-0",
+        "name": "FEX 2608",
+        "url": "https://downloads.gamenative.app/FEXCore-2608.wcp",
+        "variant": "bionic"
+      },
+      {
         "id": "2601-217d039-0",
         "name": "FEX 2601-217d039",
         "url": "https://downloads.gamenative.app/FEXCore-2601-217d039.wcp",
         "variant": "bionic"
       }
     ],
+    "box64": [
+      {
+        "id": "0.4.4-1",
+        "name": "Box64 0.4.4",
+        "url": "https://downloads.gamenative.app/box64-0.4.4.wcp",
+        "variant": "bionic"
+      }
+    ],
     "wowbox64": [
+      {
+        "id": "0.4.4-1",
+        "name": "WOWBox64 0.4.4",
+        "url": "https://downloads.gamenative.app/Wowbox64-0.4.4.wcp",
+        "variant": "bionic"
+      },
       {
         "id": "0.3.6-0",
         "name": "WOWBox64 0.3.6",

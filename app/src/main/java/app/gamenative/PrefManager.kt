@@ -14,6 +14,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.gamenative.data.GameSource
+import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.HomeDestination
@@ -23,7 +24,6 @@ import com.materialkolor.PaletteStyle
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.container.Container
 import com.winlator.core.DefaultVersion
-import com.winlator.xenvironment.components.PulseAudioComponent
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.util.EnumSet
 import kotlinx.coroutines.CoroutineScope
@@ -50,6 +50,8 @@ object PrefManager {
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val favoritePersistenceLock = Any()
+    private var favoritePersistenceVersion = 0L
 
     private lateinit var dataStore: DataStore<Preferences>
 
@@ -164,7 +166,7 @@ object PrefManager {
     /* Container Default Settings */
     private val SCREEN_SIZE = stringPreferencesKey("screen_size")
     var screenSize: String
-        get() = getPref(SCREEN_SIZE, Container.DEFAULT_SCREEN_SIZE)
+        get() = getPref(SCREEN_SIZE, PluviaApp.getDefaultScreenSize())
         set(value) {
             setPref(SCREEN_SIZE, value)
         }
@@ -345,7 +347,7 @@ object PrefManager {
     var quickMenuLastTab: Int
         get() = getPref(QUICK_MENU_LAST_TAB, 0)
         set(value) {
-            setPref(QUICK_MENU_LAST_TAB, value.coerceIn(0, 2))
+            setPref(QUICK_MENU_LAST_TAB, value.coerceIn(0, 6))
         }
 
     private val SHOW_FPS = booleanPreferencesKey("show_fps")
@@ -437,6 +439,20 @@ object PrefManager {
         get() = getPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, true)
         set(value) {
             setPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_FAN = booleanPreferencesKey("performance_hud_show_fan")
+    var showPerformanceHudFan: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_FAN, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_FAN, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_TUNER_CAPS = booleanPreferencesKey("performance_hud_show_tuner_caps")
+    var showPerformanceHudTunerCaps: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_TUNER_CAPS, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_TUNER_CAPS, value)
         }
 
     private val PERFORMANCE_HUD_SHOW_FRAME_RATE_GRAPH = booleanPreferencesKey("performance_hud_show_frame_rate_graph")
@@ -967,6 +983,27 @@ object PrefManager {
             setPref(TIPPED, value)
         }
 
+    private val HAS_ATTEMPTED_GAME_LAUNCH = booleanPreferencesKey("has_attempted_game_launch")
+    var hasAttemptedGameLaunch: Boolean
+        get() = getPref(HAS_ATTEMPTED_GAME_LAUNCH, false)
+        set(value) {
+            setPref(HAS_ATTEMPTED_GAME_LAUNCH, value)
+        }
+
+    private val LAST_LAUNCH_PITCH_TIME = longPreferencesKey("last_launch_pitch_time")
+    var lastLaunchPitchTime: Long
+        get() = getPref(LAST_LAUNCH_PITCH_TIME, 0L)
+        set(value) {
+            setPref(LAST_LAUNCH_PITCH_TIME, value)
+        }
+
+    private val LAST_WARM_PITCH_TIME = longPreferencesKey("last_warm_pitch_time")
+    var lastWarmPitchTime: Long
+        get() = getPref(LAST_WARM_PITCH_TIME, 0L)
+        set(value) {
+            setPref(LAST_WARM_PITCH_TIME, value)
+        }
+
     private val APP_THEME = intPreferencesKey("app_theme")
     var appTheme: AppTheme
         get() {
@@ -1164,10 +1201,24 @@ object PrefManager {
         }
 
     private val REC_DISCLOSURE_SHOWN = booleanPreferencesKey("rec_disclosure_shown")
+
+    // Cached in memory because the DataStore write is async: consumers read this back
+    // immediately after granting consent, before the write lands on disk.
+    @Volatile private var recDisclosureShownCache: Boolean? = null
     var recDisclosureShown: Boolean
-        get() = getPref(REC_DISCLOSURE_SHOWN, false)
+        get() = recDisclosureShownCache
+            ?: getPref(REC_DISCLOSURE_SHOWN, false).also { recDisclosureShownCache = it }
         set(value) {
+            recDisclosureShownCache = value
             setPref(REC_DISCLOSURE_SHOWN, value)
+        }
+
+    // Day seed when the user last dismissed the frosted rec teaser ("Not now")
+    private val REC_TEASER_DISMISSED_DAY = longPreferencesKey("rec_teaser_dismissed_day")
+    var recTeaserDismissedDay: Long
+        get() = getPref(REC_TEASER_DISMISSED_DAY, 0L)
+        set(value) {
+            setPref(REC_TEASER_DISMISSED_DAY, value)
         }
 
     // Show dialog when adding custom game folder
@@ -1300,6 +1351,37 @@ object PrefManager {
             setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
         }
 
+    private val FAVORITE_APP_IDS = stringPreferencesKey("favorite_app_ids")
+    var favoriteAppIds: Set<String>
+        get() {
+            val value = getPref(FAVORITE_APP_IDS, "[]")
+            return try {
+                Json.decodeFromString<Set<String>>(value)
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to decode favorite app ids; falling back to empty set")
+                emptySet()
+            }
+        }
+        set(value) {
+            // Keep JSON encoding off the caller thread. The version check prevents an older
+            // serialization from overwriting a newer favorite set if several toggles are queued.
+            val version = synchronized(favoritePersistenceLock) {
+                favoritePersistenceVersion += 1
+                favoritePersistenceVersion
+            }
+            scope.launch {
+                val serialized = Json.encodeToString(value)
+                dataStore.edit { pref ->
+                    val isLatest = synchronized(favoritePersistenceLock) {
+                        version == favoritePersistenceVersion
+                    }
+                    if (isLatest) {
+                        pref[FAVORITE_APP_IDS] = serialized
+                    }
+                }
+            }
+        }
+
     // Add new setting for Wine debug logging
     private val ENABLE_WINE_DEBUG = booleanPreferencesKey("enable_wine_debug")
     var enableWineDebug: Boolean
@@ -1418,4 +1500,9 @@ object PrefManager {
                 setPref(NEXUS_LAST_PLACEMENT_JSON, value)
             }
         }
+
+    private val POWER_CONTROL_DEFAULT_ENABLED = booleanPreferencesKey("power_control_default_enabled")
+    var powerControlDefaultEnabled: Boolean
+        get() = getPref(POWER_CONTROL_DEFAULT_ENABLED, DeviceGate.isDeviceSupported())
+        set(value) { setPref(POWER_CONTROL_DEFAULT_ENABLED, value) }
 }

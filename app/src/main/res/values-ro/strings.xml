@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Autentificare utilizator</string>
     <string name="login_2fa">Autentificare în doi pași</string>
@@ -315,7 +315,7 @@
     <string name="performance_hud_fps_limiter_target">FPS țintă</string>
     <string name="performance_hud_fps_limiter_off">Nelimitat</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">Limitatorul este ignorat cât timp LSFG este activ. Rata sursei este controlată de multiplicator.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Limitează rata de bază. Rata de pe ecran este limita înmulțită cu multiplicatorul LSFG.</string>
     <string name="performance_hud_presets">Presetări</string>
     <string name="performance_hud_presets_description">Comută rapid între aspecte HUD comune.</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -565,6 +565,8 @@
     <string name="downloading">Se descarcă...</string>
     <string name="calculating_time">Se calculează...</string>
     <string name="download_failed_try_again">Descărcarea a eșuat. Încearcă din nou.</string>
+    <string name="download_preparing">Se pregătește descărcarea...</string>
+    <string name="download_preparing_depots">Se pregătesc depozitele (%1$d/%2$d)</string>
     <string name="update_available">Actualizare disponibilă</string>
     <string name="game_information">Informații joc</string>
     <string name="status">Stare</string>
@@ -589,6 +591,11 @@
     <string name="add_custom_game_content_desc">Adaugă joc personalizat</string>
     <string name="add_custom_game_dialog_title">Adaugă joc personalizat</string>
     <string name="add_custom_game_dialog_message">Selectează folderul care conține fișierele jocului pe care vrei să-l adaugi ca joc personalizat.</string>
+    <string name="custom_game_importing">Se importă jocul…</string>
+    <string name="custom_game_import_success">Joc importat</string>
+    <string name="custom_game_import_failed">Importul a eșuat</string>
+    <string name="custom_game_import_dialog_message">Selectează folderul care conține jocul. Va fi importat în stocarea GameNative pentru a putea rula fără nicio permisiune de stocare. Jocurile mari pot dura câteva minute.</string>
+    <string name="custom_game_import_remove_original">Șterge originalul după import</string>
     <string name="add_custom_game_dont_show_again">Nu mai arăta acest dialog</string>
     <string name="base_app_shortcut_created">Shortcut creat</string>
     <string name="base_app_shortcut_failed">Nu s-a putut crea shortcut-ul: %s</string>
@@ -928,6 +935,11 @@
 	<string name="settings_language_restart_confirm">Repornește</string>
 	<string name="settings_language_changing">Se schimbă limba și se repornește...</string>
 
+	<!-- Settings: Performance Group -->
+	<string name="settings_performance_title">Performanță</string>
+	<string name="settings_performance_power_control_title">Control performanței</string>
+	<string name="settings_performance_power_control_subtitle">Activează implicit controlul performanței în joc (activat pe dispozitivele testate: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
 	<!-- Settings: Emulation Group -->
 	<string name="settings_emulation_title">Emulare</string>
 	<string name="settings_emulation_orientations_title">Orientări permise</string>
@@ -969,10 +981,10 @@
 
 	<!-- Settings: Info Group -->
 	<string name="settings_info_title">Informații</string>
-	<string name="settings_info_send_tip_title">Trimite un tip</string>
-	<string name="settings_info_send_tip_subtitle">Contribuie la dezvoltarea continuă</string>
-	<string name="settings_info_ask_tip_title">Cere tip la pornire</string>
-	<string name="settings_info_ask_tip_subtitle">Oprește afișarea mesajului de tip</string>
+    <string name="settings_info_send_tip_title">Devino membru</string>
+    <string name="settings_info_send_tip_subtitle">Acces anticipat la versiuni, ajutor prioritar și altele</string>
+    <string name="settings_info_ask_tip_title">Oferte de membru</string>
+    <string name="settings_info_ask_tip_subtitle">Afișează ocazional oferte pentru a deveni membru GameNative</string>
 	<string name="settings_info_source_title">Cod sursă</string>
 	<string name="settings_info_source_subtitle">Vezi codul sursă al acestui proiect</string>
 	<string name="settings_info_libraries_title">Biblioteci utilizate</string>
@@ -1088,9 +1100,11 @@
 	<!-- PluviaMain: Crash & Support -->
 	<string name="main_recent_crash_title">Crash recent</string>
 	<string name="main_recent_crash_message">Ne pare rău!\nAr fi util să știm ce problemă ai întâmpinat.\nPoți vizualiza și exporta cel mai recent crash log din setările aplicației și îl poți atașa ca issue pe Github în repository-ul proiectului.\nLinkul către repo este tot în setări!</string>
-	<string name="main_thank_you_title">Mulțumim că folosești GameNative!</string>
-	<string name="main_thank_you_message">Susține gaming-ul open‑source pe Android distribuind aplicația prietenilor sau devenind membru pe Ko‑fi.</string>
-	<string name="main_join_kofi">Alătură-te pe Ko‑fi</string>
+    <string name="main_thank_you_title">Îți place GameNative?</string>
+    <string name="main_thank_you_message">Devino membru astăzi. Membrii primesc:\n\n• Acces anticipat la versiuni noi\n• Ajutor prioritar pentru a-ți face jocurile să funcționeze\n• Roluri premium și canale exclusive pe Discord\n• …și altele\n\nDe la 5 $/lună</string>
+    <string name="main_join_kofi">Devino membru</string>
+    <string name="pitch_session_title">Îți place %1$s?</string>
+    <string name="pitch_five_star_title">Ne bucurăm că %1$s a mers excelent!</string>
 	<string name="main_share">Distribuie</string>
 	<string name="main_share_text">Descoperă GameNative - joacă jocurile tale Steam pe PC pe Android, cu suport complet pentru salvări în cloud!\nhttps://gamenative.app\nAlătură-te comunității: https://discord.gg/2hKv4VfZfE</string>
 	<string name="main_discord_support_title">A funcționat jocul?</string>
@@ -1204,6 +1218,65 @@
 	<string name="best_config_apply_anyway">Aplică oricum</string>
 	<string name="best_config_applied_with_defaults">Configurație aplicată, componentele lipsă înlocuite cu valori implicite</string>
 	<string name="best_config_apply_failed">Aplicarea configurației a eșuat: %s</string>
+    <string name="community_config_title">Configurații ale comunității</string>
+    <string name="community_config_close">Închide configurațiile comunității</string>
+    <string name="community_config_refresh">Actualizează configurațiile comunității</string>
+    <string name="community_config_retry">Reîncearcă</string>
+    <string name="community_config_unknown_error">Eroare necunoscută</string>
+    <string name="community_config_unknown">Necunoscut</string>
+    <string name="community_config_load_failed">Configurațiile comunității nu au putut fi încărcate: %1$s</string>
+    <string name="community_config_game_not_found">Nu a fost găsită nicio intrare de compatibilitate pentru %1$s</string>
+    <string name="community_config_gpu_unknown">GPU indisponibil</string>
+    <plurals name="community_config_result_count">
+        <item quantity="one">%1$d configurație</item>
+        <item quantity="few">%1$d configurații</item>
+        <item quantity="other">%1$d de configurații</item>
+    </plurals>
+    <string name="community_config_highest_rated">Cele mai bine evaluate</string>
+    <string name="community_config_newest">Cele mai recente</string>
+    <string name="community_config_same_device">Același dispozitiv</string>
+    <string name="community_config_this_gpu">Același GPU</string>
+    <string name="community_config_compatible_gpus">Compatibile</string>
+    <string name="community_config_load_more">Încarcă mai multe</string>
+    <string name="community_config_no_device_results">Nu au fost găsite configurații pentru acest dispozitiv.</string>
+    <string name="community_config_no_gpu_results">Nu au fost găsite configurații pentru acest GPU.</string>
+    <string name="community_config_no_compatible_results">Nu au fost găsite configurații pentru GPU-uri compatibile.</string>
+    <string name="community_config_show_this_gpu">Afișează acest GPU</string>
+    <string name="community_config_show_compatible_gpus">Afișează GPU-uri compatibile</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">Detaliile configurației</string>
+    <string name="community_config_other_gpu_warning">Acest rezultat folosește un alt GPU. Setările driverului și wrapperului specifice GPU-ului nu vor fi aplicate.</string>
+    <string name="community_config_run_details">Rulare de test</string>
+    <string name="community_config_rating">Evaluare</string>
+    <string name="community_config_average_fps">FPS mediu</string>
+    <string name="community_config_device">Dispozitiv</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">Versiunea GameNative</string>
+    <string name="community_config_submitted">Trimis</string>
+    <string name="community_config_session_length">Durata sesiunii</string>
+    <string name="community_config_game_store">Magazinul jocului</string>
+    <string name="community_config_custom_game">Joc personalizat</string>
+    <string name="community_config_settings">Setări</string>
+    <string name="community_config_additional_launch_settings">Setări suplimentare de lansare</string>
+    <string name="community_config_apply_launch_arguments">Aplică argumentele de lansare</string>
+    <string name="community_config_apply_environment_variables">Aplică variabilele de mediu</string>
+    <string name="community_config_replaces_existing_value">Înlocuiește valoarea curentă</string>
+    <string name="community_config_dependencies">Dependențe</string>
+    <string name="community_config_dependencies_apply_check">Dependențele vor fi verificate la aplicarea configurației.</string>
+    <string name="community_config_no_downloads">Momentan nu sunt necesare descărcări din manifest.</string>
+    <string name="community_config_downloads_required">Aceste componente vor fi descărcate automat:\n%1$s</string>
+    <string name="community_config_tags">Etichete</string>
+    <string name="community_config_notes">Note</string>
+    <string name="community_config_apply">Aplică configurația</string>
+    <string name="community_config_container">Container</string>
+    <string name="community_config_wine">Wine sau Proton</string>
+    <string name="community_config_emulator">Emulator</string>
+    <string name="community_config_wrapper">Wrapper DirectX</string>
+    <string name="community_config_box64_preset">Presetare Box64</string>
+    <string name="community_config_driver">Driver grafic</string>
 	<string name="import_config">Importă configurarea</string>
 	<string name="export_config">Exportă configurarea</string>
 	<string name="library_app_type">Tip aplicație</string>
@@ -1474,11 +1547,13 @@
     <string name="option_submit_feedback">Trimite feedback</string>
     <string name="option_reset_drm">Resetează DRM</string>
     <string name="option_use_known_config">Folosește configurația cunoscută</string>
+    <string name="option_browse_community_configs">Răsfoiește configurațiile comunității</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Recomandat</string>
-    <string name="recommended_buy_button">Vezi jocul</string>
-    <string name="recommended_support_message">Cumpărarea prin acest link ajută la susținerea dezvoltării GameNative.</string>
+    <string name="recommended_buy_button">Cumpără pe GOG</string>
+    <string name="rec_buy_with_price">%1$s · Cumpără pe GOG</string>
+    <string name="recommended_support_message">Primim un comision pentru achizițiile efectuate prin acest link.</string>
     <string name="recommended_about_heading">Despre acest joc</string>
     <string name="recommended_review_count">Pe baza a %1$s recenzii</string>
     <string name="review_overwhelmingly_positive">Copleșitor de pozitiv</string>
@@ -1524,6 +1599,8 @@
     <string name="lsfg_flow_scale">Scară flux</string>
     <string name="lsfg_flow_scale_desc">Mai mic este mai stabil; mai mare este mai fluid, dar poate produce artefacte.</string>
     <string name="lsfg_performance_mode">Mod performanță</string>
+    <string name="lsfg_present_mode">Mod de prezentare</string>
+    <string name="lsfg_present_mode_desc">Mailbox este recomandat. FIFO funcționează și când rata de cadre de ieșire (limita fps × multiplicator) corespunde ratei de reîmprospătare a ecranului; sub aceasta, FIFO poate părea instabil.</string>
     <string name="lsfg_not_supported">Generarea de cadre necesită un container Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling nu este instalat. Atingeți pentru a instala. Se știe că funcționează doar pe Adreno 6xx și mai nou.</string>
     <string name="lsfg_not_in_library">Lossless Scaling nu este în biblioteca dumneavoastră Steam</string>
@@ -1927,6 +2004,7 @@
     <string name="nexus_resolving_collection_item">Rezolvarea colectării %1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">Colecție gata: %1$d moduri</string>
     <string name="nexus_resolve_collection_failed">Nu s-a putut rezolva colecția Nexus</string>
+    <string name="nexus_adult_content_blocked">Această colecție este ascunsă din cauza setărilor tale privind conținutul pentru adulți de pe Nexus Mods.</string>
     <string name="nexus_no_selected_collection_mods_ready">Niciun mod de colecție selectat nu este gata de descărcat</string>
     <string name="nexus_collection_different_file_reused">Colecția a solicitat un alt fișier; fișierul instalat existent a fost reutilizat</string>
     <string name="nexus_collection_existing_placement_kept">Plasament existent păstrat</string>
@@ -2053,8 +2131,8 @@
     <string name="control_stroke_width_default">Implicit</string>
     <string name="control_stroke_width_thick">Gros</string>
     <string name="control_stroke_width_extra_thick">Foarte gros</string>
-    <string name="button_shooter_look_through">Trecere privire shooter</string>
-    <string name="button_shooter_look_through_subtitle">Permite ca această atingere a butonului să controleze și mișcarea și privirea shooter dinamice</string>
+    <string name="button_look_through">Control prin glisare</string>
+    <string name="button_look_through_subtitle">Apasă și glisează de la acest buton pentru a controla și mișcarea sau camera. Indisponibil în modul ecran tactil.</string>
     <string name="preview">Previzualizare</string>
     <string name="active">Activ</string>
     <string name="apply_all">Aplică tuturor</string>
@@ -2066,11 +2144,17 @@
     <string name="rec_disclosure_body">Pentru recomandări personalizate, partajăm jocurile pe care le joci cu GOG. Poți dezactiva oricând din Setări.</string>
     <string name="rec_disclosure_allow">Permite</string>
     <string name="rec_disclosure_not_now">Nu acum</string>
+    <string name="rec_teaser_title">Descoperă jocuri pentru dispozitivul tău</string>
+    <string name="rec_teaser_subtitle">Atinge pentru a arunca o privire</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Sponsorizat</string>
     <string name="featured_action_wishlist">Listă de dorințe</string>
     <string name="featured_action_wishlist_on">Adaugă în listă pe %1$s</string>
+    <string name="featured_action_wishlisted">În lista de dorințe</string>
+    <string name="featured_action_get_demo">Obține demo-ul</string>
+    <string name="featured_action_in_library">În bibliotecă</string>
+    <string name="featured_action_failed">Nu s-a putut finaliza în aplicație – se deschide pagina magazinului</string>
     <string name="featured_action_preorder">Precomandă</string>
     <string name="featured_action_preorder_on">Precomandă pe %1$s</string>
     <string name="featured_action_buy">Cumpără</string>
@@ -2160,14 +2244,103 @@
     <string name="nexus_invalid_source_metadata">Acest mod gestionat are informații incomplete despre sursă și operația nu poate fi reîncercată.</string>
     <string name="nexus_archive_memory_error">Arhiva necesită mai multă memorie decât permite Android. Încearcă din nou după actualizarea GameNative sau alege un fișier mai mic.</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">GenCadre IA</string>
-    <string name="bfg_enable">Activează generarea de cadre cu IA</string>
-    <string name="bfg_description">Interpolare de cadre cu IA, integrată. Fără achiziții suplimentare.</string>
-    <string name="bfg_multiplier">Multiplicator de cadre</string>
-    <string name="bfg_flow_scale">Scara fluxului</string>
-    <string name="bfg_flow_scale_desc">Mai mic este mai rapid; mai mare urmărește mișcarea mai bine, dar consumă mai mult GPU.</string>
-    <string name="bfg_model">Model</string>
-    <string name="bfg_model_desc">Clear este mai clar, dar mai solicitant</string>
-    <string name="bfg_model_standard">Standard</string>
-    <string name="bfg_model_clear">Clear</string>
+    <string name="steam_invite_tab_title">Invită</string>
+    <string name="steam_invite_header">%1$d prieteni</string>
+    <string name="steam_invite_joinable">În acest joc — atinge pentru a te alătura</string>
+    <string name="steam_invite_unavailable">Clientul Steam nu este pregătit</string>
+    <string name="steam_invite_failed">Invitația a eșuat — jocul tău nu este într-o sesiune la care se poate alătura cineva</string>
+    <string name="steam_join_failed">Nu s-a putut alătura — sesiunea lor ar putea fi închisă</string>
+    <string name="steam_invite_sent">Invitație trimisă</string>
+    <string name="steam_invite_joined">În jocul tău</string>
+    <string name="steam_invite_online">Online</string>
+    <string name="steam_invite_offline">Offline</string>
+    <string name="radial_menu">Meniu radial</string>
+    <string name="radial_menu_settings_title">Meniu radial</string>
+    <string name="radial_menu_cancel">Anulează</string>
+    <string name="radial_menu_slot_count">Sloturi</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d sloturi activate</string>
+    <string name="radial_menu_decrease_slots">Scade numărul de sloturi</string>
+    <string name="radial_menu_increase_slots">Crește numărul de sloturi</string>
+    <string name="radial_menu_slots">Sloturi ale roții</string>
+    <string name="radial_menu_slot_title">Slot %1$d</string>
+    <string name="radial_menu_slot_label_hint">Etichetă</string>
+    <string name="radial_menu_slot_binding">Asociere slot %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Asociere: %1$s</string>
+    <string name="radial_menu_preset_common">Comune</string>
+    <string name="radial_menu_preset_weapons">Arme</string>
+    <string name="gesture_action_open_radial_menu">Deschide meniul radial</string>
+
+    <!-- Power Control -->
+    <string name="power_control">Control performanță</string>
+    <string name="power_control_info">Controlează scalarea frecvenței CPU și setările guvernatorului. Necesită serviciul PServer.</string>
+    <string name="power_control_driver">Driver: %s</string>
+    <string name="power_control_profiles">Profile de performanță</string>
+    <string name="power_control_governor">Guvernator CPU</string>
+    <string name="power_control_current_frequencies">Frecvențe curente</string>
+    <string name="power_control_frequencies">Setări frecvență</string>
+    <string name="power_control_cpu_min_freq">Frecvență minimă CPU</string>
+    <string name="power_control_cpu_max_freq">Frecvență maximă CPU</string>
+    <string name="power_control_gpu_freq">Frecvență GPU</string>
+    <string name="power_control_gpu_min_power">Putere minimă GPU</string>
+    <string name="power_control_gpu_max_power">Putere maximă GPU</string>
+    <string name="power_control_ram_min_power">Frecvență minimă RAM</string>
+    <string name="power_control_ram_max_power">Frecvență maximă RAM</string>
+    <string name="power_control_available_frequencies">Frecvențe disponibile</string>
+    <string name="power_control_auto_tuning">Reglare automată</string>
+    <string name="power_control_auto_tuning_desc">Performanță mai stabilă, autonomie mai mare a bateriei, mai puțină căldură: reglează automat CPU și GPU pentru jocul tău. Verificat pe Retroid Pocket 6.</string>
+    <string name="power_control_adaptive_fps">Reducere automată a FPS</string>
+    <string name="power_control_adaptive_fps_desc">Scade limita de FPS când jocul nu o poate atinge, pentru un ritm stabil. Verificat pe Retroid Pocket 6.</string>
+    <string name="power_control_enable">Control alimentare în joc</string>
+    <string name="power_control_enable_desc">Preia controlul frecvențelor CPU/GPU de la sistemul de operare</string>
+    <string name="power_control_tuning_mode">Mod de reglare</string>
+    <string name="power_control_tuning_mode_per_cluster">Pe cluster (verificat pe Retroid Pocket 6)</string>
+    <string name="power_control_tuning_mode_whole_cpu">Regulator PID</string>
+    <string name="power_control_fan_control">Control ventilator</string>
+    <string name="power_control_fan_control_desc">Menține o temperatură țintă cu zgomot minim al ventilatorului. Verificat pe Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning">Fixare joc</string>
+    <string name="power_control_game_pinning_desc">Menține jocul pe nucleele CPU rapide. Verificat pe Retroid Pocket 6.</string>
+    <string name="power_control_hud_show_fan">Afișează viteza ventilatorului</string>
+    <string name="power_control_hud_show_tuner">Afișează limitele de frecvență ale reglării</string>
+    <string name="power_control_tuning_strategy">Strategie de reglare</string>
+    <string name="power_control_strategy_balanced">Echilibrat</string>
+    <string name="power_control_strategy_balanced_desc">Ajustează toate componentele uniform pentru cea mai bună performanță generală</string>
+    <string name="power_control_strategy_power_efficient">Eficiență energetică</string>
+    <string name="power_control_strategy_power_efficient_desc">Reduce componentele care nu sunt blocaje pentru a economisi energie</string>
+    <string name="power_control_strategy_aggressive">Agresiv</string>
+    <string name="power_control_strategy_aggressive_desc">Maximizează performanța la blocajele detectate</string>
+    <string name="power_control_strategy_conservative">Conservator</string>
+    <string name="power_control_strategy_conservative_desc">Ajustări graduale cu accent pe stabilitate</string>
+    <string name="launch_immersive_mode">Pornește în modul imersiv (VR)</string>
+    <string name="quick_menu_tab_immersive">Imersiv</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Vezi mediul real prin ecranul virtual</string>
+    <string name="immersive_passthrough_toggle">Activează passthrough</string>
+    <string name="immersive_resize_mode_title">Mânere de redimensionare/mutare</string>
+    <string name="immersive_resize_mode_desc">Când este activat, afișează mânere chiar în interiorul marginilor jocului — dezactivat implicit, deoarece un ecran fără margine nu pierde claritate.</string>
+    <string name="immersive_resize_mode_toggle">Afișează mânerele de redimensionare/mutare</string>
+    <string name="immersive_direct_render_title">Performanță</string>
+    <string name="immersive_reset_effects_status_blocked">Un efect de ecran, un filtru sau o ajustare de luminozitate/contrast/gamma activă blochează cea mai rapidă cale de randare.</string>
+    <string name="immersive_reset_effects_status_ok">Momentan nimic nu blochează cea mai rapidă cale de randare.</string>
+    <string name="immersive_reset_effects_button">Resetează efectele de ecran</string>
+    <string name="immersive_reset_effects_desc">Dezactivează toate efectele, filtrele și ajustările de luminozitate/contrast/gamma. Se aplică imediat — fără repornire.</string>
+    <string name="immersive_onboarding_disable_passthrough">Dezactivează passthrough pentru performanță mai bună</string>
+    <string name="immersive_onboarding_quick_menu">Ține apăsat Start pentru a deschide/închide meniul rapid</string>
+    <string name="immersive_onboarding_pointer_toggle">Dă dublu clic pe un joystick pentru a comuta între controller Xbox și indicator XR</string>
+    <string name="immersive_mode_xr_pointer">Mod indicator XR</string>
+    <string name="immersive_mode_xbox">Mod controller Xbox</string>
+    <string name="tab_favorites">Favorite</string>
+    <string name="favorites_empty_title">Încă nu ai favorite</string>
+    <string name="favorites_empty_message">Deschide meniul de detalii al jocului pentru a-l adăuga la favorite sau apasă butonul frontal din stânga al controlerului când jocul este focalizat (X pe Xbox, Pătrat pe PlayStation sau Y pe un controler cu dispunere Nintendo).</string>
+    <string name="favorites_empty_action">Răsfoiește toate jocurile</string>
+    <string name="favorites_empty_filtered_title">Nicio favorită de afișat</string>
+    <string name="favorites_empty_filtered_message">Niciun joc favorit nu corespunde căutării sau filtrelor curente sau nu este disponibil în bibliotecă.</string>
+    <string name="option_add_to_favorites">Adaugă la favorite</string>
+    <string name="option_remove_from_favorites">Elimină de la favorite</string>
+    <string name="favorite_add_named">Adaugă %1$s la favorite</string>
+    <string name="favorite_remove_named">Elimină %1$s de la favorite</string>
+    <string name="favorite_removed">Eliminat de la favorite</string>
+    <string name="favorite_removed_named">%1$s eliminat de la favorite</string>
+    <string name="favorite_added">Adăugat la favorite</string>
+    <string name="favorite_added_named">%1$s adăugat la favorite</string>
+    <string name="xr_refresh_rate">Rată de reîmprospătare VR</string>
 </resources>

@@ -51,6 +51,31 @@ object StorageUtils {
         return stat.blockSizeLong * stat.availableBlocksLong
     }
 
+    // Minimum internal free space required to host a transient download chunk cache.
+    // The cache normally stays MB-sized (chunks are deleted as they are assembled),
+    // so this only guards against starting a download on a nearly-full data partition.
+    private const val MIN_INTERNAL_CACHE_BYTES = 512L * 1024 * 1024
+
+    /**
+     * Pre-download disk space check shared by the GOG and Epic download managers.
+     * Returns a human-readable error when there is not enough space, or null when
+     * the download can proceed. [requiredBytes] is checked against the install
+     * volume; the internal volume hosting [internalCacheDir] only needs modest
+     * headroom for the transient chunk cache.
+     */
+    fun downloadSpaceShortfall(installDir: File, requiredBytes: Long, internalCacheDir: File): String? {
+        val available = getAvailableSpaceForUncreatedPath(installDir.absolutePath)
+        if (available < requiredBytes) {
+            return "Not enough free space: need ${formatBinarySize(requiredBytes)}, available ${formatBinarySize(available)}"
+        }
+        val internalAvailable = getAvailableSpaceForUncreatedPath(internalCacheDir.absolutePath)
+        if (internalAvailable < MIN_INTERNAL_CACHE_BYTES) {
+            return "Not enough internal storage for the download cache: " +
+                "${formatBinarySize(internalAvailable)} free, need at least ${formatBinarySize(MIN_INTERNAL_CACHE_BYTES)}"
+        }
+        return null
+    }
+
     fun getTotalSpace(path: String): Long {
         val file = File(path)
         if (!file.exists()) {

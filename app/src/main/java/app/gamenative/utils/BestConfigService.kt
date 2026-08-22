@@ -7,25 +7,23 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
-import com.winlator.container.ContainerData
-import com.winlator.core.DefaultVersion
 import com.winlator.contents.ContentProfile
+import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUInformation
-import com.winlator.fexcore.FEXCorePresetManager
 import com.winlator.core.KeyValueSet
+import com.winlator.fexcore.FEXCorePresetManager
+import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import timber.log.Timber
-import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Service for fetching best configurations for games from GameNative API.
@@ -37,14 +35,6 @@ object BestConfigService {
     // In-memory cache keyed by "${gameName}_${gpuName}"
     private val cache = ConcurrentHashMap<String, BestConfigResponse>()
 
-    // unavailable components from last config validation
-    private var lastMissingComponents: List<String> = emptyList()
-
-    fun consumeLastMissingComponents(): List<String> {
-        val result = lastMissingComponents
-        lastMissingComponents = emptyList()
-        return result
-    }
     /**
      * Data class for API response.
      */
@@ -61,13 +51,18 @@ object BestConfigService {
      */
     data class CompatibilityMessage(
         val text: String,
-        val color: Color
+        val color: Color,
     )
 
     data class ManifestInstallRequest(
         val entry: ManifestEntry,
         val contentType: ContentProfile.ContentType? = null,
         val isDriver: Boolean = false,
+    )
+
+    data class ParsedConfigResult(
+        val config: Map<String, Any?>,
+        val missingComponents: List<String> = emptyList(),
     )
 
     /**
@@ -179,7 +174,8 @@ object BestConfigService {
 
     /**
      * Filters config JSON based on match type.
-     * For fallback_match, excludes containerVariant, graphicsDriver, dxwrapper, and dxwrapperConfig.
+     * For fallback_match, excludes GPU-specific driver and wrapper settings. The container variant
+     * remains because it determines which runtime and dependency variants the config requires.
      */
     fun filterConfigByMatchType(config: JsonObject, matchType: String, storeMatch: Boolean = true): JsonObject {
         val filtered = config.toMutableMap()
@@ -194,7 +190,7 @@ object BestConfigService {
         }
 
         if (matchType == "fallback_match") {
-            // Exclude containerVariant, graphicsDriver, dxwrapper, dxwrapperConfig
+            // Exclude GPU-specific driver and wrapper settings.
             filtered.remove("graphicsDriver")
             filtered.remove("graphicsDriverVersion")
             filtered.remove("graphicsDriverConfig")
@@ -242,6 +238,16 @@ object BestConfigService {
             filteredJson.put("graphicsDriverVersion", "Turnip Adreno Driver T26 (@Mr_Purple_666)")
         }
 
+        if (GPUInformation.isAdreno8Elite(context) &&
+            !GPUInformation.isAdreno8EliteGen5(context) &&
+            !matched.matches(Regex(".*adreno.*\\b83[0-9]\\b.*"))
+        ) {
+            val kvs = KeyValueSet(filteredJson.optString("graphicsDriverConfig", ""))
+            kvs.put("version", ContainerUtils.WRAPPER_ADRENO_8ELITE)
+            filteredJson.put("graphicsDriverConfig", kvs.toString())
+            filteredJson.put("graphicsDriverVersion", ContainerUtils.WRAPPER_ADRENO_8ELITE)
+        }
+
         if (GPUInformation.isAdrenoA12(context) && !matched.matches(Regex(".*adreno.*\\ba12\\b.*"))) {
             val kvs = KeyValueSet(filteredJson.optString("graphicsDriverConfig", ""))
             kvs.put("version", ContainerUtils.WRAPPER_ADRENO_A12)
@@ -260,6 +266,24 @@ object BestConfigService {
         }
 
         return filteredJson
+    }
+
+    private fun prepareConfigForApplication(
+        context: Context,
+        configJson: JsonObject,
+        matchType: String,
+        storeMatch: Boolean = true,
+        matchedGpu: String = "",
+        preserveConfigValues: Boolean = false,
+    ): JSONObject {
+        val effectiveMatchType = if (preserveConfigValues) "exact_gpu_match" else matchType
+        val filteredConfig = filterConfigByMatchType(configJson, effectiveMatchType, storeMatch)
+        val filteredJson = JSONObject(filteredConfig.toString())
+        return if (preserveConfigValues) {
+            filteredJson
+        } else {
+            applyGpuFamilyOverrides(context, filteredJson, matchedGpu)
+        }
     }
 
     /**
@@ -488,10 +512,16 @@ object BestConfigService {
         configJson: JsonObject,
         matchType: String,
         matchedGpu: String = "",
+        preserveConfigValues: Boolean = false,
     ): List<ManifestInstallRequest> {
         val updatedConfigJson = Json.parseToJsonElement(configJson.toString()).jsonObject
-        val filteredConfig = filterConfigByMatchType(updatedConfigJson, matchType)
-        val filteredJson = applyGpuFamilyOverrides(context, JSONObject(filteredConfig.toString()), matchedGpu)
+        val filteredJson = prepareConfigForApplication(
+            context = context,
+            configJson = updatedConfigJson,
+            matchType = matchType,
+            matchedGpu = matchedGpu,
+            preserveConfigValues = preserveConfigValues,
+        )
         val installed = ManifestComponentHelper.loadInstalledContentLists(context)
         val manifest = ManifestRepository.loadManifest(context)
         val installedContent = installed.installed
@@ -742,6 +772,7 @@ object BestConfigService {
      * First parses values (using PrefManager defaults for validation), then validates component versions.
      * Returns map with only fields present in config (no defaults), or empty map if validation fails.
      * When forceApply is true, missing components are replaced with defaults instead of rejecting.
+     * When preserveConfigValues is true, match filtering and device-specific substitutions are skipped.
      */
     suspend fun parseConfigToContainerData(
         context: Context,
@@ -751,7 +782,28 @@ object BestConfigService {
         storeMatch: Boolean = true,
         forceApply: Boolean = false,
         matchedGpu: String = "",
-    ): Map<String, Any?>? {
+        preserveConfigValues: Boolean = false,
+    ): Map<String, Any?>? = parseConfigResult(
+        context = context,
+        configJson = configJson,
+        matchType = matchType,
+        applyKnownConfig = applyKnownConfig,
+        storeMatch = storeMatch,
+        forceApply = forceApply,
+        matchedGpu = matchedGpu,
+        preserveConfigValues = preserveConfigValues,
+    ).config
+
+    suspend fun parseConfigResult(
+        context: Context,
+        configJson: JsonObject,
+        matchType: String,
+        applyKnownConfig: Boolean,
+        storeMatch: Boolean = true,
+        forceApply: Boolean = false,
+        matchedGpu: String = "",
+        preserveConfigValues: Boolean = false,
+    ): ParsedConfigResult {
         try {
             val originalJson = JSONObject(configJson.toString())
 
@@ -763,13 +815,13 @@ object BestConfigService {
                 if (originalJson.has("useLegacyDRM") && !originalJson.isNull("useLegacyDRM")) {
                     resultMap["useLegacyDRM"] = originalJson.optBoolean("useLegacyDRM", PrefManager.useLegacyDRM)
                 }
-                return resultMap
+                return ParsedConfigResult(resultMap)
             }
 
             else {
                 if (!originalJson.has("containerVariant") || originalJson.isNull("containerVariant")) {
                     Timber.tag("BestConfigService").w("containerVariant is missing or null in original config, returning empty map")
-                    return mapOf()
+                    return ParsedConfigResult(emptyMap())
                 }
 
                 val containerVariant = originalJson.optString("containerVariant", "")
@@ -778,7 +830,7 @@ object BestConfigService {
                 // server best-config responses nor JSON imports can switch a container to glibc.
                 if (BuildConfig.MODERN_ANDROID && containerVariant.equals(Container.GLIBC, ignoreCase = true)) {
                     Timber.tag("BestConfigService").w("Rejecting glibc containerVariant on modern flavor")
-                    return mapOf()
+                    return ParsedConfigResult(emptyMap())
                 }
 
                 if (!originalJson.has("wineVersion") || originalJson.isNull("wineVersion")) {
@@ -787,16 +839,16 @@ object BestConfigService {
                     }
                     else {
                         Timber.tag("BestConfigService").w("wineVersion is missing or null in original config, returning empty map")
-                        return mapOf()
+                        return ParsedConfigResult(emptyMap())
                     }
                 }
                 if (!originalJson.has("dxwrapper") || originalJson.isNull("dxwrapper")) {
                     Timber.tag("BestConfigService").w("dxwrapper is missing or null in original config, returning empty map")
-                    return mapOf()
+                    return ParsedConfigResult(emptyMap())
                 }
                 if (!originalJson.has("dxwrapperConfig") || originalJson.isNull("dxwrapperConfig")) {
                     Timber.tag("BestConfigService").w("dxwrapperConfig is missing or null in original config, returning empty map")
-                    return mapOf()
+                    return ParsedConfigResult(emptyMap())
                 }
 
                 // Also check they're not empty strings
@@ -806,35 +858,41 @@ object BestConfigService {
 
                 if (containerVariant.isEmpty()) {
                     Timber.tag("BestConfigService").w("containerVariant is empty in original config, returning empty map")
-                    return mapOf()
+                    return ParsedConfigResult(emptyMap())
                 }
                 if (wineVersion.isEmpty()) {
                     Timber.tag("BestConfigService").w("wineVersion is empty in original config, returning empty map")
-                    return mapOf()
+                    return ParsedConfigResult(emptyMap())
                 }
                 if (dxwrapper.isEmpty()) {
                     Timber.tag("BestConfigService").w("dxwrapper is empty in original config, returning empty map")
-                    return mapOf()
+                    return ParsedConfigResult(emptyMap())
                 }
                 if (dxwrapperConfig.isEmpty()) {
                     Timber.tag("BestConfigService").w("dxwrapperConfig is empty in original config, returning empty map")
-                    return mapOf()
+                    return ParsedConfigResult(emptyMap())
                 }
 
-                // Step 1: Filter config based on match type, then apply GPU-family overrides
+                // Step 1: Prepare the config using either device-adapted or value-preserving behavior
                 val updatedConfigJson = Json.parseToJsonElement(originalJson.toString()).jsonObject
-                val filteredConfig = filterConfigByMatchType(updatedConfigJson, matchType, storeMatch)
-                val filteredJson = applyGpuFamilyOverrides(context, JSONObject(filteredConfig.toString()), matchedGpu)
+                val filteredJson = prepareConfigForApplication(
+                    context = context,
+                    configJson = updatedConfigJson,
+                    matchType = matchType,
+                    storeMatch = storeMatch,
+                    matchedGpu = matchedGpu,
+                    preserveConfigValues = preserveConfigValues,
+                )
 
                 // Step 2: check for unavailable component versions
-                lastMissingComponents = validateComponentVersions(context, filteredJson)
-                if (lastMissingComponents.isNotEmpty()) {
+                val missingComponents = validateComponentVersions(context, filteredJson)
+                if (missingComponents.isNotEmpty()) {
                     if (!forceApply) {
-                        Timber.tag("BestConfigService").w("Config rejected: missing components: ${lastMissingComponents.joinToString(", ")}")
-                        return mapOf()
+                        Timber.tag("BestConfigService").w("Config rejected: missing components: ${missingComponents.joinToString(", ")}")
+                        return ParsedConfigResult(emptyMap(), missingComponents)
                     }
-                    Timber.tag("BestConfigService").w("Force-applying config, replacing missing components with defaults: ${lastMissingComponents.joinToString(", ")}")
-                    replaceWithDefaults(filteredJson, lastMissingComponents)
+                    Timber.tag("BestConfigService").w("Force-applying config, replacing missing components with defaults: ${missingComponents.joinToString(", ")}")
+                    replaceWithDefaults(filteredJson, missingComponents)
                 }
 
                 // Step 3: Build map with only fields present in filteredJson (not defaults)
@@ -861,7 +919,12 @@ object BestConfigService {
                     resultMap["execArgs"] = filteredJson.optString("execArgs", "")
                 }
                 if (filteredJson.has("startupSelection") && !filteredJson.isNull("startupSelection")) {
-                    resultMap["startupSelection"] = filteredJson.optInt("startupSelection", PrefManager.startupSelection).toByte()
+                    val startupSelection = filteredJson.optInt("startupSelection", PrefManager.startupSelection)
+                    resultMap["startupSelection"] = if (preserveConfigValues) {
+                        startupSelection
+                    } else {
+                        startupSelection.toByte()
+                    }
                 }
                 if (filteredJson.has("box64Version") && !filteredJson.isNull("box64Version")) {
                     resultMap["box64Version"] = filteredJson.optString("box64Version", "")
@@ -922,11 +985,11 @@ object BestConfigService {
                     resultMap["videoMemorySize"] = filteredJson.optString("videoMemorySize", PrefManager.videoMemorySize)
                 }
 
-                return resultMap
+                return ParsedConfigResult(resultMap, missingComponents)
             }
         } catch (e: Exception) {
             Timber.tag("BestConfigService").e(e, "Failed to parse config to ContainerData: ${e.message}")
-            return mapOf()
+            return ParsedConfigResult(emptyMap())
         }
     }
 }
