@@ -88,6 +88,7 @@ class WindowsVrControlServer(
             "GET_VIEWS" -> if (tokens.size == 1) getViews() else "ERROR malformed"
             "GET_BOUNDS" -> if (tokens.size == 1) getBounds() else "ERROR malformed"
             "WAIT_FRAME" -> if (tokens.size == 1) waitFrame() else "ERROR malformed"
+            "FRAME_SYNC" -> if (tokens.size == 1) frameSync() else "ERROR malformed"
             "LOCATE_VIEWS" -> if (tokens.size == 1) locateViews() else "ERROR malformed"
             "GET_INPUT" -> getInput(tokens)
             "HAPTIC" -> haptic(tokens)
@@ -141,6 +142,16 @@ class WindowsVrControlServer(
         return "OK"
     }
 
+    /** One round-trip for the whole per-frame state: frame timing, view poses, and both
+     * hands' input as four lines. Saves three guest-side TCP round trips every frame. */
+    private fun frameSync(): String {
+        val frame = waitFrame()
+        if (!frame.startsWith("OK")) return frame
+        return frame + "\n" + locateViews() + "\n" +
+            getInput(listOf("GET_INPUT", "hand=0")) + "\n" +
+            getInput(listOf("GET_INPUT", "hand=1"))
+    }
+
     private fun waitFrame(): String {
         val snapshot = snapshots.waitFrame(lastFrameSerial, 1000) ?: return "ERROR timeout"
         lastFrameSerial = snapshot.timing[0]
@@ -161,7 +172,11 @@ class WindowsVrControlServer(
 
     private fun getViews(): String {
         val snapshot = currentSnapshot() ?: return "ERROR unavailable"
-        return "OK count=2 width=${snapshot.timing[5]} height=${snapshot.timing[6]}"
+        // The recommended per-eye size is far beyond what an emulated producer can fill;
+        // halve it (even dimensions) — quarter the pixels for render, copy, and upload.
+        val scaledWidth = (snapshot.timing[5] / 2) and 1L.inv()
+        val scaledHeight = (snapshot.timing[6] / 2) and 1L.inv()
+        return "OK count=2 width=$scaledWidth height=$scaledHeight"
     }
 
     private fun getBounds(): String {

@@ -1209,6 +1209,56 @@ static int gn_bridge_call(const char* command, char* response, gn_size response_
     return ok;
 }
 
+static char gn_cached_views[512];
+static char gn_cached_input[2][512];
+static int gn_cache_valid = 0;
+static int gn_frame_sync_supported = 1;
+
+static int gn_bridge_read_line_locked(char* out, gn_size out_size) {
+    gn_size offset = 0;
+    char ch = 0;
+    while (offset + 1 < out_size) {
+        if (!gn_bridge_recv_byte(&ch)) {
+            gn_bridge_close();
+            return 0;
+        }
+        if (ch == '\n') break;
+        out[offset++] = ch;
+    }
+    out[offset] = 0;
+    return gn_starts_with(out, "OK");
+}
+
+static int gn_bridge_frame_sync(char* frame_out, gn_size frame_size) {
+    int ok;
+    gn_lock_acquire();
+    gn_cache_valid = 0;
+    ok = gn_bridge_call_locked("FRAME_SYNC", frame_out, frame_size);
+    if (ok) {
+        ok = gn_bridge_read_line_locked(gn_cached_views, sizeof(gn_cached_views)) &&
+             gn_bridge_read_line_locked(gn_cached_input[0], sizeof(gn_cached_input[0])) &&
+             gn_bridge_read_line_locked(gn_cached_input[1], sizeof(gn_cached_input[1]));
+        gn_cache_valid = ok;
+    } else if (gn_starts_with(frame_out, "ERROR")) {
+        gn_frame_sync_supported = 0;
+        gn_log_line("FRAME_SYNC unsupported by bridge; using separate per-frame requests");
+    }
+    gn_lock_release();
+    return ok;
+}
+
+static int gn_cached_line(const char* which, int hand, char* out, gn_size out_size) {
+    int ok = 0;
+    gn_lock_acquire();
+    if (gn_cache_valid) {
+        if (which[0] == 'v') gn_copy(out, out_size, gn_cached_views);
+        else gn_copy(out, out_size, gn_cached_input[hand]);
+        ok = 1;
+    }
+    gn_lock_release();
+    return ok;
+}
+
 
 
 
@@ -1353,11 +1403,13 @@ static void gn_refresh_hand(int hand) {
     gn_size n;
     GnHandState* h = &gn_hands[hand];
 
-    n = gn_append(cmd, sizeof(cmd), 0, "GET_INPUT hand=");
-    n = gn_append_i64(cmd, sizeof(cmd), n, hand);
-    if (!gn_bridge_call(cmd, response, sizeof(response))) {
-        h->active = 0;
-        return;
+    if (!gn_cached_line("input", hand, response, sizeof(response))) {
+        n = gn_append(cmd, sizeof(cmd), 0, "GET_INPUT hand=");
+        n = gn_append_i64(cmd, sizeof(cmd), n, hand);
+        if (!gn_bridge_call(cmd, response, sizeof(response))) {
+            h->active = 0;
+            return;
+        }
     }
 
     h->active = (int)gn_parse_i64(response, "active", 0);
@@ -2182,8 +2234,12 @@ static XrResult XRAPI_CALL gn_xrLocateSpaces(
 static XrResult XRAPI_CALL gn_xrWaitFrame(XrSession session, const XrFrameWaitInfo* waitInfo, XrFrameState* frameState) {
     (void)waitInfo;
     char response[160];
+    int synced;
     if (session != gn_session || !frameState) return XR_ERROR_HANDLE_INVALID;
-    if (gn_bridge_call("WAIT_FRAME", response, sizeof(response))) {
+    synced = gn_frame_sync_supported && gn_bridge_frame_sync(response, sizeof(response));
+    if (!synced && !gn_frame_sync_supported)
+        synced = gn_bridge_call("WAIT_FRAME", response, sizeof(response));
+    if (synced) {
         frameState->predictedDisplayTime = gn_parse_i64(response, "time", gn_next_display_time);
         frameState->predictedDisplayPeriod = gn_parse_i64(response, "period", 11111111);
         frameState->shouldRender = gn_parse_i64(response, "render", gn_session_running ? 1 : 0) != 0 ? XR_TRUE : XR_FALSE;
@@ -2391,7 +2447,8 @@ static XrResult XRAPI_CALL gn_xrLocateViews(
             return XR_ERROR_VALIDATION_FAILURE;
     }
 
-    if (gn_bridge_call("LOCATE_VIEWS", response, sizeof(response))) {
+    if (gn_cached_line("views", 0, response, sizeof(response)) ||
+        gn_bridge_call("LOCATE_VIEWS", response, sizeof(response))) {
         static const char* qk[2][4] = {{"lqx", "lqy", "lqz", "lqw"}, {"rqx", "rqy", "rqz", "rqw"}};
         static const char* pk[2][3] = {{"lpx", "lpy", "lpz"}, {"rpx", "rpy", "rpz"}};
         static const char* fk[2][4] = {{"lfl", "lfr", "lfu", "lfd"}, {"rfl", "rfr", "rfu", "rfd"}};
