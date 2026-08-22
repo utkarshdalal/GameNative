@@ -2089,7 +2089,7 @@ static int32_t unix_create_swapchain(void *opaque)
     swapchain->sample_count = args->sample_count ? args->sample_count : 1;
 
 
-    swapchain->image_count = 3;
+    swapchain->image_count = 4;
     int optimal = 0;
 #if defined(__ANDROID__)
     optimal = swapchain->sample_count == 1 && ahb_transport_probe();
