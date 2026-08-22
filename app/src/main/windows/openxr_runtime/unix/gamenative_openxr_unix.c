@@ -84,6 +84,9 @@ struct gn_swapchain {
 };
 
 static void submit_worker_flush(void);
+static uint8_t image_copy_busy[32u][4u];
+static pthread_mutex_t submit_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t submit_space_cond = PTHREAD_COND_INITIALIZER;
 
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t socket_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -2137,6 +2140,11 @@ static int32_t unix_acquire_image(void *opaque)
         args->result = GN_UNIX_ERROR_ARGUMENT;
         return 0;
     }
+    pthread_mutex_lock(&submit_mutex);
+    while (image_copy_busy[args->slot][args->image_index])
+        pthread_cond_wait(&submit_space_cond, &submit_mutex);
+    pthread_mutex_unlock(&submit_mutex);
+
     pthread_mutex_lock(&socket_mutex);
     char line[512], response[64] = {0};
     snprintf(line, sizeof(line), "ACQUIRE eye=0 index=%u\n", args->image_index);
@@ -2263,9 +2271,7 @@ struct gn_pending_submit {
 
 static struct gn_pending_submit submit_ring[4];
 static uint32_t submit_ring_head, submit_ring_tail;
-static pthread_mutex_t submit_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t submit_cond = PTHREAD_COND_INITIALIZER;
-static pthread_cond_t submit_space_cond = PTHREAD_COND_INITIALIZER;
 static pthread_t submit_thread;
 static int submit_thread_running;
 static int submit_worker_busy;
@@ -2302,9 +2308,18 @@ static void *submit_worker(void *unused)
                 log_line("async transport failed; later frames may recover");
             }
         }
+        /* The relay copy reads the source image on its own queue; the game must not
+         * re-render into that image until the copy has actually executed. */
+        if (relay_state > 0 && r_vkQueueWaitIdle) r_vkQueueWaitIdle(relay_queue);
         pthread_mutex_lock(&submit_mutex);
+        for (uint32_t i = 0; i < item.view_count; ++i) {
+            if (item.views[i].slot < GN_UNIX_MAX_SWAPCHAINS &&
+                item.views[i].image_index < GN_UNIX_MAX_IMAGES &&
+                image_copy_busy[item.views[i].slot][item.views[i].image_index])
+                --image_copy_busy[item.views[i].slot][item.views[i].image_index];
+        }
         submit_worker_busy = 0;
-        pthread_cond_signal(&submit_space_cond);
+        pthread_cond_broadcast(&submit_space_cond);
         pthread_mutex_unlock(&submit_mutex);
     }
 }
@@ -2349,7 +2364,12 @@ static int submit_views_async(const struct gn_unix_submit_view_args *views, uint
     while (submit_ring[submit_ring_head].used)
         pthread_cond_wait(&submit_space_cond, &submit_mutex);
     struct gn_pending_submit *slot = &submit_ring[submit_ring_head];
-    for (uint32_t i = 0; i < view_count; ++i) slot->views[i] = views[i];
+    for (uint32_t i = 0; i < view_count; ++i) {
+        slot->views[i] = views[i];
+        if (views[i].slot < GN_UNIX_MAX_SWAPCHAINS &&
+            views[i].image_index < GN_UNIX_MAX_IMAGES)
+            ++image_copy_busy[views[i].slot][views[i].image_index];
+    }
     slot->view_count = view_count;
     slot->fence = fence;
     slot->used = 1;
