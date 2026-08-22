@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-08-12",
+  "updatedAt": "2026-08-21",
   "components": [
     {
       "id": "extras",
@@ -9,10 +9,8 @@
     },
     {
       "id": "container_pattern_common",
-      "name": "container_pattern_common.tzst",
-      "url": "https://downloads.gamenative.app/container_files/container_pattern_common.tzst",
-      "version": 2,
-      "sha256": "c62311ac7a10a149f33cd1b2fcdf9f79c8a6b35d8b46066b33108c003b7e85c6"
+      "name": "container_pattern_common_20260821.tzst",
+      "url": "https://downloads.gamenative.app/container_files/container_pattern_common_20260821.tzst"
     },
     {
       "id": "container_pattern_gamenative",

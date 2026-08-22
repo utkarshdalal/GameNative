@@ -86,97 +86,30 @@ class ContainerFilesDownloaderTest {
 
         val component = manifest.components.find { it.id == "container_pattern_common" }
         assertNotNull("container_pattern_common should exist in manifest", component)
-        assertEquals("Name should match", "container_pattern_common.tzst", component!!.name)
-        assertEquals("Common pattern cache version should be bumped", 2, component.version)
         assertEquals(
-            "Common pattern hash should match the updated archive",
-            "c62311ac7a10a149f33cd1b2fcdf9f79c8a6b35d8b46066b33108c003b7e85c6",
-            component.sha256,
+            "Name should invalidate the previous cache",
+            "container_pattern_common_20260821.tzst",
+            component!!.name,
+        )
+        assertEquals(
+            "URL should reference the versioned archive",
+            "https://downloads.gamenative.app/container_files/container_pattern_common_20260821.tzst",
+            component.url,
         )
     }
 
     @Test
-    fun testUnversionedManifestComponentsUseLegacyCacheVersion() {
+    fun testCacheFileUsesManifestFilename() {
         val manifestJson = context.assets.open(ContainerFilesDownloader.CONTAINER_FILES_MANIFEST_FILE).bufferedReader().use { it.readText() }
         val manifest = Json { ignoreUnknownKeys = true }
             .decodeFromString<ContainerFilesDownloader.ContainerFilesManifest>(manifestJson)
 
-        val extras = manifest.components.first { it.id == "extras" }
-        assertEquals(ContainerFilesDownloader.LEGACY_CACHE_VERSION, extras.version)
-        assertEquals(null, extras.sha256)
-    }
-
-    @Test
-    fun testVersionedCacheInvalidatesOnlyOutdatedComponent() {
-        cacheDir.mkdirs()
-        val cachedFile = File(cacheDir, "container_pattern_common.tzst")
-        val versionFile = File(cacheDir, "container_pattern_common.version")
-        cachedFile.writeText("cached archive")
-
-        assertTrue(
-            "An existing unmarked cache should remain compatible with version 1",
-            ContainerFilesDownloader.isCachedComponentCurrent(
-                cachedFile,
-                versionFile,
-                ContainerFilesDownloader.LEGACY_CACHE_VERSION,
-            ),
-        )
+        val component = manifest.components.first { it.id == "container_pattern_common" }
+        val cacheFile = ContainerFilesDownloader.getCacheFile(cacheDir, component)
+        assertEquals(component.name, cacheFile.name)
         assertFalse(
-            "An existing unmarked cache should be invalidated by version 2",
-            ContainerFilesDownloader.isCachedComponentCurrent(cachedFile, versionFile, 2),
-        )
-
-        versionFile.writeText("2")
-        assertTrue(
-            "A matching version marker should reuse the cache",
-            ContainerFilesDownloader.isCachedComponentCurrent(cachedFile, versionFile, 2),
-        )
-
-        versionFile.writeText("invalid")
-        assertFalse(
-            "A malformed version marker should invalidate the cache",
-            ContainerFilesDownloader.isCachedComponentCurrent(cachedFile, versionFile, 2),
-        )
-    }
-
-    @Test
-    fun testDownloadedComponentHashValidation() {
-        cacheDir.mkdirs()
-        val cachedFile = File(cacheDir, "hash-test.tzst")
-        cachedFile.writeText("abc")
-
-        assertTrue(
-            ContainerFilesDownloader.hasExpectedSha256(
-                cachedFile,
-                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-            ),
-        )
-        assertFalse(ContainerFilesDownloader.hasExpectedSha256(cachedFile, "0".repeat(64)))
-    }
-
-    @Test
-    fun testCurrentVersionCacheRequiresExpectedHash() {
-        cacheDir.mkdirs()
-        val cachedFile = File(cacheDir, "hash-test.tzst")
-        val versionFile = File(cacheDir, "hash-test.version")
-        cachedFile.writeText("abc")
-        versionFile.writeText("2")
-
-        assertTrue(
-            ContainerFilesDownloader.isCachedComponentCurrent(
-                cachedFile,
-                versionFile,
-                2,
-                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-            ),
-        )
-        assertFalse(
-            ContainerFilesDownloader.isCachedComponentCurrent(
-                cachedFile,
-                versionFile,
-                2,
-                "0".repeat(64),
-            ),
+            "The previous ID-based cache path must not be reused",
+            cacheFile.name == "${component.id}.tzst",
         )
     }
 
@@ -258,11 +191,6 @@ class ContainerFilesDownloaderTest {
                 "Component ${component.id} URL should end with .tzst",
                 component.url.endsWith(".tzst")
             )
-            assertEquals(
-                "Component ${component.id} name should match ID.tzst",
-                "${component.id}.tzst",
-                component.name
-            )
         }
     }
 
@@ -287,7 +215,7 @@ class ContainerFilesDownloaderTest {
         // Create some mock cached files
         cacheDir.mkdirs()
         val testFile1 = File(cacheDir, "extras.tzst")
-        val testFile2 = File(cacheDir, "container_pattern_common.tzst")
+        val testFile2 = File(cacheDir, "container_pattern_common_20260821.tzst")
         testFile1.writeText("test content 1")
         testFile2.writeText("test content 2")
 
@@ -335,16 +263,13 @@ class ContainerFilesDownloaderTest {
     }
 
     @Test
-    fun testUnhashedCachedComponentReuse() = runBlocking {
+    fun testCachedComponentReuse() = runBlocking {
         val componentId = "extras"
 
         // Create a mock cached file
         cacheDir.mkdirs()
         val cachedFile = File(cacheDir, "$componentId.tzst")
         cachedFile.writeText("mock cached content")
-        File(cacheDir, "$componentId.version").writeText(
-            ContainerFilesDownloader.LEGACY_CACHE_VERSION.toString(),
-        )
 
         val retrievedFile = ContainerFilesDownloader.ensureContainerFileAvailable(
             context,
@@ -409,13 +334,6 @@ class ContainerFilesDownloaderTest {
             assertTrue(
                 "Component ${component.id} URL should contain its name",
                 component.url.contains(component.name)
-            )
-
-            // Name should match ID with .tzst extension
-            assertEquals(
-                "Component ${component.id} name should match ID.tzst",
-                "${component.id}.tzst",
-                component.name
             )
         }
     }
