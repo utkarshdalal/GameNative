@@ -29,11 +29,26 @@ static int send_all(const char *data, int length) {
     return 0;
 }
 
+static char receive_buffer[1024];
+static uint32_t receive_buffer_length = 0;
+static uint32_t receive_buffer_offset = 0;
+
+static int receive_byte(char *value) {
+    if (receive_buffer_offset >= receive_buffer_length) {
+        int received = recv(control_socket, receive_buffer, sizeof(receive_buffer), 0);
+        if (received <= 0) return -1;
+        receive_buffer_length = (uint32_t)received;
+        receive_buffer_offset = 0;
+    }
+    *value = receive_buffer[receive_buffer_offset++];
+    return 0;
+}
+
 static int receive_line(char *response, uint32_t capacity) {
     uint32_t length = 0;
     while (length + 1 < capacity) {
         char value;
-        if (recv(control_socket, &value, 1, 0) != 1) return -1;
+        if (receive_byte(&value) != 0) return -1;
         if (value == '\n') {
             response[length] = '\0';
             return 0;
@@ -51,6 +66,8 @@ int gamenative_control_connect(void) {
         LeaveCriticalSection(&control_lock);
         return 0;
     }
+    receive_buffer_length = 0;
+    receive_buffer_offset = 0;
     control_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (control_socket == INVALID_SOCKET) {
         LeaveCriticalSection(&control_lock);

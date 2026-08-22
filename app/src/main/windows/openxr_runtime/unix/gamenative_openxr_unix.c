@@ -496,9 +496,101 @@ static void log_vk_result(const char *operation, VkResult result)
     log_line(line);
 }
 
-static int create_image(struct gn_swapchain *swapchain, struct gn_image *out,
-                        uint32_t array_size, uint32_t mip_count, uint32_t sample_count)
+#if defined(__ANDROID__)
+static int ahb_transport_probe(void)
 {
+    static int cached;
+    if (cached) return cached > 0;
+    AHardwareBuffer_Desc descriptor = {
+        .width = 16,
+        .height = 16,
+        .layers = 1,
+        .format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM,
+        .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+                 AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT
+    };
+    AHardwareBuffer *buffer = NULL;
+    if (p_vkGetAndroidHardwareBufferPropertiesANDROID && command_pool &&
+        p_vkCmdCopyImage && AHardwareBuffer_allocate(&descriptor, &buffer) == 0 && buffer) {
+        AHardwareBuffer_release(buffer);
+        cached = 1;
+        log_line("AHardwareBuffer transport available; using optimal-tiling render targets");
+    } else {
+        cached = -1;
+        log_line("AHardwareBuffer transport unavailable; render targets stay linear/exportable");
+    }
+    return cached > 0;
+}
+#endif
+
+static int create_image(struct gn_swapchain *swapchain, struct gn_image *out,
+                        uint32_t array_size, uint32_t mip_count, uint32_t sample_count,
+                        int optimal)
+{
+    if (optimal) {
+        VkImageCreateInfo optimal_info = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format = swapchain->format,
+            .extent = {swapchain->width, swapchain->height, 1},
+            .mipLevels = mip_count ? mip_count : 1,
+            .arrayLayers = array_size ? array_size : 1,
+            .samples = sample_count == 2 ? VK_SAMPLE_COUNT_2_BIT :
+                       sample_count == 4 ? VK_SAMPLE_COUNT_4_BIT :
+                       sample_count == 8 ? VK_SAMPLE_COUNT_8_BIT : VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_OPTIMAL,
+            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+                     VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+        };
+        VkResult optimal_result = p_vkCreateImage(device, &optimal_info, NULL, &out->image);
+        if (optimal_result != VK_SUCCESS) {
+            log_vk_result("vkCreateImage(optimal)", optimal_result);
+            goto optimal_fail;
+        }
+        VkMemoryRequirements optimal_requirements;
+        p_vkGetImageMemoryRequirements(device, out->image, &optimal_requirements);
+        int optimal_type = find_memory_type(
+            optimal_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        if (optimal_type < 0)
+            optimal_type = find_memory_type(optimal_requirements.memoryTypeBits, 0);
+        if (optimal_type < 0) {
+            log_line("No compatible memory type for optimal image");
+            goto optimal_fail;
+        }
+        VkMemoryDedicatedAllocateInfo optimal_dedicated = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+            .image = out->image
+        };
+        VkMemoryAllocateInfo optimal_allocate = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .pNext = &optimal_dedicated,
+            .allocationSize = optimal_requirements.size,
+            .memoryTypeIndex = (uint32_t)optimal_type
+        };
+        optimal_result = p_vkAllocateMemory(device, &optimal_allocate, NULL, &out->memory);
+        if (optimal_result != VK_SUCCESS) {
+            log_vk_result("vkAllocateMemory(optimal)", optimal_result);
+            goto optimal_fail;
+        }
+        optimal_result = p_vkBindImageMemory(device, out->image, out->memory, 0);
+        if (optimal_result != VK_SUCCESS) {
+            log_vk_result("vkBindImageMemory(optimal)", optimal_result);
+            goto optimal_fail;
+        }
+        out->dma_buf_fd = -1;
+        out->plane_count = 0;
+        out->modifier = 0;
+        return 1;
+    optimal_fail:
+        if (out->memory && p_vkFreeMemory) p_vkFreeMemory(device, out->memory, NULL);
+        out->memory = VK_NULL_HANDLE;
+        if (out->image && p_vkDestroyImage) p_vkDestroyImage(device, out->image, NULL);
+        out->image = VK_NULL_HANDLE;
+        return 0;
+    }
+
     VkExternalMemoryImageCreateInfo external = {
         .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
         .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT
@@ -1033,6 +1125,11 @@ static int register_image(uint32_t slot, uint32_t image_index, uint32_t eye,
         return 1;
     }
 
+    if (image->dma_buf_fd < 0) {
+        log_line("optimal render image has no dma-buf; AHardwareBuffer transport is required");
+        return 0;
+    }
+
     VkSubresourceLayout layouts[4];
     for (uint32_t plane = 0; plane < image->plane_count; ++plane) {
         VkImageSubresource subresource = {
@@ -1274,11 +1371,15 @@ static int32_t unix_create_swapchain(void *opaque)
     swapchain->sample_count = args->sample_count ? args->sample_count : 1;
 
 
-    swapchain->image_count = 2;
+    swapchain->image_count = 3;
+    int optimal = 0;
+#if defined(__ANDROID__)
+    optimal = swapchain->sample_count == 1 && ahb_transport_probe();
+#endif
     for (uint32_t i = 0; i < swapchain->image_count; ++i) {
         swapchain->images[i].dma_buf_fd = -1;
         if (!create_image(swapchain, &swapchain->images[i], args->array_size,
-                          args->mip_count, args->sample_count)) {
+                          args->mip_count, args->sample_count, optimal)) {
             for (uint32_t j = 0; j <= i; ++j) destroy_image(&swapchain->images[j]);
             memset(swapchain, 0, sizeof(*swapchain));
             args->result = GN_UNIX_ERROR_VULKAN;
