@@ -340,6 +340,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.off<SteamEvent.LoggedOut, Unit>(onLoggedOut)
         PluviaApp.events.off<AndroidEvent.ServiceReady, Unit>(onServiceReady)
         connectionTimeoutJob?.cancel()
+        BootProgress.stop()
     }
 
     fun setTheme(value: AppTheme) {
@@ -416,10 +417,26 @@ class MainViewModel @Inject constructor(
             }
             // bootAd stays in state so the exit fade keeps rendering it; the next show replaces it.
             PluviaApp.isBootingSplashShowing = false
-            _state.update { it.copy(showBootingSplash = false) }
+            _state.update {
+                it.copy(
+                    showBootingSplash = false,
+                    bootingSplashText = MainState().bootingSplashText,
+                    bootingSplashProgress = MainState().bootingSplashProgress,
+                )
+            }
         } else {
             PluviaApp.isBootingSplashShowing = value
-            _state.update { it.copy(showBootingSplash = value) }
+            _state.update {
+                if (value) {
+                    it.copy(showBootingSplash = true)
+                } else {
+                    it.copy(
+                        showBootingSplash = false,
+                        bootingSplashText = MainState().bootingSplashText,
+                        bootingSplashProgress = MainState().bootingSplashProgress,
+                    )
+                }
+            }
         }
     }
 

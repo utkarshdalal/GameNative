@@ -86,6 +86,8 @@ object BootProgress {
         verbose = PrefManager.verboseBootProgress
         active = true
         lastText = ""
+        ticker?.cancel()
+        ticker = null
         if (!verbose) return
         TarCompressorUtils.extractProgressListener = TarCompressorUtils.ExtractProgressListener(::extracting)
         base = 0f
@@ -99,7 +101,6 @@ object BootProgress {
         lastProgress = 0f
         phase = Phase.PREPARING
         phaseStartedAt = System.currentTimeMillis()
-        ticker?.cancel()
         ticker = scope.launch {
             while (isActive) {
                 delay(TICK_MS)
@@ -116,6 +117,7 @@ object BootProgress {
         ticker?.cancel()
         ticker = null
         watchedDir = null
+        TarCompressorUtils.extractProgressListener = null
     }
 
     /**
@@ -123,11 +125,11 @@ object BootProgress {
      */
     @Synchronized
     fun phase(next: Phase, detail: String? = null) {
-        if (!active) return
         if (!verbose) {
             next.legacy?.let { emitLegacy(it) }
             return
         }
+        if (!active) return
         phase = next
         base = maxOf(base, Phase.entries.takeWhile { it != next }.sumOf { it.weight.toDouble() }.toFloat())
         local = 0f
@@ -147,11 +149,11 @@ object BootProgress {
      */
     @Synchronized
     fun update(fraction: Float, detail: String? = null, legacy: String? = null) {
-        if (!active) return
         if (!verbose) {
             legacy?.let { emitLegacy(it) }
             return
         }
+        if (!active) return
         measured = true
         measuredFloor = fraction.coerceIn(0f, 1f)
         local = maxOf(local, measuredFloor)
@@ -162,11 +164,11 @@ object BootProgress {
     /** Replaces the sub-label without touching the fraction. */
     @Synchronized
     fun detail(text: String?, legacy: String? = null) {
-        if (!active) return
         if (!verbose) {
             legacy?.let { emitLegacy(it) }
             return
         }
+        if (!active) return
         detail = text
         emit()
     }
@@ -218,18 +220,20 @@ object BootProgress {
         }
     }
 
-    private fun tick() = synchronized(this) {
-        if (!active) return@synchronized
-        // Creep runs in every phase: a measured step still goes quiet between reports (one
-        // Steamless pass per executable), and a frozen bar reads as a hang.
-        val ceiling = if (measured) minOf(measuredFloor + CREEP_OVERSHOOT, 1f) else CREEP_CEILING
-        if (local < ceiling) local += (ceiling - local) * CREEP_RATE
-        // Walking the tree is the expensive part of a tick, so sample it a quarter as often.
-        ticks++
-        watchedDir?.takeIf { ticks % 4 == 0 }?.let { dir ->
-            watchedBytes = runCatching { dirSize(dir) }.getOrDefault(watchedBytes)
+    private fun tick() {
+        val dir = synchronized(this) {
+            if (!active) return
+            ticks++
+            watchedDir?.takeIf { ticks % 4 == 0 }
         }
-        emit()
+        val bytes = dir?.let { runCatching { dirSize(it) }.getOrNull() }
+        synchronized(this) {
+            if (!active) return
+            if (bytes != null && watchedDir === dir) watchedBytes = bytes
+            val ceiling = if (measured) minOf(measuredFloor + CREEP_OVERSHOOT, 1f) else CREEP_CEILING
+            if (local < ceiling) local += (ceiling - local) * CREEP_RATE
+            emit()
+        }
     }
 
     private fun dirSize(dir: File): Long =
