@@ -340,7 +340,7 @@ class LibraryViewModel @Inject constructor(
             }
         }
         viewModelScope.launch(Dispatchers.IO) {
-            CuratedListRepository.loadFromCache(context)
+            CuratedListRepository.loadFromCache()
             CuratedListRepository.refreshFourThreeIfNeeded()
         }
 

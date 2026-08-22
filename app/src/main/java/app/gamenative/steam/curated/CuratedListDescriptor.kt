@@ -11,12 +11,10 @@ private const val CURATED_LIST_ID_FOUR_THREE = "${CURATED_LIST_ID_PREFIX}4-3"
 
 internal enum class CuratedListDescriptor(
     val id: String,
-    val seedAsset: String,
     @param:StringRes val nameRes: Int,
 ) {
     FOUR_THREE(
         id = CURATED_LIST_ID_FOUR_THREE,
-        seedAsset = "curated_lists/four_three_games.json",
         nameRes = R.string.curated_list_4_3_name,
     ),
     ;

@@ -1,7 +1,5 @@
 package app.gamenative.steam.curated
 
-import android.content.Context
-import androidx.test.core.app.ApplicationProvider
 import app.gamenative.PrefManager
 import io.mockk.every
 import io.mockk.mockkObject
@@ -26,12 +24,10 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class CuratedListRepositoryTest {
 
-    private lateinit var context: Context
     private var storedCache = ""
 
     @Before
     fun setUp() = runBlocking {
-        context = ApplicationProvider.getApplicationContext()
         mockkObject(PrefManager)
         every { PrefManager.libraryCuratedListsCache } answers { storedCache }
         every { PrefManager.libraryCuratedListsCache = any() } answers {
@@ -47,16 +43,10 @@ class CuratedListRepositoryTest {
     }
 
     @Test
-    fun emptyCacheLoadsRecommendedSnapshot() = runBlocking {
-        CuratedListRepository.loadFromCache(context)
+    fun emptyCachePublishesEmptyLists() = runBlocking {
+        CuratedListRepository.loadFromCache()
 
-        val appIds = CuratedListRepository.curatedLists.value
-            ?.get(CuratedListDescriptor.FOUR_THREE.id)
-            .orEmpty()
-
-        assertEquals(364, appIds.size)
-        assertFalse(32120 in appIds)
-        assertTrue(730 in appIds)
+        assertEquals(emptyMap<String, Set<Int>>(), CuratedListRepository.curatedLists.value)
     }
 
     @Test
@@ -72,23 +62,6 @@ class CuratedListRepositoryTest {
     }
 
     @Test
-    fun seedOnlyCacheDoesNotOverrideBundledSnapshot() = runBlocking {
-        storedCache = CuratedListRepository.encodeCache(
-            lists = mapOf(CuratedListDescriptor.FOUR_THREE.id to setOf(999)),
-            refreshedAtMs = 0L,
-        )
-
-        CuratedListRepository.loadFromCache(context)
-
-        val appIds = CuratedListRepository.curatedLists.value
-            ?.get(CuratedListDescriptor.FOUR_THREE.id)
-            .orEmpty()
-        assertEquals(364, appIds.size)
-        assertTrue(730 in appIds)
-        assertFalse(999 in appIds)
-    }
-
-    @Test
     fun oldAndMalformedCacheFormatsAreRejected() {
         assertNull(CuratedListRepository.decodeCache("{\"curated:4-3\":[1,2]}"))
         assertNull(CuratedListRepository.decodeCache("{not valid json"))
@@ -100,36 +73,47 @@ class CuratedListRepositoryTest {
     }
 
     @Test
-    fun failedRefreshKeepsSnapshotAndThrottlesAnotherAttempt() = runBlocking {
-        CuratedListRepository.loadFromCache(context)
-        val before = CuratedListRepository.curatedLists.value
+    fun failedRefreshKeepsCachedListAndThrottlesAnotherAttempt() = runBlocking {
+        val cachedAppIds = setOf(730, 240)
+        storedCache = CuratedListRepository.encodeCache(
+            lists = mapOf(CuratedListDescriptor.FOUR_THREE.id to cachedAppIds),
+            refreshedAtMs = 0L,
+        )
+        CuratedListRepository.loadFromCache()
 
         CuratedListRepository.refreshFourThreeIfNeeded(
             fetch = { null },
             nowMs = { 1_000L },
         )
 
-        assertEquals(before, CuratedListRepository.curatedLists.value)
+        assertEquals(
+            cachedAppIds,
+            CuratedListRepository.curatedLists.value?.get(CuratedListDescriptor.FOUR_THREE.id),
+        )
         assertFalse(CuratedListRepository.isRefreshDue(nowMs = 1_000L))
         assertTrue(CuratedListRepository.isRefreshDue(nowMs = 1_000L + 24L * 60L * 60L * 1000L))
     }
 
     @Test
     fun loadingCacheDoesNotClearFailedRefreshBackoff() = runBlocking {
-        CuratedListRepository.loadFromCache(context)
+        CuratedListRepository.loadFromCache()
         CuratedListRepository.refreshFourThreeIfNeeded(
             fetch = { null },
             nowMs = { 1_000L },
         )
 
-        CuratedListRepository.loadFromCache(context)
+        CuratedListRepository.loadFromCache()
 
         assertFalse(CuratedListRepository.isRefreshDue(nowMs = 1_000L))
     }
 
     @Test
     fun successfulRefreshReplacesSnapshotAndStartsTtl() = runBlocking {
-        CuratedListRepository.loadFromCache(context)
+        storedCache = CuratedListRepository.encodeCache(
+            lists = mapOf(CuratedListDescriptor.FOUR_THREE.id to setOf(999)),
+            refreshedAtMs = 0L,
+        )
+        CuratedListRepository.loadFromCache()
 
         CuratedListRepository.refreshFourThreeIfNeeded(
             fetch = { setOf(730, 240) },
@@ -146,7 +130,7 @@ class CuratedListRepositoryTest {
 
     @Test
     fun concurrentRefreshesOnlyFetchOnce() = runBlocking {
-        CuratedListRepository.loadFromCache(context)
+        CuratedListRepository.loadFromCache()
         val calls = AtomicInteger()
 
         coroutineScope {
@@ -169,7 +153,7 @@ class CuratedListRepositoryTest {
 
     @Test
     fun cancellationIsPropagatedWithoutThrottlingNextAttempt() = runBlocking {
-        CuratedListRepository.loadFromCache(context)
+        CuratedListRepository.loadFromCache()
 
         val failure = runCatching {
             CuratedListRepository.refreshFourThreeIfNeeded(
@@ -188,7 +172,7 @@ class CuratedListRepositoryTest {
             lists = mapOf(CuratedListDescriptor.FOUR_THREE.id to setOf(730)),
             refreshedAtMs = 2_000L,
         )
-        CuratedListRepository.loadFromCache(context)
+        CuratedListRepository.loadFromCache()
 
         assertTrue(CuratedListRepository.isRefreshDue(nowMs = 1_000L))
     }

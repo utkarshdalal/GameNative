@@ -1,6 +1,5 @@
 package app.gamenative.steam.curated
 
-import android.content.Context
 import androidx.annotation.VisibleForTesting
 import app.gamenative.PrefManager
 import kotlinx.coroutines.CancellationException
@@ -16,7 +15,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
@@ -34,25 +32,17 @@ internal object CuratedListRepository {
     @Volatile private var lastRefreshMs = 0L
     @Volatile private var lastAttemptMs = 0L
 
-    suspend fun loadFromCache(context: Context) = withContext(Dispatchers.IO) {
+    suspend fun loadFromCache() = withContext(Dispatchers.IO) {
         refreshMutex.withLock {
             val cached = decodeCache(PrefManager.libraryCuratedListsCache)
-            val seeds = loadAllSeeds(context)
-            val refreshedCache = cached?.takeIf { it.refreshedAtMs > 0L }
-            val lists = seeds + refreshedCache?.lists.orEmpty()
-
             lastRefreshMs = cached?.refreshedAtMs ?: 0L
-            _curatedLists.value = lists
-
-            if (cached == null || cached.lists != lists) {
-                persist(lists, lastRefreshMs)
-            }
+            _curatedLists.value = cached?.lists ?: emptyMap()
         }
     }
 
     suspend fun refreshFourThreeIfNeeded() {
         refreshFourThreeIfNeeded(
-            fetch = FourThreeCuratorSource::fetch,
+            fetch = CuratedListRemoteSource::fetch,
             nowMs = System::currentTimeMillis,
         )
     }
@@ -62,8 +52,7 @@ internal object CuratedListRepository {
         fetch: suspend () -> Set<Int>?,
         nowMs: () -> Long,
     ) {
-        refreshMutex.lock()
-        try {
+        refreshMutex.withLock {
             val now = nowMs()
             if (!isRefreshDue(now)) return
             lastAttemptMs = now
@@ -81,8 +70,6 @@ internal object CuratedListRepository {
             lastRefreshMs = now
             persist(lists, now)
             Timber.tag("CuratedListRepo").i("Refreshed 4:3 curator list: %d app IDs", fetched.size)
-        } finally {
-            refreshMutex.unlock()
         }
     }
 
@@ -100,29 +87,6 @@ internal object CuratedListRepository {
             lastRefreshMs = 0L
             lastAttemptMs = 0L
             PrefManager.libraryCuratedListsCache = ""
-        }
-    }
-
-    private fun loadAllSeeds(context: Context): Map<String, Set<Int>> {
-        return buildMap {
-            CuratedListDescriptor.entries.forEach { descriptor ->
-                loadSeed(context, descriptor)?.let { put(descriptor.id, it) }
-            }
-        }
-    }
-
-    private fun loadSeed(context: Context, descriptor: CuratedListDescriptor): Set<Int>? {
-        return try {
-            val body = context.assets.open(descriptor.seedAsset).bufferedReader().use { it.readText() }
-            val root = Json.parseToJsonElement(body).jsonObject
-            root["appIds"]
-                ?.jsonArray
-                ?.mapNotNull { (it as? JsonPrimitive)?.intOrNull?.takeIf { id -> id > 0 } }
-                ?.toSet()
-                ?.takeIf { it.isNotEmpty() }
-        } catch (e: Exception) {
-            Timber.tag("CuratedListRepo").w(e, "Bundled seed '%s' unavailable", descriptor.seedAsset)
-            null
         }
     }
 
