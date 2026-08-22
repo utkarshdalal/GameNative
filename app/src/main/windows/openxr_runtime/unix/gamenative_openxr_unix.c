@@ -80,6 +80,8 @@ struct gn_swapchain {
     struct gn_image images[GN_UNIX_MAX_IMAGES];
 };
 
+static void submit_worker_flush(void);
+
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t socket_mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct gn_swapchain swapchains[GN_UNIX_MAX_SWAPCHAINS];
@@ -107,6 +109,7 @@ static PFN_vkGetImageDrmFormatModifierPropertiesEXT p_vkGetImageDrmFormatModifie
 static PFN_vkGetMemoryFdKHR p_vkGetMemoryFdKHR;
 static PFN_vkCreateFence p_vkCreateFence;
 static PFN_vkDestroyFence p_vkDestroyFence;
+static PFN_vkWaitForFences p_vkWaitForFences;
 static PFN_vkGetFenceFdKHR p_vkGetFenceFdKHR;
 static PFN_vkQueueSubmit p_vkQueueSubmit;
 static PFN_vkQueueWaitIdle p_vkQueueWaitIdle;
@@ -436,6 +439,7 @@ static void load_vulkan_functions(void)
     LOAD_DEVICE(vkGetMemoryFdKHR);
     LOAD_DEVICE(vkCreateFence);
     LOAD_DEVICE(vkDestroyFence);
+    LOAD_DEVICE(vkWaitForFences);
     LOAD_DEVICE(vkGetFenceFdKHR);
     LOAD_DEVICE(vkQueueSubmit);
     LOAD_DEVICE(vkQueueWaitIdle);
@@ -2111,6 +2115,7 @@ static int32_t unix_destroy_swapchain(void *opaque)
         args->result = GN_UNIX_ERROR_ARGUMENT;
         return 0;
     }
+    submit_worker_flush();
     pthread_mutex_lock(&state_mutex);
     struct gn_swapchain *swapchain = &swapchains[args->slot];
     for (uint32_t i = 0; i < swapchain->image_count; ++i)
@@ -2240,7 +2245,118 @@ static int send_frame(const struct gn_unix_submit_view_args *view, int fence_fd,
     return ok;
 }
 
-static int submit_views(
+
+/* Asynchronous frame shipper: xrEndFrame used to drain the game's GPU queue synchronously
+ * before transporting the frame, serializing the game's CPU and GPU completely. Instead,
+ * xrEndFrame drops a fence on the game queue and returns; this worker waits for the render
+ * to finish, runs the transport (relay copy + socket send), and the game overlaps its next
+ * frame's CPU work with the GPU. */
+struct gn_pending_submit {
+    struct gn_unix_submit_view_args views[2];
+    uint32_t view_count;
+    VkFence fence;
+    int used;
+};
+
+static struct gn_pending_submit submit_ring[4];
+static uint32_t submit_ring_head, submit_ring_tail;
+static pthread_mutex_t submit_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t submit_cond = PTHREAD_COND_INITIALIZER;
+static pthread_cond_t submit_space_cond = PTHREAD_COND_INITIALIZER;
+static pthread_t submit_thread;
+static int submit_thread_running;
+static int submit_worker_busy;
+
+static int submit_views_transport(const struct gn_unix_submit_view_args *views, uint32_t view_count);
+
+static void *submit_worker(void *unused)
+{
+    (void)unused;
+    for (;;) {
+        struct gn_pending_submit item;
+        pthread_mutex_lock(&submit_mutex);
+        while (submit_thread_running && !submit_ring[submit_ring_tail].used)
+            pthread_cond_wait(&submit_cond, &submit_mutex);
+        if (!submit_thread_running) {
+            pthread_mutex_unlock(&submit_mutex);
+            return NULL;
+        }
+        item = submit_ring[submit_ring_tail];
+        submit_ring[submit_ring_tail].used = 0;
+        submit_ring_tail = (submit_ring_tail + 1) % 4;
+        submit_worker_busy = 1;
+        pthread_cond_signal(&submit_space_cond);
+        pthread_mutex_unlock(&submit_mutex);
+
+        if (item.fence != VK_NULL_HANDLE) {
+            p_vkWaitForFences(device, 1, &item.fence, VK_TRUE, UINT64_MAX);
+            p_vkDestroyFence(device, item.fence, NULL);
+        }
+        if (!submit_views_transport(item.views, item.view_count)) {
+            static int failure_logged;
+            if (!failure_logged) {
+                failure_logged = 1;
+                log_line("async transport failed; later frames may recover");
+            }
+        }
+        pthread_mutex_lock(&submit_mutex);
+        submit_worker_busy = 0;
+        pthread_cond_signal(&submit_space_cond);
+        pthread_mutex_unlock(&submit_mutex);
+    }
+}
+
+static void submit_worker_flush(void)
+{
+    pthread_mutex_lock(&submit_mutex);
+    while (submit_thread_running &&
+           (submit_ring[submit_ring_tail].used || submit_worker_busy))
+        pthread_cond_wait(&submit_space_cond, &submit_mutex);
+    pthread_mutex_unlock(&submit_mutex);
+}
+
+static int submit_views_async(const struct gn_unix_submit_view_args *views, uint32_t view_count)
+{
+    if (!p_vkWaitForFences || !p_vkCreateFence || !p_vkDestroyFence || !p_vkQueueSubmit)
+        return submit_views_transport(views, view_count);
+
+    pthread_mutex_lock(&submit_mutex);
+    if (!submit_thread_running) {
+        submit_thread_running = 1;
+        if (pthread_create(&submit_thread, NULL, submit_worker, NULL) != 0) {
+            submit_thread_running = 0;
+            pthread_mutex_unlock(&submit_mutex);
+            return submit_views_transport(views, view_count);
+        }
+        log_line("async frame shipper started");
+    }
+    pthread_mutex_unlock(&submit_mutex);
+
+    VkFence fence = VK_NULL_HANDLE;
+    VkFenceCreateInfo fence_info = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+    if (p_vkCreateFence(device, &fence_info, NULL, &fence) == VK_SUCCESS) {
+        VkSubmitInfo marker = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        if (p_vkQueueSubmit(queue, 1, &marker, fence) != VK_SUCCESS) {
+            p_vkDestroyFence(device, fence, NULL);
+            fence = VK_NULL_HANDLE;
+        }
+    }
+
+    pthread_mutex_lock(&submit_mutex);
+    while (submit_ring[submit_ring_head].used)
+        pthread_cond_wait(&submit_space_cond, &submit_mutex);
+    struct gn_pending_submit *slot = &submit_ring[submit_ring_head];
+    for (uint32_t i = 0; i < view_count; ++i) slot->views[i] = views[i];
+    slot->view_count = view_count;
+    slot->fence = fence;
+    slot->used = 1;
+    submit_ring_head = (submit_ring_head + 1) % 4;
+    pthread_cond_signal(&submit_cond);
+    pthread_mutex_unlock(&submit_mutex);
+    return 1;
+}
+
+static int submit_views_transport(
     const struct gn_unix_submit_view_args *views, uint32_t view_count)
 {
     if (!view_count || view_count > 2) return 0;
@@ -2304,8 +2420,13 @@ static int submit_views(
     }
 
     int submit_ok = 0;
-    int fence_fd = submit_and_make_acquire_fence_fd(
-        commands, command_count, &submit_ok);
+    int fence_fd = -1;
+    if (command_count == 0) {
+        submit_ok = 1;
+    } else {
+        fence_fd = submit_and_make_acquire_fence_fd(
+            commands, command_count, &submit_ok);
+    }
     if (!submit_ok) {
         if (fence_fd >= 0) close(fence_fd);
         pthread_mutex_unlock(&socket_mutex);
@@ -2348,7 +2469,7 @@ static int submit_views(
 static int32_t unix_submit_image(void *opaque)
 {
     struct gn_unix_submit_image_args *args = opaque;
-    args->result = submit_views(
+    args->result = submit_views_async(
         (const struct gn_unix_submit_view_args *)args, 1) ?
         GN_UNIX_SUCCESS : GN_UNIX_ERROR_TRANSPORT;
     return 0;
@@ -2361,7 +2482,7 @@ static int32_t unix_submit_stereo(void *opaque)
         args->result = GN_UNIX_ERROR_ARGUMENT;
         return 0;
     }
-    args->result = submit_views(args->views, args->view_count) ?
+    args->result = submit_views_async(args->views, args->view_count) ?
         GN_UNIX_SUCCESS : GN_UNIX_ERROR_TRANSPORT;
     return 0;
 }
