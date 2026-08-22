@@ -1219,13 +1219,16 @@ static int gn_unix_control_transact(const char* command, gn_uint32 lines,
     args.result = GN_UNIX_ERROR_UNAVAILABLE;
     if (!gn_unix_call(GN_UNIX_CONTROL_TRANSACT, &args) ||
         args.result != GN_UNIX_SUCCESS) {
-        if (gn_unix_control_state == 0) {
+        /* Transient failures (the server may briefly refuse connections while stale
+         * clients age out) must not disable the fast path forever. */
+        static int consecutive_failures;
+        if (++consecutive_failures >= 300 && gn_unix_control_state <= 0) {
             gn_unix_control_state = -1;
             gn_log_line("unix control fast path unavailable; staying on winsock");
         }
         return 0;
     }
-    if (gn_unix_control_state == 0) {
+    if (gn_unix_control_state <= 0) {
         gn_unix_control_state = 1;
         gn_log_line("unix control fast path active");
     }

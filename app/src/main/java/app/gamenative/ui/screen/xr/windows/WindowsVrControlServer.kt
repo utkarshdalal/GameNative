@@ -17,7 +17,7 @@ class WindowsVrControlServer(
     private val snapshots: WindowsVrSnapshotProvider,
 ) : Closeable {
     private val running = AtomicBoolean(false)
-    private val clients = Semaphore(4)
+    private val clients = Semaphore(16)
     private val executor = Executors.newFixedThreadPool(5)
     private var serverSocket: ServerSocket? = null
     private var lastFrameSerial = 0L
