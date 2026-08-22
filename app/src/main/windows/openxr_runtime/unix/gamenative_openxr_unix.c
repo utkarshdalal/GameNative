@@ -838,9 +838,23 @@ static int relay_init(void)
     if (relay_state) return relay_state > 0;
     relay_state = -1;
 
-    static const char *candidates[] = {
-        "libvulkan_freedreno.so", "libvulkan.so", NULL
-    };
+    /* The Wine rootfs shadows the bare sonames with a Linux-platform Mesa that has no
+     * Android AHB support, so the useful candidates need absolute paths: the system
+     * loader, and the adrenotools turnip the game itself renders with. */
+    static char adrenotools_path[512];
+    const char *candidates[5];
+    int candidate_count = 0;
+    candidates[candidate_count++] = "/system/lib64/libvulkan.so";
+    {
+        const char *dir = getenv("ADRENOTOOLS_DRIVER_PATH");
+        const char *name = getenv("ADRENOTOOLS_DRIVER_NAME");
+        if (dir && name && strlen(dir) + strlen(name) + 2 < sizeof(adrenotools_path)) {
+            snprintf(adrenotools_path, sizeof(adrenotools_path), "%s%s", dir, name);
+            candidates[candidate_count++] = adrenotools_path;
+        }
+    }
+    candidates[candidate_count++] = "libvulkan_freedreno.so";
+    candidates[candidate_count] = NULL;
     PFN_vkGetInstanceProcAddr gipa = NULL;
     PFN_vkCreateInstance create_instance = NULL;
     int candidate = 0;
