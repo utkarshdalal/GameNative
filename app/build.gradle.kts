@@ -283,7 +283,10 @@ android {
         ignoreFormatFailures  = false
     }
 
+    val hostCanRunXrPayloadScripts = System.getProperty("os.name").startsWith("Windows")
+
     tasks.register<Exec>("buildModernXrNative") {
+        enabled = hostCanRunXrPayloadScripts
         commandLine(
             "powershell",
             "-ExecutionPolicy",
@@ -294,6 +297,7 @@ android {
     }
 
     tasks.register<Exec>("buildWindowsXrRuntime") {
+        enabled = hostCanRunXrPayloadScripts
         commandLine(
             "powershell",
             "-ExecutionPolicy",
@@ -304,6 +308,7 @@ android {
     }
 
     tasks.register<Exec>("stageWineXrBridge") {
+        enabled = hostCanRunXrPayloadScripts
         val companion = providers.environmentVariable("GAMENATIVE_WINE_XR_BRIDGE")
         doFirst {
             check(companion.isPresent) { "GAMENATIVE_WINE_XR_BRIDGE must point to the ARM64X Wine builtin companion" }
@@ -320,6 +325,7 @@ android {
     }
 
     tasks.register<Exec>("stageOpenComposite") {
+        enabled = hostCanRunXrPayloadScripts
         commandLine(
             "powershell",
             "-ExecutionPolicy",
@@ -330,6 +336,7 @@ android {
     }
 
     tasks.register<Exec>("verifyModernXrPayload") {
+        enabled = hostCanRunXrPayloadScripts
         dependsOn("buildModernXrNative", "buildWindowsXrRuntime", "stageWineXrBridge", "stageOpenComposite")
         commandLine(
             "powershell",
