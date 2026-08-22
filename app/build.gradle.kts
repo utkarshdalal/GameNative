@@ -268,10 +268,10 @@ android {
         }
         getByName("modernXr") {
             assets {
-                srcDirs("src/modern/assets", "src/main/assets")
+                srcDirs("src/modern/assets", "src/main/assets", "build/generated/xrPayload/modernXr")
             }
             jniLibs {
-                srcDirs("src/modern/jniLibs")
+                setSrcDirs(listOf("src/modern/jniLibs", "build/generated/xrNative/modernXr"))
             }
         }
         getByName("debug") {
@@ -281,6 +281,73 @@ android {
 
     kotlinter {
         ignoreFormatFailures  = false
+    }
+
+    tasks.register<Exec>("buildModernXrNative") {
+        commandLine(
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            rootProject.file("tools/build-xr-native.ps1").absolutePath,
+        )
+    }
+
+    tasks.register<Exec>("buildWindowsXrRuntime") {
+        commandLine(
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            rootProject.file("tools/build-windows-xr-runtime.ps1").absolutePath,
+        )
+    }
+
+    tasks.register<Exec>("stageWineXrBridge") {
+        val companion = providers.environmentVariable("GAMENATIVE_WINE_XR_BRIDGE")
+        doFirst {
+            check(companion.isPresent) { "GAMENATIVE_WINE_XR_BRIDGE must point to the ARM64X Wine builtin companion" }
+        }
+        commandLine(
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            rootProject.file("tools/stage-wine-xr-bridge.ps1").absolutePath,
+            "-CompanionPath",
+            companion.getOrElse(""),
+        )
+    }
+
+    tasks.register<Exec>("stageOpenComposite") {
+        commandLine(
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            rootProject.file("tools/stage-opencomposite.ps1").absolutePath,
+        )
+    }
+
+    tasks.register<Exec>("verifyModernXrPayload") {
+        dependsOn("buildModernXrNative", "buildWindowsXrRuntime", "stageWineXrBridge", "stageOpenComposite")
+        commandLine(
+            "powershell",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            rootProject.file("tools/verify-xr-payload.ps1").absolutePath,
+        )
+    }
+
+    tasks.register("prepareModernXrPayload") {
+        dependsOn("verifyModernXrPayload")
+    }
+
+    tasks.matching {
+        it.name.startsWith("mergeModernXr") && it.name.endsWith("Assets")
+    }.configureEach {
+        dependsOn("prepareModernXrPayload")
     }
 
     // externalNativeBuild {

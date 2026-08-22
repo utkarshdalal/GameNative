@@ -1,0 +1,12 @@
+LIBRARY KERNEL32.dll
+EXPORTS
+    CreateFileA@28
+    WriteFile@20
+    CloseHandle@4
+    GetEnvironmentVariableA@12
+    OutputDebugStringA@4
+    LoadLibraryA@4
+    GetProcAddress@8
+    GetLastError@0
+    FreeLibrary@4
+    ExitProcess@4

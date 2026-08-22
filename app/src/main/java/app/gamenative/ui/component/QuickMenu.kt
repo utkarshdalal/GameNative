@@ -1690,6 +1690,38 @@ private fun ImmersiveQuickMenuTab(
     ) {
         // ── Passthrough ────────────────────────────────────────────────
         QuickMenuSectionHeader(
+            title = stringResource(R.string.immersive_windows_vr_title),
+            subtitle = "${controls.windowsVrStatus} · ${controls.windowsVrRuntimePath}",
+        )
+        QuickMenuToggleRow(
+            title = stringResource(R.string.immersive_windows_vr_toggle),
+            enabled = controls.windowsVrEnabled,
+            onToggle = { controls.onWindowsVrToggle(!controls.windowsVrEnabled) },
+            accentColor = accentColor,
+            focusRequester = focusRequester,
+        )
+        QuickMenuToggleRow(
+            title = stringResource(R.string.immersive_openvr_compatibility_toggle),
+            enabled = controls.openCompositeEnabled,
+            onToggle = { controls.onOpenCompositeToggle(!controls.openCompositeEnabled) },
+            accentColor = accentColor,
+        )
+        Text(
+            text = stringResource(R.string.immersive_windows_vr_restart_required),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        QuickMenuDetailRow(
+            title = stringResource(R.string.immersive_windows_vr_export),
+            subtitle = stringResource(R.string.immersive_windows_vr_export_desc),
+            accentColor = accentColor,
+            onActivate = controls.onExportWindowsVrDiagnostics,
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        QuickMenuSectionHeader(
             title = stringResource(R.string.immersive_passthrough),
             subtitle = stringResource(R.string.immersive_passthrough_desc),
         )
@@ -1698,7 +1730,6 @@ private fun ImmersiveQuickMenuTab(
             enabled = controls.passthroughEnabled,
             onToggle = { controls.onPassthroughToggle(!controls.passthroughEnabled) },
             accentColor = accentColor,
-            focusRequester = focusRequester,
         )
 
         Spacer(modifier = Modifier.height(4.dp))

@@ -331,6 +331,12 @@
     <string name="immersive_onboarding_pointer_toggle">Double-click a thumbstick to switch Xbox controller / XR pointer</string>
     <string name="immersive_mode_xr_pointer">XR pointer mode</string>
     <string name="immersive_mode_xbox">Xbox controller mode</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">Enable Windows VR</string>
+    <string name="immersive_openvr_compatibility_toggle">OpenVR compatibility (experimental)</string>
+    <string name="immersive_windows_vr_restart_required">Runtime and compatibility changes apply on the next launch.</string>
+    <string name="immersive_windows_vr_export">Export Windows VR diagnostics</string>
+    <string name="immersive_windows_vr_export_desc">Save the bounded runtime event report</string>
     <string name="tools_wine_processes_running_hint">%1$d running, tap/click a process to close</string>
     <string name="tools_wine_processes_empty">No running EXEs detected.</string>
     <string name="performance_hud">Performance HUD</string>

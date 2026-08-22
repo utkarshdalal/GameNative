@@ -60,6 +60,7 @@ bool XrImmersiveSession::initialize(JavaVM *vm, jobject activityRef) {
 
 void XrImmersiveSession::requestStop() {
     stopRequested_.store(true);
+    windowsSnapshotCondition_.notify_all();
 }
 
 void XrImmersiveSession::join() {
@@ -75,6 +76,40 @@ InputSnapshot XrImmersiveSession::pollSnapshot() {
     snapshot_.quickMenuClicked = false;
     snapshot_.pointerModeToggled = false;
     return result;
+}
+
+bool XrImmersiveSession::waitWindowsRuntimeSnapshot(uint64_t afterSerial, uint32_t timeoutMs,
+                                                     WindowsRuntimeSnapshot *snapshot) {
+    if (snapshot == nullptr) return false;
+    std::unique_lock<std::mutex> lock(windowsSnapshotMutex_);
+    windowsSnapshotCondition_.wait_for(
+        lock, std::chrono::milliseconds(timeoutMs),
+        [this, afterSerial] { return windowsSnapshot_.frameSerial > afterSerial || stopRequested_.load(); });
+    if (windowsSnapshot_.frameSerial <= afterSerial) return false;
+    *snapshot = windowsSnapshot_;
+    return true;
+}
+
+bool XrImmersiveSession::windowsStereoActive() const {
+    return stereoActive_.load();
+}
+
+bool XrImmersiveSession::applyWindowsHaptic(uint32_t hand, float amplitude, XrDuration duration,
+                                            float frequency) {
+    if (hand > 1 || session_ == XR_NULL_HANDLE || hapticAction_ == XR_NULL_HANDLE) return false;
+    XrHapticActionInfo actionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
+    actionInfo.action = hapticAction_;
+    actionInfo.subactionPath = handPaths_[hand];
+    XrHapticVibration vibration{XR_TYPE_HAPTIC_VIBRATION};
+    vibration.amplitude = std::clamp(amplitude, 0.0f, 1.0f);
+    vibration.duration = duration;
+    vibration.frequency = frequency;
+    return XR_SUCCEEDED(xrApplyHapticFeedback(
+        session_, &actionInfo, reinterpret_cast<const XrHapticBaseHeader *>(&vibration)));
+}
+
+void XrImmersiveSession::setWindowsOverlayVisible(bool visible) {
+    windowsOverlayVisible_.store(visible);
 }
 
 void XrImmersiveSession::submitFrame(const uint8_t *rgbaPixels, int32_t width, int32_t height,
@@ -212,10 +247,44 @@ void XrImmersiveSession::runLoop() {
         applyPendingPassthroughState();
         syncControllerInputs(frameState.predictedDisplayTime);
 
+        WindowsRuntimeSnapshot runtimeSnapshot;
+        {
+            std::lock_guard<std::mutex> lock(windowsSnapshotMutex_);
+            runtimeSnapshot = windowsSnapshot_;
+        }
+        runtimeSnapshot.frameSerial += 1;
+        runtimeSnapshot.predictedDisplayTime = frameState.predictedDisplayTime;
+        runtimeSnapshot.predictedDisplayPeriod = frameState.predictedDisplayPeriod;
+        runtimeSnapshot.sessionState = sessionState_;
+        runtimeSnapshot.shouldRender = frameState.shouldRender == XR_TRUE;
+        XrViewLocateInfo viewLocateInfo{XR_TYPE_VIEW_LOCATE_INFO};
+        viewLocateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+        viewLocateInfo.displayTime = frameState.predictedDisplayTime;
+        viewLocateInfo.space = windowsTrackingSpace_;
+        XrViewState viewState{XR_TYPE_VIEW_STATE};
+        uint32_t viewCount = 0;
+        if (XR_SUCCEEDED(xrLocateViews(session_, &viewLocateInfo, &viewState, 2, &viewCount,
+                                       runtimeSnapshot.views.data())) && viewCount == 2) {
+            runtimeSnapshot.viewStateFlags = viewState.viewStateFlags;
+        } else {
+            runtimeSnapshot.viewStateFlags = 0;
+        }
+        {
+            std::lock_guard<std::mutex> lock(snapshotMutex_);
+            runtimeSnapshot.input = snapshot_;
+        }
+        syncWindowsTrackingPoses(&runtimeSnapshot.input, frameState.predictedDisplayTime);
+        {
+            std::lock_guard<std::mutex> lock(windowsSnapshotMutex_);
+            windowsSnapshot_ = runtimeSnapshot;
+        }
+        windowsSnapshotCondition_.notify_all();
+
         // Every xrBeginFrame must be matched by an xrEndFrame, but a layer may only reference a
         // swapchain image that was actually acquired — so a failed renderFrame() still ends the
         // frame, just with no layers.
-        if (frameState.shouldRender && renderFrame()) {
+        if (frameState.shouldRender && submitWindowsProjection(frameState.predictedDisplayTime)) {
+        } else if (frameState.shouldRender && renderFrame()) {
             submitQuadLayer(frameState.predictedDisplayTime, localSpace_, swapchain_,
                              swapchainWidth_, swapchainHeight_, true);
         } else {
@@ -429,6 +498,17 @@ bool XrImmersiveSession::setupInstanceAndSession() {
                  "xrCreateReferenceSpace")) {
         return false;
     }
+    windowsTrackingSpace_ = localSpace_;
+    spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE;
+    const XrResult stageSpaceResult = xrCreateReferenceSpace(session_, &spaceCreateInfo, &stageSpace_);
+    if (stageSpaceResult == XR_SUCCESS && stageSpace_ != XR_NULL_HANDLE) {
+        windowsTrackingSpace_ = stageSpace_;
+        LOGI("Windows VR tracking space: STAGE");
+    } else {
+        stageSpace_ = XR_NULL_HANDLE;
+        LOGI("Windows VR tracking space: LOCAL fallback (xrCreateReferenceSpace STAGE=%d)",
+             static_cast<int>(stageSpaceResult));
+    }
 
     uint32_t formatCount = 0;
     xrEnumerateSwapchainFormats(session_, 0, &formatCount, nullptr);
@@ -477,6 +557,41 @@ bool XrImmersiveSession::setupInstanceAndSession() {
 
     glGenFramebuffers(1, &framebuffer_);
 
+    uint32_t projectionViewCount = 0;
+    xrEnumerateViewConfigurationViews(instance_, systemId_, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+                                      0, &projectionViewCount, nullptr);
+    std::vector<XrViewConfigurationView> projectionViews(
+        projectionViewCount, {XR_TYPE_VIEW_CONFIGURATION_VIEW});
+    if (projectionViewCount >= 2 && XR_SUCCEEDED(xrEnumerateViewConfigurationViews(
+            instance_, systemId_, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+            projectionViewCount, &projectionViewCount, projectionViews.data()))) {
+        {
+            std::lock_guard<std::mutex> lock(windowsSnapshotMutex_);
+            windowsSnapshot_.recommendedWidth = projectionViews[0].recommendedImageRectWidth;
+            windowsSnapshot_.recommendedHeight = projectionViews[0].recommendedImageRectHeight;
+            const XrResult boundsResult = xrGetReferenceSpaceBoundsRect(
+                session_, XR_REFERENCE_SPACE_TYPE_STAGE, &windowsSnapshot_.stageBounds);
+            windowsSnapshot_.stageSpaceActive = stageSpace_ != XR_NULL_HANDLE;
+            windowsSnapshot_.stageAvailable = stageSpace_ != XR_NULL_HANDLE &&
+                boundsResult == XR_SUCCESS &&
+                windowsSnapshot_.stageBounds.width > 0.0f &&
+                windowsSnapshot_.stageBounds.height > 0.0f;
+            if (!windowsSnapshot_.stageAvailable) windowsSnapshot_.stageBounds = {0.0f, 0.0f};
+            LOGI("Windows VR stage: active=%d bounds=%d %.3fx%.3f result=%d",
+                 windowsSnapshot_.stageSpaceActive ? 1 : 0,
+                 windowsSnapshot_.stageAvailable ? 1 : 0,
+                 windowsSnapshot_.stageBounds.width,
+                 windowsSnapshot_.stageBounds.height,
+                 static_cast<int>(boundsResult));
+        }
+        windowsProjectionReady_ = windowsProjection_.initialize(
+            session_, chosenFormat,
+            projectionViews[0].recommendedImageRectWidth,
+            projectionViews[0].recommendedImageRectHeight,
+            eglDisplay_);
+    }
+        windowsTransport_.start("@gamenative-xr");
+
     // --- Input: action set + Meta Quest Touch controller bindings. ---
     XrActionSetCreateInfo actionSetInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
     std::strncpy(actionSetInfo.actionSetName, "gameplay", XR_MAX_ACTION_SET_NAME_SIZE - 1);
@@ -510,12 +625,24 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     createAction("menu_left", XR_ACTION_TYPE_BOOLEAN_INPUT, &menuLAction_);
     createAction("aim_pose_left", XR_ACTION_TYPE_POSE_INPUT, &aimPoseLeftAction_);
     createAction("aim_pose_right", XR_ACTION_TYPE_POSE_INPUT, &aimPoseRightAction_);
+    createAction("grip_pose_left", XR_ACTION_TYPE_POSE_INPUT, &gripPoseLeftAction_);
+    createAction("grip_pose_right", XR_ACTION_TYPE_POSE_INPUT, &gripPoseRightAction_);
 
     auto path = [this](const char *p) {
         XrPath result = XR_NULL_PATH;
         xrStringToPath(instance_, p, &result);
         return result;
     };
+
+    handPaths_[0] = path("/user/hand/left");
+    handPaths_[1] = path("/user/hand/right");
+    XrActionCreateInfo hapticInfo{XR_TYPE_ACTION_CREATE_INFO};
+    std::strncpy(hapticInfo.actionName, "haptic", XR_MAX_ACTION_NAME_SIZE - 1);
+    std::strncpy(hapticInfo.localizedActionName, "Haptic", XR_MAX_LOCALIZED_ACTION_NAME_SIZE - 1);
+    hapticInfo.actionType = XR_ACTION_TYPE_VIBRATION_OUTPUT;
+    hapticInfo.countSubactionPaths = 2;
+    hapticInfo.subactionPaths = handPaths_;
+    XrCheck(xrCreateAction(actionSet_, &hapticInfo, &hapticAction_), "haptic");
 
     std::vector<XrActionSuggestedBinding> bindings = {
         {buttonXAction_, path("/user/hand/left/input/x/click")},
@@ -533,6 +660,10 @@ bool XrImmersiveSession::setupInstanceAndSession() {
         {menuLAction_, path("/user/hand/left/input/menu/click")},
         {aimPoseLeftAction_, path("/user/hand/left/input/aim/pose")},
         {aimPoseRightAction_, path("/user/hand/right/input/aim/pose")},
+        {gripPoseLeftAction_, path("/user/hand/left/input/grip/pose")},
+        {gripPoseRightAction_, path("/user/hand/right/input/grip/pose")},
+        {hapticAction_, path("/user/hand/left/output/haptic")},
+        {hapticAction_, path("/user/hand/right/output/haptic")},
     };
 
     XrInteractionProfileSuggestedBinding suggestedBinding{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
@@ -553,6 +684,10 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     XrCheck(xrCreateActionSpace(session_, &aimSpaceInfo, &aimSpaceLeft_), "xrCreateActionSpace(left aim)");
     aimSpaceInfo.action = aimPoseRightAction_;
     XrCheck(xrCreateActionSpace(session_, &aimSpaceInfo, &aimSpaceRight_), "xrCreateActionSpace(right aim)");
+    aimSpaceInfo.action = gripPoseLeftAction_;
+    XrCheck(xrCreateActionSpace(session_, &aimSpaceInfo, &gripSpaceLeft_), "xrCreateActionSpace(left grip)");
+    aimSpaceInfo.action = gripPoseRightAction_;
+    XrCheck(xrCreateActionSpace(session_, &aimSpaceInfo, &gripSpaceRight_), "xrCreateActionSpace(right grip)");
 
     if (passthroughExtensionAvailable_) {
         setupPassthrough();
@@ -854,6 +989,59 @@ bool XrImmersiveSession::renderFrame() {
     return true;
 }
 
+bool XrImmersiveSession::submitWindowsProjection(XrTime predictedDisplayTime) {
+    if (!windowsProjectionReady_ || !windowsTransport_.hasStereoContent()) {
+        stereoActive_.store(false);
+        stereoMisses_ = 0;
+        return false;
+    }
+    XrCompositionLayerProjection projection{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+    if (!windowsProjection_.render(windowsTransport_, windowsTrackingSpace_, &projection)) {
+        if (++stereoMisses_ >= 8) stereoActive_.store(false);
+        return false;
+    }
+    stereoMisses_ = 0;
+    stereoActive_.store(true);
+    XrCompositionLayerQuad overlay{XR_TYPE_COMPOSITION_LAYER_QUAD};
+    const bool overlayRendered = windowsOverlayVisible_.load() && renderFrame();
+    if (overlayRendered) {
+        overlay.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+        overlay.space = localSpace_;
+        overlay.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+        overlay.subImage.swapchain = swapchain_;
+        overlay.subImage.imageRect = {{0, 0}, {swapchainWidth_, swapchainHeight_}};
+        const float distance = -quadPosZ_.load();
+        const float yaw = distance > 0.0001f ? std::atan2(quadPosX_.load(), distance) : 0.0f;
+        const float pitch = distance > 0.0001f ? std::atan2(quadPosY_.load(), distance) : 0.0f;
+        const float cy = std::cos(yaw * 0.5f);
+        const float sy = std::sin(yaw * 0.5f);
+        const float cx = std::cos(pitch * 0.5f);
+        const float sx = std::sin(pitch * 0.5f);
+        overlay.pose = IdentityPose();
+        overlay.pose.orientation = {cy * sx, -sy * cx, sy * sx, cy * cx};
+        overlay.pose.position = {distance * std::sin(yaw) * std::cos(pitch), distance * std::sin(pitch),
+                                 -distance * std::cos(yaw) * std::cos(pitch)};
+        overlay.size = {quadWidth_.load(), quadHeight_.load()};
+    }
+    XrCompositionLayerPassthroughFB passthroughLayer{XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB};
+    passthroughLayer.space = XR_NULL_HANDLE;
+    passthroughLayer.layerHandle = passthroughLayer_;
+    std::array<const XrCompositionLayerBaseHeader *, 3> layers{};
+    uint32_t layerCount = 0;
+    if (passthroughActive_ && passthroughLayer_ != XR_NULL_HANDLE) {
+        layers[layerCount++] = reinterpret_cast<const XrCompositionLayerBaseHeader *>(&passthroughLayer);
+    }
+    layers[layerCount++] = reinterpret_cast<const XrCompositionLayerBaseHeader *>(&projection);
+    if (overlayRendered) layers[layerCount++] = reinterpret_cast<const XrCompositionLayerBaseHeader *>(&overlay);
+    XrFrameEndInfo endInfo{XR_TYPE_FRAME_END_INFO};
+    endInfo.displayTime = predictedDisplayTime;
+    endInfo.environmentBlendMode = passthroughActive_ ? XR_ENVIRONMENT_BLEND_MODE_ALPHA_BLEND
+                                                       : XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+    endInfo.layerCount = layerCount;
+    endInfo.layers = layers.data();
+    return XrCheck(xrEndFrame(session_, &endInfo), "xrEndFrame(windows projection)");
+}
+
 void XrImmersiveSession::submitQuadLayer(XrTime predictedDisplayTime, XrSpace space,
                                           XrSwapchain swapchain, int32_t width, int32_t height,
                                           bool sessionActive) {
@@ -1078,8 +1266,10 @@ void XrImmersiveSession::syncControllerInputs(XrTime predictedDisplayTime) {
     if (getBool(buttonYAction_)) next.buttons |= (1u << BUTTON_Y);
     if (getBool(buttonAAction_)) next.buttons |= (1u << BUTTON_A);
     if (getBool(buttonBAction_)) next.buttons |= (1u << BUTTON_B);
-    if (getFloat(squeezeLAction_) > 0.5f) next.buttons |= (1u << BUTTON_LB);
-    if (getFloat(squeezeRAction_) > 0.5f) next.buttons |= (1u << BUTTON_RB);
+    next.squeezeL = getFloat(squeezeLAction_);
+    next.squeezeR = getFloat(squeezeRAction_);
+    if (next.squeezeL > 0.5f) next.buttons |= (1u << BUTTON_LB);
+    if (next.squeezeR > 0.5f) next.buttons |= (1u << BUTTON_RB);
 
     // Menu/Start button: a short press still forwards a normal Start press to the game (for
     // the game's own pause/settings menu); holding it for 600ms instead opens the immersive
@@ -1192,7 +1382,10 @@ void XrImmersiveSession::syncControllerInputs(XrTime predictedDisplayTime) {
         XrCheck(xrLocateSpace(aimSpaceRight_, localSpace_, predictedDisplayTime, &rightLoc), "xrLocateSpace(right)") &&
         (rightLoc.locationFlags & kPoseValidBits) == kPoseValidBits;
     next.handPosesValid = haveLeft && haveRight;
+    next.aimPoseValid[0] = haveLeft;
+    next.aimPoseValid[1] = haveRight;
     if (haveLeft) {
+        next.aimPoses[0] = leftLoc.pose;
         next.leftHandPosX = leftLoc.pose.position.x;
         next.leftHandPosY = leftLoc.pose.position.y;
         next.leftHandPosZ = leftLoc.pose.position.z;
@@ -1202,6 +1395,7 @@ void XrImmersiveSession::syncControllerInputs(XrTime predictedDisplayTime) {
         next.leftHandFwdZ = fwd[2];
     }
     if (haveRight) {
+        next.aimPoses[1] = rightLoc.pose;
         next.rightHandPosX = rightLoc.pose.position.x;
         next.rightHandPosY = rightLoc.pose.position.y;
         next.rightHandPosZ = rightLoc.pose.position.z;
@@ -1210,6 +1404,16 @@ void XrImmersiveSession::syncControllerInputs(XrTime predictedDisplayTime) {
         next.rightHandFwdY = fwd[1];
         next.rightHandFwdZ = fwd[2];
     }
+    XrSpaceLocation leftGrip{XR_TYPE_SPACE_LOCATION};
+    XrSpaceLocation rightGrip{XR_TYPE_SPACE_LOCATION};
+    next.gripPoseValid[0] = gripSpaceLeft_ != XR_NULL_HANDLE &&
+        XrCheck(xrLocateSpace(gripSpaceLeft_, localSpace_, predictedDisplayTime, &leftGrip), "xrLocateSpace(left grip)") &&
+        (leftGrip.locationFlags & kPoseValidBits) == kPoseValidBits;
+    next.gripPoseValid[1] = gripSpaceRight_ != XR_NULL_HANDLE &&
+        XrCheck(xrLocateSpace(gripSpaceRight_, localSpace_, predictedDisplayTime, &rightGrip), "xrLocateSpace(right grip)") &&
+        (rightGrip.locationFlags & kPoseValidBits) == kPoseValidBits;
+    if (next.gripPoseValid[0]) next.gripPoses[0] = leftGrip.pose;
+    if (next.gripPoseValid[1]) next.gripPoses[1] = rightGrip.pose;
 
     // Rate-limited raw-value dump (~every 0.5s at 90Hz) — temporary, for diagnosing controller
     // mapping reports; safe to remove once the analog stick mapping is confirmed solid.
@@ -1225,7 +1429,34 @@ void XrImmersiveSession::syncControllerInputs(XrTime predictedDisplayTime) {
     snapshot_ = next;
 }
 
+void XrImmersiveSession::syncWindowsTrackingPoses(InputSnapshot *snapshot,
+                                                  XrTime predictedDisplayTime) {
+    if (snapshot == nullptr || windowsTrackingSpace_ == XR_NULL_HANDLE ||
+        windowsTrackingSpace_ == localSpace_) return;
+    constexpr XrSpaceLocationFlags validBits =
+        XR_SPACE_LOCATION_POSITION_VALID_BIT | XR_SPACE_LOCATION_ORIENTATION_VALID_BIT;
+    XrSpaceLocation aim[2]{{XR_TYPE_SPACE_LOCATION}, {XR_TYPE_SPACE_LOCATION}};
+    XrSpaceLocation grip[2]{{XR_TYPE_SPACE_LOCATION}, {XR_TYPE_SPACE_LOCATION}};
+    const XrSpace aimSpaces[2]{aimSpaceLeft_, aimSpaceRight_};
+    const XrSpace gripSpaces[2]{gripSpaceLeft_, gripSpaceRight_};
+    for (uint32_t hand = 0; hand < 2; ++hand) {
+        snapshot->aimPoseValid[hand] = aimSpaces[hand] != XR_NULL_HANDLE &&
+            XR_SUCCEEDED(xrLocateSpace(aimSpaces[hand], windowsTrackingSpace_,
+                                       predictedDisplayTime, &aim[hand])) &&
+            (aim[hand].locationFlags & validBits) == validBits;
+        snapshot->gripPoseValid[hand] = gripSpaces[hand] != XR_NULL_HANDLE &&
+            XR_SUCCEEDED(xrLocateSpace(gripSpaces[hand], windowsTrackingSpace_,
+                                       predictedDisplayTime, &grip[hand])) &&
+            (grip[hand].locationFlags & validBits) == validBits;
+        if (snapshot->aimPoseValid[hand]) snapshot->aimPoses[hand] = aim[hand].pose;
+        if (snapshot->gripPoseValid[hand]) snapshot->gripPoses[hand] = grip[hand].pose;
+    }
+    snapshot->handPosesValid = snapshot->aimPoseValid[0] && snapshot->aimPoseValid[1];
+}
+
 void XrImmersiveSession::teardown() {
+    windowsTransport_.stop();
+    windowsProjection_.shutdown();
     teardownPassthrough();
     if (gameTexture_ != 0) {
         glDeleteTextures(1, &gameTexture_);
@@ -1270,6 +1501,11 @@ void XrImmersiveSession::teardown() {
         xrDestroySpace(localSpace_);
         localSpace_ = XR_NULL_HANDLE;
     }
+    if (stageSpace_ != XR_NULL_HANDLE) {
+        xrDestroySpace(stageSpace_);
+        stageSpace_ = XR_NULL_HANDLE;
+    }
+    windowsTrackingSpace_ = XR_NULL_HANDLE;
     if (aimSpaceLeft_ != XR_NULL_HANDLE) {
         xrDestroySpace(aimSpaceLeft_);
         aimSpaceLeft_ = XR_NULL_HANDLE;
@@ -1277,6 +1513,14 @@ void XrImmersiveSession::teardown() {
     if (aimSpaceRight_ != XR_NULL_HANDLE) {
         xrDestroySpace(aimSpaceRight_);
         aimSpaceRight_ = XR_NULL_HANDLE;
+    }
+    if (gripSpaceLeft_ != XR_NULL_HANDLE) {
+        xrDestroySpace(gripSpaceLeft_);
+        gripSpaceLeft_ = XR_NULL_HANDLE;
+    }
+    if (gripSpaceRight_ != XR_NULL_HANDLE) {
+        xrDestroySpace(gripSpaceRight_);
+        gripSpaceRight_ = XR_NULL_HANDLE;
     }
     if (actionSet_ != XR_NULL_HANDLE) {
         xrDestroyActionSet(actionSet_);
