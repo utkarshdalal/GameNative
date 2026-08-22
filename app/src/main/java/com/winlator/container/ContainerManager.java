@@ -318,6 +318,33 @@ public class ContainerManager {
     }
 
     public boolean extractContainerPatternCommon(File containerDir, OnExtractFileListener onExtractFileListener) {
+        return extractContainerPatternCommonArchive(containerDir, onExtractFileListener);
+    }
+
+    public boolean extractContainerPatternCommonWfm(File containerDir, OnExtractFileListener onExtractFileListener) {
+        File expectedWfm = new File(
+                containerDir,
+                "home/xuser/.wine/drive_c/windows/wfm.exe"
+        ).getAbsoluteFile();
+        File parentDir = expectedWfm.getParentFile();
+        if (parentDir == null ||
+                (!parentDir.isDirectory() && !parentDir.mkdirs() && !parentDir.isDirectory())) {
+            Log.e("Extraction", "Failed to create WFM destination directory");
+            return false;
+        }
+        final File[] selectedWfm = {null};
+        boolean extracted = extractContainerPatternCommonArchive(containerDir, (file, size) -> {
+            if (!file.getAbsoluteFile().equals(expectedWfm)) return null;
+            selectedWfm[0] = onExtractFileListener != null
+                    ? onExtractFileListener.onExtractFile(file, size)
+                    : file;
+            return selectedWfm[0];
+        });
+        return extracted && selectedWfm[0] != null &&
+                selectedWfm[0].isFile() && selectedWfm[0].length() > 0;
+    }
+
+    private boolean extractContainerPatternCommonArchive(File containerDir, OnExtractFileListener onExtractFileListener) {
         Log.d("Extraction", "extracting container_pattern_common.tzst");
         File componentFile = ContainerFilesDownloaderKt.ensureContainerFileAvailableBlocking(context, "container_pattern_common", new ProgressCallback() {
             @Override
