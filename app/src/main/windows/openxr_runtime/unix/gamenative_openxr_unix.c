@@ -833,6 +833,63 @@ static int relay_find_memory_type(uint32_t type_bits, VkMemoryPropertyFlags want
     return -1;
 }
 
+/* Minimal Android HAL vulkan module interface: adrenotools-packaged drivers export only
+ * HMI (HAL_MODULE_INFO_SYM); the loader entry points come from opening device "vk0". */
+struct gn_hw_module;
+struct gn_hw_device;
+struct gn_hw_methods {
+    int (*open)(const struct gn_hw_module *, const char *, struct gn_hw_device **);
+};
+struct gn_hw_module {
+    uint32_t tag;
+    uint16_t module_api_version;
+    uint16_t hal_api_version;
+    const char *id;
+    const char *name;
+    const char *author;
+    struct gn_hw_methods *methods;
+    void *dso;
+    uint64_t reserved[24];
+};
+struct gn_hw_device {
+    uint32_t tag;
+    uint32_t version;
+    struct gn_hw_module *module;
+    uint64_t reserved[12];
+    int (*close)(struct gn_hw_device *);
+};
+struct gn_hwvulkan_device {
+    struct gn_hw_device common;
+    PFN_vkEnumerateInstanceExtensionProperties enumerate_instance_extensions;
+    PFN_vkCreateInstance create_instance;
+    PFN_vkGetInstanceProcAddr get_instance_proc_addr;
+};
+
+static PFN_vkCreateInstance relay_hal_create_instance;
+
+static PFN_vkGetInstanceProcAddr relay_open_hal(void *lib, const char *path)
+{
+    struct gn_hw_module *module = (struct gn_hw_module *)dlsym(lib, "HMI");
+    struct gn_hw_device *device_handle = NULL;
+    if (!module || !module->methods || !module->methods->open) return NULL;
+    if (module->methods->open(module, "vk0", &device_handle) != 0 || !device_handle) {
+        char trace[640];
+        snprintf(trace, sizeof(trace), "relay: HAL open failed for %s", path);
+        log_line(trace);
+        return NULL;
+    }
+    {
+        struct gn_hwvulkan_device *vulkan_device =
+            (struct gn_hwvulkan_device *)device_handle;
+        if (!vulkan_device->get_instance_proc_addr) return NULL;
+        relay_hal_create_instance = vulkan_device->create_instance;
+        char trace[640];
+        snprintf(trace, sizeof(trace), "relay: opened %s via HAL module", path);
+        log_line(trace);
+        return vulkan_device->get_instance_proc_addr;
+    }
+}
+
 static int relay_init(void)
 {
     if (relay_state) return relay_state > 0;
@@ -851,10 +908,17 @@ static int relay_init(void)
         if (dir && name && strlen(dir) + strlen(name) + 2 < sizeof(adrenotools_path)) {
             snprintf(adrenotools_path, sizeof(adrenotools_path), "%s%s", dir, name);
             candidates[candidate_count++] = adrenotools_path;
+        } else {
+            log_line("relay: adrenotools driver env not set in this process");
         }
     }
     candidates[candidate_count++] = "libvulkan_freedreno.so";
     candidates[candidate_count] = NULL;
+    for (int i = 0; i < candidate_count; ++i) {
+        char trace[640];
+        snprintf(trace, sizeof(trace), "relay: candidate %d: %s", i, candidates[i]);
+        log_line(trace);
+    }
     PFN_vkGetInstanceProcAddr gipa = NULL;
     PFN_vkCreateInstance create_instance = NULL;
     int candidate = 0;
@@ -869,10 +933,26 @@ next_candidate:
     gipa = NULL;
     for (; candidates[candidate] && !gipa; ++candidate) {
         relay_lib = dlopen(candidates[candidate], RTLD_NOW | RTLD_LOCAL);
-        if (!relay_lib) continue;
+        if (!relay_lib) {
+            char trace[640];
+            snprintf(trace, sizeof(trace), "relay: dlopen(%s) failed: %s",
+                     candidates[candidate], dlerror());
+            log_line(trace);
+            continue;
+        }
+        relay_hal_create_instance = NULL;
         gipa = (PFN_vkGetInstanceProcAddr)dlsym(relay_lib, "vk_icdGetInstanceProcAddr");
         if (!gipa) gipa = (PFN_vkGetInstanceProcAddr)dlsym(relay_lib, "vkGetInstanceProcAddr");
-        if (!gipa) { dlclose(relay_lib); relay_lib = NULL; continue; }
+        if (!gipa) gipa = relay_open_hal(relay_lib, candidates[candidate]);
+        if (!gipa) {
+            char trace[640];
+            snprintf(trace, sizeof(trace), "relay: %s has no usable entry point",
+                     candidates[candidate]);
+            log_line(trace);
+            dlclose(relay_lib);
+            relay_lib = NULL;
+            continue;
+        }
         {
             char trace[128];
             snprintf(trace, sizeof(trace), "relay: trying %s", candidates[candidate]);
@@ -881,7 +961,8 @@ next_candidate:
     }
     if (!gipa) { log_line("relay: no usable Vulkan driver"); return 0; }
 
-    create_instance = (PFN_vkCreateInstance)gipa(NULL, "vkCreateInstance");
+    create_instance = relay_hal_create_instance;
+    if (!create_instance) create_instance = (PFN_vkCreateInstance)gipa(NULL, "vkCreateInstance");
     if (!create_instance) goto next_candidate;
     VkApplicationInfo app = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
