@@ -32,7 +32,8 @@ typedef int32_t (*unixlib_entry_t)(void *);
 enum gn_transport_kind {
     GN_TRANSPORT_UNKNOWN = 0,
     GN_TRANSPORT_AHARDWAREBUFFER = 1,
-    GN_TRANSPORT_DMABUF = 2
+    GN_TRANSPORT_DMABUF = 2,
+    GN_TRANSPORT_RELAY = 3
 };
 
 struct gn_transport_image {
@@ -40,6 +41,7 @@ struct gn_transport_image {
     VkDeviceMemory memory;
     VkCommandBuffer command_buffer;
     void *hardware_buffer;
+    uint8_t relay;
     uint8_t registered;
     uint8_t initialized;
     uint8_t steady_recorded;
@@ -62,6 +64,8 @@ struct gn_image {
     uint32_t registered_array_index[2];
     uint8_t transport_kind[2];
     struct gn_transport_image transport[2];
+    VkImage relay_source_image;
+    VkDeviceMemory relay_source_memory;
     uint8_t submitted;
 };
 
@@ -778,8 +782,582 @@ fail:
     return 0;
 }
 
+#if defined(__ANDROID__)
+/* Relay: a second Vulkan device (turnip, or the system driver) used when the game's
+ * host device was created without the Android hardware-buffer extension. The game's
+ * linear dma-buf render image is imported here and GPU-copied into an AHardwareBuffer
+ * so the compositor gets the zero-copy path instead of a per-frame CPU upload. */
+static void *relay_lib;
+static VkInstance relay_instance;
+static VkPhysicalDevice relay_phys;
+static VkDevice relay_device;
+static VkQueue relay_queue;
+static uint32_t relay_queue_family;
+static VkCommandPool relay_pool;
+static int relay_state; /* 0 untried, 1 ready, -1 unavailable */
+static int relay_can_export_fence;
+
+static PFN_vkGetDeviceProcAddr r_vkGetDeviceProcAddr;
+static PFN_vkCreateImage r_vkCreateImage;
+static PFN_vkDestroyImage r_vkDestroyImage;
+static PFN_vkGetImageMemoryRequirements r_vkGetImageMemoryRequirements;
+static PFN_vkAllocateMemory r_vkAllocateMemory;
+static PFN_vkFreeMemory r_vkFreeMemory;
+static PFN_vkBindImageMemory r_vkBindImageMemory;
+static PFN_vkCreateCommandPool r_vkCreateCommandPool;
+static PFN_vkAllocateCommandBuffers r_vkAllocateCommandBuffers;
+static PFN_vkFreeCommandBuffers r_vkFreeCommandBuffers;
+static PFN_vkResetCommandBuffer r_vkResetCommandBuffer;
+static PFN_vkBeginCommandBuffer r_vkBeginCommandBuffer;
+static PFN_vkEndCommandBuffer r_vkEndCommandBuffer;
+static PFN_vkCmdPipelineBarrier r_vkCmdPipelineBarrier;
+static PFN_vkCmdCopyImage r_vkCmdCopyImage;
+static PFN_vkQueueSubmit r_vkQueueSubmit;
+static PFN_vkQueueWaitIdle r_vkQueueWaitIdle;
+static PFN_vkCreateFence r_vkCreateFence;
+static PFN_vkDestroyFence r_vkDestroyFence;
+static PFN_vkGetFenceFdKHR r_vkGetFenceFdKHR;
+static PFN_vkGetAndroidHardwareBufferPropertiesANDROID r_vkGetAndroidHardwareBufferPropertiesANDROID;
+static PFN_vkGetMemoryFdPropertiesKHR r_vkGetMemoryFdPropertiesKHR;
+static PFN_vkGetPhysicalDeviceMemoryProperties r_vkGetPhysicalDeviceMemoryProperties;
+
+static int relay_find_memory_type(uint32_t type_bits, VkMemoryPropertyFlags wanted)
+{
+    VkPhysicalDeviceMemoryProperties properties;
+    r_vkGetPhysicalDeviceMemoryProperties(relay_phys, &properties);
+    for (uint32_t i = 0; i < properties.memoryTypeCount; ++i) {
+        if ((type_bits & (1u << i)) &&
+            (properties.memoryTypes[i].propertyFlags & wanted) == wanted)
+            return (int)i;
+    }
+    return -1;
+}
+
+static int relay_init(void)
+{
+    if (relay_state) return relay_state > 0;
+    relay_state = -1;
+
+    static const char *candidates[] = {
+        "libvulkan_freedreno.so", "libvulkan.so", NULL
+    };
+    PFN_vkGetInstanceProcAddr gipa = NULL;
+    for (int i = 0; candidates[i] && !gipa; ++i) {
+        relay_lib = dlopen(candidates[i], RTLD_NOW | RTLD_LOCAL);
+        if (!relay_lib) continue;
+        gipa = (PFN_vkGetInstanceProcAddr)dlsym(relay_lib, "vk_icdGetInstanceProcAddr");
+        if (!gipa) gipa = (PFN_vkGetInstanceProcAddr)dlsym(relay_lib, "vkGetInstanceProcAddr");
+        if (!gipa) { dlclose(relay_lib); relay_lib = NULL; continue; }
+        {
+            char trace[128];
+            snprintf(trace, sizeof(trace), "relay: using %s", candidates[i]);
+            log_line(trace);
+        }
+    }
+    if (!gipa) { log_line("relay: no usable Vulkan driver"); return 0; }
+
+    PFN_vkCreateInstance create_instance =
+        (PFN_vkCreateInstance)gipa(NULL, "vkCreateInstance");
+    if (!create_instance) return 0;
+    VkApplicationInfo app = {
+        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .pApplicationName = "gamenative-xr-relay",
+        .apiVersion = VK_API_VERSION_1_1
+    };
+    VkInstanceCreateInfo instance_info = {
+        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        .pApplicationInfo = &app
+    };
+    if (create_instance(&instance_info, NULL, &relay_instance) != VK_SUCCESS) {
+        log_line("relay: vkCreateInstance failed");
+        return 0;
+    }
+
+#define RELAY_ILOAD(name) PFN_##name i_##name = (PFN_##name)gipa(relay_instance, #name)
+    RELAY_ILOAD(vkEnumeratePhysicalDevices);
+    RELAY_ILOAD(vkGetPhysicalDeviceQueueFamilyProperties);
+    RELAY_ILOAD(vkEnumerateDeviceExtensionProperties);
+    RELAY_ILOAD(vkCreateDevice);
+    RELAY_ILOAD(vkGetDeviceProcAddr);
+    RELAY_ILOAD(vkGetPhysicalDeviceMemoryProperties);
+#undef RELAY_ILOAD
+    if (!i_vkEnumeratePhysicalDevices || !i_vkGetPhysicalDeviceQueueFamilyProperties ||
+        !i_vkEnumerateDeviceExtensionProperties || !i_vkCreateDevice ||
+        !i_vkGetDeviceProcAddr || !i_vkGetPhysicalDeviceMemoryProperties)
+        return 0;
+    r_vkGetPhysicalDeviceMemoryProperties = i_vkGetPhysicalDeviceMemoryProperties;
+
+    uint32_t count = 1;
+    if (i_vkEnumeratePhysicalDevices(relay_instance, &count, &relay_phys) < 0 || !count) {
+        log_line("relay: no physical device");
+        return 0;
+    }
+
+    VkQueueFamilyProperties families[8];
+    uint32_t family_count = 8;
+    i_vkGetPhysicalDeviceQueueFamilyProperties(relay_phys, &family_count, families);
+    relay_queue_family = 0;
+    for (uint32_t i = 0; i < family_count; ++i) {
+        if (families[i].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT)) {
+            relay_queue_family = i;
+            break;
+        }
+    }
+
+    static const char *wanted[] = {
+        "VK_ANDROID_external_memory_android_hardware_buffer",
+        "VK_EXT_external_memory_dma_buf",
+        "VK_KHR_external_memory_fd",
+        "VK_EXT_queue_family_foreign",
+        "VK_KHR_sampler_ycbcr_conversion",
+        "VK_KHR_external_fence_fd",
+        "VK_KHR_dedicated_allocation",
+        "VK_KHR_get_memory_requirements2",
+        "VK_KHR_bind_memory2",
+        "VK_KHR_maintenance1",
+        "VK_KHR_external_memory"
+    };
+    VkExtensionProperties supported[256];
+    uint32_t supported_count = 256;
+    if (i_vkEnumerateDeviceExtensionProperties(relay_phys, NULL, &supported_count, supported) < 0)
+        return 0;
+    const char *enabled[16];
+    uint32_t enabled_count = 0;
+    int have_ahb = 0, have_dmabuf = 0, have_fd = 0;
+    for (uint32_t w = 0; w < sizeof(wanted) / sizeof(wanted[0]); ++w) {
+        for (uint32_t i = 0; i < supported_count; ++i) {
+            if (strcmp(supported[i].extensionName, wanted[w]) == 0) {
+                enabled[enabled_count++] = wanted[w];
+                if (w == 0) have_ahb = 1;
+                if (w == 1) have_dmabuf = 1;
+                if (w == 2) have_fd = 1;
+                if (w == 5) relay_can_export_fence = 1;
+                break;
+            }
+        }
+    }
+    if (!have_ahb || !have_dmabuf || !have_fd) {
+        char trace[128];
+        snprintf(trace, sizeof(trace), "relay: missing extensions ahb=%d dmabuf=%d fd=%d",
+                 have_ahb, have_dmabuf, have_fd);
+        log_line(trace);
+        return 0;
+    }
+
+    float priority = 1.0f;
+    VkDeviceQueueCreateInfo queue_info = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = relay_queue_family,
+        .queueCount = 1,
+        .pQueuePriorities = &priority
+    };
+    VkDeviceCreateInfo device_info = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .queueCreateInfoCount = 1,
+        .pQueueCreateInfos = &queue_info,
+        .enabledExtensionCount = enabled_count,
+        .ppEnabledExtensionNames = enabled
+    };
+    if (i_vkCreateDevice(relay_phys, &device_info, NULL, &relay_device) != VK_SUCCESS) {
+        log_line("relay: vkCreateDevice failed");
+        return 0;
+    }
+    r_vkGetDeviceProcAddr = i_vkGetDeviceProcAddr;
+
+#define RELAY_DLOAD(name) \
+    r_##name = (PFN_##name)r_vkGetDeviceProcAddr(relay_device, #name); \
+    if (!r_##name) { log_line("relay: missing " #name); return 0; }
+    RELAY_DLOAD(vkCreateImage);
+    RELAY_DLOAD(vkDestroyImage);
+    RELAY_DLOAD(vkGetImageMemoryRequirements);
+    RELAY_DLOAD(vkAllocateMemory);
+    RELAY_DLOAD(vkFreeMemory);
+    RELAY_DLOAD(vkBindImageMemory);
+    RELAY_DLOAD(vkCreateCommandPool);
+    RELAY_DLOAD(vkAllocateCommandBuffers);
+    RELAY_DLOAD(vkFreeCommandBuffers);
+    RELAY_DLOAD(vkResetCommandBuffer);
+    RELAY_DLOAD(vkBeginCommandBuffer);
+    RELAY_DLOAD(vkEndCommandBuffer);
+    RELAY_DLOAD(vkCmdPipelineBarrier);
+    RELAY_DLOAD(vkCmdCopyImage);
+    RELAY_DLOAD(vkQueueSubmit);
+    RELAY_DLOAD(vkQueueWaitIdle);
+    RELAY_DLOAD(vkCreateFence);
+    RELAY_DLOAD(vkDestroyFence);
+    RELAY_DLOAD(vkGetAndroidHardwareBufferPropertiesANDROID);
+    RELAY_DLOAD(vkGetMemoryFdPropertiesKHR);
+#undef RELAY_DLOAD
+    r_vkGetFenceFdKHR = (PFN_vkGetFenceFdKHR)r_vkGetDeviceProcAddr(relay_device, "vkGetFenceFdKHR");
+    if (!r_vkGetFenceFdKHR) relay_can_export_fence = 0;
+
+    PFN_vkGetDeviceQueue get_queue =
+        (PFN_vkGetDeviceQueue)r_vkGetDeviceProcAddr(relay_device, "vkGetDeviceQueue");
+    if (!get_queue) return 0;
+    get_queue(relay_device, relay_queue_family, 0, &relay_queue);
+
+    VkCommandPoolCreateInfo pool_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = relay_queue_family
+    };
+    if (r_vkCreateCommandPool(relay_device, &pool_info, NULL, &relay_pool) != VK_SUCCESS) {
+        log_line("relay: command pool failed");
+        return 0;
+    }
+    relay_state = 1;
+    log_line("relay: ready — GPU dma-buf to AHardwareBuffer copies enabled");
+    return 1;
+}
+
+static int relay_create_source(struct gn_swapchain *swapchain, struct gn_image *image)
+{
+    if (image->relay_source_image) return 1;
+    if (image->dma_buf_fd < 0) return 0;
+    int fd = dup(image->dma_buf_fd);
+    if (fd < 0) return 0;
+
+    VkMemoryFdPropertiesKHR fd_properties = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR
+    };
+    if (r_vkGetMemoryFdPropertiesKHR(
+            relay_device, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+            fd, &fd_properties) != VK_SUCCESS) {
+        log_line("relay: vkGetMemoryFdPropertiesKHR failed");
+        close(fd);
+        return 0;
+    }
+
+    VkExternalMemoryImageCreateInfo external = {
+        .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+        .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT
+    };
+    VkImageCreateInfo image_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = &external,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = swapchain->format,
+        .extent = {swapchain->width, swapchain->height, 1},
+        .mipLevels = 1,
+        .arrayLayers = swapchain->array_size ? swapchain->array_size : 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_LINEAR,
+        .usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+    };
+    if (r_vkCreateImage(relay_device, &image_info, NULL, &image->relay_source_image) != VK_SUCCESS) {
+        log_line("relay: source image create failed");
+        close(fd);
+        return 0;
+    }
+    VkMemoryRequirements requirements;
+    r_vkGetImageMemoryRequirements(relay_device, image->relay_source_image, &requirements);
+    int memory_type = relay_find_memory_type(
+        requirements.memoryTypeBits & fd_properties.memoryTypeBits, 0);
+    if (memory_type < 0) {
+        log_line("relay: no memory type for source");
+        goto fail;
+    }
+    VkImportMemoryFdInfoKHR import_info = {
+        .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR,
+        .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+        .fd = fd
+    };
+    VkMemoryDedicatedAllocateInfo dedicated = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+        .pNext = &import_info,
+        .image = image->relay_source_image
+    };
+    VkMemoryAllocateInfo allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext = &dedicated,
+        .allocationSize = requirements.size,
+        .memoryTypeIndex = (uint32_t)memory_type
+    };
+    if (r_vkAllocateMemory(relay_device, &allocate_info, NULL, &image->relay_source_memory) != VK_SUCCESS) {
+        log_line("relay: source import failed");
+        goto fail;
+    }
+    fd = -1; /* consumed by the import */
+    if (r_vkBindImageMemory(relay_device, image->relay_source_image,
+                            image->relay_source_memory, 0) != VK_SUCCESS) {
+        log_line("relay: source bind failed");
+        goto fail;
+    }
+    return 1;
+fail:
+    if (fd >= 0) close(fd);
+    if (image->relay_source_memory) {
+        r_vkFreeMemory(relay_device, image->relay_source_memory, NULL);
+        image->relay_source_memory = VK_NULL_HANDLE;
+    }
+    if (image->relay_source_image) {
+        r_vkDestroyImage(relay_device, image->relay_source_image, NULL);
+        image->relay_source_image = VK_NULL_HANDLE;
+    }
+    return 0;
+}
+
+static int relay_create_transport(
+    const struct gn_swapchain *swapchain, struct gn_transport_image *transport)
+{
+    AHardwareBuffer_Desc descriptor = {
+        .width = swapchain->width,
+        .height = swapchain->height,
+        .layers = 1,
+        .format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM,
+        .usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+                 AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT
+    };
+    AHardwareBuffer *buffer = NULL;
+    if (AHardwareBuffer_allocate(&descriptor, &buffer) != 0 || !buffer) {
+        log_line("relay: AHardwareBuffer allocation failed");
+        return 0;
+    }
+    transport->hardware_buffer = buffer;
+    transport->relay = 1;
+
+    VkAndroidHardwareBufferPropertiesANDROID properties = {
+        .sType = VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID
+    };
+    if (r_vkGetAndroidHardwareBufferPropertiesANDROID(relay_device, buffer, &properties) != VK_SUCCESS) {
+        log_line("relay: AHB properties failed");
+        return 0;
+    }
+    VkExternalMemoryImageCreateInfo external = {
+        .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+        .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID
+    };
+    VkImageCreateInfo image_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = &external,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = VK_FORMAT_R8G8B8A8_UNORM,
+        .extent = {swapchain->width, swapchain->height, 1},
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+    };
+    if (r_vkCreateImage(relay_device, &image_info, NULL, &transport->image) != VK_SUCCESS) {
+        log_line("relay: transport image failed");
+        return 0;
+    }
+    VkMemoryRequirements requirements;
+    r_vkGetImageMemoryRequirements(relay_device, transport->image, &requirements);
+    int memory_type = relay_find_memory_type(
+        requirements.memoryTypeBits & properties.memoryTypeBits, 0);
+    if (memory_type < 0) {
+        log_line("relay: no memory type for transport");
+        return 0;
+    }
+    VkImportAndroidHardwareBufferInfoANDROID import_info = {
+        .sType = VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID,
+        .buffer = buffer
+    };
+    VkMemoryDedicatedAllocateInfo dedicated = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+        .pNext = &import_info,
+        .image = transport->image
+    };
+    VkMemoryAllocateInfo allocate_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext = &dedicated,
+        .allocationSize = properties.allocationSize,
+        .memoryTypeIndex = (uint32_t)memory_type
+    };
+    if (r_vkAllocateMemory(relay_device, &allocate_info, NULL, &transport->memory) != VK_SUCCESS ||
+        r_vkBindImageMemory(relay_device, transport->image, transport->memory, 0) != VK_SUCCESS) {
+        log_line("relay: transport memory failed");
+        return 0;
+    }
+    VkCommandBufferAllocateInfo command_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = relay_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+    if (r_vkAllocateCommandBuffers(relay_device, &command_info, &transport->command_buffer) != VK_SUCCESS) {
+        log_line("relay: command buffer failed");
+        return 0;
+    }
+    return 1;
+}
+
+static int relay_record_copy(
+    const struct gn_swapchain *swapchain, struct gn_image *image,
+    struct gn_transport_image *transport, uint32_t array_index)
+{
+    if (transport->steady_recorded) return 1;
+    if (r_vkResetCommandBuffer(transport->command_buffer, 0) != VK_SUCCESS) return 0;
+    VkCommandBufferBeginInfo begin = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
+    };
+    if (r_vkBeginCommandBuffer(transport->command_buffer, &begin) != VK_SUCCESS) return 0;
+
+    VkImageMemoryBarrier before[2] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = 0,
+            .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = image->relay_source_image,
+            .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, array_index, 1}
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = 0,
+            .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = transport->image,
+            .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
+        }
+    };
+    r_vkCmdPipelineBarrier(
+        transport->command_buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 2, before);
+
+    VkImageCopy copy = {
+        .srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, array_index, 1},
+        .dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+        .extent = {swapchain->width, swapchain->height, 1}
+    };
+    r_vkCmdCopyImage(
+        transport->command_buffer, image->relay_source_image,
+        VK_IMAGE_LAYOUT_GENERAL, transport->image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+
+    VkImageMemoryBarrier after = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+        .srcQueueFamilyIndex = relay_queue_family,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL,
+        .image = transport->image,
+        .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}
+    };
+    r_vkCmdPipelineBarrier(
+        transport->command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &after);
+    if (r_vkEndCommandBuffer(transport->command_buffer) != VK_SUCCESS) return 0;
+    transport->steady_recorded = 1;
+    return 1;
+}
+
+static int relay_submit(const VkCommandBuffer *commands, uint32_t command_count, int *submit_ok)
+{
+    *submit_ok = 0;
+    VkSubmitInfo submit = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = command_count,
+        .pCommandBuffers = commands
+    };
+    if (!relay_can_export_fence) {
+        if (r_vkQueueSubmit(relay_queue, 1, &submit, VK_NULL_HANDLE) != VK_SUCCESS) return -1;
+        if (r_vkQueueWaitIdle(relay_queue) != VK_SUCCESS) return -1;
+        *submit_ok = 1;
+        return -1;
+    }
+    VkExportFenceCreateInfo export_info = {
+        .sType = VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO,
+        .handleTypes = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT
+    };
+    VkFenceCreateInfo fence_info = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = &export_info
+    };
+    VkFence fence = VK_NULL_HANDLE;
+    if (r_vkCreateFence(relay_device, &fence_info, NULL, &fence) != VK_SUCCESS) {
+        if (r_vkQueueSubmit(relay_queue, 1, &submit, VK_NULL_HANDLE) != VK_SUCCESS) return -1;
+        if (r_vkQueueWaitIdle(relay_queue) != VK_SUCCESS) return -1;
+        *submit_ok = 1;
+        return -1;
+    }
+    if (r_vkQueueSubmit(relay_queue, 1, &submit, fence) != VK_SUCCESS) {
+        r_vkDestroyFence(relay_device, fence, NULL);
+        return -1;
+    }
+    int fd = -1;
+    VkFenceGetFdInfoKHR fd_info = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR,
+        .fence = fence,
+        .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT
+    };
+    if (r_vkGetFenceFdKHR(relay_device, &fd_info, &fd) != VK_SUCCESS) fd = -1;
+    r_vkDestroyFence(relay_device, fence, NULL);
+    *submit_ok = 1;
+    return fd;
+}
+
+static int relay_register(uint32_t slot, uint32_t image_index, uint32_t eye)
+{
+    struct gn_swapchain *swapchain = &swapchains[slot];
+    struct gn_image *image = &swapchain->images[image_index];
+    struct gn_transport_image *transport = &image->transport[eye];
+    if (swapchain->sample_count != 1) return 0;
+    if (!relay_init()) return 0;
+    if (!relay_create_source(swapchain, image)) return 0;
+    if (!transport->hardware_buffer && !relay_create_transport(swapchain, transport)) return 0;
+    if (transport->registered) return 1;
+
+    const uint32_t transport_index = slot * GN_UNIX_MAX_IMAGES + image_index;
+    const int swap_red_blue =
+        swapchain->format == VK_FORMAT_B8G8R8A8_UNORM ||
+        swapchain->format == VK_FORMAT_B8G8R8A8_SRGB;
+    char line[192], response[64] = {0};
+    snprintf(line, sizeof(line),
+             "BUFFER eye=%u index=%u w=%u h=%u swizzle=%u\n",
+             eye, transport_index, swapchain->width, swapchain->height,
+             swap_red_blue ? 1u : 0u);
+    if (!transact_line(line, response, sizeof(response)) ||
+        strncmp(response, "OK", 2) ||
+        AHardwareBuffer_sendHandleToUnixSocket(
+            (AHardwareBuffer *)transport->hardware_buffer, transport_fd) != 0 ||
+        !read_line(transport_fd, response, sizeof(response)) ||
+        strncmp(response, "OK", 2)) {
+        log_line("relay: registration failed");
+        close_transport();
+        return 0;
+    }
+    transport->registered = 1;
+    {
+        char trace[192];
+        snprintf(trace, sizeof(trace),
+                 "relay registered eye=%u index=%u size=%ux%u swizzle=%u",
+                 eye, transport_index, swapchain->width, swapchain->height,
+                 swap_red_blue ? 1u : 0u);
+        log_line(trace);
+    }
+    return 1;
+}
+#endif
+
 static void destroy_transport_image(struct gn_transport_image *transport)
 {
+#if defined(__ANDROID__)
+    if (transport->relay) {
+        if (transport->command_buffer && relay_pool)
+            r_vkFreeCommandBuffers(relay_device, relay_pool, 1, &transport->command_buffer);
+        if (transport->image) r_vkDestroyImage(relay_device, transport->image, NULL);
+        if (transport->memory) r_vkFreeMemory(relay_device, transport->memory, NULL);
+        if (transport->hardware_buffer)
+            AHardwareBuffer_release((AHardwareBuffer *)transport->hardware_buffer);
+        memset(transport, 0, sizeof(*transport));
+        return;
+    }
+#endif
     if (transport->command_buffer && command_pool && p_vkFreeCommandBuffers)
         p_vkFreeCommandBuffers(device, command_pool, 1, &transport->command_buffer);
     if (transport->image && p_vkDestroyImage)
@@ -1037,10 +1615,17 @@ static int record_ahardwarebuffer_copy(
 }
 #endif
 
+
 static void destroy_image(struct gn_image *image)
 {
     for (uint32_t eye = 0; eye < 2; ++eye)
         destroy_transport_image(&image->transport[eye]);
+#if defined(__ANDROID__)
+    if (image->relay_source_image)
+        r_vkDestroyImage(relay_device, image->relay_source_image, NULL);
+    if (image->relay_source_memory)
+        r_vkFreeMemory(relay_device, image->relay_source_memory, NULL);
+#endif
     if (image->dma_buf_fd >= 0) close(image->dma_buf_fd);
     if (image->image && p_vkDestroyImage) p_vkDestroyImage(device, image->image, NULL);
     if (image->memory && p_vkFreeMemory) p_vkFreeMemory(device, image->memory, NULL);
@@ -1116,7 +1701,23 @@ static int register_image(uint32_t slot, uint32_t image_index, uint32_t eye,
             return 1;
         }
         destroy_transport_image(&image->transport[eye]);
+#if defined(__ANDROID__)
+        if (relay_register(slot, image_index, eye)) {
+            image->transport_kind[eye] = GN_TRANSPORT_RELAY;
+            image->registered_eye_mask |= bit;
+            image->registered_array_index[eye] = array_index;
+            return 1;
+        }
+        destroy_transport_image(&image->transport[eye]);
+#endif
         image->transport_kind[eye] = GN_TRANSPORT_DMABUF;
+    }
+    if (image->transport_kind[eye] == GN_TRANSPORT_RELAY) {
+        if (image->registered_array_index[eye] != array_index) {
+            image->transport[eye].steady_recorded = 0;
+        }
+        image->registered_array_index[eye] = array_index;
+        return 1;
     }
     if (image->transport_kind[eye] == GN_TRANSPORT_AHARDWAREBUFFER) {
         if (image->registered_array_index[eye] != array_index) {
@@ -1548,6 +2149,9 @@ static int submit_views(
     VkCommandBuffer commands[2];
     struct gn_transport_image *recorded[2];
     uint32_t command_count = 0;
+    VkCommandBuffer relay_commands[2];
+    struct gn_transport_image *relay_recorded[2];
+    uint32_t relay_count = 0;
     for (uint32_t i = 0; i < view_count; ++i) {
         const struct gn_unix_submit_view_args *view = &views[i];
         if (!register_image(view->slot, view->image_index, view->eye,
@@ -1558,6 +2162,17 @@ static int submit_views(
 #if defined(__ANDROID__)
         struct gn_image *image =
             &swapchains[view->slot].images[view->image_index];
+        if (image->transport_kind[view->eye] == GN_TRANSPORT_RELAY) {
+            struct gn_transport_image *transport = &image->transport[view->eye];
+            if (!relay_record_copy(&swapchains[view->slot], image, transport,
+                                   view->array_index)) {
+                pthread_mutex_unlock(&socket_mutex);
+                return 0;
+            }
+            relay_commands[relay_count] = transport->command_buffer;
+            relay_recorded[relay_count] = transport;
+            ++relay_count;
+        }
         if (image->transport_kind[view->eye] == GN_TRANSPORT_AHARDWAREBUFFER) {
             struct gn_transport_image *transport = &image->transport[view->eye];
             if (!record_ahardwarebuffer_copy(
@@ -1591,6 +2206,23 @@ static int submit_views(
         return 0;
     }
     for (uint32_t i = 0; i < command_count; ++i) recorded[i]->initialized = 1;
+#if defined(__ANDROID__)
+    if (relay_count) {
+        // The game-queue submit above already waited for the render to finish; the relay
+        // copy runs after it on its own device, and its fence becomes the acquire fence.
+        int relay_ok = 0;
+        int relay_fence = relay_submit(relay_commands, relay_count, &relay_ok);
+        if (!relay_ok) {
+            if (relay_fence >= 0) close(relay_fence);
+            if (fence_fd >= 0) close(fence_fd);
+            pthread_mutex_unlock(&socket_mutex);
+            return 0;
+        }
+        for (uint32_t i = 0; i < relay_count; ++i) relay_recorded[i]->initialized = 1;
+        if (fence_fd >= 0) close(fence_fd);
+        fence_fd = relay_fence;
+    }
+#endif
 
     int ok = 1;
     const uint64_t frame_id = ++transport_frame_id;
