@@ -573,6 +573,20 @@ static int gn_stopping_pushed = 0;
 static int gn_winsock_started = 0;
 static gn_socket gn_bridge_socket = GN_INVALID_SOCKET;
 static int gn_bridge_ever_connected = 0;
+static char gn_bridge_rxbuf[1024];
+static gn_size gn_bridge_rxlen = 0;
+static gn_size gn_bridge_rxoff = 0;
+
+static int gn_bridge_recv_byte(char* value) {
+    if (gn_bridge_rxoff >= gn_bridge_rxlen) {
+        int got = recv(gn_bridge_socket, gn_bridge_rxbuf, (int)sizeof(gn_bridge_rxbuf), 0);
+        if (got <= 0) return 0;
+        gn_bridge_rxlen = (gn_size)got;
+        gn_bridge_rxoff = 0;
+    }
+    *value = gn_bridge_rxbuf[gn_bridge_rxoff++];
+    return 1;
+}
 static int gn_frame_milestone_sent = 0;
 static XrSessionState gn_event_states[16];
 static gn_uint32 gn_event_head = 0;
@@ -1132,6 +1146,8 @@ static int gn_bridge_call_locked(const char* command, char* response, gn_size re
     out[0] = 0;
     if (gn_bridge_socket == GN_INVALID_SOCKET) {
         if (!gn_bridge_connect_locked()) return 0;
+        gn_bridge_rxlen = 0;
+        gn_bridge_rxoff = 0;
 
         {
             char hello[64];
@@ -1142,7 +1158,7 @@ static int gn_bridge_call_locked(const char* command, char* response, gn_size re
             }
             gn_size hoff = 0;
             while (hoff + 1 < sizeof(hello)) {
-                if (recv(gn_bridge_socket, &ch, 1, 0) <= 0) {
+                if (!gn_bridge_recv_byte(&ch)) {
                     gn_bridge_close();
                     return 0;
                 }
@@ -1173,8 +1189,7 @@ static int gn_bridge_call_locked(const char* command, char* response, gn_size re
     }
 
     while (offset + 1 < out_size) {
-        got = recv(gn_bridge_socket, &ch, 1, 0);
-        if (got <= 0) {
+        if (!gn_bridge_recv_byte(&ch)) {
             gn_bridge_close();
             gn_log2("bridge recv failed for: ", command);
             return 0;

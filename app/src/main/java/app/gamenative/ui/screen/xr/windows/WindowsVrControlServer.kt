@@ -45,12 +45,11 @@ class WindowsVrControlServer(
     private fun handle(socket: Socket) {
         try {
             socket.tcpNoDelay = true
-            socket.soTimeout = 15000
+            socket.soTimeout = 120000
             val input = socket.getInputStream()
             val writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream(), Charsets.US_ASCII), 1024)
-            var requests = 0
             var greeted = false
-            while (running.get() && requests++ < 1024) {
+            while (running.get()) {
                 val line = readBoundedLine(input) ?: break
                 if (!greeted && line != "HELLO") break
                 val response = respond(line)
