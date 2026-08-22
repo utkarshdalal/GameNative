@@ -187,8 +187,8 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     private var lastMenuDpadKeyCode: Int? = null
     private var lastMenuDpadHeldSince = 0L
     private var lastMenuDpadEventTime = 0L
-    private var lastMenuButtonAPressed = false
-    private var lastMenuButtonBPressed = false
+    private var lastMenuConfirmPressed = false
+    private var lastMenuBackPressed = false
     private var lastMenuButtonLBPressed = false
     private var lastMenuButtonRBPressed = false
 
@@ -990,9 +990,15 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         }
 
         val buttonAPressed = (buttons and (1 shl XrGamepadBridge.BUTTON_A)) != 0
-        if (buttonAPressed && !lastMenuButtonAPressed) {
+        val triggerPressed = axes[4] > POINTER_GRAB_PRESS_THRESHOLD || axes[5] > POINTER_GRAB_PRESS_THRESHOLD
+        val confirmPressed = buttonAPressed || triggerPressed
+        if (confirmPressed && !lastMenuConfirmPressed) {
             val focusedActivate = quickMenuFocusedActivate?.invoke()
-            Timber.i("Immersive: A pressed, focusedActivatePresent=%b", focusedActivate != null)
+            Timber.i(
+                "Immersive: menu confirm pressed, source=%s focusedActivatePresent=%b",
+                if (buttonAPressed) "A" else "trigger",
+                focusedActivate != null,
+            )
             if (focusedActivate != null) {
                 runOnUiThread { focusedActivate.invoke() }
             } else {
@@ -1000,11 +1006,16 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                 dispatchMenuKeyEvent(android.view.KeyEvent.KEYCODE_BUTTON_A)
             }
         }
-        lastMenuButtonAPressed = buttonAPressed
+        lastMenuConfirmPressed = confirmPressed
 
         val buttonBPressed = (buttons and (1 shl XrGamepadBridge.BUTTON_B)) != 0
-        if (buttonBPressed && !lastMenuButtonBPressed) dispatchMenuKeyEvent(android.view.KeyEvent.KEYCODE_BACK)
-        lastMenuButtonBPressed = buttonBPressed
+        val rightStickPressed = (buttons and (1 shl XrGamepadBridge.BUTTON_R3)) != 0
+        val backPressed = buttonBPressed || rightStickPressed
+        if (backPressed && !lastMenuBackPressed) {
+            Timber.i("Immersive: menu back pressed, source=%s", if (buttonBPressed) "B" else "right-stick")
+            dispatchMenuKeyEvent(android.view.KeyEvent.KEYCODE_BACK)
+        }
+        lastMenuBackPressed = backPressed
 
         val stickClickHeld = (buttons and ((1 shl XrGamepadBridge.BUTTON_L3) or (1 shl XrGamepadBridge.BUTTON_R3))) != 0
         val buttonLBPressed = (buttons and (1 shl XrGamepadBridge.BUTTON_LB)) != 0

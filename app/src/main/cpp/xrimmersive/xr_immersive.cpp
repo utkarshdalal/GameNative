@@ -342,6 +342,9 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     if (threadSettingsExtensionAvailable_) extensions.push_back(XR_KHR_ANDROID_THREAD_SETTINGS_EXTENSION_NAME);
     refreshRateExtensionAvailable_ = IsInstanceExtensionSupported(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
     if (refreshRateExtensionAvailable_) extensions.push_back(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
+    const char *picoControllerExtension = "XR_BD_controller_interaction";
+    const bool picoControllerExtensionAvailable = IsInstanceExtensionSupported(picoControllerExtension);
+    if (picoControllerExtensionAvailable) extensions.push_back(picoControllerExtension);
 
     XrInstanceCreateInfoAndroidKHR androidInfo{XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR};
     androidInfo.applicationVM = vm_;
@@ -354,7 +357,7 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     createInfo.applicationInfo.applicationVersion = 1;
     std::strncpy(createInfo.applicationInfo.engineName, "GameNative", XR_MAX_ENGINE_NAME_SIZE - 1);
     createInfo.applicationInfo.engineVersion = 1;
-    createInfo.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
+    createInfo.applicationInfo.apiVersion = XR_API_VERSION_1_0;
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.enabledExtensionNames = extensions.data();
 
@@ -666,12 +669,47 @@ bool XrImmersiveSession::setupInstanceAndSession() {
         {hapticAction_, path("/user/hand/right/output/haptic")},
     };
 
-    XrInteractionProfileSuggestedBinding suggestedBinding{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
-    suggestedBinding.interactionProfile = path("/interaction_profiles/oculus/touch_controller");
-    suggestedBinding.countSuggestedBindings = static_cast<uint32_t>(bindings.size());
-    suggestedBinding.suggestedBindings = bindings.data();
-    XrCheck(xrSuggestInteractionProfileBindings(instance_, &suggestedBinding),
-            "xrSuggestInteractionProfileBindings");
+    auto suggestBindings = [this, &path](const char *profile,
+                                         const std::vector<XrActionSuggestedBinding> &profileBindings) {
+        XrInteractionProfileSuggestedBinding suggestion{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+        suggestion.interactionProfile = path(profile);
+        suggestion.countSuggestedBindings = static_cast<uint32_t>(profileBindings.size());
+        suggestion.suggestedBindings = profileBindings.data();
+        const XrResult result = xrSuggestInteractionProfileBindings(instance_, &suggestion);
+        if (XR_SUCCEEDED(result)) {
+            LOGI("OpenXR controller bindings enabled: %s", profile);
+        } else {
+            LOGI("OpenXR controller bindings unavailable: %s result=%d", profile,
+                 static_cast<int>(result));
+        }
+    };
+
+    suggestBindings("/interaction_profiles/oculus/touch_controller", bindings);
+
+    std::vector<XrActionSuggestedBinding> picoLegacyBindings = {
+        {buttonXAction_, path("/user/hand/left/input/x/click")},
+        {buttonYAction_, path("/user/hand/left/input/y/click")},
+        {buttonAAction_, path("/user/hand/right/input/a/click")},
+        {buttonBAction_, path("/user/hand/right/input/b/click")},
+        {squeezeLAction_, path("/user/hand/left/input/squeeze/value")},
+        {squeezeRAction_, path("/user/hand/right/input/squeeze/value")},
+        {triggerLAction_, path("/user/hand/left/input/trigger")},
+        {triggerRAction_, path("/user/hand/right/input/trigger")},
+        {thumbstickLAction_, path("/user/hand/left/input/thumbstick")},
+        {thumbstickRAction_, path("/user/hand/right/input/thumbstick")},
+        {thumbstickLClickAction_, path("/user/hand/left/input/thumbstick/click")},
+        {thumbstickRClickAction_, path("/user/hand/right/input/thumbstick/click")},
+        {menuLAction_, path("/user/hand/left/input/menu/click")},
+        {aimPoseLeftAction_, path("/user/hand/left/input/aim/pose")},
+        {aimPoseRightAction_, path("/user/hand/right/input/aim/pose")},
+        {hapticAction_, path("/user/hand/left/output/haptic")},
+        {hapticAction_, path("/user/hand/right/output/haptic")},
+    };
+    if (picoControllerExtensionAvailable) {
+        suggestBindings("/interaction_profiles/pico/neo3_controller", picoLegacyBindings);
+        suggestBindings("/interaction_profiles/bytedance/pico_neo3_controller", bindings);
+        suggestBindings("/interaction_profiles/bytedance/pico4_controller", bindings);
+    }
 
     XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
     attachInfo.countActionSets = 1;
@@ -724,6 +762,25 @@ void XrImmersiveSession::pollXrEvents() {
                 default:
                     break;
             }
+        } else if (event.type == XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED) {
+            auto logProfile = [this](const char *hand, XrPath handPath) {
+                XrInteractionProfileState profileState{XR_TYPE_INTERACTION_PROFILE_STATE};
+                const XrResult result = xrGetCurrentInteractionProfile(session_, handPath, &profileState);
+                if (XR_FAILED(result) || profileState.interactionProfile == XR_NULL_PATH) {
+                    LOGI("OpenXR active controller profile: %s unavailable result=%d", hand,
+                         static_cast<int>(result));
+                    return;
+                }
+                std::array<char, XR_MAX_PATH_LENGTH> profile{};
+                uint32_t length = 0;
+                if (XR_SUCCEEDED(xrPathToString(instance_, profileState.interactionProfile,
+                                                static_cast<uint32_t>(profile.size()), &length,
+                                                profile.data()))) {
+                    LOGI("OpenXR active controller profile: %s %s", hand, profile.data());
+                }
+            };
+            logProfile("left", handPaths_[0]);
+            logProfile("right", handPaths_[1]);
         }
         event.type = XR_TYPE_EVENT_DATA_BUFFER;
     }
