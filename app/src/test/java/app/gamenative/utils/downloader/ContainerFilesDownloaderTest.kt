@@ -114,6 +114,47 @@ class ContainerFilesDownloaderTest {
     }
 
     @Test
+    fun testReusableCacheRequiresNonEmptyRegularFile() {
+        cacheDir.mkdirs()
+        val missing = File(cacheDir, "missing.tzst")
+        val empty = File(cacheDir, "empty.tzst").apply { createNewFile() }
+        val directory = File(cacheDir, "directory.tzst").apply { mkdirs() }
+        val valid = File(cacheDir, "valid.tzst").apply { writeText("archive") }
+
+        assertFalse(ContainerFilesDownloader.isReusableCacheFile(missing))
+        assertFalse(ContainerFilesDownloader.isReusableCacheFile(empty))
+        assertFalse(ContainerFilesDownloader.isReusableCacheFile(directory))
+        assertTrue(ContainerFilesDownloader.isReusableCacheFile(valid))
+    }
+
+    @Test
+    fun testObsoleteArchiveCleanupKeepsCurrentAndUnrelatedFiles() {
+        cacheDir.mkdirs()
+        val currentCommon = File(cacheDir, "container_pattern_common_20260821.tzst").apply {
+            writeText("current common")
+        }
+        val currentExtras = File(cacheDir, "extras.tzst").apply { writeText("current extras") }
+        val oldCommon = File(cacheDir, "container_pattern_common.tzst").apply { writeText("old") }
+        val olderDatedCommon = File(cacheDir, "container_pattern_common_20260701.tzst").apply {
+            writeText("older")
+        }
+        val unrelatedFile = File(cacheDir, "download.version").apply { writeText("metadata") }
+        val unrelatedDirectory = File(cacheDir, "directory.tzst").apply { mkdirs() }
+
+        ContainerFilesDownloader.removeObsoleteCachedArchives(
+            cacheDir,
+            setOf(currentCommon.name, currentExtras.name),
+        )
+
+        assertTrue(currentCommon.isFile)
+        assertTrue(currentExtras.isFile)
+        assertFalse(oldCommon.exists())
+        assertFalse(olderDatedCommon.exists())
+        assertTrue(unrelatedFile.isFile)
+        assertTrue(unrelatedDirectory.isDirectory)
+    }
+
+    @Test
     fun testWfmOnlyExtractionCreatesMissingParentDirectories() {
         assumeFalse("Bundled archive is only available in the legacy variant", BuildConfig.MODERN_ANDROID)
 
