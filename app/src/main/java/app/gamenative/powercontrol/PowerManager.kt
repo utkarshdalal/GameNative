@@ -204,6 +204,7 @@ object PowerManager {
                 NoOpPerformanceDriver()
             }
         }
+        currentProfile = driver.getDefaultProfile()
     }
 
     /**
