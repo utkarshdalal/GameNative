@@ -8,6 +8,10 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <android/log.h>
+
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "xrimmersive", __VA_ARGS__)
+
 namespace xrimmersive::windowsvr {
 
 namespace {
@@ -303,7 +307,10 @@ bool WindowsProjectionPresenter::importEyeBuffer(WindowsFrameTransport &transpor
         imported = createImageFromDmabuf(frame);
         if (imported == EGL_NO_IMAGE_KHR) {
             cpuFallback_[eye][image] = true;
+            LOGI("windows vr eye %u image %d: EGL dma-buf import failed — CPU upload fallback engaged", eye, image);
             if (uploadLinearDmabufToTexture(eye, image, frame, cachedTexture, registration)) return true;
+        } else {
+            LOGI("windows vr eye %u image %d: zero-copy EGL dma-buf import active", eye, image);
         }
     }
     if (imported == EGL_NO_IMAGE_KHR) {

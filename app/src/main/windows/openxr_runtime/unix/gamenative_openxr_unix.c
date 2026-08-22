@@ -756,10 +756,11 @@ static int create_image(struct gn_swapchain *swapchain, struct gn_image *out,
     {
         char trace[320];
         snprintf(trace, sizeof(trace),
-                 "dma-buf image format=%d size=%ux%u layers=%u tiling=%s "
+                 "dma-buf image format=%d size=%ux%u layers=%u samples=%u tiling=%s "
                  "modifier=0x%llx planes=%u stride0=%u offset0=%u",
                  (int)swapchain->format, swapchain->width, swapchain->height,
                  array_size ? array_size : 1,
+                 sample_count ? sample_count : 1,
                  has_chosen_modifier ? "modifier" : "linear",
                  (unsigned long long)out->modifier, out->plane_count,
                  out->strides[0], out->offsets[0]);
