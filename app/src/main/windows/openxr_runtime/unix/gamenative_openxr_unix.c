@@ -842,23 +842,33 @@ static int relay_init(void)
         "libvulkan_freedreno.so", "libvulkan.so", NULL
     };
     PFN_vkGetInstanceProcAddr gipa = NULL;
-    for (int i = 0; candidates[i] && !gipa; ++i) {
-        relay_lib = dlopen(candidates[i], RTLD_NOW | RTLD_LOCAL);
+    PFN_vkCreateInstance create_instance = NULL;
+    int candidate = 0;
+next_candidate:
+    if (relay_instance) {
+        PFN_vkDestroyInstance destroy_instance = gipa ?
+            (PFN_vkDestroyInstance)gipa(relay_instance, "vkDestroyInstance") : NULL;
+        if (destroy_instance) destroy_instance(relay_instance, NULL);
+        relay_instance = VK_NULL_HANDLE;
+    }
+    if (relay_lib) { dlclose(relay_lib); relay_lib = NULL; }
+    gipa = NULL;
+    for (; candidates[candidate] && !gipa; ++candidate) {
+        relay_lib = dlopen(candidates[candidate], RTLD_NOW | RTLD_LOCAL);
         if (!relay_lib) continue;
         gipa = (PFN_vkGetInstanceProcAddr)dlsym(relay_lib, "vk_icdGetInstanceProcAddr");
         if (!gipa) gipa = (PFN_vkGetInstanceProcAddr)dlsym(relay_lib, "vkGetInstanceProcAddr");
         if (!gipa) { dlclose(relay_lib); relay_lib = NULL; continue; }
         {
             char trace[128];
-            snprintf(trace, sizeof(trace), "relay: using %s", candidates[i]);
+            snprintf(trace, sizeof(trace), "relay: trying %s", candidates[candidate]);
             log_line(trace);
         }
     }
     if (!gipa) { log_line("relay: no usable Vulkan driver"); return 0; }
 
-    PFN_vkCreateInstance create_instance =
-        (PFN_vkCreateInstance)gipa(NULL, "vkCreateInstance");
-    if (!create_instance) return 0;
+    create_instance = (PFN_vkCreateInstance)gipa(NULL, "vkCreateInstance");
+    if (!create_instance) goto next_candidate;
     VkApplicationInfo app = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = "gamenative-xr-relay",
@@ -870,7 +880,7 @@ static int relay_init(void)
     };
     if (create_instance(&instance_info, NULL, &relay_instance) != VK_SUCCESS) {
         log_line("relay: vkCreateInstance failed");
-        return 0;
+        goto next_candidate;
     }
 
 #define RELAY_ILOAD(name) PFN_##name i_##name = (PFN_##name)gipa(relay_instance, #name)
@@ -884,13 +894,13 @@ static int relay_init(void)
     if (!i_vkEnumeratePhysicalDevices || !i_vkGetPhysicalDeviceQueueFamilyProperties ||
         !i_vkEnumerateDeviceExtensionProperties || !i_vkCreateDevice ||
         !i_vkGetDeviceProcAddr || !i_vkGetPhysicalDeviceMemoryProperties)
-        return 0;
+        goto next_candidate;
     r_vkGetPhysicalDeviceMemoryProperties = i_vkGetPhysicalDeviceMemoryProperties;
 
     uint32_t count = 1;
     if (i_vkEnumeratePhysicalDevices(relay_instance, &count, &relay_phys) < 0 || !count) {
         log_line("relay: no physical device");
-        return 0;
+        goto next_candidate;
     }
 
     VkQueueFamilyProperties families[8];
@@ -920,10 +930,11 @@ static int relay_init(void)
     VkExtensionProperties supported[256];
     uint32_t supported_count = 256;
     if (i_vkEnumerateDeviceExtensionProperties(relay_phys, NULL, &supported_count, supported) < 0)
-        return 0;
+        goto next_candidate;
     const char *enabled[16];
     uint32_t enabled_count = 0;
     int have_ahb = 0, have_dmabuf = 0, have_fd = 0;
+    relay_can_export_fence = 0;
     for (uint32_t w = 0; w < sizeof(wanted) / sizeof(wanted[0]); ++w) {
         for (uint32_t i = 0; i < supported_count; ++i) {
             if (strcmp(supported[i].extensionName, wanted[w]) == 0) {
@@ -941,7 +952,7 @@ static int relay_init(void)
         snprintf(trace, sizeof(trace), "relay: missing extensions ahb=%d dmabuf=%d fd=%d",
                  have_ahb, have_dmabuf, have_fd);
         log_line(trace);
-        return 0;
+        goto next_candidate;
     }
 
     float priority = 1.0f;
@@ -960,7 +971,7 @@ static int relay_init(void)
     };
     if (i_vkCreateDevice(relay_phys, &device_info, NULL, &relay_device) != VK_SUCCESS) {
         log_line("relay: vkCreateDevice failed");
-        return 0;
+        goto next_candidate;
     }
     r_vkGetDeviceProcAddr = i_vkGetDeviceProcAddr;
 
