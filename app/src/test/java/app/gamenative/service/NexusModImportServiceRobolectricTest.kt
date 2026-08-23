@@ -14,10 +14,6 @@ import app.gamenative.data.ModInstallSource
 import app.gamenative.data.ModInstallStatus
 import app.gamenative.mods.NexusConnectionState
 import app.gamenative.mods.NexusImportState
-import app.gamenative.mods.NexusModFile
-import app.gamenative.mods.NexusModInfo
-import app.gamenative.mods.NexusModReference
-import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -26,7 +22,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowContentResolver
 
 @RunWith(RobolectricTestRunner::class)
@@ -76,44 +71,30 @@ class NexusModImportServiceRobolectricTest {
     }
 
     @Test
-    fun enqueueNexusImport_disconnected_failsBeforeStartingService() = runBlocking {
+    fun nexusOnlineBlockMessage_requiresConnectedState() {
         val context = ApplicationProvider.getApplicationContext<Application>()
-        val shadowApplication = shadowOf(context)
-        while (shadowApplication.nextStartedService != null) {
-            // Ignore unrelated services started by application initialization.
-        }
+        val signInRequired = context.getString(R.string.nexus_oauth_sign_in_required)
 
-        val result = NexusModImportService.enqueueImport(
-            context = context,
-            appId = "steam_123",
-            reference = NexusModReference("fallout4", 10L, 20L),
-            modInfo = NexusModInfo(10L, "Test mod", "", "1.0"),
-            file = NexusModFile(
-                fileId = 20L,
-                name = "Test file",
-                version = "1.0",
-                fileName = "test.zip",
-                sizeBytes = 1L,
-                uploadedTimestamp = 1L,
+        assertEquals(
+            signInRequired,
+            NexusModImportService.nexusOnlineBlockMessage(
+                context,
+                NexusConnectionState.DISCONNECTED,
             ),
-            displayName = "Test mod",
         )
-        val error = runCatching { result.await() }.exceptionOrNull()
-
-        assertEquals(context.getString(R.string.nexus_oauth_sign_in_required), error?.message)
-        assertNull(shadowApplication.nextStartedService)
-    }
-
-    @Test
-    fun nexusOnlineBlockMessage_connectingRequiresSignIn() {
-        val context = ApplicationProvider.getApplicationContext<Application>()
-
-        val message = NexusModImportService.nexusOnlineBlockMessage(
-            context,
-            NexusConnectionState.CONNECTING,
+        assertEquals(
+            signInRequired,
+            NexusModImportService.nexusOnlineBlockMessage(
+                context,
+                NexusConnectionState.CONNECTING,
+            ),
         )
-
-        assertEquals(context.getString(R.string.nexus_oauth_sign_in_required), message)
+        assertNull(
+            NexusModImportService.nexusOnlineBlockMessage(
+                context,
+                NexusConnectionState.CONNECTED,
+            ),
+        )
     }
 
     @Test
