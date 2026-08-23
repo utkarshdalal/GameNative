@@ -9,7 +9,9 @@ import app.gamenative.R
 import app.gamenative.mods.NexusAuthManager
 import app.gamenative.ui.util.SnackbarManager
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
@@ -20,11 +22,13 @@ import timber.log.Timber
  * recreation or exposing it through a later inspection of the launch intent.
  */
 class NexusOAuthCallbackActivity : ComponentActivity() {
-    private var callbackJob: Job? = null
+    private companion object {
+        var callbackJob: Job? = null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState != null) {
+        if (savedInstanceState != null && !NexusOAuthCallbackContract.matches(intent)) {
             NexusOAuthCallbackContract.consumeAndScrub(intent)
             setIntent(Intent(this, NexusOAuthCallbackActivity::class.java))
             returnToApp()
@@ -53,24 +57,30 @@ class NexusOAuthCallbackActivity : ComponentActivity() {
             return
         }
         callbackJob = lifecycleScope.launch {
-            NexusAuthManager.handleAuthorizationCallback(callbackUri)
-                .onSuccess { account ->
-                    if (account != null) {
-                        SnackbarManager.show(
-                            getString(R.string.nexus_oauth_connected_as, account.name),
-                        )
-                    }
+            try {
+                withContext(NonCancellable) {
+                    NexusAuthManager.handleAuthorizationCallback(callbackUri)
+                        .onSuccess { account ->
+                            if (account != null) {
+                                SnackbarManager.show(
+                                    getString(R.string.nexus_oauth_connected_as, account.name),
+                                )
+                            }
+                        }
+                        .onFailure { error ->
+                            // Do not log exception messages here: OAuth server errors can include
+                            // callback details that do not belong in application logs.
+                            Timber.w(
+                                "[NexusOAuth]: Browser sign-in did not complete (%s)",
+                                error.javaClass.simpleName,
+                            )
+                            SnackbarManager.show(getString(R.string.nexus_oauth_sign_in_failed))
+                        }
+                    returnToApp()
                 }
-                .onFailure { error ->
-                    // Do not log exception messages here: OAuth server errors can include
-                    // callback details that do not belong in application logs.
-                    Timber.w(
-                        "[NexusOAuth]: Browser sign-in did not complete (%s)",
-                        error.javaClass.simpleName,
-                    )
-                    SnackbarManager.show(getString(R.string.nexus_oauth_sign_in_failed))
-                }
-            returnToApp()
+            } finally {
+                callbackJob = null
+            }
         }
     }
 

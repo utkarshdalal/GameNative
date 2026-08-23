@@ -46,7 +46,7 @@ data class NexusCollectionReference(
 object NexusUrlParser {
     internal sealed interface NxmDownloadGrantResult {
         data class Valid(val reference: NexusModReference) : NxmDownloadGrantResult
-        data class Expired(val reference: NexusModReference) : NxmDownloadGrantResult
+        data object Expired : NxmDownloadGrantResult
         data object Malformed : NxmDownloadGrantResult
     }
 
@@ -105,24 +105,24 @@ object NexusUrlParser {
         val modsIndex = segments.indexOfFirst { it.equals("mods", ignoreCase = true) }
         if (modsIndex < 0 || modsIndex + 1 >= segments.size) return null
         val modId = segments[modsIndex + 1].toLongOrNull()?.takeIf { it > 0L } ?: return null
-        val query = parseQuery(uri.rawQuery)
+        val query = parseNxmQuery(uri.rawQuery) ?: return null
         val fileId = if (
             modsIndex + 3 < segments.size &&
             segments[modsIndex + 2].equals("files", ignoreCase = true)
         ) {
             segments[modsIndex + 3].toLongOrNull()?.takeIf { it > 0L }
         } else {
-            query["file_id"]?.toLongOrNull()?.takeIf { it > 0L }
+            query.singleValue("file_id")?.toLongOrNull()?.takeIf { it > 0L }
         }
-        val downloadAuthorization = query["key"]
+        val downloadAuthorization = query.singleValue("key")
             ?.takeIf { it.isNotBlank() && it.length <= 2048 }
             ?.let { key ->
-                val expires = query["expires"]?.toLongOrNull()?.takeIf { it > 0L }
+                val expires = query.singleValue("expires")?.toLongOrNull()?.takeIf { it > 0L }
                     ?: return@let null
                 NexusDownloadAuthorization(
                     key = key,
                     expires = expires,
-                    userId = query["user_id"]?.toLongOrNull()?.takeIf { it > 0L },
+                    userId = query.singleValue("user_id")?.toLongOrNull()?.takeIf { it > 0L },
                 )
             }
         return NexusModReference(
@@ -176,7 +176,7 @@ object NexusUrlParser {
                 userId = userId,
             ),
         )
-        if (expires <= nowEpochSeconds) return NxmDownloadGrantResult.Expired(reference)
+        if (expires <= nowEpochSeconds) return NxmDownloadGrantResult.Expired
 
         return NxmDownloadGrantResult.Valid(reference)
     }

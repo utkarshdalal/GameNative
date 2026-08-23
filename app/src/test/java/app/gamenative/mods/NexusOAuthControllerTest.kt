@@ -5,6 +5,7 @@ import java.util.Base64
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -154,6 +155,35 @@ class NexusOAuthControllerTest {
 
         assertTrue(result.isFailure)
         assertEquals(2, remote.userInfoCalls)
+        assertNull(store.tokens)
+        assertEquals(NexusConnectionState.DISCONNECTED, controller.state.value.connection)
+    }
+
+    @Test
+    fun callback_canceledDuringOpaqueIdentityLookupDiscardsUnverifiedSession() = runBlocking {
+        val userInfoStarted = CompletableDeferred<Unit>()
+        val userInfoRelease = CompletableDeferred<Unit>()
+        val store = MemoryOAuthStore().apply {
+            transaction = NexusAuthorizationTransaction("expected-state", "verifier", 1_000L)
+        }
+        val controller = controller(
+            store,
+            FakeOAuthRemote(
+                accessToken = "opaque-access-token",
+                userInfoStarted = userInfoStarted,
+                userInfoRelease = userInfoRelease,
+            ),
+            nowMillis = 2_000L,
+        )
+        val callback = async {
+            controller.handleAuthorizationCallback(
+                "app.gamenative://oauth/callback?code=authorization-code&state=expected-state",
+            )
+        }
+        userInfoStarted.await()
+
+        callback.cancelAndJoin()
+
         assertNull(store.tokens)
         assertEquals(NexusConnectionState.DISCONNECTED, controller.state.value.connection)
     }
@@ -520,6 +550,8 @@ private class FakeOAuthRemote(
     private val exchangeRelease: CompletableDeferred<Unit>? = null,
     private val accessToken: String = "access-two",
     private val userInfoError: NexusOAuthException? = null,
+    private val userInfoStarted: CompletableDeferred<Unit>? = null,
+    private val userInfoRelease: CompletableDeferred<Unit>? = null,
 ) : NexusOAuthRemote {
     var exchangeCalls = 0
     var refreshCalls = 0
@@ -546,6 +578,8 @@ private class FakeOAuthRemote(
 
     override suspend fun getUserInfo(accessToken: String): NexusOAuthAccount {
         userInfoCalls += 1
+        userInfoStarted?.complete(Unit)
+        userInfoRelease?.await()
         userInfoError?.let { throw it }
         return NexusOAuthAccount("42", "Modder", membershipRoles = listOf("premium"))
     }

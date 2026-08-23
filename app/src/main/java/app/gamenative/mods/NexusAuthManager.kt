@@ -215,6 +215,19 @@ internal class NexusOAuthController(
                 Result.success(account)
             } catch (error: CancellationException) {
                 restoreStateAfterAuthorizationFailure(attemptState)
+                synchronized(authorizationLock) {
+                    if (mutableState.value.connection == NexusConnectionState.CONNECTING) {
+                        // An opaque token has no locally verifiable account identity. If its
+                        // lookup is canceled, discard it instead of leaving a permanent
+                        // CONNECTING session that cannot safely authorize downloads.
+                        runCatching { store.clearTokens() }
+                        activeAuthorizationState = null
+                        invalidateSessionSideData()
+                        mutableState.value = NexusAuthState(
+                            connection = NexusConnectionState.DISCONNECTED,
+                        )
+                    }
+                }
                 throw error
             } catch (error: Exception) {
                 restoreStateAfterAuthorizationFailure(attemptState, NexusAuthError.SIGN_IN_FAILED)

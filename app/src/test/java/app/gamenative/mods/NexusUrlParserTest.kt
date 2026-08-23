@@ -51,13 +51,22 @@ class NexusUrlParserTest {
     }
 
     @Test
+    fun parseNxmReference_preservesLiteralPlusInSignedKey() {
+        val reference = NexusUrlParser.parse(
+            "nxm://newvegas/mods/12/files/34?key=signed+grant%2Bpart&expires=200&user_id=99",
+        )
+
+        assertEquals("signed+grant+part", reference?.downloadAuthorization?.key)
+    }
+
+    @Test
     fun parseNxmDownloadGrant_rejectsExpiredGrantSeparately() {
         val result = NexusUrlParser.parseNxmDownloadGrant(
             input = "nxm://newvegas/mods/12/files/34?key=signed&expires=100&user_id=99",
             nowEpochSeconds = 100L,
         )
 
-        assertTrue(result is NexusUrlParser.NxmDownloadGrantResult.Expired)
+        assertEquals(NexusUrlParser.NxmDownloadGrantResult.Expired, result)
     }
 
     @Test

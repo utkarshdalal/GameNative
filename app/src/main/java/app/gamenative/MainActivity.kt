@@ -63,6 +63,7 @@ import com.winlator.core.AppUtils
 import com.winlator.inputcontrols.ControllerManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -74,10 +75,9 @@ import timber.log.Timber
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-    private val nxmIntentMutex = Mutex()
-
     companion object {
+        private val nxmIntentMutex = Mutex()
+
         private var totalIndex = 0
 
         private var currentOrientationChangeValue: Int = 0
@@ -318,7 +318,9 @@ class MainActivity : ComponentActivity() {
             // otherwise replay it after a configuration change or process recreation.
             setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
             lifecycleScope.launch {
-                nxmIntentMutex.withLock { handleNxmIntent(rawNxmUrl) }
+                withContext(NonCancellable) {
+                    nxmIntentMutex.withLock { handleNxmIntent(rawNxmUrl) }
+                }
             }
             return
         }
@@ -394,11 +396,7 @@ class MainActivity : ComponentActivity() {
                     submission.reference.fileId,
                 )
             }
-            is NexusNxmSubmission.Expired -> {
-                NexusDownloadLinkInbox.cancelExpected(submission.reference)
-                withContext(Dispatchers.IO) {
-                    NexusPendingDownloadStore.removeMatching(this@MainActivity, submission.reference)
-                }
+            NexusNxmSubmission.Expired -> {
                 Timber.i("[NexusDownload]: Ignoring expired NXM callback")
                 SnackbarManager.show(getString(R.string.nexus_authorization_expired))
             }

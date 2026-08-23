@@ -37,7 +37,7 @@ sealed interface NexusNxmSubmission {
         val reference: NexusModReference,
     ) : NexusNxmSubmission
 
-    data class Expired(val reference: NexusModReference) : NexusNxmSubmission
+    data object Expired : NexusNxmSubmission
     data object NoActiveTarget : NexusNxmSubmission
     data object AmbiguousTarget : NexusNxmSubmission
     data object Replayed : NexusNxmSubmission
@@ -150,20 +150,7 @@ object NexusDownloadLinkInbox {
             val parsed = NexusUrlParser.parseNxmDownloadGrant(rawUrl, requireUserId = false)
         ) {
             is NexusUrlParser.NxmDownloadGrantResult.Valid -> parsed.reference
-            is NexusUrlParser.NxmDownloadGrantResult.Expired -> {
-                val reference = parsed.reference
-                synchronized(pendingLock) {
-                    removeExpiredPendingDownloads()
-                    pendingWebsiteDownloads.remove(reference.fileKey())?.let { pending ->
-                        if (pending.appId in activeReceivers.values) {
-                            callbackChannelFor(pending.appId).trySend(
-                                AuthorizedNexusWebsiteDownload(pending, reference),
-                            )
-                        }
-                    }
-                }
-                return NexusNxmSubmission.Expired(reference)
-            }
+            NexusUrlParser.NxmDownloadGrantResult.Expired -> return NexusNxmSubmission.Expired
             NexusUrlParser.NxmDownloadGrantResult.Malformed -> return NexusNxmSubmission.Malformed
         }
         val authorization = reference.downloadAuthorization ?: return NexusNxmSubmission.Malformed
@@ -224,12 +211,6 @@ object NexusDownloadLinkInbox {
             ) {
                 pendingWebsiteDownloads.remove(key)
             }
-        }
-    }
-
-    fun cancelExpected(reference: NexusModReference) {
-        synchronized(pendingLock) {
-            pendingWebsiteDownloads.remove(reference.fileKey())
         }
     }
 

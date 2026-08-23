@@ -258,10 +258,11 @@ class NexusDownloadLinkInboxTest {
     fun expiredAndMalformedBrowserFirstGrants_areDistinguished() {
         val registration = NexusDownloadLinkInbox.registerReceiver("STEAM_22380")
         try {
-            assertTrue(
+            assertEquals(
+                NexusNxmSubmission.Expired,
                 NexusDownloadLinkInbox.submitIntent(
                     "nxm://newvegas/mods/60006/files/70006?key=expired&expires=1&user_id=99",
-                ) is NexusNxmSubmission.Expired,
+                ),
             )
             assertEquals(
                 NexusNxmSubmission.Malformed,
@@ -276,25 +277,28 @@ class NexusDownloadLinkInboxTest {
     }
 
     @Test
-    fun expiredExpectedGrant_clearsExpectationAndNotifiesCollector() = runBlocking {
+    fun expiredExpectedGrant_doesNotConsumeExpectation() = runBlocking {
         val pending = pendingDownload(appId = "STEAM_22380", modId = 60010L, fileId = 70010L)
-        val registration = NexusDownloadLinkInbox.registerReceiver(pending.appId)
         try {
             assertTrue(NexusDownloadLinkInbox.expect(pending))
 
-            val result = NexusDownloadLinkInbox.submitIntent(
-                "nxm://newvegas/mods/60010/files/70010?key=expired-expected&expires=1&user_id=99",
+            assertEquals(
+                NexusNxmSubmission.Expired,
+                NexusDownloadLinkInbox.submitIntent(
+                    "nxm://newvegas/mods/60010/files/70010?key=expired-expected&expires=1&user_id=99",
+                ),
             )
-
-            assertTrue(result is NexusNxmSubmission.Expired)
+            assertTrue(
+                NexusDownloadLinkInbox.submitIntent(
+                    callbackUrl(modId = 60010L, fileId = 70010L, key = "valid-after-expired"),
+                ) is NexusNxmSubmission.Expected,
+            )
             val delivered = withTimeout(1_000L) {
                 NexusDownloadLinkInbox.callbacksFor(pending.appId).first()
             }
             assertEquals(pending, delivered.pending)
-            assertTrue(delivered.reference.downloadAuthorization?.isExpired() == true)
-            assertTrue(NexusDownloadLinkInbox.expect(pending.copy(requestId = "retry")))
+            assertEquals("valid-after-expired", delivered.reference.downloadAuthorization?.key)
         } finally {
-            registration.unregister()
             NexusDownloadLinkInbox.clearAll()
         }
     }
