@@ -1268,44 +1268,6 @@ static int gn_bridge_call(const char* command, char* response, gn_size response_
     return ok;
 }
 
-#ifdef _WIN64
-unsigned long long GetTickCount64(void);
-#else
-unsigned long long __stdcall GetTickCount64(void);
-#endif
-
-/* Frame-phase timing: where does each frame's wall time go. Logged every 64 frames. */
-static unsigned long long gn_phase_ms[6]; /* waitFrame, dxvkLock, transport, acquire, other, total */
-static unsigned long long gn_phase_last_frame_start;
-static unsigned int gn_phase_frames;
-
-static void gn_phase_account(int phase, unsigned long long elapsed) {
-    gn_phase_ms[phase] += elapsed;
-}
-
-static void gn_phase_frame_tick(unsigned long long now) {
-    if (gn_phase_last_frame_start) {
-        gn_phase_ms[5] += now - gn_phase_last_frame_start;
-        if (++gn_phase_frames == 64) {
-            char line[224];
-            gn_size n = gn_append(line, sizeof(line), 0, "phase avg ms: wait=");
-            n = gn_append_i64(line, sizeof(line), n, (long long)(gn_phase_ms[0] / 64));
-            n = gn_append(line, sizeof(line), n, " dxvkLock=");
-            n = gn_append_i64(line, sizeof(line), n, (long long)(gn_phase_ms[1] / 64));
-            n = gn_append(line, sizeof(line), n, " transport=");
-            n = gn_append_i64(line, sizeof(line), n, (long long)(gn_phase_ms[2] / 64));
-            n = gn_append(line, sizeof(line), n, " acquire=");
-            n = gn_append_i64(line, sizeof(line), n, (long long)(gn_phase_ms[3] / 64));
-            n = gn_append(line, sizeof(line), n, " frame=");
-            n = gn_append_i64(line, sizeof(line), n, (long long)(gn_phase_ms[5] / 64));
-            gn_log_line(line);
-            for (int i = 0; i < 6; ++i) gn_phase_ms[i] = 0;
-            gn_phase_frames = 0;
-        }
-    }
-    gn_phase_last_frame_start = now;
-}
-
 static char gn_cached_views[512];
 static char gn_cached_input[2][512];
 static int gn_cache_valid = 0;
@@ -2351,10 +2313,7 @@ static XrResult XRAPI_CALL gn_xrWaitFrame(XrSession session, const XrFrameWaitIn
     (void)waitInfo;
     char response[160];
     int synced;
-    unsigned long long phase_start;
     if (session != gn_session || !frameState) return XR_ERROR_HANDLE_INVALID;
-    phase_start = GetTickCount64();
-    gn_phase_frame_tick(phase_start);
     synced = gn_frame_sync_supported && gn_bridge_frame_sync(response, sizeof(response));
     if (!synced && !gn_frame_sync_supported)
         synced = gn_bridge_call("WAIT_FRAME", response, sizeof(response));
@@ -2363,7 +2322,6 @@ static XrResult XRAPI_CALL gn_xrWaitFrame(XrSession session, const XrFrameWaitIn
         frameState->predictedDisplayPeriod = gn_parse_i64(response, "period", 11111111);
         frameState->shouldRender = gn_parse_i64(response, "render", gn_session_running ? 1 : 0) != 0 ? XR_TRUE : XR_FALSE;
         gn_next_display_time = frameState->predictedDisplayTime + frameState->predictedDisplayPeriod;
-        gn_phase_account(0, GetTickCount64() - phase_start);
 
         long long quest_state = gn_parse_i64(response, "state", 0);
         if (quest_state == XR_SESSION_STATE_LOSS_PENDING) {
@@ -2432,11 +2390,8 @@ static XrResult XRAPI_CALL gn_xrEndFrame(XrSession session, const XrFrameEndInfo
     }
 
     int submission_failed = 0;
-    unsigned long long phase_start = GetTickCount64();
     if (gn_gfx_api == GN_GFX_D3D11) gn_dxvk_flush_and_lock();
     if (gn_gfx_api == GN_GFX_D3D12) gn_vkd3d_lock();
-    gn_phase_account(1, GetTickCount64() - phase_start);
-    phase_start = GetTickCount64();
     for (gn_uint32 layer_index = 0;
          layer_index < frameEndInfo->layerCount; ++layer_index) {
         const XrCompositionLayerBaseHeader* base =
@@ -2532,7 +2487,6 @@ static XrResult XRAPI_CALL gn_xrEndFrame(XrSession session, const XrFrameEndInfo
         gn_swapchains[i].last_released_valid = 0;
     if (gn_gfx_api == GN_GFX_D3D11) gn_dxvk_unlock();
     if (gn_gfx_api == GN_GFX_D3D12) gn_vkd3d_unlock();
-    gn_phase_account(2, GetTickCount64() - phase_start);
 
 
 
@@ -3050,13 +3004,11 @@ static XrResult XRAPI_CALL gn_xrWaitSwapchainImage(XrSwapchain swapchain, const 
     }
     if (state->submitted[index]) {
         struct gn_unix_acquire_image_args args;
-        unsigned long long phase_start = GetTickCount64();
         args.slot = (gn_u32)slot;
         args.image_index = index;
         args.timeout_ns = waitInfo->timeout;
         args.result = GN_UNIX_ERROR_UNAVAILABLE;
         if (!gn_unix_call(GN_UNIX_ACQUIRE_IMAGE, &args)) return XR_ERROR_RUNTIME_FAILURE;
-        gn_phase_account(3, GetTickCount64() - phase_start);
         if (args.result == GN_UNIX_ERROR_TIMEOUT) return XR_TIMEOUT_EXPIRED;
         if (args.result != GN_UNIX_SUCCESS) return XR_ERROR_RUNTIME_FAILURE;
         state->submitted[index] = 0;
