@@ -109,7 +109,7 @@ class WindowsVrPayloadManager(
             if (ini.isFile) writeIfChanged(iniBackup, ini.readBytes()) else writeIfChanged(iniMissing, byteArrayOf(1))
             writeIfChanged(owner, "2\n".toByteArray())
             writeIfChanged(target, adapter)
-            writeIfChanged(ini, "enableAudio=false\nlogEnabled=true\n".toByteArray())
+            writeIfChanged(ini, "initUsingVulkan=false\nlogAllOpenVRCalls=false\n".toByteArray())
             openCompositeDirectories += directory
             diagnostics.record("opencomposite", "installed path=${target.path}")
         }

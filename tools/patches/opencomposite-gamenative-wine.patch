@@ -1,0 +1,105 @@
+diff --git a/DrvOpenXR/DrvOpenXR.cpp b/DrvOpenXR/DrvOpenXR.cpp
+index 8e3bd9c..208e612 100644
+--- a/DrvOpenXR/DrvOpenXR.cpp
++++ b/DrvOpenXR/DrvOpenXR.cpp
+@@ -28,8 +28,9 @@ std::string GetExeName()
+ {
+ 	char exePath[MAX_PATH + 1] = { 0 };
+ 	DWORD len = GetModuleFileNameA(NULL, exePath, MAX_PATH);
+-	PathStripPathA(exePath);
+-	return { exePath };
++	std::string path(exePath, len);
++	auto separator = path.find_last_of("\\/");
++	return separator == std::string::npos ? path : path.substr(separator + 1);
+ }
+ #else
+ #include <libgen.h> // basename
+diff --git a/DrvOpenXR/XrHMD.cpp b/DrvOpenXR/XrHMD.cpp
+index ffeab79..d2fe55c 100644
+--- a/DrvOpenXR/XrHMD.cpp
++++ b/DrvOpenXR/XrHMD.cpp
+@@ -9,6 +9,7 @@
+ #include "../OpenOVR/Reimpl/BaseSystem.h"
+ #include "../OpenOVR/convert.h"
+ #include "generated/static_bases.gen.h"
++#include <chrono>
+ #include <thread>
+ #include <mutex>
+ 
+diff --git a/OCOVR/openvr_api.cpp b/OCOVR/openvr_api.cpp
+index a49444a..d8c3ffb 100644
+--- a/OCOVR/openvr_api.cpp
++++ b/OCOVR/openvr_api.cpp
+@@ -111,9 +111,7 @@ VR_INTERFACE void* VR_CALLTYPE VR_GetGenericInterface(const char* interfaceVersi
+ 
+ 	if (!valid_apptypes_success) {
+ 		valid_apptypes = 1ull << VRApplication_Scene;
+-#ifndef _WIN32
+ 		valid_apptypes |= (1ull << VRApplication_Background); // Proton uses this
+-#endif
+ 	}
+ 
+ 	if ((valid_apptypes & (1ull << current_apptype)) == 0) {
+@@ -254,11 +254,9 @@ VR_INTERFACE uint32_t VR_CALLTYPE VR_InitInternal2(EVRInitError* peError, EVRApp
+ 		return current_init_token;
+ 	}
+ 
+-	if (eApplicationType != VRApplication_Scene)
+-#ifndef _WIN32
+-		if (eApplicationType != VRApplication_Background) // Proton uses this
+-#endif
+-			ERR("Cannot init VR: unsupported apptype " + to_string(eApplicationType));
++	if (eApplicationType != VRApplication_Scene &&
++		eApplicationType != VRApplication_Background) // Wine/Proton uses this
++		ERR("Cannot init VR: unsupported apptype " + to_string(eApplicationType));
+ 
+ 	if (running)
+ 		ERR("Cannot init VR: Already running!");
+diff --git a/OpenOVR/Compositor/compositor.h b/OpenOVR/Compositor/compositor.h
+index e83a16a..d650b08 100644
+--- a/OpenOVR/Compositor/compositor.h
++++ b/OpenOVR/Compositor/compositor.h
+@@ -2,8 +2,6 @@
+ 
+ #include "generated/interfaces/vrtypes.h"
+ #ifdef WIN32
+-// Windows template libraries
+-#include <atlbase.h>
+ #include <wrl/client.h>
+ #endif
+ 
+diff --git a/OpenOVR/Compositor/dx12compositor.cpp b/OpenOVR/Compositor/dx12compositor.cpp
+index ff2fedd..4462eee 100644
+--- a/OpenOVR/Compositor/dx12compositor.cpp
++++ b/OpenOVR/Compositor/dx12compositor.cpp
+@@ -6,8 +6,6 @@
+ 
+ #include <string>
+ 
+-#include <atlbase.h>
+-
+ #include <DirectXMath.h>
+ #include <d3dcompiler.h>
+ 
+diff --git a/OpenOVR/Misc/Keyboard/VRKeyboard.cpp b/OpenOVR/Misc/Keyboard/VRKeyboard.cpp
+index 6766ed4..c91cba3 100644
+--- a/OpenOVR/Misc/Keyboard/VRKeyboard.cpp
++++ b/OpenOVR/Misc/Keyboard/VRKeyboard.cpp
+@@ -298,7 +298,7 @@ void VRKeyboard::Refresh()
+ 		{ pixels, sizeof(pix_t) * desc.Width, sizeof(pix_t) * desc.Width * desc.Height }
+ 	};
+ 
+-	CComPtr<ID3D11Texture2D> tex;
++	ComPtr<ID3D11Texture2D> tex;
+ 	HRESULT rres = dev->CreateTexture2D(&desc, init, &tex);
+ 	// HRESULT hrr = dev->GetDeviceRemovedReason();
+ 	OOVR_FAILED_DX_ABORT(rres);
+@@ -309,7 +309,7 @@ void VRKeyboard::Refresh()
+ 	int index;
+ 	OOVR_FAILED_OVR_ABORT(ovr_GetTextureSwapChainCurrentIndex(*ovr::session, chain, &index));
+ 
+-	CComPtr<ID3D11Texture2D> dst;
++	ComPtr<ID3D11Texture2D> dst;
+ 	OOVR_FAILED_OVR_ABORT(ovr_GetTextureSwapChainBufferDX(*ovr::session, chain, index, IID_PPV_ARGS(&dst)));
+ 
+ 	ctx->CopyResource(dst, tex);

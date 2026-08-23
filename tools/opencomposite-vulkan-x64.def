@@ -1,0 +1,21 @@
+LIBRARY vulkan-1.dll
+EXPORTS
+    vkAllocateCommandBuffers
+    vkBeginCommandBuffer
+    vkCmdBlitImage
+    vkCmdCopyImage
+    vkCmdPipelineBarrier
+    vkCmdResolveImage
+    vkCreateCommandPool
+    vkCreateDevice
+    vkCreateInstance
+    vkDestroyCommandPool
+    vkDestroyDevice
+    vkDestroyInstance
+    vkEndCommandBuffer
+    vkEnumeratePhysicalDevices
+    vkFreeCommandBuffers
+    vkGetDeviceQueue
+    vkGetPhysicalDeviceProperties2
+    vkGetPhysicalDeviceQueueFamilyProperties
+    vkQueueSubmit

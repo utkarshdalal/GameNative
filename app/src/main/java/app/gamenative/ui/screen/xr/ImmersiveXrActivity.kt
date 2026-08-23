@@ -46,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeConfig
 import kotlinx.coroutines.delay
 import app.gamenative.PluviaApp
 import app.gamenative.R
@@ -99,8 +100,6 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         private const val EXTRA_QUAD_DISTANCE = "immersiveQuadDistance"
         private const val EXTRA_QUAD_SCALE = "immersiveQuadScale"
         private const val EXTRA_PASSTHROUGH_ENABLED = "immersivePassthroughEnabled"
-        private const val EXTRA_WINDOWS_VR_ENABLED = "windowsVrEnabled"
-        private const val EXTRA_WINDOWS_VR_OPEN_COMPOSITE = "windowsVrOpenCompositeEnabled"
 
         fun start(context: Context, appId: String, isOffline: Boolean) {
             val intent = Intent(context, ImmersiveXrActivity::class.java).apply {
@@ -401,8 +400,11 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             quadScale = container.getExtra(EXTRA_QUAD_SCALE, ImmersiveControls.DEFAULT_SCALE.toString())
                 .toFloatOrNull() ?: ImmersiveControls.DEFAULT_SCALE
             passthroughEnabled = container.getExtra(EXTRA_PASSTHROUGH_ENABLED, "false").toBoolean()
-            windowsVrEnabled = container.getExtra(EXTRA_WINDOWS_VR_ENABLED, "true").toBoolean()
-            openCompositeEnabled = container.getExtra(EXTRA_WINDOWS_VR_OPEN_COMPOSITE, "false").toBoolean()
+            windowsVrEnabled = container.getExtra(WindowsVrRuntimeConfig.EXTRA_ENABLED, "true").toBoolean()
+            openCompositeEnabled = container.getExtra(
+                WindowsVrRuntimeConfig.EXTRA_OPEN_COMPOSITE_ENABLED,
+                "false",
+            ).toBoolean()
             windowsVrStatus = if (windowsVrEnabled) "Waiting for runtime" else "Disabled"
             applyQuadTransform()
             if (xrSessionHandle != 0L) {
@@ -422,8 +424,11 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             container.putExtra(EXTRA_QUAD_DISTANCE, quadDistance.toString())
             container.putExtra(EXTRA_QUAD_SCALE, quadScale.toString())
             container.putExtra(EXTRA_PASSTHROUGH_ENABLED, passthroughEnabled.toString())
-            container.putExtra(EXTRA_WINDOWS_VR_ENABLED, windowsVrEnabled.toString())
-            container.putExtra(EXTRA_WINDOWS_VR_OPEN_COMPOSITE, openCompositeEnabled.toString())
+            container.putExtra(WindowsVrRuntimeConfig.EXTRA_ENABLED, windowsVrEnabled.toString())
+            container.putExtra(
+                WindowsVrRuntimeConfig.EXTRA_OPEN_COMPOSITE_ENABLED,
+                openCompositeEnabled.toString(),
+            )
             container.saveData()
         }
     }

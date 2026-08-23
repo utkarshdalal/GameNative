@@ -195,6 +195,17 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     )
                     Text(text = "${config.xrRenderScale}%")
                 }
+                if (!default) {
+                    SettingsSwitch(
+                        colors = settingsTileColorsAlt(),
+                        title = { Text(text = stringResource(R.string.xr_open_composite)) },
+                        subtitle = { Text(text = stringResource(R.string.xr_open_composite_description)) },
+                        state = config.openCompositeEnabled,
+                        onCheckedChange = {
+                            state.config.value = config.copy(openCompositeEnabled = it)
+                        },
+                    )
+                }
             }
             SettingsListDropdown(
                 colors = settingsTileColors(),

@@ -10,6 +10,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeConfig
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
@@ -306,6 +307,10 @@ object ContainerUtils {
             displayRenderer = container.displayRenderer,
             xrRefreshRate = container.xrRefreshRate,
             xrRenderScale = container.xrRenderScale,
+            openCompositeEnabled = container.getExtra(
+                WindowsVrRuntimeConfig.EXTRA_OPEN_COMPOSITE_ENABLED,
+                "false",
+            ).toBoolean(),
             sfCompatMode = container.sfCompatMode,
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
@@ -491,6 +496,10 @@ object ContainerUtils {
         container.displayRenderer = containerData.displayRenderer
         container.xrRefreshRate = containerData.xrRefreshRate
         container.xrRenderScale = containerData.xrRenderScale
+        container.putExtra(
+            WindowsVrRuntimeConfig.EXTRA_OPEN_COMPOSITE_ENABLED,
+            containerData.openCompositeEnabled.toString(),
+        )
         container.sfCompatMode = containerData.sfCompatMode
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig
