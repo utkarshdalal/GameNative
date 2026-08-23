@@ -36,8 +36,10 @@ import coil.request.CachePolicy
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.events.AndroidEvent
+import app.gamenative.mods.NexusAuthManager
 import app.gamenative.mods.NexusDownloadLinkInbox
 import app.gamenative.mods.NexusIntegrationStatus
+import app.gamenative.mods.NexusNxmSubmission
 import app.gamenative.mods.NexusPendingDownloadStore
 import app.gamenative.ui.screen.library.appscreen.BaseAppScreen
 import app.gamenative.service.SteamService
@@ -313,26 +315,57 @@ class MainActivity : ComponentActivity() {
                 SnackbarManager.show(getString(R.string.nexus_integration_temporarily_unavailable))
                 return
             }
+            if (!NexusAuthManager.hasStoredSession()) {
+                // A signed NXM grant is short lived and account-bound. Do not restore or consume
+                // it while disconnected: the user must reconnect and request a fresh grant.
+                Timber.i("[NexusDownload]: Ignoring NXM callback while the Nexus account is disconnected")
+                SnackbarManager.show(getString(R.string.nexus_oauth_sign_in_required))
+                return
+            }
             val restoredDownloads = NexusPendingDownloadStore.restore(this)
             restoredDownloads.forEach { NexusDownloadLinkInbox.expect(it) }
-            val reference = intent.dataString?.let(NexusDownloadLinkInbox::submit)
-            if (reference != null) {
-                restoredDownloads.firstOrNull { pending ->
-                    pending.reference.gameDomain.equals(reference.gameDomain, ignoreCase = true) &&
-                        pending.reference.modId == reference.modId &&
-                        pending.file.fileId == reference.fileId
-                }?.let { pending -> BaseAppScreen.requestManageMods(pending.appId) }
-                NexusPendingDownloadStore.removeMatching(this, reference)
-                Timber.i(
-                    "[NexusDownload]: Received authorized NXM callback for %s/%d/%s",
-                    reference.gameDomain,
-                    reference.modId,
-                    reference.fileId,
-                )
-                SnackbarManager.show(getString(R.string.nexus_nxm_callback_received))
-            } else {
-                Timber.w("[NexusDownload]: Ignoring malformed or unsigned NXM callback")
-                SnackbarManager.show(getString(R.string.nexus_invalid_nxm_callback))
+            when (val submission = NexusDownloadLinkInbox.submitIntent(intent.dataString.orEmpty())) {
+                is NexusNxmSubmission.Expected -> {
+                    BaseAppScreen.requestManageMods(submission.appId)
+                    NexusPendingDownloadStore.removeMatching(this, submission.reference)
+                    Timber.i(
+                        "[NexusDownload]: Received expected NXM callback for %s/%d/%s",
+                        submission.reference.gameDomain,
+                        submission.reference.modId,
+                        submission.reference.fileId,
+                    )
+                    SnackbarManager.show(getString(R.string.nexus_nxm_callback_received))
+                }
+                is NexusNxmSubmission.BrowserFirst -> {
+                    Timber.i(
+                        "[NexusDownload]: Routed browser-first NXM callback for %s/%d/%s",
+                        submission.reference.gameDomain,
+                        submission.reference.modId,
+                        submission.reference.fileId,
+                    )
+                }
+                NexusNxmSubmission.Expired -> {
+                    Timber.i("[NexusDownload]: Ignoring expired NXM callback")
+                    SnackbarManager.show(getString(R.string.nexus_authorization_expired))
+                }
+                NexusNxmSubmission.NoActiveTarget -> {
+                    Timber.i("[NexusDownload]: Browser-first NXM callback has no active target")
+                    SnackbarManager.show(getString(R.string.nexus_nxm_no_active_target))
+                }
+                NexusNxmSubmission.AmbiguousTarget -> {
+                    Timber.w("[NexusDownload]: Browser-first NXM callback has multiple active targets")
+                    SnackbarManager.show(getString(R.string.nexus_nxm_ambiguous_target))
+                }
+                NexusNxmSubmission.DeliveryFailed -> {
+                    Timber.w("[NexusDownload]: Could not deliver NXM callback to the active target")
+                    SnackbarManager.show(getString(R.string.nexus_oauth_session_unavailable))
+                }
+                NexusNxmSubmission.Replayed,
+                NexusNxmSubmission.Malformed,
+                -> {
+                    Timber.w("[NexusDownload]: Ignoring malformed, unsigned, or replayed NXM callback")
+                    SnackbarManager.show(getString(R.string.nexus_invalid_nxm_callback))
+                }
             }
             return
         }

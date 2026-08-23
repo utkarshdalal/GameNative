@@ -12,6 +12,7 @@ import androidx.navigation.NavController
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.events.EventDispatcher
+import app.gamenative.mods.NexusAuthManager
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.DownloadService
@@ -82,6 +83,7 @@ class PluviaApp : SplitCompatApplication() {
 
         // Init our datastore preferences.
         PrefManager.init(this)
+        NexusAuthManager.initialize(this)
         FrontendSyncManager.init(this)
 
         // Initialize GOGConstants

@@ -89,6 +89,30 @@
 
         </activity>
 
+        <!-- Nexus OAuth uses an external browser and returns only through this exact native redirect. -->
+        <activity
+            android:name=".ui.screen.auth.NexusOAuthCallbackActivity"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:finishOnTaskLaunch="true"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Pluvia.OAuthCallback">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="oauth"
+                    android:path="/callback"
+                    android:scheme="app.gamenative" />
+            </intent-filter>
+        </activity>
+
         <!-- GOG OAuth (in-app WebView; intercepts redirect for automatic code capture) -->
         <activity
             android:name=".ui.screen.auth.GOGOAuthActivity"
