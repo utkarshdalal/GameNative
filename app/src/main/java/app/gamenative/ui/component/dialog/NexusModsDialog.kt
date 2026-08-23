@@ -113,6 +113,7 @@ import app.gamenative.mods.NexusApiClient
 import app.gamenative.mods.NexusApiErrorReason
 import app.gamenative.mods.NexusApiException
 import app.gamenative.mods.NexusAuthManager
+import app.gamenative.mods.NexusAuthError
 import app.gamenative.mods.NexusAuthState
 import app.gamenative.mods.NexusConnectionState
 import app.gamenative.mods.NexusCollectionFile
@@ -745,8 +746,11 @@ fun NexusModsDialog(
     var selectedCollectionKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     val collectionQueue = remember { mutableStateMapOf<String, CollectionQueueItem>() }
     val websiteAuthorizationWaiters = remember { mutableMapOf<String, CompletableDeferred<NexusModReference>>() }
-    LaunchedEffect(nexusAuthState.isConnected) {
-        if (!nexusAuthState.isConnected && websiteAuthorizationWaiters.isNotEmpty()) {
+    LaunchedEffect(nexusAuthState.connection) {
+        if (
+            nexusAuthState.connection == NexusConnectionState.DISCONNECTED &&
+            websiteAuthorizationWaiters.isNotEmpty()
+        ) {
             val error = NexusWebsiteAuthorizationException(
                 context.getString(R.string.nexus_oauth_sign_in_required),
             )
@@ -754,7 +758,10 @@ fun NexusModsDialog(
                 if (waiter.isActive) waiter.completeExceptionally(error)
             }
         }
-        if (!nexusAuthState.isConnected && pendingFileSelection?.reference?.downloadAuthorization != null) {
+        if (
+            nexusAuthState.connection == NexusConnectionState.DISCONNECTED &&
+            pendingFileSelection?.reference?.downloadAuthorization != null
+        ) {
             pendingFileSelection = null
         }
     }
@@ -792,6 +799,17 @@ fun NexusModsDialog(
             },
         )
     val nexusAdultContentBlockedMessage = context.getString(R.string.nexus_adult_content_blocked)
+    val nexusAuthErrorMessage = nexusAuthState.error?.let { error ->
+        context.getString(
+            when (error) {
+                NexusAuthError.SIGN_IN_FAILED,
+                NexusAuthError.CREDENTIAL_STORAGE_FAILED,
+                -> R.string.nexus_oauth_sign_in_failed
+                NexusAuthError.SESSION_EXPIRED -> R.string.nexus_oauth_sign_in_required
+                NexusAuthError.REFRESH_RETRY_PENDING -> R.string.nexus_oauth_session_unavailable
+            },
+        )
+    }
 
     fun nexusUserMessage(
         error: Throwable,
@@ -834,25 +852,55 @@ fun NexusModsDialog(
             blockUnavailableOnlineAccess()
             return
         }
-        val authorizationUri = runCatching { NexusAuthManager.beginAuthorization() }
-            .getOrElse { error ->
-                Timber.w(
-                    "[NexusOAuth]: Could not prepare browser sign-in (%s)",
-                    error.javaClass.simpleName,
-                )
-                SnackbarManager.show(context.getString(R.string.nexus_oauth_sign_in_failed))
-                return
+        scope.launch {
+            nexusAuthActionInProgress = true
+            try {
+                val authorizationUri = try {
+                    NexusAuthManager.beginAuthorization()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    Timber.w(
+                        "[NexusOAuth]: Could not prepare browser sign-in (%s)",
+                        error.javaClass.simpleName,
+                    )
+                    SnackbarManager.show(context.getString(R.string.nexus_oauth_sign_in_failed))
+                    return@launch
+                }
+                val launchError = NexusOAuthBrowserLauncher.launch(context, authorizationUri)
+                    .exceptionOrNull()
+                if (launchError != null) {
+                    Timber.w(
+                        "[NexusOAuth]: Could not launch the sign-in browser (%s)",
+                        launchError.javaClass.simpleName,
+                    )
+                    SnackbarManager.show(context.getString(R.string.nexus_oauth_browser_failed))
+                    // Reset the pending transaction and CONNECTING state when no browser accepted it.
+                    NexusAuthManager.cancelAuthorization()
+                }
+            } finally {
+                nexusAuthActionInProgress = false
             }
-        NexusOAuthBrowserLauncher.launch(context, authorizationUri)
-            .onFailure { error ->
-                Timber.w(
-                    "[NexusOAuth]: Could not launch the sign-in browser (%s)",
-                    error.javaClass.simpleName,
-                )
-                SnackbarManager.show(context.getString(R.string.nexus_oauth_browser_failed))
-                // Reset the pending transaction and CONNECTING state when no browser accepted it.
+        }
+    }
+
+    fun cancelNexusAuthorization() {
+        if (nexusAuthActionInProgress) return
+        scope.launch {
+            nexusAuthActionInProgress = true
+            try {
                 NexusAuthManager.cancelAuthorization()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.w(
+                    "[NexusOAuth]: Could not cancel browser sign-in (%s)",
+                    error.javaClass.simpleName,
+                )
+            } finally {
+                nexusAuthActionInProgress = false
             }
+        }
     }
 
     fun disconnectNexusAccount() {
@@ -2534,7 +2582,14 @@ fun NexusModsDialog(
                             )
                             continue
                         }
-                        val downloadReference = if (nexusUserForDownloads?.isPremium == false) {
+                        val activeNexusUser = apiClient.getCurrentUser()
+                        if (activeNexusUser.userId != nexusUserForDownloads?.userId) {
+                            collectionCancelRequested = true
+                            throw NexusWebsiteAuthorizationException(
+                                context.getString(R.string.nexus_authorization_wrong_account),
+                            )
+                        }
+                        val downloadReference = if (!activeNexusUser.isPremium) {
                             loadingMessage = context.getString(
                                 R.string.nexus_waiting_for_website_authorization,
                                 index + 1,
@@ -2551,7 +2606,7 @@ fun NexusModsDialog(
                                 reference,
                                 modInfo,
                                 file,
-                                nexusUserForDownloads?.userId,
+                                activeNexusUser.userId,
                             )
                             if (authorizedReference == null) {
                                 updateQueue(
@@ -2588,7 +2643,7 @@ fun NexusModsDialog(
                             modInfo = modInfo,
                             file = file,
                             displayName = context.getString(R.string.nexus_collection_display_name, index + 1, collectionMods.size, modInfo.name),
-                            isPremiumAccount = nexusUserForDownloads?.isPremium,
+                            isPremiumAccount = activeNexusUser.isPremium,
                             onProgress = { detail ->
                                 scope.launch(Dispatchers.Main) {
                                     updateQueue(
@@ -3032,10 +3087,10 @@ fun NexusModsDialog(
                                     connecting = nexusAuthState.connection == NexusConnectionState.CONNECTING,
                                     accountName = nexusAuthState.account?.name,
                                     premium = nexusAuthState.account?.isPremium,
-                                    errorMessage = nexusAuthState.errorMessage,
+                                    errorMessage = nexusAuthErrorMessage,
                                     actionInProgress = nexusAuthActionInProgress,
                                     onConnect = ::connectNexusAccount,
-                                    onCancelConnect = NexusAuthManager::cancelAuthorization,
+                                    onCancelConnect = ::cancelNexusAuthorization,
                                     onDisconnect = ::disconnectNexusAccount,
                                 )
                                 if (nexusAuthState.isConnected) {

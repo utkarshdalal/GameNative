@@ -193,4 +193,17 @@ class NexusOAuthServiceTest {
 
         assertTrue(error is NexusOAuthException)
     }
+
+    @Test
+    fun userInfo_rejectsMissingMembershipRoles() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"sub":"42","name":"Modder"}""",
+            ),
+        )
+
+        val error = runCatching { service.getUserInfo("access-one") }.exceptionOrNull()
+
+        assertTrue(error is NexusOAuthException)
+    }
 }

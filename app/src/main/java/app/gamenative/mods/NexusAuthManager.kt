@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import timber.log.Timber
 
@@ -143,7 +144,11 @@ internal class NexusOAuthController(
                         activeAuthorizationState = null
                         invalidateSessionSideData()
                         mutableState.value = NexusAuthState(
-                            connection = NexusConnectionState.CONNECTED,
+                            connection = if (tokenAccount == null) {
+                                NexusConnectionState.CONNECTING
+                            } else {
+                                NexusConnectionState.CONNECTED
+                            },
                             account = tokenAccount,
                         )
                         true
@@ -155,22 +160,51 @@ internal class NexusOAuthController(
                     )
                 }
 
-                val enrichedAccount = try {
+                suspend fun loadAccount(): NexusOAuthAccount? = try {
                     remote.getUserInfo(response.accessToken)
                 } catch (error: CancellationException) {
-                    // The durable token pair is already installed. Preserve the connected state;
-                    // account details can be loaded on the next screen/app start.
                     throw error
                 } catch (error: Exception) {
-                    Timber.w("Nexus sign-in succeeded but account lookup failed (%s)", error.javaClass.simpleName)
+                    Timber.w(
+                        "Nexus sign-in succeeded but account lookup failed (%s)",
+                        error.javaClass.simpleName,
+                    )
                     null
                 }
+                var enrichedAccount = loadAccount()
+                if (enrichedAccount == null && tokenAccount == null) {
+                    // An opaque token gives us no local identity to bind signed file grants to.
+                    // Retry once before rejecting the otherwise successful token exchange.
+                    enrichedAccount = loadAccount()
+                }
                 val account = enrichedAccount ?: tokenAccount
+                if (account == null) {
+                    synchronized(authorizationLock) {
+                        if (store.readTokens()?.accessToken == response.accessToken) {
+                            runCatching { store.clearTokens() }
+                            invalidateSessionSideData()
+                            mutableState.value = NexusAuthState(
+                                connection = NexusConnectionState.DISCONNECTED,
+                                error = NexusAuthError.SIGN_IN_FAILED,
+                            )
+                        }
+                    }
+                    throw NexusOAuthException("Nexus account identity could not be verified")
+                }
                 if (enrichedAccount != null) {
                     synchronized(authorizationLock) {
                         val current = store.readTokens()
                         if (current?.accessToken == response.accessToken) {
-                            store.writeTokens(current.copy(account = enrichedAccount))
+                            try {
+                                store.writeTokens(current.copy(account = enrichedAccount))
+                            } catch (storageError: Exception) {
+                                // The durable token pair is already installed. Account metadata is
+                                // an enrichment and can be recovered again from the access token.
+                                Timber.w(
+                                    "Unable to persist Nexus account metadata (%s)",
+                                    storageError.javaClass.simpleName,
+                                )
+                            }
                             mutableState.value = NexusAuthState(
                                 connection = NexusConnectionState.CONNECTED,
                                 account = enrichedAccount,
@@ -183,7 +217,7 @@ internal class NexusOAuthController(
                 restoreStateAfterAuthorizationFailure(attemptState)
                 throw error
             } catch (error: Exception) {
-                restoreStateAfterAuthorizationFailure(attemptState, error.safeMessage())
+                restoreStateAfterAuthorizationFailure(attemptState, NexusAuthError.SIGN_IN_FAILED)
                 Result.failure(error)
             }
         }
@@ -231,7 +265,7 @@ internal class NexusOAuthController(
                     invalidateSessionSideData()
                     mutableState.value = NexusAuthState(
                         connection = NexusConnectionState.DISCONNECTED,
-                        errorMessage = "Your Nexus connection expired. Please connect it again.",
+                        error = NexusAuthError.SESSION_EXPIRED,
                     )
                     return@withLock null
                 }
@@ -242,7 +276,7 @@ internal class NexusOAuthController(
                     mutableState.value = NexusAuthState(
                         connection = NexusConnectionState.CONNECTED,
                         account = current.account,
-                        errorMessage = "Nexus token refresh will be retried",
+                        error = NexusAuthError.REFRESH_RETRY_PENDING,
                     )
                     return@withLock current.accessToken
                 }
@@ -258,7 +292,7 @@ internal class NexusOAuthController(
                 invalidateSessionSideData()
                 mutableState.value = NexusAuthState(
                     connection = NexusConnectionState.DISCONNECTED,
-                    errorMessage = "Nexus credentials could not be saved; reconnect your account",
+                    error = NexusAuthError.CREDENTIAL_STORAGE_FAILED,
                 )
                 throw storageError
             }
@@ -339,14 +373,14 @@ internal class NexusOAuthController(
 
     private fun restoreStateAfterAuthorizationFailure(
         attemptState: String?,
-        errorMessage: String? = null,
+        error: NexusAuthError? = null,
     ) {
         synchronized(authorizationLock) {
             if (attemptState == null) {
-                mutableState.value = stateFromStoredTokens(errorMessage)
+                mutableState.value = stateFromStoredTokens(error)
             } else if (activeAuthorizationState == attemptState) {
                 activeAuthorizationState = null
-                mutableState.value = stateFromStoredTokens(errorMessage)
+                mutableState.value = stateFromStoredTokens(error)
             }
         }
     }
@@ -368,12 +402,12 @@ internal class NexusOAuthController(
         return transaction
     }
 
-    private fun stateFromStoredTokens(errorMessage: String? = null): NexusAuthState {
+    private fun stateFromStoredTokens(error: NexusAuthError? = null): NexusAuthState {
         val tokens = store.readTokens()
         return if (tokens == null) {
             NexusAuthState(
                 connection = NexusConnectionState.DISCONNECTED,
-                errorMessage = errorMessage,
+                error = error,
             )
         } else {
             val account = tokens.account ?: nexusAccountFromAccessToken(tokens.accessToken)
@@ -392,7 +426,7 @@ internal class NexusOAuthController(
             NexusAuthState(
                 connection = NexusConnectionState.CONNECTED,
                 account = account,
-                errorMessage = errorMessage,
+                error = error,
             )
         }
     }
@@ -447,7 +481,9 @@ internal class NexusOAuthController(
 object NexusAuthManager {
     private val initializationLock = Any()
     private val initializationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val mutableState = MutableStateFlow(NexusAuthState())
+    private val mutableState = MutableStateFlow(
+        NexusAuthState(connection = NexusConnectionState.CONNECTING),
+    )
 
     @Volatile
     private var controller: NexusOAuthController? = null
@@ -466,24 +502,33 @@ object NexusAuthManager {
         initializationScope.launch { requireController() }
     }
 
-    fun beginAuthorization(): Uri = requireController().beginAuthorization()
+    suspend fun beginAuthorization(): Uri = withContext(Dispatchers.IO) {
+        requireController().beginAuthorization()
+    }
 
-    fun cancelAuthorization() {
-        controller?.cancelAuthorization()
+    suspend fun cancelAuthorization() = withContext(Dispatchers.IO) {
+        requireController().cancelAuthorization()
     }
 
     suspend fun handleAuthorizationCallback(callbackUri: Uri): Result<NexusOAuthAccount?> =
-        requireController().handleAuthorizationCallback(callbackUri)
+        withContext(Dispatchers.IO) {
+            requireController().handleAuthorizationCallback(callbackUri)
+        }
 
     suspend fun getValidAccessToken(
         forceRefresh: Boolean = false,
         rejectedAccessToken: String? = null,
-    ): String? = requireController().getValidAccessToken(forceRefresh, rejectedAccessToken)
+    ): String? = withContext(Dispatchers.IO) {
+        requireController().getValidAccessToken(forceRefresh, rejectedAccessToken)
+    }
 
-    fun hasStoredSession(): Boolean = requireController().hasStoredSession()
+    suspend fun hasStoredSession(): Boolean = withContext(Dispatchers.IO) {
+        requireController().hasStoredSession()
+    }
 
-    suspend fun disconnect(): Result<Unit> =
+    suspend fun disconnect(): Result<Unit> = withContext(Dispatchers.IO) {
         requireController().disconnect()
+    }
 
     private fun requireController(): NexusOAuthController {
         controller?.let { return it }
@@ -586,8 +631,3 @@ private fun Map<String, List<String>>.singleValue(name: String): String? {
 }
 
 private fun Long.toEpochSeconds(): Long = this / 1000L
-
-private fun Exception.safeMessage(): String = when (this) {
-    is NexusOAuthException -> message ?: "Nexus authorization failed"
-    else -> "Nexus authorization failed"
-}

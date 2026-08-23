@@ -37,7 +37,7 @@ sealed interface NexusNxmSubmission {
         val reference: NexusModReference,
     ) : NexusNxmSubmission
 
-    data object Expired : NexusNxmSubmission
+    data class Expired(val reference: NexusModReference) : NexusNxmSubmission
     data object NoActiveTarget : NexusNxmSubmission
     data object AmbiguousTarget : NexusNxmSubmission
     data object Replayed : NexusNxmSubmission
@@ -105,7 +105,14 @@ object NexusDownloadLinkInbox {
 
     internal fun unregisterReceiver(registration: NexusNxmReceiverRegistration) {
         synchronized(pendingLock) {
-            activeReceivers.remove(registration.token)
+            val appId = activeReceivers.remove(registration.token) ?: return@synchronized
+            if (appId !in activeReceivers.values) {
+                browserFirstChannels.remove(appId)?.let { channel ->
+                    while (channel.tryReceive().isSuccess) {
+                        // A later dialog must never receive a grant sent to a closed one.
+                    }
+                }
+            }
         }
     }
 
@@ -143,7 +150,20 @@ object NexusDownloadLinkInbox {
             val parsed = NexusUrlParser.parseNxmDownloadGrant(rawUrl, requireUserId = false)
         ) {
             is NexusUrlParser.NxmDownloadGrantResult.Valid -> parsed.reference
-            NexusUrlParser.NxmDownloadGrantResult.Expired -> return NexusNxmSubmission.Expired
+            is NexusUrlParser.NxmDownloadGrantResult.Expired -> {
+                val reference = parsed.reference
+                synchronized(pendingLock) {
+                    removeExpiredPendingDownloads()
+                    pendingWebsiteDownloads.remove(reference.fileKey())?.let { pending ->
+                        if (pending.appId in activeReceivers.values) {
+                            callbackChannelFor(pending.appId).trySend(
+                                AuthorizedNexusWebsiteDownload(pending, reference),
+                            )
+                        }
+                    }
+                }
+                return NexusNxmSubmission.Expired(reference)
+            }
             NexusUrlParser.NxmDownloadGrantResult.Malformed -> return NexusNxmSubmission.Malformed
         }
         val authorization = reference.downloadAuthorization ?: return NexusNxmSubmission.Malformed
@@ -155,6 +175,9 @@ object NexusDownloadLinkInbox {
             val fingerprint = reference.grantFingerprint(authorization)
             if (consumedGrantFingerprints.containsKey(fingerprint)) {
                 return@synchronized NexusNxmSubmission.Replayed
+            }
+            if (consumedGrantFingerprints.size >= MAX_CONSUMED_GRANT_FINGERPRINTS) {
+                return@synchronized NexusNxmSubmission.DeliveryFailed
             }
 
             val pending = pendingWebsiteDownloads.remove(key)
@@ -174,7 +197,7 @@ object NexusDownloadLinkInbox {
             if (authorization.userId?.takeIf { it > 0L } == null) {
                 return@synchronized NexusNxmSubmission.Malformed
             }
-            val activeAppIds = activeReceivers.values.toList()
+            val activeAppIds = activeReceivers.values.distinct()
             if (activeAppIds.isEmpty()) return@synchronized NexusNxmSubmission.NoActiveTarget
             if (activeAppIds.size != 1) return@synchronized NexusNxmSubmission.AmbiguousTarget
             val appId = activeAppIds.single()
@@ -201,6 +224,12 @@ object NexusDownloadLinkInbox {
             ) {
                 pendingWebsiteDownloads.remove(key)
             }
+        }
+    }
+
+    fun cancelExpected(reference: NexusModReference) {
+        synchronized(pendingLock) {
+            pendingWebsiteDownloads.remove(reference.fileKey())
         }
     }
 
@@ -244,10 +273,6 @@ object NexusDownloadLinkInbox {
     }
 
     private fun rememberConsumedGrant(fingerprint: String, authorization: NexusDownloadAuthorization) {
-        while (consumedGrantFingerprints.size >= MAX_CONSUMED_GRANT_FINGERPRINTS) {
-            consumedGrantFingerprints.entries.firstOrNull()?.key?.let(consumedGrantFingerprints::remove)
-                ?: break
-        }
         consumedGrantFingerprints[fingerprint] = authorization.expires
     }
 

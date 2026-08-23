@@ -258,11 +258,10 @@ class NexusDownloadLinkInboxTest {
     fun expiredAndMalformedBrowserFirstGrants_areDistinguished() {
         val registration = NexusDownloadLinkInbox.registerReceiver("STEAM_22380")
         try {
-            assertEquals(
-                NexusNxmSubmission.Expired,
+            assertTrue(
                 NexusDownloadLinkInbox.submitIntent(
                     "nxm://newvegas/mods/60006/files/70006?key=expired&expires=1&user_id=99",
-                ),
+                ) is NexusNxmSubmission.Expired,
             )
             assertEquals(
                 NexusNxmSubmission.Malformed,
@@ -272,6 +271,76 @@ class NexusDownloadLinkInboxTest {
             )
         } finally {
             registration.unregister()
+            NexusDownloadLinkInbox.clearAll()
+        }
+    }
+
+    @Test
+    fun expiredExpectedGrant_clearsExpectationAndNotifiesCollector() = runBlocking {
+        val pending = pendingDownload(appId = "STEAM_22380", modId = 60010L, fileId = 70010L)
+        val registration = NexusDownloadLinkInbox.registerReceiver(pending.appId)
+        try {
+            assertTrue(NexusDownloadLinkInbox.expect(pending))
+
+            val result = NexusDownloadLinkInbox.submitIntent(
+                "nxm://newvegas/mods/60010/files/70010?key=expired-expected&expires=1&user_id=99",
+            )
+
+            assertTrue(result is NexusNxmSubmission.Expired)
+            val delivered = withTimeout(1_000L) {
+                NexusDownloadLinkInbox.callbacksFor(pending.appId).first()
+            }
+            assertEquals(pending, delivered.pending)
+            assertTrue(delivered.reference.downloadAuthorization?.isExpired() == true)
+            assertTrue(NexusDownloadLinkInbox.expect(pending.copy(requestId = "retry")))
+        } finally {
+            registration.unregister()
+            NexusDownloadLinkInbox.clearAll()
+        }
+    }
+
+    @Test
+    fun browserFirst_duplicateRegistrationsForSameGame_areNotAmbiguous() = runBlocking {
+        val first = NexusDownloadLinkInbox.registerReceiver("STEAM_22380")
+        val second = NexusDownloadLinkInbox.registerReceiver("STEAM_22380")
+        try {
+            val result = NexusDownloadLinkInbox.submitIntent(
+                callbackUrl(modId = 60008L, fileId = 70008L, key = "same-game-overlap"),
+            )
+
+            assertTrue(result is NexusNxmSubmission.BrowserFirst)
+            assertEquals(
+                60008L,
+                withTimeout(1_000L) {
+                    NexusDownloadLinkInbox.browserFirstCallbacksFor("STEAM_22380").first()
+                }.reference.modId,
+            )
+        } finally {
+            first.unregister()
+            second.unregister()
+            NexusDownloadLinkInbox.clearAll()
+        }
+    }
+
+    @Test
+    fun browserFirst_grantBufferedForClosedDialog_isDiscarded() = runBlocking {
+        val first = NexusDownloadLinkInbox.registerReceiver("STEAM_22380")
+        assertTrue(
+            NexusDownloadLinkInbox.submitIntent(
+                callbackUrl(modId = 60009L, fileId = 70009L, key = "closed-dialog"),
+            ) is NexusNxmSubmission.BrowserFirst,
+        )
+        first.unregister()
+
+        val reopened = NexusDownloadLinkInbox.registerReceiver("STEAM_22380")
+        try {
+            assertNull(
+                withTimeoutOrNull(50L) {
+                    NexusDownloadLinkInbox.browserFirstCallbacksFor("STEAM_22380").first()
+                },
+            )
+        } finally {
+            reopened.unregister()
             NexusDownloadLinkInbox.clearAll()
         }
     }

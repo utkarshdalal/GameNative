@@ -24,6 +24,13 @@ enum class NexusConnectionState {
     CONNECTED,
 }
 
+enum class NexusAuthError {
+    SIGN_IN_FAILED,
+    SESSION_EXPIRED,
+    REFRESH_RETRY_PENDING,
+    CREDENTIAL_STORAGE_FAILED,
+}
+
 data class NexusOAuthAccount(
     val id: String,
     val name: String,
@@ -40,7 +47,7 @@ data class NexusOAuthAccount(
 data class NexusAuthState(
     val connection: NexusConnectionState = NexusConnectionState.DISCONNECTED,
     val account: NexusOAuthAccount? = null,
-    val errorMessage: String? = null,
+    val error: NexusAuthError? = null,
 ) {
     val isConnected: Boolean
         get() = connection == NexusConnectionState.CONNECTED

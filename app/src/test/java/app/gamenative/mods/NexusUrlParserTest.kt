@@ -57,7 +57,7 @@ class NexusUrlParserTest {
             nowEpochSeconds = 100L,
         )
 
-        assertEquals(NexusUrlParser.NxmDownloadGrantResult.Expired, result)
+        assertTrue(result is NexusUrlParser.NxmDownloadGrantResult.Expired)
     }
 
     @Test
@@ -96,6 +96,18 @@ class NexusUrlParserTest {
     @Test
     fun parse_nonNexusUrl_returnsNull() {
         assertNull(NexusUrlParser.parse("https://example.com/skyrim/mods/1"))
+    }
+
+    @Test
+    fun parseNxmReference_preservesLegacyModOnlyAndQueryFileForms() {
+        val modOnly = NexusUrlParser.parse("nxm://skyrimspecialedition/mods/30379")
+        val queryFile = NexusUrlParser.parse(
+            "nxm://skyrimspecialedition/mods/30379?file_id=92910",
+        )
+
+        assertEquals(30379L, modOnly?.modId)
+        assertNull(modOnly?.fileId)
+        assertEquals(92910L, queryFile?.fileId)
     }
 
     @Test

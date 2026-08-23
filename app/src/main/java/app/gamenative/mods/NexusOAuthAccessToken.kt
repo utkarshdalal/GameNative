@@ -72,9 +72,11 @@ internal fun nexusAccountFromAccessToken(accessToken: String): NexusOAuthAccount
         ?.trim()
         ?.takeIf { it.isNotEmpty() && it.length <= MAX_USERNAME_CHARS }
         ?: return null
-    val roles = user.optJSONArray("membership_roles")
-        ?.strictStringValues()
-        ?: return null
+    val roles = if (user.has("membership_roles")) {
+        user.optJSONArray("membership_roles")?.strictStringValues() ?: return null
+    } else {
+        emptyList()
+    }
 
     return NexusOAuthAccount(
         id = userId.toString(),

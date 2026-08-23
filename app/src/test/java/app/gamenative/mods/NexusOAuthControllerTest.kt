@@ -116,6 +116,49 @@ class NexusOAuthControllerTest {
     }
 
     @Test
+    fun callback_accountMetadataPersistenceFailureKeepsInstalledSessionUsable() = runBlocking {
+        val store = MemoryOAuthStore().apply {
+            transaction = NexusAuthorizationTransaction("expected-state", "verifier", 1_000L)
+            failTokenWriteAfter = 1
+        }
+        val remote = FakeOAuthRemote(
+            accessToken = nexusTestAccessToken(username = "Token Modder"),
+        )
+        val controller = controller(store, remote, nowMillis = 2_000L)
+
+        val result = controller.handleAuthorizationCallback(
+            "app.gamenative://oauth/callback?code=authorization-code&state=expected-state",
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("Modder", result.getOrNull()?.name)
+        assertEquals("Token Modder", store.tokens?.account?.name)
+        assertEquals("Modder", controller.state.value.account?.name)
+        assertTrue(controller.state.value.isConnected)
+    }
+
+    @Test
+    fun callback_retriesMissingIdentityThenRejectsUnverifiableSession() = runBlocking {
+        val store = MemoryOAuthStore().apply {
+            transaction = NexusAuthorizationTransaction("expected-state", "verifier", 1_000L)
+        }
+        val remote = FakeOAuthRemote(
+            accessToken = "opaque-access-token",
+            userInfoError = NexusOAuthException("userinfo unavailable"),
+        )
+        val controller = controller(store, remote, nowMillis = 2_000L)
+
+        val result = controller.handleAuthorizationCallback(
+            "app.gamenative://oauth/callback?code=authorization-code&state=expected-state",
+        )
+
+        assertTrue(result.isFailure)
+        assertEquals(2, remote.userInfoCalls)
+        assertNull(store.tokens)
+        assertEquals(NexusConnectionState.DISCONNECTED, controller.state.value.connection)
+    }
+
+    @Test
     fun cancelAuthorization_duringExchangePreventsLateTokenInstallation() = runBlocking {
         val exchangeStarted = CompletableDeferred<Unit>()
         val exchangeRelease = CompletableDeferred<Unit>()
@@ -297,7 +340,7 @@ class NexusOAuthControllerTest {
         assertNull(store.tokens)
         assertEquals(1, invalidations)
         assertEquals(NexusConnectionState.DISCONNECTED, controller.state.value.connection)
-        assertTrue(controller.state.value.errorMessage.orEmpty().contains("connect", ignoreCase = true))
+        assertEquals(NexusAuthError.SESSION_EXPIRED, controller.state.value.error)
     }
 
     @Test
@@ -438,13 +481,16 @@ private class MemoryOAuthStore : NexusOAuthStore {
     var transaction: NexusAuthorizationTransaction? = null
     var tokenWrites: Int = 0
     var failTokenWrites: Boolean = false
+    var failTokenWriteAfter: Int? = null
     var failTokenClears: Boolean = false
     var failTransactionClears: Boolean = false
 
     override fun readTokens(): NexusStoredTokens? = tokens
 
     override fun writeTokens(tokens: NexusStoredTokens) {
-        if (failTokenWrites) throw IllegalStateException("storage full")
+        if (failTokenWrites || tokenWrites >= (failTokenWriteAfter ?: Int.MAX_VALUE)) {
+            throw IllegalStateException("storage full")
+        }
         tokenWrites += 1
         this.tokens = tokens
     }
@@ -477,6 +523,7 @@ private class FakeOAuthRemote(
 ) : NexusOAuthRemote {
     var exchangeCalls = 0
     var refreshCalls = 0
+    var userInfoCalls = 0
     var exchangedCode: String? = null
     var exchangedVerifier: String? = null
     val revocationHints = mutableListOf<String>()
@@ -498,6 +545,7 @@ private class FakeOAuthRemote(
     }
 
     override suspend fun getUserInfo(accessToken: String): NexusOAuthAccount {
+        userInfoCalls += 1
         userInfoError?.let { throw it }
         return NexusOAuthAccount("42", "Modder", membershipRoles = listOf("premium"))
     }

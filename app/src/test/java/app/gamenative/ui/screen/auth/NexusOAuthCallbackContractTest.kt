@@ -38,14 +38,17 @@ class NexusOAuthCallbackContractTest {
         ).apply {
             putExtra("secret", "value")
             clipData = ClipData.newPlainText("secret", "value")
+            selector = Intent(Intent.ACTION_VIEW, Uri.parse("https://example.test/secret"))
         }
 
         val callback = NexusOAuthCallbackContract.consumeAndScrub(intent)
 
         assertEquals("secret-code", callback?.getQueryParameter("code"))
+        assertEquals("secret-state", callback?.getQueryParameter("state"))
         assertNull(intent.data)
         assertNull(intent.extras)
         assertNull(intent.clipData)
+        assertNull(intent.selector)
     }
 
     @Test

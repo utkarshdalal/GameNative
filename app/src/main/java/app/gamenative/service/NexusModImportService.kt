@@ -29,6 +29,7 @@ import app.gamenative.mods.ModDownloadRegistry
 import app.gamenative.mods.ModImportProgress
 import app.gamenative.mods.NexusApiClient
 import app.gamenative.mods.NexusAuthManager
+import app.gamenative.mods.NexusConnectionState
 import app.gamenative.mods.NexusDownloadAuthorization
 import app.gamenative.mods.NexusImportState
 import app.gamenative.mods.NexusIntegrationStatus
@@ -863,7 +864,7 @@ class NexusModImportService : Service() {
         private fun nexusOnlineBlockMessage(context: Context): String? = when {
             !NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE ->
                 context.getString(R.string.nexus_integration_temporarily_unavailable)
-            !NexusAuthManager.hasStoredSession() ->
+            NexusAuthManager.state.value.connection == NexusConnectionState.DISCONNECTED ->
                 context.getString(R.string.nexus_oauth_sign_in_required)
             else -> null
         }

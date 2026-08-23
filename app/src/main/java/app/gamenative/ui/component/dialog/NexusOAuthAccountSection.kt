@@ -69,7 +69,7 @@ internal fun NexusOAuthAccountSection(
 
             Text(
                 text = when {
-                    actionInProgress -> stringResource(R.string.nexus_oauth_disconnecting)
+                    connected && actionInProgress -> stringResource(R.string.nexus_oauth_disconnecting)
                     connecting -> stringResource(R.string.nexus_oauth_connecting)
                     connected && !accountName.isNullOrBlank() -> {
                         stringResource(R.string.nexus_oauth_connected_as, accountName)
@@ -135,11 +135,7 @@ internal fun NexusOAuthAccountSection(
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.size(8.dp))
                     }
-                    Text(
-                        stringResource(
-                            if (busy) R.string.nexus_oauth_disconnecting else R.string.nexus_oauth_connect,
-                        ),
-                    )
+                    Text(stringResource(R.string.nexus_oauth_connect))
                 }
             }
         }

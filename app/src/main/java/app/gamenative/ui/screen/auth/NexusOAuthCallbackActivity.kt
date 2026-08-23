@@ -24,6 +24,12 @@ class NexusOAuthCallbackActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState != null) {
+            NexusOAuthCallbackContract.consumeAndScrub(intent)
+            setIntent(Intent(this, NexusOAuthCallbackActivity::class.java))
+            returnToApp()
+            return
+        }
         receiveCallback(intent)
     }
 
@@ -36,17 +42,16 @@ class NexusOAuthCallbackActivity : ComponentActivity() {
         val callbackUri = NexusOAuthCallbackContract.consumeAndScrub(sourceIntent)
         setIntent(Intent(this, NexusOAuthCallbackActivity::class.java))
 
+        if (callbackJob?.isActive == true) {
+            Timber.w("[NexusOAuth]: Ignoring a second callback while one is already being processed")
+            return
+        }
         if (callbackUri == null) {
             Timber.w("[NexusOAuth]: Rejected an intent that did not match the registered redirect")
             SnackbarManager.show(getString(R.string.nexus_oauth_invalid_callback))
             returnToApp()
             return
         }
-        if (callbackJob?.isActive == true) {
-            Timber.w("[NexusOAuth]: Ignoring a second callback while one is already being processed")
-            return
-        }
-
         callbackJob = lifecycleScope.launch {
             NexusAuthManager.handleAuthorizationCallback(callbackUri)
                 .onSuccess { account ->

@@ -98,10 +98,14 @@ internal class NexusOAuthService(
             if (id == null || name.isBlank()) {
                 throw NexusOAuthException("Nexus returned an incomplete account response")
             }
-            val rolesJson = json.optJSONArray("membership_roles") ?: JSONArray()
+            val rolesJson = json.optJSONArray("membership_roles")
+                ?: throw NexusOAuthException("Nexus returned an incomplete account response")
             val roles = buildList {
                 for (index in 0 until rolesJson.length()) {
-                    rolesJson.optString(index).takeIf(String::isNotBlank)?.let(::add)
+                    val role = (rolesJson.opt(index) as? String)
+                        ?.takeIf(String::isNotBlank)
+                        ?: throw NexusOAuthException("Nexus returned an invalid account response")
+                    add(role)
                 }
             }
             NexusOAuthAccount(

@@ -46,7 +46,7 @@ data class NexusCollectionReference(
 object NexusUrlParser {
     internal sealed interface NxmDownloadGrantResult {
         data class Valid(val reference: NexusModReference) : NxmDownloadGrantResult
-        data object Expired : NxmDownloadGrantResult
+        data class Expired(val reference: NexusModReference) : NxmDownloadGrantResult
         data object Malformed : NxmDownloadGrantResult
     }
 
@@ -93,23 +93,42 @@ object NexusUrlParser {
     }
 
     private fun parseNxmUrl(uri: URI): NexusModReference? {
-        val structure = parseNxmStructure(uri) ?: return null
-        val query = parseNxmQuery(uri.rawQuery) ?: return null
-        val downloadAuthorization = query.singleValue("key")
+        if (uri.isOpaque || uri.userInfo != null || uri.port != -1 || uri.fragment != null) return null
+        val gameDomain = uri.host
+            ?.lowercase(Locale.US)
+            ?.takeIf(nexusGameDomainPattern::matches)
+            ?: return null
+        val segments = uri.path
+            ?.split('/')
+            ?.filter(String::isNotBlank)
+            ?: return null
+        val modsIndex = segments.indexOfFirst { it.equals("mods", ignoreCase = true) }
+        if (modsIndex < 0 || modsIndex + 1 >= segments.size) return null
+        val modId = segments[modsIndex + 1].toLongOrNull()?.takeIf { it > 0L } ?: return null
+        val query = parseQuery(uri.rawQuery)
+        val fileId = if (
+            modsIndex + 3 < segments.size &&
+            segments[modsIndex + 2].equals("files", ignoreCase = true)
+        ) {
+            segments[modsIndex + 3].toLongOrNull()?.takeIf { it > 0L }
+        } else {
+            query["file_id"]?.toLongOrNull()?.takeIf { it > 0L }
+        }
+        val downloadAuthorization = query["key"]
             ?.takeIf { it.isNotBlank() && it.length <= 2048 }
             ?.let { key ->
-                val expires = query.singleValue("expires")?.toLongOrNull()?.takeIf { it > 0L }
+                val expires = query["expires"]?.toLongOrNull()?.takeIf { it > 0L }
                     ?: return@let null
                 NexusDownloadAuthorization(
                     key = key,
                     expires = expires,
-                    userId = query.singleValue("user_id")?.toLongOrNull()?.takeIf { it > 0L },
+                    userId = query["user_id"]?.toLongOrNull()?.takeIf { it > 0L },
                 )
             }
         return NexusModReference(
-            gameDomain = structure.gameDomain,
-            modId = structure.modId,
-            fileId = structure.fileId,
+            gameDomain = gameDomain,
+            modId = modId,
+            fileId = fileId,
             downloadAuthorization = downloadAuthorization,
         )
     }
@@ -147,20 +166,19 @@ object NexusUrlParser {
         if ((requireUserId || rawUserId != null) && userId == null) {
             return NxmDownloadGrantResult.Malformed
         }
-        if (expires <= nowEpochSeconds) return NxmDownloadGrantResult.Expired
-
-        return NxmDownloadGrantResult.Valid(
-            NexusModReference(
-                gameDomain = structure.gameDomain,
-                modId = structure.modId,
-                fileId = structure.fileId,
-                downloadAuthorization = NexusDownloadAuthorization(
-                    key = key,
-                    expires = expires,
-                    userId = userId,
-                ),
+        val reference = NexusModReference(
+            gameDomain = structure.gameDomain,
+            modId = structure.modId,
+            fileId = structure.fileId,
+            downloadAuthorization = NexusDownloadAuthorization(
+                key = key,
+                expires = expires,
+                userId = userId,
             ),
         )
+        if (expires <= nowEpochSeconds) return NxmDownloadGrantResult.Expired(reference)
+
+        return NxmDownloadGrantResult.Valid(reference)
     }
 
     private data class NxmStructure(

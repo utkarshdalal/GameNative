@@ -5,6 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -36,7 +37,26 @@ class NexusOAuthAccessTokenTest {
         )
 
         assertTrue(lifetime?.isPremium == true)
-        assertFalse(supporter?.isPremium == true)
+        assertNotNull(supporter)
+        assertFalse(requireNotNull(supporter).isPremium)
+    }
+
+    @Test
+    fun omittedMembershipRoles_parsesAsFreeAccount() {
+        val token = nexusTestJwt(
+            JSONObject().put(
+                "user",
+                JSONObject()
+                    .put("id", 42)
+                    .put("username", "Free Modder"),
+            ),
+        )
+
+        val account = nexusAccountFromAccessToken(token)
+
+        assertNotNull(account)
+        assertEquals(emptyList<String>(), account?.membershipRoles)
+        assertFalse(requireNotNull(account).isPremium)
     }
 
     @Test
