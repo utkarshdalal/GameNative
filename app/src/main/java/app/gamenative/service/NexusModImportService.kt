@@ -627,7 +627,7 @@ class NexusModImportService : Service() {
         @Volatile
         private var currentService: NexusModImportService? = null
 
-        fun enqueueImport(
+        internal fun enqueueImport(
             context: Context,
             appId: String,
             reference: NexusModReference,
@@ -636,8 +636,9 @@ class NexusModImportService : Service() {
             displayName: String,
             isPremiumAccount: Boolean? = null,
             onProgress: (ModImportProgress) -> Unit = {},
+            connection: NexusConnectionState = NexusAuthManager.state.value.connection,
         ): Deferred<ModInstall> {
-            nexusOnlineBlockMessage(context)?.let { message ->
+            nexusOnlineBlockMessage(context, connection)?.let { message ->
                 return failedImport(
                     IllegalStateException(message),
                 )
