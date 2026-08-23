@@ -92,6 +92,7 @@ internal class NexusOAuthController(
     internal suspend fun handleAuthorizationCallback(callbackUri: String): Result<NexusOAuthAccount?> =
         sessionMutex.withLock {
             var attemptState: String? = null
+            var installedAccessToken: String? = null
             try {
                 val callback = parseAndValidateCallback(callbackUri)
                 val exchange = synchronized(authorizationLock) {
@@ -141,6 +142,7 @@ internal class NexusOAuthController(
                         false
                     } else {
                         store.writeTokens(storedTokens)
+                        installedAccessToken = storedTokens.accessToken
                         activeAuthorizationState = null
                         invalidateSessionSideData()
                         mutableState.value = NexusAuthState(
@@ -216,7 +218,15 @@ internal class NexusOAuthController(
             } catch (error: CancellationException) {
                 restoreStateAfterAuthorizationFailure(attemptState)
                 synchronized(authorizationLock) {
-                    if (mutableState.value.connection == NexusConnectionState.CONNECTING) {
+                    val canceledToken = installedAccessToken
+                    val stored = store.readTokens()
+                    if (
+                        activeAuthorizationState == null &&
+                        canceledToken != null &&
+                        stored?.accessToken == canceledToken &&
+                        stored.account == null &&
+                        nexusAccountFromAccessToken(stored.accessToken) == null
+                    ) {
                         // An opaque token has no locally verifiable account identity. If its
                         // lookup is canceled, discard it instead of leaving a permanent
                         // CONNECTING session that cannot safely authorize downloads.
