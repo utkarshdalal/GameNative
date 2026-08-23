@@ -97,7 +97,7 @@ class NexusModImportService : Service() {
                     }
                 }
             }
-            return START_NOT_STICKY
+            return START_STICKY
         }
         when {
             intent?.action == ACTION_RUN_IMPORT || intent?.action == ACTION_RUN_LOCAL_IMPORT ->
@@ -106,14 +106,7 @@ class NexusModImportService : Service() {
                 requestResumeInterruptedImports()
             else -> scheduleStopIfIdle()
         }
-        return if (
-            intent?.action == ACTION_RUN_LOCAL_IMPORT ||
-            nexusOnlineBlockMessage == null
-        ) {
-            START_STICKY
-        } else {
-            START_NOT_STICKY
-        }
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

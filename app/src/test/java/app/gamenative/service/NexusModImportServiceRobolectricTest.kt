@@ -1,6 +1,7 @@
 package app.gamenative.service
 
 import android.app.Application
+import android.app.Service
 import android.content.ComponentName
 import android.content.ContentProvider
 import android.content.ContentValues
@@ -28,6 +29,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.shadows.ShadowContentResolver
 
@@ -105,6 +107,16 @@ class NexusModImportServiceRobolectricTest {
         )
         assertEquals("steam_123", request?.appId)
         assertEquals(20L, request?.file?.fileId)
+    }
+
+    @Test
+    fun nullRestart_remainsStickyWhileResumeWorkMayContinue() {
+        val controller = Robolectric.buildService(NexusModImportService::class.java).create()
+        try {
+            assertEquals(Service.START_STICKY, controller.get().onStartCommand(null, 0, 1))
+        } finally {
+            controller.destroy()
+        }
     }
 
     @Test
