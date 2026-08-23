@@ -183,16 +183,18 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                         state.config.value = config.copy(xrRefreshRate = xrRates[idx])
                     },
                 )
-                val xrScales = listOf(50, 65, 75, 85, 100)
-                SettingsListDropdown(
-                    colors = settingsTileColors(),
-                    title = { Text(text = stringResource(R.string.xr_render_scale)) },
-                    value = xrScales.indexOf(config.xrRenderScale).let { if (it >= 0) it else xrScales.lastIndex },
-                    items = xrScales.map { "$it%" },
-                    onItemSelected = { idx ->
-                        state.config.value = config.copy(xrRenderScale = xrScales[idx])
-                    },
-                )
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(text = stringResource(R.string.xr_render_scale))
+                    Slider(
+                        value = config.xrRenderScale.toFloat(),
+                        onValueChange = { newValue ->
+                            val stepped = ((newValue.roundToInt() + 2) / 5 * 5).coerceIn(25, 100)
+                            state.config.value = config.copy(xrRenderScale = stepped)
+                        },
+                        valueRange = 25f..100f,
+                    )
+                    Text(text = "${config.xrRenderScale}%")
+                }
             }
             SettingsListDropdown(
                 colors = settingsTileColors(),
