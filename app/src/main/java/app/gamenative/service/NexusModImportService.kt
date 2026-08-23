@@ -861,10 +861,13 @@ class NexusModImportService : Service() {
             }
         }
 
-        private fun nexusOnlineBlockMessage(context: Context): String? = when {
+        internal fun nexusOnlineBlockMessage(
+            context: Context,
+            connection: NexusConnectionState = NexusAuthManager.state.value.connection,
+        ): String? = when {
             !NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE ->
                 context.getString(R.string.nexus_integration_temporarily_unavailable)
-            NexusAuthManager.state.value.connection == NexusConnectionState.DISCONNECTED ->
+            connection != NexusConnectionState.CONNECTED ->
                 context.getString(R.string.nexus_oauth_sign_in_required)
             else -> null
         }

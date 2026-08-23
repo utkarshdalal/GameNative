@@ -12,6 +12,7 @@ import app.gamenative.R
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallSource
 import app.gamenative.data.ModInstallStatus
+import app.gamenative.mods.NexusConnectionState
 import app.gamenative.mods.NexusImportState
 import app.gamenative.mods.NexusModFile
 import app.gamenative.mods.NexusModInfo
@@ -101,6 +102,18 @@ class NexusModImportServiceRobolectricTest {
 
         assertEquals(context.getString(R.string.nexus_oauth_sign_in_required), error?.message)
         assertNull(shadowApplication.nextStartedService)
+    }
+
+    @Test
+    fun nexusOnlineBlockMessage_connectingRequiresSignIn() {
+        val context = ApplicationProvider.getApplicationContext<Application>()
+
+        val message = NexusModImportService.nexusOnlineBlockMessage(
+            context,
+            NexusConnectionState.CONNECTING,
+        )
+
+        assertEquals(context.getString(R.string.nexus_oauth_sign_in_required), message)
     }
 
     @Test
