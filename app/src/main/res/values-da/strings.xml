@@ -2209,4 +2209,5 @@
     <string name="favorite_added">Føjet til favoritter</string>
     <string name="favorite_added_named">Føjede %1$s til favoritter</string>
     <string name="xr_refresh_rate">VR-opdateringsfrekvens</string>
+    <string name="xr_render_scale">VR-gengivelsesskala</string>
 </resources>

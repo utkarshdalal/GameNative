@@ -2346,4 +2346,5 @@
     <string name="power_control_strategy_conservative">Conservative</string>
     <string name="power_control_strategy_conservative_desc">AdjustsGradual gradually with a focus on stability</string>
     <string name="xr_refresh_rate">VR Refresh Rate</string>
+    <string name="xr_render_scale">VR Render Scale</string>
 </resources>

@@ -2343,4 +2343,5 @@
     <string name="favorite_added">Adăugat la favorite</string>
     <string name="favorite_added_named">%1$s adăugat la favorite</string>
     <string name="xr_refresh_rate">Rată de reîmprospătare VR</string>
+    <string name="xr_render_scale">Scară de randare VR</string>
 </resources>

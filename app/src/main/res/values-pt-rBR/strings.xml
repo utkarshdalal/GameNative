@@ -2209,4 +2209,5 @@
     <string name="favorite_added">Adicionado aos favoritos</string>
     <string name="favorite_added_named">%1$s adicionado aos favoritos</string>
     <string name="xr_refresh_rate">Taxa de atualização de VR</string>
+    <string name="xr_render_scale">Escala de renderização de VR</string>
 </resources>

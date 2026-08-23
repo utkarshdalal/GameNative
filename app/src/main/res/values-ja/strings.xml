@@ -2293,4 +2293,5 @@
     <string name="favorite_added">お気に入りに追加しました</string>
     <string name="favorite_added_named">%1$s をお気に入りに追加しました</string>
     <string name="xr_refresh_rate">VRリフレッシュレート</string>
+    <string name="xr_render_scale">VRレンダースケール</string>
 </resources>

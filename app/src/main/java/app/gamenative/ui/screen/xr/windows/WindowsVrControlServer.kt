@@ -193,10 +193,9 @@ class WindowsVrControlServer(
 
     private fun getViews(): String {
         val snapshot = currentSnapshot() ?: return "ERROR unavailable"
-        // The recommended per-eye size is far beyond what an emulated producer can fill;
-        // halve it (even dimensions) — quarter the pixels for render, copy, and upload.
-        val scaledWidth = (snapshot.timing[5] * 17 / 20) and 1L.inv()
-        val scaledHeight = (snapshot.timing[6] * 17 / 20) and 1L.inv()
+        val scale = config.renderScalePercent.toLong()
+        val scaledWidth = (snapshot.timing[5] * scale / 100) and 1L.inv()
+        val scaledHeight = (snapshot.timing[6] * scale / 100) and 1L.inv()
         return "OK count=2 width=$scaledWidth height=$scaledHeight"
     }
 
