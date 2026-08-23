@@ -3,6 +3,7 @@
 #include <EGL/eglext.h>
 #include <GLES2/gl2ext.h>
 #include <cerrno>
+#include <cstring>
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -307,7 +308,16 @@ bool WindowsProjectionPresenter::importEyeBuffer(WindowsFrameTransport &transpor
         imported = createImageFromDmabuf(frame);
         if (imported == EGL_NO_IMAGE_KHR) {
             cpuFallback_[eye][image] = true;
-            LOGI("windows vr eye %u image %d: EGL dma-buf import failed — CPU upload fallback engaged", eye, image);
+            static bool details = false;
+            LOGI("windows vr eye %u image %d: EGL dma-buf import failed (0x%x) — CPU upload fallback engaged",
+                 eye, image, eglGetError());
+            if (!details) {
+                details = true;
+                const char *extensions = eglQueryString(display_, EGL_EXTENSIONS);
+                LOGI("EGL dma_buf_import=%d modifiers=%d",
+                     extensions != nullptr && strstr(extensions, "EGL_EXT_image_dma_buf_import") != nullptr,
+                     extensions != nullptr && strstr(extensions, "EGL_EXT_image_dma_buf_import_modifiers") != nullptr);
+            }
             if (uploadLinearDmabufToTexture(eye, image, frame, cachedTexture, registration)) return true;
         } else {
             LOGI("windows vr eye %u image %d: zero-copy EGL dma-buf import active", eye, image);
