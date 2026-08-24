@@ -326,21 +326,25 @@ android {
 
     tasks.register<Exec>("stageOpenComposite") {
         enabled = hostCanRunXrPayloadScripts
+        val stageScript = rootProject.file("tools/stage-opencomposite.ps1")
+        val toolchainFingerprint = providers.exec {
+            commandLine(
+                "powershell",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                stageScript.absolutePath,
+                "-PrintToolchainFingerprint",
+            )
+        }.standardOutput.asText.map { it.trim() }
         inputs.files(
-            rootProject.file("tools/stage-opencomposite.ps1"),
+            stageScript,
             rootProject.file("tools/patches/opencomposite-gamenative-wine.patch"),
             rootProject.file("tools/opencomposite-vulkan-x64.def"),
         )
         inputs.property("openCompositeCommit", "a27e7e6a64bdcd1eff6b7fba1ea2ea34bcf1273d")
-        inputs.property("openCompositeBuildRevision", 2)
-        inputs.property(
-            "openCompositeNdkHome",
-            providers.environmentVariable("ANDROID_NDK_HOME").orElse("default-ndk-29.0.14206865"),
-        )
-        inputs.property(
-            "openCompositeVisualStudioVersion",
-            providers.environmentVariable("VisualStudioVersion").orElse("auto-vs2022"),
-        )
+        inputs.property("openCompositeBuildRevision", 3)
+        inputs.property("openCompositeToolchainFingerprint", toolchainFingerprint)
         outputs.file(layout.buildDirectory.file("generated/xrPayload/modernXr/opencomposite_x64.dll"))
         commandLine(
             "powershell",
