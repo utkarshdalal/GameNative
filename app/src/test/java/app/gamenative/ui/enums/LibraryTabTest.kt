@@ -3,8 +3,6 @@ package app.gamenative.ui.enums
 import app.gamenative.ui.enums.LibraryTab.Companion.next
 import app.gamenative.ui.enums.LibraryTab.Companion.previous
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibraryTabTest {
@@ -16,43 +14,50 @@ class LibraryTabTest {
     )
 
     @Test
-    fun normalizePreferences_preservesHiddenTabsAndOrder() {
-        val result = LibraryTab.normalizePreferences("ALL,!EPIC,STEAM,!GOG", supported)
+    fun normalizeVisibleTabs_usesSupportedTabOrder() {
+        val result = LibraryTab.normalizeVisibleTabs("v2:GOG,ALL,STEAM", supported)
 
-        assertEquals(
-            listOf(LibraryTab.ALL, LibraryTab.EPIC, LibraryTab.STEAM, LibraryTab.GOG),
-            result.map { it.tab },
-        )
-        assertFalse(result.first { it.tab == LibraryTab.EPIC }.isVisible)
-        assertFalse(result.first { it.tab == LibraryTab.GOG }.isVisible)
+        assertEquals(listOf(LibraryTab.ALL, LibraryTab.STEAM, LibraryTab.GOG), result)
     }
 
     @Test
-    fun normalizePreferences_addsNewSupportedTabsVisibleAndDropsInvalidValues() {
-        val result = LibraryTab.normalizePreferences("STEAM,UNKNOWN,STEAM", supported)
+    fun normalizeVisibleTabs_defaultsToAllSupportedTabs() {
+        val result = LibraryTab.normalizeVisibleTabs("", supported)
 
-        assertEquals(supported, result.map { it.tab })
-        assertTrue(result.all { it.isVisible })
+        assertEquals(supported, result)
     }
 
     @Test
-    fun normalizePreferences_forcesAllVisibleAndFirst() {
-        val result = LibraryTab.normalizePreferences("!GOG,!ALL,STEAM", supported)
+    fun normalizeVisibleTabs_keepsAllVisibleAndDropsInvalidValues() {
+        val result = LibraryTab.normalizeVisibleTabs("v2:UNKNOWN,STEAM,STEAM", supported)
 
-        assertEquals(LibraryTab.ALL, result.first().tab)
-        assertTrue(result.first().isVisible)
+        assertEquals(listOf(LibraryTab.ALL, LibraryTab.STEAM), result)
     }
 
     @Test
-    fun serializePreferences_roundTripsVisibilityAndOrder() {
-        val preferences = LibraryTab.normalizePreferences("ALL,!EPIC,GOG,!STEAM", supported)
+    fun normalizeVisibleTabs_migratesHiddenPreferenceFormat() {
+        val result = LibraryTab.normalizeVisibleTabs("ALL,!EPIC,GOG,!STEAM", supported)
 
-        val restored = LibraryTab.normalizePreferences(
-            LibraryTab.serializePreferences(preferences),
+        assertEquals(listOf(LibraryTab.ALL, LibraryTab.GOG), result)
+    }
+
+    @Test
+    fun normalizeVisibleTabs_addsNewTabsWhenMigratingLegacyPreferences() {
+        val result = LibraryTab.normalizeVisibleTabs("ALL,STEAM,GOG", supported)
+
+        assertEquals(supported, result)
+    }
+
+    @Test
+    fun serializeVisibleTabs_roundTripsSelection() {
+        val visibleTabs = listOf(LibraryTab.ALL, LibraryTab.GOG)
+
+        val restored = LibraryTab.normalizeVisibleTabs(
+            LibraryTab.serializeVisibleTabs(visibleTabs),
             supported,
         )
 
-        assertEquals(preferences, restored)
+        assertEquals(visibleTabs, restored)
     }
 
     @Test

@@ -28,7 +28,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
@@ -78,7 +77,6 @@ fun LibraryTabBar(
     onSearchClick: () -> Unit,
     onAddGameClick: () -> Unit,
     onMenuClick: () -> Unit,
-    onCustomizeTabsClick: () -> Unit,
     onNavigateDownToGrid: () -> Unit,
     onPreviousTab: () -> Unit = {},
     onNextTab: () -> Unit = {},
@@ -96,7 +94,6 @@ fun LibraryTabBar(
             onSearchClick = onSearchClick,
             onAddGameClick = onAddGameClick,
             onMenuClick = onMenuClick,
-            onCustomizeTabsClick = onCustomizeTabsClick,
             onNavigateDownToGrid = onNavigateDownToGrid,
             onPreviousTab = onPreviousTab,
             onNextTab = onNextTab,
@@ -112,7 +109,6 @@ fun LibraryTabBar(
             onSearchClick = onSearchClick,
             onAddGameClick = onAddGameClick,
             onMenuClick = onMenuClick,
-            onCustomizeTabsClick = onCustomizeTabsClick,
             onNavigateDownToGrid = onNavigateDownToGrid,
             onPreviousTab = onPreviousTab,
             onNextTab = onNextTab,
@@ -135,7 +131,6 @@ private fun CompactLibraryTabBar(
     onSearchClick: () -> Unit,
     onAddGameClick: () -> Unit,
     onMenuClick: () -> Unit,
-    onCustomizeTabsClick: () -> Unit,
     onNavigateDownToGrid: () -> Unit,
     onPreviousTab: () -> Unit,
     onNextTab: () -> Unit,
@@ -285,11 +280,6 @@ private fun CompactLibraryTabBar(
             }
 
             CompactIconButton(
-                icon = Icons.Default.Edit,
-                contentDescription = stringResource(R.string.library_customize_tabs),
-                onClick = onCustomizeTabsClick,
-            )
-            CompactIconButton(
                 icon = Icons.Default.Search,
                 contentDescription = stringResource(R.string.search),
                 onClick = onSearchClick,
@@ -367,7 +357,6 @@ private fun ExpandedLibraryTabBar(
     onSearchClick: () -> Unit,
     onAddGameClick: () -> Unit,
     onMenuClick: () -> Unit,
-    onCustomizeTabsClick: () -> Unit,
     onNavigateDownToGrid: () -> Unit,
     onPreviousTab: () -> Unit,
     onNextTab: () -> Unit,
@@ -507,12 +496,6 @@ private fun ExpandedLibraryTabBar(
                     }
                 }
             }
-
-            IconActionButton(
-                icon = Icons.Default.Edit,
-                contentDescription = stringResource(R.string.library_customize_tabs),
-                onClick = onCustomizeTabsClick,
-            )
 
             IconActionButton(
                 icon = Icons.Default.Search,
@@ -729,7 +712,6 @@ private fun Preview_LibraryTabBar() {
                 onSearchClick = {},
                 onAddGameClick = {},
                 onMenuClick = {},
-                onCustomizeTabsClick = {},
                 onNavigateDownToGrid = {},
             )
         }
@@ -760,7 +742,6 @@ private fun Preview_LibraryTabBar_Steam() {
                 onSearchClick = {},
                 onAddGameClick = {},
                 onMenuClick = {},
-                onCustomizeTabsClick = {},
                 onNavigateDownToGrid = {},
             )
         }

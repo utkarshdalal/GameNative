@@ -137,16 +137,9 @@
     <string name="curated_lists_clear">Clear</string>
     <string name="curated_lists_empty">No curated lists available right now.</string>
     <string name="curated_list_4_3_name">Does it 4:3?</string>
-    <string name="library_customize_tabs">Customize tabs</string>
-    <string name="library_customize_tabs_description">Choose which stores appear in navigation. Hidden stores still appear in All.</string>
-    <string name="library_tabs_live_preview">LIVE PREVIEW</string>
-    <string name="library_tabs_reset">Reset to default</string>
-    <string name="library_tabs_always_visible">Always visible · fixed first</string>
-    <string name="library_tabs_pinned">Pinned</string>
-    <string name="library_tabs_game_count">%1$d games</string>
-    <string name="library_tabs_drag_to_reorder">Long press and drag to reorder</string>
-    <string name="library_tabs_move_up">Move %1$s up</string>
-    <string name="library_tabs_move_down">Move %1$s down</string>
+    <string name="settings_interface_library_tabs_title">Library tabs</string>
+    <string name="settings_interface_library_tabs_subtitle">Choose which tabs appear in the library. All is always shown.</string>
+    <string name="settings_interface_library_tabs_all_only">All only</string>
     <string name="default_user_name">User</string>
 
     <!-- Custom Games -->

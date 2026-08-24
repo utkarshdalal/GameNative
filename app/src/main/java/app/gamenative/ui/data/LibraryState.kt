@@ -8,7 +8,6 @@ import app.gamenative.data.SteamCollection
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
 import app.gamenative.ui.enums.LibraryTab
-import app.gamenative.ui.enums.LibraryTabPreference
 import app.gamenative.ui.enums.SortOption
 import java.util.EnumSet
 
@@ -68,7 +67,7 @@ data class LibraryState(
 
     // Current library tab for quick filter access
     val currentTab: LibraryTab = LibraryTab.ALL,
-    val libraryTabPreferences: List<LibraryTabPreference> = PrefManager.libraryTabPreferences,
+    val visibleLibraryTabs: List<LibraryTab> = PrefManager.libraryTabs.filter { it in LibraryTab.visibleEntries },
 
     // Per-source game counts for tab badges
     val allCount: Int = 0,
@@ -78,10 +77,7 @@ data class LibraryState(
     val amazonCount: Int = 0,
     val localCount: Int = 0,
     val favoritesCount: Int = 0,
-) {
-    val visibleLibraryTabs: List<LibraryTab>
-        get() = libraryTabPreferences.filter { it.isVisible }.map { it.tab }
-}
+)
 
 /**
  * Stats shown on a library card. Runs and 5-star reviews are counts that default to 0 when their
