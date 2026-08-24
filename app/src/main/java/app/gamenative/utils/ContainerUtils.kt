@@ -307,10 +307,7 @@ object ContainerUtils {
             displayRenderer = container.displayRenderer,
             xrRefreshRate = container.xrRefreshRate,
             xrRenderScale = container.xrRenderScale,
-            openCompositeEnabled = container.getExtra(
-                WindowsVrRuntimeConfig.EXTRA_OPEN_COMPOSITE_ENABLED,
-                "false",
-            ).toBoolean(),
+            openCompositeEnabled = WindowsVrRuntimeConfig.from(container).openCompositeEnabled,
             sfCompatMode = container.sfCompatMode,
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
@@ -496,10 +493,7 @@ object ContainerUtils {
         container.displayRenderer = containerData.displayRenderer
         container.xrRefreshRate = containerData.xrRefreshRate
         container.xrRenderScale = containerData.xrRenderScale
-        container.putExtra(
-            WindowsVrRuntimeConfig.EXTRA_OPEN_COMPOSITE_ENABLED,
-            containerData.openCompositeEnabled.toString(),
-        )
+        WindowsVrRuntimeConfig.setOpenCompositeEnabled(container, containerData.openCompositeEnabled)
         container.sfCompatMode = containerData.sfCompatMode
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig

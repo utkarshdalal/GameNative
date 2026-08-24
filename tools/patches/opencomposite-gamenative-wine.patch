@@ -27,34 +27,27 @@ index ffeab79..d2fe55c 100644
  #include <mutex>
  
 diff --git a/OCOVR/openvr_api.cpp b/OCOVR/openvr_api.cpp
-index a49444a..d8c3ffb 100644
+index a49444a..3401468 100644
 --- a/OCOVR/openvr_api.cpp
 +++ b/OCOVR/openvr_api.cpp
-@@ -111,9 +111,7 @@ VR_INTERFACE void* VR_CALLTYPE VR_GetGenericInterface(const char* interfaceVersi
- 
- 	if (!valid_apptypes_success) {
- 		valid_apptypes = 1ull << VRApplication_Scene;
--#ifndef _WIN32
- 		valid_apptypes |= (1ull << VRApplication_Background); // Proton uses this
--#endif
- 	}
- 
- 	if ((valid_apptypes & (1ull << current_apptype)) == 0) {
-@@ -254,11 +254,9 @@ VR_INTERFACE uint32_t VR_CALLTYPE VR_InitInternal2(EVRInitError* peError, EVRApp
+@@ -254,6 +254,17 @@ VR_INTERFACE uint32_t VR_CALLTYPE VR_InitInternal2(EVRInitError* peError, EVRApp
  		return current_init_token;
  	}
  
--	if (eApplicationType != VRApplication_Scene)
--#ifndef _WIN32
--		if (eApplicationType != VRApplication_Background) // Proton uses this
--#endif
--			ERR("Cannot init VR: unsupported apptype " + to_string(eApplicationType));
-+	if (eApplicationType != VRApplication_Scene &&
-+		eApplicationType != VRApplication_Background) // Wine/Proton uses this
-+		ERR("Cannot init VR: unsupported apptype " + to_string(eApplicationType));
- 
- 	if (running)
- 		ERR("Cannot init VR: Already running!");
++#ifdef _WIN32
++	// GameNative embeds OpenComposite in each Wine process and has no shared
++	// vrserver for background clients. Do not let helpers allocate a competing
++	// OpenXR session; report the spec-defined benign background-app result.
++	if (eApplicationType == VRApplication_Background) {
++		OOVR_LOG("Ignoring VRApplication_Background: no shared OpenVR server is available");
++		if (peError) *peError = VRInitError_Init_NoServerForBackgroundApp;
++		return current_init_token;
++	}
++#endif
++
+ 	if (eApplicationType != VRApplication_Scene)
+ #ifndef _WIN32
+ 		if (eApplicationType != VRApplication_Background) // Proton uses this
 diff --git a/OpenOVR/Compositor/compositor.h b/OpenOVR/Compositor/compositor.h
 index e83a16a..d650b08 100644
 --- a/OpenOVR/Compositor/compositor.h

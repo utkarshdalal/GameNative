@@ -23,5 +23,13 @@ data class WindowsVrRuntimeConfig(
                 renderScalePercent = container.xrRenderScale.coerceIn(25, 100),
             )
         }
+
+        fun setEnabled(container: Container, enabled: Boolean) {
+            container.putExtra(EXTRA_ENABLED, enabled.toString())
+        }
+
+        fun setOpenCompositeEnabled(container: Container, enabled: Boolean) {
+            container.putExtra(EXTRA_OPEN_COMPOSITE_ENABLED, enabled.toString())
+        }
     }
 }

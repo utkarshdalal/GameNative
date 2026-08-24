@@ -400,11 +400,9 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             quadScale = container.getExtra(EXTRA_QUAD_SCALE, ImmersiveControls.DEFAULT_SCALE.toString())
                 .toFloatOrNull() ?: ImmersiveControls.DEFAULT_SCALE
             passthroughEnabled = container.getExtra(EXTRA_PASSTHROUGH_ENABLED, "false").toBoolean()
-            windowsVrEnabled = container.getExtra(WindowsVrRuntimeConfig.EXTRA_ENABLED, "true").toBoolean()
-            openCompositeEnabled = container.getExtra(
-                WindowsVrRuntimeConfig.EXTRA_OPEN_COMPOSITE_ENABLED,
-                "false",
-            ).toBoolean()
+            val windowsVrConfig = WindowsVrRuntimeConfig.from(container)
+            windowsVrEnabled = windowsVrConfig.enabled
+            openCompositeEnabled = windowsVrConfig.openCompositeEnabled
             windowsVrStatus = if (windowsVrEnabled) "Waiting for runtime" else "Disabled"
             applyQuadTransform()
             if (xrSessionHandle != 0L) {
@@ -424,11 +422,8 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             container.putExtra(EXTRA_QUAD_DISTANCE, quadDistance.toString())
             container.putExtra(EXTRA_QUAD_SCALE, quadScale.toString())
             container.putExtra(EXTRA_PASSTHROUGH_ENABLED, passthroughEnabled.toString())
-            container.putExtra(WindowsVrRuntimeConfig.EXTRA_ENABLED, windowsVrEnabled.toString())
-            container.putExtra(
-                WindowsVrRuntimeConfig.EXTRA_OPEN_COMPOSITE_ENABLED,
-                openCompositeEnabled.toString(),
-            )
+            WindowsVrRuntimeConfig.setEnabled(container, windowsVrEnabled)
+            WindowsVrRuntimeConfig.setOpenCompositeEnabled(container, openCompositeEnabled)
             container.saveData()
         }
     }
@@ -542,63 +537,64 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             var lastFedGamepad = false
             while (pollingActive.get()) {
                 val winHandler = PluviaApp.xServerView?.getxServer()?.winHandler
-                if (winHandler != null) {
-                    if (winHandler !== cachedWinHandler) {
-                        cachedWinHandler = winHandler
-                        cachedBridge = XrGamepadBridge(winHandler)
+                if (winHandler == null) {
+                    cachedWinHandler = null
+                    cachedBridge = null
+                } else if (winHandler !== cachedWinHandler) {
+                    cachedWinHandler = winHandler
+                    cachedBridge = XrGamepadBridge(winHandler)
+                }
+                val quickMenuClicked = XrNative.nativePollSnapshot(xrSessionHandle, buttons, axes, handPoses, flags)
+                val stereoActive = XrNative.nativeIsWindowsStereoActive(xrSessionHandle)
+                if (stereoActive != flatPresentationSuspended) {
+                    flatPresentationSuspended = stereoActive
+                    windowsVrStatus = if (stereoActive) "Stereo active" else if (windowsVrEnabled) "Flat fallback" else "Disabled"
+                    windowsVrRuntimeService?.onPresentationState(windowsVrStatus)
+                    runOnUiThread { applyFlatPresentationGate(!stereoActive) }
+                }
+                if (flags[2] != lastPushedStartHeld) {
+                    lastPushedStartHeld = flags[2]
+                    val setter = quickMenuSetStartHeld
+                    if (setter != null) runOnUiThread { setter(lastPushedStartHeld) }
+                }
+                if (flags[1]) {
+                    xrPointerModeActive = !xrPointerModeActive
+                    Timber.i("Immersive: XR pointer mode %s", if (xrPointerModeActive) "enabled" else "disabled")
+                    lastLeftActionPressed = (axes[4] > POINTER_GRAB_PRESS_THRESHOLD) ||
+                        ((buttons[0] and (1 shl XrGamepadBridge.BUTTON_LB)) != 0)
+                    lastRightActionPressed = (axes[5] > POINTER_GRAB_PRESS_THRESHOLD) ||
+                        ((buttons[0] and (1 shl XrGamepadBridge.BUTTON_RB)) != 0)
+                    if (!xrPointerModeActive) {
+                        pointerGrabHand = null
+                        pointerCursorLeftValid = false
+                        pointerCursorRightValid = false
                     }
-                    val quickMenuClicked = XrNative.nativePollSnapshot(xrSessionHandle, buttons, axes, handPoses, flags)
-                    val stereoActive = XrNative.nativeIsWindowsStereoActive(xrSessionHandle)
-                    if (stereoActive != flatPresentationSuspended) {
-                        flatPresentationSuspended = stereoActive
-                        windowsVrStatus = if (stereoActive) "Stereo active" else if (windowsVrEnabled) "Flat fallback" else "Disabled"
-                        windowsVrRuntimeService?.onPresentationState(windowsVrStatus)
-                        runOnUiThread { applyFlatPresentationGate(!stereoActive) }
+                }
+                val inMenuMode = quickMenuVisible || PluviaApp.isOverlayPaused
+                overlayPausedUi = PluviaApp.isOverlayPaused
+                if (wasInMenuNavigationMode && !inMenuMode) {
+                    buttonSuppressMaskUntilRelease = buttons[0]
+                }
+                wasInMenuNavigationMode = inMenuMode
+                val feedGame = winHandler != null && !xrPointerModeActive && !inMenuMode
+                if (!feedGame && lastFedGamepad) cachedBridge?.reset()
+                lastFedGamepad = feedGame
+                when {
+                    xrPointerModeActive -> handlePointerMode(buttons[0], axes, handPoses, flags[0])
+                    inMenuMode && !flags[2] -> handleMenuNavigation(buttons[0], axes)
+                    inMenuMode -> Unit
+                    feedGame -> {
+                        buttonSuppressMaskUntilRelease = buttonSuppressMaskUntilRelease and buttons[0]
+                        cachedBridge?.applySnapshot(buttons[0] and buttonSuppressMaskUntilRelease.inv(), axes)
                     }
-                    if (flags[2] != lastPushedStartHeld) {
-                        lastPushedStartHeld = flags[2]
-                        val setter = quickMenuSetStartHeld
-                        if (setter != null) runOnUiThread { setter(lastPushedStartHeld) }
-                    }
-                    if (flags[1]) {
-                        xrPointerModeActive = !xrPointerModeActive
-                        Timber.i("Immersive: XR pointer mode %s", if (xrPointerModeActive) "enabled" else "disabled")
-                        lastLeftActionPressed = (axes[4] > POINTER_GRAB_PRESS_THRESHOLD) ||
-                            ((buttons[0] and (1 shl XrGamepadBridge.BUTTON_LB)) != 0)
-                        lastRightActionPressed = (axes[5] > POINTER_GRAB_PRESS_THRESHOLD) ||
-                            ((buttons[0] and (1 shl XrGamepadBridge.BUTTON_RB)) != 0)
-                        if (!xrPointerModeActive) {
-                            pointerGrabHand = null
-                            pointerCursorLeftValid = false
-                            pointerCursorRightValid = false
-                        }
-                    }
-                    val inMenuMode = quickMenuVisible || PluviaApp.isOverlayPaused
-                    overlayPausedUi = PluviaApp.isOverlayPaused
-                    if (wasInMenuNavigationMode && !inMenuMode) {
-                        buttonSuppressMaskUntilRelease = buttons[0]
-                    }
-                    wasInMenuNavigationMode = inMenuMode
-                    val feedGame = !xrPointerModeActive && !inMenuMode
-                    if (!feedGame && lastFedGamepad) cachedBridge?.reset()
-                    lastFedGamepad = feedGame
-                    when {
-                        xrPointerModeActive -> handlePointerMode(buttons[0], axes, handPoses, flags[0])
-                        inMenuMode && !flags[2] -> handleMenuNavigation(buttons[0], axes)
-                        inMenuMode -> Unit
-                        else -> {
-                            buttonSuppressMaskUntilRelease = buttonSuppressMaskUntilRelease and buttons[0]
-                            cachedBridge?.applySnapshot(buttons[0] and buttonSuppressMaskUntilRelease.inv(), axes)
-                        }
-                    }
-                    if (quickMenuClicked) {
-                        Timber.i(
-                            "Immersive: quick-menu chord fired, quickMenuToggle registered=%b buttons=0x%03x " +
-                                "quickMenuVisible=%b isOverlayPaused=%b xrPointerModeActive=%b",
-                            quickMenuToggle != null, buttons[0], quickMenuVisible, PluviaApp.isOverlayPaused, xrPointerModeActive,
-                        )
-                        runOnUiThread { quickMenuToggle?.invoke() }
-                    }
+                }
+                if (quickMenuClicked) {
+                    Timber.i(
+                        "Immersive: quick-menu chord fired, quickMenuToggle registered=%b buttons=0x%03x " +
+                            "quickMenuVisible=%b isOverlayPaused=%b xrPointerModeActive=%b",
+                        quickMenuToggle != null, buttons[0], quickMenuVisible, PluviaApp.isOverlayPaused, xrPointerModeActive,
+                    )
+                    runOnUiThread { quickMenuToggle?.invoke() }
                 }
                 try {
                     Thread.sleep(POLL_INTERVAL_MS)

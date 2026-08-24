@@ -109,6 +109,8 @@ class WindowsVrPayloadManager(
             if (ini.isFile) writeIfChanged(iniBackup, ini.readBytes()) else writeIfChanged(iniMissing, byteArrayOf(1))
             writeIfChanged(owner, "2\n".toByteArray())
             writeIfChanged(target, adapter)
+            // OpenComposite treats unknown INI keys as fatal. Keep this limited to
+            // options supported by the pinned payload; enableAudio is not one of them.
             writeIfChanged(ini, "initUsingVulkan=false\nlogAllOpenVRCalls=false\n".toByteArray())
             openCompositeDirectories += directory
             diagnostics.record("opencomposite", "installed path=${target.path}")

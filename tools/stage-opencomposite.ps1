@@ -47,7 +47,7 @@ Copy-Item -Recurse -Force -Path (Join-Path $ndkIncludes "vk_video\*") -Destinati
 Copy-Item -Force -LiteralPath $vulkanDefinition -Destination (Join-Path $vulkan "vulkan-1.def")
 Invoke-Checked { & $libTool.FullName /nologo "/def:$(Join-Path $vulkan 'vulkan-1.def')" /machine:x64 "/out:$(Join-Path $vulkan 'Lib\vulkan-1.lib')" } "Vulkan import library"
 
-Invoke-Checked { cmake -S $source -B $build -G "Visual Studio 17 2022" -A x64 -DERROR_ON_WARNING=OFF "-DOC_VERSION=$commit-gamenative-wine-background" } "OpenComposite configure"
+Invoke-Checked { cmake -S $source -B $build -G "Visual Studio 17 2022" -A x64 -DERROR_ON_WARNING=OFF "-DOC_VERSION=$commit-gamenative-scene-only" } "OpenComposite configure"
 Invoke-Checked { cmake --build $build --config Release --target OCOVR --parallel } "OpenComposite build"
 $built = Join-Path $build "bin\Release\vrclient_x64.dll"
 if (!(Test-Path -LiteralPath $built -PathType Leaf)) { throw "OpenComposite build output is missing" }
