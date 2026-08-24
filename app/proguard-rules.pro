@@ -45,3 +45,9 @@
 # Samsung Performance SDK (bundled stub jar, referenced by powercontrol Samsung driver)
 -keep class com.samsung.sdk.sperf.** { *; }
 -dontwarn com.samsung.sdk.sperf.**
+
+# Discord Rich Presence (JNI_OnLoad looks up DiscordNative.onNativeResult by name, and
+# DiscordSocialSdkCompat reaches the SDK's init class reflectively)
+-keep class app.gamenative.discord.DiscordNative { *; }
+-keep class com.discord.socialsdk.** { *; }
+-dontwarn com.discord.socialsdk.**

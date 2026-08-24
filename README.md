@@ -1,3 +1,46 @@
+> ## About this fork
+>
+> This is a fork of [GameNative](https://github.com/utkarshdalal/GameNative) that adds **Discord
+> Rich Presence on Android**. Everything else (the Steam/Epic/GOG/Amazon libraries, Wine, cloud
+> saves, the compatibility database) is upstream GameNative and is documented below.
+>
+> When you launch a game, your Discord status becomes:
+>
+> ```
+> Playing  Grand Theft Auto V
+> 42 minutes elapsed
+> ```
+>
+> ...along with the game's cover art, pulled from whichever store it came from. The status clears
+> when you close the game.
+>
+> ### How it works
+>
+> It uses Discord's official [Social SDK](https://docs.discord.com/developers/discord-social-sdk/overview),
+> which since version 1.10 supports publishing presence on Android. GameNative talks to the SDK
+> through a small JNI bridge (`app/src/main/cpp/discordrpc`), and the SDK hands the activity to the
+> **Discord app already installed and signed in on your phone**.
+>
+> There is no Discord login inside GameNative, no OAuth, no account linking, no tokens stored
+> anywhere, and no PC or Discord Desktop involved. Nothing is read back from your account. The only
+> things that leave your device are the game name, its cover art URL and a start timestamp, handed
+> to the local Discord app. This is not a Gateway or self-bot workaround; those risk your account
+> and are not used here.
+>
+> It's **off by default**, since it makes what you play visible to your Discord friends. Turn it on
+> under **Settings > Discord**.
+>
+> ### Building it yourself
+>
+> The Discord Social SDK is distributed per-application from the Discord Developer Portal and
+> can't be redistributed, so it isn't checked into this repo. Without it the app builds and runs
+> exactly like upstream, and the Discord setting reports that it isn't available in your build.
+>
+> See [`app/libs/README-discord-social-sdk.md`](app/libs/README-discord-social-sdk.md) for the
+> steps to enable it.
+
+---
+
 <div align="center">
 
 # GameNative

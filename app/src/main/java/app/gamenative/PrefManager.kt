@@ -1505,4 +1505,9 @@ object PrefManager {
     var powerControlDefaultEnabled: Boolean
         get() = getPref(POWER_CONTROL_DEFAULT_ENABLED, DeviceGate.isDeviceSupported())
         set(value) { setPref(POWER_CONTROL_DEFAULT_ENABLED, value) }
+
+    private val DISCORD_RICH_PRESENCE_ENABLED = booleanPreferencesKey("discord_rich_presence_enabled")
+    var discordRichPresenceEnabled: Boolean
+        get() = getPref(DISCORD_RICH_PRESENCE_ENABLED, false)
+        set(value) { setPref(DISCORD_RICH_PRESENCE_ENABLED, value) }
 }

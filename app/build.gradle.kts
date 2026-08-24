@@ -27,6 +27,12 @@ val posthogHost: String = project.findProperty("POSTHOG_HOST") as String? ?: Sys
 val metaAppId: String = project.findProperty("META_APP_ID") as String? ?: System.getenv("META_APP_ID") ?: ""
 val productSku: String = project.findProperty("PRODUCT_SKU") as String? ?: System.getenv("PRODUCT_SKU") ?: ""
 
+// The Discord Social SDK cannot be redistributed, so it is not checked in. When the AAR is
+// present we also build the JNI bridge in src/main/cpp/discordrpc; when absent the integration
+// reports "Discord unavailable" at runtime. See app/libs/README-discord-social-sdk.md.
+val discordSdkAar = file("libs/discord_partner_sdk.aar")
+val discordSdkBundled: Boolean = discordSdkAar.exists()
+
 room {
     schemaDirectory("$projectDir/schemas")
 }
@@ -75,6 +81,10 @@ android {
         buildConfigField("String", "POSTHOG_HOST",  "\"${secret("POSTHOG_HOST")}\"")
         buildConfigField("String", "STEAMGRIDDB_API_KEY", "\"${secret("STEAMGRIDDB_API_KEY")}\"")
         buildConfigField("String", "CLOUD_PROJECT_NUMBER", "\"${secret("CLOUD_PROJECT_NUMBER")}\"")
+
+        // Public identifier, broadcast with every presence update. Empty disables the feature.
+        buildConfigField("String", "DISCORD_APPLICATION_ID", "\"${secret("DISCORD_APPLICATION_ID")}\"")
+        buildConfigField("boolean", "DISCORD_SDK_BUNDLED", "$discordSdkBundled")
         val iconValue = "@mipmap/ic_launcher"
         val iconRoundValue = "@mipmap/ic_launcher_round"
         manifestPlaceholders.putAll(
@@ -238,6 +248,16 @@ android {
         // the release-only lintVital pass fails on 150+ ExtraTranslation errors.
         disable += "ExtraTranslation"
     }
+
+    if (discordSdkBundled) {
+        externalNativeBuild {
+            cmake {
+                path = file("src/main/cpp/discordrpc/CMakeLists.txt")
+                version = "3.22.1"
+            }
+        }
+    }
+
     dynamicFeatures += setOf(":ubuntufs")
 
     // Configure Assets to be used in different variants
@@ -434,6 +454,11 @@ dependencies {
 
     // Samsung Performance SDK
     implementation(files("src/main/lib/perfsdk-v1.0.0.jar"))
+
+    // Discord Social SDK, only when the AAR has been downloaded into app/libs.
+    if (discordSdkBundled) {
+        implementation(files("libs/discord_partner_sdk.aar"))
+    }
 
     "modernXrImplementation"("com.meta.horizon.platform.sdk:core-kotlin:0.2.2")
     "modernXrImplementation"("com.meta.horizon.platform.sdk:iap-kotlin:0.2.2")

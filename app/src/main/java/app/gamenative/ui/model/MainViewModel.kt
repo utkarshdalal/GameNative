@@ -12,6 +12,7 @@ import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryPlayHistory
 import app.gamenative.db.dao.LibraryPlayHistoryDao
+import app.gamenative.discord.DiscordRichPresence
 import app.gamenative.di.IAppTheme
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
@@ -501,6 +502,7 @@ class MainViewModel @Inject constructor(
 
     fun launchApp(context: Context, appId: String) {
         gameSessionStartTime = System.currentTimeMillis()
+        DiscordRichPresence.onGameStarted(appId, gameSessionStartTime)
         gamePlayedThisSession = true
         PrefManager.hasAttemptedGameLaunch = true
         // Show booting splash before launching the app
@@ -606,6 +608,7 @@ class MainViewModel @Inject constructor(
                 val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
                 Timber.tag("Exit").i("Got game id: $gameId")
                 ActiveGameRegistry.clearIfMatches(gameId)
+                DiscordRichPresence.onGameStopped()
                 SteamService.notifyRunningProcesses()
                 handleExitCloudSync(context, appId, gameId)
 
@@ -815,6 +818,10 @@ class MainViewModel @Inject constructor(
             PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
 
             // You could also show an error dialog here if needed
+
+            // The launch never produced a running game, so drop the presence published above
+            DiscordRichPresence.onGameStopped()
+
             Timber.tag("MainViewModel").e("Game launch error: $error")
         }
     }

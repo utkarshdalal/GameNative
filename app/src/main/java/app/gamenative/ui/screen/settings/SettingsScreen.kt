@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Gamepad
@@ -57,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.discord.DiscordConfig
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.theme.PluviaTheme
 import com.materialkolor.PaletteStyle
@@ -152,6 +154,17 @@ private fun SettingsScreenContent(
                         onAppTheme = onAppTheme,
                         onPaletteStyle = onPaletteStyle,
                     )
+                }
+
+                // Discord section, only in builds that bundled the Social SDK
+                if (DiscordConfig.sdkBundled) {
+                    SettingsSection(
+                        title = stringResource(R.string.settings_discord_title),
+                        icon = Icons.AutoMirrored.Filled.Chat,
+                        iconTint = PluviaTheme.colors.accentPurple,
+                    ) {
+                        SettingsGroupDiscord()
+                    }
                 }
 
                 // Info section

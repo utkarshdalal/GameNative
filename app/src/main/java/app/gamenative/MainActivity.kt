@@ -192,6 +192,9 @@ class MainActivity : ComponentActivity() {
 
         app.gamenative.launch.installLaunchReadiness(applicationContext, lifecycleScope)
 
+        // Registration only, the SDK is not touched until the user enables Rich Presence
+        app.gamenative.discord.DiscordSocialSdkCompat.registerActivity(this)
+
         if (isHeadset(this)) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
             android.view.InputDevice.getDeviceIds().forEach { id ->
