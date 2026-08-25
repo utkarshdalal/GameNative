@@ -10,6 +10,7 @@ import app.gamenative.data.GOGCredentials
 import app.gamenative.data.GOGGame
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
+import app.gamenative.discord.DiscordRichPresence
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.ui.util.SnackbarManager
@@ -833,6 +834,9 @@ class GOGService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
+        // Swipe-away does not reliably deliver Activity.onDestroy, and the process is about
+        // to go; clear synchronously so no game is left published. No-op when idle.
+        DiscordRichPresence.onAppTaskRemoved()
         if (!hasActiveOperations()) {
             Timber.tag("GOG").i("Task removed and no active work — stopping service")
             stopSelf()

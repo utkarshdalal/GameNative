@@ -12,6 +12,7 @@ import app.gamenative.data.AmazonGame
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GameSource
 import app.gamenative.db.dao.AmazonGameDao
+import app.gamenative.discord.DiscordRichPresence
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.NotificationHelper
@@ -863,6 +864,9 @@ class AmazonService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
+        // Swipe-away does not reliably deliver Activity.onDestroy, and the process is about
+        // to go; clear synchronously so no game is left published. No-op when idle.
+        DiscordRichPresence.onAppTaskRemoved()
         if (!hasActiveOperations()) {
             Timber.i("[Amazon] Task removed and no active work — stopping service")
             stopSelf()

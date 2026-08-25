@@ -11,6 +11,7 @@ import app.gamenative.data.EpicGame
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.EpicGameToken
+import app.gamenative.discord.DiscordRichPresence
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
@@ -747,6 +748,9 @@ class EpicService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
+        // Swipe-away does not reliably deliver Activity.onDestroy, and the process is about
+        // to go; clear synchronously so no game is left published. No-op when idle.
+        DiscordRichPresence.onAppTaskRemoved()
         if (!hasActiveOperations()) {
             Timber.tag("Epic").i("Task removed and no active work — stopping service")
             stopSelf()

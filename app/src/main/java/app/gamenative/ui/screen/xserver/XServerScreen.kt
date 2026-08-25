@@ -98,6 +98,7 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.ShooterModeConfig
 import app.gamenative.data.SteamApp
+import app.gamenative.discord.DiscordRichPresence
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.ui.enums.Orientation
@@ -852,12 +853,14 @@ fun XServerScreen(
             return
         }
         PluviaApp.xEnvironment?.onResume()
+        DiscordRichPresence.onGameResumed()
         clearOverlayPauseState()
     }
 
     fun forceResumeIfSuspended() {
         if (PluviaApp.isOverlayPaused && !neverSuspend) {
             PluviaApp.xEnvironment?.onResume()
+            DiscordRichPresence.onGameResumed()
         }
         clearOverlayPauseState()
     }
@@ -866,6 +869,9 @@ fun XServerScreen(
         if (!PluviaApp.isOverlayPaused) return
         if (!neverSuspend) {
             PluviaApp.xEnvironment?.onResume()
+            // Under the manual policy this button, not MainActivity.onResume, is what actually
+            // restarts the game after a backgrounding — so it is what restores presence.
+            DiscordRichPresence.onGameResumed()
         }
         keepPausedForEditor = false
         clearOverlayPauseState()

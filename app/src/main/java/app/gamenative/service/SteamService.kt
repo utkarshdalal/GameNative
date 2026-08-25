@@ -10,6 +10,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.IBinder
 import android.util.Base64
+import app.gamenative.discord.DiscordRichPresence
 import app.gamenative.ui.util.GameInviteNotificationManager
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.callback.GameInviteCallback
@@ -3671,6 +3672,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
+        // Swipe-away does not reliably deliver Activity.onDestroy, and the process is about
+        // to go; clear synchronously so no game is left published. No-op when idle.
+        DiscordRichPresence.onAppTaskRemoved()
         if (!hasActiveOperations() && !(BuildConfig.XR_BUILD && keepAlive)) {
             Timber.i("Task removed and no active work — stopping service")
             stopSelf()

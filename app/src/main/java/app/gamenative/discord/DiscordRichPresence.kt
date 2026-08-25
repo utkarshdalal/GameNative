@@ -48,6 +48,7 @@ object DiscordRichPresence {
 
     private const val TAG = "DiscordRPC"
     private const val UPDATE_RETRY_DELAY_MS = 5_000L
+    private const val TASK_REMOVED_TIMEOUT_MS = 2_000L
     private const val FALLBACK_GAME_NAME = "a Windows game"
 
     private val dispatcher = Executors.newSingleThreadExecutor { runnable ->
@@ -71,6 +72,13 @@ object DiscordRichPresence {
     private var pendingLaunch: PendingLaunch? = null
     private var initialized = false
 
+    /**
+     * True while presence is withheld because the running game was suspended along with the app.
+     * [currentSession] is deliberately kept, so [onGameResumed] republishes the same session
+     * instead of starting a new one.
+     */
+    private var suspendedForBackground = false
+
     private data class PendingLaunch(val containerId: String, val startedAtMs: Long)
 
     private data class GameSession(
@@ -88,6 +96,7 @@ object DiscordRichPresence {
         scope.launch {
             // Held even when we can't publish, so flipping the setting on mid-game works.
             pendingLaunch = PendingLaunch(containerId, startedAtMs)
+            suspendedForBackground = false
             if (!ensureInitialized()) return@launch
             publishPendingLaunch()
         }
@@ -99,6 +108,74 @@ object DiscordRichPresence {
             pendingLaunch = null
             clearPresence()
         }
+    }
+
+    /**
+     * Withdraws presence because the running game was suspended along with the app: GameNative was
+     * backgrounded, or the screen locked. The session is kept, so [onGameResumed] can put it back
+     * with its original start time and let the elapsed timer carry on rather than restart.
+     *
+     * Only call this when the game really did stop. Under the "never suspend" container policy it
+     * keeps running in its container while GameNative is in the background, and clearing presence
+     * there would hide a game that is genuinely still being played.
+     */
+    fun onGameSuspended() {
+        scope.launch {
+            if (suspendedForBackground) return@launch
+            val session = currentSession ?: return@launch
+            suspendedForBackground = true
+            if (!initialized) return@launch
+
+            runCatching { DiscordNative.nativeClearPresence() }
+                .onSuccess { Timber.tag(TAG).i("Suspended presence for '%s'", session.name) }
+                .onFailure { Timber.tag(TAG).w(it, "Failed to suspend presence") }
+        }
+    }
+
+    /**
+     * Republishes a session withdrawn by [onGameSuspended]. A no-op otherwise, so every path that
+     * resumes a game can call it without first working out how the game came to be suspended.
+     */
+    fun onGameResumed() {
+        scope.launch {
+            if (!suspendedForBackground) return@launch
+            suspendedForBackground = false
+            val session = currentSession ?: return@launch
+            if (!ensureInitialized()) return@launch
+
+            // Republished with the original startedAtMs, so Discord's elapsed timer picks up where
+            // it left off instead of resetting to zero on every alt-tab.
+            Timber.tag(TAG).i("Republishing presence for '%s'", session.name)
+            publish(session, isRetry = false)
+        }
+    }
+
+    /**
+     * Clears presence when the user swipes GameNative off the recents screen, called from
+     * [android.app.Service.onTaskRemoved]. Activity.onDestroy is not reliably delivered on a
+     * swipe, so without this the process is killed with a game still published and the user is
+     * shown as playing until Discord notices the socket is gone, which it is slow to do.
+     *
+     * Unlike every other entry point this blocks the caller: the process is usually killed moments
+     * later, and work merely posted to the RPC thread would lose that race. It goes through
+     * [teardown] rather than [clearPresence] because [DiscordNative.nativeClearPresence] only
+     * queues the change for the native callback pump — which will not tick again — while teardown
+     * stops that pump and flushes the clear itself.
+     *
+     * Bounded by [TASK_REMOVED_TIMEOUT_MS] so an unresponsive SDK cannot wedge the main thread.
+     */
+    fun onAppTaskRemoved() {
+        runCatching {
+            runBlocking {
+                withTimeout(TASK_REMOVED_TIMEOUT_MS) {
+                    scope.launch {
+                        pendingLaunch = null
+                        clearPresence()
+                        teardown()
+                    }.join()
+                }
+            }
+        }.onFailure { Timber.tag(TAG).w(it, "Presence not cleared before task removal") }
     }
 
     /** Turning the setting off clears presence; turning it on republishes a running game. */
@@ -184,6 +261,7 @@ object DiscordRichPresence {
     }
 
     private fun clearPresence() {
+        suspendedForBackground = false
         val session = currentSession ?: return
         currentSession = null
         if (!initialized) return

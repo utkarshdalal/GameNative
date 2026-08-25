@@ -35,6 +35,7 @@ import coil.intercept.Interceptor
 import coil.request.CachePolicy
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
+import app.gamenative.discord.DiscordRichPresence
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.NexusDownloadLinkInbox
 import app.gamenative.mods.NexusIntegrationStatus
@@ -461,6 +462,7 @@ class MainActivity : ComponentActivity() {
                 }
                 else -> {
                     PluviaApp.xEnvironment?.onResume()
+                    DiscordRichPresence.onGameResumed()
                     Timber.d("Game resumed")
                 }
             }
@@ -494,6 +496,9 @@ class MainActivity : ComponentActivity() {
                 }
                 else -> {
                     PluviaApp.xEnvironment?.onPause()
+                    // Reached only when the game really was suspended — the never-suspend policy
+                    // returns above, and there the game plays on and keeps its presence.
+                    DiscordRichPresence.onGameSuspended()
                     if (PluviaApp.isManualSuspendMode()) {
                         PluviaApp.isOverlayPaused = true
                         Timber.d("Game paused due to app backgrounded (manual resume required)")
