@@ -886,7 +886,8 @@ object SteamUtils {
         }
 
         // Update or modify localconfig.vdf
-        updateOrModifyLocalConfig(imageFs, container, steamAppId.toString(), SteamService.userSteamId!!.accountID.toString())
+        val steam3AccountId = getSteam3AccountId()?.toString().orEmpty()
+        updateOrModifyLocalConfig(imageFs, container, steamAppId.toString(), steam3AccountId)
 
         skipFirstTimeSteamSetup(imageFs.rootDir)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
@@ -898,7 +899,7 @@ object SteamUtils {
         Timber.i("Checking directory: $appDirPath")
 
         autoLoginUserChanges(imageFs)
-        setupLightweightSteamConfig(imageFs, SteamService.userSteamId!!.accountID.toString())
+        setupLightweightSteamConfig(imageFs, steam3AccountId)
 
         putBackSteamDlls(appDirPath)
 
@@ -975,6 +976,30 @@ object SteamUtils {
                     Timber.w(e, "Failed to restore ${path.name} from backup")
                 }
             }
+        }
+    }
+
+    /**
+     * Deletes DRM backup artifacts (.original.exe, .unpacked.exe, steam_api*.dll.orig) left in
+     * the game directory by emulated-mode launches. Called when an update/verify download starts:
+     * the depot download restores pristine current-build files, so existing backups hold the
+     * previous build, and a later restore pass (bionic/real-Steam launch) would overwrite the
+     * freshly updated files with stale ones.
+     */
+    fun clearStaleDrmBackups(appDirPath: String) {
+        val root = File(appDirPath)
+        if (!root.exists()) return
+        var deleted = 0
+        root.walkTopDown().maxDepth(10).forEach { file ->
+            if (!file.isFile) return@forEach
+            val name = file.name
+            val isBackup = name.endsWith(".original.exe", ignoreCase = true) ||
+                name.endsWith(".unpacked.exe", ignoreCase = true) ||
+                (name.startsWith("steam_api", ignoreCase = true) && name.endsWith(".dll.orig", ignoreCase = true))
+            if (isBackup && file.delete()) deleted++
+        }
+        if (deleted > 0) {
+            Timber.i("Deleted $deleted stale DRM backup file(s) in $appDirPath")
         }
     }
 

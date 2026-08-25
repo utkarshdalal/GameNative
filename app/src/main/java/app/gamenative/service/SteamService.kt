@@ -1930,6 +1930,10 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 val downloadJob = instance!!.scope.launch {
                     try {
+                        if (isUpdateOrVerify) {
+                            SteamUtils.clearStaleDrmBackups(appDirPath)
+                        }
+
                         // Get licenses from database
                         val licenses = getLicensesFromDb()
                         if (licenses.isEmpty()) {
