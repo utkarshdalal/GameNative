@@ -122,17 +122,8 @@ class PerformanceHudView(
         ?.color?.defaultColor ?: Color.BLACK
 
     private val backupBackgroundColor = currentBackgroundColor
-    private val batteryLevelBackgroundColor = Color.argb(
-        102,
-        128,
-        0,
-        0)
-
-    private val batteryTempBackgroundColor = Color.argb(
-        102,
-        128,
-        0,
-        128)
+    private val batteryLevelBackgroundColor = BATTERY_LEVEL_WARNING_BACKGROUND_COLOR
+    private val batteryTempBackgroundColor = BATTERY_TEMP_WARNING_BACKGROUND_COLOR
     private val allMetrics = listOf(
         fpsMetric,
         cpuMetric,
@@ -1301,5 +1292,7 @@ class PerformanceHudView(
         const val MIN_HUD_TEXT_SHADOW_RADIUS_PX = 1.5f
         const val MAX_HUD_TEXT_SHADOW_RADIUS_PX = 4f
         val HUD_TEXT_SHADOW_COLOR: Int = Color.argb(220, 0, 0, 0)
+        val BATTERY_LEVEL_WARNING_BACKGROUND_COLOR: Int = Color.argb(102, 128, 0, 0)
+        val BATTERY_TEMP_WARNING_BACKGROUND_COLOR: Int = Color.argb(102, 128, 0, 128)
     }
 }
