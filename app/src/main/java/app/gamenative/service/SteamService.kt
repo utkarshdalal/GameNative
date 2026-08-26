@@ -3214,7 +3214,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                     if (appLanguage == "english") {
                         emptyMap()
                     } else {
-                        userStats.getExpandedAchievements("english").associateBy { it.name }
+                        // A nameless block can't be matched, and its null key would swallow
+                        // every lookup.
+                        userStats.getExpandedAchievements("english")
+                            .associateBy { it.name }
+                            .filterKeys { it != null }
                     }
                 }
                 localized.map { block ->
