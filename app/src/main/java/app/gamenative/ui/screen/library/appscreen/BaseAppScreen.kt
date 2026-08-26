@@ -648,6 +648,15 @@ abstract class BaseAppScreen {
 
     protected open fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean = false
 
+    protected open val supportsAchievements: Boolean = false
+
+    /** Null when the fetch failed, so the caller can retry. Empty means the game has none. */
+    protected open suspend fun fetchAchievements(libraryItem: LibraryItem): List<Achievement>? = null
+
+    /** Changes once the storefront can answer, retrying a fetch that ran too early. */
+    @Composable
+    protected open fun achievementsReadyKey(): Any = Unit
+
     protected open suspend fun exportSaves(
         context: Context,
         libraryItem: LibraryItem,
@@ -1279,27 +1288,24 @@ abstract class BaseAppScreen {
             performStateRefresh(true)
         }
 
-        LaunchedEffect(libraryItem.appId) {
-            if (getGameSource(libraryItem) == GameSource.STEAM) {
-                // null = fetch failed (an empty list means the game has no achievements); retry a
-                // few times so a transient Steam error doesn't silently drop the section.
-                repeat(3) { attempt ->
-                    val result = try {
-                        withContext(Dispatchers.IO) {
-                            app.gamenative.service.SteamService.fetchAchievementsForDisplay(getGameId(libraryItem))
-                        }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to fetch achievements for ${getGameId(libraryItem)}")
-                        null
-                    }
-                    if (result != null) {
-                        achievementsState = result
-                        return@LaunchedEffect
-                    }
-                    if (attempt < 2) delay(2000)
+        val achievementsReadyKey = achievementsReadyKey()
+        LaunchedEffect(libraryItem.appId, achievementsReadyKey) {
+            if (!supportsAchievements) return@LaunchedEffect
+            // Retry so a transient error doesn't silently drop the section.
+            repeat(3) { attempt ->
+                val result = try {
+                    fetchAchievements(libraryItem)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to fetch achievements for ${getGameId(libraryItem)}")
+                    null
                 }
+                if (result != null) {
+                    achievementsState = result
+                    return@LaunchedEffect
+                }
+                if (attempt < 2) delay(2000)
             }
         }
 
