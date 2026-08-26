@@ -2114,7 +2114,7 @@
     <string name="achievements_all_title">Alle Erfolge</string>
     <string name="achievements_unlocked_at">Freigeschaltet am %1$s um %2$s</string>
     <string name="achievements_complete">Alle Erfolge freigeschaltet</string>
-    <string name="achievements_total">Gesamt</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
     <plurals name="achievements_hidden_remaining">
         <item quantity="one">%1$d verborgene Errungenschaft übrig</item>
         <item quantity="other">%1$d verborgene Errungenschaften übrig</item>

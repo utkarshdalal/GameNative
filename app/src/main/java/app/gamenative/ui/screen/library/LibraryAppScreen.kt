@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import app.gamenative.ui.component.GradientProgressBar
 import app.gamenative.ui.component.InfoCard
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.Achievement
@@ -1304,6 +1305,10 @@ fun GameMigrationDialog(
 // Shared grayscale filter for locked achievement icons.
 private val grayMatrix = ColorMatrix().apply { setToSaturation(0f) }
 
+// Steam leaves some localized names blank.
+private val Achievement.label: String
+    get() = displayName.ifEmpty { name ?: "" }
+
 private fun Achievement.previewIconUrl(): String? =
     if (isUnlocked) icon.ifEmpty { iconGray } else iconGray ?: icon.ifEmpty { null }
 
@@ -1333,7 +1338,7 @@ private fun AchievementIcon(ach: Achievement, size: Dp, corner: Dp, masked: Bool
             imageModel = { iconUrl ?: "" },
             imageOptions = ImageOptions(
                 contentScale = ContentScale.Crop,
-                contentDescription = ach.displayName ?: ach.name,
+                contentDescription = ach.label,
                 colorFilter = if (ach.isUnlocked) null else ColorFilter.colorMatrix(grayMatrix),
             ),
             modifier = box,
@@ -1349,12 +1354,10 @@ private fun AchievementProgressBar(current: Float, max: Float, textStyle: TextSt
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        LinearProgressIndicator(
-            progress = { fraction },
+        GradientProgressBar(
+            progress = fraction,
             modifier = Modifier.weight(1f),
-            trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-            gapSize = 0.dp,
-            drawStopIndicator = {},
+            height = 5.dp,
         )
         Text(
             text = "${current.toInt()} / ${max.toInt()}",
@@ -1390,15 +1393,15 @@ private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = n
             AchievementIcon(ach = ach, size = 40.dp, corner = 6.dp)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = ach.displayName ?: ach.name ?: "",
+                    text = ach.label,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (!ach.description.isNullOrEmpty()) {
+                if (ach.description.isNotEmpty()) {
                     Text(
-                        text = ach.description!!,
+                        text = ach.description,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
@@ -1491,7 +1494,7 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
         },
         title = {
             Text(
-                text = ach.displayName ?: ach.name ?: "",
+                text = ach.label,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -1503,9 +1506,9 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (!ach.description.isNullOrEmpty()) {
+                if (ach.description.isNotEmpty()) {
                     Text(
-                        text = ach.description!!,
+                        text = ach.description,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -1545,15 +1548,16 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
 private fun AchievementsRow(
     achievements: List<Achievement>,
 ) {
-    // Temporarily this is Steam. We can expand later for other storefronts as they become available.
     val unlockedCount = achievements.count { it.isUnlocked }
     val totalCount = achievements.size
     var showDialog by remember { mutableStateOf(false) }
 
-    val sortedAchievements = achievements.sortedWith(
-        compareByDescending<Achievement> { it.isUnlocked }
-            .thenByDescending { it.unlockTimestamp },
-    )
+    val sortedAchievements = remember(achievements) {
+        achievements.sortedWith(
+            compareByDescending<Achievement> { it.isUnlocked }
+                .thenByDescending { it.unlockTimestamp },
+        )
+    }
 
     Spacer(modifier = Modifier.height(10.dp))
 
@@ -1565,22 +1569,25 @@ private fun AchievementsRow(
         isCompact = true,
         onClick = { showDialog = true },
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // Icons fill all space left over after the count claims its natural width.
-            // BoxWithConstraints then tells us exactly how many 48dp icons (+ 8dp gaps) fit.
-            BoxWithConstraints(modifier = Modifier.weight(1f)) {
-                val iconSize = 48.dp
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Fit as many icons as the width allows.
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val minIconSize = 48.dp
                 val spacing = 8.dp
-                val fit = ((maxWidth + spacing) / (iconSize + spacing))
-                    .toInt()
-                    .coerceIn(1, sortedAchievements.size)
                 val total = sortedAchievements.size
+                val slotsByWidth = ((maxWidth + spacing) / (minIconSize + spacing))
+                    .toInt()
+                    .coerceAtLeast(1)
+                val slots = slotsByWidth.coerceAtMost(total)
+                // A full row divides the width evenly so the strip ends flush with the bar below.
+                val iconSize = if (total >= slotsByWidth) {
+                    (maxWidth - spacing * (slots - 1)) / slots
+                } else {
+                    minIconSize
+                }
                 // Reserve the last slot for a "+N" stack when more achievements exist than fit.
-                val showStack = total > fit
-                val iconCount = if (showStack) (fit - 1).coerceAtLeast(0) else fit
+                val showStack = total > slots
+                val iconCount = if (showStack) (slots - 1).coerceAtLeast(0) else slots
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
                     sortedAchievements.take(iconCount).forEach { ach ->
                         AchievementIcon(
@@ -1605,6 +1612,7 @@ private fun AchievementsRow(
                                     imageModel = { nextUrl ?: "" },
                                     imageOptions = ImageOptions(
                                         contentScale = ContentScale.Crop,
+                                        contentDescription = next.label,
                                         colorFilter = ColorFilter.colorMatrix(grayMatrix),
                                     ),
                                     modifier = Modifier.fillMaxSize(),
@@ -1628,35 +1636,34 @@ private fun AchievementsRow(
                 }
             }
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = "$unlockedCount / $totalCount",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    // Give them a star for getting 100% completion
-                    if (totalCount >= 1 && unlockedCount == totalCount) {
-                        Icon(
-                            imageVector = Icons.Filled.Star,
-                            contentDescription = stringResource(R.string.achievements_complete),
-                            tint = Color(0xFFFFD700),
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                }
-                Text(
-                    text = stringResource(R.string.achievements_total),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                GradientProgressBar(
+                    progress = if (totalCount > 0) unlockedCount.toFloat() / totalCount else 0f,
+                    modifier = Modifier.weight(1f),
+                    height = 8.dp,
                 )
+                // Floors, so only a full set reads as 100%.
+                val percent = if (totalCount > 0) unlockedCount * 100 / totalCount else 0
+                Text(
+                    text = stringResource(R.string.achievements_progress_count, unlockedCount, totalCount, percent),
+                    style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                // Give them a star for getting 100% completion
+                if (totalCount >= 1 && unlockedCount == totalCount) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = stringResource(R.string.achievements_complete),
+                        tint = Color(0xFFFFD700),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
             }
         }
     }
@@ -1674,7 +1681,6 @@ private fun AchievementsDialog(
     achievements: List<Achievement>,
     onDismiss: () -> Unit,
 ) {
-
     // Dialog destinations don't animate; fade/slide the content in and play the exit before
     // dismissing, matching the screenshot gallery.
     val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
@@ -1683,7 +1689,10 @@ private fun AchievementsDialog(
     }
     val dismiss = { visibleState.targetState = false }
 
-    // Reveal is session-only, not remembered.
+    // Secret achievements collapse into one row until revealed. Reveal is session-only.
+    val (hiddenLocked, visibleAchievements) = remember(achievements) {
+        achievements.partition { it.isHiddenLocked }
+    }
     var revealHidden by remember { mutableStateOf(false) }
     var showRevealConfirm by remember { mutableStateOf(false) }
     var detailAchievement by remember { mutableStateOf<Achievement?>(null) }
@@ -1756,8 +1765,6 @@ private fun AchievementsDialog(
                     contentPadding = PaddingValues(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    // Secret achievements collapse into one row until revealed.
-                    val (hiddenLocked, visibleAchievements) = achievements.partition { it.isHiddenLocked }
                     items(visibleAchievements) { ach ->
                         AchievementRow(ach) { detailAchievement = ach }
                     }

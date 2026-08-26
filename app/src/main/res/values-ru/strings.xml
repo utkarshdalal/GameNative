@@ -2102,7 +2102,7 @@ https://gamenative.app
     <string name="achievements_all_title">Все достижения</string>
     <string name="achievements_unlocked_at">Разблокировано %1$s в %2$s</string>
     <string name="achievements_complete">Все достижения разблокированы</string>
-    <string name="achievements_total">Всего</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
     <plurals name="achievements_hidden_remaining">
         <item quantity="one">Осталось %1$d скрытое достижение</item>
         <item quantity="few">Осталось %1$d скрытых достижения</item>

@@ -2171,7 +2171,7 @@
     <string name="achievements_all_title">모든 업적</string>
     <string name="achievements_unlocked_at">%1$s %2$s에 달성</string>
     <string name="achievements_complete">모든 업적 달성</string>
-    <string name="achievements_total">총계</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
     <plurals name="achievements_hidden_remaining">
         <item quantity="other">숨겨진 도전 과제 %1$d개 남음</item>
     </plurals>

@@ -2165,7 +2165,7 @@
     <string name="achievements_all_title">Tutti gli obiettivi</string>
     <string name="achievements_unlocked_at">Sbloccato il %1$s alle %2$s</string>
     <string name="achievements_complete">Tutti i traguardi sbloccati</string>
-    <string name="achievements_total">Totale</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
     <plurals name="achievements_hidden_remaining">
         <item quantity="one">%1$d obiettivo nascosto rimanente</item>
         <item quantity="other">%1$d obiettivi nascosti rimanenti</item>

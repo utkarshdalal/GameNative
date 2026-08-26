@@ -2044,7 +2044,7 @@
     <string name="achievements_all_title">Todas as conquistas</string>
     <string name="achievements_unlocked_at">Desbloqueado em %1$s às %2$s</string>
     <string name="achievements_complete">Todas as conquistas desbloqueadas</string>
-    <string name="achievements_total">Total</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
     <plurals name="achievements_hidden_remaining">
         <item quantity="one">%1$d conquista oculta restante</item>
         <item quantity="other">%1$d conquistas ocultas restantes</item>

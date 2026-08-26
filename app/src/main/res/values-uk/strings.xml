@@ -2170,7 +2170,7 @@
     <string name="achievements_all_title">Всі досягнення</string>
     <string name="achievements_unlocked_at">Розблоковано %1$s о %2$s</string>
     <string name="achievements_complete">Усі досягнення розблоковано</string>
-    <string name="achievements_total">Усього</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
     <plurals name="achievements_hidden_remaining">
         <item quantity="one">Залишилося %1$d приховане досягнення</item>
         <item quantity="few">Залишилося %1$d приховані досягнення</item>

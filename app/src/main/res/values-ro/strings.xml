@@ -2176,7 +2176,7 @@
 	<string name="achievements_all_title">Toate realizările</string>
 	<string name="achievements_unlocked_at">Deblocat pe %1$s la %2$s</string>
     <string name="achievements_complete">Toate realizările deblocate</string>
-    <string name="achievements_total">Total</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
     <plurals name="achievements_hidden_remaining">
         <item quantity="one">%1$d realizare ascunsă rămasă</item>
         <item quantity="few">%1$d realizări ascunse rămase</item>

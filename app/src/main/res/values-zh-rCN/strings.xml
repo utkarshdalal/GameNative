@@ -2191,7 +2191,7 @@
     <string name="achievements_all_title">所有成就</string>
     <string name="achievements_unlocked_at">%1$s %2$s 解锁</string>
     <string name="achievements_complete">所有成就已解锁</string>
-    <string name="achievements_total">总数</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
     <plurals name="achievements_hidden_remaining">
         <item quantity="other">还有 %1$d 个隐藏成就</item>
     </plurals>

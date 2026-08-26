@@ -2174,7 +2174,7 @@
     <string name="achievements_all_title">Wszystkie osiągnięcia</string>
     <string name="achievements_unlocked_at">Odblokowano %1$s o %2$s</string>
     <string name="achievements_complete">Wszystkie osiągnięcia odblokowane</string>
-    <string name="achievements_total">Razem</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
     <plurals name="achievements_hidden_remaining">
         <item quantity="one">Pozostało %1$d ukryte osiągnięcie</item>
         <item quantity="few">Pozostały %1$d ukryte osiągnięcia</item>

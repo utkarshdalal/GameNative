@@ -2130,7 +2130,7 @@
     <string name="achievements_all_title">すべての実績</string>
     <string name="achievements_unlocked_at">%1$s %2$s に解除</string>
     <string name="achievements_complete">すべての実績を解除しました</string>
-    <string name="achievements_total">合計</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
     <plurals name="achievements_hidden_remaining">
         <item quantity="other">隠し実績 残り%1$d個</item>
     </plurals>

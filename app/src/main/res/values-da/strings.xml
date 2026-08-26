@@ -2044,7 +2044,7 @@
     <string name="achievements_all_title">Alle præstationer</string>
     <string name="achievements_unlocked_at">Låst op den %1$s kl. %2$s</string>
     <string name="achievements_complete">Alle præstationer låst op</string>
-    <string name="achievements_total">I alt</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
     <plurals name="achievements_hidden_remaining">
         <item quantity="one">%1$d skjult præstation tilbage</item>
         <item quantity="other">%1$d skjulte præstationer tilbage</item>

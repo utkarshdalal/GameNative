@@ -2304,7 +2304,7 @@
     <string name="achievements_all_title">All Achievements</string>
     <string name="achievements_unlocked_at">Unlocked on %1$s at %2$s</string>
     <string name="achievements_complete">All achievements unlocked</string>
-    <string name="achievements_total">Total</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
     <plurals name="achievements_hidden_remaining">
         <item quantity="one">%1$d hidden achievement remaining</item>
         <item quantity="other">%1$d hidden achievements remaining</item>
