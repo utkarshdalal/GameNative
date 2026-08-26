@@ -77,7 +77,7 @@ fun InfoCard(
         modifier = modifier
             .bringIntoViewRequester(bringIntoViewRequester)
             .then(interactive)
-            .focusRing(interactionSource, shape),
+            .focusRing(interactionSource, shape, width = 2.dp),
         shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shadowElevation = 2.dp,
