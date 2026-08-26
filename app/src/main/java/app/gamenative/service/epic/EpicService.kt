@@ -250,6 +250,9 @@ class EpicService : Service() {
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 }
 
+                // Drop any leftover chunk cache (kept on failed downloads for resume)
+                EpicDownloadManager.chunkCacheDirFor(context, path).deleteRecursively()
+
                 // Uninstall from database (keeps the entry but marks as not installed)
                 instance.epicManager.uninstall(appId)
 
@@ -580,12 +583,6 @@ class EpicService : Service() {
                 context, container, forceReinstall, onProgress,
             )
         }
-
-        /**
-         * Returns true if the EOS overlay is installed in [container].
-         */
-        fun isOverlayInstalled(container: Container): Boolean =
-            getInstance()?.epicOverlayManager?.isOverlayInstalled(container) ?: false
 
         /**
          * Remove the EOS overlay from [container] and clear its registry entry.

@@ -71,6 +71,7 @@ data class LibraryState(
     val epicCount: Int = 0,
     val amazonCount: Int = 0,
     val localCount: Int = 0,
+    val favoritesCount: Int = 0,
 )
 
 /**

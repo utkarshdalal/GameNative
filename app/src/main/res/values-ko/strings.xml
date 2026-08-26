@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">사용자 로그인</string>
     <string name="login_2fa">2단계 인증</string>
@@ -935,6 +935,11 @@
     <string name="settings_language_restart_confirm">재시작</string>
     <string name="settings_language_changing">언어 변경 및 재시작 중...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">성능</string>
+    <string name="settings_performance_power_control_title">성능 제어</string>
+    <string name="settings_performance_power_control_subtitle">게임 내 성능 제어를 기본적으로 활성화 (테스트된 기기에서 켜짐: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">에뮬레이션</string>
     <string name="settings_emulation_orientations_title">허용된 방향</string>
@@ -974,10 +979,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">정보</string>
-    <string name="settings_info_send_tip_title">팁 보내기</string>
-    <string name="settings_info_send_tip_subtitle">지속적인 개발에 기여</string>
-    <string name="settings_info_ask_tip_title">시작 시 팁 요청</string>
-    <string name="settings_info_ask_tip_subtitle">시작 시 팁 메시지가 나타나지 않도록 중지</string>
+    <string name="settings_info_send_tip_title">멤버 되기</string>
+    <string name="settings_info_send_tip_subtitle">릴리스 조기 이용, 우선 지원 등</string>
+    <string name="settings_info_ask_tip_title">멤버십 안내</string>
+    <string name="settings_info_ask_tip_subtitle">GameNative 멤버가 될 수 있는 안내를 가끔 표시합니다</string>
     <string name="settings_info_source_title">소스 코드</string>
     <string name="settings_info_source_subtitle">이 프로젝트의 소스 코드 보기</string>
     <string name="settings_info_libraries_title">사용된 라이브러리</string>
@@ -1091,9 +1096,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">최근 충돌</string>
     <string name="main_recent_crash_message">죄송합니다!\n최근 발생한 문제에 대해 알려주시면 감사하겠습니다.\n앱 설정에서 가장 최근의 충돌 로그를 보고 내보낼 수 있으며 프로젝트 저장소에 Github 이슈로 첨부할 수 있습니다.\nGithub 저장소 링크도 설정에 있습니다!</string>
-    <string name="main_thank_you_title">GameNative를 사용해 주셔서 감사합니다!</string>
-    <string name="main_thank_you_message">친구들과 앱을 공유하거나 Ko-fi에서 회원이 되어 Android에서 오픈 소스 PC 게임을 지원하세요.</string>
-    <string name="main_join_kofi">Ko-fi에서 참여</string>
+    <string name="main_thank_you_title">GameNative를 즐기고 계신가요?</string>
+    <string name="main_thank_you_message">지금 멤버가 되세요. 멤버 혜택:\n\n• 새 릴리스 조기 이용\n• 게임 실행을 위한 우선 지원\n• Discord 프리미엄 역할 및 전용 채널\n• …그 외 다수\n\n월 $5부터</string>
+    <string name="main_join_kofi">멤버 되기</string>
+    <string name="pitch_session_title">%1$s 재미있으신가요?</string>
+    <string name="pitch_five_star_title">%1$s이(가) 잘 실행되어 다행이에요!</string>
     <string name="main_share">공유</string>
     <string name="main_share_text">GameNative를 확인하세요 - 클라우드 저장을 완전히 지원하며 Android에서 PC Steam 게임을 플레이하세요!\nhttps://gamenative.app\n커뮤니티 참여: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">게임이 작동했나요?</string>
@@ -1206,6 +1213,63 @@
     <string name="best_config_apply_anyway">그래도 적용</string>
     <string name="best_config_applied_with_defaults">구성이 적용되었습니다. 누락된 구성 요소가 기본값으로 대체되었습니다</string>
     <string name="best_config_apply_failed">설정 적용 실패: %s</string>
+    <string name="community_config_title">커뮤니티 구성</string>
+    <string name="community_config_close">커뮤니티 구성 닫기</string>
+    <string name="community_config_refresh">커뮤니티 구성 새로 고침</string>
+    <string name="community_config_retry">다시 시도</string>
+    <string name="community_config_unknown_error">알 수 없는 오류</string>
+    <string name="community_config_unknown">알 수 없음</string>
+    <string name="community_config_load_failed">커뮤니티 구성을 불러올 수 없습니다: %1$s</string>
+    <string name="community_config_game_not_found">%1$s의 호환성 항목을 찾을 수 없습니다</string>
+    <string name="community_config_gpu_unknown">GPU를 사용할 수 없음</string>
+    <plurals name="community_config_result_count">
+        <item quantity="other">구성 %1$d개</item>
+    </plurals>
+    <string name="community_config_highest_rated">평점 높은 순</string>
+    <string name="community_config_newest">최신순</string>
+    <string name="community_config_same_device">동일한 기기</string>
+    <string name="community_config_this_gpu">동일한 GPU</string>
+    <string name="community_config_compatible_gpus">호환</string>
+    <string name="community_config_load_more">더 불러오기</string>
+    <string name="community_config_no_device_results">이 기기의 구성을 찾을 수 없습니다.</string>
+    <string name="community_config_no_gpu_results">이 GPU의 구성을 찾을 수 없습니다.</string>
+    <string name="community_config_no_compatible_results">호환 GPU용 구성을 찾을 수 없습니다.</string>
+    <string name="community_config_show_this_gpu">이 GPU 표시</string>
+    <string name="community_config_show_compatible_gpus">호환 GPU 표시</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">구성 세부 정보</string>
+    <string name="community_config_other_gpu_warning">이 결과는 다른 GPU를 사용합니다. GPU 전용 드라이버 및 래퍼 설정은 적용되지 않습니다.</string>
+    <string name="community_config_run_details">테스트 실행</string>
+    <string name="community_config_rating">평점</string>
+    <string name="community_config_average_fps">평균 FPS</string>
+    <string name="community_config_device">기기</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">GameNative 버전</string>
+    <string name="community_config_submitted">제출일</string>
+    <string name="community_config_session_length">세션 시간</string>
+    <string name="community_config_game_store">게임 스토어</string>
+    <string name="community_config_custom_game">사용자 지정 게임</string>
+    <string name="community_config_settings">설정</string>
+    <string name="community_config_additional_launch_settings">추가 실행 설정</string>
+    <string name="community_config_apply_launch_arguments">실행 인수 적용</string>
+    <string name="community_config_apply_environment_variables">환경 변수 적용</string>
+    <string name="community_config_replaces_existing_value">현재 값을 대체합니다</string>
+    <string name="community_config_dependencies">종속 항목</string>
+    <string name="community_config_dependencies_apply_check">구성을 적용할 때 종속 항목을 확인합니다.</string>
+    <string name="community_config_no_downloads">현재 필요한 매니페스트 다운로드가 없습니다.</string>
+    <string name="community_config_downloads_required">다음 구성 요소가 자동으로 다운로드됩니다:\n%1$s</string>
+    <string name="community_config_tags">태그</string>
+    <string name="community_config_notes">메모</string>
+    <string name="community_config_apply">구성 적용</string>
+    <string name="community_config_container">컨테이너</string>
+    <string name="community_config_wine">Wine 또는 Proton</string>
+    <string name="community_config_emulator">에뮬레이터</string>
+    <string name="community_config_wrapper">DirectX 래퍼</string>
+    <string name="community_config_box64_preset">Box64 사전 설정</string>
+    <string name="community_config_driver">그래픽 드라이버</string>
     <string name="import_config">설정 가져오기</string>
     <string name="export_config">설정 내보내기</string>
     <string name="library_app_type">앱 유형</string>
@@ -1604,6 +1668,7 @@
     <string name="option_submit_feedback">피드백 제출</string>
     <string name="option_reset_drm">DRM 초기화</string>
     <string name="option_use_known_config">알려진 설정 사용</string>
+    <string name="option_browse_community_configs">커뮤니티 구성 찾아보기</string>
     <string name="option_verify_files">파일 무결성 확인</string>
     <string name="option_update">업데이트</string>
     <string name="option_move_to_external_storage">외부 저장소로 이동</string>
@@ -2074,6 +2139,8 @@
     <string name="rec_disclosure_body">맞춤 추천을 위해 플레이한 게임을 GOG와 공유합니다. 설정에서 언제든지 끌 수 있습니다.</string>
     <string name="rec_disclosure_allow">허용</string>
     <string name="rec_disclosure_not_now">나중에</string>
+    <string name="rec_teaser_title">내 기기에 맞는 게임 찾기</string>
+    <string name="rec_teaser_subtitle">탭하여 살펴보기</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">스폰서</string>
@@ -2192,6 +2259,21 @@
     <string name="steam_invite_joined">내 게임에 참가 중</string>
     <string name="steam_invite_online">온라인</string>
     <string name="steam_invite_offline">오프라인</string>
+    <string name="radial_menu">방사형 메뉴</string>
+    <string name="radial_menu_settings_title">방사형 메뉴</string>
+    <string name="radial_menu_cancel">취소</string>
+    <string name="radial_menu_slot_count">슬롯</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d개 슬롯 활성화됨</string>
+    <string name="radial_menu_decrease_slots">슬롯 줄이기</string>
+    <string name="radial_menu_increase_slots">슬롯 늘리기</string>
+    <string name="radial_menu_slots">휠 슬롯</string>
+    <string name="radial_menu_slot_title">슬롯 %1$d</string>
+    <string name="radial_menu_slot_label_hint">레이블</string>
+    <string name="radial_menu_slot_binding">슬롯 %1$d 바인딩</string>
+    <string name="radial_menu_slot_binding_summary">바인딩: %1$s</string>
+    <string name="radial_menu_preset_common">일반</string>
+    <string name="radial_menu_preset_weapons">무기</string>
+    <string name="gesture_action_open_radial_menu">방사형 메뉴 열기</string>
 
     <!-- Power Control -->
     <string name="power_control">성능 제어</string>
@@ -2213,6 +2295,8 @@
     <string name="power_control_auto_tuning_desc">더 안정적인 성능, 더 긴 배터리 사용 시간, 더 적은 발열: 게임에 맞춰 CPU와 GPU를 자동으로 조정합니다. Retroid Pocket 6에서 검증되었습니다.</string>
     <string name="power_control_adaptive_fps">FPS 자동 감소</string>
     <string name="power_control_adaptive_fps_desc">게임이 FPS 상한에 도달하지 못하면 상한을 낮춰 프레임 간격을 안정시킵니다. Retroid Pocket 6에서 검증되었습니다.</string>
+    <string name="power_control_enable">게임 내 전원 제어</string>
+    <string name="power_control_enable_desc">OS 대신 CPU/GPU 클럭을 제어합니다</string>
     <string name="power_control_tuning_mode">튜닝 모드</string>
     <string name="power_control_tuning_mode_per_cluster">클러스터별 (Retroid Pocket 6에서 검증됨)</string>
     <string name="power_control_tuning_mode_whole_cpu">PID 제어기</string>
@@ -2231,4 +2315,37 @@
     <string name="power_control_strategy_aggressive_desc">감지된 병목 현상의 성능을 최대화</string>
     <string name="power_control_strategy_conservative">보수적</string>
     <string name="power_control_strategy_conservative_desc">안정성에 중점을 둔 점진적 조정</string>
+    <string name="launch_immersive_mode">몰입 모드(VR)로 실행</string>
+    <string name="quick_menu_tab_immersive">몰입</string>
+    <string name="immersive_passthrough">패스스루</string>
+    <string name="immersive_passthrough_desc">가상 화면 너머로 실제 주변 환경을 봅니다</string>
+    <string name="immersive_passthrough_toggle">패스스루 사용</string>
+    <string name="immersive_resize_mode_title">크기 조절/이동 핸들</string>
+    <string name="immersive_resize_mode_desc">켜면 게임 화면 안쪽 가장자리에 잡기 핸들을 표시합니다. 여백 없이 두는 편이 선명도를 유지하므로 기본값은 꺼짐입니다.</string>
+    <string name="immersive_resize_mode_toggle">크기 조절/이동 핸들 표시</string>
+    <string name="immersive_direct_render_title">성능</string>
+    <string name="immersive_reset_effects_status_blocked">화면 효과, 필터 또는 밝기/대비/감마 조정이 활성화되어 가장 빠른 렌더링 경로가 차단되었습니다.</string>
+    <string name="immersive_reset_effects_status_ok">현재 가장 빠른 렌더링 경로를 막는 항목이 없습니다.</string>
+    <string name="immersive_reset_effects_button">화면 효과 초기화</string>
+    <string name="immersive_reset_effects_desc">모든 효과, 필터, 밝기/대비/감마 조정을 끕니다. 다시 시작할 필요 없이 즉시 적용됩니다.</string>
+    <string name="immersive_onboarding_disable_passthrough">성능을 높이려면 패스스루를 끄세요</string>
+    <string name="immersive_onboarding_quick_menu">Start를 길게 누르면 빠른 메뉴가 열리고 닫힙니다</string>
+    <string name="immersive_onboarding_pointer_toggle">스틱을 두 번 누르면 Xbox 컨트롤러와 XR 포인터가 전환됩니다</string>
+    <string name="immersive_mode_xr_pointer">XR 포인터 모드</string>
+    <string name="immersive_mode_xbox">Xbox 컨트롤러 모드</string>
+    <string name="tab_favorites">즐겨찾기</string>
+    <string name="favorites_empty_title">아직 즐겨찾기가 없습니다</string>
+    <string name="favorites_empty_message">게임의 세부 메뉴를 열어 즐겨찾기에 추가하거나, 게임에 포커스한 상태에서 컨트롤러의 왼쪽 페이스 버튼을 누르세요(Xbox는 X, PlayStation은 네모, Nintendo 배열은 Y).</string>
+    <string name="favorites_empty_action">모든 게임 보기</string>
+    <string name="favorites_empty_filtered_title">표시할 즐겨찾기가 없습니다</string>
+    <string name="favorites_empty_filtered_message">현재 검색어나 필터와 일치하거나 라이브러리에서 사용할 수 있는 즐겨찾기 게임이 없습니다.</string>
+    <string name="option_add_to_favorites">즐겨찾기에 추가</string>
+    <string name="option_remove_from_favorites">즐겨찾기에서 제거</string>
+    <string name="favorite_add_named">%1$s을(를) 즐겨찾기에 추가</string>
+    <string name="favorite_remove_named">%1$s을(를) 즐겨찾기에서 제거</string>
+    <string name="favorite_removed">즐겨찾기에서 제거됨</string>
+    <string name="favorite_removed_named">%1$s을(를) 즐겨찾기에서 제거함</string>
+    <string name="favorite_added">즐겨찾기에 추가됨</string>
+    <string name="favorite_added_named">%1$s을(를) 즐겨찾기에 추가함</string>
+    <string name="xr_refresh_rate">VR 재생 빈도</string>
 </resources>

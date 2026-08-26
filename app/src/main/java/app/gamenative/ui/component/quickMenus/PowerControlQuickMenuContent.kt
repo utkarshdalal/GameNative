@@ -10,6 +10,9 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -48,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.powercontrol.AutoTuningStrategy
+import app.gamenative.powercontrol.PowerControlUiState
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.PowerProfile
 import app.gamenative.powercontrol.drivers.PerformanceDriver
@@ -57,25 +61,28 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.MathUtils.normalizedProgress
 import kotlinx.coroutines.delay
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PowerControlQuickMenuContent(
-    uiState: PowerControlUiState,
-    onAutoTuningToggled: (Boolean) -> Unit,
-    onTuningStrategySelected: (AutoTuningStrategy) -> Unit,
-    onProfileSelected: (PowerProfile) -> Unit,
-    onGovernorSelected: (String) -> Unit,
-    onMinCpuValueChanged: (Int) -> Unit,
-    onMaxCpuValueChanged: (Int) -> Unit,
-    onMinGpuPowerChanged: (Int) -> Unit,
-    onMaxGpuPowerChanged: (Int) -> Unit,
-    onMinRamValueChanged: (Int) -> Unit,
-    onMaxRamValueChanged: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    uiState: PowerControlUiState,
+    isDriverSupported: Boolean,
+    firstItemFocusRequester: FocusRequester? = null,
+    onAdaptiveFpsCapToggled: (Boolean) -> Unit = {},
+    onPowerControlToggled: (Boolean) -> Unit = {},
     onFanControlToggled: (Boolean) -> Unit = {},
     onGamePinningToggled: (Boolean) -> Unit = {},
+    onAutoTuningToggled: (Boolean) -> Unit = {},
     onTuningModeSelected: (Boolean) -> Unit = {},
-    onAdaptiveFpsCapToggled: (Boolean) -> Unit = {},
-    firstItemFocusRequester: FocusRequester? = null,
+    onTuningStrategySelected: (AutoTuningStrategy) -> Unit = {},
+    onProfileSelected: (PowerProfile) -> Unit = {},
+    onGovernorSelected: (String) -> Unit = {},
+    onMinCpuValueChanged: (Int) -> Unit = {},
+    onMaxCpuValueChanged: (Int) -> Unit = {},
+    onMinGpuPowerChanged: (Int) -> Unit = {},
+    onMaxGpuPowerChanged: (Int) -> Unit = {},
+    onMinRamValueChanged: (Int) -> Unit = {},
+    onMaxRamValueChanged: (Int) -> Unit = {},
 ) {
     val scrollState = rememberScrollState()
 
@@ -84,31 +91,38 @@ fun PowerControlQuickMenuContent(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(horizontal = 8.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         when (uiState) {
             is PowerControlUiState.Loading -> {
                 LoadingView()
             }
             is PowerControlUiState.Success -> {
-                SuccessView(
-                    state = uiState,
-                    onAutoTuningToggled = onAutoTuningToggled,
-                    onFanControlToggled = onFanControlToggled,
-                    onGamePinningToggled = onGamePinningToggled,
-                    onTuningModeSelected = onTuningModeSelected,
-                    onAdaptiveFpsCapToggled = onAdaptiveFpsCapToggled,
-                    onTuningStrategySelected = onTuningStrategySelected,
-                    onProfileSelected = onProfileSelected,
-                    onGovernorSelected = onGovernorSelected,
-                    onMinCpuValueChanged = onMinCpuValueChanged,
-                    onMaxCpuValueChanged = onMaxCpuValueChanged,
-                    onMinGpuPowerChanged = onMinGpuPowerChanged,
-                    onMaxGpuPowerChanged = onMaxGpuPowerChanged,
-                    onMinRamValueChanged = onMinRamValueChanged,
-                    onMaxRamValueChanged = onMaxRamValueChanged,
-                    firstItemFocusRequester = firstItemFocusRequester,
-                )
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    maxItemsInEachRow = 2,
+                ) {
+                    SuccessView(
+                        state = uiState,
+                        isDriverSupported = isDriverSupported,
+                        firstItemFocusRequester = firstItemFocusRequester,
+                        onAdaptiveFpsCapToggled = onAdaptiveFpsCapToggled,
+                        onPowerControlToggled = onPowerControlToggled,
+                        onFanControlToggled = onFanControlToggled,
+                        onGamePinningToggled = onGamePinningToggled,
+                        onAutoTuningToggled = onAutoTuningToggled,
+                        onTuningModeSelected = onTuningModeSelected,
+                        onTuningStrategySelected = onTuningStrategySelected,
+                        onProfileSelected = onProfileSelected,
+                        onGovernorSelected = onGovernorSelected,
+                        onMinCpuValueChanged = onMinCpuValueChanged,
+                        onMaxCpuValueChanged = onMaxCpuValueChanged,
+                        onMinGpuPowerChanged = onMinGpuPowerChanged,
+                        onMaxGpuPowerChanged = onMaxGpuPowerChanged,
+                        onMinRamValueChanged = onMinRamValueChanged,
+                        onMaxRamValueChanged = onMaxRamValueChanged,
+                    )
+                }
             }
         }
     }
@@ -161,14 +175,18 @@ private fun LoadingView() {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SuccessView(
+private fun FlowRowScope.SuccessView(
     state: PowerControlUiState.Success,
-    onAutoTuningToggled: (Boolean) -> Unit,
+    isDriverSupported: Boolean,
+    firstItemFocusRequester: FocusRequester? = null,
+    onAdaptiveFpsCapToggled: (Boolean) -> Unit,
+    onPowerControlToggled: (Boolean) -> Unit,
     onFanControlToggled: (Boolean) -> Unit,
     onGamePinningToggled: (Boolean) -> Unit,
+    onAutoTuningToggled: (Boolean) -> Unit,
     onTuningModeSelected: (Boolean) -> Unit,
-    onAdaptiveFpsCapToggled: (Boolean) -> Unit,
     onTuningStrategySelected: (AutoTuningStrategy) -> Unit,
     onProfileSelected: (PowerProfile) -> Unit,
     onGovernorSelected: (String) -> Unit,
@@ -178,23 +196,22 @@ private fun SuccessView(
     onMaxGpuPowerChanged: (Int) -> Unit,
     onMinRamValueChanged: (Int) -> Unit,
     onMaxRamValueChanged: (Int) -> Unit,
-    firstItemFocusRequester: FocusRequester? = null,
 ) {
     val accentColor = PluviaTheme.colors.accentPurple
     var isProfileDropdownExpanded by remember { mutableStateOf(false) }
     var isGovernorDropdownExpanded by remember { mutableStateOf(false) }
     var isTuningStrategyDropdownExpanded by remember { mutableStateOf(false) }
     var isTuningModeDropdownExpanded by remember { mutableStateOf(false) }
-    var selectedMinFreqIndex by remember { mutableIntStateOf(state.cpuInfo.selectedMinFreqIndex) }
-    var selectedMaxFreqIndex by remember { mutableIntStateOf(state.cpuInfo.selectedMaxFreqIndex) }
+    var selectedMinFreqIndex by remember { mutableIntStateOf(state.cpuInfo?.selectedMinFreqIndex ?: 0) }
+    var selectedMaxFreqIndex by remember { mutableIntStateOf(state.cpuInfo?.selectedMaxFreqIndex ?: 0) }
     var selectedMinGpuPowerLevel by remember { mutableIntStateOf(state.gpuInfo?.minPowerLevel ?: 0) }
     var selectedMaxGpuPowerLevel by remember { mutableIntStateOf(state.gpuInfo?.maxPowerLevel ?: 0) }
     var selectedMinRamValue by remember { mutableIntStateOf(state.ramInfo?.minBusLevel ?: 0) }
     var selectedMaxRamValue by remember { mutableIntStateOf(state.ramInfo?.maxBusLevel ?: 0) }
 
-    LaunchedEffect(state.cpuInfo.selectedMinFreqIndex, state.cpuInfo.selectedMaxFreqIndex) {
-        selectedMinFreqIndex = state.cpuInfo.selectedMinFreqIndex
-        selectedMaxFreqIndex = state.cpuInfo.selectedMaxFreqIndex
+    LaunchedEffect(state.cpuInfo?.selectedMinFreqIndex, state.cpuInfo?.selectedMaxFreqIndex) {
+        selectedMinFreqIndex = state.cpuInfo?.selectedMinFreqIndex ?: 0
+        selectedMaxFreqIndex = state.cpuInfo?.selectedMaxFreqIndex ?: 0
     }
 
     LaunchedEffect(state.gpuInfo?.minPowerLevel, state.gpuInfo?.maxPowerLevel) {
@@ -230,406 +247,458 @@ private fun SuccessView(
         onToggle = { onAdaptiveFpsCapToggled(!state.selectedProfile.enableAdaptiveFpsCap) },
         accentColor = accentColor,
         focusRequester = firstItemFocusRequester,
+        modifier = Modifier.weight(1f),
     )
 
-    // Auto-Tuning Toggle
     QuickMenuToggleRow(
-        title = stringResource(R.string.power_control_auto_tuning),
-        subtitle = stringResource(R.string.power_control_auto_tuning_desc),
-        enabled = state.selectedProfile.enableAutoTuning,
-        onToggle = { onAutoTuningToggled(!state.selectedProfile.enableAutoTuning) },
+        title = stringResource(R.string.power_control_enable),
+        subtitle = stringResource(R.string.power_control_enable_desc),
+        enabled = state.selectedProfile.enablePowerControl,
+        onToggle = { onPowerControlToggled(!state.selectedProfile.enablePowerControl) },
         accentColor = accentColor,
+        modifier = Modifier.weight(1f),
     )
 
-    // Tuning Mode Dropdown (only shown when auto-tuning is enabled)
-    val isClusterTuningAvailable = PowerManager.isClusterTuningAvailable()
-    if (state.selectedProfile.enableAutoTuning) {
-        val isPerClusterSelected = isClusterTuningAvailable && state.selectedProfile.enablePerClusterTuning
-
-        Text(
-            text = stringResource(R.string.power_control_tuning_mode),
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-
-        SelectorRow(
-            valueText = if (isPerClusterSelected) {
-                stringResource(R.string.power_control_tuning_mode_per_cluster)
-            } else {
-                stringResource(R.string.power_control_tuning_mode_whole_cpu)
+    // All controls below only make sense while power control is active
+    if (state.selectedProfile.enablePowerControl) {
+        val isFanControlAvailable = PowerManager.isFanControlAvailable()
+        QuickMenuToggleRow(
+            title = stringResource(R.string.power_control_fan_control),
+            subtitle = stringResource(R.string.power_control_fan_control_desc),
+            modifier = Modifier.weight(1f),
+            selectable = isDriverSupported && isFanControlAvailable,
+            enabled = state.selectedProfile.enableFanControl,
+            onToggle = {
+                if (isFanControlAvailable) {
+                    onFanControlToggled(!state.selectedProfile.enableFanControl)
+                }
             },
             accentColor = accentColor,
-            expanded = isTuningModeDropdownExpanded,
-            onExpandedChange = { isTuningModeDropdownExpanded = it },
-        ) { menuFocusRequester ->
-            SelectorMenuItem(
-                accentColor = accentColor,
-                enabled = isClusterTuningAvailable,
-                focusRequester = if (isClusterTuningAvailable) menuFocusRequester else null,
-                onClick = {
-                    isTuningModeDropdownExpanded = false
-                    onTuningModeSelected(true)
-                },
-                text = {
-                    Text(
-                        text = stringResource(R.string.power_control_tuning_mode_per_cluster),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                },
-            )
-            SelectorMenuItem(
-                accentColor = accentColor,
-                focusRequester = if (isClusterTuningAvailable) null else menuFocusRequester,
-                onClick = {
-                    isTuningModeDropdownExpanded = false
-                    onTuningModeSelected(false)
-                },
-                text = {
-                    Text(
-                        text = stringResource(R.string.power_control_tuning_mode_whole_cpu),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                },
-            )
-        }
-    }
-
-    val isFanControlAvailable = PowerManager.isFanControlAvailable()
-    QuickMenuToggleRow(
-        title = stringResource(R.string.power_control_fan_control),
-        subtitle = stringResource(R.string.power_control_fan_control_desc),
-        enabled = isFanControlAvailable && state.selectedProfile.enableFanControl,
-        onToggle = {
-            if (isFanControlAvailable) {
-                onFanControlToggled(!state.selectedProfile.enableFanControl)
-            }
-        },
-        accentColor = accentColor,
-    )
-
-    val isGamePinningAvailable = PowerManager.isGamePinningAvailable()
-    QuickMenuToggleRow(
-        title = stringResource(R.string.power_control_game_pinning),
-        subtitle = stringResource(R.string.power_control_game_pinning_desc),
-        enabled = isGamePinningAvailable && state.selectedProfile.enableGamePinning,
-        onToggle = {
-            if (isGamePinningAvailable) {
-                onGamePinningToggled(!state.selectedProfile.enableGamePinning)
-            }
-        },
-        accentColor = accentColor,
-    )
-
-    // Tuning Strategy Dropdown (only shown when auto-tuning is enabled)
-    if (state.selectedProfile.enableAutoTuning) {
-        Text(
-            text = stringResource(R.string.power_control_tuning_strategy),
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface,
         )
 
-        SelectorRow(
-            valueText = stringResource(state.selectedProfile.tuningStrategy.displayNameRes),
-            descriptionText = stringResource(state.selectedProfile.tuningStrategy.descriptionRes),
+        val isGamePinningAvailable = PowerManager.isGamePinningAvailable()
+        QuickMenuToggleRow(
+            title = stringResource(R.string.power_control_game_pinning),
+            subtitle = stringResource(R.string.power_control_game_pinning_desc),
+            modifier = Modifier.weight(1f),
+            selectable = isDriverSupported && isGamePinningAvailable,
+            enabled = state.selectedProfile.enableGamePinning,
+            onToggle = {
+                if (isGamePinningAvailable) {
+                    onGamePinningToggled(!state.selectedProfile.enableGamePinning)
+                }
+            },
             accentColor = accentColor,
-            expanded = isTuningStrategyDropdownExpanded,
-            onExpandedChange = { isTuningStrategyDropdownExpanded = it },
-        ) { menuFocusRequester ->
-            AutoTuningStrategy.entries.forEachIndexed { index, strategy ->
-                SelectorMenuItem(
-                    accentColor = accentColor,
-                    focusRequester = if (index == 0) menuFocusRequester else null,
-                    onClick = {
-                        isTuningStrategyDropdownExpanded = false
-                        onTuningStrategySelected(strategy)
-                    },
-                    text = {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = stringResource(strategy.displayNameRes),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = stringResource(strategy.descriptionRes),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                )
-            }
-        }
-    }
-
-    // Only show manual controls when auto-tuning is disabled
-    if (!state.selectedProfile.enableAutoTuning) {
-        SectionHeader(title = "Profile")
-
-        Text(
-            text = stringResource(R.string.power_control_profiles),
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface,
         )
 
-        SelectorRow(
-            valueText = state.selectedProfile.name,
+        QuickMenuToggleRow(
+            title = stringResource(R.string.power_control_auto_tuning),
+            subtitle = stringResource(R.string.power_control_auto_tuning_desc),
+            enabled = state.selectedProfile.enableAutoTuning,
+            selectable = isDriverSupported,
+            onToggle = {
+                onAutoTuningToggled(!state.selectedProfile.enableAutoTuning)
+            },
             accentColor = accentColor,
-            expanded = isProfileDropdownExpanded,
-            onExpandedChange = { isProfileDropdownExpanded = it },
-        ) { menuFocusRequester ->
-            state.availableProfiles.forEachIndexed { index, profile ->
-                SelectorMenuItem(
-                    accentColor = accentColor,
-                    focusRequester = if (index == 0) menuFocusRequester else null,
-                    onClick = {
-                        isProfileDropdownExpanded = false
-                        onProfileSelected(profile)
-                    },
-                    text = {
-                        Column {
-                            Text(
-                                text = profile.name,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = "${formatFrequency(profile.minCpuFreq)} - ${formatFrequency(profile.maxCpuFreq)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                )
-            }
-        }
-    }
+            modifier = Modifier.fillMaxWidth(),
+        )
 
-    SectionHeader(title = "CPU")
+        // Tuning Mode Dropdown (only shown when auto-tuning is enabled)
+        val isClusterTuningAvailable = PowerManager.isClusterTuningAvailable()
+        if (state.selectedProfile.enableAutoTuning) {
+            val isPerClusterSelected = isClusterTuningAvailable && state.selectedProfile.enablePerClusterTuning
 
-    Text(
-        text = stringResource(R.string.power_control_governor),
-        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-        color = MaterialTheme.colorScheme.onSurface,
-    )
-
-    SelectorRow(
-        valueText = state.cpuInfo.currentGovernor.replaceFirstChar { it.uppercase() },
-        accentColor = accentColor,
-        expanded = isGovernorDropdownExpanded,
-        onExpandedChange = { isGovernorDropdownExpanded = it },
-    ) { menuFocusRequester ->
-        state.cpuInfo.availableGovernors.forEachIndexed { index, governor ->
-            SelectorMenuItem(
-                accentColor = accentColor,
-                focusRequester = if (index == 0) menuFocusRequester else null,
-                onClick = {
-                    isGovernorDropdownExpanded = false
-                    onGovernorSelected(governor)
-                },
-                text = {
-                    Text(
-                        text = governor.replaceFirstChar { it.uppercase() },
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
-            )
-        }
-    }
-
-    // Only show manual controls when auto-tuning is disabled
-    if (!state.selectedProfile.enableAutoTuning) {
-        if (state.cpuInfo.availableFrequencies.isNotEmpty()) {
-            val maxFreqIndex = state.cpuInfo.availableFrequencies.size - 1
-
-            QuickMenuAdjustmentRow(
-                title = stringResource(R.string.power_control_cpu_min_freq),
-                valueText = formatFrequency(
-                    state.cpuInfo.availableFrequencies[selectedMinFreqIndex.coerceIn(0, maxFreqIndex)],
-                ),
-                progress = normalizedProgress(selectedMinFreqIndex.toFloat(), 0f, maxFreqIndex.toFloat()),
-                onDecrease = {
-                    val newIndex = (selectedMinFreqIndex - 1).coerceAtLeast(0)
-                    if (newIndex != selectedMinFreqIndex) {
-                        selectedMinFreqIndex = newIndex
-                        onMinCpuValueChanged(newIndex)
-                    }
-                },
-                onIncrease = {
-                    val newIndex = (selectedMinFreqIndex + 1).coerceAtMost(selectedMaxFreqIndex)
-                    if (newIndex != selectedMinFreqIndex) {
-                        selectedMinFreqIndex = newIndex
-                        onMinCpuValueChanged(newIndex)
-                    }
-                },
-                accentColor = accentColor,
-            )
-
-            QuickMenuAdjustmentRow(
-                title = stringResource(R.string.power_control_cpu_max_freq),
-                valueText = formatFrequency(
-                    state.cpuInfo.availableFrequencies[selectedMaxFreqIndex.coerceIn(0, maxFreqIndex)],
-                ),
-                progress = normalizedProgress(selectedMaxFreqIndex.toFloat(), 0f, maxFreqIndex.toFloat()),
-                onDecrease = {
-                    val newIndex = (selectedMaxFreqIndex - 1).coerceAtLeast(selectedMinFreqIndex)
-                    if (newIndex != selectedMaxFreqIndex) {
-                        selectedMaxFreqIndex = newIndex
-                        onMaxCpuValueChanged(newIndex)
-                    }
-                },
-                onIncrease = {
-                    val newIndex = (selectedMaxFreqIndex + 1).coerceAtMost(maxFreqIndex)
-                    if (newIndex != selectedMaxFreqIndex) {
-                        selectedMaxFreqIndex = newIndex
-                        onMaxCpuValueChanged(newIndex)
-                    }
-                },
-                accentColor = accentColor,
-            )
-        }
-
-        state.gpuInfo?.let { gpuInfo ->
-            SectionHeader(title = "GPU")
-
-            if (gpuInfo.availableFrequencies.isNotEmpty()) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Text(
-                    text = stringResource(R.string.power_control_gpu_freq),
+                    text = stringResource(R.string.power_control_tuning_mode),
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Slider(
-                        value = gpuInfo.currentFreqIndex.toFloat(),
-                        onValueChange = { },
-                        enabled = false,
-                        valueRange = 0f..(gpuInfo.availableFrequencies.size - 1).toFloat(),
-                        steps = gpuInfo.availableFrequencies.size - 2,
-                        modifier = Modifier.weight(1f)
+                SelectorRow(
+                    valueText = if (isPerClusterSelected) {
+                        stringResource(R.string.power_control_tuning_mode_per_cluster)
+                    } else {
+                        stringResource(R.string.power_control_tuning_mode_whole_cpu)
+                    },
+                    accentColor = accentColor,
+                    expanded = isTuningModeDropdownExpanded,
+                    onExpandedChange = { isTuningModeDropdownExpanded = it },
+                ) { menuFocusRequester ->
+                    SelectorMenuItem(
+                        accentColor = accentColor,
+                        enabled = isClusterTuningAvailable,
+                        focusRequester = if (isClusterTuningAvailable) menuFocusRequester else null,
+                        onClick = {
+                            isTuningModeDropdownExpanded = false
+                            onTuningModeSelected(true)
+                        },
+                        text = {
+                            Text(
+                                text = stringResource(R.string.power_control_tuning_mode_per_cluster),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        },
                     )
-                    Text(
-                        text = formatFrequency(gpuInfo.availableFrequencies[gpuInfo.currentFreqIndex]),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.width(80.dp)
+                    SelectorMenuItem(
+                        accentColor = accentColor,
+                        focusRequester = if (isClusterTuningAvailable) null else menuFocusRequester,
+                        onClick = {
+                            isTuningModeDropdownExpanded = false
+                            onTuningModeSelected(false)
+                        },
+                        text = {
+                            Text(
+                                text = stringResource(R.string.power_control_tuning_mode_whole_cpu),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        },
                     )
                 }
             }
-
-            if (gpuInfo.maxAvailablePowerLevel > 0) {
-                QuickMenuAdjustmentRow(
-                    title = stringResource(R.string.power_control_gpu_min_power),
-                    valueText = selectedMinGpuPowerLevel.toString(),
-                    progress = normalizedProgress(
-                        selectedMinGpuPowerLevel.toFloat(),
-                        0f,
-                        gpuInfo.maxAvailablePowerLevel.toFloat(),
-                    ),
-                    onDecrease = {
-                        val newLevel = (selectedMinGpuPowerLevel - 1).coerceAtLeast(0)
-                        if (newLevel != selectedMinGpuPowerLevel) {
-                            selectedMinGpuPowerLevel = newLevel
-                            onMinGpuPowerChanged(newLevel)
-                        }
-                    },
-                    onIncrease = {
-                        val newLevel = (selectedMinGpuPowerLevel + 1).coerceAtMost(selectedMaxGpuPowerLevel)
-                        if (newLevel != selectedMinGpuPowerLevel) {
-                            selectedMinGpuPowerLevel = newLevel
-                            onMinGpuPowerChanged(newLevel)
-                        }
-                    },
-                    accentColor = accentColor,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.power_control_tuning_strategy),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
 
-                QuickMenuAdjustmentRow(
-                    title = stringResource(R.string.power_control_gpu_max_power),
-                    valueText = selectedMaxGpuPowerLevel.toString(),
-                    progress = normalizedProgress(
-                        selectedMaxGpuPowerLevel.toFloat(),
-                        0f,
-                        gpuInfo.maxAvailablePowerLevel.toFloat(),
-                    ),
-                    onDecrease = {
-                        val newLevel = (selectedMaxGpuPowerLevel - 1).coerceAtLeast(selectedMinGpuPowerLevel)
-                        if (newLevel != selectedMaxGpuPowerLevel) {
-                            selectedMaxGpuPowerLevel = newLevel
-                            onMaxGpuPowerChanged(newLevel)
-                        }
-                    },
-                    onIncrease = {
-                        val newLevel = (selectedMaxGpuPowerLevel + 1).coerceAtMost(gpuInfo.maxAvailablePowerLevel)
-                        if (newLevel != selectedMaxGpuPowerLevel) {
-                            selectedMaxGpuPowerLevel = newLevel
-                            onMaxGpuPowerChanged(newLevel)
-                        }
-                    },
+                SelectorRow(
+                    valueText = stringResource(state.selectedProfile.tuningStrategy.displayNameRes),
+                    descriptionText = stringResource(state.selectedProfile.tuningStrategy.descriptionRes),
                     accentColor = accentColor,
-                )
+                    expanded = isTuningStrategyDropdownExpanded,
+                    onExpandedChange = { isTuningStrategyDropdownExpanded = it },
+                ) { menuFocusRequester ->
+                    AutoTuningStrategy.entries.forEachIndexed { index, strategy ->
+                        SelectorMenuItem(
+                            accentColor = accentColor,
+                            focusRequester = if (index == 0) menuFocusRequester else null,
+                            onClick = {
+                                isTuningStrategyDropdownExpanded = false
+                                onTuningStrategySelected(strategy)
+                            },
+                            text = {
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(strategy.displayNameRes),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = stringResource(strategy.descriptionRes),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                        )
+                    }
+                }
             }
         }
 
-        state.ramInfo?.let { ramInfo ->
-            if (ramInfo.maxAvailableBusLevel > 0) {
-                SectionHeader(title = "RAM")
+        if (!state.selectedProfile.enableAutoTuning) {
+            SectionHeader(title = "Profile")
 
-                QuickMenuAdjustmentRow(
-                    title = stringResource(R.string.power_control_ram_min_power),
-                    valueText = selectedMinRamValue.toString(),
-                    progress = normalizedProgress(
-                        selectedMinRamValue.toFloat(),
-                        0f,
-                        ramInfo.maxAvailableBusLevel.toFloat(),
-                    ),
-                    onDecrease = {
-                        val newLevel = (selectedMinRamValue - 1).coerceAtLeast(0)
-                        if (newLevel != selectedMinRamValue) {
-                            selectedMinRamValue = newLevel
-                            onMinRamValueChanged(newLevel)
-                        }
-                    },
-                    onIncrease = {
-                        val newLevel = (selectedMinRamValue + 1).coerceAtMost(selectedMaxRamValue)
-                        if (newLevel != selectedMinRamValue) {
-                            selectedMinRamValue = newLevel
-                            onMinRamValueChanged(newLevel)
-                        }
-                    },
-                    accentColor = accentColor,
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.power_control_profiles),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
 
-                QuickMenuAdjustmentRow(
-                    title = stringResource(R.string.power_control_ram_max_power),
-                    valueText = selectedMaxRamValue.toString(),
-                    progress = normalizedProgress(
-                        selectedMaxRamValue.toFloat(),
-                        0f,
-                        ramInfo.maxAvailableBusLevel.toFloat(),
-                    ),
-                    onDecrease = {
-                        val newLevel = (selectedMaxRamValue - 1).coerceAtLeast(selectedMinRamValue)
-                        if (newLevel != selectedMaxRamValue) {
-                            selectedMaxRamValue = newLevel
-                            onMaxRamValueChanged(newLevel)
-                        }
-                    },
-                    onIncrease = {
-                        val newLevel = (selectedMaxRamValue + 1).coerceAtMost(ramInfo.maxAvailableBusLevel)
-                        if (newLevel != selectedMaxRamValue) {
-                            selectedMaxRamValue = newLevel
-                            onMaxRamValueChanged(newLevel)
-                        }
-                    },
+                SelectorRow(
+                    valueText = state.selectedProfile.name,
                     accentColor = accentColor,
-                )
+                    expanded = isProfileDropdownExpanded,
+                    onExpandedChange = { isProfileDropdownExpanded = it },
+                ) { menuFocusRequester ->
+                    state.availableProfiles.forEachIndexed { index, profile ->
+                        SelectorMenuItem(
+                            accentColor = accentColor,
+                            focusRequester = if (index == 0) menuFocusRequester else null,
+                            onClick = {
+                                isProfileDropdownExpanded = false
+                                onProfileSelected(profile)
+                            },
+                            text = {
+                                Column {
+                                    Text(
+                                        text = profile.name,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = "${formatFrequency(profile.minCpuFreq)} - ${formatFrequency(profile.maxCpuFreq)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                        )
+                    }
+                }
             }
         }
-    } // End of auto-tuning check
+
+        if (isDriverSupported) {
+            state.cpuInfo?.let { cpuInfo ->
+                SectionHeader(title = "CPU")
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.power_control_governor),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+
+                    SelectorRow(
+                        valueText = cpuInfo.currentGovernor.replaceFirstChar { it.uppercase() },
+                        accentColor = accentColor,
+                        expanded = isGovernorDropdownExpanded,
+                        onExpandedChange = { isGovernorDropdownExpanded = it },
+                    ) { menuFocusRequester ->
+                        cpuInfo.availableGovernors.forEachIndexed { index, governor ->
+                            SelectorMenuItem(
+                                accentColor = accentColor,
+                                focusRequester = if (index == 0) menuFocusRequester else null,
+                                onClick = {
+                                    isGovernorDropdownExpanded = false
+                                    onGovernorSelected(governor)
+                                },
+                                text = {
+                                    Text(
+                                        text = governor.replaceFirstChar { it.uppercase() },
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Only show manual controls when auto-tuning is disabled
+            if (!state.selectedProfile.enableAutoTuning) {
+                state.cpuInfo?.let { cpuInfo ->
+                    if (cpuInfo.availableFrequencies.isNotEmpty()) {
+                        val maxFreqIndex = cpuInfo.availableFrequencies.size - 1
+
+                        QuickMenuAdjustmentRow(
+                            title = stringResource(R.string.power_control_cpu_min_freq),
+                            modifier = Modifier.weight(1f),
+                            valueText = formatFrequency(
+                                cpuInfo.availableFrequencies[selectedMinFreqIndex.coerceIn(0, maxFreqIndex)],
+                            ),
+                            progress = normalizedProgress(selectedMinFreqIndex.toFloat(), 0f, maxFreqIndex.toFloat()),
+                            onDecrease = {
+                                val newIndex = (selectedMinFreqIndex - 1).coerceAtLeast(0)
+                                if (newIndex != selectedMinFreqIndex) {
+                                    selectedMinFreqIndex = newIndex
+                                    onMinCpuValueChanged(newIndex)
+                                }
+                            },
+                            onIncrease = {
+                                val newIndex = (selectedMinFreqIndex + 1).coerceAtMost(selectedMaxFreqIndex)
+                                if (newIndex != selectedMinFreqIndex) {
+                                    selectedMinFreqIndex = newIndex
+                                    onMinCpuValueChanged(newIndex)
+                                }
+                            },
+                            accentColor = accentColor,
+                        )
+
+                        QuickMenuAdjustmentRow(
+                            title = stringResource(R.string.power_control_cpu_max_freq),
+                            modifier = Modifier.weight(1f),
+                            valueText = formatFrequency(
+                                state.cpuInfo.availableFrequencies[selectedMaxFreqIndex.coerceIn(0, maxFreqIndex)],
+                            ),
+                            progress = normalizedProgress(selectedMaxFreqIndex.toFloat(), 0f, maxFreqIndex.toFloat()),
+                            onDecrease = {
+                                val newIndex = (selectedMaxFreqIndex - 1).coerceAtLeast(selectedMinFreqIndex)
+                                if (newIndex != selectedMaxFreqIndex) {
+                                    selectedMaxFreqIndex = newIndex
+                                    onMaxCpuValueChanged(newIndex)
+                                }
+                            },
+                            onIncrease = {
+                                val newIndex = (selectedMaxFreqIndex + 1).coerceAtMost(maxFreqIndex)
+                                if (newIndex != selectedMaxFreqIndex) {
+                                    selectedMaxFreqIndex = newIndex
+                                    onMaxCpuValueChanged(newIndex)
+                                }
+                            },
+                            accentColor = accentColor,
+                        )
+                    }
+                }
+
+                state.gpuInfo?.let { gpuInfo ->
+                    SectionHeader(title = "GPU")
+
+                    if (gpuInfo.availableFrequencies.isNotEmpty()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.power_control_gpu_freq),
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Slider(
+                                    value = gpuInfo.currentFreqIndex.toFloat(),
+                                    onValueChange = { },
+                                    enabled = false,
+                                    valueRange = 0f..(gpuInfo.availableFrequencies.size - 1).toFloat(),
+                                    steps = gpuInfo.availableFrequencies.size - 2,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = formatFrequency(gpuInfo.availableFrequencies[gpuInfo.currentFreqIndex]),
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.width(80.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (gpuInfo.maxAvailablePowerLevel > 0) {
+                        QuickMenuAdjustmentRow(
+                            title = stringResource(R.string.power_control_gpu_min_power),
+                            modifier = Modifier.weight(1f),
+                            valueText = selectedMinGpuPowerLevel.toString(),
+                            progress = normalizedProgress(
+                                selectedMinGpuPowerLevel.toFloat(),
+                                0f,
+                                gpuInfo.maxAvailablePowerLevel.toFloat(),
+                            ),
+                            onDecrease = {
+                                val newLevel = (selectedMinGpuPowerLevel - 1).coerceAtLeast(0)
+                                if (newLevel != selectedMinGpuPowerLevel) {
+                                    selectedMinGpuPowerLevel = newLevel
+                                    onMinGpuPowerChanged(newLevel)
+                                }
+                            },
+                            onIncrease = {
+                                val newLevel = (selectedMinGpuPowerLevel + 1).coerceAtMost(selectedMaxGpuPowerLevel)
+                                if (newLevel != selectedMinGpuPowerLevel) {
+                                    selectedMinGpuPowerLevel = newLevel
+                                    onMinGpuPowerChanged(newLevel)
+                                }
+                            },
+                            accentColor = accentColor,
+                        )
+
+                        QuickMenuAdjustmentRow(
+                            title = stringResource(R.string.power_control_gpu_max_power),
+                            modifier = Modifier.weight(1f),
+                            valueText = selectedMaxGpuPowerLevel.toString(),
+                            progress = normalizedProgress(
+                                selectedMaxGpuPowerLevel.toFloat(),
+                                0f,
+                                gpuInfo.maxAvailablePowerLevel.toFloat(),
+                            ),
+                            onDecrease = {
+                                val newLevel = (selectedMaxGpuPowerLevel - 1).coerceAtLeast(selectedMinGpuPowerLevel)
+                                if (newLevel != selectedMaxGpuPowerLevel) {
+                                    selectedMaxGpuPowerLevel = newLevel
+                                    onMaxGpuPowerChanged(newLevel)
+                                }
+                            },
+                            onIncrease = {
+                                val newLevel = (selectedMaxGpuPowerLevel + 1).coerceAtMost(gpuInfo.maxAvailablePowerLevel)
+                                if (newLevel != selectedMaxGpuPowerLevel) {
+                                    selectedMaxGpuPowerLevel = newLevel
+                                    onMaxGpuPowerChanged(newLevel)
+                                }
+                            },
+                            accentColor = accentColor,
+                        )
+                    }
+                }
+
+                state.ramInfo?.let { ramInfo ->
+                    if (ramInfo.maxAvailableBusLevel > 0) {
+                        SectionHeader(title = "RAM")
+
+                        QuickMenuAdjustmentRow(
+                            title = stringResource(R.string.power_control_ram_min_power),
+                            modifier = Modifier.weight(1f),
+                            valueText = selectedMinRamValue.toString(),
+                            progress = normalizedProgress(
+                                selectedMinRamValue.toFloat(),
+                                0f,
+                                ramInfo.maxAvailableBusLevel.toFloat(),
+                            ),
+                            onDecrease = {
+                                val newLevel = (selectedMinRamValue - 1).coerceAtLeast(0)
+                                if (newLevel != selectedMinRamValue) {
+                                    selectedMinRamValue = newLevel
+                                    onMinRamValueChanged(newLevel)
+                                }
+                            },
+                            onIncrease = {
+                                val newLevel = (selectedMinRamValue + 1).coerceAtMost(selectedMaxRamValue)
+                                if (newLevel != selectedMinRamValue) {
+                                    selectedMinRamValue = newLevel
+                                    onMinRamValueChanged(newLevel)
+                                }
+                            },
+                            accentColor = accentColor,
+                        )
+
+                        QuickMenuAdjustmentRow(
+                            title = stringResource(R.string.power_control_ram_max_power),
+                            modifier = Modifier.weight(1f),
+                            valueText = selectedMaxRamValue.toString(),
+                            progress = normalizedProgress(
+                                selectedMaxRamValue.toFloat(),
+                                0f,
+                                ramInfo.maxAvailableBusLevel.toFloat(),
+                            ),
+                            onDecrease = {
+                                val newLevel = (selectedMaxRamValue - 1).coerceAtLeast(selectedMinRamValue)
+                                if (newLevel != selectedMaxRamValue) {
+                                    selectedMaxRamValue = newLevel
+                                    onMaxRamValueChanged(newLevel)
+                                }
+                            },
+                            onIncrease = {
+                                val newLevel = (selectedMaxRamValue + 1).coerceAtMost(ramInfo.maxAvailableBusLevel)
+                                if (newLevel != selectedMaxRamValue) {
+                                    selectedMaxRamValue = newLevel
+                                    onMaxRamValueChanged(newLevel)
+                                }
+                            },
+                            accentColor = accentColor,
+                        )
+                    }
+                }
+            } // End of auto-tuning check
+        }
+    }
 }
 
 @Composable

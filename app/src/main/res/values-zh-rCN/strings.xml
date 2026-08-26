@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">登录</string>
     <string name="login_2fa">双重验证</string>
@@ -919,6 +919,11 @@
     <string name="settings_language_restart_confirm">重新启动</string>
     <string name="settings_language_changing">切换语言并重新启动中...</string>
 
+    <!-- 设置：性能组 -->
+    <string name="settings_performance_title">性能</string>
+    <string name="settings_performance_power_control_title">性能控制</string>
+    <string name="settings_performance_power_control_subtitle">默认启用游戏内性能控制（已在测试设备上启用：AYN Odin 3、Retroid Pocket 6/Nova）</string>
+
     <!-- 设置：模拟组 -->
     <string name="settings_emulation_title">模拟设置</string>
     <string name="settings_emulation_orientations_title">允许的屏幕方向</string>
@@ -960,10 +965,10 @@
 
     <!-- 设置：信息组 -->
     <string name="settings_info_title">信息</string>
-    <string name="settings_info_send_tip_title">捐款支持</string>
-    <string name="settings_info_send_tip_subtitle">为持续的应用程序开发贡献力量</string>
-    <string name="settings_info_ask_tip_title">启动时显示捐款信息</string>
-    <string name="settings_info_ask_tip_subtitle">停止显示捐款信息</string>
+    <string name="settings_info_send_tip_title">成为会员</string>
+    <string name="settings_info_send_tip_subtitle">版本抢先体验、优先支持等</string>
+    <string name="settings_info_ask_tip_title">会员优惠</string>
+    <string name="settings_info_ask_tip_subtitle">偶尔显示成为 GameNative 会员的优惠信息</string>
     <string name="settings_info_source_title">源代码</string>
     <string name="settings_info_source_subtitle">查看此项目的源代码</string>
     <string name="settings_info_libraries_title">使用的库</string>
@@ -1074,9 +1079,11 @@
     <!-- 主界面：崩溃与支持 -->
     <string name="main_recent_crash_title">最近应用程序崩溃</string>
     <string name="main_recent_crash_message">若能了解您最近遇到的问题，将有助于我们改善应用程序。\n您可在应用程序设置中查看并导出最近的崩溃日志，将其附加至项目源代码仓库的 Github Issue中\nGithub 源代码仓库的链接亦位于设置页面内</string>
-    <string name="main_thank_you_title">感谢您使用 GameNative！</string>
-    <string name="main_thank_you_message">通过与朋友分享应用程序或在 Ko-fi 成为会员，支持 Android 平台的开源 PC 游戏</string>
-    <string name="main_join_kofi">加入 Ko-fi</string>
+    <string name="main_thank_you_title">喜欢 GameNative 吗？</string>
+    <string name="main_thank_you_message">立即成为会员。会员可享受：\n\n• 新版本抢先体验\n• 游戏运行问题优先支持\n• Discord 高级身份组和专属频道\n• …以及更多\n\n每月 $5 起</string>
+    <string name="main_join_kofi">成为会员</string>
+    <string name="pitch_session_title">喜欢《%1$s》吗？</string>
+    <string name="pitch_five_star_title">很高兴《%1$s》运行顺畅！</string>
     <string name="main_share">分享</string>
     <string name="main_share_text">试试 GameNative - 在 Android 上畅玩您的 PC Steam 游戏，完整支持云存档！\nhttps://gamenative.app\n加入社区：https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">游戏运行正常吗？</string>
@@ -1187,6 +1194,63 @@
     <string name="best_config_apply_anyway">仍然应用</string>
     <string name="best_config_applied_with_defaults">配置已应用，缺失组件已替换为默认值</string>
     <string name="best_config_apply_failed">应用配置失败：%s</string>
+    <string name="community_config_title">社区配置</string>
+    <string name="community_config_close">关闭社区配置</string>
+    <string name="community_config_refresh">刷新社区配置</string>
+    <string name="community_config_retry">重试</string>
+    <string name="community_config_unknown_error">未知错误</string>
+    <string name="community_config_unknown">未知</string>
+    <string name="community_config_load_failed">无法加载社区配置：%1$s</string>
+    <string name="community_config_game_not_found">未找到 %1$s 的兼容性条目</string>
+    <string name="community_config_gpu_unknown">GPU 不可用</string>
+    <plurals name="community_config_result_count">
+        <item quantity="other">%1$d 个配置</item>
+    </plurals>
+    <string name="community_config_highest_rated">评分最高</string>
+    <string name="community_config_newest">最新</string>
+    <string name="community_config_same_device">相同设备</string>
+    <string name="community_config_this_gpu">相同 GPU</string>
+    <string name="community_config_compatible_gpus">兼容</string>
+    <string name="community_config_load_more">加载更多</string>
+    <string name="community_config_no_device_results">未找到适用于此设备的配置。</string>
+    <string name="community_config_no_gpu_results">未找到适用于此 GPU 的配置。</string>
+    <string name="community_config_no_compatible_results">未找到适用于兼容 GPU 的配置。</string>
+    <string name="community_config_show_this_gpu">显示此 GPU</string>
+    <string name="community_config_show_compatible_gpus">显示兼容 GPU</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">配置详情</string>
+    <string name="community_config_other_gpu_warning">此结果使用其他 GPU。不会应用 GPU 专用的驱动程序和封装器设置。</string>
+    <string name="community_config_run_details">测试运行</string>
+    <string name="community_config_rating">评分</string>
+    <string name="community_config_average_fps">平均 FPS</string>
+    <string name="community_config_device">设备</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">GameNative 版本</string>
+    <string name="community_config_submitted">提交时间</string>
+    <string name="community_config_session_length">会话时长</string>
+    <string name="community_config_game_store">游戏商店</string>
+    <string name="community_config_custom_game">自定义游戏</string>
+    <string name="community_config_settings">设置</string>
+    <string name="community_config_additional_launch_settings">其他启动设置</string>
+    <string name="community_config_apply_launch_arguments">应用启动参数</string>
+    <string name="community_config_apply_environment_variables">应用环境变量</string>
+    <string name="community_config_replaces_existing_value">替换当前值</string>
+    <string name="community_config_dependencies">依赖项</string>
+    <string name="community_config_dependencies_apply_check">应用配置时将检查依赖项。</string>
+    <string name="community_config_no_downloads">目前无需从清单下载任何内容。</string>
+    <string name="community_config_downloads_required">将自动下载以下组件：\n%1$s</string>
+    <string name="community_config_tags">标签</string>
+    <string name="community_config_notes">备注</string>
+    <string name="community_config_apply">应用配置</string>
+    <string name="community_config_container">容器</string>
+    <string name="community_config_wine">Wine 或 Proton</string>
+    <string name="community_config_emulator">模拟器</string>
+    <string name="community_config_wrapper">DirectX 封装器</string>
+    <string name="community_config_box64_preset">Box64 预设</string>
+    <string name="community_config_driver">图形驱动程序</string>
     <string name="import_config">导入配置</string>
     <string name="export_config">导出配置</string>
 
@@ -1518,6 +1582,7 @@
     <string name="option_reset_drm">重置 DRM</string>
     <string name="option_update">更新</string>
     <string name="option_use_known_config">使用已知配置</string>
+    <string name="option_browse_community_configs">浏览社区配置</string>
     <string name="option_verify_files">验证文件</string>
 
     <!-- 性能 HUD -->
@@ -2094,6 +2159,8 @@
     <string name="rec_disclosure_body">为提供个性化推荐，我们会将你玩过的游戏分享给 GOG。可随时在设置中关闭。</string>
     <string name="rec_disclosure_allow">允许</string>
     <string name="rec_disclosure_not_now">暂不</string>
+    <string name="rec_teaser_title">发现适合你设备的游戏</string>
+    <string name="rec_teaser_subtitle">点按查看</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">赞助</string>
@@ -2212,6 +2279,21 @@
     <string name="steam_invite_joined">在你的游戏中</string>
     <string name="steam_invite_online">在线</string>
     <string name="steam_invite_offline">离线</string>
+    <string name="radial_menu">径向菜单</string>
+    <string name="radial_menu_settings_title">径向菜单</string>
+    <string name="radial_menu_cancel">取消</string>
+    <string name="radial_menu_slot_count">槽位</string>
+    <string name="radial_menu_slot_count_subtitle">已启用 %1$d 个槽位</string>
+    <string name="radial_menu_decrease_slots">减少槽位</string>
+    <string name="radial_menu_increase_slots">增加槽位</string>
+    <string name="radial_menu_slots">转盘槽位</string>
+    <string name="radial_menu_slot_title">槽位 %1$d</string>
+    <string name="radial_menu_slot_label_hint">标签</string>
+    <string name="radial_menu_slot_binding">槽位 %1$d 绑定</string>
+    <string name="radial_menu_slot_binding_summary">绑定：%1$s</string>
+    <string name="radial_menu_preset_common">常用</string>
+    <string name="radial_menu_preset_weapons">武器</string>
+    <string name="gesture_action_open_radial_menu">打开径向菜单</string>
 
     <!-- Power Control -->
     <string name="power_control">性能控制</string>
@@ -2233,6 +2315,8 @@
     <string name="power_control_auto_tuning_desc">更稳定的性能、更长的续航、更少的发热：自动为游戏调节 CPU 和 GPU。已在 Retroid Pocket 6 上验证。</string>
     <string name="power_control_adaptive_fps">自动降低 FPS</string>
     <string name="power_control_adaptive_fps_desc">当游戏无法达到 FPS 上限时降低上限，以获得稳定的帧间隔。已在 Retroid Pocket 6 上验证。</string>
+    <string name="power_control_enable">游戏内功耗控制</string>
+    <string name="power_control_enable_desc">接管操作系统对 CPU/GPU 频率的控制</string>
     <string name="power_control_tuning_mode">调整模式</string>
     <string name="power_control_tuning_mode_per_cluster">分集群（已在 Retroid Pocket 6 上验证）</string>
     <string name="power_control_tuning_mode_whole_cpu">PID 控制器</string>
@@ -2251,4 +2335,37 @@
     <string name="power_control_strategy_aggressive_desc">最大化检测到的瓶颈性能</string>
     <string name="power_control_strategy_conservative">保守</string>
     <string name="power_control_strategy_conservative_desc">渐进式调整，注重稳定性</string>
+    <string name="launch_immersive_mode">以沉浸模式启动（VR）</string>
+    <string name="quick_menu_tab_immersive">沉浸</string>
+    <string name="immersive_passthrough">透视</string>
+    <string name="immersive_passthrough_desc">透过虚拟屏幕查看周围的真实环境</string>
+    <string name="immersive_passthrough_toggle">启用透视</string>
+    <string name="immersive_resize_mode_title">缩放/移动控制点</string>
+    <string name="immersive_resize_mode_desc">开启后会在游戏画面边缘内侧显示抓取控制点。默认关闭，因为不留边距可以避免画面变模糊。</string>
+    <string name="immersive_resize_mode_toggle">显示缩放/移动控制点</string>
+    <string name="immersive_direct_render_title">性能</string>
+    <string name="immersive_reset_effects_status_blocked">当前启用的画面效果、滤镜或亮度/对比度/伽马调整正在阻止使用最快的渲染路径。</string>
+    <string name="immersive_reset_effects_status_ok">当前没有任何设置阻止使用最快的渲染路径。</string>
+    <string name="immersive_reset_effects_button">重置画面效果</string>
+    <string name="immersive_reset_effects_desc">关闭所有效果、滤镜以及亮度/对比度/伽马调整。立即生效，无需重启。</string>
+    <string name="immersive_onboarding_disable_passthrough">关闭透视可提升性能</string>
+    <string name="immersive_onboarding_quick_menu">长按 Start 可打开或关闭快捷菜单</string>
+    <string name="immersive_onboarding_pointer_toggle">双击摇杆可在 Xbox 手柄与 XR 指针之间切换</string>
+    <string name="immersive_mode_xr_pointer">XR 指针模式</string>
+    <string name="immersive_mode_xbox">Xbox 手柄模式</string>
+    <string name="tab_favorites">收藏</string>
+    <string name="favorites_empty_title">还没有收藏</string>
+    <string name="favorites_empty_message">打开游戏详情菜单即可添加到收藏，或在游戏获得焦点时按下控制器左侧面键（Xbox 为 X、PlayStation 为方块键、Nintendo 布局为 Y）。</string>
+    <string name="favorites_empty_action">浏览所有游戏</string>
+    <string name="favorites_empty_filtered_title">没有可显示的收藏</string>
+    <string name="favorites_empty_filtered_message">没有符合当前搜索或筛选条件，或在您的游戏库中可用的收藏游戏。</string>
+    <string name="option_add_to_favorites">添加到收藏</string>
+    <string name="option_remove_from_favorites">从收藏中移除</string>
+    <string name="favorite_add_named">将 %1$s 添加到收藏</string>
+    <string name="favorite_remove_named">将 %1$s 从收藏中移除</string>
+    <string name="favorite_removed">已从收藏中移除</string>
+    <string name="favorite_removed_named">已将 %1$s 从收藏中移除</string>
+    <string name="favorite_added">已添加到收藏</string>
+    <string name="favorite_added_named">已将 %1$s 添加到收藏</string>
+    <string name="xr_refresh_rate">VR 刷新率</string>
 </resources>

@@ -172,6 +172,18 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                 },
             )
+            if (app.gamenative.BuildConfig.XR_BUILD) {
+                val xrRates = listOf(72, 90, 120)
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.xr_refresh_rate)) },
+                    value = xrRates.indexOf(config.xrRefreshRate).coerceAtLeast(0),
+                    items = xrRates.map { "$it Hz" },
+                    onItemSelected = { idx ->
+                        state.config.value = config.copy(xrRefreshRate = xrRates[idx])
+                    },
+                )
+            }
             SettingsListDropdown(
                 colors = settingsTileColors(),
                 title = { Text(text = stringResource(R.string.renderer_present_modes)) },

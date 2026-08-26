@@ -77,11 +77,6 @@ abstract class PerformanceDriver {
     open fun stop() {}
 
     /**
-     * Reset the performance driver
-     */
-    open fun reset() {}
-
-    /**
      * Begin a batch update session.
      * For PServerDriver, this starts collecting commands to execute in a single call.
      * For SamsungDriver, this is a no-op as CustomParams already handles batching.

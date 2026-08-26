@@ -304,6 +304,7 @@ object ContainerUtils {
             graphicsDriverConfig = container.graphicsDriverConfig,
             rendererPresentMode = container.rendererPresentMode,
             displayRenderer = container.displayRenderer,
+            xrRefreshRate = container.xrRefreshRate,
             sfCompatMode = container.sfCompatMode,
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
@@ -437,6 +438,7 @@ object ContainerUtils {
                 "audioDriver" -> value?.let { updatedData.copy(audioDriver = it as? String ?: updatedData.audioDriver) } ?: updatedData
                 "wincomponents" -> value?.let { updatedData.copy(wincomponents = it as? String ?: updatedData.wincomponents) } ?: updatedData
                 "videoMemorySize" -> value?.let { updatedData.copy(videoMemorySize = it as? String ?: updatedData.videoMemorySize) } ?: updatedData
+                "launchBionicSteam" -> value?.let { updatedData.copy(launchBionicSteam = it as? Boolean ?: updatedData.launchBionicSteam) } ?: updatedData
                 else -> updatedData
             }
         }
@@ -487,6 +489,7 @@ object ContainerUtils {
         container.graphicsDriverConfig = containerData.graphicsDriverConfig
         container.rendererPresentMode = containerData.rendererPresentMode
         container.displayRenderer = containerData.displayRenderer
+        container.xrRefreshRate = containerData.xrRefreshRate
         container.sfCompatMode = containerData.sfCompatMode
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig
@@ -1266,7 +1269,7 @@ object ContainerUtils {
     }
 
     /**
-     * Scans the container's A: drive for all .exe files
+     * Scans the container's A: drive for all .exe and .bat files
      */
     fun scanExecutablesInADrive(drives: String): List<String> {
         val executables = mutableListOf<String>()
@@ -1287,7 +1290,7 @@ object ContainerUtils {
 
             Timber.d("Scanning for executables in A: drive: $aDrivePath")
 
-            // Recursively scan for .exe files using listFiles with depth limit.
+            // Recursively scan for .exe/.bat files using listFiles with depth limit.
             // Symlinked directories are skipped to avoid cycles (e.g. GOG ISI rootdir -> game root).
             fun scanRecursive(dir: File, baseDir: File, depth: Int = 0, maxDepth: Int = 10) {
                 if (depth > maxDepth) return
@@ -1296,7 +1299,7 @@ object ContainerUtils {
                     if (file.isDirectory) {
                         if (FileUtils.isSymlink(file)) return@forEach
                         scanRecursive(file, baseDir, depth + 1, maxDepth)
-                    } else if (file.isFile && file.name.lowercase().endsWith(".exe")) {
+                    } else if (file.isFile && (file.name.lowercase().endsWith(".exe") || file.name.lowercase().endsWith(".bat"))) {
                         // Convert to relative Windows path format
                         val relativePath = baseDir.toURI().relativize(file.toURI()).path
                         executables.add(relativePath)
@@ -1332,7 +1335,7 @@ object ContainerUtils {
      */
     fun filterExesForUnpacking(exePaths: List<String>): List<String> = exePaths.filter { path ->
         val fileName = path.substringAfterLast('/').substringAfterLast('\\').lowercase()
-        !isSystemExecutable(fileName)
+        fileName.endsWith(".exe") && !isSystemExecutable(fileName)
     }
 
     /**

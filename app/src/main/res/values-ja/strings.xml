@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">ユーザーログイン</string>
     <string name="login_2fa">ツーファクター</string>
@@ -904,6 +904,11 @@
     <string name="settings_language_restart_confirm">再起動</string>
     <string name="settings_language_changing">言語を変更して再起動しています…</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">パフォーマンス</string>
+    <string name="settings_performance_power_control_title">パフォーマンス制御</string>
+    <string name="settings_performance_power_control_subtitle">ゲーム内パフォーマンス制御をデフォルトで有効にする（テスト済みデバイスではオン: AYN Odin 3、Retroid Pocket 6/Nova）</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">エミュレーション</string>
     <string name="settings_emulation_orientations_title">許可される向き</string>
@@ -945,10 +950,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">情報</string>
-    <string name="settings_info_send_tip_title">チップを送信する</string>
-    <string name="settings_info_send_tip_subtitle">継続的な開発に貢献する</string>
-    <string name="settings_info_ask_tip_title">起動時にヒントを求める</string>
-    <string name="settings_info_ask_tip_subtitle">ヒントメッセージの表示を停止します</string>
+    <string name="settings_info_send_tip_title">メンバーになる</string>
+    <string name="settings_info_send_tip_subtitle">リリースへの早期アクセス、優先サポートなど</string>
+    <string name="settings_info_ask_tip_title">メンバーシップのご案内</string>
+    <string name="settings_info_ask_tip_subtitle">GameNativeメンバーになるための案内を時々表示します</string>
     <string name="settings_info_source_title">ソースコード</string>
     <string name="settings_info_source_subtitle">このプロジェクトのソースコードを表示する</string>
     <string name="settings_info_libraries_title">使用するライブラリ</string>
@@ -1122,9 +1127,11 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">最近のクラッシュ</string>
     <string name="main_recent_crash_message">申し訳ありません!\n\' が抱えていた最近の問題について知っていただければ幸いです。\nアプリ\'s の設定で最新のクラッシュ ログを表示およびエクスポートし、プロジェクト ZESC4ZZs リポジトリの Github の問題として添付できます。\nGithub リポジトリへのリンクも設定にあります。</string>
-    <string name="main_thank_you_title">GameNative をご利用いただきありがとうございます。</string>
-    <string name="main_thank_you_message">アプリを友達と共有するか、Ko-fi のメンバーになることで、Android でのオープンソース PC ゲームをサポートします。</string>
-    <string name="main_join_kofi">Ko-fi に参加する</string>
+    <string name="main_thank_you_title">GameNativeを楽しんでいますか？</string>
+    <string name="main_thank_you_message">今すぐメンバーになりましょう。メンバー特典:\n\n• 新リリースへの早期アクセス\n• ゲームを動かすための優先サポート\n• Discordのプレミアムロールと限定チャンネル\n• …その他多数\n\n月額$5から</string>
+    <string name="main_join_kofi">メンバーになる</string>
+    <string name="pitch_session_title">%1$sを楽しんでいますか？</string>
+    <string name="pitch_five_star_title">%1$sが快適に動いてよかったです！</string>
     <string name="main_share">共有</string>
     <string name="main_share_text">GameNative をチェックしてください - クラウド セーブを完全にサポートし、Android で PC Steam ゲームをプレイしましょう!\nhttps://gamenative.app\nコミュニティに参加してください: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">ゲームはうまくいきましたか？</string>
@@ -1239,6 +1246,63 @@
     <string name="best_config_no_config_available">このゲームに最適な設定はありません</string>
     <string name="best_config_fetch_failed">構成の取得に失敗しました。ネットワーク接続を確認してください。</string>
     <string name="best_config_apply_failed">構成の適用に失敗しました: %s</string>
+    <string name="community_config_title">コミュニティ設定</string>
+    <string name="community_config_close">コミュニティ設定を閉じる</string>
+    <string name="community_config_refresh">コミュニティ設定を更新</string>
+    <string name="community_config_retry">再試行</string>
+    <string name="community_config_unknown_error">不明なエラー</string>
+    <string name="community_config_unknown">不明</string>
+    <string name="community_config_load_failed">コミュニティ設定を読み込めませんでした: %1$s</string>
+    <string name="community_config_game_not_found">%1$s の互換性情報が見つかりませんでした</string>
+    <string name="community_config_gpu_unknown">GPU を利用できません</string>
+    <plurals name="community_config_result_count">
+        <item quantity="other">%1$d 件の設定</item>
+    </plurals>
+    <string name="community_config_highest_rated">評価順</string>
+    <string name="community_config_newest">新着順</string>
+    <string name="community_config_same_device">同じデバイス</string>
+    <string name="community_config_this_gpu">同じ GPU</string>
+    <string name="community_config_compatible_gpus">互換</string>
+    <string name="community_config_load_more">さらに読み込む</string>
+    <string name="community_config_no_device_results">このデバイス向けの設定は見つかりませんでした。</string>
+    <string name="community_config_no_gpu_results">この GPU 向けの設定は見つかりませんでした。</string>
+    <string name="community_config_no_compatible_results">互換 GPU の設定は見つかりませんでした。</string>
+    <string name="community_config_show_this_gpu">この GPU を表示</string>
+    <string name="community_config_show_compatible_gpus">互換 GPU を表示</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">設定の詳細</string>
+    <string name="community_config_other_gpu_warning">この結果は別の GPU を使用しています。GPU 固有のドライバーとラッパーの設定は適用されません。</string>
+    <string name="community_config_run_details">テスト実行</string>
+    <string name="community_config_rating">評価</string>
+    <string name="community_config_average_fps">平均 FPS</string>
+    <string name="community_config_device">デバイス</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">GameNative バージョン</string>
+    <string name="community_config_submitted">送信日時</string>
+    <string name="community_config_session_length">セッション時間</string>
+    <string name="community_config_game_store">ゲームストア</string>
+    <string name="community_config_custom_game">カスタムゲーム</string>
+    <string name="community_config_settings">設定</string>
+    <string name="community_config_additional_launch_settings">追加の起動設定</string>
+    <string name="community_config_apply_launch_arguments">起動引数を適用</string>
+    <string name="community_config_apply_environment_variables">環境変数を適用</string>
+    <string name="community_config_replaces_existing_value">現在の値を置き換えます</string>
+    <string name="community_config_dependencies">依存関係</string>
+    <string name="community_config_dependencies_apply_check">設定を適用するときに依存関係を確認します。</string>
+    <string name="community_config_no_downloads">現在、マニフェストからのダウンロードは必要ありません。</string>
+    <string name="community_config_downloads_required">次のコンポーネントは自動的にダウンロードされます:\n%1$s</string>
+    <string name="community_config_tags">タグ</string>
+    <string name="community_config_notes">メモ</string>
+    <string name="community_config_apply">設定を適用</string>
+    <string name="community_config_container">コンテナ</string>
+    <string name="community_config_wine">Wine または Proton</string>
+    <string name="community_config_emulator">エミュレーター</string>
+    <string name="community_config_wrapper">DirectX ラッパー</string>
+    <string name="community_config_box64_preset">Box64 プリセット</string>
+    <string name="community_config_driver">グラフィックスドライバー</string>
     <string name="best_config_missing_components_title">設定が適用されていません</string>
     <string name="best_config_missing_components_message">次の必須コンポーネントは使用できません:\n\n%1$s</string>
     <string name="best_config_apply_anyway">とにかく応募してください</string>
@@ -1503,6 +1567,7 @@
     <string name="option_submit_feedback">フィードバックを送信する</string>
     <string name="option_reset_drm">DRMをリセットする</string>
     <string name="option_use_known_config">既知の構成を使用する</string>
+    <string name="option_browse_community_configs">コミュニティ設定を参照</string>
     <string name="option_import_saves">インポート保存</string>
     <string name="option_export_saves">保存のエクスポート</string>
     <string name="option_verify_files">ファイルの検証</string>
@@ -2033,6 +2098,8 @@
     <string name="rec_disclosure_body">パーソナライズされたおすすめのため、プレイしたゲームを GOG と共有します。設定でいつでもオフにできます。</string>
     <string name="rec_disclosure_allow">許可</string>
     <string name="rec_disclosure_not_now">後で</string>
+    <string name="rec_teaser_title">あなたのデバイスに合うゲームを発見</string>
+    <string name="rec_teaser_subtitle">タップしてチェック</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">スポンサー</string>
@@ -2151,6 +2218,21 @@
     <string name="steam_invite_joined">あなたのゲームに参加中</string>
     <string name="steam_invite_online">オンライン</string>
     <string name="steam_invite_offline">オフライン</string>
+    <string name="radial_menu">ラジアルメニュー</string>
+    <string name="radial_menu_settings_title">ラジアルメニュー</string>
+    <string name="radial_menu_cancel">キャンセル</string>
+    <string name="radial_menu_slot_count">スロット</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d 個のスロットが有効</string>
+    <string name="radial_menu_decrease_slots">スロットを減らす</string>
+    <string name="radial_menu_increase_slots">スロットを増やす</string>
+    <string name="radial_menu_slots">ホイールスロット</string>
+    <string name="radial_menu_slot_title">スロット %1$d</string>
+    <string name="radial_menu_slot_label_hint">ラベル</string>
+    <string name="radial_menu_slot_binding">スロット %1$d の割り当て</string>
+    <string name="radial_menu_slot_binding_summary">割り当て: %1$s</string>
+    <string name="radial_menu_preset_common">一般</string>
+    <string name="radial_menu_preset_weapons">武器</string>
+    <string name="gesture_action_open_radial_menu">ラジアルメニューを開く</string>
 
     <!-- Power Control -->
     <string name="power_control">パフォーマンス制御</string>
@@ -2172,6 +2254,8 @@
     <string name="power_control_auto_tuning_desc">より安定したパフォーマンス、より長いバッテリー駆動時間、発熱の低減：ゲームに合わせてCPUとGPUを自動調整します。Retroid Pocket 6で動作確認済みです。</string>
     <string name="power_control_adaptive_fps">FPSの自動低減</string>
     <string name="power_control_adaptive_fps_desc">ゲームがFPS上限に達しない場合は上限を下げ、フレーム間隔を安定させます。Retroid Pocket 6で動作確認済みです。</string>
+    <string name="power_control_enable">ゲーム内電力コントロール</string>
+    <string name="power_control_enable_desc">OSに代わってCPU/GPUのクロック制御を行います</string>
     <string name="power_control_tuning_mode">調整モード</string>
     <string name="power_control_tuning_mode_per_cluster">クラスターごと（Retroid Pocket 6で動作確認済み）</string>
     <string name="power_control_tuning_mode_whole_cpu">PID制御</string>
@@ -2190,4 +2274,37 @@
     <string name="power_control_strategy_aggressive_desc">検出されたボトルネックのパフォーマンスを最大化</string>
     <string name="power_control_strategy_conservative">保守的</string>
     <string name="power_control_strategy_conservative_desc">安定性を重視した漸進的な調整</string>
+    <string name="launch_immersive_mode">没入モード（VR）で起動</string>
+    <string name="quick_menu_tab_immersive">没入</string>
+    <string name="immersive_passthrough">パススルー</string>
+    <string name="immersive_passthrough_desc">仮想スクリーン越しに現実の周囲を表示します</string>
+    <string name="immersive_passthrough_toggle">パススルーを有効にする</string>
+    <string name="immersive_resize_mode_title">サイズ変更・移動ハンドル</string>
+    <string name="immersive_resize_mode_desc">オンのあいだ、ゲーム画面の内側にグラブハンドルを表示します。余白を設けないほうが画質の劣化を避けられるため、既定ではオフです。</string>
+    <string name="immersive_resize_mode_toggle">サイズ変更・移動ハンドルを表示</string>
+    <string name="immersive_direct_render_title">パフォーマンス</string>
+    <string name="immersive_reset_effects_status_blocked">画面エフェクト、フィルター、または明るさ・コントラスト・ガンマの調整が有効なため、最速の描画パスが使えません。</string>
+    <string name="immersive_reset_effects_status_ok">現在、最速の描画パスを妨げるものはありません。</string>
+    <string name="immersive_reset_effects_button">画面エフェクトをリセット</string>
+    <string name="immersive_reset_effects_desc">すべてのエフェクト、フィルター、明るさ・コントラスト・ガンマの調整をオフにします。再起動不要ですぐに反映されます。</string>
+    <string name="immersive_onboarding_disable_passthrough">パフォーマンス向上のためパススルーを無効にしてください</string>
+    <string name="immersive_onboarding_quick_menu">Start を長押しするとクイックメニューを開閉できます</string>
+    <string name="immersive_onboarding_pointer_toggle">スティックをダブルクリックすると Xbox コントローラーと XR ポインターを切り替えられます</string>
+    <string name="immersive_mode_xr_pointer">XR ポインターモード</string>
+    <string name="immersive_mode_xbox">Xbox コントローラーモード</string>
+    <string name="tab_favorites">お気に入り</string>
+    <string name="favorites_empty_title">お気に入りはまだありません</string>
+    <string name="favorites_empty_message">ゲームの詳細メニューを開いてお気に入りに追加するか、ゲームにフォーカスした状態でコントローラーの左側フェイスボタンを押します（Xbox は X、PlayStation は四角、Nintendo 配列は Y）。</string>
+    <string name="favorites_empty_action">すべてのゲームを見る</string>
+    <string name="favorites_empty_filtered_title">表示するお気に入りがありません</string>
+    <string name="favorites_empty_filtered_message">現在の検索やフィルターに一致するか、ライブラリで利用できるお気に入りのゲームはありません。</string>
+    <string name="option_add_to_favorites">お気に入りに追加</string>
+    <string name="option_remove_from_favorites">お気に入りから削除</string>
+    <string name="favorite_add_named">%1$s をお気に入りに追加</string>
+    <string name="favorite_remove_named">%1$s をお気に入りから削除</string>
+    <string name="favorite_removed">お気に入りから削除しました</string>
+    <string name="favorite_removed_named">%1$s をお気に入りから削除しました</string>
+    <string name="favorite_added">お気に入りに追加しました</string>
+    <string name="favorite_added_named">%1$s をお気に入りに追加しました</string>
+    <string name="xr_refresh_rate">VRリフレッシュレート</string>
 </resources>

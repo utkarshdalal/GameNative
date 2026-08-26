@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Login do Usuário</string>
     <string name="login_2fa">Dois Fatores</string>
@@ -752,6 +752,11 @@
     <string name="settings_language_restart_confirm">Reiniciar</string>
     <string name="settings_language_changing">Alterando idioma e reiniciando...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Desempenho</string>
+    <string name="settings_performance_power_control_title">Controle de desempenho</string>
+    <string name="settings_performance_power_control_subtitle">Ativa o controle de desempenho no jogo por padrão (ativado em dispositivos testados: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulação</string>
     <string name="settings_emulation_orientations_title">Orientações permitidas</string>
@@ -791,10 +796,10 @@
 
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Informações</string>
-    <string name="settings_info_send_tip_title">Enviar gorjeta</string>
-    <string name="settings_info_send_tip_subtitle">Contribuir para o desenvolvimento contínuo</string>
-    <string name="settings_info_ask_tip_title">Pedir gorjeta na inicialização</string>
-    <string name="settings_info_ask_tip_subtitle">Impede que a mensagem de gorjeta apareça</string>
+    <string name="settings_info_send_tip_title">Tornar-se membro</string>
+    <string name="settings_info_send_tip_subtitle">Acesso antecipado a lançamentos, ajuda prioritária e mais</string>
+    <string name="settings_info_ask_tip_title">Ofertas para membros</string>
+    <string name="settings_info_ask_tip_subtitle">Mostrar ofertas ocasionais para se tornar membro do GameNative</string>
     <string name="settings_info_source_title">Código-fonte</string>
     <string name="settings_info_source_subtitle">Ver o código-fonte deste projeto</string>
     <string name="settings_info_libraries_title">Bibliotecas utilizadas</string>
@@ -913,9 +918,11 @@
     <!-- TODO: Revisão manual - PluviaMain: Falha e suporte -->
     <string name="main_recent_crash_title">Falha recente</string>
     <string name="main_recent_crash_message">Desculpe por isso!\nSeria bom saber sobre o problema recente que você teve.\nVocê pode visualizar e exportar o log de falha mais recente nas configurações do aplicativo e anexá-lo como um problema do Github no repositório do projeto.\nO link para o repositório do Github também está nas configurações!</string>
-    <string name="main_thank_you_title">Obrigado por usar o GameNative!</string>
-    <string name="main_thank_you_message">Apoie jogos de PC de código aberto no Android compartilhando o aplicativo com seus amigos ou se tornando um membro no Ko-fi.</string>
-    <string name="main_join_kofi">Junte-se no Ko-fi</string>
+    <string name="main_thank_you_title">Curtindo o GameNative?</string>
+    <string name="main_thank_you_message">Torne-se membro hoje. Membros recebem:\n\n• Acesso antecipado a novos lançamentos\n• Ajuda prioritária para fazer seus jogos rodarem\n• Cargos premium e canais exclusivos no Discord\n• …e mais\n\nA partir de $5/mês</string>
+    <string name="main_join_kofi">Tornar-se membro</string>
+    <string name="pitch_session_title">Curtindo %1$s?</string>
+    <string name="pitch_five_star_title">Que bom que %1$s rodou muito bem!</string>
     <string name="main_share">Compartilhar</string>
     <string name="main_share_text">Confira o GameNative - jogue seus jogos Steam de PC no Android, com suporte completo a salvamentos na nuvem!\nhttps://gamenative.app\nJunte-se à comunidade: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">O jogo funcionou?</string>
@@ -1029,6 +1036,64 @@
     <string name="best_config_apply_anyway">Aplicar mesmo assim</string>
     <string name="best_config_applied_with_defaults">Configuração aplicada, componentes ausentes substituídos por padrões</string>
     <string name="best_config_apply_failed">Falha ao aplicar config: %s</string>
+    <string name="community_config_title">Configurações da comunidade</string>
+    <string name="community_config_close">Fechar configurações da comunidade</string>
+    <string name="community_config_refresh">Atualizar configurações da comunidade</string>
+    <string name="community_config_retry">Tentar novamente</string>
+    <string name="community_config_unknown_error">Erro desconhecido</string>
+    <string name="community_config_unknown">Desconhecido</string>
+    <string name="community_config_load_failed">Não foi possível carregar as configurações da comunidade: %1$s</string>
+    <string name="community_config_game_not_found">Nenhuma entrada de compatibilidade foi encontrada para %1$s</string>
+    <string name="community_config_gpu_unknown">GPU indisponível</string>
+    <plurals name="community_config_result_count">
+        <item quantity="one">%1$d configuração</item>
+        <item quantity="other">%1$d configurações</item>
+    </plurals>
+    <string name="community_config_highest_rated">Mais bem avaliadas</string>
+    <string name="community_config_newest">Mais recentes</string>
+    <string name="community_config_same_device">Mesmo dispositivo</string>
+    <string name="community_config_this_gpu">Mesma GPU</string>
+    <string name="community_config_compatible_gpus">Compatíveis</string>
+    <string name="community_config_load_more">Carregar mais</string>
+    <string name="community_config_no_device_results">Nenhuma configuração foi encontrada para este dispositivo.</string>
+    <string name="community_config_no_gpu_results">Nenhuma configuração foi encontrada para esta GPU.</string>
+    <string name="community_config_no_compatible_results">Nenhuma configuração foi encontrada para GPUs compatíveis.</string>
+    <string name="community_config_show_this_gpu">Mostrar esta GPU</string>
+    <string name="community_config_show_compatible_gpus">Mostrar GPUs compatíveis</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">Detalhes da configuração</string>
+    <string name="community_config_other_gpu_warning">Este resultado usa outra GPU. As configurações de driver e wrapper específicas da GPU não serão aplicadas.</string>
+    <string name="community_config_run_details">Execução de teste</string>
+    <string name="community_config_rating">Avaliação</string>
+    <string name="community_config_average_fps">Média de FPS</string>
+    <string name="community_config_device">Dispositivo</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">Versão do GameNative</string>
+    <string name="community_config_submitted">Enviado em</string>
+    <string name="community_config_session_length">Duração da sessão</string>
+    <string name="community_config_game_store">Loja do jogo</string>
+    <string name="community_config_custom_game">Jogo personalizado</string>
+    <string name="community_config_settings">Configurações</string>
+    <string name="community_config_additional_launch_settings">Configurações adicionais de inicialização</string>
+    <string name="community_config_apply_launch_arguments">Aplicar argumentos de inicialização</string>
+    <string name="community_config_apply_environment_variables">Aplicar variáveis de ambiente</string>
+    <string name="community_config_replaces_existing_value">Substitui o valor atual</string>
+    <string name="community_config_dependencies">Dependências</string>
+    <string name="community_config_dependencies_apply_check">As dependências serão verificadas quando a configuração for aplicada.</string>
+    <string name="community_config_no_downloads">Nenhum download do manifesto é necessário no momento.</string>
+    <string name="community_config_downloads_required">Estes componentes serão baixados automaticamente:\n%1$s</string>
+    <string name="community_config_tags">Tags</string>
+    <string name="community_config_notes">Observações</string>
+    <string name="community_config_apply">Aplicar configuração</string>
+    <string name="community_config_container">Contêiner</string>
+    <string name="community_config_wine">Wine ou Proton</string>
+    <string name="community_config_emulator">Emulador</string>
+    <string name="community_config_wrapper">Wrapper do DirectX</string>
+    <string name="community_config_box64_preset">Predefinição do Box64</string>
+    <string name="community_config_driver">Driver gráfico</string>
     <string name="import_config">Importar configuração</string>
     <string name="export_config">Exportar configuração</string>
 
@@ -1350,6 +1415,7 @@
     <string name="option_submit_feedback">Enviar feedback</string>
     <string name="option_reset_drm">Redefinir DRM</string>
     <string name="option_use_known_config">Usar configuração conhecida</string>
+    <string name="option_browse_community_configs">Procurar configurações da comunidade</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Recomendado</string>
@@ -1946,6 +2012,8 @@
     <string name="rec_disclosure_body">Para recomendações personalizadas, compartilhamos os jogos que você joga com a GOG. Desative quando quiser nas Configurações.</string>
     <string name="rec_disclosure_allow">Permitir</string>
     <string name="rec_disclosure_not_now">Agora não</string>
+    <string name="rec_teaser_title">Descubra jogos para o seu dispositivo</string>
+    <string name="rec_teaser_subtitle">Toque para dar uma olhada</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Patrocinado</string>
@@ -2067,6 +2135,21 @@
     <string name="steam_invite_joined">Na sua partida</string>
     <string name="steam_invite_online">Online</string>
     <string name="steam_invite_offline">Offline</string>
+    <string name="radial_menu">Menu radial</string>
+    <string name="radial_menu_settings_title">Menu radial</string>
+    <string name="radial_menu_cancel">Cancelar</string>
+    <string name="radial_menu_slot_count">Espaços</string>
+    <string name="radial_menu_slot_count_subtitle">%1$d espaços ativados</string>
+    <string name="radial_menu_decrease_slots">Diminuir espaços</string>
+    <string name="radial_menu_increase_slots">Aumentar espaços</string>
+    <string name="radial_menu_slots">Espaços da roda</string>
+    <string name="radial_menu_slot_title">Espaço %1$d</string>
+    <string name="radial_menu_slot_label_hint">Rótulo</string>
+    <string name="radial_menu_slot_binding">Atribuição do espaço %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Atribuição: %1$s</string>
+    <string name="radial_menu_preset_common">Comum</string>
+    <string name="radial_menu_preset_weapons">Armas</string>
+    <string name="gesture_action_open_radial_menu">Abrir menu radial</string>
 
     <!-- Power Control -->
     <string name="power_control">Controle de desempenho</string>
@@ -2088,6 +2171,8 @@
     <string name="power_control_auto_tuning_desc">Desempenho mais estável, maior duração da bateria, menos calor: ajusta automaticamente a CPU e a GPU para o seu jogo. Verificado no Retroid Pocket 6.</string>
     <string name="power_control_adaptive_fps">Redução automática de FPS</string>
     <string name="power_control_adaptive_fps_desc">Reduz o limite de FPS quando o jogo não consegue alcançá-lo, para um ritmo estável. Verificado no Retroid Pocket 6.</string>
+    <string name="power_control_enable">Controle de energia no jogo</string>
+    <string name="power_control_enable_desc">Assume o controle dos clocks de CPU/GPU no lugar do sistema</string>
     <string name="power_control_tuning_mode">Modo de ajuste</string>
     <string name="power_control_tuning_mode_per_cluster">Por cluster (verificado no Retroid Pocket 6)</string>
     <string name="power_control_tuning_mode_whole_cpu">Controlador PID</string>
@@ -2106,4 +2191,37 @@
     <string name="power_control_strategy_aggressive_desc">Maximiza o desempenho em gargalos detectados</string>
     <string name="power_control_strategy_conservative">Conservador</string>
     <string name="power_control_strategy_conservative_desc">Ajustes graduais com foco na estabilidade</string>
+    <string name="launch_immersive_mode">Iniciar em modo imersivo (RV)</string>
+    <string name="quick_menu_tab_immersive">Imersivo</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Veja o ambiente real através da tela virtual</string>
+    <string name="immersive_passthrough_toggle">Ativar passthrough</string>
+    <string name="immersive_resize_mode_title">Alças de redimensionar/mover</string>
+    <string name="immersive_resize_mode_desc">Mostra alças logo dentro das bordas do jogo quando ativado — desativado por padrão, já que uma tela sem margem não perde nitidez.</string>
+    <string name="immersive_resize_mode_toggle">Mostrar alças de redimensionar/mover</string>
+    <string name="immersive_direct_render_title">Desempenho</string>
+    <string name="immersive_reset_effects_status_blocked">Um efeito de tela, filtro ou ajuste de brilho/contraste/gama ativo está bloqueando o caminho de renderização mais rápido.</string>
+    <string name="immersive_reset_effects_status_ok">Nada está bloqueando o caminho de renderização mais rápido no momento.</string>
+    <string name="immersive_reset_effects_button">Redefinir efeitos de tela</string>
+    <string name="immersive_reset_effects_desc">Desativa todos os efeitos, filtros e ajustes de brilho/contraste/gama. Vale imediatamente — sem precisar reiniciar.</string>
+    <string name="immersive_onboarding_disable_passthrough">Desative o passthrough para melhor desempenho</string>
+    <string name="immersive_onboarding_quick_menu">Segure Start para abrir/fechar o menu rápido</string>
+    <string name="immersive_onboarding_pointer_toggle">Clique duas vezes em um analógico para alternar entre controle Xbox e ponteiro XR</string>
+    <string name="immersive_mode_xr_pointer">Modo ponteiro XR</string>
+    <string name="immersive_mode_xbox">Modo controle Xbox</string>
+    <string name="tab_favorites">Favoritos</string>
+    <string name="favorites_empty_title">Ainda não há favoritos</string>
+    <string name="favorites_empty_message">Abra o menu de detalhes do jogo para adicioná-lo aos favoritos ou pressione o botão frontal esquerdo do controle enquanto o jogo estiver em foco (X no Xbox, Quadrado no PlayStation ou Y em controles com layout Nintendo).</string>
+    <string name="favorites_empty_action">Ver todos os jogos</string>
+    <string name="favorites_empty_filtered_title">Nenhum favorito para mostrar</string>
+    <string name="favorites_empty_filtered_message">Nenhum jogo favorito corresponde à busca ou aos filtros atuais ou está disponível na sua biblioteca.</string>
+    <string name="option_add_to_favorites">Adicionar aos favoritos</string>
+    <string name="option_remove_from_favorites">Remover dos favoritos</string>
+    <string name="favorite_add_named">Adicionar %1$s aos favoritos</string>
+    <string name="favorite_remove_named">Remover %1$s dos favoritos</string>
+    <string name="favorite_removed">Removido dos favoritos</string>
+    <string name="favorite_removed_named">%1$s removido dos favoritos</string>
+    <string name="favorite_added">Adicionado aos favoritos</string>
+    <string name="favorite_added_named">%1$s adicionado aos favoritos</string>
+    <string name="xr_refresh_rate">Taxa de atualização de VR</string>
 </resources>

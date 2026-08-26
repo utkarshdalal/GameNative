@@ -67,6 +67,8 @@ object FanController {
         if (running) return
 
         val pserver = candidate as? PServerDriver ?: return
+        driver = pserver
+
         val period = readPeriodTicks(pserver)
         if (period == null) {
             Timber.tag(TAG).d("Fan PWM nodes not readable, fan control disabled")
@@ -80,7 +82,6 @@ object FanController {
         }
         Timber.tag(TAG).i("Captured fan_mode=%s (period=%d ticks)", mode?.toString() ?: "unreadable", period)
 
-        driver = pserver
         capturedMode = mode
         periodTicks = period
         controller.reset()
@@ -171,7 +172,7 @@ object FanController {
 
         val snapshot = PowerManager.latestMetrics ?: return
         if (System.currentTimeMillis() - snapshot.timestampMs > METRICS_STALE_MS) return
-        val tempC = listOfNotNull(snapshot.cpuTempC, snapshot.gpuTempC).maxOrNull() ?: return
+        val tempC = pserver.deviceTempC(snapshot.cpuTempC, snapshot.gpuTempC) ?: return
 
         tickCount++
         val percent = controller.update(tempC.toDouble(), dtSeconds)

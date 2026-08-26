@@ -5,6 +5,7 @@ import android.os.Process
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.data.GameProcessInfo
@@ -65,6 +66,33 @@ class MainViewModel @Inject constructor(
 
     companion object {
         private const val KEY_CURRENT_SCREEN_ROUTE = "current_screen_route"
+        private const val MIN_WARM_PITCH_SESSION_MS = 7 * 60 * 1000L
+        private const val WARM_PITCH_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000L
+
+        var gamePlayedThisSession = false
+            private set
+    }
+
+    private var gameSessionStartTime = 0L
+    private var pendingWarmPitch: Pair<String, Boolean>? = null
+
+    private fun warmPitchAllowed(): Boolean {
+        if (PrefManager.tipped || BuildConfig.GOLD) return false
+        return System.currentTimeMillis() - PrefManager.lastWarmPitchTime >= WARM_PITCH_COOLDOWN_MS
+    }
+
+    fun onGameFeedbackResolved(rating: Int?) {
+        val (appId, sessionLongEnough) = pendingWarmPitch ?: return
+        pendingWarmPitch = null
+        val trigger = when {
+            rating == 5 -> "five_star"
+            rating == null && sessionLongEnough -> "long_session"
+            else -> return
+        }
+        if (!warmPitchAllowed()) return
+        viewModelScope.launch {
+            _uiEvent.send(MainUiEvent.ShowMembershipPitch(appId, trigger))
+        }
     }
 
     sealed class MainUiEvent {
@@ -76,6 +104,7 @@ class MainViewModel @Inject constructor(
         data class SteamDisconnected(val isTerminal: Boolean) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
         data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
+        data class ShowMembershipPitch(val appId: String, val trigger: String) : MainUiEvent()
         data object ServiceReady : MainUiEvent()
     }
 
@@ -221,6 +250,12 @@ class MainViewModel @Inject constructor(
         setShowBootingSplash(true)
     }
 
+    private val onClearBootingSplash: (AndroidEvent.ClearBootingSplash) -> Unit = {
+        bootingSplashTimeoutJob?.cancel()
+        bootingSplashTimeoutJob = null
+        setShowBootingSplash(false)
+    }
+
     private var bootingSplashTimeoutJob: Job? = null
     private var connectionTimeoutJob: Job? = null
 
@@ -255,6 +290,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.on<AndroidEvent.BackPressed, Unit>(onBackPressed)
         PluviaApp.events.on<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.on<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
+        PluviaApp.events.on<AndroidEvent.ClearBootingSplash, Unit>(onClearBootingSplash)
         PluviaApp.events.on<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.on<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
@@ -281,6 +317,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.off<AndroidEvent.BackPressed, Unit>(onBackPressed)
         PluviaApp.events.off<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.off<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
+        PluviaApp.events.off<AndroidEvent.ClearBootingSplash, Unit>(onClearBootingSplash)
         PluviaApp.events.off<SteamEvent.Connected, Unit>(onSteamConnected)
         PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onSteamDisconnected)
         PluviaApp.events.off<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
@@ -463,6 +500,9 @@ class MainViewModel @Inject constructor(
     }
 
     fun launchApp(context: Context, appId: String) {
+        gameSessionStartTime = System.currentTimeMillis()
+        gamePlayedThisSession = true
+        PrefManager.hasAttemptedGameLaunch = true
         // Show booting splash before launching the app
         viewModelScope.launch {
             viewModelScope.launch(Dispatchers.IO) {
@@ -529,14 +569,26 @@ class MainViewModel @Inject constructor(
                         }
                     }
                 }
+                container
             }
 
             // Small delay to ensure the splash screen is visible before proceeding
             delay(100)
 
-            apiJob.await()
+            val container = apiJob.await()
 
-            _uiEvent.send(MainUiEvent.LaunchApp)
+            if (app.gamenative.BuildConfig.XR_BUILD &&
+                container.isLaunchImmersiveMode() &&
+                app.gamenative.MainActivity.isMetaQuest()
+            ) {
+                bootingSplashTimeoutJob?.cancel()
+                bootingSplashTimeoutJob = null
+                setShowBootingSplash(false)
+                SteamService.keepAlive = true
+                app.gamenative.ui.screen.xr.ImmersiveXrActivity.start(context, appId, _offline.value)
+            } else {
+                _uiEvent.send(MainUiEvent.LaunchApp)
+            }
         }
     }
 
@@ -547,6 +599,7 @@ class MainViewModel @Inject constructor(
                 bootingSplashTimeoutJob?.cancel()
                 bootingSplashTimeoutJob = null
                 setShowBootingSplash(false)
+                PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
                 // Check if we have a temporary override before doing anything
                 val hadTemporaryOverride = IntentLaunchManager.hasTemporaryOverride(appId)
 
@@ -564,6 +617,10 @@ class MainViewModel @Inject constructor(
 
                 // After app closes, check if we need to show the feedback dialog
                 // Show feedback if: first time running this game OR config was changed
+                val sessionLongEnough = gameSessionStartTime > 0 &&
+                    System.currentTimeMillis() - gameSessionStartTime >= MIN_WARM_PITCH_SESSION_MS
+                gameSessionStartTime = 0L
+                var feedbackRequested = false
                 try {
                     // Show feedback for all stores except custom games.
                     val feedbackGameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
@@ -575,6 +632,7 @@ class MainViewModel @Inject constructor(
                         if (!shown) {
                             container.putExtra("discord_support_prompt_shown", "true")
                             container.saveData()
+                            feedbackRequested = true
                             _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
                         }
 
@@ -584,6 +642,7 @@ class MainViewModel @Inject constructor(
                             container.putExtra("config_changed", "false")
                             container.saveData()
                             // Show the feedback dialog
+                            feedbackRequested = true
                             _uiEvent.send(MainUiEvent.ShowGameFeedbackDialog(appId))
                         }
                     } else {
@@ -591,6 +650,12 @@ class MainViewModel @Inject constructor(
                     }
                 } catch (e: Exception) {
                     Timber.w(e, "Failed to check/update feedback dialog state for $appId")
+                }
+
+                if (feedbackRequested) {
+                    pendingWarmPitch = appId to sessionLongEnough
+                } else if (sessionLongEnough && warmPitchAllowed()) {
+                    _uiEvent.send(MainUiEvent.ShowMembershipPitch(appId, "long_session"))
                 }
             } finally {
                 onComplete?.invoke()
@@ -671,6 +736,9 @@ class MainViewModel @Inject constructor(
             bootingSplashTimeoutJob?.cancel()
             bootingSplashTimeoutJob = null
             setShowBootingSplash(false)
+            // See onClearBootingSplash's kdoc — broadcast so MainActivity's own instance clears
+            // too when this call is actually running on ImmersiveXrActivity's separate instance.
+            PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
 
             if (ContainerUtils.extractGameSourceFromContainerId(appId) != GameSource.STEAM) {
                 return@launch
@@ -742,6 +810,9 @@ class MainViewModel @Inject constructor(
             bootingSplashTimeoutJob?.cancel()
             bootingSplashTimeoutJob = null
             setShowBootingSplash(false)
+            // See onClearBootingSplash's kdoc — broadcast so MainActivity's own instance clears
+            // too when this call is actually running on ImmersiveXrActivity's separate instance.
+            PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
 
             // You could also show an error dialog here if needed
             Timber.tag("MainViewModel").e("Game launch error: $error")

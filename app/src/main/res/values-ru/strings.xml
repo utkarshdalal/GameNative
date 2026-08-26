@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="abc_action_bar_up_description">Перейти вверх</string>
     <string name="abc_action_mode_done">Готово</string>
     <string name="abc_capital_off">ВЫКЛ</string>
@@ -117,6 +117,66 @@
     <string name="best_config_applied_with_defaults">Конфигурация применена, отсутствующие компоненты заменены значениями по умолчанию</string>
     <string name="best_config_apply_anyway">Применить всё равно</string>
     <string name="best_config_apply_failed">Ошибка применения конфигурации: %s</string>
+    <string name="community_config_title">Конфигурации сообщества</string>
+    <string name="community_config_close">Закрыть конфигурации сообщества</string>
+    <string name="community_config_refresh">Обновить конфигурации сообщества</string>
+    <string name="community_config_retry">Повторить</string>
+    <string name="community_config_unknown_error">Неизвестная ошибка</string>
+    <string name="community_config_unknown">Неизвестно</string>
+    <string name="community_config_load_failed">Не удалось загрузить конфигурации сообщества: %1$s</string>
+    <string name="community_config_game_not_found">Для %1$s не найдена запись о совместимости</string>
+    <string name="community_config_gpu_unknown">GPU недоступен</string>
+    <plurals name="community_config_result_count">
+        <item quantity="one">%1$d конфигурация</item>
+        <item quantity="few">%1$d конфигурации</item>
+        <item quantity="many">%1$d конфигураций</item>
+        <item quantity="other">%1$d конфигурации</item>
+    </plurals>
+    <string name="community_config_highest_rated">Высший рейтинг</string>
+    <string name="community_config_newest">Сначала новые</string>
+    <string name="community_config_same_device">То же устройство</string>
+    <string name="community_config_this_gpu">Тот же GPU</string>
+    <string name="community_config_compatible_gpus">Совместимые</string>
+    <string name="community_config_load_more">Загрузить ещё</string>
+    <string name="community_config_no_device_results">Для этого устройства не найдено конфигураций.</string>
+    <string name="community_config_no_gpu_results">Для этого GPU не найдено конфигураций.</string>
+    <string name="community_config_no_compatible_results">Конфигурации для совместимых GPU не найдены.</string>
+    <string name="community_config_show_this_gpu">Показать этот GPU</string>
+    <string name="community_config_show_compatible_gpus">Показать совместимые GPU</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">Сведения о конфигурации</string>
+    <string name="community_config_other_gpu_warning">Этот результат получен с другим GPU. Настройки драйвера и обёртки, зависящие от GPU, применены не будут.</string>
+    <string name="community_config_run_details">Тестовый запуск</string>
+    <string name="community_config_rating">Оценка</string>
+    <string name="community_config_average_fps">Средний FPS</string>
+    <string name="community_config_device">Устройство</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">Версия GameNative</string>
+    <string name="community_config_submitted">Отправлено</string>
+    <string name="community_config_session_length">Длительность сеанса</string>
+    <string name="community_config_game_store">Магазин игры</string>
+    <string name="community_config_custom_game">Пользовательская игра</string>
+    <string name="community_config_settings">Настройки</string>
+    <string name="community_config_additional_launch_settings">Дополнительные параметры запуска</string>
+    <string name="community_config_apply_launch_arguments">Применить аргументы запуска</string>
+    <string name="community_config_apply_environment_variables">Применить переменные окружения</string>
+    <string name="community_config_replaces_existing_value">Заменяет текущее значение</string>
+    <string name="community_config_dependencies">Зависимости</string>
+    <string name="community_config_dependencies_apply_check">Зависимости будут проверены при применении конфигурации.</string>
+    <string name="community_config_no_downloads">Сейчас загрузка компонентов из манифеста не требуется.</string>
+    <string name="community_config_downloads_required">Эти компоненты будут загружены автоматически:\n%1$s</string>
+    <string name="community_config_tags">Теги</string>
+    <string name="community_config_notes">Примечания</string>
+    <string name="community_config_apply">Применить конфигурацию</string>
+    <string name="community_config_container">Контейнер</string>
+    <string name="community_config_wine">Wine или Proton</string>
+    <string name="community_config_emulator">Эмулятор</string>
+    <string name="community_config_wrapper">Обёртка DirectX</string>
+    <string name="community_config_box64_preset">Предустановка Box64</string>
+    <string name="community_config_driver">Графический драйвер</string>
     <string name="best_config_exact_gpu_match">Известная конфигурация работает на вашем GPU</string>
     <string name="best_config_fallback_match">Известная конфигурация может работать на вашем GPU</string>
     <string name="best_config_known_config_invalid">Известная конфигурация невалидна</string>
@@ -728,7 +788,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="main_downloading_steam">Загрузка Steam...</string>
     <string name="main_installing_bionic">Установка компонентов Bionic...</string>
     <string name="main_installing_glibc">Установка компонентов glibc...</string>
-    <string name="main_join_kofi">Присоединиться на Ko-fi</string>
     <string name="main_keep_local">Сохранить локальное</string>
     <string name="main_keep_remote">Сохранить удалённое</string>
     <string name="main_later_button">Позже</string>
@@ -756,6 +815,11 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="main_save_conflict_title">Конфликт сохранений</string>
     <string name="main_save_conflict_upgrade_v1_title">Выберите версию сохранения</string>
     <string name="main_save_conflict_upgrade_v1_message">Мы исправили обработку путей облачных сохранений для этой игры и обнаружили различия между локальным и облачным сохранением.\n\nЛокальное сохранение:\n\t%1$s\nОблачное сохранение:\n\t%2$s</string>
+    <string name="main_thank_you_title">Нравится GameNative?</string>
+    <string name="main_thank_you_message">Станьте участником сегодня. Участники получают:\n\n• Ранний доступ к новым версиям\n• Приоритетную помощь с запуском игр\n• Премиум-роли и эксклюзивные каналы в Discord\n• …и не только\n\nОт $5/мес.</string>
+    <string name="main_join_kofi">Стать участником</string>
+    <string name="pitch_session_title">Нравится %1$s?</string>
+    <string name="pitch_five_star_title">Рады, что %1$s отлично работает!</string>
     <string name="main_share">Поделиться</string>
     <string name="main_share_text">Проверьте GameNative - играйте в ваши ПК игры Steam на Android, с полной поддержкой облачных сохранений!
 https://gamenative.app
@@ -764,8 +828,6 @@ https://gamenative.app
     <string name="main_sync_in_progress">Синхронизация в процессе. Пожалуйста, попробуйте снова через момент.</string>
     <string name="main_sync_in_progress_launch_anyway_message">Синхронизация облачного сохранения для этой игры уже запущена. Вы можете подождать и попробовать снова, или запустить в любом случае без синхронизации (может вызвать конфликты сохранений).</string>
     <string name="main_sync_in_progress_retry">Операция синхронизации занимает слишком много времени. Пожалуйста, попробуйте запустить игру снова через момент.</string>
-    <string name="main_thank_you_message">Поддержите игры с открытым исходным кодом на Android, поделившись приложением с вашими друзьями или став членом на Ko-fi.</string>
-    <string name="main_thank_you_title">Спасибо за использование GameNative!</string>
     <string name="main_update_available_message">Доступна новая версия (%1$s)!%2$s</string>
     <string name="main_update_available_title">Доступно обновление</string>
     <string name="main_update_button">Обновить</string>
@@ -1045,23 +1107,28 @@ https://gamenative.app
     <string name="settings_emulation_default_config_subtitle">Начальные настройки контейнера для каждой игры (не влияет на уже установленные игры)</string>
     <string name="settings_emulation_default_config_title">Изменить конфигурацию по умолчанию</string>
     <string name="settings_emulation_driver_manager_subtitle">Установить или удалить пользовательские пакеты графических драйверов</string>
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Производительность</string>
+    <string name="settings_performance_power_control_title">Управление производительностью</string>
+    <string name="settings_performance_power_control_subtitle">Включать управление производительностью в игре по умолчанию (включено на протестированных устройствах: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
     <string name="settings_emulation_driver_manager_title">Менеджер драйверов</string>
     <string name="settings_emulation_orientations_subtitle">Выберите, какие ориентации можно повернуть во время игры</string>
     <string name="settings_emulation_orientations_title">Разрешённые ориентации</string>
     <string name="settings_emulation_title">Эмуляция</string>
     <string name="settings_emulation_wine_proton_manager_subtitle">Импортировать пользовательские версии Wine/Proton (только Bionic)</string>
     <string name="settings_emulation_wine_proton_manager_title">Менеджер Wine/Proton</string>
-    <string name="settings_info_ask_tip_subtitle">Предотвращает появление сообщения совета</string>
-    <string name="settings_info_ask_tip_title">Спросить совет при запуске</string>
     <string name="settings_info_libraries_subtitle">Узнайте, какие технологии делают GameNative возможным</string>
     <string name="settings_info_libraries_title">Используемые библиотеки</string>
     <string name="settings_info_privacy_subtitle">Открывает ссылку на политику конфиденциальности GameNative</string>
     <string name="settings_info_privacy_title">Политика конфиденциальности</string>
     <string name="settings_info_usage_analytics_title">Аналитика использования</string>
     <string name="settings_info_usage_analytics_subtitle">Мы никогда не отслеживаем личную информацию. Отключение останавливает несущественную аналитику, однако основные данные о производительности игр по-прежнему собираются как законный интерес для улучшения совместимости.</string>
-    <string name="settings_info_send_tip_subtitle">Внесите вклад в продолжающуюся разработку</string>
-    <string name="settings_info_send_tip_title">Отправить чаевые</string>
     <string name="settings_info_source_subtitle">Просмотреть исходный код этого проекта</string>
+    <string name="settings_info_send_tip_title">Стать участником</string>
+    <string name="settings_info_send_tip_subtitle">Ранний доступ к версиям, приоритетная помощь и другое</string>
+    <string name="settings_info_ask_tip_title">Предложения о членстве</string>
+    <string name="settings_info_ask_tip_subtitle">Иногда показывать предложения стать участником GameNative</string>
     <string name="settings_info_source_title">Исходный код</string>
     <string name="settings_info_title">Информация</string>
     <string name="settings_interface_download_server_title">Сервер загрузки Steam</string>
@@ -1406,6 +1473,7 @@ https://gamenative.app
     <string name="option_submit_feedback">Отправить отзыв</string>
     <string name="option_reset_drm">Сбросить DRM</string>
     <string name="option_use_known_config">Использовать известную конфигурацию</string>
+    <string name="option_browse_community_configs">Просмотреть конфигурации сообщества</string>
 
     <!-- Recommendations -->
     <string name="recommended_badge">Рекомендуемое</string>
@@ -2002,6 +2070,8 @@ https://gamenative.app
     <string name="rec_disclosure_body">Для персональных рекомендаций мы передаём игры, в которые вы играете, сервису GOG. Отключить можно в любой момент в Настройках.</string>
     <string name="rec_disclosure_allow">Разрешить</string>
     <string name="rec_disclosure_not_now">Не сейчас</string>
+    <string name="rec_teaser_title">Откройте игры для вашего устройства</string>
+    <string name="rec_teaser_subtitle">Нажмите, чтобы посмотреть</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">Спонсировано</string>
@@ -2129,6 +2199,21 @@ https://gamenative.app
     <string name="steam_invite_joined">В вашей игре</string>
     <string name="steam_invite_online">В сети</string>
     <string name="steam_invite_offline">Не в сети</string>
+    <string name="radial_menu">Радиальное меню</string>
+    <string name="radial_menu_settings_title">Радиальное меню</string>
+    <string name="radial_menu_cancel">Отмена</string>
+    <string name="radial_menu_slot_count">Слоты</string>
+    <string name="radial_menu_slot_count_subtitle">Активных слотов: %1$d</string>
+    <string name="radial_menu_decrease_slots">Уменьшить число слотов</string>
+    <string name="radial_menu_increase_slots">Увеличить число слотов</string>
+    <string name="radial_menu_slots">Слоты колеса</string>
+    <string name="radial_menu_slot_title">Слот %1$d</string>
+    <string name="radial_menu_slot_label_hint">Метка</string>
+    <string name="radial_menu_slot_binding">Привязка слота %1$d</string>
+    <string name="radial_menu_slot_binding_summary">Привязка: %1$s</string>
+    <string name="radial_menu_preset_common">Общие</string>
+    <string name="radial_menu_preset_weapons">Оружие</string>
+    <string name="gesture_action_open_radial_menu">Открыть радиальное меню</string>
 
     <!-- Power Control -->
     <string name="power_control">Управление производительностью</string>
@@ -2150,6 +2235,8 @@ https://gamenative.app
     <string name="power_control_auto_tuning_desc">Более стабильная производительность, дольше работа от батареи, меньше нагрев: автоматически настраивает CPU и GPU под игру. Проверено на Retroid Pocket 6.</string>
     <string name="power_control_adaptive_fps">Автоматическое снижение FPS</string>
     <string name="power_control_adaptive_fps_desc">Снижает предел FPS, если игра не может его достичь, для стабильного темпа кадров. Проверено на Retroid Pocket 6.</string>
+    <string name="power_control_enable">Управление питанием в игре</string>
+    <string name="power_control_enable_desc">Перехватывает управление частотами CPU/GPU у ОС</string>
     <string name="power_control_tuning_mode">Режим настройки</string>
     <string name="power_control_tuning_mode_per_cluster">По кластерам (проверено на Retroid Pocket 6)</string>
     <string name="power_control_tuning_mode_whole_cpu">ПИД-регулятор</string>
@@ -2168,4 +2255,37 @@ https://gamenative.app
     <string name="power_control_strategy_aggressive_desc">Максимизирует производительность на обнаруженных узких местах</string>
     <string name="power_control_strategy_conservative">Консервативная</string>
     <string name="power_control_strategy_conservative_desc">Постепенные настройки с акцентом на стабильность</string>
+    <string name="launch_immersive_mode">Запустить в иммерсивном режиме (VR)</string>
+    <string name="quick_menu_tab_immersive">Иммерсивный</string>
+    <string name="immersive_passthrough">Passthrough</string>
+    <string name="immersive_passthrough_desc">Видеть реальное окружение сквозь виртуальный экран</string>
+    <string name="immersive_passthrough_toggle">Включить passthrough</string>
+    <string name="immersive_resize_mode_title">Маркеры изменения размера и перемещения</string>
+    <string name="immersive_resize_mode_desc">Когда включено, показывает маркеры захвата у самых краёв изображения игры. По умолчанию выключено: экран без полей не теряет резкость.</string>
+    <string name="immersive_resize_mode_toggle">Показывать маркеры размера и перемещения</string>
+    <string name="immersive_direct_render_title">Производительность</string>
+    <string name="immersive_reset_effects_status_blocked">Активный экранный эффект, фильтр или настройка яркости/контраста/гаммы блокирует самый быстрый путь отрисовки.</string>
+    <string name="immersive_reset_effects_status_ok">Сейчас ничто не блокирует самый быстрый путь отрисовки.</string>
+    <string name="immersive_reset_effects_button">Сбросить экранные эффекты</string>
+    <string name="immersive_reset_effects_desc">Отключает все эффекты, фильтры и настройки яркости/контраста/гаммы. Применяется сразу, перезапуск не нужен.</string>
+    <string name="immersive_onboarding_disable_passthrough">Отключите passthrough для повышения производительности</string>
+    <string name="immersive_onboarding_quick_menu">Удерживайте Start, чтобы открыть или закрыть быстрое меню</string>
+    <string name="immersive_onboarding_pointer_toggle">Дважды нажмите стик, чтобы переключиться между геймпадом Xbox и XR-указателем</string>
+    <string name="immersive_mode_xr_pointer">Режим XR-указателя</string>
+    <string name="immersive_mode_xbox">Режим геймпада Xbox</string>
+    <string name="tab_favorites">Избранное</string>
+    <string name="favorites_empty_title">Пока нет избранного</string>
+    <string name="favorites_empty_message">Откройте меню сведений об игре, чтобы добавить её в избранное, или нажмите левую лицевую кнопку контроллера, когда игра выделена (X на Xbox, квадрат на PlayStation или Y при раскладке Nintendo).</string>
+    <string name="favorites_empty_action">Просмотреть все игры</string>
+    <string name="favorites_empty_filtered_title">Нет избранного для показа</string>
+    <string name="favorites_empty_filtered_message">Нет избранных игр, соответствующих текущему поиску или фильтрам или доступных в вашей библиотеке.</string>
+    <string name="option_add_to_favorites">Добавить в избранное</string>
+    <string name="option_remove_from_favorites">Удалить из избранного</string>
+    <string name="favorite_add_named">Добавить %1$s в избранное</string>
+    <string name="favorite_remove_named">Удалить %1$s из избранного</string>
+    <string name="favorite_removed">Удалено из избранного</string>
+    <string name="favorite_removed_named">%1$s удалено из избранного</string>
+    <string name="favorite_added">Добавлено в избранное</string>
+    <string name="favorite_added_named">%1$s добавлено в избранное</string>
+    <string name="xr_refresh_rate">Частота обновления VR</string>
 </resources>
