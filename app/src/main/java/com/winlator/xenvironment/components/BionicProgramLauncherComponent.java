@@ -184,6 +184,23 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         this.workingDir = workingDir;
     }
 
+    private boolean isEaAppContainer() {
+        if (container == null || container.getDrives() == null) return false;
+        // Drive spec format: "A:/path/to/gameB:/other/path"; A: maps the game dir.
+        String drives = container.getDrives();
+        int idx = drives.indexOf("A:");
+        if (idx < 0) return false;
+        int end = drives.length();
+        for (int i = idx + 2; i < drives.length() - 1; i++) {
+            if (Character.isLetter(drives.charAt(i)) && drives.charAt(i + 1) == ':') {
+                end = i;
+                break;
+            }
+        }
+        String gameDir = drives.substring(idx + 2, end);
+        return new File(gameDir, "__Installer/Origin/redist/internal/EAappInstaller.exe").isFile();
+    }
+
     private int execGuestProgram() {
 
         final int MAX_PLAYERS = 4;
@@ -301,12 +318,19 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         String evshimPath = context.getApplicationInfo().nativeLibraryDir + "/libevshim.so";
+        String dnsV4MappedPath = context.getApplicationInfo().nativeLibraryDir + "/libgamenative_dns_v4mapped.so";
         String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
 
         ld_preload += ":" + evshimPath;
+        // EA's DirtySDK stack cannot resolve hostnames through bionic's
+        // resolver (legacy res_query without the app network context,
+        // AI_V4MAPPED rejected); route lookups through Android's resolver.
+        if (isEaAppContainer() && new File(dnsV4MappedPath).exists()) {
+            ld_preload += ":" + dnsV4MappedPath;
+        }
         ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
