@@ -62,6 +62,7 @@ struct gn_image {
     uint32_t plane_count;
     uint32_t strides[4];
     uint32_t offsets[4];
+    uint64_t array_pitches[4];
     uint64_t modifier;
     uint8_t registered_eye_mask;
     uint32_t registered_array_index[2];
@@ -84,6 +85,9 @@ struct gn_swapchain {
 };
 
 static void submit_worker_flush(void);
+#if defined(__ANDROID__)
+static int relay_init(void);
+#endif
 static uint8_t image_copy_busy[32u][4u];
 static pthread_mutex_t submit_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t submit_space_cond = PTHREAD_COND_INITIALIZER;
@@ -641,6 +645,14 @@ static int create_image(struct gn_swapchain *swapchain, struct gn_image *out,
     uint64_t chosen_modifier = 0;
     uint32_t chosen_plane_count = 1;
     int has_chosen_modifier = 0;
+    /* When the relay carries the frames the consumer never touches the dma-buf
+     * directly, so the game can render into a bandwidth-compressed (non-linear)
+     * layout — a large win for fill-heavy titles. The linear layout stays for
+     * the CPU-readable fallback path. */
+    int prefer_compressed = 0;
+#if defined(__ANDROID__)
+    prefer_compressed = sample_count <= 1 && relay_init();
+#endif
     if (p_vkGetPhysicalDeviceFormatProperties2) {
         p_vkGetPhysicalDeviceFormatProperties2(physical_device, swapchain->format, &format_props);
         if (modifier_list.drmFormatModifierCount) {
@@ -653,16 +665,15 @@ static int create_image(struct gn_swapchain *swapchain, struct gn_image *out,
                     (features & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) &&
                     modifiers[i].drmFormatModifierPlaneCount >= 1 &&
                     modifiers[i].drmFormatModifierPlaneCount <= 4) {
-
-
-
-                    if (!has_chosen_modifier || modifiers[i].drmFormatModifier == 0) {
+                    const int is_linear = modifiers[i].drmFormatModifier == 0;
+                    const int preferred = prefer_compressed ? !is_linear : is_linear;
+                    if (!has_chosen_modifier || preferred) {
                         chosen_modifier = modifiers[i].drmFormatModifier;
                         chosen_plane_count =
                             modifiers[i].drmFormatModifierPlaneCount;
                         has_chosen_modifier = 1;
                     }
-                    if (modifiers[i].drmFormatModifier == 0) break;
+                    if (preferred) break;
                 }
             }
         }
@@ -694,9 +705,17 @@ static int create_image(struct gn_swapchain *swapchain, struct gn_image *out,
 
 
 
-    int memory_type = find_memory_type(
-        requirements.memoryTypeBits,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    int memory_type;
+    if (has_chosen_modifier && chosen_modifier != 0) {
+        memory_type = find_memory_type(
+            requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        if (memory_type < 0)
+            memory_type = find_memory_type(requirements.memoryTypeBits, 0);
+    } else {
+        memory_type = find_memory_type(
+            requirements.memoryTypeBits,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    }
     if (memory_type < 0) {
         log_line("No compatible memory type for dma-buf image");
         goto fail;
@@ -758,6 +777,7 @@ static int create_image(struct gn_swapchain *swapchain, struct gn_image *out,
             device, out->image, &subresource, &layout);
         out->strides[plane] = (uint32_t)layout.rowPitch;
         out->offsets[plane] = (uint32_t)layout.offset;
+        out->array_pitches[plane] = layout.arrayPitch;
     }
     out->modifier = has_chosen_modifier ? chosen_modifier : 0;
     if (has_chosen_modifier && p_vkGetImageDrmFormatModifierPropertiesEXT) {
@@ -1026,6 +1046,8 @@ next_candidate:
         "VK_EXT_queue_family_foreign",
         "VK_KHR_sampler_ycbcr_conversion",
         "VK_KHR_external_fence_fd",
+        "VK_EXT_image_drm_format_modifier",
+        "VK_KHR_image_format_list",
         "VK_KHR_dedicated_allocation",
         "VK_KHR_get_memory_requirements2",
         "VK_KHR_bind_memory2",
@@ -1148,6 +1170,13 @@ static int relay_create_source(struct gn_swapchain *swapchain, struct gn_image *
         .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
         .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT
     };
+    VkSubresourceLayout plane_layouts[4];
+    VkImageDrmFormatModifierExplicitCreateInfoEXT modifier_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT,
+        .drmFormatModifier = image->modifier,
+        .drmFormatModifierPlaneCount = image->plane_count,
+        .pPlaneLayouts = plane_layouts
+    };
     VkImageCreateInfo image_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .pNext = &external,
@@ -1162,6 +1191,17 @@ static int relay_create_source(struct gn_swapchain *swapchain, struct gn_image *
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
     };
+    if (image->modifier != 0) {
+        for (uint32_t plane = 0; plane < image->plane_count && plane < 4; ++plane) {
+            memset(&plane_layouts[plane], 0, sizeof(plane_layouts[plane]));
+            plane_layouts[plane].offset = image->offsets[plane];
+            plane_layouts[plane].rowPitch = image->strides[plane];
+            plane_layouts[plane].arrayPitch = image->array_pitches[plane];
+        }
+        modifier_info.pNext = (void *)image_info.pNext;
+        image_info.pNext = &modifier_info;
+        image_info.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+    }
     if (r_vkCreateImage(relay_device, &image_info, NULL, &image->relay_source_image) != VK_SUCCESS) {
         log_line("relay: source image create failed");
         close(fd);
@@ -1845,6 +1885,10 @@ static int register_image(uint32_t slot, uint32_t image_index, uint32_t eye,
 
     if (image->dma_buf_fd < 0) {
         log_line("optimal render image has no dma-buf; AHardwareBuffer transport is required");
+        return 0;
+    }
+    if (image->modifier != 0) {
+        log_line("compressed render image cannot use the dma-buf fallback; relay is required");
         return 0;
     }
 
