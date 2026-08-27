@@ -74,45 +74,25 @@ class WindowsVrPayloadManager(
         return PreparedPayload(prefixDirectory, manifest)
     }
 
-    fun installOpenComposite(container: Container) {
-        val gameRoot = Container.drivesIterator(container.drives).asSequence()
-            .firstOrNull { it[0].equals("A", ignoreCase = true) }
-            ?.get(1)
-            ?.let(::File)
-            ?.canonicalFile
-            ?: error("OpenComposite requires the launched game's A: drive")
-        check(gameRoot.isDirectory)
-        val candidates = gameRoot.walkTopDown()
-            .onEnter { it.canonicalFile.path.startsWith(gameRoot.path + File.separator) || it.canonicalFile == gameRoot }
-            .take(20001)
-            .toList()
-        check(candidates.size <= 20000) { "OpenComposite scan exceeded 20000 files" }
-        val targets = candidates.filter { it.isFile && it.name.equals("openvr_api.dll", ignoreCase = true) }
-        check(targets.isNotEmpty()) { "No openvr_api.dll was found under the launched game" }
-        val adapter = context.assets.open("opencomposite_x64.dll").use { it.readBytes() }
-        val record = File(File(container.rootDir, ".wine/drive_c/gamenative-xr"), "opencomposite.targets")
-        val encodedTargets = targets.map { checkNotNull(it.parentFile).canonicalPath }
-            .distinct()
-            .joinToString("\n") { Base64.getUrlEncoder().withoutPadding().encodeToString(it.toByteArray()) }
-        writeIfChanged(record, encodedTargets.toByteArray())
-        openCompositeRecord = record
-        targets.forEach { target ->
-            check(peMachine(target.readBytes()) == 0x8664) { "OpenVR library is not x64: ${target.path}" }
-            val directory = checkNotNull(target.parentFile).canonicalFile
-            val backup = File(directory, "openvr_api.dll.gamenative-original")
-            val owner = File(directory, "openvr_api.dll.gamenative-owner")
-            val ini = File(directory, "opencomposite.ini")
-            val iniBackup = File(directory, "opencomposite.ini.gamenative-original")
-            val iniMissing = File(directory, "opencomposite.ini.gamenative-missing")
-            check(!backup.exists() && !owner.exists())
-            writeIfChanged(backup, target.readBytes())
-            if (ini.isFile) writeIfChanged(iniBackup, ini.readBytes()) else writeIfChanged(iniMissing, byteArrayOf(1))
-            writeIfChanged(owner, "2\n".toByteArray())
-            writeIfChanged(target, adapter)
-            writeIfChanged(ini, "enableAudio=false\nlogEnabled=true\n".toByteArray())
-            openCompositeDirectories += directory
-            diagnostics.record("opencomposite", "installed path=${target.path}")
-        }
+    fun installOpenCompositeRuntime(container: Container): String {
+        val payloadDirectory = File(container.rootDir, ".wine/drive_c/gamenative-xr")
+        val runtimeDirectory = File(payloadDirectory, "openvr")
+        val binDirectory = File(runtimeDirectory, "bin")
+        check(binDirectory.exists() || binDirectory.mkdirs())
+        val client = File(binDirectory, "vrclient_x64.dll")
+        copyAssetIfChanged("opencomposite_x64.dll", client)
+        check(peMachine(client.readBytes()) == 0x8664) { "OpenComposite runtime is not x64" }
+        writeIfChanged(File(binDirectory, "version.txt"), byteArrayOf())
+        writeIfChanged(
+            File(runtimeDirectory, "openvrpaths.vrpath"),
+            "{\"jsonid\":\"vrpathreg\",\"runtime\":[\"C:\\\\gamenative-xr\\\\openvr\"],\"version\":1}\n".toByteArray(),
+        )
+        val windowsPath = "C:\\gamenative-xr\\openvr"
+        diagnostics.record(
+            "opencomposite",
+            "runtime installed path=${client.path} mode=VR_OVERRIDE backend=GameNative-direct",
+        )
+        return windowsPath
     }
 
     fun restore() {

@@ -63,6 +63,7 @@ android {
         manifestPlaceholders["screenOrientation"] = "unspecified"
         buildConfigField("boolean", "XR_BUILD", "false")
         buildConfigField("boolean", "MODERN_XR", "false")
+        buildConfigField("boolean", "ANDROID_XR", "false")
 
         versionCode = 21
         versionName = "1.2.0"
@@ -158,6 +159,19 @@ android {
             buildConfigField("String", "META_APP_ID", "\"$metaAppId\"")
             buildConfigField("String", "PRODUCT_SKU", "\"$productSku\"")
             manifestPlaceholders["screenOrientation"] = "landscape"
+        }
+        create("androidXr") {
+            dimension = "androidApi"
+            minSdk = 29
+            targetSdk = 36
+            ndk.abiFilters += listOf("arm64-v8a")
+            buildConfigField("boolean", "MODERN_ANDROID", "true")
+            buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
+            buildConfigField("boolean", "XR_BUILD", "true")
+            buildConfigField("boolean", "MODERN_XR", "true")
+            buildConfigField("boolean", "ANDROID_XR", "true")
+            // Keep the launcher in Android XR Home Space. Only ImmersiveXrActivity is
+            // promoted to unmanaged Full Space by src/androidXr/AndroidManifest.xml.
         }
     }
 
@@ -274,6 +288,17 @@ android {
                 setSrcDirs(listOf("src/modern/jniLibs", "build/generated/xrNative/modernXr"))
             }
         }
+        getByName("androidXr") {
+            // The platform launch contract differs, but the OpenXR renderer, Wine runtime
+            // payload and launch-readiness implementation are shared with modernXr.
+            java.srcDir("src/modernXr/java")
+            assets {
+                srcDirs("src/modern/assets", "src/main/assets", "build/generated/xrPayload/modernXr")
+            }
+            jniLibs {
+                setSrcDirs(listOf("src/modern/jniLibs", "build/generated/xrNative/modernXr"))
+            }
+        }
         getByName("debug") {
             assets.srcDir(copyDebugManifest)
         }
@@ -326,6 +351,32 @@ android {
 
     tasks.register<Exec>("stageOpenComposite") {
         enabled = hostCanRunXrPayloadScripts
+        val stageScript = rootProject.file("tools/stage-opencomposite.ps1")
+        val toolchainFingerprint = providers.exec {
+            commandLine(
+                "powershell",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                stageScript.absolutePath,
+                "-PrintToolchainFingerprint",
+            )
+        }.standardOutput.asText.map { it.trim() }
+        inputs.files(
+            stageScript,
+            rootProject.file("tools/patches/opencomposite-gamenative-wine.patch"),
+            rootProject.file("tools/patches/opencomposite-gamenative-native-backend.patch"),
+            rootProject.file("tools/opencomposite-vulkan-x64.def"),
+            rootProject.file("app/src/main/windows/openvr_client/DrvGameNative.cpp"),
+            rootProject.file("app/src/main/windows/openvr_client/DrvGameNative.h"),
+            rootProject.file("app/src/main/windows/openxr_runtime/gamenative_control.c"),
+            rootProject.file("app/src/main/windows/openxr_runtime/gamenative_control.h"),
+            rootProject.file("app/src/main/windows/openxr_runtime/gamenative_openxr_unix.h"),
+        )
+        inputs.property("openCompositeCommit", "a27e7e6a64bdcd1eff6b7fba1ea2ea34bcf1273d")
+        inputs.property("openCompositeBuildRevision", 4)
+        inputs.property("openCompositeToolchainFingerprint", toolchainFingerprint)
+        outputs.file(layout.buildDirectory.file("generated/xrPayload/modernXr/opencomposite_x64.dll"))
         commandLine(
             "powershell",
             "-ExecutionPolicy",
@@ -352,7 +403,8 @@ android {
     }
 
     tasks.matching {
-        it.name.startsWith("mergeModernXr") && it.name.endsWith("Assets")
+        (it.name.startsWith("mergeModernXr") || it.name.startsWith("mergeAndroidXr")) &&
+            it.name.endsWith("Assets")
     }.configureEach {
         dependsOn("prepareModernXrPayload")
     }
@@ -443,6 +495,7 @@ dependencies {
     // Official Khronos OpenXR loader (Apache-2.0) for the Meta Quest immersive launch mode's
     // native module (app/src/main/cpp/xrimmersive) — not a Winlator/GameNativeXR dependency.
     "modernXrImplementation"("org.khronos.openxr:openxr_loader_for_android:1.1.61")
+    "androidXrImplementation"("org.khronos.openxr:openxr_loader_for_android:1.1.61")
 
     // Winlator
     implementation(libs.bundles.winlator)

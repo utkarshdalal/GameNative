@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct gamenative_control_frame {
     uint64_t serial;
     int64_t display_time;
@@ -38,5 +42,9 @@ int gamenative_control_get_bounds(uint32_t *available, uint32_t *width, uint32_t
 int gamenative_control_locate_views(gamenative_control_view views[2], uint32_t *flags);
 int gamenative_control_get_input(uint32_t hand, gamenative_control_input *input);
 int gamenative_control_haptic(uint32_t hand, int32_t amplitude, int64_t duration, int32_t frequency);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

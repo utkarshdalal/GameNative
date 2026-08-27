@@ -42,7 +42,9 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
         val payload = payloadManager.prepare(container)
         runtimeLogDirectory = payload.prefixDirectory
         listOf("runtime.log", "unix.log").forEach { payload.prefixDirectory.resolve(it).delete() }
-        if (active.openCompositeEnabled) payloadManager.installOpenComposite(container)
+        if (active.openCompositeEnabled) {
+            env.put("VR_OVERRIDE", payloadManager.installOpenCompositeRuntime(container))
+        }
         env.put("XR_RUNTIME_JSON", active.runtimeManifest)
         env.put("GAMENATIVE_XR", "1")
         env.put("GAMENATIVE_XR_LOG", "1")
@@ -69,7 +71,8 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
         diagnostics.record(
             "environment",
             "runtime=${active.runtimeManifest} transport=${active.transportEndpoint} " +
-                "control=127.0.0.1:${active.controlPort}",
+                "control=127.0.0.1:${active.controlPort} " +
+                "openvr=${if (active.openCompositeEnabled) "GameNative-direct" else "disabled"}",
         )
         diagnostics.record("effective-launch", WindowsVrEmulationDiagnostics.effective(container))
         diagnostics.record("payload", payloadSummary(payload.prefixDirectory))

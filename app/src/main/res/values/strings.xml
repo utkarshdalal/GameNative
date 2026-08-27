@@ -2347,4 +2347,6 @@
     <string name="power_control_strategy_conservative_desc">AdjustsGradual gradually with a focus on stability</string>
     <string name="xr_refresh_rate">VR Refresh Rate</string>
     <string name="xr_render_scale">VR Render Scale</string>
+    <string name="xr_open_composite">OpenComposite</string>
+    <string name="xr_open_composite_description">Use OpenComposite for games that require SteamVR/OpenVR. Changes apply on the next game launch.</string>
 </resources>

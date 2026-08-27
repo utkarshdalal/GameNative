@@ -1,15 +1,130 @@
+param(
+    [switch]$PrintToolchainFingerprint,
+    [string]$SourceDirectory,
+    [string]$BuildDirectory,
+    [string]$Destination
+)
+
 $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
 $payload = Join-Path $repository "app\build\generated\xrPayload\modernXr"
-$destination = Join-Path $payload "opencomposite_x64.dll"
-$uri = "https://opencomposite.znix.xyz/builds/download_build?artefact_id=5r2yCwgFn_ozJ44c&build_id=49918237&commit=43e551a4506880ab1a71b8b9fec2fd7fbb27372f"
-$expected = "2f56d45323f252a2ea7c3047c806f9aca3cab36c3f9f71d1dad05a5008b7731a"
-New-Item -ItemType Directory -Force -Path $payload | Out-Null
-$temporary = "$destination.download"
-Invoke-WebRequest -Uri $uri -OutFile $temporary
-$actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $temporary).Hash.ToLowerInvariant()
-if ($actual -ne $expected) { throw "OpenComposite checksum mismatch: $actual" }
-$bytes = [System.IO.File]::ReadAllBytes($temporary)
+$destination = if ($Destination) { [IO.Path]::GetFullPath($Destination) } else { Join-Path $payload "opencomposite_x64.dll" }
+$commit = "a27e7e6a64bdcd1eff6b7fba1ea2ea34bcf1273d"
+$managedSource = [string]::IsNullOrWhiteSpace($SourceDirectory)
+$source = if ($managedSource) { Join-Path $repository "app\build\opencomposite-source" } else { [IO.Path]::GetFullPath($SourceDirectory) }
+$build = if ($BuildDirectory) { [IO.Path]::GetFullPath($BuildDirectory) } else { Join-Path $repository "app\build\opencomposite-build" }
+$compatibilityPatch = Join-Path $PSScriptRoot "patches\opencomposite-gamenative-wine.patch"
+$nativeBackendPatch = Join-Path $PSScriptRoot "patches\opencomposite-gamenative-native-backend.patch"
+$vulkanDefinition = Join-Path $PSScriptRoot "opencomposite-vulkan-x64.def"
+$ndk = if ($env:ANDROID_NDK_HOME) { $env:ANDROID_NDK_HOME } else { Join-Path $env:LOCALAPPDATA "Android\Sdk\ndk\29.0.14206865" }
+$ndkIncludes = Join-Path $ndk "toolchains\llvm\prebuilt\windows-x86_64\sysroot\usr\include"
+$vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+$visualStudioVersionRange = "[17.0,18.0)"
+
+function Invoke-Checked {
+    param([scriptblock]$Command, [string]$Name)
+    & $Command
+    if ($LASTEXITCODE -ne 0) { throw "$Name failed with exit code $LASTEXITCODE" }
+}
+
+function Get-DirectoryFingerprint {
+    param([string]$Path)
+    $resolvedRoot = (Resolve-Path -LiteralPath $Path).Path.TrimEnd('\') + '\'
+    $manifest = Get-ChildItem -LiteralPath $resolvedRoot -Recurse -File |
+        Sort-Object FullName |
+        ForEach-Object {
+            $relativePath = $_.FullName.Substring($resolvedRoot.Length).Replace('\', '/')
+            $fileHash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+            "$relativePath|$($_.Length)|$fileHash"
+        }
+    $manifestBytes = [Text.Encoding]::UTF8.GetBytes(($manifest -join "`n"))
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($hasher.ComputeHash($manifestBytes))).Replace('-', '')
+    } finally {
+        $hasher.Dispose()
+    }
+}
+
+if (!(Test-Path (Join-Path $ndkIncludes "vulkan\vulkan.h"))) { throw "Android NDK Vulkan headers are required" }
+if (!(Test-Path $vswhere)) { throw "Visual Studio Installer is required" }
+$visualStudio = (& $vswhere -latest -version $visualStudioVersionRange -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1)
+if (!$visualStudio) { throw "Visual Studio 2022 C++ x64 build tools are required" }
+$libTool = Get-ChildItem (Join-Path $visualStudio "VC\Tools\MSVC\*\bin\Hostx64\x64\lib.exe") | Sort-Object FullName -Descending | Select-Object -First 1
+if (!$libTool) { throw "Visual Studio lib.exe is required" }
+
+if ($PrintToolchainFingerprint) {
+    $ndkSourceProperties = Join-Path $ndk "source.properties"
+    if (!(Test-Path -LiteralPath $ndkSourceProperties -PathType Leaf)) { throw "Android NDK source.properties is required" }
+    $visualStudioVersion = (& $vswhere -latest -version $visualStudioVersionRange -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion | Select-Object -First 1)
+    if (!$visualStudioVersion) { throw "Visual Studio version could not be resolved" }
+    $toolDirectory = Split-Path -Parent $libTool.FullName
+    $compilerTool = Join-Path $toolDirectory "cl.exe"
+    $linkerTool = Join-Path $toolDirectory "link.exe"
+    if (!(Test-Path -LiteralPath $compilerTool -PathType Leaf)) { throw "Visual Studio cl.exe is required" }
+    if (!(Test-Path -LiteralPath $linkerTool -PathType Leaf)) { throw "Visual Studio link.exe is required" }
+    $fingerprint = [ordered]@{
+        ndkPath = (Resolve-Path -LiteralPath $ndk).Path
+        ndkSourcePropertiesSha256 = (Get-FileHash -LiteralPath $ndkSourceProperties -Algorithm SHA256).Hash
+        ndkVulkanHeadersSha256 = Get-DirectoryFingerprint (Join-Path $ndkIncludes "vulkan")
+        ndkVideoHeadersSha256 = Get-DirectoryFingerprint (Join-Path $ndkIncludes "vk_video")
+        visualStudioPath = (Resolve-Path -LiteralPath $visualStudio).Path
+        visualStudioVersion = $visualStudioVersion
+        compilerPath = (Resolve-Path -LiteralPath $compilerTool).Path
+        compilerSha256 = (Get-FileHash -LiteralPath $compilerTool -Algorithm SHA256).Hash
+        linkerSha256 = (Get-FileHash -LiteralPath $linkerTool -Algorithm SHA256).Hash
+        librarianSha256 = (Get-FileHash -LiteralPath $libTool.FullName -Algorithm SHA256).Hash
+    }
+    $fingerprint | ConvertTo-Json -Compress
+    exit 0
+}
+
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+if ($managedSource) {
+    if (!(Test-Path (Join-Path $source ".git"))) {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $source) | Out-Null
+        Invoke-Checked { git clone --no-checkout https://gitlab.com/znixian/OpenOVR.git $source } "OpenComposite clone"
+    }
+    & git -c "safe.directory=$source" -C $source cat-file -e "$commit^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Invoke-Checked { git -c "safe.directory=$source" -C $source fetch --depth 1 origin $commit } "OpenComposite source fetch"
+    }
+    Invoke-Checked { git -c "safe.directory=$source" -C $source checkout --detach --force $commit } "OpenComposite checkout"
+    Invoke-Checked { git -c "safe.directory=$source" -C $source submodule update --init --recursive --depth 1 } "OpenComposite submodules"
+    Invoke-Checked { git -c "safe.directory=$source" -C $source apply --check $compatibilityPatch } "OpenComposite compatibility patch check"
+    Invoke-Checked { git -c "safe.directory=$source" -C $source apply $compatibilityPatch } "OpenComposite compatibility patch"
+    Invoke-Checked { git -c "safe.directory=$source" -C $source apply --check $nativeBackendPatch } "OpenComposite native backend patch check"
+    Invoke-Checked { git -c "safe.directory=$source" -C $source apply $nativeBackendPatch } "OpenComposite native backend patch"
+} else {
+    if (!(Test-Path (Join-Path $source ".git"))) { throw "Developer OpenComposite source is not a Git checkout: $source" }
+    Invoke-Checked { git -c "safe.directory=$source" -C $source merge-base --is-ancestor $commit HEAD } "OpenComposite pinned-base validation"
+    Invoke-Checked { git -c "safe.directory=$source" -C $source submodule update --init --recursive } "OpenComposite developer submodules"
+    Write-Host "Building developer OpenComposite checkout without checkout, reset, or patch: $source"
+}
+
+$vulkan = Join-Path $source "libs\vulkan"
+$vulkanInclude = Join-Path $vulkan "Include\vulkan"
+$videoInclude = Join-Path $vulkan "Include\vk_video"
+New-Item -ItemType Directory -Force -Path $vulkanInclude, $videoInclude, (Join-Path $vulkan "Lib") | Out-Null
+Copy-Item -Recurse -Force -Path (Join-Path $ndkIncludes "vulkan\*") -Destination $vulkanInclude
+Copy-Item -Recurse -Force -Path (Join-Path $ndkIncludes "vk_video\*") -Destination $videoInclude
+Copy-Item -Force -LiteralPath $vulkanDefinition -Destination (Join-Path $vulkan "vulkan-1.def")
+Invoke-Checked { & $libTool.FullName /nologo "/def:$(Join-Path $vulkan 'vulkan-1.def')" /machine:x64 "/out:$(Join-Path $vulkan 'Lib\vulkan-1.lib')" } "Vulkan import library"
+
+if ($managedSource -and (Test-Path -LiteralPath $build)) {
+    $allowedBuildRoot = [IO.Path]::GetFullPath((Join-Path $repository "app\build")).TrimEnd('\') + '\'
+    $resolvedBuild = [IO.Path]::GetFullPath($build)
+    if (!$resolvedBuild.StartsWith($allowedBuildRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to clear OpenComposite build directory outside app/build: $resolvedBuild"
+    }
+    Remove-Item -LiteralPath $resolvedBuild -Recurse -Force
+}
+
+Invoke-Checked { cmake -S $source -B $build -G "Visual Studio 17 2022" -A x64 "-DCMAKE_GENERATOR_INSTANCE=$visualStudio" -DERROR_ON_WARNING=OFF "-DOC_VERSION=$commit-gamenative-native-openvr" -DGAMENATIVE_BACKEND=ON "-DGAMENATIVE_SOURCE_DIR=$repository" } "OpenComposite configure"
+Invoke-Checked { cmake --build $build --config Release --target OCOVR --parallel } "OpenComposite build"
+$built = Join-Path $build "bin\Release\vrclient_x64.dll"
+if (!(Test-Path -LiteralPath $built -PathType Leaf)) { throw "OpenComposite build output is missing" }
+Copy-Item -Force -LiteralPath $built -Destination $destination
+$bytes = [System.IO.File]::ReadAllBytes($destination)
 $offset = [BitConverter]::ToInt32($bytes, 0x3c)
 if ([BitConverter]::ToUInt16($bytes, $offset + 4) -ne 0x8664) { throw "OpenComposite payload is not x64" }
-Move-Item -Force -LiteralPath $temporary -Destination $destination

@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.xr
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -46,6 +47,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import app.gamenative.BuildConfig
+import app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeConfig
 import kotlinx.coroutines.delay
 import app.gamenative.PluviaApp
 import app.gamenative.R
@@ -66,7 +69,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-/** Dedicated entry point for launching a game directly in Meta Quest immersive mode. */
+/** Shared OpenXR entry point for launching a game in headset immersive mode. */
 @AndroidEntryPoint
 class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
 
@@ -99,20 +102,37 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         private const val EXTRA_QUAD_DISTANCE = "immersiveQuadDistance"
         private const val EXTRA_QUAD_SCALE = "immersiveQuadScale"
         private const val EXTRA_PASSTHROUGH_ENABLED = "immersivePassthroughEnabled"
-        private const val EXTRA_WINDOWS_VR_ENABLED = "windowsVrEnabled"
-        private const val EXTRA_WINDOWS_VR_OPEN_COMPOSITE = "windowsVrOpenCompositeEnabled"
 
-        fun start(context: Context, appId: String, isOffline: Boolean) {
-            val intent = Intent(context, ImmersiveXrActivity::class.java).apply {
+        internal fun createLaunchIntent(
+            context: Context,
+            appId: String,
+            isOffline: Boolean,
+            isAndroidXr: Boolean = BuildConfig.ANDROID_XR,
+        ): Intent =
+            Intent(context, ImmersiveXrActivity::class.java).apply {
                 putExtra(EXTRA_APP_ID, appId)
                 putExtra(EXTRA_IS_OFFLINE, isOffline)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                // Android XR keeps an Activity-context launch on the flat launcher's task so
+                // finish() returns to Home Space. Quest must retain its proven separate-task
+                // transition into an Activity carrying com.oculus.intent.category.VR.
+                if (!isAndroidXr || context !is Activity) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
             }
-            context.startActivity(intent)
+
+        fun start(context: Context, appId: String, isOffline: Boolean) {
+            if (BuildConfig.ANDROID_XR) ImmersiveSessionOwnership.beginLaunch(appId)
+            try {
+                context.startActivity(createLaunchIntent(context, appId, isOffline))
+            } catch (t: Throwable) {
+                if (BuildConfig.ANDROID_XR) ImmersiveSessionOwnership.release(appId)
+                throw t
+            }
         }
     }
 
     private val viewModel: MainViewModel by viewModels()
+    private val immersiveRuntimeViewModel: ImmersiveRuntimeViewModel by viewModels()
 
     @Volatile
     private var backAction: (() -> Unit)? = null
@@ -256,7 +276,12 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             return
         }
         currentAppId = appId
-        windowsVrRuntimeService = app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeService(this)
+        if (BuildConfig.ANDROID_XR) {
+            ImmersiveSessionOwnership.markActivityActive(appId)
+            windowsVrRuntimeService = immersiveRuntimeViewModel.windowsVrRuntimeService(this)
+        } else {
+            windowsVrRuntimeService = app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeService(this)
+        }
 
         PluviaApp.isActivityInForeground = true
         AppUtils.keepScreenOn(this)
@@ -401,8 +426,9 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             quadScale = container.getExtra(EXTRA_QUAD_SCALE, ImmersiveControls.DEFAULT_SCALE.toString())
                 .toFloatOrNull() ?: ImmersiveControls.DEFAULT_SCALE
             passthroughEnabled = container.getExtra(EXTRA_PASSTHROUGH_ENABLED, "false").toBoolean()
-            windowsVrEnabled = container.getExtra(EXTRA_WINDOWS_VR_ENABLED, "true").toBoolean()
-            openCompositeEnabled = container.getExtra(EXTRA_WINDOWS_VR_OPEN_COMPOSITE, "false").toBoolean()
+            val windowsVrConfig = WindowsVrRuntimeConfig.from(container)
+            windowsVrEnabled = windowsVrConfig.enabled
+            openCompositeEnabled = windowsVrConfig.openCompositeEnabled
             windowsVrStatus = if (windowsVrEnabled) "Waiting for runtime" else "Disabled"
             applyQuadTransform()
             if (xrSessionHandle != 0L) {
@@ -422,8 +448,8 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             container.putExtra(EXTRA_QUAD_DISTANCE, quadDistance.toString())
             container.putExtra(EXTRA_QUAD_SCALE, quadScale.toString())
             container.putExtra(EXTRA_PASSTHROUGH_ENABLED, passthroughEnabled.toString())
-            container.putExtra(EXTRA_WINDOWS_VR_ENABLED, windowsVrEnabled.toString())
-            container.putExtra(EXTRA_WINDOWS_VR_OPEN_COMPOSITE, openCompositeEnabled.toString())
+            WindowsVrRuntimeConfig.setEnabled(container, windowsVrEnabled)
+            WindowsVrRuntimeConfig.setOpenCompositeEnabled(container, openCompositeEnabled)
             container.saveData()
         }
     }
@@ -482,10 +508,30 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     }
 
     override fun onDestroy() {
+        val changingConfigurations = isChangingConfigurations
+        Timber.i(
+            "Immersive: onDestroy, changingConfig=%b finishing=%b appId=%s",
+            changingConfigurations,
+            isFinishing,
+            currentAppId,
+        )
         stopXrSession()
-        windowsVrRuntimeService?.close()
-        windowsVrRuntimeService = null
-        PluviaApp.shutdownEnvironment()
+        if (BuildConfig.ANDROID_XR && changingConfigurations) {
+            // The replacement Activity receives the same ViewModel and control server. Keeping
+            // both alive prevents a display-density/configuration transition from killing Wine
+            // or disconnecting the Windows OpenXR/OpenVR runtime during startup.
+            windowsVrRuntimeService = null
+            Timber.i("Immersive: preserving Wine and Windows VR service across recreation")
+        } else {
+            if (BuildConfig.ANDROID_XR) {
+                immersiveRuntimeViewModel.closeWindowsVrRuntimeService()
+                ImmersiveSessionOwnership.release(currentAppId)
+            } else {
+                windowsVrRuntimeService?.close()
+            }
+            windowsVrRuntimeService = null
+            PluviaApp.shutdownEnvironment()
+        }
         super.onDestroy()
     }
 
@@ -537,63 +583,64 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             var lastFedGamepad = false
             while (pollingActive.get()) {
                 val winHandler = PluviaApp.xServerView?.getxServer()?.winHandler
-                if (winHandler != null) {
-                    if (winHandler !== cachedWinHandler) {
-                        cachedWinHandler = winHandler
-                        cachedBridge = XrGamepadBridge(winHandler)
+                if (winHandler == null) {
+                    cachedWinHandler = null
+                    cachedBridge = null
+                } else if (winHandler !== cachedWinHandler) {
+                    cachedWinHandler = winHandler
+                    cachedBridge = XrGamepadBridge(winHandler)
+                }
+                val quickMenuClicked = XrNative.nativePollSnapshot(xrSessionHandle, buttons, axes, handPoses, flags)
+                val stereoActive = XrNative.nativeIsWindowsStereoActive(xrSessionHandle)
+                if (stereoActive != flatPresentationSuspended) {
+                    flatPresentationSuspended = stereoActive
+                    windowsVrStatus = if (stereoActive) "Stereo active" else if (windowsVrEnabled) "Flat fallback" else "Disabled"
+                    windowsVrRuntimeService?.onPresentationState(windowsVrStatus)
+                    runOnUiThread { applyFlatPresentationGate(!stereoActive) }
+                }
+                if (flags[2] != lastPushedStartHeld) {
+                    lastPushedStartHeld = flags[2]
+                    val setter = quickMenuSetStartHeld
+                    if (setter != null) runOnUiThread { setter(lastPushedStartHeld) }
+                }
+                if (flags[1]) {
+                    xrPointerModeActive = !xrPointerModeActive
+                    Timber.i("Immersive: XR pointer mode %s", if (xrPointerModeActive) "enabled" else "disabled")
+                    lastLeftActionPressed = (axes[4] > POINTER_GRAB_PRESS_THRESHOLD) ||
+                        ((buttons[0] and (1 shl XrGamepadBridge.BUTTON_LB)) != 0)
+                    lastRightActionPressed = (axes[5] > POINTER_GRAB_PRESS_THRESHOLD) ||
+                        ((buttons[0] and (1 shl XrGamepadBridge.BUTTON_RB)) != 0)
+                    if (!xrPointerModeActive) {
+                        pointerGrabHand = null
+                        pointerCursorLeftValid = false
+                        pointerCursorRightValid = false
                     }
-                    val quickMenuClicked = XrNative.nativePollSnapshot(xrSessionHandle, buttons, axes, handPoses, flags)
-                    val stereoActive = XrNative.nativeIsWindowsStereoActive(xrSessionHandle)
-                    if (stereoActive != flatPresentationSuspended) {
-                        flatPresentationSuspended = stereoActive
-                        windowsVrStatus = if (stereoActive) "Stereo active" else if (windowsVrEnabled) "Flat fallback" else "Disabled"
-                        windowsVrRuntimeService?.onPresentationState(windowsVrStatus)
-                        runOnUiThread { applyFlatPresentationGate(!stereoActive) }
+                }
+                val inMenuMode = quickMenuVisible || PluviaApp.isOverlayPaused
+                overlayPausedUi = PluviaApp.isOverlayPaused
+                if (wasInMenuNavigationMode && !inMenuMode) {
+                    buttonSuppressMaskUntilRelease = buttons[0]
+                }
+                wasInMenuNavigationMode = inMenuMode
+                val feedGame = winHandler != null && !xrPointerModeActive && !inMenuMode
+                if (!feedGame && lastFedGamepad) cachedBridge?.reset()
+                lastFedGamepad = feedGame
+                when {
+                    xrPointerModeActive -> handlePointerMode(buttons[0], axes, handPoses, flags[0])
+                    inMenuMode && !flags[2] -> handleMenuNavigation(buttons[0], axes)
+                    inMenuMode -> Unit
+                    feedGame -> {
+                        buttonSuppressMaskUntilRelease = buttonSuppressMaskUntilRelease and buttons[0]
+                        cachedBridge?.applySnapshot(buttons[0] and buttonSuppressMaskUntilRelease.inv(), axes)
                     }
-                    if (flags[2] != lastPushedStartHeld) {
-                        lastPushedStartHeld = flags[2]
-                        val setter = quickMenuSetStartHeld
-                        if (setter != null) runOnUiThread { setter(lastPushedStartHeld) }
-                    }
-                    if (flags[1]) {
-                        xrPointerModeActive = !xrPointerModeActive
-                        Timber.i("Immersive: XR pointer mode %s", if (xrPointerModeActive) "enabled" else "disabled")
-                        lastLeftActionPressed = (axes[4] > POINTER_GRAB_PRESS_THRESHOLD) ||
-                            ((buttons[0] and (1 shl XrGamepadBridge.BUTTON_LB)) != 0)
-                        lastRightActionPressed = (axes[5] > POINTER_GRAB_PRESS_THRESHOLD) ||
-                            ((buttons[0] and (1 shl XrGamepadBridge.BUTTON_RB)) != 0)
-                        if (!xrPointerModeActive) {
-                            pointerGrabHand = null
-                            pointerCursorLeftValid = false
-                            pointerCursorRightValid = false
-                        }
-                    }
-                    val inMenuMode = quickMenuVisible || PluviaApp.isOverlayPaused
-                    overlayPausedUi = PluviaApp.isOverlayPaused
-                    if (wasInMenuNavigationMode && !inMenuMode) {
-                        buttonSuppressMaskUntilRelease = buttons[0]
-                    }
-                    wasInMenuNavigationMode = inMenuMode
-                    val feedGame = !xrPointerModeActive && !inMenuMode
-                    if (!feedGame && lastFedGamepad) cachedBridge?.reset()
-                    lastFedGamepad = feedGame
-                    when {
-                        xrPointerModeActive -> handlePointerMode(buttons[0], axes, handPoses, flags[0])
-                        inMenuMode && !flags[2] -> handleMenuNavigation(buttons[0], axes)
-                        inMenuMode -> Unit
-                        else -> {
-                            buttonSuppressMaskUntilRelease = buttonSuppressMaskUntilRelease and buttons[0]
-                            cachedBridge?.applySnapshot(buttons[0] and buttonSuppressMaskUntilRelease.inv(), axes)
-                        }
-                    }
-                    if (quickMenuClicked) {
-                        Timber.i(
-                            "Immersive: quick-menu chord fired, quickMenuToggle registered=%b buttons=0x%03x " +
-                                "quickMenuVisible=%b isOverlayPaused=%b xrPointerModeActive=%b",
-                            quickMenuToggle != null, buttons[0], quickMenuVisible, PluviaApp.isOverlayPaused, xrPointerModeActive,
-                        )
-                        runOnUiThread { quickMenuToggle?.invoke() }
-                    }
+                }
+                if (quickMenuClicked) {
+                    Timber.i(
+                        "Immersive: quick-menu chord fired, quickMenuToggle registered=%b buttons=0x%03x " +
+                            "quickMenuVisible=%b isOverlayPaused=%b xrPointerModeActive=%b",
+                        quickMenuToggle != null, buttons[0], quickMenuVisible, PluviaApp.isOverlayPaused, xrPointerModeActive,
+                    )
+                    runOnUiThread { quickMenuToggle?.invoke() }
                 }
                 try {
                     Thread.sleep(POLL_INTERVAL_MS)

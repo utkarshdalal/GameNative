@@ -132,7 +132,7 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativeWaitWindowsFrame(
     JNIEnv *env, jclass, jlong handlePtr, jlong afterSerial, jint timeoutMs,
     jlongArray outTiming, jfloatArray outViews, jfloatArray outInput, jintArray outFlags) {
     if (env->GetArrayLength(outTiming) < 11 || env->GetArrayLength(outViews) < 22 ||
-        env->GetArrayLength(outInput) < 36 || env->GetArrayLength(outFlags) < 3) return JNI_FALSE;
+        env->GetArrayLength(outInput) < 36 || env->GetArrayLength(outFlags) < 4) return JNI_FALSE;
     xrimmersive::WindowsRuntimeSnapshot snapshot;
     {
         std::lock_guard<std::mutex> lock(gHandleMutex);
@@ -200,13 +200,18 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativeWaitWindowsFrame(
         inputValues[base + 17] = aim.position.z;
     }
     env->SetFloatArrayRegion(outInput, 0, 36, inputValues);
-    const jint flags[3] = {
+    const bool leftActive = input.aimPoseValid[0] || input.gripPoseValid[0];
+    const bool rightActive = input.aimPoseValid[1] || input.gripPoseValid[1];
+    const jint flags[4] = {
         static_cast<jint>(snapshot.viewStateFlags),
         static_cast<jint>(input.buttons),
-        static_cast<jint>((input.aimPoseValid[0] && input.gripPoseValid[0] ? 1 : 0) |
-                          (input.aimPoseValid[1] && input.gripPoseValid[1] ? 2 : 0)),
+        static_cast<jint>((leftActive ? 1 : 0) | (rightActive ? 2 : 0)),
+        static_cast<jint>((input.gripPoseValid[0] ? 1 : 0) |
+                          (input.gripPoseValid[1] ? 2 : 0) |
+                          (input.aimPoseValid[0] ? 4 : 0) |
+                          (input.aimPoseValid[1] ? 8 : 0)),
     };
-    env->SetIntArrayRegion(outFlags, 0, 3, flags);
+    env->SetIntArrayRegion(outFlags, 0, 4, flags);
     return JNI_TRUE;
 }
 

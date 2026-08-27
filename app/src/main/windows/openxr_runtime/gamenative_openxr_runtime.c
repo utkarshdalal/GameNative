@@ -530,6 +530,8 @@ typedef struct {
 
 typedef struct {
     int active;
+    int grip_active;
+    int aim_active;
     unsigned buttons;
     float trigger, squeeze, sx, sy;
     float grip[7];
@@ -1491,6 +1493,8 @@ static void gn_refresh_hand(int hand) {
     }
 
     h->active = (int)gn_parse_i64(response, "active", 0);
+    h->grip_active = (int)gn_parse_i64(response, "gripActive", h->active);
+    h->aim_active = (int)gn_parse_i64(response, "aimActive", h->active);
     h->buttons = (unsigned)gn_parse_i64(response, "buttons", 0);
     h->trigger = gn_parse_micro(response, "tr", 0.0f);
     h->squeeze = gn_parse_micro(response, "sq", 0.0f);
@@ -2176,8 +2180,19 @@ static int gn_space_absolute_pose(
         int hand = action_space->hand >= 0 ? action_space->hand : gn_action_default_hand(action);
         int comp = action->component[hand];
         XrPosef tracked;
-        if (!gn_hands[hand].active || (action->active_hands & (1u << hand)) == 0) return 0;
-        gn_write_pose(&tracked, comp == GN_COMP_AIM_POSE ? gn_hands[hand].aim : gn_hands[hand].grip);
+        /* OpenVR device tracking is independent from the game's active input action sets.
+         * Requiring active_hands here made OpenComposite expose a valid identity pose until its
+         * legacy actions were synced, which placed both controllers at the stage origin. */
+        if (!gn_hands[hand].active) return 0;
+        if (comp == GN_COMP_AIM_POSE) {
+            if (!gn_hands[hand].aim_active) return 0;
+            gn_write_pose(&tracked, gn_hands[hand].aim);
+        } else if (comp == GN_COMP_GRIP_POSE) {
+            if (!gn_hands[hand].grip_active) return 0;
+            gn_write_pose(&tracked, gn_hands[hand].grip);
+        } else {
+            return 0;
+        }
         *pose = gn_pose_multiply(tracked, action_space->pose_in_action_space);
         for (int i = 0; i < 3; ++i) {
             linear_velocity[i] = gn_hand_linear_velocity[hand][i];
@@ -3227,7 +3242,10 @@ static int gn_resolve_action(const XrActionStateGetInfo* getInfo, int* out_hand,
 static int gn_action_is_active(XrAction action, int hand, int comp) {
     int action_idx = gn_action_index(action);
     if (action_idx < 0 || hand < 0 || hand > 1 || comp == GN_COMP_NONE) return 0;
-    return (gn_actions[action_idx].active_hands & (1u << hand)) != 0 && gn_hands[hand].active;
+    if ((gn_actions[action_idx].active_hands & (1u << hand)) == 0 || !gn_hands[hand].active) return 0;
+    if (comp == GN_COMP_GRIP_POSE) return gn_hands[hand].grip_active;
+    if (comp == GN_COMP_AIM_POSE) return gn_hands[hand].aim_active;
+    return 1;
 }
 
 static XrResult XRAPI_CALL gn_xrGetActionStateBoolean(

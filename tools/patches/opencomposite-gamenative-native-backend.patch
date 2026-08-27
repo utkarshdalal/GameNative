@@ -1,0 +1,108 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 17fd03e..3acddf5 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -21,6 +21,8 @@ option(USE_SYSTEM_OPENXR "Try using system installation of OpenXR if available"
+ option(USE_SYSTEM_GLM "Try using system installation of glm if available" OFF)
+ option(OC_BACKTRACE "Print the backtrace on crash" OFF)
+ option(ERROR_ON_WARNING "Set all warnings to be errors" OFF)
++option(GAMENATIVE_BACKEND "Build the GameNative direct OpenVR backend" OFF)
++set(GAMENATIVE_SOURCE_DIR "" CACHE PATH "Path to the GameNative source checkout")
+ 
+ # Directory for generated files, those being split headers and stubs
+ set(GENERATED_DIR ${CMAKE_BINARY_DIR}/generated)
+@@ -250,6 +252,35 @@ endif ()
+ target_compile_definitions(DrvOpenXR PRIVATE ${GRAPHICS_API_SUPPORT_FLAGS})
+ source_group(Public REGULAR_EXPRESSION DrvOpenXR/pub/*)
+ 
++if (GAMENATIVE_BACKEND)
++	if (NOT WIN32)
++		message(FATAL_ERROR "The GameNative OpenVR backend currently requires Windows")
++	endif ()
++	if (NOT EXISTS "${GAMENATIVE_SOURCE_DIR}/app/src/main/windows/openvr_client/DrvGameNative.cpp")
++		message(FATAL_ERROR "GAMENATIVE_SOURCE_DIR does not contain the GameNative OpenVR backend")
++	endif ()
++	set(GAMENATIVE_OPENVR_DIR "${GAMENATIVE_SOURCE_DIR}/app/src/main/windows/openvr_client")
++	set(GAMENATIVE_OPENXR_DIR "${GAMENATIVE_SOURCE_DIR}/app/src/main/windows/openxr_runtime")
++	add_library(DrvGameNative STATIC
++		${GAMENATIVE_OPENVR_DIR}/DrvGameNative.cpp
++		${GAMENATIVE_OPENVR_DIR}/DrvGameNative.h
++		${GAMENATIVE_OPENXR_DIR}/gamenative_control.h
++		${GAMENATIVE_OPENXR_DIR}/gamenative_openxr_unix.h
++	)
++	target_include_directories(DrvGameNative PUBLIC ${GAMENATIVE_OPENVR_DIR})
++	target_include_directories(DrvGameNative PRIVATE
++		${GAMENATIVE_OPENXR_DIR}
++		DrvOpenXR
++		DrvOpenXR/pub
++		OpenOVR
++		OpenVRHeaders
++		${CMAKE_BINARY_DIR}
++	)
++	target_link_libraries(DrvGameNative PUBLIC OpenVR PRIVATE DrvOpenXR ws2_32 d3d11 dxgi)
++	target_compile_definitions(DrvGameNative PRIVATE ${GRAPHICS_API_SUPPORT_FLAGS})
++	target_precompile_headers(DrvGameNative PRIVATE ${CMAKE_SOURCE_DIR}/OpenOVR/stdafx.h)
++endif ()
++
+ if (NOT (XR_VALIDATION_LAYER_PATH STREQUAL ""))
+ 	target_compile_definitions(DrvOpenXR PRIVATE -DXR_VALIDATION_LAYER_PATH=\"${XR_VALIDATION_LAYER_PATH}\")
+ endif ()
+@@ -519,6 +550,10 @@ if (NOT WIN32)
+ else ()
+ 	# On Windows this isn't a problem since the linker knows how to figure this stuff out
+ 	target_link_libraries(OCOVR OCCore DrvOpenXR)
++	if (GAMENATIVE_BACKEND)
++		target_link_libraries(OCOVR DrvGameNative)
++		target_compile_definitions(OCOVR PRIVATE GAMENATIVE_BACKEND)
++	endif ()
+ endif ()
+ 
+ # If we're on Linux, compile everything as position-independent
+diff --git a/DrvOpenXR/DrvOpenXR.cpp b/DrvOpenXR/DrvOpenXR.cpp
+index 208e612..261b82c 100644
+--- a/DrvOpenXR/DrvOpenXR.cpp
++++ b/DrvOpenXR/DrvOpenXR.cpp
+@@ -346,15 +346,11 @@ void DrvOpenXR::SetupSession()
+ 
+ void DrvOpenXR::ShutdownSession()
+ {
+-	BackendManager* instance = BackendManager::InstancePtr();
+ 	// Is it already being shut down?
+ 	// Note that this is indirectly called by the XrBackend destructor, which will have
+ 	// already called this function in that case.
+-	if (instance) {
+-		auto* backend = (XrBackend*)instance->GetBackendInstance();
+-		if (backend)
+-			backend->PrepareForSessionShutdown();
+-	}
++	if (currentBackend)
++		currentBackend->PrepareForSessionShutdown();
+ 
+ 	delete xr_gbl;
+ 	xr_gbl = nullptr;
+diff --git a/OCOVR/openvr_api.cpp b/OCOVR/openvr_api.cpp
+index 3401468..6de5f66 100644
+--- a/OCOVR/openvr_api.cpp
++++ b/OCOVR/openvr_api.cpp
+@@ -19,6 +19,9 @@
+ // Specific to OCOVR
+ #include "Drivers/Backend.h"
+ #include "DrvOpenXR.h"
++#ifdef GAMENATIVE_BACKEND
++#include "DrvGameNative.h"
++#endif
+ 
+ using namespace vr;
+ 
+@@ -280,7 +283,11 @@ VR_INTERFACE uint32_t VR_CALLTYPE VR_InitInternal2(EVRInitError* peError, EVRApp
+ 	running = true;
+ 
+ 	// TODO seperate this from the rest of dllmain
++	#ifdef GAMENATIVE_BACKEND
++	IBackend* backend = DrvGameNative::CreateGameNativeBackend(pStartupInfo);
++	#else
+ 	IBackend* backend = DrvOpenXR::CreateOpenXRBackend(pStartupInfo);
++	#endif
+ 	if (!backend && peError) {
+ 		*peError = VRInitError_Init_Internal;
+ 	} else {
