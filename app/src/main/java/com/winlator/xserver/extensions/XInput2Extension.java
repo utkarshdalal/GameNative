@@ -48,6 +48,7 @@ public class XInput2Extension implements Extension {
 
     private static abstract class ClientOpcodes {
         private static final byte GET_EXTENSION_VERSION = 1;  // X_GetExtensionVersion (XI 1.x)
+        private static final byte LIST_INPUT_DEVICES    = 2;  // X_ListInputDevices (XI 1.x)
         private static final byte GET_CLIENT_POINTER    = 45; // X_XIGetClientPointer (XI 2.x)
         private static final byte SELECT_EVENTS         = 46; // X_XISelectEvents (XI 2.x)
         private static final byte QUERY_VERSION         = 47; // X_XIQueryVersion (XI 2.x)
@@ -132,6 +133,27 @@ public class XInput2Extension implements Extension {
             outputStream.writeShort((short) 0);
             outputStream.writeByte((byte) 1);
             outputStream.writePad(19);
+        }
+    }
+
+    private static void listInputDevices(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException {
+        inputStream.skip(client.getRemainingRequestLength());
+
+        try (XStreamLock lock = outputStream.lock()) {
+            // typedef struct
+            //    CARD8	repType;	/* X_Reply */
+            //    CARD8	RepType;	/* always X_ListInputDevices */
+            //    CARD16	sequenceNumber;
+            //    CARD32	length;
+            //    CARD8	ndevices;
+            //    CARD8	pad1..pad23;
+            // xListInputDevicesReply;
+            outputStream.writeByte(RESPONSE_CODE_SUCCESS);
+            outputStream.writeByte((byte) 2);
+            outputStream.writeShort(client.getSequenceNumber());
+            outputStream.writeInt(0);
+            outputStream.writeByte((byte) 0);
+            outputStream.writePad(23);
         }
     }
 
@@ -411,6 +433,9 @@ public class XInput2Extension implements Extension {
         switch (opcode) {
             case ClientOpcodes.GET_EXTENSION_VERSION:
                 getExtensionVersion(client, inputStream, outputStream);
+                break;
+            case ClientOpcodes.LIST_INPUT_DEVICES:
+                listInputDevices(client, inputStream, outputStream);
                 break;
             case ClientOpcodes.GET_CLIENT_POINTER:
                 getClientPointer(client, inputStream, outputStream);
