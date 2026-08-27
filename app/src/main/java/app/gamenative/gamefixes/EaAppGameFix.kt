@@ -235,32 +235,157 @@ const val EA_LINK2EA_LAUNCH_SCRIPT_WINDOWS_PATH =
  * Link2EA races EABackgroundService on cold boots: it starts the service and
  * immediately sends its launch request, so the first EA Desktop of a session
  * connects before the IPC listener exists and shows "disconnected, restart".
- * Gate the protocol handoff on the service actually reporting RUNNING. This
+ * Start the service and give it a settle window before the handoff. This
  * cannot live in the link2ea registry handler because EA rewrites its protocol
- * keys on every service start.
+ * keys on every service start. First-run login is handled before this ever
+ * runs: the headless install cmd opens the EA Desktop UI after installing so
+ * the user can sign in, and closing that window resumes the launch chain.
+ *
+ * KNOWN REQUIREMENT: on a fresh prefix the game must be launched once WITHOUT
+ * Bionic Steam (the coldclient path) before Bionic Steam launches work with
+ * the EA launcher. That first boot leaves durable state behind (EA Desktop's
+ * compiled UI cache and the coldclient Steam files are the candidates; exact
+ * mechanism not yet isolated) without which EA parks the link2ea request as
+ * PendingLink2EARequest and silently drops it.
  */
 private fun writeLink2EaLaunchScript(container: Container) {
-    val link2EaPath = findInstalledEaDesktop(container)
-        ?.let { (_, eaDesktopDir) -> "$eaDesktopDir\\Link2EA.exe" }
-        ?: return
+    val (_, eaDesktopDir) = findInstalledEaDesktop(container) ?: return
+    val link2EaPath = "$eaDesktopDir\\Link2EA.exe"
     val script = File(container.rootDir, ".wine/drive_c/ProgramData/GameNative/ea-link2ea-launch.cmd")
     script.parentFile?.mkdirs()
+    // Straight-line on purpose: wine cmd nondeterministically deadlocks
+    // spawning children inside for-loops, so no loops, no polling.
     script.writeText(
         """
         @echo off
+        echo Starting EA Background Service...
         "C:\windows\system32\sc.exe" start EABackgroundService >nul 2>&1
-        for /L %%i in (1,1,30) do (
-          "C:\windows\system32\sc.exe" query EABackgroundService | "C:\windows\system32\findstr.exe" /C:"RUNNING" >nul 2>&1 && goto launch
-          "C:\windows\system32\timeout.exe" /t 1 /nobreak >nul 2>&1
-        )
-        :launch
-        "C:\windows\system32\timeout.exe" /t 2 /nobreak >nul 2>&1
+        "C:\windows\system32\timeout.exe" /t 5 /nobreak >nul 2>&1
+        echo Asking EA to launch the game...
         "$link2EaPath" %1
         """.trimIndent().replace("\n", "\r\n"),
     )
 }
 
+
 private const val EA_INSTALLER_RELATIVE_DIR = "__Installer/Origin/redist/internal"
+
+/**
+ * Carve the payload CAB out of EAappInstaller.exe (WiX Burn attached
+ * container) and pull the MSI from it with imagefs cabextract. The CAB is
+ * found by scanning for MSCF headers whose declared size (u32 LE at +8) is
+ * plausible for the ~240MB payload; the extracted MSI is recognized by its
+ * OLE compound-file signature.
+ */
+private fun extractMsiFromEaInstaller(context: Context, internalDir: File, msi: File): Boolean {
+    val installer = File(internalDir, "EAappInstaller.exe")
+    if (!installer.isFile) return false
+    val workDir = File(internalDir, ".gn-msi-extract")
+    try {
+        val (cabOffset, cabSize) = findPayloadCab(installer) ?: run {
+            Timber.tag("GameFixes").w("No payload CAB found in %s", installer.absolutePath)
+            return false
+        }
+        workDir.deleteRecursively()
+        workDir.mkdirs()
+        val cab = File(workDir, "payload.cab")
+        java.io.RandomAccessFile(installer, "r").use { raf ->
+            raf.seek(cabOffset)
+            cab.outputStream().use { out ->
+                val buf = ByteArray(1 shl 20)
+                var remaining = cabSize
+                while (remaining > 0) {
+                    val n = raf.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
+                    if (n <= 0) break
+                    out.write(buf, 0, n)
+                    remaining -= n
+                }
+            }
+        }
+        val imageFsRoot = com.winlator.xenvironment.ImageFs.find(context).rootDir.absolutePath
+        val cmd = mutableListOf<String>()
+        if (app.gamenative.BuildConfig.MODERN_ANDROID) cmd.add("/system/bin/linker64")
+        cmd.add("$imageFsRoot/usr/bin/cabextract")
+        cmd.addAll(listOf("-q", "-d", workDir.absolutePath, cab.absolutePath))
+        val proc = ProcessBuilder(cmd).redirectErrorStream(true).apply {
+            environment()["LD_LIBRARY_PATH"] = "$imageFsRoot/usr/lib"
+        }.start()
+        val output = proc.inputStream.bufferedReader().readText()
+        if (proc.waitFor() != 0) {
+            Timber.tag("GameFixes").w("cabextract failed: %s", output.take(500))
+            return false
+        }
+        val oleSig = byteArrayOf(0xD0.toByte(), 0xCF.toByte(), 0x11, 0xE0.toByte())
+        val extracted = workDir.walkTopDown()
+            .filter { it.isFile && it != cab && it.length() > 50L * 1024 * 1024 }
+            .filter { f -> f.inputStream().use { s -> ByteArray(4).let { s.read(it); it.contentEquals(oleSig) } } }
+            .maxByOrNull { it.length() }
+            ?: run {
+                Timber.tag("GameFixes").w("cabextract produced no MSI-signature payload")
+                return false
+            }
+        if (!extracted.renameTo(msi)) extracted.copyTo(msi, overwrite = true)
+        Timber.tag("GameFixes").i(
+            "Extracted EA headless MSI (%d bytes) from %s", msi.length(), installer.name,
+        )
+        return true
+    } catch (e: Exception) {
+        Timber.tag("GameFixes").e(e, "EA MSI extraction failed")
+        return false
+    } finally {
+        workDir.deleteRecursively()
+    }
+}
+
+/** Scan for an MSCF header whose declared cbCabinet spans a payload-sized region. */
+private fun findPayloadCab(installer: File): Pair<Long, Long>? {
+    val fileLen = installer.length()
+    val magic = "MSCF".toByteArray(Charsets.US_ASCII)
+    java.io.RandomAccessFile(installer, "r").use { raf ->
+        val buf = ByteArray(1 shl 20)
+        val overlap = 16
+        var base = 0L
+        var carry = ByteArray(0)
+        while (base < fileLen) {
+            raf.seek(base)
+            val n = raf.read(buf)
+            if (n <= 0) break
+            val window = carry + buf.copyOf(n)
+            var i = 0
+            while (true) {
+                i = indexOfBytes(window, magic, i)
+                if (i < 0) break
+                val offset = base - carry.size + i
+                if (offset + 12 <= fileLen) {
+                    raf.seek(offset + 8)
+                    val b = ByteArray(4)
+                    raf.readFully(b)
+                    val cbCabinet = ((b[3].toLong() and 0xFF) shl 24) or
+                        ((b[2].toLong() and 0xFF) shl 16) or
+                        ((b[1].toLong() and 0xFF) shl 8) or
+                        (b[0].toLong() and 0xFF)
+                    if (cbCabinet > 100L * 1024 * 1024 && offset + cbCabinet <= fileLen) {
+                        return offset to cbCabinet
+                    }
+                }
+                i++
+            }
+            carry = window.copyOfRange(maxOf(0, window.size - overlap), window.size)
+            base += n
+        }
+    }
+    return null
+}
+
+private fun indexOfBytes(haystack: ByteArray, needle: ByteArray, from: Int): Int {
+    outer@ for (i in from..haystack.size - needle.size) {
+        for (j in needle.indices) {
+            if (haystack[i + j] != needle[j]) continue@outer
+        }
+        return i
+    }
+    return -1
+}
 
 /** An EA App title ships EA's installer bundle inside its game directory. */
 fun isEaAppGame(installPath: String): Boolean =
@@ -270,9 +395,10 @@ fun isEaAppGame(installPath: String): Boolean =
  * The headless-install pieces are EA-App-generic, but the MSI is ~245MB and
  * cannot ship inside the APK. Generate the cmd from code, and source the MSI
  * from any sibling EA game under the same steamapps/common root that already
- * has one.
+ * has one, or extract it from the game's own EAappInstaller.exe (a WiX Burn
+ * bundle whose attached payload container is a plain CAB holding the MSI).
  */
-private fun ensureHeadlessInstallerFiles(installPath: String) {
+private fun ensureHeadlessInstallerFiles(context: Context, installPath: String) {
     val internalDir = File(installPath, EA_INSTALLER_RELATIVE_DIR)
     if (!internalDir.isDirectory) return
 
@@ -284,15 +410,16 @@ private fun ensureHeadlessInstallerFiles(installPath: String) {
             ?.filter { it.isDirectory }
             ?.map { File(it, "$EA_INSTALLER_RELATIVE_DIR/EAapp-wine-no-start.msi") }
             ?.firstOrNull { it.isFile }
-        if (donor == null) {
+        if (donor != null) {
+            Timber.tag("GameFixes").i("Copying EA headless MSI from %s", donor.absolutePath)
+            donor.copyTo(msi)
+        } else if (!extractMsiFromEaInstaller(context, internalDir, msi)) {
             Timber.tag("GameFixes").w(
-                "No EAapp-wine-no-start.msi found under %s; EA headless install unavailable",
+                "No EAapp-wine-no-start.msi under %s and extraction failed; EA headless install unavailable",
                 commonRoot?.absolutePath,
             )
             return
         }
-        Timber.tag("GameFixes").i("Copying EA headless MSI from %s", donor.absolutePath)
-        donor.copyTo(msi)
     }
 
     val cmd = File(internalDir, "EAapp-wine-install.cmd")
@@ -300,25 +427,35 @@ private fun ensureHeadlessInstallerFiles(installPath: String) {
         cmd.writeText(
             """
             @echo off
+            echo Preparing the EA app installer...
             set EA_BUNDLE_KEY={0843d159-4e03-4026-8fa0-32432514dba6}
             set "EA_BUNDLE_CACHE=C:\ProgramData\Package Cache\%EA_BUNDLE_KEY%"
             if not exist "%EA_BUNDLE_CACHE%" mkdir "%EA_BUNDLE_CACHE%"
-            copy /Y "%~dp0EAappInstaller.exe" "%EA_BUNDLE_CACHE%\EAappOfflineInstaller.exe"
-            reg add "HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%EA_BUNDLE_KEY%" /f
-            reg add "HKLM\SOFTWARE\Electronic Arts\EA Desktop" /v InstallSuccessful /t REG_SZ /d installing /f
+            copy /Y "%~dp0EAappInstaller.exe" "%EA_BUNDLE_CACHE%\EAappOfflineInstaller.exe" >nul
+            reg add "HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\%EA_BUNDLE_KEY%" /f >nul
+            reg add "HKLM\SOFTWARE\Electronic Arts\EA Desktop" /v InstallSuccessful /t REG_SZ /d installing /f >nul
+            echo Removing any previous EA app install...
             msiexec /x {C2622085-ABD2-49E5-8AB9-D3D6A642C091} /qn /norestart
             rem Pre-register the service: on a fresh prefix wine msi's
             rem StartServices cannot see the service its own ServiceInstall
             rem just registered (error 2) and rolls the whole install back.
             sc create EABackgroundService binPath= "\"C:\Program Files\Electronic Arts\EA Desktop\13.768.7.6285\EA Desktop\EABackgroundService.exe\" -start" >nul 2>&1
+            echo Installing the EA app. This takes a few minutes - do not close this window.
             msiexec /i "%~dp0EAapp-wine-no-start.msi" /qn /norestart /L*V "C:\windows\temp\EAapp-wine-install.log" ARPSYSTEMCOMPONENT=1 MSIFASTINSTALL=7 INSTALL_ROOT="C:\Program Files\Electronic Arts\EA Desktop" CLIENT_VERSION="13.768.7.6285" JUNO_CREATE_DESKTOP_SHORTCUT=1 INSTALLER_ERROR_REPORTER_SHORTCUT_TITLE="EA Error Reporter" INSTALLER_UPDATER_SHORTCUT_TITLE="EA app Updater" INSTALLER_RECOVERY_HELPER_SHORTCUT_TITLE="App Recovery" INSTALLER_ERROR_UNKNOWN="EA app encountered an error during the installation. Try again a bit later." BUNDLE_PROVIDERKEY="%EA_BUNDLE_KEY%" PRODUCT_DISPLAY_NAME="EA app" EAX_LAUNCH_CLIENT=0 INTREPID_ENABLE=0 EAX_ALLOW_WINDOWS_7=1 EAX_DISABLE_SYMLINKS=0 EAX_DOWNLOAD_IN_PLACE_DIR="C:\Program Files\EA Games" EAX_BUNDLE_EXECUTABLE_NAME="EAappOfflineInstaller.exe" EAX_RAZOR_MODE_ENABLE=0
             set EA_INSTALL_RC=%ERRORLEVEL%
-            copy /Y "C:\windows\temp\EAapp-wine-install.log" "%~dp0EAapp-wine-install.log"
+            copy /Y "C:\windows\temp\EAapp-wine-install.log" "%~dp0EAapp-wine-install.log" >nul
             if not "%EA_INSTALL_RC%"=="0" goto install_failed
-            reg add "HKLM\SOFTWARE\Electronic Arts\EA Desktop" /v InstallSuccessful /t REG_SZ /d true /f
+            reg add "HKLM\SOFTWARE\Electronic Arts\EA Desktop" /v InstallSuccessful /t REG_SZ /d true /f >nul
+            echo EA app installed successfully.
+            echo.
+            echo Opening the EA app so you can sign in.
+            echo After signing in, CLOSE the EA app window to continue to the game.
+            "C:\Program Files\Electronic Arts\EA Desktop\13.768.7.6285\EA Desktop\EADesktop.exe"
+            echo Continuing to the game...
             exit /b 0
             :install_failed
-            reg add "HKLM\SOFTWARE\Electronic Arts\EA Desktop" /v InstallSuccessful /t REG_SZ /d failed-%EA_INSTALL_RC% /f
+            echo EA app install failed with code %EA_INSTALL_RC%. The game may not start.
+            reg add "HKLM\SOFTWARE\Electronic Arts\EA Desktop" /v InstallSuccessful /t REG_SZ /d failed-%EA_INSTALL_RC% /f >nul
             exit /b %EA_INSTALL_RC%
             """.trimIndent().replace("\n", "\r\n"),
         )
@@ -339,7 +476,7 @@ val EaAppGameFix: GameFix = object : GameFix {
         installPathWindows: String,
         container: Container,
     ): Boolean = try {
-        ensureHeadlessInstallerFiles(installPath)
+        ensureHeadlessInstallerFiles(context, installPath)
         configureEaInstallScript(installPath)
         writeLink2EaLaunchScript(container)
         suppressEaSelfUpdate(container)
