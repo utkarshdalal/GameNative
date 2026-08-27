@@ -11,6 +11,21 @@ import java.util.concurrent.Executors
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicBoolean
 
+/** Translate the shared Xbox-layout bit mask into the compact per-hand mask consumed by the
+ * Windows OpenXR compatibility runtime: primary, secondary, stick-click, and menu. */
+internal fun openVrControllerButtons(buttons: Int, hand: Int): Int {
+    require(hand in 0..1)
+    val sourceBits = if (hand == 0) {
+        intArrayOf(2, 3, 8, 7) // X, Y, left-stick click, left menu/start.
+    } else {
+        intArrayOf(0, 1, 9, -1) // A, B, right-stick click; no right-hand menu button.
+    }
+    return sourceBits.foldIndexed(0) { outputBit, result, sourceBit ->
+        if (sourceBit >= 0 && buttons and (1 shl sourceBit) != 0) result or (1 shl outputBit)
+        else result
+    }
+}
+
 class WindowsVrControlServer(
     private val config: WindowsVrRuntimeConfig,
     private val diagnostics: WindowsVrDiagnostics,
@@ -236,7 +251,11 @@ class WindowsVrControlServer(
             "${inputFields[field]}=${(snapshot.input[base + field] * 1_000_000f).toLong()}"
         }
         val active = (snapshot.flags[2] shr hand) and 1
-        return "OK active=$active buttons=${snapshot.flags[1]} $rawValues $namedValues"
+        val poseFlags = snapshot.flags.getOrElse(3) { 0 }
+        val gripActive = (poseFlags shr hand) and 1
+        val aimActive = (poseFlags shr (hand + 2)) and 1
+        val buttons = openVrControllerButtons(snapshot.flags[1], hand)
+        return "OK active=$active gripActive=$gripActive aimActive=$aimActive buttons=$buttons $rawValues $namedValues"
     }
 
     private fun haptic(tokens: List<String>): String {

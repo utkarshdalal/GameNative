@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_LOGS" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
+
+    <!-- Android XR dedicated-track/runtime capability. The launcher itself remains a
+         conventional Home Space activity; only the activity below owns an OpenXR session. -->
+    <uses-feature
+        android:name="android.software.xr.api.openxr"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.xr.input.controller"
+        android:required="false" />
+
+    <application>
+        <!-- Required for Android XR's brokered OpenXR runtime discovery. The Khronos loader
+             remains packaged by the AAR and dynamically connects to this system library. -->
+        <uses-native-library
+            android:name="libopenxr.google.so"
+            android:required="false" />
+
+        <!-- Moving between a Home Space panel and an unmanaged Full Space display changes
+             several display configuration fields. Handle those in place so the launcher does
+             not get recreated in the middle of its handoff to ImmersiveXrActivity. -->
+        <activity
+            android:name="app.gamenative.MainActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|keyboard|keyboardHidden|navigation|uiMode|colorMode"
+            tools:replace="android:configChanges" />
+
+        <activity
+            android:name="app.gamenative.ui.screen.xr.ImmersiveXrActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:resizeableActivity="false"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|keyboard|keyboardHidden|navigation|uiMode|colorMode"
+            android:theme="@style/Theme.Pluvia">
+            <!-- Current Android XR/OpenXR spelling. This is activity-scoped so MainActivity
+                 retains the platform default (Home Space) launch mode. -->
+            <property
+                android:name="android.window.PROPERTY_XR_ACTIVITY_START_MODE"
+                android:value="XR_ACTIVITY_START_MODE_FULL_SPACE_UNMANAGED" />
+        </activity>
+    </application>
+
+</manifest>

@@ -27,7 +27,7 @@ class WindowsVrSnapshotProvider {
     fun waitFrame(afterSerial: Long, timeoutMs: Int): WindowsVrRuntimeSnapshot? {
         val activeHandle = handle
         if (activeHandle == 0L) return null
-        val snapshot = WindowsVrRuntimeSnapshot(LongArray(11), FloatArray(22), FloatArray(36), IntArray(3))
+        val snapshot = WindowsVrRuntimeSnapshot(LongArray(11), FloatArray(22), FloatArray(36), IntArray(4))
         if (!XrNative.nativeWaitWindowsFrame(
                 activeHandle,
                 afterSerial,

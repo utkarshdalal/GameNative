@@ -40,6 +40,7 @@ import app.gamenative.mods.NexusDownloadLinkInbox
 import app.gamenative.mods.NexusIntegrationStatus
 import app.gamenative.mods.NexusPendingDownloadStore
 import app.gamenative.ui.screen.library.appscreen.BaseAppScreen
+import app.gamenative.ui.screen.xr.ImmersiveSessionOwnership
 import app.gamenative.service.SteamService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.service.epic.EpicService
@@ -77,6 +78,7 @@ class MainActivity : ComponentActivity() {
 
         fun isHeadset(context: Context): Boolean =
             context.packageManager.hasSystemFeature("android.hardware.vr.headtracking") ||
+                context.packageManager.hasSystemFeature("android.software.xr.api.openxr") ||
                 Build.MANUFACTURER.equals("Oculus", true) ||
                 Build.MANUFACTURER.equals("Meta", true) ||
                 Build.MANUFACTURER.equals("Pico", true)
@@ -205,9 +207,16 @@ class MainActivity : ComponentActivity() {
         }
 
         // stale keepAlive from a prior crash/swipe — no container is actually running
-        if (SteamService.keepAlive && PluviaApp.xEnvironment == null) {
+        if (SteamService.keepAlive && PluviaApp.xEnvironment == null &&
+            !ImmersiveSessionOwnership.isOwnedByImmersive()
+        ) {
             Timber.w("onCreate: clearing stale keepAlive — no container running")
             PluviaApp.shutdownEnvironment()
+        } else if (SteamService.keepAlive && PluviaApp.xEnvironment == null) {
+            Timber.i(
+                "onCreate: preserving keepAlive during immersive handoff (%s)",
+                ImmersiveSessionOwnership.snapshot(),
+            )
         }
 
         // Apply immersive mode based on user preference
@@ -372,7 +381,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         // emit before super so Compose DisposableEffects (which unregister
         // listeners during super.onDestroy's lifecycle transition) still fire
-        if (!isChangingConfigurations) {
+        if (ImmersiveSessionOwnership.shouldLauncherHandleDestruction(isChangingConfigurations)) {
             PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
 
             // if exit() didn't run (listener already unregistered, race, etc.)
@@ -381,6 +390,12 @@ class MainActivity : ComponentActivity() {
                 Timber.w("onDestroy: keepAlive still set after ActivityDestroyed — forcing cleanup")
                 PluviaApp.shutdownEnvironment()
             }
+        } else {
+            Timber.i(
+                "onDestroy: launcher teardown skipped; changingConfig=%b immersive=%s",
+                isChangingConfigurations,
+                ImmersiveSessionOwnership.snapshot(),
+            )
         }
 
         super.onDestroy()

@@ -25,6 +25,9 @@ android {
         create("modernXr") {
             dimension = "androidApi"
         }
+        create("androidXr") {
+            dimension = "androidApi"
+        }
     }
 
     buildTypes {

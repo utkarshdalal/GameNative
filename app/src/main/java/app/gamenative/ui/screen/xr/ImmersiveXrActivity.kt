@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.xr
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -67,7 +68,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-/** Dedicated entry point for launching a game directly in Meta Quest immersive mode. */
+/** Shared OpenXR entry point for launching a game in headset immersive mode. */
 @AndroidEntryPoint
 class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
 
@@ -101,17 +102,29 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         private const val EXTRA_QUAD_SCALE = "immersiveQuadScale"
         private const val EXTRA_PASSTHROUGH_ENABLED = "immersivePassthroughEnabled"
 
-        fun start(context: Context, appId: String, isOffline: Boolean) {
-            val intent = Intent(context, ImmersiveXrActivity::class.java).apply {
+        internal fun createLaunchIntent(context: Context, appId: String, isOffline: Boolean): Intent =
+            Intent(context, ImmersiveXrActivity::class.java).apply {
                 putExtra(EXTRA_APP_ID, appId)
                 putExtra(EXTRA_IS_OFFLINE, isOffline)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                // An Activity context keeps this on the flat launcher's task so finish()
+                // returns to Home Space on Android XR. Application contexts still require
+                // NEW_TASK (the existing Quest/background launch path).
+                if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            context.startActivity(intent)
+
+        fun start(context: Context, appId: String, isOffline: Boolean) {
+            ImmersiveSessionOwnership.beginLaunch(appId)
+            try {
+                context.startActivity(createLaunchIntent(context, appId, isOffline))
+            } catch (t: Throwable) {
+                ImmersiveSessionOwnership.release(appId)
+                throw t
+            }
         }
     }
 
     private val viewModel: MainViewModel by viewModels()
+    private val immersiveRuntimeViewModel: ImmersiveRuntimeViewModel by viewModels()
 
     @Volatile
     private var backAction: (() -> Unit)? = null
@@ -255,7 +268,8 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             return
         }
         currentAppId = appId
-        windowsVrRuntimeService = app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeService(this)
+        ImmersiveSessionOwnership.markActivityActive(appId)
+        windowsVrRuntimeService = immersiveRuntimeViewModel.windowsVrRuntimeService(this)
 
         PluviaApp.isActivityInForeground = true
         AppUtils.keepScreenOn(this)
@@ -482,10 +496,25 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     }
 
     override fun onDestroy() {
+        val changingConfigurations = isChangingConfigurations
+        Timber.i(
+            "Immersive: onDestroy, changingConfig=%b finishing=%b appId=%s",
+            changingConfigurations,
+            isFinishing,
+            currentAppId,
+        )
         stopXrSession()
-        windowsVrRuntimeService?.close()
         windowsVrRuntimeService = null
-        PluviaApp.shutdownEnvironment()
+        if (changingConfigurations) {
+            // The replacement Activity receives the same ViewModel and control server. Keeping
+            // both alive prevents a display-density/configuration transition from killing Wine
+            // or disconnecting the Windows OpenXR/OpenVR runtime during startup.
+            Timber.i("Immersive: preserving Wine and Windows VR service across recreation")
+        } else {
+            immersiveRuntimeViewModel.closeWindowsVrRuntimeService()
+            ImmersiveSessionOwnership.release(currentAppId)
+            PluviaApp.shutdownEnvironment()
+        }
         super.onDestroy()
     }
 
