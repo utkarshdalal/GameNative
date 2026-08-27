@@ -47,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import app.gamenative.BuildConfig
 import app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeConfig
 import kotlinx.coroutines.delay
 import app.gamenative.PluviaApp
@@ -102,22 +103,29 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         private const val EXTRA_QUAD_SCALE = "immersiveQuadScale"
         private const val EXTRA_PASSTHROUGH_ENABLED = "immersivePassthroughEnabled"
 
-        internal fun createLaunchIntent(context: Context, appId: String, isOffline: Boolean): Intent =
+        internal fun createLaunchIntent(
+            context: Context,
+            appId: String,
+            isOffline: Boolean,
+            isAndroidXr: Boolean = BuildConfig.ANDROID_XR,
+        ): Intent =
             Intent(context, ImmersiveXrActivity::class.java).apply {
                 putExtra(EXTRA_APP_ID, appId)
                 putExtra(EXTRA_IS_OFFLINE, isOffline)
-                // An Activity context keeps this on the flat launcher's task so finish()
-                // returns to Home Space on Android XR. Application contexts still require
-                // NEW_TASK (the existing Quest/background launch path).
-                if (context !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                // Android XR keeps an Activity-context launch on the flat launcher's task so
+                // finish() returns to Home Space. Quest must retain its proven separate-task
+                // transition into an Activity carrying com.oculus.intent.category.VR.
+                if (!isAndroidXr || context !is Activity) {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
             }
 
         fun start(context: Context, appId: String, isOffline: Boolean) {
-            ImmersiveSessionOwnership.beginLaunch(appId)
+            if (BuildConfig.ANDROID_XR) ImmersiveSessionOwnership.beginLaunch(appId)
             try {
                 context.startActivity(createLaunchIntent(context, appId, isOffline))
             } catch (t: Throwable) {
-                ImmersiveSessionOwnership.release(appId)
+                if (BuildConfig.ANDROID_XR) ImmersiveSessionOwnership.release(appId)
                 throw t
             }
         }
@@ -268,8 +276,12 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             return
         }
         currentAppId = appId
-        ImmersiveSessionOwnership.markActivityActive(appId)
-        windowsVrRuntimeService = immersiveRuntimeViewModel.windowsVrRuntimeService(this)
+        if (BuildConfig.ANDROID_XR) {
+            ImmersiveSessionOwnership.markActivityActive(appId)
+            windowsVrRuntimeService = immersiveRuntimeViewModel.windowsVrRuntimeService(this)
+        } else {
+            windowsVrRuntimeService = app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeService(this)
+        }
 
         PluviaApp.isActivityInForeground = true
         AppUtils.keepScreenOn(this)
@@ -504,15 +516,20 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             currentAppId,
         )
         stopXrSession()
-        windowsVrRuntimeService = null
-        if (changingConfigurations) {
+        if (BuildConfig.ANDROID_XR && changingConfigurations) {
             // The replacement Activity receives the same ViewModel and control server. Keeping
             // both alive prevents a display-density/configuration transition from killing Wine
             // or disconnecting the Windows OpenXR/OpenVR runtime during startup.
+            windowsVrRuntimeService = null
             Timber.i("Immersive: preserving Wine and Windows VR service across recreation")
         } else {
-            immersiveRuntimeViewModel.closeWindowsVrRuntimeService()
-            ImmersiveSessionOwnership.release(currentAppId)
+            if (BuildConfig.ANDROID_XR) {
+                immersiveRuntimeViewModel.closeWindowsVrRuntimeService()
+                ImmersiveSessionOwnership.release(currentAppId)
+            } else {
+                windowsVrRuntimeService?.close()
+            }
+            windowsVrRuntimeService = null
             PluviaApp.shutdownEnvironment()
         }
         super.onDestroy()

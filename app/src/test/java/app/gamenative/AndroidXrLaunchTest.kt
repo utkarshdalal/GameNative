@@ -33,20 +33,44 @@ class AndroidXrLaunchTest {
     }
 
     @Test
-    fun activityLaunchStaysOnFlatLauncherTask() {
+    fun androidXrActivityLaunchStaysOnFlatLauncherTask() {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
 
-        val intent = ImmersiveXrActivity.createLaunchIntent(activity, "STEAM_123", false)
+        val intent = ImmersiveXrActivity.createLaunchIntent(
+            activity,
+            "STEAM_123",
+            false,
+            isAndroidXr = true,
+        )
 
         assertFalse(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
         assertEquals(ImmersiveXrActivity::class.java.name, intent.component?.className)
     }
 
     @Test
-    fun nonActivityLaunchUsesNewTask() {
+    fun questActivityLaunchUsesNewTask() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+
+        val intent = ImmersiveXrActivity.createLaunchIntent(
+            activity,
+            "STEAM_123",
+            false,
+            isAndroidXr = false,
+        )
+
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+    }
+
+    @Test
+    fun androidXrNonActivityLaunchUsesNewTask() {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
-        val intent = ImmersiveXrActivity.createLaunchIntent(context, "STEAM_123", true)
+        val intent = ImmersiveXrActivity.createLaunchIntent(
+            context,
+            "STEAM_123",
+            true,
+            isAndroidXr = true,
+        )
 
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
     }

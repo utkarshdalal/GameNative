@@ -208,11 +208,11 @@ class MainActivity : ComponentActivity() {
 
         // stale keepAlive from a prior crash/swipe — no container is actually running
         if (SteamService.keepAlive && PluviaApp.xEnvironment == null &&
-            !ImmersiveSessionOwnership.isOwnedByImmersive()
+            (!BuildConfig.ANDROID_XR || !ImmersiveSessionOwnership.isOwnedByImmersive())
         ) {
             Timber.w("onCreate: clearing stale keepAlive — no container running")
             PluviaApp.shutdownEnvironment()
-        } else if (SteamService.keepAlive && PluviaApp.xEnvironment == null) {
+        } else if (BuildConfig.ANDROID_XR && SteamService.keepAlive && PluviaApp.xEnvironment == null) {
             Timber.i(
                 "onCreate: preserving keepAlive during immersive handoff (%s)",
                 ImmersiveSessionOwnership.snapshot(),
@@ -381,7 +381,12 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         // emit before super so Compose DisposableEffects (which unregister
         // listeners during super.onDestroy's lifecycle transition) still fire
-        if (ImmersiveSessionOwnership.shouldLauncherHandleDestruction(isChangingConfigurations)) {
+        val launcherShouldHandleDestruction = if (BuildConfig.ANDROID_XR) {
+            ImmersiveSessionOwnership.shouldLauncherHandleDestruction(isChangingConfigurations)
+        } else {
+            !isChangingConfigurations
+        }
+        if (launcherShouldHandleDestruction) {
             PluviaApp.events.emit(AndroidEvent.ActivityDestroyed)
 
             // if exit() didn't run (listener already unregistered, race, etc.)
