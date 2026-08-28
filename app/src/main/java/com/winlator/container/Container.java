@@ -1150,6 +1150,7 @@ public class Container {
         this.portraitMode = portraitMode;
     }
 
+
     public String getContainerJson() {
         String content = FileUtils.readString(getConfigFile());
         if (content == null) {
