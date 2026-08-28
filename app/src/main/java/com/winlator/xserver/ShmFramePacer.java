@@ -8,6 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 // blitted frame is still displayed immediately.
 public class ShmFramePacer {
     private static volatile int frameRateLimit = 0;
+    private static volatile float displayRefreshHz = 0f;
+    private static volatile long periodNs = 0;
 
     private static class Timing { long nextNs; }
     private static final ConcurrentHashMap<Integer, Timing> timings = new ConcurrentHashMap<>();
@@ -16,19 +18,42 @@ public class ShmFramePacer {
 
     public static void setFrameRateLimit(int limit) {
         frameRateLimit = Math.max(0, limit);
+        updatePeriod();
         if (frameRateLimit == 0) timings.clear();
+    }
+
+    public static void setDisplayRefreshHz(float hz) {
+        displayRefreshHz = hz;
+        updatePeriod();
+    }
+
+    private static void updatePeriod() {
+        int fps = frameRateLimit;
+        if (fps <= 0) {
+            periodNs = 0;
+            return;
+        }
+        float hz = displayRefreshHz;
+        if (hz > 0f) {
+            int n = Math.max(1, Math.round(hz / fps));
+            if (Math.abs(hz / n - fps) < 0.5f) {
+                periodNs = (long) (n * 1_000_000_000.0 / hz);
+                return;
+            }
+        }
+        periodNs = 1_000_000_000L / fps;
     }
 
     // Returns how long (ns) the caller should suspend this client's reads, or 0.
     public static long framePresented(int drawableId) {
-        int fps = frameRateLimit;
-        if (fps <= 0) return 0;
+        long period = periodNs;
+        if (period <= 0) return 0;
         if (timings.size() > MAX_TRACKED_DRAWABLES) evictStalest(drawableId);
         Timing t = timings.computeIfAbsent(drawableId, k -> new Timing());
         long now = System.nanoTime();
         if (t.nextNs < now) t.nextNs = now;
         long delay = t.nextNs - now;
-        t.nextNs += 1_000_000_000L / fps;
+        t.nextNs += period;
         return delay;
     }
 

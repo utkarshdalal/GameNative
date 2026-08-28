@@ -167,10 +167,9 @@ object PowerManager {
         loadCurrentProfile()
         if (isProfilePowerControlEnabled()) {
             startPowerControl()
-        }
-
-        if (currentProfile.enableAdaptiveFpsCap) {
-            AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+            if (currentProfile.enableAdaptiveFpsCap) {
+                AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+            }
         }
 
         appContext.let { PerformanceMetricsCollector.start(it) }
@@ -302,10 +301,12 @@ object PowerManager {
      */
     fun resume() {
         if (!isGameStarted) return
-        driver.start()
-        applyCurrentProfile()
-        if (currentProfile.enableAdaptiveFpsCap) {
-            AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+        if (isProfilePowerControlEnabled()) {
+            driver.start()
+            applyCurrentProfile()
+            if (currentProfile.enableAdaptiveFpsCap) {
+                AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+            }
         }
         PerformanceMetricsCollector.resume()
     }
@@ -550,12 +551,10 @@ object PowerManager {
             stopAutoTuning()
         }
 
-        if (previousProfile.enableAdaptiveFpsCap != profile.enableAdaptiveFpsCap) {
-            if (profile.enableAdaptiveFpsCap) {
-                AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
-            } else {
-                AdaptiveFpsCapController.stop()
-            }
+        if (profile.enablePowerControl && profile.enableAdaptiveFpsCap) {
+            AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+        } else {
+            AdaptiveFpsCapController.stop()
         }
 
         if (isGameStarted) {

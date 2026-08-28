@@ -102,7 +102,8 @@ object AdaptiveFpsCapController {
     }
 
     private fun runCycle() {
-        if (PowerManager.currentProfile?.enableAdaptiveFpsCap == false) {
+        val profile = runCatching { PowerManager.currentProfile }.getOrNull()
+        if (profile == null || !profile.enableAdaptiveFpsCap || !profile.enablePowerControl) {
             running = false
             restoreUserCap("disabled")
             return
