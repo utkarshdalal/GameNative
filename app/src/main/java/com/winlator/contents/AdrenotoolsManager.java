@@ -29,9 +29,6 @@ import org.json.JSONObject;
 
 public class AdrenotoolsManager {
 
-    private static final String PACKAGE_TYPE_ICD = "icd";
-    private static final String PACKAGE_TYPE_VULKAN_LAYER = "vulkanLayer";
-
     private File adrenotoolsContentDir;
     private Context mContext;
 
@@ -42,56 +39,51 @@ public class AdrenotoolsManager {
             adrenotoolsContentDir.mkdirs();
     }
 
-    private JSONObject getMetadata(String adrenoToolsDriverId) {
+    public String getLibraryName(String adrenoToolsDriverId) {
+        String libraryName = "";
         File driverPath = new File(adrenotoolsContentDir, adrenoToolsDriverId);
         try {
             File metaProfile = new File(driverPath, "meta.json");
-            if (!metaProfile.isFile()) return null;
-            return new JSONObject(FileUtils.readString(metaProfile));
+            JSONObject jsonObject = new JSONObject(FileUtils.readString(metaProfile));
+            libraryName = jsonObject.getString("libraryName");
         }
         catch (JSONException e) {
-            Log.w("AdrenotoolsManager", "Invalid driver metadata for " + adrenoToolsDriverId, e);
-            return null;
         }
-    }
-
-    public String getLibraryName(String adrenoToolsDriverId) {
-        JSONObject jsonObject = getMetadata(adrenoToolsDriverId);
-        return jsonObject != null ? jsonObject.optString("libraryName", "") : "";
+        return libraryName;
     }
 
     public String getDriverName(String adrenoToolsDriverId) {
-        JSONObject jsonObject = getMetadata(adrenoToolsDriverId);
-        return jsonObject != null ? jsonObject.optString("name", "") : "";
+        String driverName = "";
+        File driverPath = new File(adrenotoolsContentDir, adrenoToolsDriverId);
+        try {
+            File metaProfile = new File(driverPath, "meta.json");
+            JSONObject jsonObject = new JSONObject(FileUtils.readString(metaProfile));
+            driverName = jsonObject.getString("name");
+        }
+        catch (JSONException e) {
+        }
+        return driverName;
     }
 
     public String getDriverVersion(String adrenoToolsDriverId) {
-        JSONObject jsonObject = getMetadata(adrenoToolsDriverId);
-        return jsonObject != null ? jsonObject.optString("driverVersion", "") : "";
+        String driverVersion = "";
+        File driverPath = new File(adrenotoolsContentDir, adrenoToolsDriverId);
+        try {
+            File metaProfile = new File(driverPath, "meta.json");
+            JSONObject jsonObject = new JSONObject(FileUtils.readString(metaProfile));
+            driverVersion = jsonObject.getString("driverVersion");
+        }
+        catch (JSONException e) {
+        }
+        return driverVersion;
     }
 
-    /**
-     * GameNative traditionally imports AdrenoTools ICD packages.  ExynosTools is
-     * deliberately not an ICD: it is a Vulkan layer that must run on top of the
-     * Samsung system ICD.  packageType lets the same picker install both without
-     * attempting to pass a layer library to adrenotools_open_libvulkan().
-     */
-    public String getPackageType(String adrenoToolsDriverId) {
-        JSONObject jsonObject = getMetadata(adrenoToolsDriverId);
-        return jsonObject != null ? jsonObject.optString("packageType", PACKAGE_TYPE_ICD) : PACKAGE_TYPE_ICD;
-    }
-
-    private String getManifestName(String adrenoToolsDriverId) {
-        JSONObject jsonObject = getMetadata(adrenoToolsDriverId);
-        return jsonObject != null ? jsonObject.optString("manifestName", "") : "";
-    }
-
-    private void reloadContainers(String adrenotoolsDriverId) {
+    private void reloadContainers(String adrenoToolsDriverId) {
         ContainerManager containerManager = new ContainerManager(mContext);
         for (Container container : containerManager.getContainers()) {
             KeyValueSet config = new KeyValueSet(container.getGraphicsDriverConfig());
-            Log.d("AdrenotoolsManager", "Checking if container driver version " + config.get("version") + " matches " + getDriverName(adrenotoolsDriverId));
-            if (config.get("version").contains(getDriverName(adrenotoolsDriverId))) {
+            Log.d("AdrenotoolsManager", "Checking if container driver version " + config.get("version") + " matches " + getDriverName(adrenoToolsDriverId));
+            if (config.get("version").contains(getDriverName(adrenoToolsDriverId))) {
                 Log.d("AdrenotoolsManager", "Found a match for container " + container.getName());
                 config.put("version", DefaultVersion.WRAPPER);
                 container.setGraphicsDriverConfig(config.toString());
@@ -110,9 +102,7 @@ public class AdrenotoolsManager {
     public ArrayList<String> enumarateInstalledDrivers() {
         ArrayList<String> driversList = new ArrayList<>();
 
-        File[] files = adrenotoolsContentDir.listFiles();
-        if (files == null) return driversList;
-        for (File f : files) {
+        for (File f : adrenotoolsContentDir.listFiles()) {
             boolean fromResources = isFromResources("graphics_driver/adrenotools-" + f.getName() + ".tzst");
             if (!fromResources && new File(f, "meta.json").exists())
                 driversList.add(f.getName());
@@ -156,7 +146,7 @@ public class AdrenotoolsManager {
 
     public String installDriver(Uri driverUri) {
         File tmpDir = new File(adrenotoolsContentDir, "tmp");
-        if (tmpDir.exists()) FileUtils.delete(tmpDir);
+        if (tmpDir.exists()) tmpDir.delete();
         tmpDir.mkdirs();
         ZipInputStream zis;
         InputStream is;
@@ -164,20 +154,11 @@ public class AdrenotoolsManager {
 
         try {
             is = mContext.getContentResolver().openInputStream(driverUri);
-            if (is == null) throw new IOException("Unable to open selected package");
             zis = new ZipInputStream(is);
             ZipEntry entry = zis.getNextEntry();
             while (entry != null) {
-                if (!entry.isDirectory()) {
-                    File dstFile = new File(tmpDir, entry.getName());
-                    String rootPath = tmpDir.getCanonicalPath() + File.separator;
-                    String dstPath = dstFile.getCanonicalPath();
-                    if (!dstPath.startsWith(rootPath))
-                        throw new IOException("Unsafe ZIP entry: " + entry.getName());
-                    File parent = dstFile.getParentFile();
-                    if (parent != null) parent.mkdirs();
-                    Files.copy(zis, dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                }
+                File dstFile = new File(tmpDir, entry.getName());
+                Files.copy(zis, dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 entry = zis.getNextEntry();
             }
             zis.close();
@@ -192,59 +173,20 @@ public class AdrenotoolsManager {
                 }
             }
             else {
-                Log.d("AdrenotoolsManager", "Failed to install driver, root-level meta.json is missing");
-                FileUtils.delete(tmpDir);
+                Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected");
+                tmpDir.delete();
             }
         }
         catch (IOException e) {
-            Log.e("AdrenotoolsManager", "Failed to install selected driver/layer package", e);
-            FileUtils.delete(tmpDir);
+            Log.d("AdrenotoolsManager", "Failed to install driver, a valid driver has not been selected");
+            tmpDir.delete();
         }
 
         return name;
     }
 
-    private boolean configureVulkanLayerPackage(EnvVars envVars, ImageFs imagefs, String packageId) {
-        String driverPath = adrenotoolsContentDir.getAbsolutePath() + "/" + packageId + "/";
-        String libraryName = getLibraryName(packageId);
-        String manifestName = getManifestName(packageId);
-        File library = new File(driverPath, libraryName);
-        File manifest = new File(driverPath, manifestName);
-
-        if (libraryName.isEmpty() || manifestName.isEmpty() || !library.isFile() || !manifest.isFile()) {
-            Log.e("AdrenotoolsManager", "Vulkan layer package is incomplete: " + packageId);
-            return false;
-        }
-
-        // Preserve GameNative's standard Vulkan layer directories while putting
-        // the imported layer first. LsfgVkManager subsequently appends its own
-        // per-container implicit_layer.d path when LSFG is armed.
-        String root = imagefs.getRootDir().getPath();
-        String layerPath = driverPath
-                + ":" + root + "/usr/share/vulkan/implicit_layer.d"
-                + ":" + root + "/usr/share/vulkan/explicit_layer.d";
-        envVars.put("VK_LAYER_PATH", layerPath);
-        envVars.put("EXYNOSTOOLS_LAYER_PATH", driverPath);
-        envVars.remove("DISABLE_VORTEK_XCLIPSE_LAYER");
-
-        // Explicitly remove custom-ICD variables so the Samsung system ICD is
-        // used. ExynosTools is a layer over that ICD, not a replacement for it.
-        envVars.remove("ADRENOTOOLS_DRIVER_PATH");
-        envVars.remove("ADRENOTOOLS_DRIVER_NAME");
-        envVars.remove("ADRENOTOOLS_HOOKS_PATH");
-
-        Log.i("AdrenotoolsManager", "Configured Vulkan layer package " + packageId
-                + " over the system ICD: " + driverPath);
-        return true;
-    }
-
     public void setDriverById(EnvVars envVars, ImageFs imagefs, String adrenotoolsDriverId) {
         if (extractDriverFromResources(adrenotoolsDriverId) || enumarateInstalledDrivers().contains(adrenotoolsDriverId)) {
-            if (PACKAGE_TYPE_VULKAN_LAYER.equalsIgnoreCase(getPackageType(adrenotoolsDriverId))) {
-                configureVulkanLayerPackage(envVars, imagefs, adrenotoolsDriverId);
-                return;
-            }
-
             String driverPath = adrenotoolsContentDir.getAbsolutePath() + "/" + adrenotoolsDriverId + "/";
             if (!getLibraryName(adrenotoolsDriverId).equals("")) {
                 envVars.put("ADRENOTOOLS_DRIVER_PATH", driverPath);
