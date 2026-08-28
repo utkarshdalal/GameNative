@@ -47,7 +47,7 @@ fun PowerControlQuickMenuTab(
         onAdaptiveFpsCapToggled = { enabled ->
             coroutineScope.launch(Dispatchers.IO) {
                 PowerManager.currentProfile.let { profile ->
-                    PowerManager.setPowerProfile(profile.copy(enableAdaptiveFpsCap = enabled))
+                    PowerManager.setPowerProfile(profile.copy(adaptiveFpsCapEnabled = enabled))
                 }
                 PowerManager.refreshUiState()
             }
@@ -118,7 +118,7 @@ fun PowerControlQuickMenuTab(
                 // Preserve current enableFanControl and enableGamePinning settings
                 val currentProfile = PowerManager.currentProfile
                 val updatedProfile = profile.copy(
-                    enableAdaptiveFpsCap = currentProfile.enableAdaptiveFpsCap,
+                    adaptiveFpsCapEnabled = currentProfile.adaptiveFpsCapEnabled,
                     enableAutoTuning = false,
                     enablePerClusterTuning = false,
                     enableFanControl = currentProfile.enableFanControl,

@@ -180,7 +180,7 @@ abstract class PerformanceDriver {
         // Return a dummy Balanced profile for devices without driver support
         return PowerProfile(
             enableAutoTuning = false,
-            enableAdaptiveFpsCap = false,
+            adaptiveFpsCapEnabled = false,
             enableGamePinning = false,
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,

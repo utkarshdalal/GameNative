@@ -243,8 +243,8 @@ private fun FlowRowScope.SuccessView(
     QuickMenuToggleRow(
         title = stringResource(R.string.power_control_adaptive_fps),
         subtitle = stringResource(R.string.power_control_adaptive_fps_desc),
-        enabled = state.selectedProfile.enableAdaptiveFpsCap,
-        onToggle = { onAdaptiveFpsCapToggled(!state.selectedProfile.enableAdaptiveFpsCap) },
+        enabled = state.selectedProfile.adaptiveFpsCapEnabled,
+        onToggle = { onAdaptiveFpsCapToggled(!state.selectedProfile.adaptiveFpsCapEnabled) },
         accentColor = accentColor,
         focusRequester = firstItemFocusRequester,
         modifier = Modifier.weight(1f),
