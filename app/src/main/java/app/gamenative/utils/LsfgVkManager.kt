@@ -26,8 +26,8 @@ import kotlin.jvm.JvmStatic
  * real swapchain presentation path.
  *
  * Flow:
- * 1. At launch time: install the layer .so + manifest into the container's
- *    filesystem where the Vulkan loader discovers implicit layers.
+ * 1. At launch time: install the layer .so + manifest into the active
+ *    container HOME where the Vulkan loader discovers implicit layers.
  * 2. Copy Lossless.dll from the Steam install dir (app 993090) into the
  *    container's ~/.local/share/lsfg-vk/ directory.
  * 3. Write conf.toml with the DLL path, multiplier, flow scale, and
@@ -51,13 +51,12 @@ object LsfgVkManager {
     private const val LIB_FILENAME = "liblsfg-vk-layer.so"
     private const val MANIFEST_FILENAME = "VkLayer_LS_frame_generation.json"
     private const val VERSION_FILENAME = ".lsfg_vk_runtime_version"
+    private const val VULKAN_LAYER_NAME = "VK_LAYER_LS_frame_generation"
 
     // Relative path from implicit_layer.d back to lib/
     private const val MANIFEST_LIBRARY_PATH = "../../../lib/$LIB_FILENAME"
 
-    // Process identifier written to conf.toml [[game]] exe field.
-    // Under Wine, /proc/self/exe points to the Wine loader, so we use this
-    // stable identifier instead. Set via LSFG_PROCESS env var.
+    // Process identifier retained for compatibility with older generated config.
     private const val PROCESS_EXE_IDENTIFIER = "gamenative-lsfg"
 
     // Container extra keys
@@ -79,9 +78,14 @@ object LsfgVkManager {
     private const val ENV_DISABLE = "DISABLE_LSFG"
     private const val ENV_CONFIG = "LSFG_CONFIG"
     private const val ENV_PROCESS = "LSFG_PROCESS"
+    private const val ENV_PROCESS_EXE = "LSFG_PROCESS_EXE"
+    private const val ENV_VK_LAYER_PATH = "VK_LAYER_PATH"
+    private const val ENV_VK_INSTANCE_LAYERS = "VK_INSTANCE_LAYERS"
 
-    // Current runtime version (bumped when the bundled .so changes)
-    private const val RUNTIME_VERSION = "v1.3.3-android-arm64-v8a"
+    // Current runtime package revision. The native binary is still lsfg-vk
+    // v1.3.3; the suffix forces existing containers to receive the corrected
+    // implicit-layer manifest on the next launch.
+    private const val RUNTIME_VERSION = "v1.3.3-android-arm64-v8a-gamenative-targeted-r2"
 
     // Asset path for manifest (still in assets)
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
@@ -89,17 +93,22 @@ object LsfgVkManager {
 
     // ---- Public API --------------------------------------------------------
 
-    /** Whether LSFG is supported for this container's variant. */
+    /** Whether LSFG is supported for this container's runtime variant. */
     @JvmStatic
     fun isSupported(container: Container): Boolean =
         container.containerVariant.equals(Container.BIONIC, ignoreCase = true)
 
-    /** Whether LSFG is armed (enabled + Lossless.dll available in Steam dir) for this container. The DLL is copied into the container at launch time by ensureRuntimeInstalled(). */
+    /**
+     * Whether LSFG is armed for this container.
+     *
+     * This is a UI/runtime hot path. Never rescan Steam libraries here: launch
+     * setup owns discovery/copying, so the container-local DLL is authoritative.
+     */
     @JvmStatic
     fun isArmed(container: Container): Boolean =
         isSupported(container) &&
             parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
-            isDllAvailable()
+            containerDllPath(container) != null
 
     /** Whether Lossless Scaling is installed (Lossless.dll exists in Steam dir). */
     @JvmStatic
@@ -242,6 +251,12 @@ object LsfgVkManager {
      * - VkLayer_LS_frame_generation.json → ~/.local/share/vulkan/implicit_layer.d/
      * - Lossless.dll → ~/.local/share/lsfg-vk/  (copied from Steam install dir)
      *
+     * The active container is exposed at HOME=/.../home/xuser by
+     * ContainerManager.activateContainer(), which symlinks xuser to the
+     * per-container root. That still permits standard implicit discovery, while
+     * applyLaunchEnv also exposes this manifest as an explicit layer so loader
+     * builds with differing implicit-layer behavior activate LSFG deterministically.
+     *
      * Uses versioned caching to skip redundant copies.
      *
      * @return true if installation succeeded or was already up-to-date
@@ -354,12 +369,14 @@ object LsfgVkManager {
 
         return try {
             val dllPath = containerDllPath(container)
+            val processExecutable = targetExecutable(container)
             val savedMultiplier = multiplier(container)
             val frameGenActive = parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
-                dllPath != null && savedMultiplier >= 2
+                dllPath != null && processExecutable != null && savedMultiplier >= 2
             val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
             val configText = buildConfigToml(
                 dllPath = dllPath,
+                processExecutable = processExecutable,
                 enabled = frameGenActive,
                 multiplier = if (frameGenActive) savedMultiplier else 1,
                 flowScale = flowScale(container),
@@ -379,17 +396,25 @@ object LsfgVkManager {
      * Apply LSFG-related environment variables to the launch environment.
      * Called during container startup in BionicProgramLauncherComponent.
      *
+     * Do not rely on implicit-layer discovery alone. Vulkan loader builds used
+     * by Android/Wine environments vary in which implicit search mechanisms they
+     * expose, while VK_LAYER_PATH + VK_INSTANCE_LAYERS is the long-standing
+     * explicit discovery/activation path. We therefore expose the container's
+     * manifest as an explicit layer and name it explicitly, preserving any paths
+     * or layers supplied by the renderer, driver wrapper, or caller.
+     *
      * @return true if LSFG is armed and env vars were applied
      */
     @JvmStatic
     fun applyLaunchEnv(container: Container, envVars: EnvVars): Boolean {
-        // Clear any stale env vars first
+        // Clear only LSFG-owned variables. Preserve caller-provided Vulkan layer
+        // search paths and enabled layers.
         envVars.remove(ENV_DISABLE)
         envVars.remove(ENV_CONFIG)
         envVars.remove(ENV_PROCESS)
+        envVars.remove(ENV_PROCESS_EXE)
 
         if (!isSupported(container)) {
-            // Remove the manifest so the Vulkan loader can't find the layer
             disableLayerInContainer(container)
             return false
         }
@@ -398,34 +423,58 @@ object LsfgVkManager {
         val armed = parseBool(container.getExtra(EXTRA_ARMED, "false")) && dllPath != null
 
         if (!armed) {
-            // Remove the manifest so the Vulkan loader can't find the layer
             disableLayerInContainer(container)
-            Timber.tag(TAG).i("LSFG disabled (enabled=%s, dll=%s)",
-                container.getExtra(EXTRA_ARMED, "false"), dllPath ?: "null")
+            Timber.tag(TAG).i(
+                "LSFG disabled (enabled=%s, dll=%s)",
+                container.getExtra(EXTRA_ARMED, "false"),
+                dllPath ?: "null",
+            )
+            return false
+        }
+
+        val processExecutable = targetExecutable(container)
+        if (processExecutable == null) {
+            Timber.tag(TAG).w("LSFG armed but target executable could not be resolved")
             return false
         }
 
         envVars.put(ENV_CONFIG, configFile(container).absolutePath)
-        envVars.put(ENV_PROCESS, PROCESS_EXE_IDENTIFIER)
+        envVars.put(ENV_PROCESS_EXE, processExecutable)
 
-        // Add the container's implicit_layer.d to VK_LAYER_PATH so the
-        // Vulkan loader discovers the lsfg-vk layer installed there.
-        // The static VK_LAYER_PATH only covers /usr/share/vulkan/implicit_layer.d,
-        // but we install the layer into the container's ~/.local/share/vulkan/.
-        val containerLayerDir = File(container.rootDir, LAYER_RELATIVE_DIR)
-        val existingLayerPath = envVars["VK_LAYER_PATH"] ?: ""
-        if (existingLayerPath.isNotEmpty()) {
-            envVars.put("VK_LAYER_PATH", "$existingLayerPath:${containerLayerDir.absolutePath}")
-        } else {
-            envVars.put("VK_LAYER_PATH", containerLayerDir.absolutePath)
-        }
+        val containerLayerDir = File(container.rootDir, LAYER_RELATIVE_DIR).absolutePath
+        appendUniqueEnvEntry(envVars, ENV_VK_LAYER_PATH, containerLayerDir)
+        appendUniqueEnvEntry(envVars, ENV_VK_INSTANCE_LAYERS, VULKAN_LAYER_NAME)
 
+        // Do not set LSFG_PROCESS: it overrides process identity globally and is
+        // inherited by every Wine/Zink helper. The Android lsfg-vk fork provides
+        // LSFG_PROCESS_EXE specifically for GameNative/Wine, where /proc/self/exe
+        // names the Wine loader rather than the Windows game. Supplying only the
+        // target executable preserves per-game config selection without turning
+        // helper processes into fake LSFG game processes.
         Timber.tag(TAG).i(
-            "LSFG armed: dll=%s, multiplier=%d, flowScale=%.2f, perf=%s",
-            dllPath, multiplier(container), flowScale(container),
-            if (performanceMode(container)) "on" else "off"
+            "LSFG armed: dll=%s, target=%s, multiplier=%d, flowScale=%.2f, perf=%s, discovery=explicit-env-targeted",
+            dllPath,
+            processExecutable,
+            multiplier(container),
+            flowScale(container),
+            if (performanceMode(container)) "on" else "off",
         )
         return true
+    }
+
+    /**
+     * Append one Linux Vulkan environment entry without replacing caller state
+     * or adding duplicate path/layer entries.
+     */
+    private fun appendUniqueEnvEntry(envVars: EnvVars, key: String, value: String) {
+        val current = envVars[key].orEmpty()
+        val entries = current
+            .split(':', ';')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+        if (entries.none { it == value }) {
+            envVars.put(key, if (current.isBlank()) value else "$current:$value")
+        }
     }
 
     /**
@@ -506,22 +555,31 @@ object LsfgVkManager {
     private fun configFile(container: Container): File =
         File(container.rootDir, CONFIG_RELATIVE_PATH)
 
-    // The layer rereads conf.toml on mtime change and must never observe a
-    // half-written file.
+    internal fun targetExecutable(container: Container): String? =
+        container.executablePath
+            .trim()
+            .trim('"')
+            .replace('\\', '/')
+            .substringAfterLast('/')
+            .trim()
+            .takeIf { it.isNotEmpty() }
+
+    // FileUtils.writeString() already writes through a sibling temporary file
+    // and atomically replaces the destination. Do not stack a second rename
+    // around it: that can report success while leaving conf.toml absent.
     private fun writeConfigAtomic(file: File, text: String): Boolean {
-        val tmp = File(file.parentFile, file.name + ".tmp")
         return try {
-            if (!FileUtils.writeString(tmp, text)) return false
-            FileUtils.chmod(tmp, 0b110100100)
-            tmp.renameTo(file)
+            if (!FileUtils.writeString(file, text) || !file.isFile) return false
+            FileUtils.chmod(file, 0b110100100)
+            file.isFile
         } catch (t: Throwable) {
-            tmp.delete()
             false
         }
     }
 
     private fun buildConfigToml(
         dllPath: String?,
+        processExecutable: String?,
         enabled: Boolean,
         multiplier: Int,
         flowScale: Float,
@@ -538,16 +596,26 @@ object LsfgVkManager {
         appendLine("no_fp16 = false")
         appendLine()
 
-        if (!dllPath.isNullOrBlank()) {
+        if (!dllPath.isNullOrBlank() && !processExecutable.isNullOrBlank()) {
             val effectiveMultiplier = if (enabled) multiplier.coerceIn(2, 4) else 1
-            appendLine("[[game]]")
-            appendLine("exe = ${tomlString(PROCESS_EXE_IDENTIFIER)}")
-            appendLine("multiplier = $effectiveMultiplier")
-            appendLine("flow_scale = ${formatFlowScale(flowScale)}")
-            appendLine("performance_mode = ${if (enabled && performanceMode) "true" else "false"}")
-            appendLine("hdr_mode = false")
-            appendLine("fps_limit = ${fpsLimit.coerceAtLeast(0)}")
-            appendLine("experimental_present_mode = ${tomlString(if (enabled) presentMode else "fifo")}")
+            // Wine/Linux process names exposed through /proc/self/comm are limited
+            // to TASK_COMM_LEN (16 bytes including NUL). Keep the full basename for
+            // /proc/self/exe-style matching and add the 15-character comm alias when
+            // needed so long Windows executable names still activate LSFG.
+            val processNames = listOf(
+                processExecutable,
+                processExecutable.take(15),
+            ).distinct()
+            processNames.forEach { processName ->
+                appendLine("[[game]]")
+                appendLine("exe = ${tomlString(processName)}")
+                appendLine("multiplier = $effectiveMultiplier")
+                appendLine("flow_scale = ${formatFlowScale(flowScale)}")
+                appendLine("performance_mode = ${if (enabled && performanceMode) "true" else "false"}")
+                appendLine("hdr_mode = false")
+                appendLine("fps_limit = ${fpsLimit.coerceAtLeast(0)}")
+                appendLine("experimental_present_mode = ${tomlString(if (enabled) presentMode else "fifo")}")
+            }
         }
     }
 
@@ -629,9 +697,11 @@ object LsfgVkManager {
         }
 
         return try {
-            val frameGenActive = enabled && dllPath != null
+            val processExecutable = targetExecutable(container)
+            val frameGenActive = enabled && dllPath != null && processExecutable != null
             val configText = buildConfigToml(
                 dllPath = dllPath,
+                processExecutable = processExecutable,
                 enabled = frameGenActive,
                 multiplier = if (frameGenActive) multiplier.coerceIn(2, 4) else 1,
                 flowScale = flowScale.coerceIn(0.25f, 1.0f),
@@ -644,7 +714,11 @@ object LsfgVkManager {
             if (ok) {
                 Timber.tag(TAG).i(
                     "Hot-reloaded conf.toml: enabled=%s, multiplier=%d, flowScale=%.2f, perf=%s, fpsLimit=%d",
-                    frameGenActive, multiplier, flowScale, performanceMode, fpsLimit(container)
+                    frameGenActive,
+                    multiplier,
+                    flowScale,
+                    performanceMode,
+                    fpsLimit(container),
                 )
             }
             ok
@@ -653,5 +727,4 @@ object LsfgVkManager {
             false
         }
     }
-
 }

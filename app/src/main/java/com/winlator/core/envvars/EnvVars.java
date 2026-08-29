@@ -4,8 +4,15 @@ import androidx.annotation.NonNull;
 
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class EnvVars implements Iterable<String> {
+    private static final String VK_INSTANCE_LAYERS = "VK_INSTANCE_LAYERS";
+    private static final String VK_LOADER_LAYERS_ENABLE = "VK_LOADER_LAYERS_ENABLE";
+    private static final String VK_LOADER_DEBUG = "VK_LOADER_DEBUG";
+
     private final LinkedHashMap<String, String> data = new LinkedHashMap<>();
 
     public EnvVars() {}
@@ -15,7 +22,17 @@ public class EnvVars implements Iterable<String> {
     }
 
     public void put(String name, Object value) {
-        data.put(name, String.valueOf(value));
+        String stringValue = String.valueOf(value);
+        data.put(name, stringValue);
+
+        // Bridge explicit Vulkan-layer selection across loader generations. Older
+        // Wine/Vulkan loader builds honor VK_INSTANCE_LAYERS while loader 1.3.234+
+        // also provides VK_LOADER_LAYERS_ENABLE. Keep both so applications do not
+        // depend on a particular loader revision or GPU vendor.
+        if (VK_INSTANCE_LAYERS.equals(name)) {
+            mirrorLegacyVulkanLayersToModernFilter(stringValue);
+            enableVulkanLoaderDiagnosticsForExplicitLayers(stringValue);
+        }
     }
 
     public void putAll(String values) {
@@ -26,12 +43,15 @@ public class EnvVars implements Iterable<String> {
             if (index < 0) continue;
             String name = unescape(part.substring(0, index));
             String value = unescape(part.substring(index + 1));
-            data.put(name, value);
+            put(name, value);
         }
     }
 
     public void putAll(EnvVars envVars) {
-        data.putAll(envVars.data);
+        if (envVars == this) return;
+        for (Map.Entry<String, String> entry : envVars.data.entrySet()) {
+            put(entry.getKey(), entry.getValue());
+        }
     }
 
     public String get(String name) {
@@ -54,7 +74,6 @@ public class EnvVars implements Iterable<String> {
         return data.isEmpty();
     }
 
-    // canonical persistence form: escape so putAll round-trips losslessly
     @NonNull
     @Override
     public String toString() {
@@ -66,12 +85,10 @@ public class EnvVars implements Iterable<String> {
         return sb.toString();
     }
 
-    // for shell composition (env KEY=val ... cmd) — same escape rules
     public String toEscapedString() {
         return toString();
     }
 
-    // for execve envp — values must be raw, no escaping
     public String[] toStringArray() {
         String[] stringArray = new String[data.size()];
         int index = 0;
@@ -85,8 +102,32 @@ public class EnvVars implements Iterable<String> {
         return data.keySet().iterator();
     }
 
+    private void mirrorLegacyVulkanLayersToModernFilter(String legacyLayers) {
+        Set<String> enabledLayers = new LinkedHashSet<>();
+        addSeparatedValues(enabledLayers, data.get(VK_LOADER_LAYERS_ENABLE), ",");
+        addSeparatedValues(enabledLayers, legacyLayers, "[:;]");
+        if (!enabledLayers.isEmpty()) {
+            data.put(VK_LOADER_LAYERS_ENABLE, String.join(",", enabledLayers));
+        }
+    }
+
+    private void enableVulkanLoaderDiagnosticsForExplicitLayers(String legacyLayers) {
+        if (legacyLayers == null || legacyLayers.trim().isEmpty() || data.containsKey(VK_LOADER_DEBUG)) return;
+        // Keep this concise enough for production compatibility reports. The loader
+        // reports manifest discovery, layer loading and interface failures without the
+        // very noisy full "all" trace.
+        data.put(VK_LOADER_DEBUG, "error,warn,layer");
+    }
+
+    private static void addSeparatedValues(Set<String> target, String values, String separatorRegex) {
+        if (values == null || values.isEmpty()) return;
+        for (String value : values.split(separatorRegex)) {
+            String trimmed = value.trim();
+            if (!trimmed.isEmpty()) target.add(trimmed);
+        }
+    }
+
     private static String escape(String s) {
-        // escape backslash FIRST so we don't double-escape the slashes we add for spaces
         return s.replace("\\", "\\\\").replace(" ", "\\ ");
     }
 
