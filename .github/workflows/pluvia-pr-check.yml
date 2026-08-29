@@ -23,13 +23,16 @@ jobs:
         uses: actions/checkout@v5
         with:
           submodules: recursive
+
       - name: Setup Java 17
         uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+
       - name: Build diagnostic LSFG arm64 layer
         env:
           ANDROID_NDK_VERSION: 27.3.13750724
@@ -45,9 +48,17 @@ jobs:
           cd app/src/main/cpp/lsfg-vk-android
           bash ./scripts/build/android.sh Release
           cd -
-          cp app/src/main/cpp/lsfg-vk-android/build-android-arm64-v8a/dist/liblsfg-vk-arm64-v8a.so \
-             app/src/main/jniLibs/arm64-v8a/liblsfg-vk-layer.so
-          file app/src/main/jniLibs/arm64-v8a/liblsfg-vk-layer.so
+          layer=app/src/main/jniLibs/arm64-v8a/liblsfg-vk-layer.so
+          cp app/src/main/cpp/lsfg-vk-android/build-android-arm64-v8a/dist/liblsfg-vk-arm64-v8a.so "$layer"
+          file "$layer"
+          needed="$(${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf -d "$layer")"
+          printf '%s\n' "$needed"
+          grep -q 'Shared library: \[libnativewindow.so\]' <<<"$needed"
+          if grep -q 'Shared library: \[libandroid.so\]' <<<"$needed"; then
+            echo 'ERROR: LSFG still directly depends on libandroid.so' >&2
+            exit 1
+          fi
+
       - name: Inject credentials
         if: github.event.pull_request.head.repo.full_name == github.repository
         env:
@@ -56,6 +67,7 @@ jobs:
         run: |
           printf 'POSTHOG_API_KEY=%s\n' "${POSTHOG_API_KEY:-dummy}" > local.properties
           printf 'POSTHOG_HOST=%s\n' "${POSTHOG_HOST:-https://us.i.posthog.com}" >> local.properties
+
       - name: Inject dummy credentials
         if: github.event.pull_request.head.repo.full_name != github.repository
         run: |
@@ -63,13 +75,17 @@ jobs:
           POSTHOG_API_KEY=dummy
           POSTHOG_HOST=https://us.i.posthog.com
           EOF
+
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v6
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
+
       - name: Assemble Legacy debug APK
         run: ./gradlew :app:assembleLegacyDebug --no-daemon
-      - name: Split Legacy debug APK for transfer
+
+      - name: Prepare single Legacy debug APK artifact
         run: |
           set -euo pipefail
           mapfile -t apks < <(find app/build/outputs/apk/legacy/debug -maxdepth 1 -type f -name '*.apk' -print)
@@ -78,41 +94,15 @@ jobs:
             printf '%s\n' "${apks[@]}" >&2
             exit 1
           fi
-          cp "${apks[0]}" /tmp/gamenative-legacy-debug.apk
-          sha256sum /tmp/gamenative-legacy-debug.apk | tee /tmp/gamenative-legacy-debug.apk.sha256
-          split -b 180m -d -a 1 /tmp/gamenative-legacy-debug.apk /tmp/gamenative-legacy-debug.apk.part-
-          ls -lh /tmp/gamenative-legacy-debug.apk.part-*
-      - name: Upload Legacy APK part 0
+          mkdir -p /tmp/gamenative-legacy-debug
+          cp "${apks[0]}" /tmp/gamenative-legacy-debug/gamenative-legacy-debug.apk
+          ls -lh /tmp/gamenative-legacy-debug/gamenative-legacy-debug.apk
+          sha256sum /tmp/gamenative-legacy-debug/gamenative-legacy-debug.apk
+
+      - name: Upload Legacy debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: gamenative-legacy-debug-part-0
-          path: /tmp/gamenative-legacy-debug.apk.part-0
+          name: gamenative-legacy-debug
+          path: /tmp/gamenative-legacy-debug/gamenative-legacy-debug.apk
           if-no-files-found: error
           compression-level: 0
-      - name: Upload Legacy APK part 1
-        uses: actions/upload-artifact@v4
-        with:
-          name: gamenative-legacy-debug-part-1
-          path: /tmp/gamenative-legacy-debug.apk.part-1
-          if-no-files-found: error
-          compression-level: 0
-      - name: Upload Legacy APK part 2
-        uses: actions/upload-artifact@v4
-        with:
-          name: gamenative-legacy-debug-part-2
-          path: /tmp/gamenative-legacy-debug.apk.part-2
-          if-no-files-found: error
-          compression-level: 0
-      - name: Upload Legacy APK part 3
-        uses: actions/upload-artifact@v4
-        with:
-          name: gamenative-legacy-debug-part-3
-          path: /tmp/gamenative-legacy-debug.apk.part-3
-          if-no-files-found: error
-          compression-level: 0
-      - name: Upload Legacy APK checksum
-        uses: actions/upload-artifact@v4
-        with:
-          name: gamenative-legacy-debug-sha256
-          path: /tmp/gamenative-legacy-debug.apk.sha256
-          if-no-files-found: error
