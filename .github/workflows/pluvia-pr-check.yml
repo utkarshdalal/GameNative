@@ -24,11 +24,12 @@ jobs:
           distribution: 'temurin'
       - name: Inject credentials
         if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
         run: |
-          cat <<EOF > local.properties
-          POSTHOG_API_KEY=${{ secrets.POSTHOG_API_KEY }}
-          POSTHOG_HOST=${{ secrets.POSTHOG_HOST }}
-          EOF
+          printf 'POSTHOG_API_KEY=%s\n' "${POSTHOG_API_KEY:-dummy}" > local.properties
+          printf 'POSTHOG_HOST=%s\n' "${POSTHOG_HOST:-https://us.i.posthog.com}" >> local.properties
       - name: Inject dummy credentials
         if: github.event.pull_request.head.repo.full_name != github.repository
         run: |
