@@ -719,7 +719,6 @@ fun XServerScreen(
         }
         val detectedMax = detectMaxRefreshRateHz(context, xServerView as? View)
         detectedMaxRefreshRateHz = detectedMax
-        ShmFramePacer.setDisplayRefreshHz((xServerView as? View)?.display?.refreshRate ?: 0f)
         val clampedTarget = fpsLimiterTarget.coerceAtMost(detectedMax).coerceAtLeast(5)
         if (clampedTarget != fpsLimiterTarget) {
             fpsLimiterTarget = clampedTarget
