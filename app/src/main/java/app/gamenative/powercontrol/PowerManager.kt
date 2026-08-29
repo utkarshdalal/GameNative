@@ -302,10 +302,8 @@ object PowerManager {
      */
     fun resume() {
         if (!isGameStarted) return
-        if (isProfilePowerControlEnabled()) {
-            driver.start()
-            applyCurrentProfile()
-        }
+        driver.start()
+        applyCurrentProfile()
         if (currentProfile.adaptiveFpsCapEnabled) {
             AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
         }
