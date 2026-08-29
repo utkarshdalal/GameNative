@@ -426,6 +426,17 @@ class GOGManifestParser @Inject constructor() {
                 val c = supportArray.getJSONObject(i)
                 val executable = c.optString("executable", "")
                 if (executable.isEmpty()) continue
+                val systemsArr = c.optJSONArray("systems")
+                if (systemsArr != null && systemsArr.length() > 0) {
+                    var forWindows = false
+                    for (j in 0 until systemsArr.length()) {
+                        if (systemsArr.getString(j).equals("Windows", ignoreCase = true)) {
+                            forWindows = true
+                            break
+                        }
+                    }
+                    if (!forWindows) continue
+                }
                 val cmdLangs = mutableListOf<String>()
                 val cmdLangArr = c.optJSONArray("languages")
                 if (cmdLangArr != null) {

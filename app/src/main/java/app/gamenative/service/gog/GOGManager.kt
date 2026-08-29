@@ -906,15 +906,19 @@ class GOGManager @Inject constructor(
      * Galaxy and Heroic perform after installing a Gen 1 game. Idempotent, so run each launch
      * like the scriptinterpreter path; the registry also self-heals if the prefix is recreated.
      */
-    fun getSupportCommandPartsForLaunch(appId: String): List<String> {
-        val gameId = ContainerUtils.extractGameIdFromContainerId(appId) ?: return emptyList()
-        val game = runBlocking { getGameFromDbById(gameId.toString()) } ?: return emptyList()
-        val computedPath = getGameInstallPath(gameId.toString(), game.title)
-        val gameInstallPath = when {
-            game.installPath.isNotEmpty() && File(game.installPath).exists() -> game.installPath
-            else -> computedPath
+    fun getSupportCommandPartsForLaunch(appId: String, knownInstallDir: File? = null): List<String> {
+        val gameInstallDir = if (knownInstallDir != null && knownInstallDir.isDirectory) {
+            knownInstallDir
+        } else {
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId) ?: return emptyList()
+            val game = runBlocking { getGameFromDbById(gameId.toString()) } ?: return emptyList()
+            val computedPath = getGameInstallPath(gameId.toString(), game.title)
+            val gameInstallPath = when {
+                game.installPath.isNotEmpty() && File(game.installPath).exists() -> game.installPath
+                else -> computedPath
+            }
+            File(gameInstallPath)
         }
-        val gameInstallDir = File(gameInstallPath)
         val root = GOGManifestUtils.readLocalManifest(gameInstallDir) ?: return emptyList()
         val commandsArray = root.optJSONArray("supportCommands") ?: return emptyList()
         if (commandsArray.length() == 0) return emptyList()
@@ -935,9 +939,10 @@ class GOGManager @Inject constructor(
             val langsArr = cmd.optJSONArray("languages")
             var languageMatches = langsArr == null || langsArr.length() == 0
             if (langsArr != null) {
+                val aliases = languageAliases(language)
                 for (j in 0 until langsArr.length()) {
                     val l = langsArr.getString(j)
-                    if (l.equals("Neutral", ignoreCase = true) || l.equals(language, ignoreCase = true)) {
+                    if (l.equals("Neutral", ignoreCase = true) || l.lowercase() in aliases) {
                         languageMatches = true
                         break
                     }
@@ -974,6 +979,19 @@ class GOGManager @Inject constructor(
         }
 
         return parts
+    }
+
+    /**
+     * All spellings that refer to the same language as [language] (container name plus GOG
+     * codes, lowercased), so support_commands language names ("English") match whichever
+     * form the download saved ("english", "en-US", "en", ...).
+     */
+    private fun languageAliases(language: String): Set<String> {
+        val lower = language.lowercase()
+        val entry = GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.entries.firstOrNull { (name, codes) ->
+            name == lower || codes.any { it.equals(lower, ignoreCase = true) }
+        } ?: return setOf(lower)
+        return (entry.value.map { it.lowercase() } + entry.key).toSet()
     }
 
     // ==========================================================================
