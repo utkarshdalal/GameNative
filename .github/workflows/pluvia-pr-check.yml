@@ -10,6 +10,10 @@ on:
       - 'media/**'
       - '.github/ISSUE_TEMPLATE/**'
 
+concurrency:
+  group: gamenative-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
