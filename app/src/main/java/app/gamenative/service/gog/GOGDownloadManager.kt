@@ -549,11 +549,23 @@ class GOGDownloadManager @Inject constructor(
                     },
                 )
             }
+            val supportCommandsArray = JSONArray()
+            gameManifest.supportCommands.forEach { c ->
+                supportCommandsArray.put(
+                    JSONObject().apply {
+                        put("executable", c.executable)
+                        put("gameID", c.gameId)
+                        put("argument", c.argument)
+                        put("languages", JSONArray(c.languages))
+                    },
+                )
+            }
             val root = JSONObject().apply {
                 put("version", 2)
                 put("baseProductId", gameManifest.baseProductId)
                 put("scriptInterpreter", gameManifest.scriptInterpreter)
                 put("products", productsArray)
+                put("supportCommands", supportCommandsArray)
                 put("buildId", buildId)
                 put("versionName", versionName)
                 put("language", language)
