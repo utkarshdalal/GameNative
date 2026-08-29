@@ -15,7 +15,6 @@ object DeviceGate {
     private val testedModels = arrayOf(
         MODEL_RETROID_POCKET_6,
         MODEL_RETROID_POCKET_NOVA,
-        MODEL_ODIN_3,
     )
 
     fun isDeviceSupported(model: String = Build.MODEL ?: ""): Boolean {
