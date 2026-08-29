@@ -6,7 +6,7 @@ import com.winlator.container.Container
 import java.io.File
 
 interface PreInstallStep {
-    val marker: Marker
+    val marker: Marker?
 
     fun appliesTo(
         container: Container,

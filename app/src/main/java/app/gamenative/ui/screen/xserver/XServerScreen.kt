@@ -94,6 +94,7 @@ import app.gamenative.PrefManager
 import app.gamenative.SteamBootstrap
 import app.gamenative.data.GameSource
 import app.gamenative.gamefixes.GameFixesRegistry
+import app.gamenative.gamefixes.isEaAppGame
 import app.gamenative.gamefixes.GameInputCompatibility
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
@@ -3869,6 +3870,22 @@ private fun setupXEnvironment(
     var preInstallCommands: List<PreInstallSteps.PreInstallCommand> = emptyList()
     var gameExecutable = ""
 
+    // EA App prefixes need the gamefix re-applied right before the game
+    // session: installer sessions overwrite its registry work on their
+    // wineserver flush, and on a cold install the EA binaries it targets only
+    // exist after the installer has run.
+    val reapplyEaGameFixes = {
+        val gameDir = ContainerUtils.extractGameIdFromContainerId(appId)
+            ?.let { SteamService.getAppDirPath(it) }.orEmpty()
+        if (gameDir.isNotEmpty() && isEaAppGame(gameDir)) {
+            try {
+                GameFixesRegistry.applyFor(context, appId, container)
+            } catch (e: Exception) {
+                Timber.tag("GameFixes").w(e, "EA gamefix reapply failed")
+            }
+        }
+    }
+
     if (container != null) {
         try {
             GameFixesRegistry.applyFor(context, appId, container)
@@ -3965,6 +3982,7 @@ private fun setupXEnvironment(
             if (preInstallCommands.isNotEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
             } else {
+                reapplyEaGameFixes()
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
             }
         }
@@ -4053,7 +4071,7 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setGuestExecutable(remaining.first().executable)
         guestProgramLauncherComponent.setTerminationCallback { _ ->
             val current = remaining.first()
-            PreInstallSteps.markStepDone(container, current.marker)
+            current.marker?.let { PreInstallSteps.markStepDone(container, it) }
             guestProgramLauncherComponent.setPreUnpack(null)
             try {
                 guestProgramLauncherComponent.execShellCommand("wineserver -k")
@@ -4062,6 +4080,7 @@ private fun setupXEnvironment(
             }
             val nextRemaining = remaining.drop(1)
             if (nextRemaining.isEmpty()) {
+                reapplyEaGameFixes()
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
             } else {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
@@ -4589,12 +4608,11 @@ private fun getWineStartCommand(
             // and will monitor the game via nativeWaitAppExit.
             val appDirPath = SteamService.getAppDirPath(gameId)
             val exePath = container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
-            val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
             val executableDir = appDirPath + "/" + exePath.substringBeforeLast("/", "")
             guestProgramLauncherComponent.workingDir = File(executableDir)
             Timber.i("Bionic-Steam working directory is $executableDir")
             val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
-            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe\""
+            SteamUtils.buildBionicSteamLaunchCommand(gameFolderName, exePath, appLaunchInfo, gameId, appDirPath)
         } else if (container.isLaunchRealSteam) {
             // Launch Steam with the applaunch parameter to start the game
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +

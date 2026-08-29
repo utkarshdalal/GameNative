@@ -1,5 +1,7 @@
 package app.gamenative.utils
 
+import app.gamenative.gamefixes.EA_LINK2EA_LAUNCH_SCRIPT_WINDOWS_PATH
+import app.gamenative.gamefixes.isEaAppGame
 import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.Settings
@@ -55,6 +57,49 @@ object SteamUtils {
         val exeCommandLine: String,
         val exeRunDirOverride: String? = null,
     )
+
+    internal fun buildBionicSteamLaunchCommand(
+        gameFolderName: String,
+        executablePath: String,
+        appLaunchInfo: LaunchInfo?,
+        gameId: Int,
+        appDirPath: String,
+    ): String {
+        // EA App titles must launch through EA: Steam hands the game to EA via
+        // its link2ea:// protocol, and EA authenticates the session with an
+        // exchange token minted from the Steam login.
+        // Only EA App titles take the protocol path; every other game launches
+        // exactly as before. Steam's launch config carries link2ea:// for most
+        // EA titles; fall back to building the URL from the appid.
+        val isEaApp = isEaAppGame(appDirPath)
+        val protocolTarget = if (!isEaApp) {
+            null
+        } else {
+            (appLaunchInfo?.executable ?: "link2ea://launchgame/$gameId?platform=steam")
+                .trim()
+                .takeIf { target ->
+                    target.matches(Regex("^[A-Za-z][A-Za-z0-9+.-]*://[^\\s\\\"]+$"))
+                }
+                ?: "link2ea://launchgame/$gameId?platform=steam"
+        }
+        if (protocolTarget != null) {
+            // A gamefix-owned launch script can gate the protocol handoff (for
+            // example waiting for EABackgroundService before Link2EA fires).
+            // The registry protocol handler is not a reliable place for that
+            // gate: EA rewrites its own protocol keys on every service start.
+            // The script path must not contain spaces: the command goes through
+            // winhandler's argument parsing, which breaks on cmd's nested-quote
+            // form, so the script is passed as a bare token.
+            if (isEaApp) {
+                return "\"C:\\\\windows\\\\system32\\\\cmd.exe\" /d /c " +
+                    "$EA_LINK2EA_LAUNCH_SCRIPT_WINDOWS_PATH \"$protocolTarget\""
+            }
+            return "\"C:\\\\windows\\\\system32\\\\start.exe\" \"$protocolTarget\""
+        }
+
+        val normalizedExe = executablePath.replace('/', '\\').trimStart('\\')
+        return "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe\""
+    }
 
     /**
      * True when a stored Steam session exists (offline-launch gate).
@@ -885,6 +930,12 @@ object SteamUtils {
             cfgFile.writeText("BootStrapperInhibitAll=Enable\nBootStrapperForceSelfUpdate=False")
         }
 
+        val steamAccountId = getSteam3AccountId()?.toString()
+        if (steamAccountId == null) {
+            Timber.w("Deferring restoreSteamApi for appId $appId: Steam user is not available")
+            return
+        }
+
         // Update or modify localconfig.vdf
         val steam3AccountId = getSteam3AccountId()?.toString().orEmpty()
         updateOrModifyLocalConfig(imageFs, container, steamAppId.toString(), steam3AccountId)
@@ -1669,4 +1720,3 @@ object SteamUtils {
         }
     }
 }
-

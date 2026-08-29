@@ -19,7 +19,7 @@ import java.io.File
  */
 object PreInstallSteps {
     data class PreInstallCommand(
-        val marker: Marker,
+        val marker: Marker?,
         val executable: String,
     )
 
@@ -31,11 +31,12 @@ object PreInstallSteps {
         GogScriptInterpreterStep,
         GogSupportCommandsStep,
         UbisoftConnectStep,
+        SteamInstallScriptStep,
     )
 
     private var stepsProvider: () -> List<PreInstallStep> = { steps }
     private fun currentSteps(): List<PreInstallStep> = stepsProvider()
-    private fun allMarkers(): List<Marker> = currentSteps().map { it.marker }.distinct()
+    private fun allMarkers(): List<Marker> = currentSteps().mapNotNull { it.marker }.distinct()
 
     /**
      * Returns a list of pre-install commands (marker + guest executable). Each entry is a

@@ -68,8 +68,15 @@ object GameFixesRegistry {
             else -> gameId
         }
         Timber.i("GameFixesRegistry: Applying fixes for game: $source $catalogId if available")
-        val fix = fixesProvider()[source to catalogId] ?: return
+        val keyedFix = fixesProvider()[source to catalogId]
+        // Master behavior for everything without a fix: return before touching
+        // path resolution. EA App titles (Steam only) are detected by their
+        // installer bundle and get the family fix without registration.
+        if (keyedFix == null && source != GameSource.STEAM) return
         val (installPath, installPathWindows) = resolvePaths(context, source, gameId) ?: return
+        val fix = keyedFix
+            ?: EaAppGameFix.takeIf { isEaAppGame(installPath) }
+            ?: return
         fix.apply(context, catalogId, installPath, installPathWindows, container)
     }
 
