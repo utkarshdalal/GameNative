@@ -69,9 +69,50 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
       - name: Assemble Legacy debug APK
         run: ./gradlew :app:assembleLegacyDebug --no-daemon
-      - name: Upload Legacy debug APK
+      - name: Split Legacy debug APK for transfer
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find app/build/outputs/apk/legacy/debug -maxdepth 1 -type f -name '*.apk' -print)
+          if [[ ${#apks[@]} -ne 1 ]]; then
+            printf 'Expected exactly one LegacyDebug APK, found %d\n' "${#apks[@]}" >&2
+            printf '%s\n' "${apks[@]}" >&2
+            exit 1
+          fi
+          cp "${apks[0]}" /tmp/gamenative-legacy-debug.apk
+          sha256sum /tmp/gamenative-legacy-debug.apk | tee /tmp/gamenative-legacy-debug.apk.sha256
+          split -b 180m -d -a 1 /tmp/gamenative-legacy-debug.apk /tmp/gamenative-legacy-debug.apk.part-
+          ls -lh /tmp/gamenative-legacy-debug.apk.part-*
+      - name: Upload Legacy APK part 0
         uses: actions/upload-artifact@v4
         with:
-          name: gamenative-legacy-debug
-          path: app/build/outputs/apk/legacy/debug/*.apk
+          name: gamenative-legacy-debug-part-0
+          path: /tmp/gamenative-legacy-debug.apk.part-0
+          if-no-files-found: error
+          compression-level: 0
+      - name: Upload Legacy APK part 1
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamenative-legacy-debug-part-1
+          path: /tmp/gamenative-legacy-debug.apk.part-1
+          if-no-files-found: error
+          compression-level: 0
+      - name: Upload Legacy APK part 2
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamenative-legacy-debug-part-2
+          path: /tmp/gamenative-legacy-debug.apk.part-2
+          if-no-files-found: error
+          compression-level: 0
+      - name: Upload Legacy APK part 3
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamenative-legacy-debug-part-3
+          path: /tmp/gamenative-legacy-debug.apk.part-3
+          if-no-files-found: error
+          compression-level: 0
+      - name: Upload Legacy APK checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamenative-legacy-debug-sha256
+          path: /tmp/gamenative-legacy-debug.apk.sha256
           if-no-files-found: error
