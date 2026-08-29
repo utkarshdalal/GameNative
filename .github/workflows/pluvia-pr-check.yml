@@ -80,11 +80,11 @@ jobs:
         uses: gradle/actions/wrapper-validation@v6
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
-      - name: Assemble debug variants without tests
-        run: ./gradlew :app:assembleLegacyDebug :app:assembleModernDebug :app:assembleLegacyXrDebug --no-daemon
-      - name: Upload debug APKs
+      - name: Assemble ModernDebug without tests
+        run: ./gradlew :app:assembleModernDebug --no-daemon
+      - name: Upload ModernDebug APK
         uses: actions/upload-artifact@v4
         with:
-          name: gamenative-build-only-debug-apks
-          path: app/build/outputs/apk/**/debug/*.apk
+          name: gamenative-modern-debug
+          path: app/build/outputs/apk/modern/debug/*.apk
           if-no-files-found: error
