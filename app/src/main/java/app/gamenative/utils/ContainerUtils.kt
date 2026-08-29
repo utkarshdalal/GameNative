@@ -304,6 +304,7 @@ object ContainerUtils {
             graphicsDriverConfig = container.graphicsDriverConfig,
             rendererPresentMode = container.rendererPresentMode,
             displayRenderer = container.displayRenderer,
+            xrRefreshRate = container.xrRefreshRate,
             sfCompatMode = container.sfCompatMode,
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
@@ -437,6 +438,7 @@ object ContainerUtils {
                 "audioDriver" -> value?.let { updatedData.copy(audioDriver = it as? String ?: updatedData.audioDriver) } ?: updatedData
                 "wincomponents" -> value?.let { updatedData.copy(wincomponents = it as? String ?: updatedData.wincomponents) } ?: updatedData
                 "videoMemorySize" -> value?.let { updatedData.copy(videoMemorySize = it as? String ?: updatedData.videoMemorySize) } ?: updatedData
+                "launchBionicSteam" -> value?.let { updatedData.copy(launchBionicSteam = it as? Boolean ?: updatedData.launchBionicSteam) } ?: updatedData
                 else -> updatedData
             }
         }
@@ -487,6 +489,7 @@ object ContainerUtils {
         container.graphicsDriverConfig = containerData.graphicsDriverConfig
         container.rendererPresentMode = containerData.rendererPresentMode
         container.displayRenderer = containerData.displayRenderer
+        container.xrRefreshRate = containerData.xrRefreshRate
         container.sfCompatMode = containerData.sfCompatMode
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig

@@ -40,36 +40,36 @@ fun PowerControlQuickMenuTab(
     }
 
     PowerControlQuickMenuContent(
+        modifier = modifier.focusGroup(),
         uiState = uiState,
         isDriverSupported = isDriverSupported,
+        firstItemFocusRequester = focusRequester,
+        onAdaptiveFpsCapToggled = { enabled ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.currentProfile.let { profile ->
+                    PowerManager.setPowerProfile(profile.copy(enableAdaptiveFpsCap = enabled))
+                }
+                PowerManager.refreshUiState()
+            }
+        },
+        onPowerControlToggled = { enabled ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.setPowerControlEnabled(enabled)
+                PowerManager.refreshUiState()
+            }
+        },
         onFanControlToggled = { enabled ->
             coroutineScope.launch(Dispatchers.IO) {
-                PowerManager.currentProfile?.let { profile ->
-                    PowerManager.setCurrentProfile(profile.copy(enableFanControl = enabled))
+                PowerManager.currentProfile.let { profile ->
+                    PowerManager.setPowerProfile(profile.copy(enableFanControl = enabled))
                 }
                 PowerManager.refreshUiState()
             }
         },
         onGamePinningToggled = { enabled ->
             coroutineScope.launch(Dispatchers.IO) {
-                PowerManager.currentProfile?.let { profile ->
-                    PowerManager.setCurrentProfile(profile.copy(enableGamePinning = enabled))
-                }
-                PowerManager.refreshUiState()
-            }
-        },
-        onTuningModeSelected = { perCluster ->
-            coroutineScope.launch(Dispatchers.IO) {
-                PowerManager.currentProfile?.let { profile ->
-                    PowerManager.setCurrentProfile(profile.copy(enablePerClusterTuning = perCluster))
-                }
-                PowerManager.refreshUiState()
-            }
-        },
-        onAdaptiveFpsCapToggled = { enabled ->
-            coroutineScope.launch(Dispatchers.IO) {
-                PowerManager.currentProfile?.let { profile ->
-                    PowerManager.setCurrentProfile(profile.copy(enableAdaptiveFpsCap = enabled))
+                PowerManager.currentProfile.let { profile ->
+                    PowerManager.setPowerProfile(profile.copy(enableGamePinning = enabled))
                 }
                 PowerManager.refreshUiState()
             }
@@ -77,26 +77,34 @@ fun PowerControlQuickMenuTab(
         onAutoTuningToggled = { enabled ->
             coroutineScope.launch(Dispatchers.IO) {
                 // Update current profile
-                PowerManager.currentProfile?.let { profile ->
+                PowerManager.currentProfile.let { profile ->
                     val updatedProfile = profile.copy(
                         enableAutoTuning = enabled,
                         name = PerformancePreset.CUSTOM.displayName
                     )
-                    PowerManager.setCurrentProfile(updatedProfile)
+                    PowerManager.setPowerProfile(updatedProfile)
                 }
 
+                PowerManager.refreshUiState()
+            }
+        },
+        onTuningModeSelected = { perCluster ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.currentProfile.let { profile ->
+                    PowerManager.setPowerProfile(profile.copy(enablePerClusterTuning = perCluster))
+                }
                 PowerManager.refreshUiState()
             }
         },
         onTuningStrategySelected = { strategy ->
             coroutineScope.launch(Dispatchers.IO) {
                 // Update current profile with new tuning strategy
-                PowerManager.currentProfile?.let { profile ->
+                PowerManager.currentProfile.let { profile ->
                     val updatedProfile = profile.copy(
                         tuningStrategy = strategy,
                         name = PerformancePreset.CUSTOM.displayName
                     )
-                    PowerManager.setCurrentProfile(updatedProfile)
+                    PowerManager.setPowerProfile(updatedProfile)
                 }
 
                 PowerManager.refreshUiState()
@@ -110,13 +118,13 @@ fun PowerControlQuickMenuTab(
                 // Preserve current enableFanControl and enableGamePinning settings
                 val currentProfile = PowerManager.currentProfile
                 val updatedProfile = profile.copy(
-                    enableAdaptiveFpsCap = currentProfile?.enableAdaptiveFpsCap ?: profile.enableAdaptiveFpsCap,
+                    enableAdaptiveFpsCap = currentProfile.enableAdaptiveFpsCap,
                     enableAutoTuning = false,
                     enablePerClusterTuning = false,
-                    enableFanControl = currentProfile?.enableFanControl ?: profile.enableFanControl,
-                    enableGamePinning = currentProfile?.enableGamePinning ?: profile.enableGamePinning,
+                    enableFanControl = currentProfile.enableFanControl,
+                    enableGamePinning = currentProfile.enableGamePinning,
                 )
-                PowerManager.setCurrentProfile(updatedProfile)
+                PowerManager.setPowerProfile(updatedProfile)
 
                 val success = PowerManager.update {
                     name(updatedProfile.name)
@@ -146,20 +154,20 @@ fun PowerControlQuickMenuTab(
         },
         onMinCpuValueChanged = { freqIndex ->
             if (uiState is PowerControlUiState.Success) {
-                val freq = (uiState as PowerControlUiState.Success).cpuInfo.availableFrequencies[freqIndex]
+                val freq = (uiState as PowerControlUiState.Success).cpuInfo?.availableFrequencies[freqIndex]
                 coroutineScope.launch(Dispatchers.IO) {
                     PowerManager.setProfileName(PerformancePreset.CUSTOM.displayName)
-                    PowerManager.setMinCpuValue(freq)
+                    PowerManager.setMinCpuValue(freq ?: 0L)
                     PowerManager.refreshUiState()
                 }
             }
         },
         onMaxCpuValueChanged = { freqIndex ->
             if (uiState is PowerControlUiState.Success) {
-                val freq = (uiState as PowerControlUiState.Success).cpuInfo.availableFrequencies[freqIndex]
+                val freq = (uiState as PowerControlUiState.Success).cpuInfo?.availableFrequencies[freqIndex]
                 coroutineScope.launch(Dispatchers.IO) {
                     PowerManager.setProfileName(PerformancePreset.CUSTOM.displayName)
-                    PowerManager.setMaxCpuValue(freq)
+                    PowerManager.setMaxCpuValue(freq ?: 0L)
                     PowerManager.refreshUiState()
                 }
             }
@@ -192,8 +200,6 @@ fun PowerControlQuickMenuTab(
                 PowerManager.refreshUiState()
             }
         },
-        firstItemFocusRequester = focusRequester,
-        modifier = modifier.focusGroup(),
     )
 }
 
@@ -204,16 +210,6 @@ fun PowerControlLoadingPreview() {
         PowerControlQuickMenuContent(
             uiState = PowerControlUiState.Loading,
             isDriverSupported = true,
-            onAutoTuningToggled = {},
-            onTuningStrategySelected = {},
-            onProfileSelected = {},
-            onGovernorSelected = {},
-            onMinCpuValueChanged = {},
-            onMaxCpuValueChanged = {},
-            onMinGpuPowerChanged = {},
-            onMaxGpuPowerChanged = {},
-            onMinRamValueChanged = {},
-            onMaxRamValueChanged = {},
         )
     }
 }
@@ -224,16 +220,6 @@ fun PowerControlSuccessCpuOnlyPreview() {
     MaterialTheme {
         PowerControlQuickMenuContent(
             uiState = PowerControlUiState.Success(
-                cpuInfo = CpuDisplayInfo(
-                    currentGovernor = "performance",
-                    availableGovernors = listOf("performance", "powersave", "ondemand", "schedutil"),
-                    availableFrequencies = listOf(300000, 825000, 1400000, 1800000, 2200000, 2800000),
-                    currentMinValue = 300000,
-                    currentMaxValue = 2800000,
-                    selectedMinFreqIndex = 0,
-                    selectedMaxFreqIndex = 5
-                ),
-                gpuInfo = null,
                 selectedProfile = PowerProfile(
                     name = PerformancePreset.PERFORMANCE.displayName,
                     governor = CpuGovernor.PERFORMANCE,
@@ -260,19 +246,19 @@ fun PowerControlSuccessCpuOnlyPreview() {
                         maxCpuFreq = 1400000
                     )
                 ),
+                cpuInfo = CpuDisplayInfo(
+                    currentGovernor = "performance",
+                    availableGovernors = listOf("performance", "powersave", "ondemand", "schedutil"),
+                    availableFrequencies = listOf(300000, 825000, 1400000, 1800000, 2200000, 2800000),
+                    currentMinValue = 300000,
+                    currentMaxValue = 2800000,
+                    selectedMinFreqIndex = 0,
+                    selectedMaxFreqIndex = 5
+                ),
+                gpuInfo = null,
                 ramInfo = null
             ),
             isDriverSupported = true,
-            onAutoTuningToggled = {},
-            onTuningStrategySelected = {},
-            onProfileSelected = {},
-            onGovernorSelected = {},
-            onMinCpuValueChanged = {},
-            onMaxCpuValueChanged = {},
-            onMinGpuPowerChanged = {},
-            onMaxGpuPowerChanged = {},
-            onMinRamValueChanged = {},
-            onMaxRamValueChanged = {},
         )
     }
 }
@@ -283,22 +269,6 @@ fun PowerControlSuccessWithGpuPreview() {
     MaterialTheme {
         PowerControlQuickMenuContent(
             uiState = PowerControlUiState.Success(
-                cpuInfo = CpuDisplayInfo(
-                    currentGovernor = "schedutil",
-                    availableGovernors = listOf("performance", "powersave", "ondemand", "schedutil"),
-                    availableFrequencies = listOf(300000, 825000, 1400000, 1800000, 2200000, 2800000),
-                    currentMinValue = 300000,
-                    currentMaxValue = 2200000,
-                    selectedMinFreqIndex = 0,
-                    selectedMaxFreqIndex = 4
-                ),
-                gpuInfo = GpuDisplayInfo(
-                    availableFrequencies = listOf(180000000, 305000000, 427000000, 587000000, 710000000),
-                    currentFreqIndex = 3,
-                    minPowerLevel = 0,
-                    maxPowerLevel = 4,
-                    maxAvailablePowerLevel = 4
-                ),
                 selectedProfile = PowerProfile(
                     name = PerformancePreset.BALANCED.displayName,
                     governor = CpuGovernor.SCHEDUTIL,
@@ -319,6 +289,22 @@ fun PowerControlSuccessWithGpuPreview() {
                         maxCpuFreq = 2200000
                     )
                 ),
+                cpuInfo = CpuDisplayInfo(
+                    currentGovernor = "schedutil",
+                    availableGovernors = listOf("performance", "powersave", "ondemand", "schedutil"),
+                    availableFrequencies = listOf(300000, 825000, 1400000, 1800000, 2200000, 2800000),
+                    currentMinValue = 300000,
+                    currentMaxValue = 2200000,
+                    selectedMinFreqIndex = 0,
+                    selectedMaxFreqIndex = 4
+                ),
+                gpuInfo = GpuDisplayInfo(
+                    availableFrequencies = listOf(180000000, 305000000, 427000000, 587000000, 710000000),
+                    currentFreqIndex = 3,
+                    minPowerLevel = 0,
+                    maxPowerLevel = 4,
+                    maxAvailablePowerLevel = 4
+                ),
                 ramInfo = RamDisplayInfo(
                     minBusLevel = 0,
                     maxBusLevel = 4,
@@ -326,16 +312,6 @@ fun PowerControlSuccessWithGpuPreview() {
                 ),
             ),
             isDriverSupported = true,
-            onAutoTuningToggled = {},
-            onTuningStrategySelected = {},
-            onProfileSelected = {},
-            onGovernorSelected = {},
-            onMinCpuValueChanged = {},
-            onMaxCpuValueChanged = {},
-            onMinGpuPowerChanged = {},
-            onMaxGpuPowerChanged = {},
-            onMinRamValueChanged = {},
-            onMaxRamValueChanged = {},
         )
     }
 }

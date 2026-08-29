@@ -37,13 +37,15 @@ NativeHandle *LiveHandle(jlong handlePtr) {
 extern "C" {
 
 JNIEXPORT jlong JNICALL
-Java_app_gamenative_ui_screen_xr_XrNative_nativeCreate(JNIEnv *env, jclass, jobject activity) {
+Java_app_gamenative_ui_screen_xr_XrNative_nativeCreate(JNIEnv *env, jclass, jobject activity,
+                                                       jint quadWidth, jint quadHeight, jfloat refreshRate) {
     JavaVM *vm = nullptr;
     env->GetJavaVM(&vm);
 
     auto *handle = new NativeHandle();
     handle->activityGlobalRef = env->NewGlobalRef(activity);
     handle->session = new xrimmersive::XrImmersiveSession();
+    handle->session->configure(quadWidth, quadHeight, refreshRate);
     handle->session->initialize(vm, handle->activityGlobalRef);
     {
         std::lock_guard<std::mutex> lock(gHandleMutex);

@@ -173,6 +173,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
 
     private var directGLBridge: DirectGLBridge? = null
     private var directVulkanBridge: DirectVulkanBridge? = null
+    private var bridgedRenderer: Any? = null
     @Volatile
     private var directRenderActive = false
     private var directRenderProbeLogged = false
@@ -451,8 +452,29 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
 
     private fun startXrSessionIfNeeded() {
         if (xrSessionHandle != 0L) return
+        // Mirror GameNativeXR's model: the XR surface follows the container's screen size
+        // (min width 1280), and the refresh rate is a per-container choice (default 72).
+        var quadW = 1280
+        var quadH = 720
+        var refreshRate = 72f
+        currentAppId?.let { appId ->
+            runCatching { app.gamenative.utils.ContainerUtils.getContainer(this, appId) }.getOrNull()?.let { container ->
+                val parts = container.screenSize.split("x")
+                val w = parts.getOrNull(0)?.trim()?.toIntOrNull()
+                val h = parts.getOrNull(1)?.trim()?.toIntOrNull()
+                if (w != null && h != null && w > 0 && h > 0) {
+                    quadW = w
+                    quadH = h
+                }
+                refreshRate = container.xrRefreshRate.toFloat()
+            }
+        }
+        if (quadW < 1280) {
+            quadH = 1280 * quadH / quadW
+            quadW = 1280
+        }
         xrSessionHandle = try {
-            XrNative.nativeCreate(this)
+            XrNative.nativeCreate(this, quadW, quadH, refreshRate)
         } catch (t: Throwable) {
             Timber.w(t, "Native OpenXR module unavailable — immersive rendering/controller mapping disabled")
             return
@@ -1037,7 +1059,17 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             return
         }
 
-        if (directGLBridge != null || directVulkanBridge != null) return
+        if (directGLBridge != null || directVulkanBridge != null) {
+            // XServerScreen recreates the XServerView (and its renderer) on configuration
+            // changes; a bridge attached to the old instance forwards nothing. Re-attach
+            // when the live renderer is no longer the one we bridged.
+            if (actualRenderer != null && actualRenderer !== bridgedRenderer) {
+                Timber.i("Immersive: renderer instance changed (%s) — re-attaching direct-render bridge", actualRenderer.javaClass.simpleName)
+                teardownDirectRenderBridge()
+            } else {
+                return
+            }
+        }
 
         if (glRenderer != null) {
             val bridge = DirectGLBridge(
@@ -1049,6 +1081,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                 },
             )
             directGLBridge = bridge
+            bridgedRenderer = glRenderer
             directRenderBlockedByEffects = false
             glRenderer.setXrFrameBridge(bridge)
             Timber.i("Immersive: GLRenderer detected — direct-render bridge attached, buffer import pending first frame")
@@ -1069,6 +1102,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                 },
             )
             directVulkanBridge = bridge
+            bridgedRenderer = vulkanRenderer
             vulkanRenderer.setVulkanXrFrameBridge(bridge)
             Timber.i("Immersive: VulkanRenderer detected — direct-render bridge attached, waiting for its first AHardwareBuffer (PixelCopy stays as fallback until then)")
             return
@@ -1081,6 +1115,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     }
 
     private fun teardownDirectRenderBridge() {
+        bridgedRenderer = null
         directVulkanBridge = null
         (PluviaApp.xServerView?.renderer as? com.winlator.renderer.VulkanRenderer)?.setVulkanXrFrameBridge(null)
         val bridge = directGLBridge

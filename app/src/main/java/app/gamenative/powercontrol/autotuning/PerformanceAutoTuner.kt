@@ -12,18 +12,18 @@ import kotlin.math.abs
  * @param availableCpuFreqs List of available CPU frequencies
  * @param numGpuLevels Number of GPU power levels
  * @param numBusLevels Number of RAM bus levels
- * @param onCpuFrequencyChange Callback when CPU frequency changes
- * @param onGpuLevelChange Callback when GPU level changes
- * @param onBusLevelChange Callback when RAM bus level changes
+ * @param onCpuFrequencyChange Callback when CPU frequency changes (minFreq, maxFreq)
+ * @param onGpuLevelChange Callback when GPU level changes (minLevel, maxLevel)
+ * @param onBusLevelChange Callback when RAM bus level changes (minLevel, maxLevel)
  * @param enableLogging Enable verbose logging of tuning operations
  */
 class PerformanceAutoTuner(
     private val availableCpuFreqs: List<Long>,
     private val numGpuLevels: Int,
     private val numBusLevels: Int,
-    private val onCpuFrequencyChange: (Long) -> Unit,
-    private val onGpuLevelChange: (Int) -> Unit,
-    private val onBusLevelChange: (Int) -> Unit,
+    private val onCpuFrequencyChange: (minFreq: Long, maxFreq: Long) -> Unit,
+    private val onGpuLevelChange: (minLevel: Int, maxLevel: Int) -> Unit,
+    private val onBusLevelChange: (minLevel: Int, maxLevel: Int) -> Unit,
     private val getTuningStrategy: () -> AutoTuningStrategy,
     private val enableLogging: Boolean = false,
     private val skipWarmupCycles: Boolean = false,
@@ -276,8 +276,10 @@ class PerformanceAutoTuner(
             val targetCpuFreq = minCpuFreq + ((maxCpuFreq - minCpuFreq) * currentCpuPerformance / 100.0)
             val closestFreq = findClosestFrequency(availableCpuFreqs, targetCpuFreq.toLong())
 
-            // Apply frequency change
-            onCpuFrequencyChange(closestFreq)
+            // Apply frequency change: max is the target frequency, min is 2 steps below
+            val closestIndex = availableCpuFreqs.indexOf(closestFreq).coerceAtLeast(0)
+            val minFreq = availableCpuFreqs[(closestIndex - 2).coerceAtLeast(0)]
+            onCpuFrequencyChange(minFreq, closestFreq)
 
             if (enableLogging) {
                 Timber.tag(TAG).d(
@@ -335,8 +337,9 @@ class PerformanceAutoTuner(
             val targetLevel = (currentGpuPerformance * (numGpuLevels - 1) / 100.0).toInt()
             val gpuLevel = targetLevel.coerceIn(0, numGpuLevels - 1)
 
-            // Apply GPU level change
-            onGpuLevelChange(gpuLevel)
+            // Apply GPU level change: max is the target level, min is 1 step below
+            val minGpuLevel = (gpuLevel - 1).coerceAtLeast(0)
+            onGpuLevelChange(minGpuLevel, gpuLevel)
 
             if (enableLogging) {
                 Timber.tag(TAG).d(
@@ -385,8 +388,9 @@ class PerformanceAutoTuner(
             val targetLevel = (currentBusPerformance * (numBusLevels - 1) / 100.0).toInt()
             val busLevel = targetLevel.coerceIn(0, numBusLevels - 1)
 
-            // Apply bus level change
-            onBusLevelChange(busLevel)
+            // Apply bus level change: max is the target level, min is 1 step below
+            val minBusLevel = (busLevel - 1).coerceAtLeast(0)
+            onBusLevelChange(minBusLevel, busLevel)
 
             if (enableLogging) {
                 Timber.tag(TAG).d(

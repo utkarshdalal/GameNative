@@ -17,7 +17,7 @@ object XrNative {
     }
 
     /** Starts the OpenXR session on its own native thread. Returns an opaque session handle. */
-    external fun nativeCreate(activity: Context): Long
+    external fun nativeCreate(activity: Context, quadWidth: Int, quadHeight: Int, refreshRate: Float): Long
 
     /** Signals the native frame-loop thread to stop; does not block. */
     external fun nativeRequestStop(handle: Long)

@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.Parcel
+import app.gamenative.PrefManager
 import app.gamenative.powercontrol.PowerBaseline
 import app.gamenative.powercontrol.PowerBaselineEntry
 import app.gamenative.powercontrol.PowerBaselineScripts
@@ -39,6 +40,34 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         // GPU sysfs paths (Adreno)
         private const val GPU_BASE_PATH = "/sys/class/kgsl/kgsl-3d0"
         private const val GPU_DEVFREQ_PATH = "$GPU_BASE_PATH/devfreq"
+
+        // CPU policies discovered at initialization (reduces redundant IPC calls)
+        private var cpuPolicies: List<CpuPolicy> = emptyList()
+
+        // CPU cluster mapping for affinity control
+        private var cpuClusters: Map<CpuCluster, List<Int>> = emptyMap()
+
+        /**
+         * Check if PServer service is available without maintaining connection
+         */
+        fun checkPServerAvailability(): Boolean {
+            return runCatching {
+                val serviceManager = Class.forName("android.os.ServiceManager")
+                val getService = serviceManager.getDeclaredMethod("getService", String::class.java)
+                val rawBinder = getService.invoke(serviceManager, "PServerBinder") as IBinder?
+
+                if (rawBinder != null && rawBinder.isBinderAlive) {
+                    Timber.tag(TAG).i("PServer service is available")
+                    true
+                } else {
+                    Timber.tag(TAG).w("PServer service not found or not alive")
+                    false
+                }
+            }.getOrElse {
+                Timber.tag(TAG).w("Failed to check PServer availability: ${it.message}")
+                false
+            }
+        }
     }
 
     // CPU policy information for optimized control
@@ -77,12 +106,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     private var batchFilePaths = mutableSetOf<String>()
     private var isBatchMode = false
 
-    // CPU policies discovered at initialization (reduces redundant IPC calls)
-    private var cpuPolicies: List<CpuPolicy> = emptyList()
-
-    // CPU cluster mapping for affinity control
-    private var cpuClusters: Map<CpuCluster, List<Int>> = emptyMap()
-
     // Taskset mask format (cached after first detection)
     private var tasksetMaskFormat: TasksetMaskFormat? = null
 
@@ -103,11 +126,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     private var currentMinCpuFreq: Long = 0L
     private var currentMaxCpuFreq: Long = 0L
     private var currentGovernor: String = ""
+    private var allAvailableGovernors: List<String> = emptyList()
+    private var allAvailableCpuFrequencies: List<Long> = emptyList()
+    private var allAvailableGpuFrequencies: List<Long> = emptyList()
 
     init {
-        // Check if PServer is available without maintaining connection
-        isPServerAvailable = checkPServerAvailability()
-
         // Check GPU support once during initialization
         isGpuAvailable = try {
             val maxPwrLevelFile = File("$GPU_BASE_PATH/max_pwrlevel")
@@ -115,6 +138,32 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             maxPwrLevelFile.exists() && availableFreqsFile.exists()
         } catch (e: Exception) {
             false
+        }
+
+        // Check if PServer is available and discover CPU policies
+        isPServerAvailable = checkPServerAvailability() && validateCpuFreqSupport()
+        if (isPServerAvailable) {
+            // Create executor for PServer operations
+            if (pserverExecutor == null) {
+                pserverExecutor = Executors.newSingleThreadExecutor { r ->
+                    Thread(r, "PServerDriver-Worker")
+                }
+                Timber.tag(TAG).d("Created PServer executor")
+            }
+
+            // Start a thread to get all system values
+            Thread {
+                cpuPolicies = discoverCpuPolicies()
+                cpuClusters = identifyCpuClusters()
+                currentGovernor = getCurrentGovernor()
+                currentMinCpuFreq = getCurrentMinCpuValue()
+                currentMaxCpuFreq = getCurrentMaxCpuValue()
+                allAvailableGovernors = getAvailableGovernors()
+                allAvailableCpuFrequencies = getAvailableCpuFrequencies()
+                allAvailableGpuFrequencies = getAvailableGpuFrequencies()
+                getNumGpuPowerLevels()
+                detectTasksetMaskFormat()
+            }.start()
         }
     }
 
@@ -286,20 +335,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     override fun commit(): Boolean = commitInternal()
 
     /**
-     * Reset the performance driver.
-     */
-    override fun reset() {
-        Thread {
-            try {
-                start()
-            } catch (e: Exception) {
-                Timber.tag(TAG).e(e, "Failed to start PServerDriver during reset")
-            }
-            stop()
-        }.start()
-    }
-
-    /**
      * Start the performance driver.
      * Validates CPU frequency scaling support and discovers CPU policies.
      */
@@ -321,16 +356,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             Timber.tag(TAG).d("Created PServer executor")
         }
 
-        // Discover CPU policies if not already done
-        if (cpuPolicies.isEmpty()) {
-            validateCpuFreqSupport()
-            cpuPolicies = discoverCpuPolicies()
-            cpuClusters = identifyCpuClusters()
-        }
-
-        if (isPServerAvailable) {
-            armSessionBaseline()
-        }
+        armSessionBaseline()
     }
 
     /**
@@ -339,11 +365,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Runs asynchronously on a background thread
      */
     override fun stop() {
-        if (!isPServerAvailable) {
-            Timber.tag(TAG).w("PServer not available to restore settings")
-            return
-        }
-
         // Run restoration on background thread to avoid blocking
         val cleanupThread = Thread {
             try {
@@ -362,10 +383,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                     rootRestoreScriptPath = ""
                     modifiedSysfsFiles.clear()
                 }
-
-                // Clear CPU policies and clusters to force re-discovery on next start()
-                cpuPolicies = emptyList()
-                cpuClusters = emptyMap()
 
                 // Shutdown executor only if not interrupted by start()
                 if (!Thread.currentThread().isInterrupted) {
@@ -399,19 +416,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Run a command as root on the driver's executor.
      */
     fun executeRootCommand(command: String): Result<String?> = executeAsRoot(command)
-
-    /**
-     * Read a file using PServer root access with fallback to direct file read.
-     * @param path The absolute path to the file to read
-     * @return The file contents as a trimmed string, or null if the file cannot be read
-     */
-    override fun readFile(path: String): String? {
-        return if (pserverExecutor != null) {
-            readSysfsFile(path)
-        } else {
-            null
-        }
-    }
 
     /**
      * Attach (or clear) the command that hands the fan back to the vendor controller and
@@ -743,13 +747,16 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Get list of available CPU governors
      */
     override fun getAvailableGovernors(): List<String> {
-        return try {
-            val governors = readSysfsFile("$POLICY0_PATH/scaling_available_governors")
-            governors?.split("\\s+".toRegex())?.filter { it.isNotBlank() } ?: emptyList()
-        } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Failed to get available governors")
-            emptyList()
+        if (allAvailableGovernors.isEmpty()) {
+            allAvailableGovernors = try {
+                val governors = readSysfsFile("$POLICY0_PATH/scaling_available_governors")
+                governors?.split("\\s+".toRegex())?.filter { it.isNotBlank() } ?: emptyList()
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Failed to get available governors")
+                emptyList()
+            }
         }
+        return allAvailableGovernors
     }
 
     /**
@@ -757,31 +764,34 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Collects frequencies from all CPU policies to include all clusters
      */
     override fun getAvailableCpuFrequencies(): List<Long> {
-        return try {
-            val allFrequencies = mutableSetOf<Long>()
+        if (allAvailableCpuFrequencies.isEmpty()) {
+            allAvailableCpuFrequencies = try {
+                val allFrequencies = mutableSetOf<Long>()
 
-            // If policies are discovered, read from each policy
-            if (cpuPolicies.isNotEmpty()) {
-                for (policy in cpuPolicies) {
-                    val policyDir = policy.governorPath.substringBeforeLast("/")
-                    val freqs = readSysfsFile("$policyDir/scaling_available_frequencies")
+                // If policies are discovered, read from each policy
+                if (cpuPolicies.isNotEmpty()) {
+                    for (policy in cpuPolicies) {
+                        val policyDir = policy.governorPath.substringBeforeLast("/")
+                        val freqs = readSysfsFile("$policyDir/scaling_available_frequencies")
+                        freqs?.split("\\s+".toRegex())
+                            ?.mapNotNull { it.toLongOrNull() }
+                            ?.let { allFrequencies.addAll(it) }
+                    }
+                } else {
+                    // Fallback: read from policy0 only
+                    val freqs = readSysfsFile("$POLICY0_PATH/scaling_available_frequencies")
                     freqs?.split("\\s+".toRegex())
                         ?.mapNotNull { it.toLongOrNull() }
                         ?.let { allFrequencies.addAll(it) }
                 }
-            } else {
-                // Fallback: read from policy0 only
-                val freqs = readSysfsFile("$POLICY0_PATH/scaling_available_frequencies")
-                freqs?.split("\\s+".toRegex())
-                    ?.mapNotNull { it.toLongOrNull() }
-                    ?.let { allFrequencies.addAll(it) }
-            }
 
-            allFrequencies.sorted()
-        } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Failed to get available frequencies")
-            emptyList()
+                allFrequencies.sorted()
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Failed to get available frequencies")
+                emptyList()
+            }
         }
+        return allAvailableCpuFrequencies
     }
 
     // ========================================
@@ -1106,17 +1116,60 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Get list of available GPU frequencies in KHz (sorted)
      */
     override fun getAvailableGpuFrequencies(): List<Long> {
-        return try {
-            val freqs = readSysfsFile("$GPU_DEVFREQ_PATH/available_frequencies")
-            freqs?.split("\\s+".toRegex())
-                ?.mapNotNull { it.toLongOrNull() }
-                ?.map { it / 1000 }
-                ?.sorted()
-                ?: emptyList()
-        } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Failed to get available GPU frequencies")
-            emptyList()
+        if (allAvailableGpuFrequencies.isEmpty()) {
+            allAvailableGpuFrequencies = try {
+                val freqs = readSysfsFile("$GPU_DEVFREQ_PATH/available_frequencies")
+                freqs?.split("\\s+".toRegex())
+                    ?.mapNotNull { it.toLongOrNull() }
+                    ?.map { it / 1000 }
+                    ?.sorted()
+                    ?: emptyList()
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Failed to get available GPU frequencies")
+                emptyList()
+            }
         }
+        return allAvailableGpuFrequencies
+    }
+
+    /**
+     * GPU display state captured in a single binder round trip.
+     * Power levels are already converted to UI semantics (higher = faster).
+     */
+    data class GpuSysfsState(
+        val currentFreqKHz: Long,
+        val minPowerLevel: Int,
+        val maxPowerLevel: Int,
+        val numPowerLevels: Int
+    )
+
+    /**
+     * Read all GPU display values with one root command instead of one
+     * binder transaction per file. Returns null if any value is unreadable.
+     */
+    fun readGpuState(): GpuSysfsState? {
+        if (!isGpuSupported()) return null
+        val paths = listOf(
+            "$GPU_DEVFREQ_PATH/cur_freq",
+            "$GPU_BASE_PATH/min_pwrlevel",
+            "$GPU_BASE_PATH/max_pwrlevel",
+            "$GPU_BASE_PATH/num_pwrlevels"
+        )
+        val output = executeAsRoot(PowerBaselineScripts.buildReadCommand(paths)).getOrNull()
+        val values = PowerBaselineScripts.parseReadOutput(output, paths)
+            .associate { it.path to it.value }
+
+        val freqHz = values[paths[0]]?.toLongOrNull() ?: return null
+        val sysfsMin = values[paths[1]]?.toIntOrNull() ?: return null
+        val sysfsMax = values[paths[2]]?.toIntOrNull() ?: return null
+        val numLevels = values[paths[3]]?.toIntOrNull() ?: return null
+
+        return GpuSysfsState(
+            currentFreqKHz = freqHz / 1000,
+            minPowerLevel = if (numLevels > 0) numLevels - 1 - sysfsMin else 0,
+            maxPowerLevel = if (numLevels > 0) numLevels - 1 - sysfsMax else 0,
+            numPowerLevels = numLevels
+        )
     }
 
     /**
@@ -1166,16 +1219,23 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
     }
 
+    @Volatile
+    private var cachedNumGpuPowerLevels: Int = -1
+
     /**
-     * Get total number of GPU power levels available
+     * Get total number of GPU power levels available.
+     * Static per device, so it is read once and cached.
      */
     override fun getNumGpuPowerLevels(): Int {
-        return try {
+        if (cachedNumGpuPowerLevels >= 0) return cachedNumGpuPowerLevels
+        val levels = try {
             readSysfsFile("$GPU_BASE_PATH/num_pwrlevels")?.toIntOrNull() ?: 0
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to get number of GPU power levels")
             0
         }
+        if (levels > 0) cachedNumGpuPowerLevels = levels
+        return levels
     }
 
     // ========================================
@@ -1227,6 +1287,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val isTestedDevice = DeviceGate.isDeviceSupported()
 
         val defaultProfile = PowerProfile(
+            enablePowerControl = PrefManager.powerControlDefaultEnabled,
             enableAdaptiveFpsCap = isTestedDevice,
             enableAutoTuning = isTestedDevice,
             enablePerClusterTuning = isTestedDevice,
@@ -1279,11 +1340,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * @param level Power level value in sysfs semantics (0 = fastest for Adreno)
      */
     private fun writeGpuPowerLevel(path: String, level: Int): Boolean {
-        if (!isPServerAvailable) {
-            Timber.tag(TAG).w("PServer not available to write GPU power level")
-            return false
-        }
-
         return try {
             // Concatenate chmod -> echo -> chmod into a single command
             val command = "chmod 644 '$path'; echo $level > $path; chmod 444 '$path'"
@@ -1509,11 +1565,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * @return true if successful
      */
     fun setCpuAffinity(pid: Int, cpuMask: String): Boolean {
-        if (!isPServerAvailable) {
-            Timber.tag(TAG).w("PServer not available for CPU affinity")
-            return false
-        }
-
         return try {
             val command = "taskset -p $cpuMask $pid"
             val result = executeAsRoot(command)
@@ -1560,14 +1611,20 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * @return Formatted mask string (e.g., "f8" or "0xf8")
      */
     fun getTasksetMask(mask: Int): String {
-        // Return cached format if already detected
-        if (tasksetMaskFormat != null) {
-            return when (tasksetMaskFormat) {
-                TasksetMaskFormat.PLAIN_HEX -> mask.toString(16)
-                TasksetMaskFormat.HEX_PREFIX -> "0x${mask.toString(16)}"
-                else -> mask.toString(16)
-            }
+        detectTasksetMaskFormat()
+        return when (tasksetMaskFormat) {
+            TasksetMaskFormat.PLAIN_HEX -> mask.toString(16)
+            TasksetMaskFormat.HEX_PREFIX -> "0x${mask.toString(16)}"
+            else -> mask.toString(16)
         }
+    }
+
+    /**
+     * Detect and cache the taskset mask format. Safe to call during init to
+     * pre-cache the result so the first real pin doesn't spawn a subprocess.
+     */
+    fun detectTasksetMaskFormat() {
+        if (tasksetMaskFormat != null) return
 
         // Detect format by testing with a simple command
         try {
@@ -1589,13 +1646,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "Failed to detect taskset format, defaulting to plain hex")
             tasksetMaskFormat = TasksetMaskFormat.PLAIN_HEX
-        }
-
-        // Return formatted mask
-        return when (tasksetMaskFormat) {
-            TasksetMaskFormat.PLAIN_HEX -> mask.toString(16)
-            TasksetMaskFormat.HEX_PREFIX -> "0x${mask.toString(16)}"
-            else -> mask.toString(16)
         }
     }
 
@@ -1713,37 +1763,22 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
     }
 
-    /**
-     * Check if PServer service is available without maintaining connection
-     */
-    private fun checkPServerAvailability(): Boolean {
-        return runCatching {
-            val serviceManager = Class.forName("android.os.ServiceManager")
-            val getService = serviceManager.getDeclaredMethod("getService", String::class.java)
-            val rawBinder = getService.invoke(serviceManager, "PServerBinder") as IBinder?
-
-            if (rawBinder != null && rawBinder.isBinderAlive) {
-                Timber.tag(TAG).i("PServer service is available")
-                true
-            } else {
-                Timber.tag(TAG).w("PServer service not found or not alive")
-                false
-            }
-        }.getOrElse {
-            Timber.tag(TAG).w("Failed to check PServer availability: ${it.message}")
-            false
-        }
-    }
+    @Volatile
+    private var cachedBinder: IBinder? = null
 
     /**
-     * Get a fresh binder connection to PServer
+     * Get a binder connection to PServer, caching it between calls.
+     * The cache is dropped when a transaction fails with [DeadObjectException].
      */
     private fun getPServerBinder(): IBinder? {
-        return runCatching {
+        cachedBinder?.let { if (it.isBinderAlive) return it }
+        val binder = runCatching {
             val serviceManager = Class.forName("android.os.ServiceManager")
             val getService = serviceManager.getDeclaredMethod("getService", String::class.java)
             getService.invoke(serviceManager, "PServerBinder") as IBinder
         }.getOrNull()
+        cachedBinder = binder
+        return binder
     }
 
     /**
@@ -1775,10 +1810,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      * Internal implementation of executeAsRoot that runs on the executor thread
      */
     private fun executeAsRootInternal(cmd: String): Result<String?> {
-        if (!isPServerAvailable) {
-            return Result.failure(IllegalStateException("PServer not available"))
-        }
-
         // Get fresh binder for each operation
         val binder = getPServerBinder()
             ?: return Result.failure(IllegalStateException("Failed to get PServer binder"))
@@ -1793,6 +1824,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             Timber.tag(TAG).e(e, "PServer binder died during transaction, retrying once")
 
             // Retry once with fresh binder
+            cachedBinder = null
             val retryBinder = getPServerBinder()
             if (retryBinder != null) {
                 try {
@@ -1824,25 +1856,20 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
     private fun readSysfsFile(path: String): String? {
         // Try using PServer cat command first (works with root permissions)
-        if (isPServerAvailable) {
-            return try {
-                val result = executeAsRoot("cat '$path'")
-                if (result.isSuccess) {
-                    result.getOrNull()?.trim()
-                } else {
-                    Timber.tag(TAG).e("Failed to read $path via PServer: ${result.exceptionOrNull()?.message}")
-                    // Fallback: try direct file read
-                    tryDirectFileRead(path)
-                }
-            } catch (e: Exception) {
-                Timber.tag(TAG).e(e, "Failed to read $path via PServer")
+        return try {
+            val result = executeAsRoot("cat '$path'")
+            if (result.isSuccess) {
+                result.getOrNull()?.trim()
+            } else {
+                Timber.tag(TAG).e("Failed to read $path via PServer: ${result.exceptionOrNull()?.message}")
                 // Fallback: try direct file read
                 tryDirectFileRead(path)
             }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to read $path via PServer")
+            // Fallback: try direct file read
+            tryDirectFileRead(path)
         }
-
-        // Fallback: try direct file read if PServer not available
-        return tryDirectFileRead(path)
     }
 
     private fun tryDirectFileRead(path: String): String? {
@@ -1860,11 +1887,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     private fun writeSysfsFile(path: String, value: String): Boolean {
-        if (!isPServerAvailable) {
-            Timber.tag(TAG).w("PServer not available to write to $path")
-            return false
-        }
-
         return try {
             // Concatenate chmod -> echo -> chmod into a single command
             val command = "chmod 644 '$path'; echo '$value' > '$path'; chmod 444 '$path'"

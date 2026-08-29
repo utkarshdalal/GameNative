@@ -752,6 +752,11 @@
     <string name="settings_language_restart_confirm">Genstart</string>
     <string name="settings_language_changing">Ændrer sprog og genstarter...</string>
 
+    <!-- Settings: Performance Group -->
+    <string name="settings_performance_title">Ydeevne</string>
+    <string name="settings_performance_power_control_title">Strømstyring</string>
+    <string name="settings_performance_power_control_subtitle">Aktivér strømstyring i spil som standard (aktiveret på testede enheder: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulering</string>
     <string name="settings_emulation_orientations_title">Tilladte orienteringer</string>
@@ -1569,9 +1574,32 @@
     <string name="nexus_filter_placement">Placering</string>
     <string name="nexus_filter_manual">Manuel</string>
     <string name="nexus_filter_unsupported">Ikke understøttet</string>
+    <string name="nexus_oauth_account_title">Nexus Mods-konto</string>
+    <string name="nexus_oauth_connect">Opret forbindelse til Nexus Mods</string>
+    <string name="nexus_oauth_connecting">Opretter forbindelse til Nexus Mods…</string>
+    <string name="nexus_oauth_cancel_sign_in">Annuller login</string>
+    <string name="nexus_oauth_connected">Forbundet til Nexus Mods</string>
+    <string name="nexus_oauth_connected_as">Forbundet som %1$s</string>
+    <string name="nexus_oauth_disconnected_description">Opret forbindelse til din Nexus Mods-konto for at gennemse og importere mods og samlinger.</string>
+    <string name="nexus_oauth_premium_account">Premium-konto</string>
+    <string name="nexus_oauth_free_account">Gratis konto</string>
+    <string name="nexus_oauth_disconnect">Afbryd forbindelsen</string>
+    <string name="nexus_oauth_disconnecting">Afbryder forbindelsen til Nexus Mods…</string>
+    <string name="nexus_oauth_disconnect_title">Afbryd forbindelsen til Nexus Mods?</string>
+    <string name="nexus_oauth_disconnect_message">GameNative tilbagekalder denne kontos Nexus-tokens på denne enhed. Installerede mods og lokale filer fjernes ikke.</string>
+    <string name="nexus_oauth_disconnected">Forbindelsen til Nexus Mods-kontoen er afbrudt.</string>
+    <string name="nexus_oauth_sign_in_failed">Login på Nexus Mods blev ikke gennemført. Prøv at oprette forbindelse igen.</string>
+    <string name="nexus_oauth_disconnect_failed">Forbindelsen til Nexus Mods-kontoen kunne ikke afbrydes. Prøv igen.</string>
+    <string name="nexus_oauth_browser_failed">Login på Nexus Mods kunne ikke åbnes i en browser.</string>
+    <string name="nexus_oauth_invalid_callback">GameNative afviste et ugyldigt svar fra Nexus Mods-login.</string>
+    <string name="nexus_oauth_sign_in_required">Opret forbindelse til en Nexus Mods-konto, før du bruger Nexus-onlinefunktioner.</string>
+    <string name="nexus_oauth_session_unavailable">Nexus-godkendelse er midlertidigt utilgængelig. Prøv igen.</string>
     <string name="nexus_integration_temporarily_unavailable">Understøttelse af Nexus Mods er midlertidigt deaktiveret, mens GameNative bliver registreret hos Nexus Mods. Allerede installerede mods kan stadig administreres.</string>
     <string name="nexus_invalid_nxm_callback">Denne Nexus-godkendelse er ugyldig, udløbet, allerede brugt eller svarer ikke længere til en aktiv GameNative-anmodning. Start downloadingen fra Administrer Nexus-mods igen.</string>
     <string name="nexus_nxm_callback_received">Godkendelse af Nexus-download modtaget. Gå tilbage til Administrer Nexus-mods, hvis downloadingen ikke genoptages automatisk.</string>
+    <string name="nexus_nxm_no_active_target">Åbn Administrer Nexus-mods for destinationsspillet, og tryk derefter på Mod Manager Download på Nexus Mods igen.</string>
+    <string name="nexus_nxm_ambiguous_target">GameNative kan ikke vælge sikkert mellem flere åbne mod-dialoger. Luk den ekstra dialog, og prøv Mod Manager Download igen.</string>
+    <string name="nexus_nxm_file_not_found">Nexus godkendte en fil, der ikke længere er tilgængelig for denne mod. Anmod om downloadingen igen.</string>
     <string name="nexus_authorize_in_browser">Nexus kræver bekræftelse på webstedet for denne konto. Vælg Download with Manager og derefter Slow Download i browseren; GameNative genoptager automatisk.</string>
     <string name="nexus_open_browser_failed">Nexus Mods kunne ikke åbnes i en browser.</string>
     <string name="nexus_authorization_timed_out">Godkendelsen på Nexus-webstedet fik timeout. Prøv filen igen, og fuldfør Download with Manager i browseren.</string>
@@ -2151,6 +2179,8 @@
     <string name="power_control_auto_tuning_desc">Mere stabil ydelse, længere batteritid, mindre varme: justerer automatisk CPU og GPU til dit spil. Verificeret på Retroid Pocket 6.</string>
     <string name="power_control_adaptive_fps">Automatisk FPS-reduktion</string>
     <string name="power_control_adaptive_fps_desc">Sænker FPS-grænsen, når spillet ikke kan nå den, for en stabil billedtakt. Verificeret på Retroid Pocket 6.</string>
+    <string name="power_control_enable">Strømstyring i spil</string>
+    <string name="power_control_enable_desc">Overtag CPU/GPU-klokstyring fra styresystemet</string>
     <string name="power_control_tuning_mode">Justeringstilstand</string>
     <string name="power_control_tuning_mode_per_cluster">Pr. klynge (verificeret på Retroid Pocket 6)</string>
     <string name="power_control_tuning_mode_whole_cpu">PID-regulator</string>
@@ -2201,4 +2231,5 @@
     <string name="favorite_removed_named">Fjernede %1$s fra favoritter</string>
     <string name="favorite_added">Føjet til favoritter</string>
     <string name="favorite_added_named">Føjede %1$s til favoritter</string>
+    <string name="xr_refresh_rate">VR-opdateringsfrekvens</string>
 </resources>
