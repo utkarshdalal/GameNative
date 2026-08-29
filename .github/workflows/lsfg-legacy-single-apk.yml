@@ -1,0 +1,80 @@
+name: LSFG LegacyDebug single APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  legacy-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checking out GameNative
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build LSFG arm64 layer
+        env:
+          ANDROID_NDK_VERSION: 27.3.13750724
+          ANDROID_ABI: arm64-v8a
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build file
+          sdkmanager --install "ndk;${ANDROID_NDK_VERSION}"
+          export ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}"
+          export ANDROID_NDK="${ANDROID_NDK_ROOT}"
+          cd app/src/main/cpp/lsfg-vk-android
+          bash ./scripts/build/android.sh Release
+          cd -
+          layer=app/src/main/jniLibs/arm64-v8a/liblsfg-vk-layer.so
+          cp app/src/main/cpp/lsfg-vk-android/build-android-arm64-v8a/dist/liblsfg-vk-arm64-v8a.so "$layer"
+          needed="$(${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf -d "$layer")"
+          printf '%s\n' "$needed"
+          grep -q 'Shared library: \[libnativewindow.so\]' <<<"$needed"
+          if grep -q 'Shared library: \[libandroid.so\]' <<<"$needed"; then
+            echo 'ERROR: LSFG still directly depends on libandroid.so' >&2
+            exit 1
+          fi
+
+      - name: Inject credentials
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+        run: |
+          printf 'POSTHOG_API_KEY=%s\n' "${POSTHOG_API_KEY:-dummy}" > local.properties
+          printf 'POSTHOG_HOST=%s\n' "${POSTHOG_HOST:-https://us.i.posthog.com}" >> local.properties
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Assemble LegacyDebug only
+        run: ./gradlew :app:assembleLegacyDebug --no-daemon
+
+      - name: Prepare single LegacyDebug APK
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find app/build/outputs/apk/legacy/debug -maxdepth 1 -type f -name '*.apk' -print)
+          test ${#apks[@]} -eq 1
+          cp "${apks[0]}" gamenative-legacy-debug.apk
+          sha256sum gamenative-legacy-debug.apk
+          ls -lh gamenative-legacy-debug.apk
+
+      - name: Upload single LegacyDebug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamenative-legacy-debug
+          path: gamenative-legacy-debug.apk
+          if-no-files-found: error
+          compression-level: 0
