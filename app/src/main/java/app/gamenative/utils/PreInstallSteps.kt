@@ -29,6 +29,7 @@ object PreInstallSteps {
         OpenALStep,
         XnaFrameworkStep,
         GogScriptInterpreterStep,
+        GogSupportCommandsStep,
         UbisoftConnectStep,
     )
 
