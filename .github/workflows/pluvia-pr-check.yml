@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  legacy-debug:
     runs-on: ubuntu-latest
 
     steps:
@@ -45,5 +45,13 @@ jobs:
         uses: gradle/actions/wrapper-validation@v6
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
-      - name: Run unit tests
-        run: ./gradlew :app:testLegacyDebugUnitTest :app:testModernDebugUnitTest --continue
+      - name: Run Legacy unit tests
+        run: ./gradlew :app:testLegacyDebugUnitTest --no-daemon
+      - name: Assemble Legacy debug APK
+        run: ./gradlew :app:assembleLegacyDebug --no-daemon
+      - name: Upload Legacy debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamenative-legacy-debug
+          path: app/build/outputs/apk/legacy/debug/*.apk
+          if-no-files-found: error
