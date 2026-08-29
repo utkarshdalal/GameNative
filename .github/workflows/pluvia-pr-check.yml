@@ -38,7 +38,7 @@ jobs:
           ANDROID_NDK_VERSION: 27.3.13750724
           ANDROID_ABI: arm64-v8a
           HOST_TAG: linux-x86_64
-          LSFG_NATIVE_COMMIT: e5c4f1e63f95faeac382d7db9954faf38e47ed4e
+          LSFG_NATIVE_COMMIT: 2af810909a7783985f5c2d06d006a5181db49d1f
         run: |
           set -euo pipefail
           sudo apt-get update
