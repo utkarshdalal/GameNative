@@ -93,7 +93,7 @@ object LsfgVkManager {
     // Current runtime package revision. Include the exact verified native
     // compatibility lineage so loader-visible copies are refreshed together.
     private const val RUNTIME_VERSION =
-        "v1.3.3-android-arm64-v8a-gamenative-ahbdiag-da90eb97-r6"
+        "v1.3.3-android-arm64-v8a-gamenative-ahbdiag-e53ce6fc-r7"
 
     // Asset path for manifest (still in assets)
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
