@@ -86,6 +86,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: Run Legacy debug unit tests
+        run: ./gradlew :app:testLegacyDebugUnitTest --no-daemon
+
       - name: Assemble Legacy debug APK
         run: ./gradlew :app:assembleLegacyDebug --no-daemon
 
