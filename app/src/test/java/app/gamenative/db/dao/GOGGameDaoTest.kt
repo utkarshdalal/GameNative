@@ -85,6 +85,28 @@ class GOGGameDaoTest {
     }
 
     @Test
+    fun upsertPreservingInstallStatusUsesIncomingNonBlankCover() = runBlocking {
+        dao.insert(
+            game("1", hidden = true).copy(
+                isInstalled = true,
+                installPath = "/games/g1",
+                verticalCoverUrl = "https://images.gog.com/old-cover.webp",
+            )
+        )
+
+        val newCoverUrl = "https://images.gog.com/new-cover.webp"
+        dao.upsertPreservingInstallStatus(
+            listOf(game("1").copy(verticalCoverUrl = newCoverUrl))
+        )
+
+        val updated = dao.getById("1")!!
+        assertEquals(newCoverUrl, updated.verticalCoverUrl)
+        assertTrue(updated.hidden)
+        assertTrue(updated.isInstalled)
+        assertEquals("/games/g1", updated.installPath)
+    }
+
+    @Test
     fun getAllEmitsUpdatedHiddenRows() = runBlocking {
         dao.insertAll(listOf(game("1"), game("2")))
 

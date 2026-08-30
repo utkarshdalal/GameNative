@@ -96,8 +96,9 @@ interface GOGGameDao {
     }
 
     /**
-     * Upsert GOG games while preserving install status and paths
-     * This is useful when refreshing the library from GOG API
+     * Upserts GOG games while preserving local install state, play history, and hidden state.
+     * When updating an existing row, a nonblank incoming cover replaces the stored cover; blank
+     * incoming cover data preserves the existing value.
      */
     @Transaction
     suspend fun upsertPreservingInstallStatus(games: List<GOGGame>) {
@@ -111,7 +112,7 @@ interface GOGGameDao {
                     installSize = existingGame.installSize,
                     lastPlayed = existingGame.lastPlayed,
                     playTime = existingGame.playTime,
-                    verticalCoverUrl = existingGame.verticalCoverUrl,
+                    verticalCoverUrl = newGame.verticalCoverUrl.ifBlank { existingGame.verticalCoverUrl },
                     hidden = existingGame.hidden,
                 )
                 insert(gameToInsert)
