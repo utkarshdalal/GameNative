@@ -1,6 +1,7 @@
 package app.gamenative.api
 
 import app.gamenative.utils.PlayIntegrity
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -61,8 +62,17 @@ object DebugReportApi {
 
             when {
                 response.isSuccessful -> {
-                    val json = JSONObject(responseBody)
-                    SubmitResult.Success(json.optString("threadUrl"))
+                    val threadUrl = try {
+                        JSONObject(responseBody).optString("threadUrl")
+                    } catch (_: Exception) {
+                        ""
+                    }
+                    if (threadUrl.isBlank()) {
+                        Timber.w("DebugReportApi: Success response without threadUrl: $responseBody")
+                        SubmitResult.Failure("Missing thread URL")
+                    } else {
+                        SubmitResult.Success(threadUrl)
+                    }
                 }
                 response.code == 403 -> {
                     val reason = try {
@@ -78,6 +88,8 @@ object DebugReportApi {
                     SubmitResult.Failure("HTTP ${response.code}")
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: IOException) {
             Timber.e(e, "DebugReportApi: Network error")
             SubmitResult.Failure(e.message ?: "Network error")

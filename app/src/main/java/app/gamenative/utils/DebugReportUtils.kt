@@ -5,6 +5,7 @@ import android.os.Build
 import app.gamenative.BuildConfig
 import com.winlator.core.GPUInformation
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import timber.log.Timber
@@ -38,22 +39,24 @@ object DebugReportUtils {
         null
     }
 
-    fun writeIssueText(reportDir: File, issueText: String) {
-        val header = readHeader(reportDir) ?: JSONObject()
-        header.put("issueText", issueText)
-        headerFile(reportDir).writeText(header.toString())
+    fun writeIssueText(reportDir: File, issueText: String): Boolean {
+        return try {
+            val header = readHeader(reportDir) ?: return false
+            header.put("issueText", issueText)
+            headerFile(reportDir).writeText(header.toString())
+            true
+        } catch (e: Exception) {
+            Timber.e(e, "DebugReportUtils: Failed to write issue text to $reportDir")
+            false
+        }
     }
-
-    fun latestReportDir(context: Context, appId: String): File? =
-        reportsDir(context)
-            .listFiles { file -> file.isDirectory && file.name.startsWith("${appId}_") }
-            ?.maxByOrNull { it.name.substringAfterLast('_').toLongOrNull() ?: 0L }
 
     fun deleteReport(reportDir: File) {
         reportDir.deleteRecursively()
     }
 
     suspend fun createPendingReport(context: Context, appId: String): File? = withContext(Dispatchers.IO) {
+        var reportDir: File? = null
         try {
             val wineLog = wineLogFile(context, appId)
             if (!wineLog.exists() || wineLog.length() == 0L) {
@@ -61,17 +64,46 @@ object DebugReportUtils {
                 return@withContext null
             }
 
-            val reportDir = File(reportsDir(context), "${appId}_${System.currentTimeMillis()}")
-            reportDir.mkdirs()
+            awaitStableSize(wineLog)
 
-            compressLog(wineLog, logFile(reportDir))
-            headerFile(reportDir).writeText(buildHeader(context, appId).toString())
-            wineLog.delete()
+            val dir = File(reportsDir(context), "${appId}_${System.currentTimeMillis()}")
+            reportDir = dir
+            dir.mkdirs()
 
-            reportDir
+            val claimedLog = File(dir, "raw.log")
+            if (!wineLog.renameTo(claimedLog)) {
+                val sizeBefore = wineLog.length()
+                wineLog.copyTo(claimedLog, overwrite = true)
+                if (wineLog.length() == sizeBefore) {
+                    wineLog.delete()
+                }
+            }
+
+            compressLog(claimedLog, logFile(dir))
+            headerFile(dir).writeText(buildHeader(context, appId).toString())
+            claimedLog.delete()
+
+            dir
         } catch (e: Exception) {
             Timber.e(e, "DebugReportUtils: Failed to create pending report for $appId")
+            reportDir?.deleteRecursively()
             null
+        }
+    }
+
+    private suspend fun awaitStableSize(file: File) {
+        val start = System.currentTimeMillis()
+        var lastSize = file.length()
+        var lastChange = start
+        while (System.currentTimeMillis() - start < 3_000) {
+            delay(100)
+            val size = file.length()
+            if (size != lastSize) {
+                lastSize = size
+                lastChange = System.currentTimeMillis()
+            } else if (System.currentTimeMillis() - lastChange >= 500) {
+                return
+            }
         }
     }
 

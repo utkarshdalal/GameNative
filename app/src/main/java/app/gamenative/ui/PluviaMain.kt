@@ -1414,8 +1414,11 @@ fun PluviaMain(
                 scope.launch {
                     val dir = File(current.reportDir)
                     val header = withContext(Dispatchers.IO) {
-                        DebugReportUtils.writeIssueText(dir, current.issueText)
-                        DebugReportUtils.readHeader(dir)
+                        if (DebugReportUtils.writeIssueText(dir, current.issueText)) {
+                            DebugReportUtils.readHeader(dir)
+                        } else {
+                            null
+                        }
                     }
                     val logFile = DebugReportUtils.logFile(dir)
                     if (header == null || !logFile.exists()) {

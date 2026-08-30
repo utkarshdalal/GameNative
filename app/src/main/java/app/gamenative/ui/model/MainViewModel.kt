@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryPlayHistory
@@ -30,6 +31,7 @@ import app.gamenative.utils.CustomGameScanner
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.IntentLaunchManager
@@ -646,6 +648,8 @@ class MainViewModel @Inject constructor(
                     val reportDir = DebugReportUtils.createPendingReport(context, appId)
                     if (reportDir != null) {
                         _uiEvent.send(MainUiEvent.ShowDebugReportDialog(appId, reportDir.absolutePath))
+                    } else {
+                        SnackbarManager.show(context.getString(R.string.debug_report_no_log))
                     }
                     return@launch
                 }

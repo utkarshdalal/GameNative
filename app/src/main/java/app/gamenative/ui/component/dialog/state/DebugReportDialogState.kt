@@ -42,7 +42,7 @@ data class DebugReportDialogState(
                     deviceName = savedMap["deviceName"] as String,
                     logSizeBytes = savedMap["logSizeBytes"] as Long,
                     issueText = savedMap["issueText"] as String,
-                    phase = savedMap["phase"] as String,
+                    phase = (savedMap["phase"] as String).let { if (it == PHASE_SENDING) PHASE_ERROR else it },
                     threadUrl = savedMap["threadUrl"] as String,
                 )
             },
