@@ -1800,10 +1800,10 @@
     <string name="debug_report_discord_linked">Discord підключено</string>
     <string name="debug_report_no_log">Для цього запуску лог налагодження не було записано.</string>
     <string name="debug_offer_title">Отримайте допомогу AI з цим збоєм</string>
-    <string name="debug_offer_message">Сеанс завершився передчасно. Запустіть %1$s ще раз із налагоджувальним логуванням — наш AI прочитає лог і підкаже, що змінити.</string>
+    <string name="debug_offer_message">Сеанс завершився передчасно. Запустіть %1$s ще раз із налагоджувальним логуванням. Наш AI прочитає лог і підкаже, що змінити.</string>
     <string name="debug_offer_confirm">Почати налагоджувальний запуск</string>
     <string name="debug_paywall_title">Отримайте AI-підтримку з налагодження</string>
-    <string name="debug_paywall_pitch">Наш AI читає саме ваш лог і конфігурацію та каже, що змінити — зазвичай менше ніж за хвилину.</string>
+    <string name="debug_paywall_pitch">Наш AI читає саме ваш лог і конфігурацію та каже, що змінити, зазвичай менше ніж за 5 хвилин.</string>
     <string name="debug_paywall_tier5_title">$5/місяць · Supporter</string>
     <string name="debug_paywall_tier5_body">Наш базовий AI читає ваш звіт про налагодження та відповідає в Discord із рішенням, яке варто спробувати, плюс до двох додаткових відповідей.</string>
     <string name="debug_paywall_tier10_title">$10/місяць · Pro</string>
@@ -1811,7 +1811,7 @@
     <string name="debug_paywall_cancel_anytime">Скасувати можна будь-коли.</string>
     <string name="debug_paywall_subscribe">Станьте прихильником на Ko-fi</string>
     <string name="debug_paywall_already">Уже прихильник?</string>
-    <string name="debug_paywall_send_now">Я оформив підписку — надіслати зараз</string>
+    <string name="debug_paywall_send_now">Я оформив підписку, надіслати зараз</string>
     <string name="debug_paywall_not_now">Не зараз</string>
     <string name="diagnostics_share_title">Поділитися журналом діагностики</string>
     <string name="diagnostics_share_none">Журналу діагностики ще немає. Спершу скористайтеся \"Діагностичний запуск\".</string>

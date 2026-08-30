@@ -1825,7 +1825,7 @@
     <string name="debug_offer_message">Cette session s\'est terminée prématurément. Relancez %1$s avec la journalisation de débogage : notre AI lira le journal et vous dira quoi changer.</string>
     <string name="debug_offer_confirm">Démarrer l\'exécution de débogage</string>
     <string name="debug_paywall_title">Obtenez une assistance de débogage AI</string>
-    <string name="debug_paywall_pitch">Notre AI lit votre journal et votre configuration exacts et vous dit quoi changer — généralement en moins d\'une minute.</string>
+    <string name="debug_paywall_pitch">Notre AI lit votre journal et votre configuration exacts et vous dit quoi changer, généralement en moins de 5 minutes.</string>
     <string name="debug_paywall_tier5_title">$5/mois · Supporter</string>
     <string name="debug_paywall_tier5_body">Notre AI de base lit votre rapport de débogage et répond sur Discord avec une solution à essayer, plus jusqu\'à deux réponses de suivi.</string>
     <string name="debug_paywall_tier10_title">$10/mois · Pro</string>
@@ -1833,7 +1833,7 @@
     <string name="debug_paywall_cancel_anytime">Annulable à tout moment.</string>
     <string name="debug_paywall_subscribe">Devenez supporter sur Ko-fi</string>
     <string name="debug_paywall_already">Déjà supporter ?</string>
-    <string name="debug_paywall_send_now">Je me suis abonné — envoyer maintenant</string>
+    <string name="debug_paywall_send_now">Je me suis abonné, envoyer maintenant</string>
     <string name="debug_paywall_not_now">Pas maintenant</string>
     <string name="diagnostics_share_title">Partager le journal de diagnostic</string>
     <string name="diagnostics_share_none">Aucun journal de diagnostic. Utilisez d\'abord \"Exécution de diagnostic\".</string>

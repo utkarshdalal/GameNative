@@ -1798,7 +1798,7 @@
     <string name="debug_offer_message">La sessione è terminata in anticipo. Avvia %1$s ancora una volta con il logging di debug: la nostra AI leggerà il log e ti dirà cosa cambiare.</string>
     <string name="debug_offer_confirm">Avvia esecuzione di debug</string>
     <string name="debug_paywall_title">Ottieni supporto di debug AI</string>
-    <string name="debug_paywall_pitch">La nostra AI legge il tuo log e la tua configurazione esatti e ti dice cosa cambiare — di solito in meno di un minuto.</string>
+    <string name="debug_paywall_pitch">La nostra AI legge il tuo log e la tua configurazione esatti e ti dice cosa cambiare, di solito in meno di 5 minuti.</string>
     <string name="debug_paywall_tier5_title">$5/mese · Supporter</string>
     <string name="debug_paywall_tier5_body">La nostra AI di base legge il tuo report di debug e risponde su Discord con una soluzione da provare, più fino a due risposte di follow-up.</string>
     <string name="debug_paywall_tier10_title">$10/mese · Pro</string>
@@ -1806,7 +1806,7 @@
     <string name="debug_paywall_cancel_anytime">Annulla quando vuoi.</string>
     <string name="debug_paywall_subscribe">Diventa supporter su Ko-fi</string>
     <string name="debug_paywall_already">Sei già supporter?</string>
-    <string name="debug_paywall_send_now">Mi sono abbonato — invia ora</string>
+    <string name="debug_paywall_send_now">Mi sono abbonato, invia ora</string>
     <string name="debug_paywall_not_now">Non ora</string>
     <string name="diagnostics_share_title">Condividi il log di diagnostica</string>
     <string name="diagnostics_share_none">Nessun log di diagnostica. Usa prima \"Esecuzione diagnostica\".</string>

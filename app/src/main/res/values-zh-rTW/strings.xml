@@ -1815,7 +1815,7 @@
     <string name="debug_offer_message">該工作階段提前結束了。開啟除錯記錄再執行一次 %1$s，我們的 AI 會閱讀記錄並告訴你需要更改什麼。</string>
     <string name="debug_offer_confirm">開始除錯執行</string>
     <string name="debug_paywall_title">取得 AI 除錯支援</string>
-    <string name="debug_paywall_pitch">我們的 AI 會閱讀你的完整記錄與設定，並告訴你需要更改什麼 — 通常不到一分鐘。</string>
+    <string name="debug_paywall_pitch">我們的 AI 會閱讀你的完整記錄與設定，並告訴你需要更改什麼，通常不到 5 分鐘。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Supporter</string>
     <string name="debug_paywall_tier5_body">我們的基礎 AI 會閱讀你的除錯報告，並在 Discord 中回覆一個可嘗試的解決方案，另加最多兩次後續解答。</string>
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
@@ -1823,7 +1823,7 @@
     <string name="debug_paywall_cancel_anytime">隨時可取消。</string>
     <string name="debug_paywall_subscribe">在 Ko-fi 上成為支持者</string>
     <string name="debug_paywall_already">已經是支持者？</string>
-    <string name="debug_paywall_send_now">我已訂閱 — 立即傳送</string>
+    <string name="debug_paywall_send_now">我已訂閱，立即傳送</string>
     <string name="debug_paywall_not_now">暫時不要</string>
     <string name="diagnostics_share_title">分享診斷日誌</string>
     <string name="diagnostics_share_none">尚無診斷日誌。請先使用「診斷執行」。</string>

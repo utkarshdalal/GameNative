@@ -1763,7 +1763,7 @@
     <string name="debug_offer_message">セッションが途中で終了しました。デバッグログを有効にして %1$s をもう一度実行すると、AI がログを読んで変更すべき点をお伝えします。</string>
     <string name="debug_offer_confirm">デバッグ実行を開始</string>
     <string name="debug_paywall_title">AI デバッグサポートを利用</string>
-    <string name="debug_paywall_pitch">AI があなたのログと設定をそのまま読み取り、変更すべき点を教えます — 通常 1 分以内です。</string>
+    <string name="debug_paywall_pitch">AI があなたのログと設定をそのまま読み取り、変更すべき点を教えます。通常 5 分以内です。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Supporter</string>
     <string name="debug_paywall_tier5_body">ベーシック AI がデバッグレポートを読み、試すべき解決策を Discord で返信します。さらに最大 2 回のフォローアップに回答します。</string>
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
@@ -1771,7 +1771,7 @@
     <string name="debug_paywall_cancel_anytime">いつでも解約できます。</string>
     <string name="debug_paywall_subscribe">Ko-fi でサポーターになる</string>
     <string name="debug_paywall_already">すでにサポーターですか？</string>
-    <string name="debug_paywall_send_now">購読しました — 今すぐ送信</string>
+    <string name="debug_paywall_send_now">購読しました、今すぐ送信</string>
     <string name="debug_paywall_not_now">今はしない</string>
     <string name="diagnostics_share_title">診断ログを共有</string>
     <string name="diagnostics_share_none">診断ログがまだありません。先に「診断実行」を使用してください。</string>

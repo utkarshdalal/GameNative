@@ -1677,7 +1677,7 @@
     <string name="debug_offer_message">Essa sessão terminou antes do esperado. Execute %1$s mais uma vez com o registro de depuração ativado e nossa AI lerá o log e dirá o que mudar.</string>
     <string name="debug_offer_confirm">Iniciar execução de depuração</string>
     <string name="debug_paywall_title">Obtenha suporte de depuração com AI</string>
-    <string name="debug_paywall_pitch">Nossa AI lê exatamente o seu log e a sua configuração e diz o que mudar — geralmente em menos de um minuto.</string>
+    <string name="debug_paywall_pitch">Nossa AI lê exatamente o seu log e a sua configuração e diz o que mudar, geralmente em menos de 5 minutos.</string>
     <string name="debug_paywall_tier5_title">$5/mês · Supporter</string>
     <string name="debug_paywall_tier5_body">Nossa AI básica lê seu relatório de depuração e responde no Discord com uma solução para testar, além de até duas respostas de acompanhamento.</string>
     <string name="debug_paywall_tier10_title">$10/mês · Pro</string>
@@ -1685,7 +1685,7 @@
     <string name="debug_paywall_cancel_anytime">Cancele quando quiser.</string>
     <string name="debug_paywall_subscribe">Torne-se um apoiador no Ko-fi</string>
     <string name="debug_paywall_already">Já é apoiador?</string>
-    <string name="debug_paywall_send_now">Já assinei — enviar agora</string>
+    <string name="debug_paywall_send_now">Já assinei, enviar agora</string>
     <string name="debug_paywall_not_now">Agora não</string>
     <string name="diagnostics_share_title">Compartilhar registro de diagnóstico</string>
     <string name="diagnostics_share_none">Ainda não há registro de diagnóstico. Use \"Execução de diagnóstico\" primeiro.</string>

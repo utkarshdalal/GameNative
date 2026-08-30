@@ -1677,7 +1677,7 @@
     <string name="debug_offer_message">Den session sluttede for tidligt. Kør %1$s en gang til med fejlfindingslogning, så læser vores AI loggen og fortæller dig, hvad du skal ændre.</string>
     <string name="debug_offer_confirm">Start fejlfindingskørsel</string>
     <string name="debug_paywall_title">Få AI-fejlfindingshjælp</string>
-    <string name="debug_paywall_pitch">Vores AI læser din nøjagtige log og konfiguration og fortæller dig, hvad du skal ændre — som regel på under et minut.</string>
+    <string name="debug_paywall_pitch">Vores AI læser din nøjagtige log og konfiguration og fortæller dig, hvad du skal ændre, som regel på under 5 minutter.</string>
     <string name="debug_paywall_tier5_title">$5/måned · Supporter</string>
     <string name="debug_paywall_tier5_body">Vores basis-AI læser din fejlrapport og svarer i Discord med en løsning, du kan prøve, plus op til to opfølgende svar.</string>
     <string name="debug_paywall_tier10_title">$10/måned · Pro</string>
@@ -1685,7 +1685,7 @@
     <string name="debug_paywall_cancel_anytime">Opsig når som helst.</string>
     <string name="debug_paywall_subscribe">Bliv supporter på Ko-fi</string>
     <string name="debug_paywall_already">Allerede supporter?</string>
-    <string name="debug_paywall_send_now">Jeg har tegnet abonnement — send nu</string>
+    <string name="debug_paywall_send_now">Jeg har tegnet abonnement, send nu</string>
     <string name="debug_paywall_not_now">Ikke nu</string>
     <string name="diagnostics_share_title">Del diagnostiklog</string>
     <string name="diagnostics_share_none">Ingen diagnostiklog endnu. Brug \"Diagnostisk kørsel\" først.</string>

@@ -1809,7 +1809,7 @@
     <string name="debug_offer_message">Acea sesiune s-a încheiat prematur. Rulează %1$s încă o dată cu jurnalizarea de depanare, iar AI-ul nostru va citi jurnalul și îți va spune ce să schimbi.</string>
     <string name="debug_offer_confirm">Pornește rularea de depanare</string>
     <string name="debug_paywall_title">Obține suport de depanare AI</string>
-    <string name="debug_paywall_pitch">AI-ul nostru îți citește exact jurnalul și configurația și îți spune ce să schimbi — de obicei în mai puțin de un minut.</string>
+    <string name="debug_paywall_pitch">AI-ul nostru îți citește exact jurnalul și configurația și îți spune ce să schimbi, de obicei în mai puțin de 5 minute.</string>
     <string name="debug_paywall_tier5_title">$5/lună · Supporter</string>
     <string name="debug_paywall_tier5_body">AI-ul nostru de bază îți citește raportul de depanare și răspunde pe Discord cu o soluție de încercat, plus până la două răspunsuri suplimentare.</string>
     <string name="debug_paywall_tier10_title">$10/lună · Pro</string>
@@ -1817,7 +1817,7 @@
     <string name="debug_paywall_cancel_anytime">Anulează oricând.</string>
     <string name="debug_paywall_subscribe">Devino susținător pe Ko-fi</string>
     <string name="debug_paywall_already">Ești deja susținător?</string>
-    <string name="debug_paywall_send_now">M-am abonat — trimite acum</string>
+    <string name="debug_paywall_send_now">M-am abonat, trimite acum</string>
     <string name="debug_paywall_not_now">Nu acum</string>
     <string name="diagnostics_share_title">Partajează jurnalul de diagnosticare</string>
     <string name="diagnostics_share_none">Încă nu există jurnal de diagnosticare. Folosește mai întâi \"Rulare de diagnosticare\".</string>

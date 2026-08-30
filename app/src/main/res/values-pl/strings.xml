@@ -1807,7 +1807,7 @@
     <string name="debug_offer_message">Ta sesja zakończyła się przedwcześnie. Uruchom %1$s jeszcze raz z logowaniem debugowania, a nasza AI przeczyta log i powie Ci, co zmienić.</string>
     <string name="debug_offer_confirm">Rozpocznij uruchomienie debugowania</string>
     <string name="debug_paywall_title">Uzyskaj pomoc AI w debugowaniu</string>
-    <string name="debug_paywall_pitch">Nasza AI czyta dokładnie Twój log i konfigurację i mówi, co zmienić — zwykle w niecałą minutę.</string>
+    <string name="debug_paywall_pitch">Nasza AI czyta dokładnie Twój log i konfigurację i mówi, co zmienić, zwykle w niecałe 5 minut.</string>
     <string name="debug_paywall_tier5_title">$5/miesiąc · Supporter</string>
     <string name="debug_paywall_tier5_body">Nasza podstawowa AI czyta Twój raport debugowania i odpowiada na Discordzie z rozwiązaniem do wypróbowania oraz maksymalnie dwiema dodatkowymi odpowiedziami.</string>
     <string name="debug_paywall_tier10_title">$10/miesiąc · Pro</string>
@@ -1815,7 +1815,7 @@
     <string name="debug_paywall_cancel_anytime">Anuluj w dowolnym momencie.</string>
     <string name="debug_paywall_subscribe">Zostań supporterem na Ko-fi</string>
     <string name="debug_paywall_already">Jesteś już supporterem?</string>
-    <string name="debug_paywall_send_now">Mam już subskrypcję — wyślij teraz</string>
+    <string name="debug_paywall_send_now">Mam już subskrypcję, wyślij teraz</string>
     <string name="debug_paywall_not_now">Nie teraz</string>
     <string name="diagnostics_share_title">Udostępnij dziennik diagnostyki</string>
     <string name="diagnostics_share_none">Brak dziennika diagnostyki. Najpierw użyj \"Uruchomienie diagnostyczne\".</string>
