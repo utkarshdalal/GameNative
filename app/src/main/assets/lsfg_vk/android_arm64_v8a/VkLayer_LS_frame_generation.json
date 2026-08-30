@@ -8,8 +8,8 @@
     "implementation_version": "1",
     "description": "Lossless Scaling frame generation layer",
     "functions": {
-      "vkGetInstanceProcAddr": "lsfg_vkGetInstanceProcAddrDiagnostic",
-      "vkGetDeviceProcAddr": "lsfg_vkGetDeviceProcAddrDiagnostic"
+      "vkGetInstanceProcAddr": "layer_vkGetInstanceProcAddr",
+      "vkGetDeviceProcAddr": "layer_vkGetDeviceProcAddr"
     },
     "disable_environment": {
       "DISABLE_LSFG": "1"

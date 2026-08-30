@@ -191,7 +191,7 @@ class LsfgVkManagerTest {
     }
 
     @Test
-    fun bundledManifest_isVulkan13PlusDiagnosticImplicitLayerWithKillSwitch() {
+    fun bundledManifest_isVulkan13PlusProductionImplicitLayerWithKillSwitch() {
         val context = RuntimeEnvironment.getApplication()
         val json = context.assets
             .open("lsfg_vk/android_arm64_v8a/VkLayer_LS_frame_generation.json")
@@ -209,11 +209,11 @@ class LsfgVkManagerTest {
 
         val functions = layer.getJSONObject("functions")
         assertEquals(
-            "lsfg_vkGetInstanceProcAddrDiagnostic",
+            "layer_vkGetInstanceProcAddr",
             functions.getString("vkGetInstanceProcAddr"),
         )
         assertEquals(
-            "lsfg_vkGetDeviceProcAddrDiagnostic",
+            "layer_vkGetDeviceProcAddr",
             functions.getString("vkGetDeviceProcAddr"),
         )
         assertFalse(layer.has("enable_environment"))
