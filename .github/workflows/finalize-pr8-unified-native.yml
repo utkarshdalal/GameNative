@@ -1,0 +1,66 @@
+name: Finalize PR8 unified LSFG runtime marker
+
+on:
+  push:
+    branches:
+      - lsfg/vulkan-capability-detection
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: lsfg/vulkan-capability-detection
+          fetch-depth: 0
+          submodules: false
+
+      - name: Align runtime marker with verified native gitlink
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_native=da90eb975fe33203f30f64c906571458eb898537
+          actual_native="$(git rev-parse HEAD:app/src/main/cpp/lsfg-vk-android)"
+          test "$actual_native" = "$expected_native"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          manager = Path('app/src/main/java/app/gamenative/utils/LsfgVkManager.kt')
+          text = manager.read_text(encoding='utf-8')
+          old = 'v1.3.3-android-arm64-v8a-gamenative-ahb-hotreload-ee0e265c-r5'
+          new = 'v1.3.3-android-arm64-v8a-gamenative-ahbdiag-da90eb97-r6'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one old runtime marker, found {text.count(old)}')
+          manager.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          test = Path('app/src/test/java/app/gamenative/utils/LsfgVkManagerTest.kt')
+          text = test.read_text(encoding='utf-8')
+          old = 'assertTrue(loaderVersion.readText().contains("ee0e265c"))'
+          new = 'assertTrue(loaderVersion.readText().contains("da90eb97"))'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one old loader version assertion, found {text.count(old)}')
+          test.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+          grep -q 'gamenative-ahbdiag-da90eb97-r6' app/src/main/java/app/gamenative/utils/LsfgVkManager.kt
+          grep -q 'contains("da90eb97")' app/src/test/java/app/gamenative/utils/LsfgVkManagerTest.kt
+          git diff --check
+
+      - name: Commit marker update and retire helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/finalize-pr8-unified-native.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/app/gamenative/utils/LsfgVkManager.kt \
+                  app/src/test/java/app/gamenative/utils/LsfgVkManagerTest.kt \
+                  .github/workflows/finalize-pr8-unified-native.yml
+          git commit -m 'lsfg: identify unified native runtime revision'
+          git push origin HEAD:lsfg/vulkan-capability-detection
