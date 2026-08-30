@@ -18,6 +18,8 @@ runs:
         set -euo pipefail
         native_dir=app/src/main/cpp/lsfg-vk-android
         layer=app/src/main/jniLibs/arm64-v8a/liblsfg-vk-layer.so
+        native_manifest="$native_dir/VkLayer_LS_frame_generation.json"
+        runtime_manifest=app/src/main/assets/lsfg_vk/android_arm64_v8a/VkLayer_LS_frame_generation.json
         expected_commit="$(git rev-parse HEAD:${native_dir})"
 
         git submodule sync -- "$native_dir"
@@ -53,6 +55,34 @@ runs:
         test -s "$layer"
         file "$layer"
         sha256sum "$layer"
+
+        test -s "$native_manifest"
+        python3 - "$native_manifest" "$runtime_manifest" <<'PY'
+        import json
+        import pathlib
+        import sys
+
+        source = pathlib.Path(sys.argv[1])
+        destination = pathlib.Path(sys.argv[2])
+        with source.open("r", encoding="utf-8") as handle:
+            manifest = json.load(handle)
+
+        layer = manifest.get("layer")
+        if not isinstance(layer, dict):
+            raise SystemExit("ERROR: native LSFG manifest has no layer object")
+        for required in ("name", "api_version", "functions"):
+            if required not in layer:
+                raise SystemExit(f"ERROR: native LSFG manifest is missing layer.{required}")
+
+        manifest["layer"]["library_path"] = "../../../lib/liblsfg-vk-layer.so"
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with destination.open("w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2)
+            handle.write("\n")
+
+        print(f"Synchronized LSFG runtime manifest api_version={manifest['layer']['api_version']}")
+        PY
+        test -s "$runtime_manifest"
 
         needed="$($readelf_bin -d "$layer")"
         printf '%s\n' "$needed"
