@@ -1772,7 +1772,8 @@
     <string name="debug_paywall_tier10_title">$10/month · Pro</string>
     <string name="debug_paywall_tier10_body">Our smartest AI model, with unlimited back-and-forth in your support thread.</string>
     <string name="debug_paywall_cancel_anytime">Cancel anytime.</string>
-    <string name="debug_paywall_subscribe">Become a supporter on Ko-fi</string>
+    <string name="debug_paywall_subscribe">Subscribe on Discord</string>
+    <string name="debug_paywall_kofi_alt">Prefer Ko-fi? Subscribe there instead</string>
     <string name="debug_paywall_already">Already a supporter?</string>
     <string name="debug_paywall_send_now">I’ve subscribed, send now</string>
     <string name="debug_paywall_not_now">Not now</string>

@@ -1472,6 +1472,9 @@ fun PluviaMain(
                         logSizeBytes = debugReportState.logSizeBytes,
                         reason = reason,
                         onSubscribe = {
+                            uriHandler.openUri(Constants.Misc.DISCORD_SHOP_LINK)
+                        },
+                        onSubscribeKofi = {
                             uriHandler.openUri(Constants.Misc.KO_FI_LINK)
                         },
                         onConnectDiscord = openDiscordConnect,

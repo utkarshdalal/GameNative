@@ -61,6 +61,7 @@ fun DebugPaywallScreen(
     logSizeBytes: Long,
     reason: String,
     onSubscribe: () -> Unit,
+    onSubscribeKofi: () -> Unit,
     onConnectDiscord: () -> Unit,
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
@@ -179,6 +180,14 @@ fun DebugPaywallScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(stringResource(R.string.debug_paywall_subscribe))
+                }
+
+                TextButton(onClick = onSubscribeKofi) {
+                    Text(
+                        text = stringResource(R.string.debug_paywall_kofi_alt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = PluviaTheme.colors.textMuted,
+                    )
                 }
 
                 Text(
