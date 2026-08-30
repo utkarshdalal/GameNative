@@ -29,6 +29,10 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         cache: gradle
+    - name: Setup Android SDK for LSFG native build
+      uses: android-actions/setup-android@v3
+    - name: Prepare GameNative-pinned LSFG native runtime
+      uses: ./.github/actions/prepare-lsfg-native
     - name: Validate Gradle wrapper
       uses: gradle/actions/wrapper-validation@v4
     - name: Setup Gradle
