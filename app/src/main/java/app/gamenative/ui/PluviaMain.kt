@@ -127,6 +127,7 @@ import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import java.io.File
+import java.security.SecureRandom
 import java.util.Locale
 import java.util.Date
 import java.util.EnumSet
@@ -323,11 +324,13 @@ fun PluviaMain(
     }
     var debugPaywallReason by rememberSaveable { mutableStateOf<String?>(null) }
     var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
-    var discordTokenPresent by remember { mutableStateOf(PrefManager.discordRelayToken.isNotEmpty()) }
+    val discordTokenPresent by PrefManager.discordRelayTokenPresent
 
     LaunchedEffect(Unit) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            discordTokenPresent = PrefManager.discordRelayToken.isNotEmpty()
+        if (!PrefManager.discordRelayTokenPresent.value) {
+            PrefManager.discordRelayTokenPresent.value = withContext(Dispatchers.IO) {
+                PrefManager.discordRelayToken.isNotEmpty()
+            }
         }
     }
 
@@ -1380,10 +1383,13 @@ fun PluviaMain(
             )
 
             val openDiscordConnect: () -> Unit = {
+                val nonce = ByteArray(16).also { SecureRandom().nextBytes(it) }
+                    .joinToString("") { "%02x".format(it) }
+                PrefManager.discordOauthNonce = nonce
                 CustomTabsIntent.Builder()
                     .setShowTitle(true)
                     .build()
-                    .launchUrl(context, Uri.parse(DebugReportApi.OAUTH_START_URL))
+                    .launchUrl(context, Uri.parse("${DebugReportApi.OAUTH_START_URL}?app_state=$nonce"))
             }
 
             val shareDebugLog: () -> Unit = {
@@ -1471,6 +1477,7 @@ fun PluviaMain(
                         deviceName = debugReportState.deviceName,
                         logSizeBytes = debugReportState.logSizeBytes,
                         reason = reason,
+                        hasDiscordToken = discordTokenPresent,
                         onSubscribe = {
                             uriHandler.openUri(Constants.Misc.DISCORD_SHOP_LINK)
                         },

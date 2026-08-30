@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -61,6 +62,7 @@ fun DebugPaywallScreen(
     deviceName: String,
     logSizeBytes: Long,
     reason: String,
+    hasDiscordToken: Boolean,
     onSubscribe: () -> Unit,
     onSubscribeKofi: () -> Unit,
     onConnectDiscord: () -> Unit,
@@ -143,6 +145,7 @@ fun DebugPaywallScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
+                    .navigationBarsPadding()
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -195,12 +198,13 @@ fun DebugPaywallScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = PluviaTheme.colors.textMuted,
                 )
+                val needsDiscordLink = reason == "not_linked" && !hasDiscordToken
                 TextButton(
-                    onClick = if (reason == "not_linked") onConnectDiscord else onRetry,
+                    onClick = if (needsDiscordLink) onConnectDiscord else onRetry,
                 ) {
                     Text(
                         stringResource(
-                            if (reason == "not_linked") {
+                            if (needsDiscordLink) {
                                 R.string.debug_report_connect_discord
                             } else {
                                 R.string.debug_paywall_send_now
@@ -255,7 +259,7 @@ private fun PaywallTierCard(
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 0.3.sp,
                     ),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = body,
