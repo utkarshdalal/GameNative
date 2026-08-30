@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,6 +27,7 @@ import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
+import app.gamenative.ui.theme.PluviaTheme
 import java.util.Locale
 
 @Composable
@@ -51,8 +53,8 @@ fun DebugReportDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(),
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(20.dp),
+                color = PluviaTheme.colors.surfaceElevated,
             ) {
                 Column(
                     modifier = Modifier
