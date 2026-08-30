@@ -422,6 +422,7 @@ private fun HltbInfoBar(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    var revealed by remember(stats.gameId) { mutableStateOf(false) }
     val items = listOf(
         stringResource(R.string.hltb_main_story) to stats.mainHours,
         stringResource(R.string.hltb_main_plus_extras) to stats.mainPlusHours,
@@ -435,18 +436,20 @@ private fun HltbInfoBar(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(enabled = canOpenHltb) {
-                try {
-                    context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse("${HltbService.GAME_URL}${stats.gameId}")),
-                    )
-                } catch (e: ActivityNotFoundException) {
-                    Timber.tag("HLTB").w(e, "No handler for HLTB game URL")
-                }
-            }
             .padding(14.dp),
     ) {
         Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(enabled = canOpenHltb) {
+                    try {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("${HltbService.GAME_URL}${stats.gameId}")),
+                        )
+                    } catch (e: ActivityNotFoundException) {
+                        Timber.tag("HLTB").w(e, "No handler for HLTB game URL")
+                    }
+                },
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -468,40 +471,63 @@ private fun HltbInfoBar(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            Row(
+        Box(contentAlignment = Alignment.Center) {
+            BoxWithConstraints(
                 modifier = Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .widthIn(min = maxWidth),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                    .fillMaxWidth()
+                    .graphicsLayer { alpha = if (revealed) 1f else 0f },
             ) {
-                items.forEach { (label, hours) ->
-                    Column(
-                        modifier = Modifier
-                            .widthIn(min = 48.dp)
-                            .padding(horizontal = 10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            text = if (hours == HltbService.UNKNOWN_HOURS) {
-                                HltbService.UNKNOWN_HOURS
-                            } else {
-                                stringResource(R.string.hltb_hours_value, hours)
-                            },
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            softWrap = false,
-                        )
+                Row(
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState(), enabled = revealed)
+                        .widthIn(min = maxWidth),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    items.forEach { (label, hours) ->
+                        Column(
+                            modifier = Modifier
+                                .widthIn(min = 48.dp)
+                                .padding(horizontal = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = if (hours == HltbService.UNKNOWN_HOURS) {
+                                    HltbService.UNKNOWN_HOURS
+                                } else {
+                                    stringResource(R.string.hltb_hours_value, hours)
+                                },
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                softWrap = false,
+                            )
+                        }
                     }
+                }
+            }
+
+            if (!revealed) {
+                Button(
+                    onClick = { revealed = true },
+                    modifier = Modifier.matchParentSize(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                ) {
+                    Text(
+                        text = stringResource(R.string.hltb_show_spoilers),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
                 }
             }
         }
