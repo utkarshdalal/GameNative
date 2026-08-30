@@ -2360,4 +2360,8 @@
     <string name="favorite_added">Añadido a favoritos</string>
     <string name="favorite_added_named">%1$s añadido a favoritos</string>
     <string name="xr_refresh_rate">Frecuencia de actualización de RV</string>
+    <string name="faster_external_loading_title">Carga más rápida desde almacenamiento externo</string>
+    <string name="faster_external_loading_subtitle">Puede acelerar considerablemente el inicio de juegos desde almacenamiento externo, pero puede causar problemas en algunos juegos</string>
+    <string name="disable_libredirect_title">Desactivar libredirect</string>
+    <string name="disable_libredirect_subtitle">Puede mejorar el rendimiento, pero también puede causar problemas inesperados</string>
 </resources>

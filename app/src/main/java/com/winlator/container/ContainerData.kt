@@ -70,6 +70,8 @@ data class ContainerData(
     val shaderBackend: String = "glsl",
     val useGLSL: String = "enabled",
     val sdlControllerAPI: Boolean = true,
+    val fasterExternalLoading: Boolean = false,
+    val disableLibredirect: Boolean = false,
     /** Enable Steam Input **/
     val useSteamInput: Boolean = false,
     /** Enable XInput API **/
@@ -155,6 +157,8 @@ data class ContainerData(
                     "fexcoreMultiBlock" to state.fexcoreMultiBlock,
                     "fexcorePreset" to state.fexcorePreset,
                     "sdlControllerAPI" to state.sdlControllerAPI,
+                    "fasterExternalLoading" to state.fasterExternalLoading,
+                    "disableLibredirect" to state.disableLibredirect,
                     "useSteamInput" to state.useSteamInput,
                     "enableXInput" to state.enableXInput,
                     "enableDInput" to state.enableDInput,
@@ -226,6 +230,8 @@ data class ContainerData(
                     fexcoreMultiBlock = (savedMap["fexcoreMultiBlock"] as? String) ?: "Disabled",
                     fexcorePreset = (savedMap["fexcorePreset"] as? String) ?: FEXCorePreset.INTERMEDIATE,
                     sdlControllerAPI = savedMap["sdlControllerAPI"] as Boolean,
+                    fasterExternalLoading = (savedMap["fasterExternalLoading"] as? Boolean) ?: false,
+                    disableLibredirect = (savedMap["disableLibredirect"] as? Boolean) ?: false,
                     useSteamInput = (savedMap["useSteamInput"] as? Boolean) ?: false,
                     enableXInput = savedMap["enableXInput"] as Boolean,
                     enableDInput = savedMap["enableDInput"] as Boolean,

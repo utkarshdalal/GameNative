@@ -2302,4 +2302,8 @@
     <string name="favorite_added">Zu Favoriten hinzugefügt</string>
     <string name="favorite_added_named">%1$s zu Favoriten hinzugefügt</string>
     <string name="xr_refresh_rate">VR-Bildwiederholrate</string>
+    <string name="faster_external_loading_title">Schnelleres Laden von externem Speicher</string>
+    <string name="faster_external_loading_subtitle">Kann den Spielstart von externem Speicher deutlich beschleunigen, kann aber bei manchen Spielen Probleme verursachen</string>
+    <string name="disable_libredirect_title">libredirect deaktivieren</string>
+    <string name="disable_libredirect_subtitle">Kann die Leistung verbessern, aber auch unerwartete Probleme verursachen</string>
 </resources>

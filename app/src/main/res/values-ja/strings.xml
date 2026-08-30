@@ -2316,4 +2316,8 @@
     <string name="favorite_added">お気に入りに追加しました</string>
     <string name="favorite_added_named">%1$s をお気に入りに追加しました</string>
     <string name="xr_refresh_rate">VRリフレッシュレート</string>
+    <string name="faster_external_loading_title">外部ストレージからの高速読み込み</string>
+    <string name="faster_external_loading_subtitle">外部ストレージからのゲーム起動を大幅に高速化できますが、一部のゲームで問題が発生する可能性があります</string>
+    <string name="disable_libredirect_title">libredirect を無効にする</string>
+    <string name="disable_libredirect_subtitle">パフォーマンスが向上する場合がありますが、予期しない問題が発生する可能性もあります</string>
 </resources>

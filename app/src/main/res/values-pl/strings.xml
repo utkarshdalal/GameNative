@@ -2366,4 +2366,8 @@
     <string name="favorite_added">Dodano do ulubionych</string>
     <string name="favorite_added_named">Dodano %1$s do ulubionych</string>
     <string name="xr_refresh_rate">Częstotliwość odświeżania VR</string>
+    <string name="faster_external_loading_title">Szybsze wczytywanie z pamięci zewnętrznej</string>
+    <string name="faster_external_loading_subtitle">Może znacznie przyspieszyć uruchamianie gier z pamięci zewnętrznej, ale może powodować problemy w niektórych grach</string>
+    <string name="disable_libredirect_title">Wyłącz libredirect</string>
+    <string name="disable_libredirect_subtitle">Może poprawić wydajność, ale może też powodować nieoczekiwane problemy</string>
 </resources>

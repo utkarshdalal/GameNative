@@ -2357,4 +2357,8 @@
     <string name="favorite_added">즐겨찾기에 추가됨</string>
     <string name="favorite_added_named">%1$s을(를) 즐겨찾기에 추가함</string>
     <string name="xr_refresh_rate">VR 재생 빈도</string>
+    <string name="faster_external_loading_title">외부 저장소에서 더 빠른 로딩</string>
+    <string name="faster_external_loading_subtitle">외부 저장소에서의 게임 부팅 속도를 크게 높일 수 있지만 일부 게임에서 문제가 발생할 수 있습니다</string>
+    <string name="disable_libredirect_title">libredirect 비활성화</string>
+    <string name="disable_libredirect_subtitle">성능이 향상될 수 있지만 예기치 않은 문제가 발생할 수도 있습니다</string>
 </resources>
