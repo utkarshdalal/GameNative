@@ -89,11 +89,11 @@ object LsfgVkManager {
     private const val ENV_ADRENOTOOLS_DRIVER_PATH = "ADRENOTOOLS_DRIVER_PATH"
     private const val ENV_LD_LIBRARY_PATH = "LD_LIBRARY_PATH"
 
-    // Current runtime package revision. Include the native compatibility lineage
-    // in the marker so existing containers cannot silently retain the older r2
-    // AHB binary after installing a newer GameNative APK.
+    // Current runtime package revision. Include the exact verified native
+    // diagnostics lineage so existing containers cannot silently retain an
+    // older AHB binary after installing a newer GameNative APK.
     private const val RUNTIME_VERSION =
-        "v1.3.3-android-arm64-v8a-gamenative-ahb-f5398518-r3"
+        "v1.3.3-android-arm64-v8a-gamenative-ahb-diag-4ea941c7-r4"
 
     // Asset path for manifest (still in assets)
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
