@@ -17,7 +17,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: lsfg/vulkan-capability-detection
-          submodules: recursive
           fetch-depth: 0
 
       - name: Align runtime lineage and CI with gitlink
@@ -27,7 +26,6 @@ jobs:
           expected_native=08b87509ef9c4d93730750efb1abfae76c8a5318
           actual_native="$(git rev-parse HEAD:app/src/main/cpp/lsfg-vk-android)"
           test "$actual_native" = "$expected_native"
-          test "$(git -C app/src/main/cpp/lsfg-vk-android rev-parse HEAD)" = "$expected_native"
 
           python3 - <<'PY'
           from pathlib import Path
