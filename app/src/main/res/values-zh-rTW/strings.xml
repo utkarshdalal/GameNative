@@ -1821,7 +1821,8 @@
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
     <string name="debug_paywall_tier10_body">我們最聰明的 AI 模型，在你的支援討論串中不限次數地交流。</string>
     <string name="debug_paywall_cancel_anytime">隨時可取消。</string>
-    <string name="debug_paywall_subscribe">在 Ko-fi 上成為支持者</string>
+    <string name="debug_paywall_subscribe">在 Discord 上訂閱</string>
+    <string name="debug_paywall_kofi_alt">偏好 Ko-fi？也可以在那裡訂閱</string>
     <string name="debug_paywall_already">已經是支持者？</string>
     <string name="debug_paywall_send_now">我已訂閱，立即傳送</string>
     <string name="debug_paywall_not_now">暫時不要</string>

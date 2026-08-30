@@ -1683,7 +1683,8 @@
     <string name="debug_paywall_tier10_title">$10/mês · Pro</string>
     <string name="debug_paywall_tier10_body">Nosso modelo de AI mais inteligente, com conversas ilimitadas no seu tópico de suporte.</string>
     <string name="debug_paywall_cancel_anytime">Cancele quando quiser.</string>
-    <string name="debug_paywall_subscribe">Torne-se um apoiador no Ko-fi</string>
+    <string name="debug_paywall_subscribe">Assine no Discord</string>
+    <string name="debug_paywall_kofi_alt">Prefere o Ko-fi? Assine por lá</string>
     <string name="debug_paywall_already">Já é apoiador?</string>
     <string name="debug_paywall_send_now">Já assinei, enviar agora</string>
     <string name="debug_paywall_not_now">Agora não</string>

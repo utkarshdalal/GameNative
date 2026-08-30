@@ -1753,7 +1753,8 @@
     <string name="debug_paywall_tier10_title">$10/Monat · Pro</string>
     <string name="debug_paywall_tier10_body">Unser klügstes AI-Modell, mit unbegrenztem Austausch in deinem Support-Thread.</string>
     <string name="debug_paywall_cancel_anytime">Jederzeit kündbar.</string>
-    <string name="debug_paywall_subscribe">Werde Supporter auf Ko-fi</string>
+    <string name="debug_paywall_subscribe">Auf Discord abonnieren</string>
+    <string name="debug_paywall_kofi_alt">Lieber Ko-fi? Abonniere stattdessen dort</string>
     <string name="debug_paywall_already">Schon Supporter?</string>
     <string name="debug_paywall_send_now">Ich habe abonniert, jetzt senden</string>
     <string name="debug_paywall_not_now">Nicht jetzt</string>
