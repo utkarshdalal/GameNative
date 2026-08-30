@@ -3,7 +3,7 @@
   "layer": {
     "name": "VK_LAYER_LS_frame_generation",
     "type": "GLOBAL",
-    "api_version": "1.4.313",
+    "api_version": "1.3.0",
     "library_path": "../../../lib/liblsfg-vk-layer.so",
     "implementation_version": "1",
     "description": "Lossless Scaling frame generation layer",
