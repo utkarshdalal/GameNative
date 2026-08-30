@@ -374,6 +374,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             // Quick Actions
             AppOptionMenuType.EditContainer,
             AppOptionMenuType.RunContainer,
+            AppOptionMenuType.AiDebugRun,
             AppOptionMenuType.CreateShortcut,
             AppOptionMenuType.ExportFrontend,
             AppOptionMenuType.AddToFavorites,
@@ -415,7 +416,6 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.TestGraphics,
             AppOptionMenuType.PlayWithDiagnostics,
             AppOptionMenuType.ShareDiagnostics,
-            AppOptionMenuType.AiDebugRun,
             AppOptionMenuType.ManageGameContent,
             AppOptionMenuType.ManageWorkshop,
             AppOptionMenuType.ManageMods,
