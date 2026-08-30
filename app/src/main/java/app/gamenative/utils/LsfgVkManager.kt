@@ -10,7 +10,6 @@ import java.util.concurrent.Executors
 import app.gamenative.BuildConfig
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
-import com.winlator.container.ContainerManager
 import com.winlator.core.FileUtils
 import com.winlator.core.envvars.EnvVars
 import java.io.File
@@ -319,8 +318,8 @@ object LsfgVkManager {
             Timber.tag(TAG).d("Runtime %s already installed in %s", RUNTIME_VERSION, rootDir)
         }
 
-        deleteLosslessScalingContainerIfExists(context)
-
+        // Runtime installation must not delete or mutate unrelated containers.
+        // Legacy cleanup is intentionally left to the normal container-management UI.
         val dllFile = File(dllDir, LOSSLESS_DLL_NAME)
         val steamDll = findSteamDll()
         if (steamDll != null) {
@@ -629,21 +628,62 @@ object LsfgVkManager {
     private fun parseBool(value: String?): Boolean =
         value.equals("true", ignoreCase = true) || value == "1"
 
+    // ---- Runtime hot-reload -----------------------------------------------
+
     /**
-     * Remove the old dedicated Lossless Scaling container if one exists.
-     * The LSFG layer is now installed directly into the active game container.
+     * Update conf.toml while the container is running. The layer observes the
+     * timestamp change and recreates its swapchain context with the new values.
+     * A temporary fpsLimitOverride is deliberately not persisted in container
+     * extras, so adaptive caps can be applied without rewriting user settings.
      */
-    private fun deleteLosslessScalingContainerIfExists(context: Context) {
-        try {
-            val cm = ContainerManager(context)
-            cm.containers.firstOrNull {
-                it.name.equals("Lossless Scaling", ignoreCase = true)
-            }?.let { old ->
-                Timber.tag(TAG).i("Removing legacy Lossless Scaling container (id=%d)", old.id)
-                cm.removeContainer(old)
+    @JvmStatic
+    fun updateConfigAtRuntime(
+        container: Container,
+        enabled: Boolean,
+        multiplier: Int,
+        flowScale: Float,
+        performanceMode: Boolean,
+        fpsLimitOverride: Int? = null,
+    ): Boolean {
+        if (!isSupported(container)) return false
+
+        val dllPath = containerDllPath(container)
+        val configFile = configFile(container)
+        if (!configFile.exists()) {
+            Timber.tag(TAG).w("conf.toml not found, cannot hot-reload")
+            return false
+        }
+
+        return try {
+            val processExecutable = targetExecutable(container)
+            val frameGenActive = enabled && dllPath != null && processExecutable != null
+            val effectiveFpsLimit = (fpsLimitOverride ?: fpsLimit(container)).coerceAtLeast(0)
+            val configText = buildConfigToml(
+                dllPath = dllPath,
+                processExecutable = processExecutable,
+                enabled = frameGenActive,
+                multiplier = if (frameGenActive) multiplier.coerceIn(2, 4) else 1,
+                flowScale = flowScale.coerceIn(0.25f, 1.0f),
+                performanceMode = performanceMode && frameGenActive,
+                fpsLimit = effectiveFpsLimit,
+                presentMode = presentMode(container),
+            )
+
+            val ok = writeConfigAtomic(configFile, configText)
+            if (ok) {
+                Timber.tag(TAG).i(
+                    "Hot-reloaded conf.toml: enabled=%s, multiplier=%d, flowScale=%.2f, perf=%s, fpsLimit=%d",
+                    frameGenActive,
+                    multiplier,
+                    flowScale,
+                    performanceMode,
+                    effectiveFpsLimit,
+                )
             }
+            ok
         } catch (t: Throwable) {
-            Timber.tag(TAG).w(t, "Failed to clean up legacy Lossless Scaling container")
+            Timber.tag(TAG).e(t, "Failed to hot-reload conf.toml")
+            false
         }
     }
 }
