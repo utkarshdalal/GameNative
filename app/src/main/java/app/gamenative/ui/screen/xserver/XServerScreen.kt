@@ -4033,7 +4033,7 @@ private fun setupXEnvironment(
     guestProgramLauncherComponent.envVars = envVars
 
     val gameTerminationCallback = Callback<Int> { status ->
-        if (!isExiting.get()) {
+        if (!isExiting.get() && status != 0) {
             container.putSessionMetadata("guest_self_exited", "true")
             container.saveData()
         }
