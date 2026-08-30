@@ -58,4 +58,22 @@ class LsfgBuildWorkflowContractTest {
         assertFalse(source.contains("LSFG_NATIVE_COMMIT"))
         assertFalse(source.contains("git checkout --detach"))
     }
+
+    @Test
+    fun sharedNativePreparationRegeneratesAndroidManifestFromPinnedNativeMetadata() {
+        val source = repoFile(".github/actions/prepare-lsfg-native/action.yml").readText()
+        listOf(
+            "native_manifest=\"${'$'}native_dir/VkLayer_LS_frame_generation.json\"",
+            "runtime_manifest=app/src/main/assets/lsfg_vk/android_arm64_v8a/VkLayer_LS_frame_generation.json",
+            "manifest[\"layer\"][\"library_path\"] = \"../../../lib/liblsfg-vk-layer.so\"",
+            "json.load",
+            "json.dump",
+            "api_version",
+        ).forEach { token ->
+            assertTrue(
+                "shared LSFG preparation action must derive Android loader metadata from the pinned native manifest; missing $token",
+                source.contains(token),
+            )
+        }
+    }
 }
