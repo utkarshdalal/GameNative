@@ -1,0 +1,100 @@
+name: Finalize PR8 native single source
+
+on:
+  push:
+    branches:
+      - lsfg/vulkan-capability-detection
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: lsfg/vulkan-capability-detection
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Align runtime lineage and CI with gitlink
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_native=08b87509ef9c4d93730750efb1abfae76c8a5318
+          actual_native="$(git rev-parse HEAD:app/src/main/cpp/lsfg-vk-android)"
+          test "$actual_native" = "$expected_native"
+          test "$(git -C app/src/main/cpp/lsfg-vk-android rev-parse HEAD)" = "$expected_native"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          manager = Path('app/src/main/java/app/gamenative/utils/LsfgVkManager.kt')
+          text = manager.read_text(encoding='utf-8')
+          old = 'v1.3.3-android-arm64-v8a-gamenative-ahb-hotreload-ee0e265c-r5'
+          new = 'v1.3.3-android-arm64-v8a-gamenative-presentdiag-08b87509-r6'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one old runtime marker, found {text.count(old)}')
+          manager.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          test = Path('app/src/test/java/app/gamenative/utils/LsfgVkManagerTest.kt')
+          text = test.read_text(encoding='utf-8')
+          old = 'assertTrue(loaderVersion.readText().contains("ee0e265c"))'
+          new = 'assertTrue(loaderVersion.readText().contains("08b87509"))'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one old runtime assertion, found {text.count(old)}')
+          test.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          workflow = Path('.github/workflows/pluvia-pr-check.yml')
+          text = workflow.read_text(encoding='utf-8')
+          text = text.replace('      - name: Build diagnostic LSFG arm64 layer\n', '      - name: Build GameNative-pinned LSFG arm64 layer\n', 1)
+          old_env = '          LSFG_NATIVE_COMMIT: 2d803ea84d34aea3b1b5c7d018fd137b17302675\n'
+          if text.count(old_env) != 1:
+              raise SystemExit(f'expected one CI native override, found {text.count(old_env)}')
+          text = text.replace(old_env, '', 1)
+          old_override = (
+              '          git fetch https://github.com/Ragnarok93/lsfg-vk-android.git "${LSFG_NATIVE_COMMIT}"\n'
+              '          git checkout --detach "${LSFG_NATIVE_COMMIT}"\n'
+              '          test "$(git rev-parse HEAD)" = "${LSFG_NATIVE_COMMIT}"\n'
+          )
+          new_override = (
+              '          native_commit="$(git rev-parse HEAD)"\n'
+              '          echo "Building GameNative-pinned LSFG native revision ${native_commit}"\n'
+          )
+          if text.count(old_override) != 1:
+              raise SystemExit(f'expected one CI checkout override block, found {text.count(old_override)}')
+          workflow.write_text(text.replace(old_override, new_override, 1), encoding='utf-8')
+          PY
+
+      - name: Verify targeted Legacy contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'POSTHOG_API_KEY=dummy\nPOSTHOG_HOST=https://us.i.posthog.com\n' > local.properties
+          ./gradlew :app:testLegacyDebugUnitTest --no-daemon \
+            --tests app.gamenative.utils.LsfgVkManagerTest \
+            --tests app.gamenative.powercontrol.metrics.FrameTimeRingTest \
+            --tests com.winlator.widget.FrameRatingTest
+          grep -q 'gamenative-presentdiag-08b87509-r6' app/src/main/java/app/gamenative/utils/LsfgVkManager.kt
+          grep -q 'contains("08b87509")' app/src/test/java/app/gamenative/utils/LsfgVkManagerTest.kt
+          if grep -q 'LSFG_NATIVE_COMMIT:' .github/workflows/pluvia-pr-check.yml; then
+            echo 'ERROR: independent native CI override remains' >&2
+            exit 1
+          fi
+          git diff --check
+
+      - name: Commit finalization and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/finalize-pr8-native-single-source.yml
+          git add .github/workflows/pluvia-pr-check.yml \
+            app/src/main/java/app/gamenative/utils/LsfgVkManager.kt \
+            app/src/test/java/app/gamenative/utils/LsfgVkManagerTest.kt
+          git commit -m "lsfg: make validated native gitlink authoritative"
+          git push origin HEAD:lsfg/vulkan-capability-detection
