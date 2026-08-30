@@ -34,35 +34,8 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build diagnostic LSFG arm64 layer
-        env:
-          ANDROID_NDK_VERSION: 27.3.13750724
-          ANDROID_ABI: arm64-v8a
-          HOST_TAG: linux-x86_64
-          LSFG_NATIVE_COMMIT: 2d803ea84d34aea3b1b5c7d018fd137b17302675
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build file
-          sdkmanager --install "ndk;${ANDROID_NDK_VERSION}"
-          export ANDROID_NDK_ROOT="${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}"
-          export ANDROID_NDK="${ANDROID_NDK_ROOT}"
-          cd app/src/main/cpp/lsfg-vk-android
-          git fetch https://github.com/Ragnarok93/lsfg-vk-android.git "${LSFG_NATIVE_COMMIT}"
-          git checkout --detach "${LSFG_NATIVE_COMMIT}"
-          test "$(git rev-parse HEAD)" = "${LSFG_NATIVE_COMMIT}"
-          bash ./scripts/build/android.sh Release
-          cd -
-          layer=app/src/main/jniLibs/arm64-v8a/liblsfg-vk-layer.so
-          cp app/src/main/cpp/lsfg-vk-android/build-android-arm64-v8a/dist/liblsfg-vk-arm64-v8a.so "$layer"
-          file "$layer"
-          needed="$(${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf -d "$layer")"
-          printf '%s\n' "$needed"
-          grep -q 'Shared library: \[libnativewindow.so\]' <<<"$needed"
-          if grep -q 'Shared library: \[libandroid.so\]' <<<"$needed"; then
-            echo 'ERROR: LSFG still directly depends on libandroid.so' >&2
-            exit 1
-          fi
+      - name: Prepare GameNative-pinned LSFG native runtime
+        uses: ./.github/actions/prepare-lsfg-native
 
       - name: Inject credentials
         if: github.event.pull_request.head.repo.full_name == github.repository
@@ -93,6 +66,7 @@ jobs:
           --tests app.gamenative.utils.LsfgVkManagerTest
           --tests app.gamenative.powercontrol.metrics.FrameTimeRingTest
           --tests com.winlator.widget.FrameRatingTest
+          --tests com.winlator.widget.XServerFrameRatingRetargetContractTest
 
       - name: Assemble Legacy debug APK
         run: ./gradlew :app:assembleLegacyDebug --no-daemon
