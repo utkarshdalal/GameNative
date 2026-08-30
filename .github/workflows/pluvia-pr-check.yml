@@ -110,7 +110,11 @@ jobs:
           apk=/tmp/gamenative-legacy-debug/gamenative-legacy-debug.apk
           cp "${apks[0]}" "$apk"
           sha256sum "$apk" | tee /tmp/gamenative-legacy-debug/gamenative-legacy-debug.apk.sha256
-          split -b 180M -d -a 1 "$apk" /tmp/gamenative-legacy-debug/gamenative-legacy-debug.apk.part-
+          split -n 4 -d -a 1 "$apk" /tmp/gamenative-legacy-debug/gamenative-legacy-debug.apk.part-
+          for part in 0 1 2 3; do
+            test -s "/tmp/gamenative-legacy-debug/gamenative-legacy-debug.apk.part-${part}"
+          done
+          cmp "$apk" <(cat /tmp/gamenative-legacy-debug/gamenative-legacy-debug.apk.part-{0,1,2,3})
           ls -lh /tmp/gamenative-legacy-debug/
 
       - name: Upload LegacyDebug part 0
