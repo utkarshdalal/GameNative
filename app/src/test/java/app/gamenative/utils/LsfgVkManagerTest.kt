@@ -99,6 +99,49 @@ class LsfgVkManagerTest {
     }
 
     @Test
+    fun applyLaunchEnv_refreshesLoaderHomeRuntimeToAvoidImplicitLayerShadowing() {
+        val container = container(armed = true)
+        val containerLib = File(rootDir, ".local/lib/liblsfg-vk-layer.so").apply {
+            parentFile?.mkdirs()
+            writeBytes(byteArrayOf(9, 8, 7, 6))
+        }
+        val containerManifest = File(
+            rootDir,
+            ".local/share/vulkan/implicit_layer.d/VkLayer_LS_frame_generation.json",
+        ).apply {
+            parentFile?.mkdirs()
+            writeText("container-manifest")
+        }
+        val loaderHome = File(rootDir, "loader-home")
+        val loaderLib = File(loaderHome, ".local/lib/liblsfg-vk-layer.so").apply {
+            parentFile?.mkdirs()
+            writeBytes(byteArrayOf(1, 2, 3, 4))
+        }
+        val loaderManifest = File(
+            loaderHome,
+            ".local/share/vulkan/implicit_layer.d/VkLayer_LS_frame_generation.json",
+        ).apply {
+            parentFile?.mkdirs()
+            writeText("stale-manifest")
+        }
+        val loaderVersion = File(
+            loaderHome,
+            ".local/share/vulkan/implicit_layer.d/.lsfg_vk_runtime_version",
+        )
+        val envVars = EnvVars().apply {
+            put("HOME", loaderHome.absolutePath)
+        }
+
+        assertTrue(LsfgVkManager.applyLaunchEnv(container, envVars))
+
+        assertTrue(loaderLib.readBytes().contentEquals(containerLib.readBytes()))
+        assertEquals(containerManifest.readText(), loaderManifest.readText())
+        assertTrue(loaderVersion.readText().contains("e53ce6fc"))
+        val loaderLayerDir = loaderManifest.parentFile!!.absolutePath
+        assertEquals(loaderLayerDir, envVars["VK_LAYER_PATH"])
+    }
+
+    @Test
     fun buildConfig_addsLinuxCommAliasForLongExecutableNames() {
         val method = LsfgVkManager::class.java.getDeclaredMethod(
             "buildConfigToml",
@@ -164,6 +207,33 @@ class LsfgVkManagerTest {
             "1",
             layer.getJSONObject("disable_environment").getString("DISABLE_LSFG"),
         )
+    }
+
+    @Test
+    fun ensureRuntimeInstalled_refreshesContainerLibraryWhenPackagedBytesChangeWithoutMarkerChange() {
+        val context = RuntimeEnvironment.getApplication()
+        val sourceDir = File(rootDir, "apk-native").apply { mkdirs() }
+        val sourceLib = File(sourceDir, "liblsfg-vk-layer.so")
+        val installedLib = File(rootDir, ".local/lib/liblsfg-vk-layer.so")
+        val originalNativeLibraryDir = context.applicationInfo.nativeLibraryDir
+        val container = container(armed = false)
+
+        try {
+            context.applicationInfo.nativeLibraryDir = sourceDir.absolutePath
+            sourceLib.writeBytes(byteArrayOf(1, 2, 3, 4))
+
+            assertTrue(LsfgVkManager.ensureRuntimeInstalled(context, container))
+            assertTrue(installedLib.readBytes().contentEquals(byteArrayOf(1, 2, 3, 4)))
+
+            // Simulate a new APK shipping a different LSFG native binary while an
+            // existing container still has a matching textual runtime marker.
+            sourceLib.writeBytes(byteArrayOf(9, 8, 7, 6))
+
+            assertTrue(LsfgVkManager.ensureRuntimeInstalled(context, container))
+            assertTrue(installedLib.readBytes().contentEquals(byteArrayOf(9, 8, 7, 6)))
+        } finally {
+            context.applicationInfo.nativeLibraryDir = originalNativeLibraryDir
+        }
     }
 
     private fun container(armed: Boolean): Container {

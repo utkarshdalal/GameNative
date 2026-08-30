@@ -24,6 +24,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class FrameRating extends FrameLayout implements Runnable {
+    private static final float MAX_PLAUSIBLE_FPS = 1000.0f;
+
     private long lastTime = 0;
     private int frameCount = 0;
     private float lastFPS = 0;
@@ -54,15 +56,37 @@ public class FrameRating extends FrameLayout implements Runnable {
         addView(view);
     }
 
+    /**
+     * Reject impossible event-storm samples before they can reach the HUD,
+     * session statistics, or the adaptive power tuner. The ceiling is kept
+     * deliberately loose so this remains a corruption guard rather than a
+     * display-refresh policy.
+     */
+    public static boolean isPlausibleFps(float fps) {
+        return Float.isFinite(fps) && fps >= 0.0f && fps <= MAX_PLAUSIBLE_FPS;
+    }
+
     public void update() {
         FrameTimeRing.record();
         if (lastTime == 0) {
             lastTime = SystemClock.elapsedRealtime();
-            sessionStartTime = SystemClock.elapsedRealtime();
+            if (sessionStartTime == 0) {
+                sessionStartTime = lastTime;
+            }
         }
         long time = SystemClock.elapsedRealtime();
         if (time >= lastTime + 500) {
-            lastFPS = ((float)(frameCount * 1000) / (time - lastTime));
+            float sampleFPS = ((float)(frameCount * 1000) / (time - lastTime));
+            if (!isPlausibleFps(sampleFPS)) {
+                Timber.w(
+                    "Discarding implausible FrameRating sample %.1f FPS; resetting sampling epoch",
+                    sampleFPS
+                );
+                resetSamplingEpoch();
+                return;
+            }
+
+            lastFPS = sampleFPS;
 
             // Take reading at specified interval
             if (lastReadingTime == 0 || time >= lastReadingTime + READING_INTERVAL_MS) {
@@ -87,6 +111,18 @@ public class FrameRating extends FrameLayout implements Runnable {
         }
 
         frameCount++;
+    }
+
+    /**
+     * Start a fresh short-term FPS sampling epoch without erasing accumulated
+     * session statistics. This is safe to call whenever window ownership or
+     * frame-source identity changes.
+     */
+    public void resetSamplingEpoch() {
+        lastTime = 0;
+        frameCount = 0;
+        lastFPS = 0;
+        post(() -> textView.setText(String.format(Locale.ENGLISH, "%.1f", 0f)));
     }
 
     public void reset() {
