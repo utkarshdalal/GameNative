@@ -166,6 +166,33 @@ class LsfgVkManagerTest {
         )
     }
 
+    @Test
+    fun ensureRuntimeInstalled_refreshesContainerLibraryWhenPackagedBytesChangeWithoutMarkerChange() {
+        val context = RuntimeEnvironment.getApplication()
+        val sourceDir = File(rootDir, "apk-native").apply { mkdirs() }
+        val sourceLib = File(sourceDir, "liblsfg-vk-layer.so")
+        val installedLib = File(rootDir, ".local/lib/liblsfg-vk-layer.so")
+        val originalNativeLibraryDir = context.applicationInfo.nativeLibraryDir
+        val container = container(armed = false)
+
+        try {
+            context.applicationInfo.nativeLibraryDir = sourceDir.absolutePath
+            sourceLib.writeBytes(byteArrayOf(1, 2, 3, 4))
+
+            assertTrue(LsfgVkManager.ensureRuntimeInstalled(context, container))
+            assertTrue(installedLib.readBytes().contentEquals(byteArrayOf(1, 2, 3, 4)))
+
+            // Simulate a new APK shipping a different LSFG native binary while an
+            // existing container still has a matching textual runtime marker.
+            sourceLib.writeBytes(byteArrayOf(9, 8, 7, 6))
+
+            assertTrue(LsfgVkManager.ensureRuntimeInstalled(context, container))
+            assertTrue(installedLib.readBytes().contentEquals(byteArrayOf(9, 8, 7, 6)))
+        } finally {
+            context.applicationInfo.nativeLibraryDir = originalNativeLibraryDir
+        }
+    }
+
     private fun container(armed: Boolean): Container {
         File(rootDir, ".local/share/lsfg-vk/Lossless.dll").apply {
             parentFile?.mkdirs()
