@@ -73,6 +73,11 @@ data class FrameWindowStats(
     }
 }
 
+// This is deliberately far above any current Android display or useful game
+// presentation rate. It only rejects impossible X-window/event bursts such as
+// the ~26,975 FPS sample observed during a launcher -> game handoff.
+private const val MAX_PLAUSIBLE_FRAME_FPS = 1000f
+
 /**
  * Frame pacing statistics over [count] ascending timestamps taken from [timestampsNs].
  *
@@ -106,11 +111,20 @@ fun computeFrameWindowStats(
     val spanNs = timestampsNs[count - 1] - timestampsNs[0]
     val fps = if (spanNs > 0L) (deltas.toDouble() * 1_000_000_000.0 / spanNs).toFloat() else 0f
 
+    // FrameRating is fed by X-window updates rather than a hardware present fence.
+    // During launcher/window transitions those updates can arrive tens of microseconds
+    // apart and masquerade as tens of thousands of FPS. Never publish such a sample
+    // to PowerManager/PerformanceAutoTuner; an EMPTY window is safer than a false
+    // high reading that causes an aggressive downclock.
+    if (!fps.isFinite() || fps < 0f || fps > MAX_PLAUSIBLE_FRAME_FPS) {
+        return FrameWindowStats.EMPTY
+    }
+
     java.util.Arrays.sort(deltaScratch, 0, deltas)
 
     return FrameWindowStats(
         fps = fps,
-        p50Ms = percentileMs(deltaScratch, deltas, 0.50),
+        p50Ms = deltaScratch[((deltas - 1) * 0.50).toInt().coerceIn(0, deltas - 1)] / 1_000_000f,
         p95Ms = percentileMs(deltaScratch, deltas, 0.95),
         maxMs = deltaScratch[deltas - 1] / 1_000_000f,
         slowFrameCount = slowFrames,
