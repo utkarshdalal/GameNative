@@ -89,10 +89,11 @@ object LsfgVkManager {
     private const val ENV_ADRENOTOOLS_DRIVER_PATH = "ADRENOTOOLS_DRIVER_PATH"
     private const val ENV_LD_LIBRARY_PATH = "LD_LIBRARY_PATH"
 
-    // Current runtime package revision. The native binary is still lsfg-vk
-    // v1.3.3; the suffix forces existing containers to receive the corrected
-    // implicit-layer manifest on the next launch.
-    private const val RUNTIME_VERSION = "v1.3.3-android-arm64-v8a-gamenative-targeted-r2"
+    // Current runtime package revision. Include the native compatibility lineage
+    // in the marker so existing containers cannot silently retain the older r2
+    // AHB binary after installing a newer GameNative APK.
+    private const val RUNTIME_VERSION =
+        "v1.3.3-android-arm64-v8a-gamenative-ahb-f5398518-r3"
 
     // Asset path for manifest (still in assets)
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
@@ -622,80 +623,27 @@ object LsfgVkManager {
         append('"')
     }
 
-    private fun parseBool(value: String): Boolean =
-        value.equals("true", ignoreCase = true) || value == "1"
-
     private fun formatFlowScale(value: Float): String =
         String.format(Locale.US, "%.2f", value.coerceIn(0.25f, 1.0f))
 
+    private fun parseBool(value: String?): Boolean =
+        value.equals("true", ignoreCase = true) || value == "1"
+
+    /**
+     * Remove the old dedicated Lossless Scaling container if one exists.
+     * The LSFG layer is now installed directly into the active game container.
+     */
     private fun deleteLosslessScalingContainerIfExists(context: Context) {
         try {
-            val containerManager = ContainerManager(context)
-            val losslessContainer = containerManager.getContainerById("STEAM_$LOSSLESS_SCALING_APP_ID")
-            if (losslessContainer != null) {
-                Timber.tag(TAG).i("Deleting Lossless Scaling container to save storage")
-                if (FileUtils.delete(losslessContainer.rootDir)) {
-                    containerManager.containers.remove(losslessContainer)
-                    Timber.tag(TAG).i("Successfully deleted Lossless Scaling container")
-                } else {
-                    Timber.tag(TAG).w("Failed to delete Lossless Scaling container directory")
-                }
+            val cm = ContainerManager(context)
+            cm.containers.firstOrNull {
+                it.name.equals("Lossless Scaling", ignoreCase = true)
+            }?.let { old ->
+                Timber.tag(TAG).i("Removing legacy Lossless Scaling container (id=%d)", old.id)
+                cm.removeContainer(old)
             }
         } catch (t: Throwable) {
-            Timber.tag(TAG).w(t, "Error while trying to delete Lossless Scaling container")
-        }
-    }
-
-    // ---- Runtime hot-reload -----------------------------------------------
-
-    @JvmStatic
-    fun updateConfigAtRuntime(
-        container: Container,
-        enabled: Boolean,
-        multiplier: Int,
-        flowScale: Float,
-        performanceMode: Boolean,
-        fpsLimitOverride: Int? = null,
-    ): Boolean {
-        if (!isSupported(container)) return false
-
-        val dllPath = containerDllPath(container)
-        val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
-
-        if (!configFile.exists()) {
-            Timber.tag(TAG).w("conf.toml not found, cannot hot-reload")
-            return false
-        }
-
-        return try {
-            val processExecutable = targetExecutable(container)
-            val frameGenActive = enabled && dllPath != null && processExecutable != null
-            val configText = buildConfigToml(
-                dllPath = dllPath,
-                processExecutable = processExecutable,
-                enabled = frameGenActive,
-                multiplier = if (frameGenActive) multiplier.coerceIn(2, 4) else 1,
-                flowScale = flowScale.coerceIn(0.25f, 1.0f),
-                performanceMode = performanceMode && frameGenActive,
-                fpsLimit = fpsLimitOverride ?: fpsLimit(container),
-                presentMode = presentMode(container),
-            )
-
-            val ok = writeConfigAtomic(configFile, configText)
-            if (ok) {
-                Timber.tag(TAG).i(
-                    "Hot-reloaded conf.toml: enabled=%s, multiplier=%d, flowScale=%.2f, perf=%s, fpsLimit=%d",
-                    frameGenActive,
-                    multiplier,
-                    flowScale,
-                    performanceMode,
-                    fpsLimit(container),
-                )
-            }
-            ok
-        } catch (t: Throwable) {
-            Timber.tag(TAG).e(t, "Failed to hot-reload conf.toml")
-            false
+            Timber.tag(TAG).w(t, "Failed to clean up legacy Lossless Scaling container")
         }
     }
 }
