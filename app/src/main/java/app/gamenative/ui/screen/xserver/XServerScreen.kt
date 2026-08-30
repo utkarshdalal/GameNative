@@ -2119,7 +2119,7 @@ fun XServerScreen(
                                 describeFrameRatingWindow(topmost),
                             )
                             (context as? Activity)?.runOnUiThread {
-                                rating.reset()
+                                rating.resetSamplingEpoch()
                                 rating.visibility = View.VISIBLE
                             }
                         }
