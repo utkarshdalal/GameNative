@@ -327,6 +327,25 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("EVSHIM_WINE", 1);
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
 
+        if (container != null && container.isFasterExternalLoading()) {
+            String ffpGameDir = null;
+            for (String[] drive : Container.drivesIterator(container.getDrives())) {
+                if (drive[0].equals("A")) {
+                    try {
+                        ffpGameDir = new File(drive[1]).getCanonicalPath();
+                    } catch (IOException e) {
+                        ffpGameDir = drive[1];
+                    }
+                    break;
+                }
+            }
+            if (ffpGameDir != null && ffpGameDir.startsWith("/storage/")
+                    && !ffpGameDir.startsWith("/storage/emulated/")) {
+                envVars.put("FFP_ENABLE", "1");
+                envVars.put("FFP_MARKERS", "/steamapps/common/;/dosdevices/a:");
+            }
+        }
+
         // Check for specific shared memory libraries
 //        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){
 //            ld_preload = imageFs.getLibDir() + "/libandroid-sysvshm.so";
