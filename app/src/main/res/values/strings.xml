@@ -1766,7 +1766,7 @@
     <string name="debug_report_discord_linked">Discord connected</string>
     <string name="debug_report_no_log">No debug log was captured for this run.</string>
     <string name="debug_paywall_title">Get AI debug support</string>
-    <string name="debug_paywall_pitch">Our AI reads your exact log and config and tells you what to change — usually in under a minute.</string>
+    <string name="debug_paywall_pitch">Our AI reads your exact log and config and tells you what to change, usually in under 5 minutes.</string>
     <string name="debug_paywall_tier5_title">$5/month · Supporter</string>
     <string name="debug_paywall_tier5_body">Our base AI reads your debug report and replies in Discord with a fix to try, plus up to two follow-up answers.</string>
     <string name="debug_paywall_tier10_title">$10/month · Pro</string>
@@ -1774,7 +1774,7 @@
     <string name="debug_paywall_cancel_anytime">Cancel anytime.</string>
     <string name="debug_paywall_subscribe">Become a supporter on Ko-fi</string>
     <string name="debug_paywall_already">Already a supporter?</string>
-    <string name="debug_paywall_send_now">I’ve subscribed — send now</string>
+    <string name="debug_paywall_send_now">I’ve subscribed, send now</string>
     <string name="debug_paywall_not_now">Not now</string>
     <string name="debug_offer_title">Get AI help with this crash</string>
     <string name="debug_offer_message">That session ended early. Run %1$s once more with debug logging and our AI will read the log and tell you what to change.</string>
