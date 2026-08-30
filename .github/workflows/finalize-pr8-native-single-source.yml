@@ -1,4 +1,4 @@
-name: Finalize PR8 native single source
+name: Finalize PR8 LSFG build provenance
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
           ref: lsfg/vulkan-capability-detection
           fetch-depth: 1
 
-      - name: Align runtime lineage and CI with gitlink
+      - name: Apply single-source LSFG build contract
         shell: bash
         run: |
           set -euo pipefail
@@ -27,72 +27,236 @@ jobs:
           actual_native="$(git rev-parse HEAD:app/src/main/cpp/lsfg-vk-android)"
           test "$actual_native" = "$expected_native"
 
+          mkdir -p .github/actions/prepare-lsfg-native
+          cat > .github/actions/prepare-lsfg-native/action.yml <<'YAML'
+          name: Prepare GameNative LSFG native runtime
+          description: Build the exact lsfg-vk-android gitlink into the arm64 Android package
+          inputs:
+            ndk-version:
+              description: Android NDK revision used by the validated LSFG Android build
+              required: false
+              default: '27.3.13750724'
+          runs:
+            using: composite
+            steps:
+              - name: Build pinned arm64 LSFG layer
+                shell: bash
+                env:
+                  ANDROID_NDK_VERSION: ${{ inputs.ndk-version }}
+                  ANDROID_ABI: arm64-v8a
+                run: |
+                  set -euo pipefail
+                  native_dir=app/src/main/cpp/lsfg-vk-android
+                  layer=app/src/main/jniLibs/arm64-v8a/liblsfg-vk-layer.so
+                  expected_commit="$(git rev-parse HEAD:${native_dir})"
+                  git submodule sync -- "$native_dir"
+                  git submodule update --init --recursive -- "$native_dir"
+                  actual_commit="$(git -C "$native_dir" rev-parse HEAD)"
+                  if [[ "$actual_commit" != "$expected_commit" ]]; then
+                    echo "ERROR: LSFG submodule checkout ${actual_commit} != GameNative gitlink ${expected_commit}" >&2
+                    exit 1
+                  fi
+                  echo "Building GameNative-pinned LSFG native revision ${actual_commit}"
+
+                  sudo apt-get update -qq
+                  sudo apt-get install -y cmake ninja-build file
+                  sdkmanager --install "ndk;${ANDROID_NDK_VERSION}"
+                  sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+                  if [[ -z "$sdk_root" ]]; then
+                    echo 'ERROR: Android SDK root is not configured' >&2
+                    exit 1
+                  fi
+                  export ANDROID_NDK_ROOT="${sdk_root}/ndk/${ANDROID_NDK_VERSION}"
+                  export ANDROID_NDK="$ANDROID_NDK_ROOT"
+                  test -x "${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+
+                  (
+                    cd "$native_dir"
+                    bash ./scripts/build/android.sh Release
+                  )
+                  built="$native_dir/build-android-arm64-v8a/dist/liblsfg-vk-arm64-v8a.so"
+                  test -s "$built"
+                  cp "$built" "$layer"
+                  test -s "$layer"
+                  file "$layer"
+                  sha256sum "$layer"
+
+                  needed="$(${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf -d "$layer")"
+                  printf '%s\n' "$needed"
+                  grep -q 'Shared library: \[libnativewindow.so\]' <<<"$needed"
+                  if grep -q 'Shared library: \[libandroid.so\]' <<<"$needed"; then
+                    echo 'ERROR: LSFG must not directly depend on libandroid.so' >&2
+                    exit 1
+                  fi
+          YAML
+
+          cat > app/src/test/java/app/gamenative/utils/LsfgBuildWorkflowContractTest.kt <<'KOTLIN'
+          package app.gamenative.utils
+
+          import java.io.File
+          import org.junit.Assert.assertFalse
+          import org.junit.Assert.assertTrue
+          import org.junit.Test
+
+          class LsfgBuildWorkflowContractTest {
+              private fun repoFile(path: String): File {
+                  val candidates = listOf(File(path), File("../$path"), File("../../$path"))
+                  return candidates.firstOrNull { it.isFile }
+                      ?: error("Unable to locate $path from test working directory")
+              }
+
+              @Test
+              fun everyApkOrBundleWorkflowPreparesPinnedLsfgNativeRuntime() {
+                  val workflows = listOf(
+                      ".github/workflows/pluvia-pr-check.yml",
+                      ".github/workflows/lsfg-legacy-single-apk.yml",
+                      ".github/workflows/tagged-release.yml",
+                      ".github/workflows/app-release-signed.yml",
+                      ".github/workflows/adhoc-signed-build.yml",
+                  )
+                  workflows.forEach { path ->
+                      val source = repoFile(path).readText()
+                      assertTrue(
+                          "$path must rebuild the GameNative-pinned LSFG runtime before Gradle packaging",
+                          source.contains("uses: ./.github/actions/prepare-lsfg-native"),
+                      )
+                      assertFalse(
+                          "$path must not carry an independent native commit override",
+                          source.contains("LSFG_NATIVE_COMMIT"),
+                      )
+                  }
+              }
+
+              @Test
+              fun sharedNativePreparationUsesGitlinkAndAndroidPortabilityChecks() {
+                  val source = repoFile(".github/actions/prepare-lsfg-native/action.yml").readText()
+                  listOf(
+                      "git rev-parse HEAD:${'$'}{native_dir}",
+                      "git submodule update --init --recursive",
+                      "scripts/build/android.sh Release",
+                      "liblsfg-vk-layer.so",
+                      "libnativewindow.so",
+                      "libandroid.so",
+                  ).forEach { token ->
+                      assertTrue("shared LSFG preparation action is missing $token", source.contains(token))
+                  }
+                  assertFalse(source.contains("git checkout --detach"))
+              }
+          }
+          KOTLIN
+
           python3 - <<'PY'
           from pathlib import Path
 
-          manager = Path('app/src/main/java/app/gamenative/utils/LsfgVkManager.kt')
-          text = manager.read_text(encoding='utf-8')
-          old = 'v1.3.3-android-arm64-v8a-gamenative-ahb-hotreload-ee0e265c-r5'
-          new = 'v1.3.3-android-arm64-v8a-gamenative-presentdiag-08b87509-r6'
-          if text.count(old) != 1:
-              raise SystemExit(f'expected one old runtime marker, found {text.count(old)}')
-          manager.write_text(text.replace(old, new, 1), encoding='utf-8')
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one match, found {count}: {old[:80]!r}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
 
-          test = Path('app/src/test/java/app/gamenative/utils/LsfgVkManagerTest.kt')
-          text = test.read_text(encoding='utf-8')
-          old = 'assertTrue(loaderVersion.readText().contains("ee0e265c"))'
-          new = 'assertTrue(loaderVersion.readText().contains("08b87509"))'
-          if text.count(old) != 1:
-              raise SystemExit(f'expected one old runtime assertion, found {text.count(old)}')
-          test.write_text(text.replace(old, new, 1), encoding='utf-8')
+          replace_once(
+              'app/src/main/java/app/gamenative/utils/LsfgVkManager.kt',
+              'v1.3.3-android-arm64-v8a-gamenative-ahb-hotreload-ee0e265c-r5',
+              'v1.3.3-android-arm64-v8a-gamenative-presentdiag-08b87509-r6',
+          )
+          replace_once(
+              'app/src/test/java/app/gamenative/utils/LsfgVkManagerTest.kt',
+              'assertTrue(loaderVersion.readText().contains("ee0e265c"))',
+              'assertTrue(loaderVersion.readText().contains("08b87509"))',
+          )
 
-          workflow = Path('.github/workflows/pluvia-pr-check.yml')
-          text = workflow.read_text(encoding='utf-8')
-          text = text.replace('      - name: Build diagnostic LSFG arm64 layer\n', '      - name: Build GameNative-pinned LSFG arm64 layer\n', 1)
-          old_env = '          LSFG_NATIVE_COMMIT: 2d803ea84d34aea3b1b5c7d018fd137b17302675\n'
-          if text.count(old_env) != 1:
-              raise SystemExit(f'expected one CI native override, found {text.count(old_env)}')
-          text = text.replace(old_env, '', 1)
-          old_override = (
-              '          git fetch https://github.com/Ragnarok93/lsfg-vk-android.git "${LSFG_NATIVE_COMMIT}"\n'
-              '          git checkout --detach "${LSFG_NATIVE_COMMIT}"\n'
-              '          test "$(git rev-parse HEAD)" = "${LSFG_NATIVE_COMMIT}"\n'
+          p = Path('.github/workflows/pluvia-pr-check.yml')
+          text = p.read_text(encoding='utf-8')
+          start = text.index('      - name: Build diagnostic LSFG arm64 layer\n')
+          end = text.index('      - name: Inject credentials\n', start)
+          replacement = (
+              '      - name: Prepare GameNative-pinned LSFG native runtime\n'
+              '        uses: ./.github/actions/prepare-lsfg-native\n\n'
           )
-          new_override = (
-              '          native_commit="$(git rev-parse HEAD)"\n'
-              '          echo "Building GameNative-pinned LSFG native revision ${native_commit}"\n'
+          text = text[:start] + replacement + text[end:]
+          old_tests = (
+              '          --tests app.gamenative.utils.LsfgVkManagerTest\n'
+              '          --tests app.gamenative.powercontrol.metrics.FrameTimeRingTest\n'
+              '          --tests com.winlator.widget.FrameRatingTest\n'
           )
-          if text.count(old_override) != 1:
-              raise SystemExit(f'expected one CI checkout override block, found {text.count(old_override)}')
-          workflow.write_text(text.replace(old_override, new_override, 1), encoding='utf-8')
+          new_tests = old_tests + (
+              '          --tests com.winlator.widget.XServerFrameRatingRetargetContractTest\n'
+              '          --tests app.gamenative.utils.LsfgBuildWorkflowContractTest\n'
+          )
+          if text.count(old_tests) != 1:
+              raise SystemExit('pluvia-pr-check.yml: targeted test block mismatch')
+          p.write_text(text.replace(old_tests, new_tests, 1), encoding='utf-8')
+
+          p = Path('.github/workflows/lsfg-legacy-single-apk.yml')
+          text = p.read_text(encoding='utf-8')
+          start = text.index('      - name: Build LSFG arm64 layer\n')
+          end = text.index('      - name: Inject credentials\n', start)
+          replacement = (
+              '      - name: Prepare GameNative-pinned LSFG native runtime\n'
+              '        uses: ./.github/actions/prepare-lsfg-native\n\n'
+          )
+          p.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
+
+          workflow_specs = [
+              ('.github/workflows/tagged-release.yml', '      - name: Validate Gradle wrapper\n', '      '),
+              ('.github/workflows/app-release-signed.yml', '    - name: Validate Gradle wrapper\n', '    '),
+              ('.github/workflows/adhoc-signed-build.yml', '    - name: Validate Gradle wrapper\n', '    '),
+          ]
+          for path, anchor, indent in workflow_specs:
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              if 'uses: ./.github/actions/prepare-lsfg-native' in text:
+                  raise SystemExit(f'{path}: LSFG preparation step already present unexpectedly')
+              if text.count(anchor) != 1:
+                  raise SystemExit(f'{path}: validation anchor mismatch')
+              steps = (
+                  f'{indent}- name: Setup Android SDK for LSFG native build\n'
+                  f'{indent}  uses: android-actions/setup-android@v3\n'
+                  f'{indent}- name: Prepare GameNative-pinned LSFG native runtime\n'
+                  f'{indent}  uses: ./.github/actions/prepare-lsfg-native\n'
+              )
+              p.write_text(text.replace(anchor, steps + anchor, 1), encoding='utf-8')
           PY
 
-      - name: Verify targeted Legacy contracts
+      - name: Validate finalization diff
         shell: bash
         run: |
           set -euo pipefail
-          printf 'POSTHOG_API_KEY=dummy\nPOSTHOG_HOST=https://us.i.posthog.com\n' > local.properties
-          ./gradlew :app:testLegacyDebugUnitTest --no-daemon \
-            --tests app.gamenative.utils.LsfgVkManagerTest \
-            --tests app.gamenative.powercontrol.metrics.FrameTimeRingTest \
-            --tests com.winlator.widget.FrameRatingTest
           grep -q 'gamenative-presentdiag-08b87509-r6' app/src/main/java/app/gamenative/utils/LsfgVkManager.kt
           grep -q 'contains("08b87509")' app/src/test/java/app/gamenative/utils/LsfgVkManagerTest.kt
-          if grep -q 'LSFG_NATIVE_COMMIT:' .github/workflows/pluvia-pr-check.yml; then
-            echo 'ERROR: independent native CI override remains' >&2
-            exit 1
-          fi
+          for workflow in \
+            .github/workflows/pluvia-pr-check.yml \
+            .github/workflows/lsfg-legacy-single-apk.yml \
+            .github/workflows/tagged-release.yml \
+            .github/workflows/app-release-signed.yml \
+            .github/workflows/adhoc-signed-build.yml; do
+            grep -q 'uses: ./.github/actions/prepare-lsfg-native' "$workflow"
+            if grep -q 'LSFG_NATIVE_COMMIT' "$workflow"; then
+              echo "ERROR: independent LSFG native pin remains in $workflow" >&2
+              exit 1
+            fi
+          done
+          grep -q 'XServerFrameRatingRetargetContractTest' .github/workflows/pluvia-pr-check.yml
+          grep -q 'LsfgBuildWorkflowContractTest' .github/workflows/pluvia-pr-check.yml
           git diff --check
 
-      - name: Commit finalization and remove helper
+      - name: Commit branch finalization
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/workflows/finalize-pr8-native-single-source.yml
-          git add .github/workflows/pluvia-pr-check.yml \
+          git add \
+            .github/actions/prepare-lsfg-native/action.yml \
+            .github/workflows/pluvia-pr-check.yml \
+            .github/workflows/lsfg-legacy-single-apk.yml \
+            .github/workflows/tagged-release.yml \
+            .github/workflows/app-release-signed.yml \
+            .github/workflows/adhoc-signed-build.yml \
             app/src/main/java/app/gamenative/utils/LsfgVkManager.kt \
-            app/src/test/java/app/gamenative/utils/LsfgVkManagerTest.kt
-          git commit -m "lsfg: make validated native gitlink authoritative"
+            app/src/test/java/app/gamenative/utils/LsfgVkManagerTest.kt \
+            app/src/test/java/app/gamenative/utils/LsfgBuildWorkflowContractTest.kt
+          git commit -m "lsfg: make pinned native runtime authoritative in all builds"
           git push origin HEAD:lsfg/vulkan-capability-detection
