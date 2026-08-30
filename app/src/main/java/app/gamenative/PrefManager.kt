@@ -1004,6 +1004,13 @@ object PrefManager {
             setPref(LAST_WARM_PITCH_TIME, value)
         }
 
+    private val DISCORD_RELAY_TOKEN = stringPreferencesKey("discord_relay_token")
+    var discordRelayToken: String
+        get() = getPref(DISCORD_RELAY_TOKEN, "")
+        set(value) {
+            setPref(DISCORD_RELAY_TOKEN, value)
+        }
+
     private val APP_THEME = intPreferencesKey("app_theme")
     var appTheme: AppTheme
         get() {
