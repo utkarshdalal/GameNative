@@ -191,7 +191,7 @@ class LsfgVkManagerTest {
     }
 
     @Test
-    fun bundledManifest_isVulkan13ImplicitLayerGatedToGameNativeProcess() {
+    fun bundledManifest_isVulkan13PlusDiagnosticImplicitLayerWithKillSwitch() {
         val context = RuntimeEnvironment.getApplication()
         val json = context.assets
             .open("lsfg_vk/android_arm64_v8a/VkLayer_LS_frame_generation.json")
@@ -201,7 +201,21 @@ class LsfgVkManagerTest {
 
         assertEquals("VK_LAYER_LS_frame_generation", layer.getString("name"))
         assertEquals("GLOBAL", layer.getString("type"))
-        assertEquals("1.3.0", layer.getString("api_version"))
+
+        val apiVersion = layer.getString("api_version").split('.').map { it.toInt() }
+        assertTrue("LSFG manifest must declare a Vulkan 1.3+ API version", apiVersion.size >= 2)
+        assertEquals("LSFG manifest must remain on Vulkan major version 1", 1, apiVersion[0])
+        assertTrue("LSFG manifest must support Vulkan 1.3+", apiVersion[1] >= 3)
+
+        val functions = layer.getJSONObject("functions")
+        assertEquals(
+            "lsfg_vkGetInstanceProcAddrDiagnostic",
+            functions.getString("vkGetInstanceProcAddr"),
+        )
+        assertEquals(
+            "lsfg_vkGetDeviceProcAddrDiagnostic",
+            functions.getString("vkGetDeviceProcAddr"),
+        )
         assertFalse(layer.has("enable_environment"))
         assertEquals(
             "1",
