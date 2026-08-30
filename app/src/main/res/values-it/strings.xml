@@ -1776,6 +1776,7 @@
     <string name="wrapper_quality_high">Alta (immagini più nitide, usa più RAM)</string>
     <string name="option_play_with_diagnostics">Esecuzione diagnostica</string>
     <string name="option_share_diagnostics">Condividi diagnostica</string>
+    <string name="option_ai_debug_run">Esecuzione di debug AI \u00b7 Sostenitori</string>
     <string name="debug_report_title">Report di debug AI</string>
     <string name="debug_report_summary">%1$s · %2$s · log acquisito (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">Cosa è andato storto?</string>
@@ -1793,6 +1794,9 @@
     <string name="debug_report_share_log_title">Condividi log di debug</string>
     <string name="debug_report_discord_linked">Discord collegato</string>
     <string name="debug_report_no_log">Nessun log di debug è stato acquisito per questa esecuzione.</string>
+    <string name="debug_offer_title">Ottieni aiuto dall\'AI per questo crash</string>
+    <string name="debug_offer_message">La sessione è terminata in anticipo. Avvia %1$s ancora una volta con il logging di debug: la nostra AI leggerà il log e ti dirà cosa cambiare.</string>
+    <string name="debug_offer_confirm">Avvia esecuzione di debug</string>
     <string name="debug_paywall_title">Ottieni supporto di debug AI</string>
     <string name="debug_paywall_pitch">La nostra AI legge il tuo log e la tua configurazione esatti e ti dice cosa cambiare — di solito in meno di un minuto.</string>
     <string name="debug_paywall_tier5_title">$5/mese · Supporter</string>

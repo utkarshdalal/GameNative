@@ -1803,6 +1803,7 @@
     <string name="wrapper_quality_high">Élevé (images plus nettes, utilise plus de RAM)</string>
     <string name="option_play_with_diagnostics">Exécution de diagnostic</string>
     <string name="option_share_diagnostics">Partager le diagnostic</string>
+    <string name="option_ai_debug_run">Exécution de débogage AI \u00b7 Contributeurs</string>
     <string name="debug_report_title">Rapport de débogage AI</string>
     <string name="debug_report_summary">%1$s · %2$s · journal capturé (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">Qu\'est-ce qui n\'a pas fonctionné ?</string>
@@ -1820,6 +1821,9 @@
     <string name="debug_report_share_log_title">Partager le journal de débogage</string>
     <string name="debug_report_discord_linked">Discord connecté</string>
     <string name="debug_report_no_log">Aucun journal de débogage n\'a été capturé pour cette exécution.</string>
+    <string name="debug_offer_title">Obtenez l\'aide de l\'AI pour ce plantage</string>
+    <string name="debug_offer_message">Cette session s\'est terminée prématurément. Relancez %1$s avec la journalisation de débogage : notre AI lira le journal et vous dira quoi changer.</string>
+    <string name="debug_offer_confirm">Démarrer l\'exécution de débogage</string>
     <string name="debug_paywall_title">Obtenez une assistance de débogage AI</string>
     <string name="debug_paywall_pitch">Notre AI lit votre journal et votre configuration exacts et vous dit quoi changer — généralement en moins d\'une minute.</string>
     <string name="debug_paywall_tier5_title">$5/mois · Supporter</string>

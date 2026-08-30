@@ -1793,6 +1793,7 @@
     <string name="wrapper_quality_high">高（圖像更清晰，佔用更多記憶體）</string>
     <string name="option_play_with_diagnostics">診斷執行</string>
     <string name="option_share_diagnostics">分享診斷</string>
+    <string name="option_ai_debug_run">AI 除錯執行 \u00b7 支持者</string>
     <string name="debug_report_title">AI 除錯報告</string>
     <string name="debug_report_summary">%1$s · %2$s · 已擷取記錄（%3$s MB）</string>
     <string name="debug_report_what_went_wrong">發生了什麼問題？</string>
@@ -1810,6 +1811,9 @@
     <string name="debug_report_share_log_title">分享除錯記錄</string>
     <string name="debug_report_discord_linked">Discord 已連結</string>
     <string name="debug_report_no_log">本次執行未擷取除錯記錄。</string>
+    <string name="debug_offer_title">取得 AI 協助解決此當機</string>
+    <string name="debug_offer_message">該工作階段提前結束了。開啟除錯記錄再執行一次 %1$s，我們的 AI 會閱讀記錄並告訴你需要更改什麼。</string>
+    <string name="debug_offer_confirm">開始除錯執行</string>
     <string name="debug_paywall_title">取得 AI 除錯支援</string>
     <string name="debug_paywall_pitch">我們的 AI 會閱讀你的完整記錄與設定，並告訴你需要更改什麼 — 通常不到一分鐘。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Supporter</string>
