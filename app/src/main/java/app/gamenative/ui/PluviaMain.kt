@@ -92,7 +92,7 @@ import app.gamenative.launch.LaunchReadiness
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
-import app.gamenative.ui.screen.DebugPaywallScreen
+import app.gamenative.ui.component.dialog.DebugPaywallDialog
 import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
@@ -1456,7 +1456,7 @@ fun PluviaMain(
 
             debugPaywallReason?.let { reason ->
                 Box(modifier = Modifier.zIndex(5f)) {
-                    DebugPaywallScreen(
+                    DebugPaywallDialog(
                         gameName = debugReportState.gameName,
                         deviceName = debugReportState.deviceName,
                         logSizeBytes = debugReportState.logSizeBytes,

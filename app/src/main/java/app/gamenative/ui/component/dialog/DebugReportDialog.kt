@@ -118,6 +118,12 @@ fun DebugReportDialog(
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(bottom = 16.dp),
                             )
+                            TextButton(
+                                onClick = onShare,
+                                modifier = Modifier.padding(bottom = 16.dp),
+                            ) {
+                                Text(stringResource(R.string.debug_report_share_instead))
+                            }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
@@ -131,9 +137,6 @@ fun DebugReportDialog(
                                 ) {
                                     Text(stringResource(R.string.debug_report_retry))
                                 }
-                            }
-                            TextButton(onClick = onShare) {
-                                Text(stringResource(R.string.debug_report_share_instead))
                             }
                         }
 
@@ -191,6 +194,13 @@ fun DebugReportDialog(
                                         Text(stringResource(R.string.debug_report_connect_discord))
                                     }
                                 }
+
+                                TextButton(
+                                    onClick = onShare,
+                                    modifier = Modifier.padding(bottom = 16.dp),
+                                ) {
+                                    Text(stringResource(R.string.debug_report_share_instead))
+                                }
                             }
 
                             Row(
@@ -207,9 +217,6 @@ fun DebugReportDialog(
                                 ) {
                                     Text(stringResource(R.string.debug_report_send))
                                 }
-                            }
-                            TextButton(onClick = onShare) {
-                                Text(stringResource(R.string.debug_report_share_instead))
                             }
                         }
                     }
