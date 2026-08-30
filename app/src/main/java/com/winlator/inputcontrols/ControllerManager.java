@@ -505,7 +505,15 @@ public class ControllerManager {
         int slot = getSlotForDevice(deviceId);
         if (slot == 0) return false;
         InputDevice occupant = getAssignedDeviceForSlot(0);
-        if (occupant == null) return false;
+        if (occupant == null) {
+            String deviceIdentifier = getDeviceIdentifierForDeviceId(deviceId);
+            if (deviceIdentifier == null) return false;
+            assignDeviceIdentifierToSlot(0, deviceIdentifier);
+            saveAssignments();
+            notifySlotsChanged();
+            Log.i(TAG, "deviceId=" + deviceId + " claimed empty Player 1");
+            return true;
+        }
         String occupantIdentifier = getDeviceIdentifier(occupant);
         if (occupantIdentifier == null || sessionActiveIdentifiers.contains(occupantIdentifier)) return false;
         String deviceIdentifier = getDeviceIdentifierForDeviceId(deviceId);
