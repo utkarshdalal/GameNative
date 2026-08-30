@@ -13,6 +13,7 @@ import com.winlator.container.Container
 import com.winlator.core.FileUtils
 import com.winlator.core.envvars.EnvVars
 import java.io.File
+import java.security.MessageDigest
 import java.util.Locale
 import timber.log.Timber
 import kotlin.jvm.JvmStatic
@@ -269,10 +270,16 @@ object LsfgVkManager {
         val libFile = File(localLibDir, LIB_FILENAME)
         val manifestFile = File(layerDir, MANIFEST_FILENAME)
         val versionFile = File(layerDir, VERSION_FILENAME)
+        val sourceLib = File(context.applicationInfo.nativeLibraryDir, LIB_FILENAME)
+
+        if (!sourceLib.isFile) {
+            Timber.tag(TAG).e("Native library not found: %s", sourceLib.absolutePath)
+            return false
+        }
 
         val installedVersion = versionFile.takeIf { it.exists() }?.readText()?.trim().orEmpty()
         val needsInstall = installedVersion != RUNTIME_VERSION ||
-            !libFile.isFile || !manifestFile.isFile
+            !filesHaveSameContents(sourceLib, libFile) || !manifestFile.isFile
 
         var success = true
 
@@ -281,12 +288,6 @@ object LsfgVkManager {
                 localLibDir.mkdirs()
                 layerDir.mkdirs()
 
-                val nativeLibDir = File(context.applicationInfo.nativeLibraryDir)
-                val sourceLib = File(nativeLibDir, LIB_FILENAME)
-                if (!sourceLib.exists()) {
-                    Timber.tag(TAG).e("Native library not found: %s", sourceLib.absolutePath)
-                    return false
-                }
                 sourceLib.inputStream().use { input ->
                     libFile.outputStream().use { output -> input.copyTo(output) }
                 }
@@ -303,7 +304,7 @@ object LsfgVkManager {
                 if (manifestFile.exists()) FileUtils.chmod(manifestFile, 0b110100100)
                 if (versionFile.exists()) FileUtils.chmod(versionFile, 0b110100100)
 
-                val ok = libFile.isFile && manifestFile.isFile
+                val ok = libFile.isFile && manifestFile.isFile && filesHaveSameContents(sourceLib, libFile)
                 if (ok) {
                     Timber.tag(TAG).i("Installed LSFG runtime %s into %s", RUNTIME_VERSION, rootDir)
                 } else {
@@ -554,6 +555,32 @@ object LsfgVkManager {
     }
 
     // ---- Helpers -----------------------------------------------------------
+
+    private fun filesHaveSameContents(leftFile: File, rightFile: File): Boolean {
+        if (!leftFile.isFile || !rightFile.isFile || leftFile.length() != rightFile.length()) {
+            return false
+        }
+
+        return try {
+            digestFile(leftFile).contentEquals(digestFile(rightFile))
+        } catch (t: Throwable) {
+            Timber.tag(TAG).w(t, "Failed to compare LSFG runtime libraries")
+            false
+        }
+    }
+
+    private fun digestFile(file: File): ByteArray {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().buffered().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                if (read > 0) digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest()
+    }
 
     private fun configFile(container: Container): File =
         File(container.rootDir, CONFIG_RELATIVE_PATH)
