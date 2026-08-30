@@ -1772,7 +1772,7 @@
     <string name="debug_paywall_subscribe">Discord で登録する</string>
     <string name="debug_paywall_kofi_alt">Ko-fi で登録する</string>
     <string name="debug_paywall_already">すでにサポーターですか？</string>
-    <string name="debug_paywall_send_now">購読しました、今すぐ送信</string>
+    <string name="debug_paywall_send_now">加入済みです。今すぐ送信</string>
     <string name="debug_paywall_not_now">今はしない</string>
     <string name="diagnostics_share_title">診断ログを共有</string>
     <string name="diagnostics_share_none">診断ログがまだありません。先に「診断実行」を使用してください。</string>
