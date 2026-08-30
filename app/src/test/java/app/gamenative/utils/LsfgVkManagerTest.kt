@@ -124,6 +124,10 @@ class LsfgVkManagerTest {
             parentFile?.mkdirs()
             writeText("stale-manifest")
         }
+        val loaderVersion = File(
+            loaderHome,
+            ".local/share/vulkan/implicit_layer.d/.lsfg_vk_runtime_version",
+        )
         val envVars = EnvVars().apply {
             put("HOME", loaderHome.absolutePath)
         }
@@ -132,6 +136,7 @@ class LsfgVkManagerTest {
 
         assertTrue(loaderLib.readBytes().contentEquals(containerLib.readBytes()))
         assertEquals(containerManifest.readText(), loaderManifest.readText())
+        assertTrue(loaderVersion.readText().contains("ee0e265c"))
         val loaderLayerDir = loaderManifest.parentFile!!.absolutePath
         assertEquals(loaderLayerDir, envVars["VK_LAYER_PATH"])
     }
