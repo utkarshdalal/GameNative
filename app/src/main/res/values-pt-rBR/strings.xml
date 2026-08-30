@@ -2232,4 +2232,8 @@
     <string name="favorite_added">Adicionado aos favoritos</string>
     <string name="favorite_added_named">%1$s adicionado aos favoritos</string>
     <string name="xr_refresh_rate">Taxa de atualização de VR</string>
+    <string name="faster_external_loading_title">Carregamento mais rápido do armazenamento externo</string>
+    <string name="faster_external_loading_subtitle">Pode acelerar bastante a inicialização de jogos no armazenamento externo, mas pode causar problemas em alguns jogos</string>
+    <string name="disable_libredirect_title">Desativar libredirect</string>
+    <string name="disable_libredirect_subtitle">Pode melhorar o desempenho, mas também pode causar problemas inesperados</string>
 </resources>

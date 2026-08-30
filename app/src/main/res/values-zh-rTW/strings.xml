@@ -2368,4 +2368,8 @@
     <string name="favorite_added">已加入收藏</string>
     <string name="favorite_added_named">已將 %1$s 加入收藏</string>
     <string name="xr_refresh_rate">VR 重新整理頻率</string>
+    <string name="faster_external_loading_title">從外部儲存空間更快載入</string>
+    <string name="faster_external_loading_subtitle">可顯著加快從外部儲存空間啟動遊戲的速度，但可能導致部分遊戲出現問題</string>
+    <string name="disable_libredirect_title">停用 libredirect</string>
+    <string name="disable_libredirect_subtitle">可能提升效能，但也可能導致意外問題</string>
 </resources>

@@ -2362,4 +2362,8 @@
     <string name="favorite_added">Додано до вибраного</string>
     <string name="favorite_added_named">%1$s додано до вибраного</string>
     <string name="xr_refresh_rate">Частота оновлення VR</string>
+    <string name="faster_external_loading_title">Швидше завантаження із зовнішнього накопичувача</string>
+    <string name="faster_external_loading_subtitle">Може значно пришвидшити запуск ігор із зовнішнього накопичувача, але може спричиняти проблеми в деяких іграх</string>
+    <string name="disable_libredirect_title">Вимкнути libredirect</string>
+    <string name="disable_libredirect_subtitle">Може підвищити продуктивність, але також може спричинити неочікувані проблеми</string>
 </resources>

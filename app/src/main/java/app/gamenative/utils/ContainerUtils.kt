@@ -335,6 +335,8 @@ object ContainerUtils {
             fexcorePreset = container.getFEXCorePreset(),
             language = container.language,
             sdlControllerAPI = container.isSdlControllerAPI,
+            fasterExternalLoading = container.isFasterExternalLoading,
+            disableLibredirect = container.isDisableLibredirect,
             useSteamInput = useSteamInput,
             forceDlc = container.isForceDlc,
             localSavesOnly = container.isLocalSavesOnly,
@@ -520,6 +522,8 @@ object ContainerUtils {
         container.box86Preset = containerData.box86Preset
         container.box64Preset = containerData.box64Preset
         container.isSdlControllerAPI = containerData.sdlControllerAPI
+        container.isFasterExternalLoading = containerData.fasterExternalLoading
+        container.isDisableLibredirect = containerData.disableLibredirect
         container.putExtra("useSteamInput", containerData.useSteamInput)
         container.desktopTheme = containerData.desktopTheme
         container.graphicsDriverVersion = containerData.graphicsDriverVersion

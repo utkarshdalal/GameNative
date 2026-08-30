@@ -3921,15 +3921,6 @@ private fun setupXEnvironment(
         envVars.remove("VKD3D_FRAME_RATE")
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
 
-        val ffpGameDir = runCatching {
-            Container.drivesIterator(container.drives).asSequence()
-                .firstOrNull { it[0] == "A" }?.let { File(it[1]).canonicalFile.path }
-        }.getOrNull() ?: ""
-        if (ffpGameDir.startsWith("/storage/") && !ffpGameDir.startsWith("/storage/emulated/")) {
-            envVars.put("FFP_ENABLE", "1")
-            envVars.put("FFP_MARKERS", "/steamapps/common/;/dosdevices/a:")
-        }
-
         val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
         if (graphicsDriverConfig.get("version").lowercase(Locale.getDefault()).contains("gen8")) {
             var tuDebug = envVars.get("TU_DEBUG")

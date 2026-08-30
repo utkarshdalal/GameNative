@@ -224,6 +224,10 @@
     <string name="open_file">Open File</string>
     <string name="download_file">Download File</string>
     <string name="processor_affinity">Processor Affinity</string>
+    <string name="faster_external_loading_title">Faster loading from external storage</string>
+    <string name="faster_external_loading_subtitle">Can significantly speed up game boot from external storage, but may cause issues in some games</string>
+    <string name="disable_libredirect_title">Disable libredirect</string>
+    <string name="disable_libredirect_subtitle">May improve performance but may also cause unexpected issues</string>
     <string name="bring_to_front">Bring to Front</string>
     <string name="end_process">End Process</string>
     <string name="new_file">New File</string>

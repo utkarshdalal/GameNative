@@ -2232,4 +2232,8 @@
     <string name="favorite_added">Føjet til favoritter</string>
     <string name="favorite_added_named">Føjede %1$s til favoritter</string>
     <string name="xr_refresh_rate">VR-opdateringsfrekvens</string>
+    <string name="faster_external_loading_title">Hurtigere indlæsning fra eksternt lager</string>
+    <string name="faster_external_loading_subtitle">Kan gøre spilstart fra eksternt lager markant hurtigere, men kan give problemer i nogle spil</string>
+    <string name="disable_libredirect_title">Deaktiver libredirect</string>
+    <string name="disable_libredirect_subtitle">Kan forbedre ydeevnen, men kan også give uventede problemer</string>
 </resources>

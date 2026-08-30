@@ -2294,4 +2294,8 @@ https://gamenative.app
     <string name="favorite_added">Добавлено в избранное</string>
     <string name="favorite_added_named">%1$s добавлено в избранное</string>
     <string name="xr_refresh_rate">Частота обновления VR</string>
+    <string name="faster_external_loading_title">Быстрая загрузка с внешнего накопителя</string>
+    <string name="faster_external_loading_subtitle">Может значительно ускорить запуск игр с внешнего накопителя, но может вызывать проблемы в некоторых играх</string>
+    <string name="disable_libredirect_title">Отключить libredirect</string>
+    <string name="disable_libredirect_subtitle">Может повысить производительность, но также может вызвать непредвиденные проблемы</string>
 </resources>

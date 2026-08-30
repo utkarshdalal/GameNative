@@ -2366,4 +2366,8 @@
     <string name="favorite_added">Adăugat la favorite</string>
     <string name="favorite_added_named">%1$s adăugat la favorite</string>
     <string name="xr_refresh_rate">Rată de reîmprospătare VR</string>
+    <string name="faster_external_loading_title">Încărcare mai rapidă de pe stocarea externă</string>
+    <string name="faster_external_loading_subtitle">Poate accelera semnificativ pornirea jocurilor de pe stocarea externă, dar poate cauza probleme în unele jocuri</string>
+    <string name="disable_libredirect_title">Dezactivează libredirect</string>
+    <string name="disable_libredirect_subtitle">Poate îmbunătăți performanța, dar poate cauza și probleme neașteptate</string>
 </resources>
