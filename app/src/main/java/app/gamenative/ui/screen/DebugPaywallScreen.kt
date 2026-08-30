@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -182,12 +183,11 @@ fun DebugPaywallScreen(
                     Text(stringResource(R.string.debug_paywall_subscribe))
                 }
 
-                TextButton(onClick = onSubscribeKofi) {
-                    Text(
-                        text = stringResource(R.string.debug_paywall_kofi_alt),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = PluviaTheme.colors.textMuted,
-                    )
+                OutlinedButton(
+                    onClick = onSubscribeKofi,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.debug_paywall_kofi_alt))
                 }
 
                 Text(

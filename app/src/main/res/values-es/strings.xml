@@ -1812,7 +1812,7 @@
     <string name="debug_paywall_tier10_body">Nuestro modelo de AI más inteligente, con conversación ilimitada en tu hilo de soporte.</string>
     <string name="debug_paywall_cancel_anytime">Cancela cuando quieras.</string>
     <string name="debug_paywall_subscribe">Suscríbete en Discord</string>
-    <string name="debug_paywall_kofi_alt">¿Prefieres Ko-fi? Suscríbete allí</string>
+    <string name="debug_paywall_kofi_alt">Suscríbete en Ko-fi</string>
     <string name="debug_paywall_already">¿Ya eres supporter?</string>
     <string name="debug_paywall_send_now">Ya me he suscrito, enviar ahora</string>
     <string name="debug_paywall_not_now">Ahora no</string>

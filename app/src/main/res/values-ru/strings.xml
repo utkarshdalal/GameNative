@@ -1742,7 +1742,7 @@ https://gamenative.app
     <string name="debug_paywall_tier10_body">Наша самая умная модель AI с неограниченной перепиской в вашей ветке поддержки.</string>
     <string name="debug_paywall_cancel_anytime">Отмена в любой момент.</string>
     <string name="debug_paywall_subscribe">Подпишитесь в Discord</string>
-    <string name="debug_paywall_kofi_alt">Предпочитаете Ko-fi? Подпишитесь там</string>
+    <string name="debug_paywall_kofi_alt">Подпишитесь в Ko-fi</string>
     <string name="debug_paywall_already">Уже саппортер?</string>
     <string name="debug_paywall_send_now">Я оформил подписку, отправить сейчас</string>
     <string name="debug_paywall_not_now">Не сейчас</string>

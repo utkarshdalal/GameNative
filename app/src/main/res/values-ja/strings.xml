@@ -1770,7 +1770,7 @@
     <string name="debug_paywall_tier10_body">最も賢い AI モデルで、サポートスレッドでのやり取りは無制限です。</string>
     <string name="debug_paywall_cancel_anytime">いつでも解約できます。</string>
     <string name="debug_paywall_subscribe">Discord で登録する</string>
-    <string name="debug_paywall_kofi_alt">Ko-fi をご希望ですか？そちらで登録できます</string>
+    <string name="debug_paywall_kofi_alt">Ko-fi で登録する</string>
     <string name="debug_paywall_already">すでにサポーターですか？</string>
     <string name="debug_paywall_send_now">購読しました、今すぐ送信</string>
     <string name="debug_paywall_not_now">今はしない</string>
