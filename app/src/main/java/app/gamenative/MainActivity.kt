@@ -317,11 +317,16 @@ class MainActivity : ComponentActivity() {
             intent.data?.host.equals("discord-linked", ignoreCase = true)
         ) {
             val token = intent.data?.getQueryParameter("token").orEmpty()
+            val state = intent.data?.getQueryParameter("state").orEmpty()
             // Do not retain the token-bearing link as the Activity's launch intent.
             setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
-            if (token.isNotEmpty()) {
+            val expectedNonce = PrefManager.discordOauthNonce
+            if (token.isNotEmpty() && expectedNonce.isNotEmpty() && state == expectedNonce) {
+                PrefManager.discordOauthNonce = ""
                 PrefManager.discordRelayToken = token
                 SnackbarManager.show(getString(R.string.debug_report_discord_linked))
+            } else if (token.isNotEmpty()) {
+                Timber.w("[IntentLaunch]: Rejecting discord-linked token with mismatched state")
             }
             return
         }
