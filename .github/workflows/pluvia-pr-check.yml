@@ -64,6 +64,7 @@ jobs:
         run: >-
           ./gradlew :app:testLegacyDebugUnitTest --no-daemon
           --tests app.gamenative.utils.LsfgVkManagerTest
+          --tests app.gamenative.utils.LsfgBuildWorkflowContractTest
           --tests app.gamenative.powercontrol.metrics.FrameTimeRingTest
           --tests com.winlator.widget.FrameRatingTest
           --tests com.winlator.widget.XServerFrameRatingRetargetContractTest
