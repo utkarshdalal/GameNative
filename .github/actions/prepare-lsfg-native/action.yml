@@ -1,0 +1,63 @@
+name: Prepare GameNative LSFG native runtime
+description: Build the exact lsfg-vk-android gitlink into the arm64 Android package
+inputs:
+  ndk-version:
+    description: Android NDK revision used by the validated LSFG Android build
+    required: false
+    default: '27.3.13750724'
+runs:
+  using: composite
+  steps:
+    - name: Build pinned arm64 LSFG layer
+      shell: bash
+      env:
+        ANDROID_NDK_VERSION: ${{ inputs.ndk-version }}
+        ANDROID_ABI: arm64-v8a
+        HOST_TAG: linux-x86_64
+      run: |
+        set -euo pipefail
+        native_dir=app/src/main/cpp/lsfg-vk-android
+        layer=app/src/main/jniLibs/arm64-v8a/liblsfg-vk-layer.so
+        expected_commit="$(git rev-parse HEAD:${native_dir})"
+
+        git submodule sync -- "$native_dir"
+        git submodule update --init --recursive -- "$native_dir"
+        actual_commit="$(git -C "$native_dir" rev-parse HEAD)"
+        if [[ "$actual_commit" != "$expected_commit" ]]; then
+          echo "ERROR: LSFG submodule checkout ${actual_commit} != GameNative gitlink ${expected_commit}" >&2
+          exit 1
+        fi
+        echo "Building GameNative-pinned LSFG native revision ${actual_commit}"
+
+        sudo apt-get update -qq
+        sudo apt-get install -y cmake ninja-build file
+        sdkmanager --install "ndk;${ANDROID_NDK_VERSION}"
+        sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+        if [[ -z "$sdk_root" ]]; then
+          echo 'ERROR: Android SDK root is not configured' >&2
+          exit 1
+        fi
+        export ANDROID_NDK_ROOT="${sdk_root}/ndk/${ANDROID_NDK_VERSION}"
+        export ANDROID_NDK="$ANDROID_NDK_ROOT"
+        readelf_bin="${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+        test -x "$readelf_bin"
+
+        (
+          cd "$native_dir"
+          bash ./scripts/build/android.sh Release
+        )
+
+        built="$native_dir/build-android-arm64-v8a/dist/liblsfg-vk-arm64-v8a.so"
+        test -s "$built"
+        cp "$built" "$layer"
+        test -s "$layer"
+        file "$layer"
+        sha256sum "$layer"
+
+        needed="$($readelf_bin -d "$layer")"
+        printf '%s\n' "$needed"
+        grep -q 'Shared library: \[libnativewindow.so\]' <<<"$needed"
+        if grep -q 'Shared library: \[libandroid.so\]' <<<"$needed"; then
+          echo 'ERROR: LSFG must not directly depend on libandroid.so' >&2
+          exit 1
+        fi
