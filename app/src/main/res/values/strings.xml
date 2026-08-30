@@ -1747,6 +1747,7 @@
     <string name="option_test_graphics">Test graphics</string>
     <string name="option_play_with_diagnostics">Diagnostic Run</string>
     <string name="option_share_diagnostics">Share diagnostics</string>
+    <string name="option_ai_debug_run">AI Debug Run \u00b7 Supporters</string>
     <string name="diagnostics_share_title">Share diagnostics log</string>
     <string name="diagnostics_share_none">No diagnostics log yet. Use \"Diagnostic Run\" first.</string>
     <string name="option_manage_dlc">Manage DLC</string>

@@ -1480,6 +1480,26 @@ fun PluviaMain(
                                 bootToContainer = false,
                             )
                         },
+                        onAiDebugRun = { appId ->
+                            trackGameLaunched(appId)
+                            viewModel.setLaunchedAppId(appId)
+                            viewModel.setBootToContainer(false)
+                            viewModel.setTestGraphics(false)
+                            viewModel.setDiagnostics(false)
+                            viewModel.setDebugRun(true)
+                            viewModel.setOffline(isOffline)
+                            preLaunchApp(
+                                context = context,
+                                appId = appId,
+                                setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                                setLoadingProgress = viewModel::setLoadingDialogProgress,
+                                setLoadingMessage = viewModel::setLoadingDialogMessage,
+                                setMessageDialogState = { msgDialogState = it },
+                                onSuccess = viewModel::launchApp,
+                                isOffline = isOffline,
+                                bootToContainer = false,
+                            )
+                        },
                         onClickExit = {
                             if (!PrefManager.warnBeforeExit) {
                                 PluviaApp.events.emit(AndroidEvent.EndProcess)

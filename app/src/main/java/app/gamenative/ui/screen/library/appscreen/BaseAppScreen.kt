@@ -504,6 +504,18 @@ abstract class BaseAppScreen {
     }
 
     @Composable
+    protected open fun getAiDebugRunOption(
+        context: Context,
+        libraryItem: LibraryItem,
+        onAiDebugRun: () -> Unit,
+    ): AppMenuOption? {
+        return AppMenuOption(
+            AppOptionMenuType.AiDebugRun,
+            onClick = { onAiDebugRun() },
+        )
+    }
+
+    @Composable
     protected open fun getShareDiagnosticsOption(
         context: Context,
         libraryItem: LibraryItem,
@@ -1115,6 +1127,7 @@ abstract class BaseAppScreen {
         onClickPlay: (Boolean) -> Unit,
         onTestGraphics: () -> Unit,
         onPlayWithDiagnostics: () -> Unit,
+        onAiDebugRun: () -> Unit,
         exportFrontendLauncher: ActivityResultLauncher<String>,
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
@@ -1128,6 +1141,7 @@ abstract class BaseAppScreen {
             getRunContainerOption(context, libraryItem, onClickPlay)?.let { menuOptions.add(it) }
             getTestGraphicsOption(context, libraryItem, onTestGraphics)?.let { menuOptions.add(it) }
             getPlayWithDiagnosticsOption(context, libraryItem, onPlayWithDiagnostics)?.let { menuOptions.add(it) }
+            getAiDebugRunOption(context, libraryItem, onAiDebugRun)?.let { menuOptions.add(it) }
             getShareDiagnosticsOption(context, libraryItem)?.let { menuOptions.add(it) }
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
@@ -1178,6 +1192,7 @@ abstract class BaseAppScreen {
         onClickPlay: (Boolean) -> Unit,
         onTestGraphics: () -> Unit,
         onPlayWithDiagnostics: () -> Unit,
+        onAiDebugRun: () -> Unit,
         onBack: () -> Unit,
     ) {
         val context = LocalContext.current
@@ -1508,7 +1523,7 @@ abstract class BaseAppScreen {
                 }
         }
 
-        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, onPlayWithDiagnostics, exportFrontendLauncher)
+        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, onPlayWithDiagnostics, onAiDebugRun, exportFrontendLauncher)
 
         // Get download info based on game source for progress tracking
         val downloadInfo = when (libraryItem.gameSource) {

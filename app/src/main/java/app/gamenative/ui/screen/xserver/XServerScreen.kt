@@ -3815,7 +3815,7 @@ private fun setupXEnvironment(
     ProcessHelper.removeAllDebugCallbacks()
     // read user preferences
     val enableWineDebug = PrefManager.enableWineDebug
-    val enableBox86Logs = WinlatorPrefManager.getBoolean("enable_box86_64_logs", true)
+    val enableBox86Logs = WinlatorPrefManager.getBoolean("enable_box86_64_logs", false)
     val wineDebugChannels = PrefManager.wineDebugChannels
     // explicitly enable or disable Wine debug channels
     if (debugRun) {
