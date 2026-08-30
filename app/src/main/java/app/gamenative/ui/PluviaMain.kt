@@ -92,7 +92,7 @@ import app.gamenative.launch.LaunchReadiness
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
-import app.gamenative.ui.component.dialog.DebugPaywallDialog
+import app.gamenative.ui.screen.DebugPaywallScreen
 import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
@@ -1437,6 +1437,13 @@ fun PluviaMain(
                 }
             }
 
+            val debugFlowActive = debugReportState.visible || debugPaywallReason != null
+            LaunchedEffect(debugFlowActive) {
+                if (debugFlowActive) {
+                    SteamService.keepAlive = true
+                }
+            }
+
             DebugReportDialog(
                 state = debugReportState,
                 hasDiscordToken = discordTokenPresent,
@@ -1451,12 +1458,15 @@ fun PluviaMain(
                 },
                 onDismiss = {
                     debugReportState = debugReportState.copy(visible = false)
+                    if (debugPaywallReason == null) {
+                        SteamService.keepAlive = false
+                    }
                 },
             )
 
             debugPaywallReason?.let { reason ->
                 Box(modifier = Modifier.zIndex(5f)) {
-                    DebugPaywallDialog(
+                    DebugPaywallScreen(
                         gameName = debugReportState.gameName,
                         deviceName = debugReportState.deviceName,
                         logSizeBytes = debugReportState.logSizeBytes,
