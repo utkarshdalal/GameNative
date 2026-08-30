@@ -1427,6 +1427,7 @@ fun PluviaMain(
                             viewModel.setBootToContainer(asContainer)
                             viewModel.setTestGraphics(false)
                             viewModel.setDiagnostics(false)
+                            viewModel.setDebugRun(false)
                             viewModel.setOffline(isOffline)
                             preLaunchApp(
                                 context = context,
@@ -1445,6 +1446,7 @@ fun PluviaMain(
                             viewModel.setBootToContainer(true)
                             viewModel.setTestGraphics(true)
                             viewModel.setDiagnostics(false)
+                            viewModel.setDebugRun(false)
                             viewModel.setOffline(isOffline)
                             preLaunchApp(
                                 context = context,
@@ -1464,6 +1466,7 @@ fun PluviaMain(
                             viewModel.setBootToContainer(false)
                             viewModel.setTestGraphics(false)
                             viewModel.setDiagnostics(true)
+                            viewModel.setDebugRun(false)
                             viewModel.setOffline(isOffline)
                             preLaunchApp(
                                 context = context,
@@ -1536,6 +1539,7 @@ fun PluviaMain(
                         bootToContainer = state.bootToContainer,
                         testGraphics = state.testGraphics,
                         diagnostics = state.diagnostics,
+                        debugRun = state.debugRun,
                         isOffline = xServerIsOffline,
                         registerBackAction = { cb ->
                             Timber.d("registerBackAction called: $cb")
