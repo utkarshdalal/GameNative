@@ -80,6 +80,7 @@ object LsfgVkManager {
     private const val ENV_CONFIG = "LSFG_CONFIG"
     private const val ENV_PROCESS = "LSFG_PROCESS"
     private const val ENV_PROCESS_EXE = "LSFG_PROCESS_EXE"
+    private const val ENV_HOME = "HOME"
     private const val ENV_VK_LAYER_PATH = "VK_LAYER_PATH"
     private const val ENV_VK_INSTANCE_LAYERS = "VK_INSTANCE_LAYERS"
     private const val ENV_VK_LOADER_LAYERS_ENABLE = "VK_LOADER_LAYERS_ENABLE"
@@ -90,10 +91,9 @@ object LsfgVkManager {
     private const val ENV_LD_LIBRARY_PATH = "LD_LIBRARY_PATH"
 
     // Current runtime package revision. Include the exact verified native
-    // diagnostics lineage so existing containers cannot silently retain an
-    // older AHB binary after installing a newer GameNative APK.
+    // compatibility lineage so loader-visible copies are refreshed together.
     private const val RUNTIME_VERSION =
-        "v1.3.3-android-arm64-v8a-gamenative-ahb-diag-4ea941c7-r4"
+        "v1.3.3-android-arm64-v8a-gamenative-ahb-hotreload-ee0e265c-r5"
 
     // Asset path for manifest (still in assets)
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
@@ -411,8 +411,9 @@ object LsfgVkManager {
         envVars.put(ENV_CONFIG, configFile(container).absolutePath)
         envVars.put(ENV_PROCESS_EXE, processExecutable)
 
-        val containerLayerDir = File(container.rootDir, LAYER_RELATIVE_DIR).absolutePath
-        appendUniqueEnvEntry(envVars, ENV_VK_LAYER_PATH, containerLayerDir)
+        val loaderLayerDir = synchronizeLoaderVisibleRuntime(container, envVars)
+            ?: File(container.rootDir, LAYER_RELATIVE_DIR)
+        appendUniqueEnvEntry(envVars, ENV_VK_LAYER_PATH, loaderLayerDir.absolutePath)
         appendUniqueEnvEntry(envVars, ENV_VK_INSTANCE_LAYERS, VULKAN_LAYER_NAME)
 
         logLaunchPreflight(container, envVars)
@@ -434,6 +435,86 @@ object LsfgVkManager {
             if (performanceMode(container)) "on" else "off",
         )
         return true
+    }
+
+    /**
+     * Bionic launches with a loader HOME that may differ from the per-game
+     * container root used by GameNative. Vulkan searches HOME implicit layers
+     * before our explicit path and duplicate layer names are resolved by the
+     * first manifest, so a stale base-HOME copy can shadow the verified runtime.
+     * Keep the loader-visible copy byte-identical to the per-game source.
+     */
+    private fun synchronizeLoaderVisibleRuntime(container: Container, envVars: EnvVars): File? {
+        val loaderHomePath = envVars[ENV_HOME]?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val loaderHome = File(loaderHomePath)
+        if (!loaderHome.isAbsolute) return null
+
+        val sourceLib = File(container.rootDir, "$LIB_RELATIVE_DIR/$LIB_FILENAME")
+        val sourceManifest = File(container.rootDir, "$LAYER_RELATIVE_DIR/$MANIFEST_FILENAME")
+        if (!sourceLib.isFile || !sourceManifest.isFile) {
+            Timber.tag(TAG).w(
+                "LSFG loader runtime sync skipped: source runtime incomplete lib=%s manifest=%s",
+                sourceLib.isFile,
+                sourceManifest.isFile,
+            )
+            return null
+        }
+
+        val targetLib = File(loaderHome, "$LIB_RELATIVE_DIR/$LIB_FILENAME")
+        val targetLayerDir = File(loaderHome, LAYER_RELATIVE_DIR)
+        val targetManifest = File(targetLayerDir, MANIFEST_FILENAME)
+        val targetVersion = File(targetLayerDir, VERSION_FILENAME)
+
+        return try {
+            val sourceLibCanonical = sourceLib.canonicalFile
+            val targetLibCanonical = targetLib.canonicalFile
+            val sourceManifestCanonical = sourceManifest.canonicalFile
+            val targetManifestCanonical = targetManifest.canonicalFile
+
+            targetLib.parentFile?.mkdirs()
+            targetLayerDir.mkdirs()
+
+            if (sourceLibCanonical != targetLibCanonical &&
+                !filesHaveSameContents(sourceLib, targetLib)
+            ) {
+                sourceLib.inputStream().use { input ->
+                    targetLib.outputStream().use { output -> input.copyTo(output) }
+                }
+            }
+
+            if (sourceManifestCanonical != targetManifestCanonical) {
+                val sourceText = sourceManifest.readText()
+                if (!targetManifest.isFile || targetManifest.readText() != sourceText) {
+                    FileUtils.writeString(targetManifest, sourceText)
+                }
+            }
+            FileUtils.writeString(targetVersion, RUNTIME_VERSION)
+
+            if (targetLib.exists()) FileUtils.chmod(targetLib, 0b111101101)
+            if (targetManifest.exists()) FileUtils.chmod(targetManifest, 0b110100100)
+            if (targetVersion.exists()) FileUtils.chmod(targetVersion, 0b110100100)
+
+            val verified = targetLib.isFile && targetManifest.isFile &&
+                filesHaveSameContents(sourceLib, targetLib)
+            if (!verified) {
+                Timber.tag(TAG).e(
+                    "LSFG loader runtime sync verification failed home=%s",
+                    loaderHome.absolutePath,
+                )
+                null
+            } else {
+                Timber.tag(TAG).i(
+                    "LSFG loader runtime synchronized version=%s home=%s layerDir=%s",
+                    RUNTIME_VERSION,
+                    loaderHome.absolutePath,
+                    targetLayerDir.absolutePath,
+                )
+                targetLayerDir
+            }
+        } catch (t: Throwable) {
+            Timber.tag(TAG).e(t, "Failed to synchronize LSFG runtime into Vulkan loader HOME")
+            null
+        }
     }
 
     private fun logLaunchPreflight(container: Container, envVars: EnvVars) {
