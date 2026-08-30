@@ -73,9 +73,9 @@ data class FrameWindowStats(
     }
 }
 
-// This is deliberately far above any current Android display or useful game
-// presentation rate. It only rejects impossible X-window/event bursts such as
-// the ~26,975 FPS sample observed during a launcher -> game handoff.
+// Deliberately far above any current Android display or useful game
+// presentation rate. This only rejects impossible X-window/event bursts such
+// as the ~26,975 FPS sample observed during a launcher -> game handoff.
 private const val MAX_PLAUSIBLE_FRAME_FPS = 1000f
 
 /**
@@ -124,7 +124,7 @@ fun computeFrameWindowStats(
 
     return FrameWindowStats(
         fps = fps,
-        p50Ms = deltaScratch[((deltas - 1) * 0.50).toInt().coerceIn(0, deltas - 1)] / 1_000_000f,
+        p50Ms = percentileMs(deltaScratch, deltas, 0.50),
         p95Ms = percentileMs(deltaScratch, deltas, 0.95),
         maxMs = deltaScratch[deltas - 1] / 1_000_000f,
         slowFrameCount = slowFrames,
