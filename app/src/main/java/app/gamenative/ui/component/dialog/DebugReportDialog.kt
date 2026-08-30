@@ -125,15 +125,15 @@ fun DebugReportDialog(
                                 TextButton(onClick = onDismiss) {
                                     Text(stringResource(R.string.close))
                                 }
-                                TextButton(onClick = onShare) {
-                                    Text(stringResource(R.string.debug_report_share_instead))
-                                }
                                 Button(
                                     onClick = onSend,
                                     modifier = Modifier.padding(start = 8.dp),
                                 ) {
                                     Text(stringResource(R.string.debug_report_retry))
                                 }
+                            }
+                            TextButton(onClick = onShare) {
+                                Text(stringResource(R.string.debug_report_share_instead))
                             }
                         }
 
@@ -200,9 +200,6 @@ fun DebugReportDialog(
                                 TextButton(onClick = onDismiss) {
                                     Text(stringResource(R.string.cancel))
                                 }
-                                TextButton(onClick = onShare) {
-                                    Text(stringResource(R.string.debug_report_share_instead))
-                                }
                                 Button(
                                     onClick = onSend,
                                     modifier = Modifier.padding(start = 8.dp),
@@ -210,6 +207,9 @@ fun DebugReportDialog(
                                 ) {
                                     Text(stringResource(R.string.debug_report_send))
                                 }
+                            }
+                            TextButton(onClick = onShare) {
+                                Text(stringResource(R.string.debug_report_share_instead))
                             }
                         }
                     }

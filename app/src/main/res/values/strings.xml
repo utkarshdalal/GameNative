@@ -1767,8 +1767,11 @@
     <string name="debug_report_no_log">No debug log was captured for this run.</string>
     <string name="debug_paywall_title">Get AI debug support</string>
     <string name="debug_paywall_pitch">Our AI reads your exact log and config and tells you what to change — usually in under a minute.</string>
-    <string name="debug_paywall_price">$5/month · cancel anytime</string>
-    <string name="debug_paywall_price_secondary">Want to support us even more? There is also a $10 tier.</string>
+    <string name="debug_paywall_tier5_title">$5/month · Supporter</string>
+    <string name="debug_paywall_tier5_body">Our AI reads your debug report and replies in Discord with what to change, plus quick follow-ups.</string>
+    <string name="debug_paywall_tier10_title">$10/month · Pro</string>
+    <string name="debug_paywall_tier10_body">Our smartest AI, full conversations in your support thread, and priority answers.</string>
+    <string name="debug_paywall_cancel_anytime">Cancel anytime.</string>
     <string name="debug_paywall_subscribe">Become a supporter on Ko-fi</string>
     <string name="debug_paywall_already">Already a supporter?</string>
     <string name="debug_paywall_send_now">I’ve subscribed — send now</string>
