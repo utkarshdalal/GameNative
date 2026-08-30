@@ -55,6 +55,7 @@ fun DebugReportDialog(
                     .wrapContentHeight(),
                 shape = RoundedCornerShape(20.dp),
                 color = PluviaTheme.colors.surfaceElevated,
+                contentColor = MaterialTheme.colorScheme.onSurface,
             ) {
                 Column(
                     modifier = Modifier
