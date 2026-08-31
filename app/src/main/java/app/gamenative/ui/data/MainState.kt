@@ -21,6 +21,7 @@ data class MainState(
     val bootToContainer: Boolean = false,
     val testGraphics: Boolean = false,
     val diagnostics: Boolean = false,
+    val debugRun: Boolean = false,
     val showBootingSplash: Boolean = false,
     val bootingSplashText: String = "Booting...",
     val bootingSplashHeroImageUrl: String = "",

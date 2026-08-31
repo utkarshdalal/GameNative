@@ -131,6 +131,7 @@ fun HomeLibraryScreen(
     onClickPlay: (String, Boolean) -> Unit,
     onTestGraphics: (String) -> Unit,
     onPlayWithDiagnostics: (String) -> Unit,
+    onAiDebugRun: (String) -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
     onGoOnline: () -> Unit,
@@ -157,6 +158,7 @@ fun HomeLibraryScreen(
         onClickPlay = onClickPlay,
         onTestGraphics = onTestGraphics,
         onPlayWithDiagnostics = onPlayWithDiagnostics,
+        onAiDebugRun = onAiDebugRun,
         onNavigateRoute = onNavigateRoute,
         onLogout = onLogout,
         onGoOnline = onGoOnline,
@@ -199,6 +201,7 @@ private fun LibraryScreenContent(
     onClickPlay: (String, Boolean) -> Unit,
     onTestGraphics: (String) -> Unit,
     onPlayWithDiagnostics: (String) -> Unit,
+    onAiDebugRun: (String) -> Unit,
     onRefresh: () -> Unit,
     onNavigateRoute: (String) -> Unit,
     onLogout: () -> Unit,
@@ -1219,6 +1222,11 @@ private fun LibraryScreenContent(
                         onPlayWithDiagnostics(libraryItem.appId)
                     }
                 },
+                onAiDebugRun = {
+                    selectedLibraryItem?.let { libraryItem ->
+                        onAiDebugRun(libraryItem.appId)
+                    }
+                },
             )
         }
 
@@ -1526,6 +1534,7 @@ private fun Preview_LibraryScreenContent() {
             onClickPlay = { _, _ -> },
             onTestGraphics = { },
             onPlayWithDiagnostics = { },
+            onAiDebugRun = { },
             onRefresh = { },
             onNavigateRoute = {},
             onLogout = {},

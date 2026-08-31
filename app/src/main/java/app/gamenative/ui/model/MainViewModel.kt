@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryPlayHistory
@@ -30,7 +31,9 @@ import app.gamenative.utils.CustomGameScanner
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateInfo
@@ -105,6 +108,8 @@ class MainViewModel @Inject constructor(
         data object ShowDiscordSupportDialog : MainUiEvent()
         data class ShowGameFeedbackDialog(val appId: String) : MainUiEvent()
         data class ShowMembershipPitch(val appId: String, val trigger: String) : MainUiEvent()
+        data class ShowDebugReportDialog(val appId: String, val reportDir: String) : MainUiEvent()
+        data class ShowAiDebugOffer(val appId: String) : MainUiEvent()
         data object ServiceReady : MainUiEvent()
     }
 
@@ -499,6 +504,10 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(diagnostics = value) }
     }
 
+    fun setDebugRun(value: Boolean) {
+        _state.update { it.copy(debugRun = value) }
+    }
+
     fun launchApp(context: Context, appId: String) {
         gameSessionStartTime = System.currentTimeMillis()
         gamePlayedThisSession = true
@@ -512,6 +521,15 @@ class MainViewModel @Inject constructor(
                         lastPlayed = System.currentTimeMillis(),
                     ),
                 )
+                try {
+                    val container = ContainerUtils.getContainer(context, appId)
+                    if (container.getSessionMetadata("guest_self_exited", "false") == "true") {
+                        container.putSessionMetadata("guest_self_exited", "false")
+                        container.saveData()
+                    }
+                } catch (e: Exception) {
+                    Timber.w(e, "Failed to clear guest_self_exited for $appId")
+                }
             }
 
             setShowBootingSplash(true)
@@ -617,9 +635,30 @@ class MainViewModel @Inject constructor(
 
                 // After app closes, check if we need to show the feedback dialog
                 // Show feedback if: first time running this game OR config was changed
-                val sessionLongEnough = gameSessionStartTime > 0 &&
-                    System.currentTimeMillis() - gameSessionStartTime >= MIN_WARM_PITCH_SESSION_MS
+                val sessionLengthMs = if (gameSessionStartTime > 0) {
+                    System.currentTimeMillis() - gameSessionStartTime
+                } else {
+                    0L
+                }
+                val sessionLongEnough = sessionLengthMs >= MIN_WARM_PITCH_SESSION_MS
                 gameSessionStartTime = 0L
+
+                if (_state.value.debugRun) {
+                    setDebugRun(false)
+                    val reportDir = DebugReportUtils.createPendingReport(context, appId)
+                    if (reportDir != null) {
+                        _uiEvent.send(MainUiEvent.ShowDebugReportDialog(appId, reportDir.absolutePath))
+                    } else {
+                        SnackbarManager.show(context.getString(R.string.debug_report_no_log))
+                    }
+                    return@launch
+                }
+
+                val aiOfferRequested = maybeOfferAiDebugRun(context, appId, sessionLengthMs)
+                if (aiOfferRequested) {
+                    return@launch
+                }
+
                 var feedbackRequested = false
                 try {
                     // Show feedback for all stores except custom games.
@@ -660,6 +699,35 @@ class MainViewModel @Inject constructor(
             } finally {
                 onComplete?.invoke()
             }
+        }
+    }
+
+    private suspend fun maybeOfferAiDebugRun(context: Context, appId: String, sessionLengthMs: Long): Boolean {
+        return try {
+            val container = ContainerUtils.getContainer(context, appId)
+            val guestSelfExited = container.getSessionMetadata("guest_self_exited", "false") == "true"
+            if (guestSelfExited) {
+                container.putSessionMetadata("guest_self_exited", "false")
+                container.saveData()
+            }
+            val firstLaunch = container.getExtra("discord_support_prompt_shown", "false") != "true"
+            val avgFps = container.getSessionMetadata("avg_fps", "").toFloatOrNull()
+            val crashSignal = guestSelfExited ||
+                (firstLaunch && sessionLengthMs in 1 until 180_000L) ||
+                (avgFps != null && avgFps < 0.01f)
+            if (!crashSignal) return false
+
+            val offeredBefore = container.getExtra("ai_debug_offer_shown", "false") == "true"
+            val cooldownElapsed = System.currentTimeMillis() - PrefManager.lastWarmPitchTime >= WARM_PITCH_COOLDOWN_MS
+            if (!(PrefManager.tipped || (cooldownElapsed && !offeredBefore))) return false
+
+            container.putExtra("ai_debug_offer_shown", "true")
+            container.saveData()
+            _uiEvent.send(MainUiEvent.ShowAiDebugOffer(appId))
+            true
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to evaluate AI debug offer for $appId")
+            false
         }
     }
 

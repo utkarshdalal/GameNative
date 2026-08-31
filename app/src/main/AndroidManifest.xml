@@ -78,6 +78,17 @@
                 <data android:scheme="nxm" />
             </intent-filter>
             <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- Relay redirects here after the user links their Discord account. -->
+                <data
+                    android:host="discord-linked"
+                    android:scheme="gamenative" />
+            </intent-filter>
+            <intent-filter>
                 <action android:name="app.gamenative.LAUNCH_GAME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>

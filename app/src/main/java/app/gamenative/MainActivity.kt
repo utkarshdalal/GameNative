@@ -312,6 +312,24 @@ class MainActivity : ComponentActivity() {
             Timber.d("[IntentLaunch]: Ignoring intent re-delivered from recents")
             return
         }
+        if (intent.action == Intent.ACTION_VIEW &&
+            intent.data?.scheme.equals("gamenative", ignoreCase = true) &&
+            intent.data?.host.equals("discord-linked", ignoreCase = true)
+        ) {
+            val token = intent.data?.getQueryParameter("token").orEmpty()
+            val state = intent.data?.getQueryParameter("state").orEmpty()
+            // Do not retain the token-bearing link as the Activity's launch intent.
+            setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+            val expectedNonce = PrefManager.discordOauthNonce
+            if (token.isNotEmpty() && expectedNonce.isNotEmpty() && state == expectedNonce) {
+                PrefManager.discordOauthNonce = ""
+                PrefManager.discordRelayToken = token
+                SnackbarManager.show(getString(R.string.debug_report_discord_linked))
+            } else if (token.isNotEmpty()) {
+                Timber.w("[IntentLaunch]: Rejecting discord-linked token with mismatched state")
+            }
+            return
+        }
         if (intent.action == Intent.ACTION_VIEW && intent.data?.scheme.equals("nxm", ignoreCase = true)) {
             val rawNxmUrl = intent.dataString.orEmpty()
             // Do not retain a signed NXM grant as the Activity's launch intent. Android can

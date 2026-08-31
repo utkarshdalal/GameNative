@@ -1,6 +1,7 @@
 package app.gamenative
 
 import android.content.Context
+import androidx.compose.runtime.mutableStateOf
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
@@ -1002,6 +1003,39 @@ object PrefManager {
         get() = getPref(LAST_WARM_PITCH_TIME, 0L)
         set(value) {
             setPref(LAST_WARM_PITCH_TIME, value)
+        }
+
+    private val DISCORD_RELAY_TOKEN = stringPreferencesKey("discord_relay_token")
+    private val DISCORD_RELAY_TOKEN_ENC = byteArrayPreferencesKey("discord_relay_token_enc")
+    val discordRelayTokenPresent = mutableStateOf(false)
+    var discordRelayToken: String
+        get() {
+            val encryptedBytes = getPref(DISCORD_RELAY_TOKEN_ENC, ByteArray(0))
+            if (encryptedBytes.isNotEmpty()) {
+                return String(Crypto.decrypt(encryptedBytes))
+            }
+            val legacy = getPref(DISCORD_RELAY_TOKEN, "")
+            if (legacy.isNotEmpty()) {
+                setPref(DISCORD_RELAY_TOKEN_ENC, Crypto.encrypt(legacy.toByteArray()))
+                removePref(DISCORD_RELAY_TOKEN)
+            }
+            return legacy
+        }
+        set(value) {
+            if (value.isEmpty()) {
+                removePref(DISCORD_RELAY_TOKEN_ENC)
+            } else {
+                setPref(DISCORD_RELAY_TOKEN_ENC, Crypto.encrypt(value.toByteArray()))
+            }
+            removePref(DISCORD_RELAY_TOKEN)
+            discordRelayTokenPresent.value = value.isNotEmpty()
+        }
+
+    private val DISCORD_OAUTH_NONCE = stringPreferencesKey("discord_oauth_nonce")
+    var discordOauthNonce: String
+        get() = getPref(DISCORD_OAUTH_NONCE, "")
+        set(value) {
+            setPref(DISCORD_OAUTH_NONCE, value)
         }
 
     private val APP_THEME = intPreferencesKey("app_theme")
