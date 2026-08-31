@@ -90,10 +90,10 @@ object LsfgVkManager {
     private const val ENV_ADRENOTOOLS_DRIVER_PATH = "ADRENOTOOLS_DRIVER_PATH"
     private const val ENV_LD_LIBRARY_PATH = "LD_LIBRARY_PATH"
 
-    // Current runtime package revision. Include the exact verified native
-    // compatibility lineage so loader-visible copies are refreshed together.
+    // Current runtime package revision. Keep the exact native gitlink revision
+    // in the marker so loader-visible copies cannot masquerade as another build.
     private const val RUNTIME_VERSION =
-        "v1.3.3-android-arm64-v8a-gamenative-ahbdiag-e53ce6fc-r7"
+        "v1.3.4-android-arm64-v8a-gamenative-wsi-09584e0d-r8"
 
     // Asset path for manifest (still in assets)
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
@@ -109,13 +109,13 @@ object LsfgVkManager {
     /**
      * Whether LSFG is armed for this container.
      *
-     * This is a UI/runtime hot path. Never rescan Steam libraries here: launch
-     * setup owns discovery/copying, so the container-local DLL is authoritative.
+     * A legacy multiplier of 0 means Off even if the older boolean extra is
+     * still true. This is a UI/runtime hot path, so do not rescan Steam here.
      */
     @JvmStatic
     fun isArmed(container: Container): Boolean =
         isSupported(container) &&
-            parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
+            userRequestedFrameGeneration(container) &&
             containerDllPath(container) != null
 
     /** Whether Lossless Scaling is installed (Lossless.dll exists in Steam dir). */
@@ -139,6 +139,9 @@ object LsfgVkManager {
         val raw = container.getExtra(EXTRA_MULTIPLIER, "2").toIntOrNull() ?: 2
         return if (raw == 0) 0 else raw.coerceIn(2, 4)
     }
+
+    private fun userRequestedFrameGeneration(container: Container): Boolean =
+        parseBool(container.getExtra(EXTRA_ARMED, "false")) && multiplier(container) >= 2
 
     /** Get the flow scale (0.25-1.0, default 0.80). */
     fun flowScale(container: Container): Float =
@@ -337,7 +340,7 @@ object LsfgVkManager {
                 Timber.tag(TAG).e(t, "Failed to copy Lossless.dll into container")
                 success = false
             }
-        } else if (parseBool(container.getExtra(EXTRA_ARMED, "false"))) {
+        } else if (userRequestedFrameGeneration(container)) {
             Timber.tag(TAG).w("LSFG enabled but Lossless.dll not found in Steam dir")
             success = false
         }
@@ -353,8 +356,7 @@ object LsfgVkManager {
             val dllPath = containerDllPath(container)
             val processExecutable = targetExecutable(container)
             val savedMultiplier = multiplier(container)
-            val frameGenActive = parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
-                dllPath != null && processExecutable != null && savedMultiplier >= 2
+            val frameGenActive = isArmed(container) && processExecutable != null
             val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
             val configText = buildConfigToml(
                 dllPath = dllPath,
@@ -390,13 +392,14 @@ object LsfgVkManager {
         }
 
         val dllPath = containerDllPath(container)
-        val armed = parseBool(container.getExtra(EXTRA_ARMED, "false")) && dllPath != null
+        val armed = isArmed(container)
 
         if (!armed) {
             disableLayerInContainer(container)
             Timber.tag(TAG).i(
-                "LSFG disabled (enabled=%s, dll=%s)",
+                "LSFG disabled (enabled=%s, multiplier=%d, dll=%s)",
                 container.getExtra(EXTRA_ARMED, "false"),
+                multiplier(container),
                 dllPath ?: "null",
             )
             return false
@@ -764,7 +767,8 @@ object LsfgVkManager {
 
         return try {
             val processExecutable = targetExecutable(container)
-            val frameGenActive = enabled && dllPath != null && processExecutable != null
+            val frameGenActive = enabled && multiplier >= 2 &&
+                dllPath != null && processExecutable != null
             val effectiveFpsLimit = (fpsLimitOverride ?: fpsLimit(container)).coerceAtLeast(0)
             val configText = buildConfigToml(
                 dllPath = dllPath,
