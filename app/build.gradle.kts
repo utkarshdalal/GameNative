@@ -9,7 +9,6 @@ plugins {
     alias(libs.plugins.jetbrains.serialization)
     alias(libs.plugins.kotlinter)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.secrets.gradle)
     alias(libs.plugins.room)
 }
 
@@ -26,6 +25,16 @@ val posthogHost: String = project.findProperty("POSTHOG_HOST") as String? ?: Sys
 
 val metaAppId: String = project.findProperty("META_APP_ID") as String? ?: System.getenv("META_APP_ID") ?: ""
 val productSku: String = project.findProperty("PRODUCT_SKU") as String? ?: System.getenv("PRODUCT_SKU") ?: ""
+
+// buildConfigField expects a complete Java expression. Secret-backed values may
+// contain arbitrary characters, so encode the exact UTF-8 bytes into a Java expression
+// rather than embedding the secret itself in generated source code.
+fun javaUtf8StringExpression(value: String): String =
+    value.toByteArray(Charsets.UTF_8).joinToString(
+        prefix = "new String(new byte[]{",
+        postfix = "}, java.nio.charset.StandardCharsets.UTF_8)",
+        separator = ",",
+    ) { it.toString() }
 
 room {
     schemaDirectory("$projectDir/schemas")
@@ -68,13 +77,15 @@ android {
         versionName = "1.2.0"
 
         buildConfigField("boolean", "GOLD", "false")
-        fun secret(name: String) =
-            project.findProperty(name) as String? ?: System.getenv(name) ?: ""
+        fun secret(name: String, defaultValue: String = "") =
+            (project.findProperty(name) as String?)?.takeIf { it.isNotEmpty() }
+                ?: System.getenv(name)?.takeIf { it.isNotEmpty() }
+                ?: defaultValue
 
-        buildConfigField("String", "POSTHOG_API_KEY", "\"${secret("POSTHOG_API_KEY")}\"")
-        buildConfigField("String", "POSTHOG_HOST",  "\"${secret("POSTHOG_HOST")}\"")
-        buildConfigField("String", "STEAMGRIDDB_API_KEY", "\"${secret("STEAMGRIDDB_API_KEY")}\"")
-        buildConfigField("String", "CLOUD_PROJECT_NUMBER", "\"${secret("CLOUD_PROJECT_NUMBER")}\"")
+        buildConfigField("String", "POSTHOG_API_KEY", javaUtf8StringExpression(secret("POSTHOG_API_KEY")))
+        buildConfigField("String", "POSTHOG_HOST", javaUtf8StringExpression(secret("POSTHOG_HOST", "https://us.i.posthog.com")))
+        buildConfigField("String", "STEAMGRIDDB_API_KEY", javaUtf8StringExpression(secret("STEAMGRIDDB_API_KEY")))
+        buildConfigField("String", "CLOUD_PROJECT_NUMBER", javaUtf8StringExpression(secret("CLOUD_PROJECT_NUMBER")))
         val iconValue = "@mipmap/ic_launcher"
         val iconRoundValue = "@mipmap/ic_launcher_round"
         manifestPlaceholders.putAll(
@@ -155,8 +166,8 @@ android {
             buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
             buildConfigField("boolean", "XR_BUILD", "true")
             buildConfigField("boolean", "MODERN_XR", "true")
-            buildConfigField("String", "META_APP_ID", "\"$metaAppId\"")
-            buildConfigField("String", "PRODUCT_SKU", "\"$productSku\"")
+            buildConfigField("String", "META_APP_ID", javaUtf8StringExpression(metaAppId))
+            buildConfigField("String", "PRODUCT_SKU", javaUtf8StringExpression(productSku))
             manifestPlaceholders["screenOrientation"] = "landscape"
         }
     }
@@ -337,6 +348,45 @@ android {
     //         exclude(group = "junit", module = "junit")
     //     }
     // }
+}
+
+// Keep the focused Legacy APK workflow from reaching Kotlin compilation with a
+// silently truncated dependency block. This resolves the real variant classpath,
+// so aliases, bundles, and transitive dependencies are all checked as Gradle sees them.
+tasks.register("verifyLegacyReleaseCompileClasspath") {
+    group = "verification"
+    description = "Verifies dependencies required by the LegacyRelease application sources"
+
+    doLast {
+        val classpath = project.configurations.getByName("legacyReleaseCompileClasspath")
+        val resolvedModules = classpath.incoming.resolutionResult.allComponents
+            .mapNotNull { component ->
+                component.moduleVersion?.let { module -> "${module.group}:${module.name}" }
+            }
+            .toSet()
+        val requiredModules = setOf(
+            "androidx.browser:browser",
+            "androidx.datastore:datastore-preferences",
+            "androidx.media3:media3-exoplayer",
+            "com.auth0.android:jwtdecode",
+            "com.github.penfeizhou.android.animation:apng",
+            "com.github.skydoves:landscapist-coil",
+            "com.jakewharton.timber:timber",
+            "com.posthog:posthog-android",
+            "com.squareup.okhttp3:okhttp",
+            "org.apache.commons:commons-compress",
+            "org.jetbrains.kotlinx:kotlinx-coroutines-core",
+            "org.tukaani:xz",
+        )
+        val missingModules = requiredModules - resolvedModules
+
+        check(missingModules.isEmpty()) {
+            "LegacyRelease compile classpath is missing: ${missingModules.sorted().joinToString()}"
+        }
+        check(classpath.files.any { it.name == "perfsdk-v1.0.0.jar" }) {
+            "LegacyRelease compile classpath is missing the Samsung Performance SDK"
+        }
+    }
 }
 
 dependencies {

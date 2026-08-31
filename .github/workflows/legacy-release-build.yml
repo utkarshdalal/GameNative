@@ -1,0 +1,198 @@
+name: LegacyRelease APK
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - '.github/workflows/legacy-release-build.yml'
+      - '.github/actions/prepare-lsfg-native/**'
+      - 'app/build.gradle.kts'
+      - 'gradle/libs.versions.toml'
+      - 'settings.gradle.kts'
+  pull_request:
+    paths:
+      - '.github/workflows/legacy-release-build.yml'
+      - '.github/actions/prepare-lsfg-native/**'
+      - 'app/build.gradle.kts'
+      - 'gradle/libs.versions.toml'
+      - 'settings.gradle.kts'
+  workflow_dispatch:
+
+concurrency:
+  group: gamenative-legacy-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  legacy-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out GameNative
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Prepare exact GameNative-pinned LSFG native runtime
+        uses: ./.github/actions/prepare-lsfg-native
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Verify LegacyRelease compile classpath
+        run: ./gradlew :app:verifyLegacyReleaseCompileClasspath --no-daemon --stacktrace
+
+      - name: Assemble LegacyRelease only
+        id: assemble
+        continue-on-error: true
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          STEAMGRIDDB_API_KEY: ${{ secrets.STEAMGRIDDB_API_KEY }}
+          CLOUD_PROJECT_NUMBER: ${{ secrets.CLOUD_PROJECT_NUMBER }}
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleLegacyRelease --no-daemon --stacktrace 2>&1 | tee legacy-release-build.log
+
+      - name: Surface sanitized Gradle failure
+        if: steps.assemble.outcome == 'failure'
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          STEAMGRIDDB_API_KEY: ${{ secrets.STEAMGRIDDB_API_KEY }}
+          CLOUD_PROJECT_NUMBER: ${{ secrets.CLOUD_PROJECT_NUMBER }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          raw = Path("legacy-release-build.log").read_text(errors="replace").splitlines()
+          secrets = [
+              os.environ.get("POSTHOG_API_KEY", ""),
+              os.environ.get("POSTHOG_HOST", ""),
+              os.environ.get("STEAMGRIDDB_API_KEY", ""),
+              os.environ.get("CLOUD_PROJECT_NUMBER", ""),
+          ]
+
+          def redact(line: str) -> str:
+              for value in secrets:
+                  if value:
+                      line = line.replace(value, "<redacted>")
+              return line.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+          important = re.compile(
+              r"(?:^> Task .* FAILED$|^FAILURE:|^\* What went wrong:|Execution failed for task|"
+              r"^Caused by:|\berror:|\bERROR\b|Missing class|R8:|Compilation failed|"
+              r"Could not resolve|Could not determine|A failure occurred while executing)",
+              re.IGNORECASE,
+          )
+          selected = []
+          for i, line in enumerate(raw):
+              if important.search(line):
+                  start = max(0, i - 2)
+                  end = min(len(raw), i + 7)
+                  selected.extend(raw[start:end])
+
+          # Preserve order while removing duplicates and cap output so annotations stay useful.
+          seen = set()
+          unique = []
+          for line in selected:
+              if line not in seen:
+                  seen.add(line)
+                  unique.append(line)
+              if len(unique) >= 100:
+                  break
+
+          if not unique:
+              unique = raw[-80:]
+
+          Path("legacy-release-failure-summary.txt").write_text("\n".join(unique) + "\n")
+          for line in unique:
+              print(f"::error::{redact(line)}")
+          PY
+
+      - name: Upload failed-build summary
+        if: steps.assemble.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: LegacyRelease-failure-summary
+          path: legacy-release-failure-summary.txt
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Fail after diagnostics
+        if: steps.assemble.outcome == 'failure'
+        run: exit 1
+
+      - name: Validate release APK
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find app/build/outputs/apk/legacy/release -maxdepth 1 -type f -name '*.apk' -print)
+          if [[ ${#apks[@]} -ne 1 ]]; then
+            printf 'Expected exactly one LegacyRelease APK, found %d\n' "${#apks[@]}" >&2
+            printf '%s\n' "${apks[@]}" >&2
+            exit 1
+          fi
+
+          apk="${apks[0]}"
+          cp "$apk" gamenative-legacy-release.apk
+          unzip -Z1 gamenative-legacy-release.apk > apk-entries.txt
+
+          # Release must not contain debug-only local manifest/probe payloads.
+          if grep -Eq '(^|/)manifest\.json$|DebugProbesKt\.bin$' apk-entries.txt; then
+            echo 'ERROR: debug-only payload found in LegacyRelease APK' >&2
+            exit 1
+          fi
+
+          # The exact Release-built LSFG runtime must be packaged for arm64.
+          grep -qx 'lib/arm64-v8a/liblsfg-vk-layer\.so' apk-entries.txt
+
+          apksigner="$(find "${ANDROID_HOME:-${ANDROID_SDK_ROOT}}/build-tools" -type f -name apksigner -print | sort -V | tail -n 1)"
+          test -x "$apksigner"
+          "$apksigner" verify --verbose --print-certs gamenative-legacy-release.apk
+
+          sha256sum gamenative-legacy-release.apk | tee gamenative-legacy-release.apk.sha256
+          ls -lh gamenative-legacy-release.apk
+
+      - name: Split APK for reliable transfer
+        run: |
+          set -euo pipefail
+          mkdir -p legacy-release-parts
+          split -n 4 -d -a 1 gamenative-legacy-release.apk legacy-release-parts/gamenative-legacy-release.apk.part-
+          for part in 0 1 2 3; do
+            test -s "legacy-release-parts/gamenative-legacy-release.apk.part-${part}"
+          done
+          cmp gamenative-legacy-release.apk <(cat legacy-release-parts/gamenative-legacy-release.apk.part-{0,1,2,3})
+          cp gamenative-legacy-release.apk.sha256 legacy-release-parts/
+
+      - name: Upload LegacyRelease APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamenative-legacy-release
+          path: |
+            gamenative-legacy-release.apk
+            gamenative-legacy-release.apk.sha256
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Upload LegacyRelease transfer parts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamenative-legacy-release-parts
+          path: legacy-release-parts/
+          if-no-files-found: error
+          compression-level: 0

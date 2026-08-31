@@ -72,12 +72,19 @@ runs:
         grep -Fq "$expected_prefix" "$runtime_test"
         git diff --check -- "$runtime_manager" "$runtime_test"
 
-        if [[ -f "$native_dir/tests/android_runtime_stability_test.py" ]]; then
-          python3 "$native_dir/tests/android_runtime_stability_test.py"
-        fi
+        python3 "$native_dir/tests/android_ahb_portability_test.py"
+        python3 "$native_dir/tests/android_wsi_loader_bridge_test.py"
+        python3 "$native_dir/tests/android_wsi_provenance_test.py"
+        python3 "$native_dir/tests/android_runtime_stability_test.py"
 
         sudo apt-get update -qq
-        sudo apt-get install -y cmake ninja-build file
+        sudo apt-get install -y cmake ninja-build file g++
+        g++ -std=c++20 -Wall -Wextra -Werror \
+          -I"$native_dir/include" \
+          "$native_dir/src/adaptive_scheduler.cpp" \
+          "$native_dir/tests/adaptive_scheduler_test.cpp" \
+          -o /tmp/lsfg-adaptive-scheduler-test
+        /tmp/lsfg-adaptive-scheduler-test
         sdkmanager --install "ndk;${ANDROID_NDK_VERSION}"
         sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
         if [[ -z "$sdk_root" ]]; then
