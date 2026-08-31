@@ -52,6 +52,7 @@ jobs:
           ./gradlew :app:testLegacyDebugUnitTest --no-daemon
           --tests app.gamenative.utils.LsfgVkManagerTest
           --tests app.gamenative.utils.LsfgBuildWorkflowContractTest
+          --tests com.winlator.xserver.extensions.PresentExtensionPacingTransitionTest
 
       - name: Assemble LegacyDebug APK
         run: ./gradlew :app:assembleLegacyDebug --no-daemon

@@ -91,6 +91,7 @@ class LsfgVkManagerTest {
         assertTrue(LsfgVkManager.writeConfig(container))
 
         val text = File(rootDir, ".config/lsfg-vk/conf.toml").readText()
+        assertTrue(text.contains("enabled = false"))
         assertTrue(text.contains("multiplier = 1"))
         assertTrue(text.contains("performance_mode = false"))
         assertTrue(text.contains("experimental_present_mode = \"fifo\""))
@@ -223,9 +224,26 @@ class LsfgVkManagerTest {
         assertTrue(LsfgVkManager.writeConfig(container))
 
         val text = File(rootDir, ".config/lsfg-vk/conf.toml").readText()
+        assertTrue(text.contains("enabled = true"))
         assertTrue(text.contains("multiplier = 4"))
         assertTrue(text.contains("adaptive_framegen = true"))
         assertTrue(text.contains("fps_limit = 90"))
+    }
+
+    @Test
+    fun writeConfig_atomicallyReplacesConfigWithoutFollowingExistingSymlink() {
+        val container = container(armed = true)
+        val configFile = File(rootDir, ".config/lsfg-vk/conf.toml")
+        configFile.parentFile!!.mkdirs()
+        val sentinel = File(rootDir, "sentinel.toml").apply { writeText("do-not-overwrite") }
+        Files.createSymbolicLink(configFile.toPath(), sentinel.toPath())
+
+        assertTrue(LsfgVkManager.writeConfig(container))
+
+        assertEquals("do-not-overwrite", sentinel.readText())
+        assertFalse(Files.isSymbolicLink(configFile.toPath()))
+        assertTrue(configFile.readText().contains("version = 1"))
+        assertFalse(configFile.parentFile!!.listFiles().orEmpty().any { it.name.endsWith(".tmp") })
     }
 
     @Test
