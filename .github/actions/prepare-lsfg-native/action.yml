@@ -21,13 +21,9 @@ runs:
         native_manifest="$native_dir/VkLayer_LS_frame_generation.json"
         runtime_manifest=app/src/main/assets/lsfg_vk/android_arm64_v8a/VkLayer_LS_frame_generation.json
         runtime_manager=app/src/main/java/app/gamenative/utils/LsfgVkManager.kt
+        runtime_test=app/src/test/java/app/gamenative/utils/LsfgVkManagerTest.kt
         expected_commit="$(git rev-parse HEAD:${native_dir})"
         expected_prefix="${expected_commit:0:8}"
-
-        if ! grep -Fq "$expected_prefix" "$runtime_manager"; then
-          echo "ERROR: LSFG runtime marker does not identify GameNative gitlink ${expected_commit}" >&2
-          exit 1
-        fi
 
         git submodule sync -- "$native_dir"
         git submodule update --init --recursive -- "$native_dir"
@@ -37,6 +33,48 @@ runs:
           exit 1
         fi
         echo "Building GameNative-pinned LSFG native revision ${actual_commit}"
+
+        # The checked-in Kotlin marker describes the checked-in jniLibs payload.
+        # CI replaces only its native SHA token (and the matching assertion) after
+        # resolving the gitlink, so every prepared APK identifies the exact native
+        # revision it actually packages without a second manually maintained SHA.
+        python3 - "$runtime_manager" "$runtime_test" "$expected_prefix" <<'PY'
+        import pathlib
+        import re
+        import sys
+
+        manager = pathlib.Path(sys.argv[1])
+        test = pathlib.Path(sys.argv[2])
+        expected_prefix = sys.argv[3]
+
+        manager_text = manager.read_text(encoding="utf-8")
+        manager_pattern = re.compile(r"(gamenative-presentsync-)[0-9a-f]{8}(-r[0-9]+)")
+        manager_text, manager_count = manager_pattern.subn(
+            rf"\g<1>{expected_prefix}\g<2>", manager_text, count=1
+        )
+        if manager_count != 1:
+            raise SystemExit("ERROR: could not rewrite the LSFG runtime marker")
+        manager.write_text(manager_text, encoding="utf-8")
+
+        test_text = test.read_text(encoding="utf-8")
+        test_pattern = re.compile(
+            r'(loaderVersion\.readText\(\)\.contains\(")[0-9a-f]{8}("\))'
+        )
+        test_text, test_count = test_pattern.subn(
+            rf"\g<1>{expected_prefix}\g<2>", test_text, count=1
+        )
+        if test_count != 1:
+            raise SystemExit("ERROR: could not rewrite the LSFG runtime provenance assertion")
+        test.write_text(test_text, encoding="utf-8")
+        PY
+
+        grep -Fq "$expected_prefix" "$runtime_manager"
+        grep -Fq "$expected_prefix" "$runtime_test"
+        git diff --check -- "$runtime_manager" "$runtime_test"
+
+        if [[ -f "$native_dir/tests/android_runtime_stability_test.py" ]]; then
+          python3 "$native_dir/tests/android_runtime_stability_test.py"
+        fi
 
         sudo apt-get update -qq
         sudo apt-get install -y cmake ninja-build file
