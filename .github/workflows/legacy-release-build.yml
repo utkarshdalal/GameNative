@@ -70,15 +70,16 @@ jobs:
 
           apk="${apks[0]}"
           cp "$apk" gamenative-legacy-release.apk
+          unzip -Z1 gamenative-legacy-release.apk > apk-entries.txt
 
           # Release must not contain debug-only local manifest/probe payloads.
-          if unzip -Z1 gamenative-legacy-release.apk | grep -Eq '(^|/)manifest\.json$|DebugProbesKt\.bin$'; then
+          if grep -Eq '(^|/)manifest\.json$|DebugProbesKt\.bin$' apk-entries.txt; then
             echo 'ERROR: debug-only payload found in LegacyRelease APK' >&2
             exit 1
           fi
 
           # The exact Release-built LSFG runtime must be packaged for arm64.
-          unzip -Z1 gamenative-legacy-release.apk | grep -q '^lib/arm64-v8a/liblsfg-vk-layer\.so$'
+          grep -qx 'lib/arm64-v8a/liblsfg-vk-layer\.so' apk-entries.txt
 
           apksigner="$(find "${ANDROID_HOME:-${ANDROID_SDK_ROOT}}/build-tools" -type f -name apksigner -print | sort -V | tail -n 1)"
           test -x "$apksigner"
