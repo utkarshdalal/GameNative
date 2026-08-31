@@ -60,6 +60,22 @@ class LsfgBuildWorkflowContractTest {
     }
 
     @Test
+    fun sharedNativePreparationRejectsRuntimeMarkerThatDoesNotMatchGitlink() {
+        val source = repoFile(".github/actions/prepare-lsfg-native/action.yml").readText()
+        listOf(
+            "runtime_manager=app/src/main/java/app/gamenative/utils/LsfgVkManager.kt",
+            "expected_prefix=\"${'$'}{expected_commit:0:8}\"",
+            "grep -Fq \"${'$'}expected_prefix\" \"${'$'}runtime_manager\"",
+            "runtime marker does not identify GameNative gitlink",
+        ).forEach { token ->
+            assertTrue(
+                "shared LSFG preparation action must reject stale runtime provenance; missing $token",
+                source.contains(token),
+            )
+        }
+    }
+
+    @Test
     fun sharedNativePreparationRegeneratesAndroidManifestFromPinnedNativeMetadata() {
         val source = repoFile(".github/actions/prepare-lsfg-native/action.yml").readText()
         listOf(
