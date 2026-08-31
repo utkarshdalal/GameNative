@@ -9,6 +9,13 @@ on:
       - 'app/build.gradle.kts'
       - 'gradle/libs.versions.toml'
       - 'settings.gradle.kts'
+  pull_request:
+    paths:
+      - '.github/workflows/legacy-release-build.yml'
+      - '.github/actions/prepare-lsfg-native/**'
+      - 'app/build.gradle.kts'
+      - 'gradle/libs.versions.toml'
+      - 'settings.gradle.kts'
   workflow_dispatch:
 
 concurrency:
