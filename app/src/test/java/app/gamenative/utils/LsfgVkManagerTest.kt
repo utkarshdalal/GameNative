@@ -173,7 +173,7 @@ class LsfgVkManagerTest {
 
         assertTrue(loaderLib.readBytes().contentEquals(containerLib.readBytes()))
         assertEquals(containerManifest.readText(), loaderManifest.readText())
-        assertTrue(loaderVersion.readText().contains("09584e0d"))
+        assertTrue(loaderVersion.readText().contains("c1087946"))
         val loaderLayerDir = loaderManifest.parentFile!!.absolutePath
         assertEquals(loaderLayerDir, envVars["VK_LAYER_PATH"])
     }
