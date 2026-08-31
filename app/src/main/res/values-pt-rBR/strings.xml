@@ -1655,7 +1655,7 @@
     <string name="wrapper_quality_high">Alta (imagens mais nítidas, usa mais RAM)</string>
     <string name="option_play_with_diagnostics">Execução de diagnóstico</string>
     <string name="option_share_diagnostics">Compartilhar diagnóstico</string>
-    <string name="option_ai_debug_run">Obter ajuda de AI (somente assinantes)</string>
+    <string name="option_ai_debug_run">Obter ajuda de AI</string>
     <string name="debug_report_title">Relatório de depuração com AI</string>
     <string name="debug_report_summary">%1$s · %2$s · log capturado (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">O que deu errado?</string>
@@ -1677,8 +1677,7 @@
     <string name="debug_offer_message">Essa sessão terminou antes do esperado. Execute %1$s mais uma vez com o registro de depuração ativado e nossa AI lerá o log e dirá o que mudar.</string>
     <string name="debug_offer_confirm">Iniciar execução de depuração</string>
     <string name="debug_prerun_title">Receba ajuda da AI</string>
-    <string name="debug_prerun_message">Isso iniciará o jogo com o registro de depuração ativado. Quando você sair, o log e sua descrição serão compartilhados com nossa AI no Discord, que responderá dizendo o que mudar. As respostas da AI são apenas para assinantes. Qualquer pessoa pode compartilhar o relatório no Discord para receber ajuda humana.</string>
-    <string name="debug_prerun_describe">Descreva o problema com o máximo de detalhes possível</string>
+    <string name="debug_prerun_message">Executa o jogo com registro de depuração e compartilha o log com nossa AI no Discord ao sair. As respostas da AI são para assinantes. Qualquer pessoa pode compartilhar o relatório para receber ajuda humana.</string>
     <string name="debug_paywall_title">Obtenha suporte de depuração com AI</string>
     <string name="debug_paywall_pitch">Nossa AI lê exatamente o seu log e a sua configuração e diz o que mudar, geralmente em menos de 5 minutos.</string>
     <string name="debug_paywall_tier5_title">$5/mês · Supporter</string>

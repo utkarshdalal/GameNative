@@ -1725,7 +1725,7 @@
     <string name="wrapper_quality_high">Hoch (schärfere Bilder, mehr RAM)</string>
     <string name="option_play_with_diagnostics">Diagnoselauf</string>
     <string name="option_share_diagnostics">Diagnose teilen</string>
-    <string name="option_ai_debug_run">AI-Hilfe erhalten (nur Abonnenten)</string>
+    <string name="option_ai_debug_run">AI-Hilfe erhalten</string>
     <string name="debug_report_title">AI-Debug-Bericht</string>
     <string name="debug_report_summary">%1$s · %2$s · Log aufgezeichnet (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">Was ist schiefgelaufen?</string>
@@ -1747,8 +1747,7 @@
     <string name="debug_offer_message">Diese Sitzung wurde vorzeitig beendet. Starte %1$s noch einmal mit Debug-Logging, dann liest unsere AI das Log und sagt dir, was du ändern musst.</string>
     <string name="debug_offer_confirm">Debug-Lauf starten</string>
     <string name="debug_prerun_title">AI-Hilfe erhalten</string>
-    <string name="debug_prerun_message">Dadurch wird das Spiel mit Debug-Logging gestartet. Wenn du beendest, werden das Log und deine Beschreibung mit unserer AI auf Discord geteilt, und sie antwortet mit dem, was du ändern musst. AI-Antworten sind nur für Abonnenten. Jeder kann den Bericht auf Discord teilen, um menschliche Hilfe zu erhalten.</string>
-    <string name="debug_prerun_describe">Beschreibe das Problem so detailliert wie möglich</string>
+    <string name="debug_prerun_message">Startet das Spiel mit Debug-Logging und teilt das Log nach dem Beenden mit unserer AI auf Discord. AI-Antworten sind für Abonnenten. Jeder kann den Bericht teilen, um menschliche Hilfe zu erhalten.</string>
     <string name="debug_paywall_title">AI-Debug-Support erhalten</string>
     <string name="debug_paywall_pitch">Unsere AI liest dein genaues Log und deine Konfiguration und sagt dir, was du ändern musst, meist in unter 5 Minuten.</string>
     <string name="debug_paywall_tier5_title">$5/Monat · Supporter</string>

@@ -326,7 +326,6 @@ fun PluviaMain(
     var debugPaywallReason by rememberSaveable { mutableStateOf<String?>(null) }
     var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
     var debugPreRunVisible by rememberSaveable { mutableStateOf(false) }
-    var debugPreRunIssueText by rememberSaveable { mutableStateOf("") }
     var debugPreRunAppId by rememberSaveable { mutableStateOf("") }
     val discordTokenPresent by PrefManager.discordRelayTokenPresent
 
@@ -704,9 +703,7 @@ fun PluviaMain(
                             ?: ContainerUtils.resolveGameName(event.appId),
                         deviceName = header?.optString("deviceName") ?: "",
                         logSizeBytes = withContext(Dispatchers.IO) { DebugReportUtils.logFile(dir).length() },
-                        issueText = debugPreRunIssueText,
                     )
-                    debugPreRunIssueText = ""
                 }
 
                 is MainViewModel.MainUiEvent.ShowAiDebugOffer -> {
@@ -1205,7 +1202,6 @@ fun PluviaMain(
                 setMessageDialogState(MessageDialogState(false))
                 if (aiDebugOfferAppId.isNotEmpty()) {
                     debugPreRunAppId = aiDebugOfferAppId
-                    debugPreRunIssueText = ""
                     debugPreRunVisible = true
                 }
             }
@@ -1448,8 +1444,6 @@ fun PluviaMain(
 
             DebugPreRunDialog(
                 visible = debugPreRunVisible,
-                issueText = debugPreRunIssueText,
-                onIssueTextChange = { debugPreRunIssueText = it },
                 onStart = {
                     debugPreRunVisible = false
                     val appId = debugPreRunAppId
@@ -1477,7 +1471,6 @@ fun PluviaMain(
                 },
                 onDismiss = {
                     debugPreRunVisible = false
-                    debugPreRunIssueText = ""
                 },
             )
 
@@ -1726,7 +1719,6 @@ fun PluviaMain(
                         },
                         onAiDebugRun = { appId ->
                             debugPreRunAppId = appId
-                            debugPreRunIssueText = ""
                             debugPreRunVisible = true
                         },
                         onClickExit = {

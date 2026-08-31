@@ -1655,7 +1655,7 @@
     <string name="wrapper_quality_high">Høj (skarpere billeder, bruger mere RAM)</string>
     <string name="option_play_with_diagnostics">Diagnostisk kørsel</string>
     <string name="option_share_diagnostics">Del diagnostik</string>
-    <string name="option_ai_debug_run">Få AI-hjælp (kun abonnenter)</string>
+    <string name="option_ai_debug_run">Få AI-hjælp</string>
     <string name="debug_report_title">AI-fejlrapport</string>
     <string name="debug_report_summary">%1$s · %2$s · log optaget (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">Hvad gik galt?</string>
@@ -1677,8 +1677,7 @@
     <string name="debug_offer_message">Den session sluttede for tidligt. Kør %1$s en gang til med fejlfindingslogning, så læser vores AI loggen og fortæller dig, hvad du skal ændre.</string>
     <string name="debug_offer_confirm">Start fejlfindingskørsel</string>
     <string name="debug_prerun_title">Få AI-hjælp</string>
-    <string name="debug_prerun_message">Dette starter spillet med fejlfindingslogning. Når du afslutter, deles loggen og din beskrivelse med vores AI på Discord, som svarer med, hvad du skal ændre. AI-svar er kun for abonnenter. Alle kan dele rapporten på Discord for at få menneskelig hjælp.</string>
-    <string name="debug_prerun_describe">Beskriv problemet så detaljeret som muligt</string>
+    <string name="debug_prerun_message">Kører spillet med debug-logning og deler loggen med vores AI på Discord, når du afslutter. AI-svar er for abonnenter. Alle kan dele rapporten for at få menneskelig hjælp.</string>
     <string name="debug_paywall_title">Få AI-fejlfindingshjælp</string>
     <string name="debug_paywall_pitch">Vores AI læser din nøjagtige log og konfiguration og fortæller dig, hvad du skal ændre, som regel på under 5 minutter.</string>
     <string name="debug_paywall_tier5_title">$5/måned · Supporter</string>

@@ -1782,7 +1782,7 @@
     <string name="wrapper_quality_high">높음 (더 선명한 이미지, RAM 사용량 많음)</string>
     <string name="option_play_with_diagnostics">진단 실행</string>
     <string name="option_share_diagnostics">진단 공유</string>
-    <string name="option_ai_debug_run">AI 도움 받기 (구독자 전용)</string>
+    <string name="option_ai_debug_run">AI 도움 받기</string>
     <string name="debug_report_title">AI 디버그 리포트</string>
     <string name="debug_report_summary">%1$s · %2$s · 로그 캡처됨 (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">무엇이 잘못되었나요?</string>
@@ -1804,8 +1804,7 @@
     <string name="debug_offer_message">세션이 일찍 종료되었습니다. 디버그 로깅을 켜고 %1$s을(를) 한 번 더 실행하면 AI가 로그를 읽고 무엇을 바꿔야 할지 알려드립니다.</string>
     <string name="debug_offer_confirm">디버그 실행 시작</string>
     <string name="debug_prerun_title">AI 도움 받기</string>
-    <string name="debug_prerun_message">디버그 로깅을 켜고 게임을 실행합니다. 종료하면 로그와 설명이 Discord의 AI에 공유되고, AI가 무엇을 바꿔야 할지 답변합니다. AI 답변은 구독자 전용입니다. 누구나 Discord에 보고서를 공유해 사람의 도움을 받을 수 있습니다.</string>
-    <string name="debug_prerun_describe">문제를 최대한 자세히 설명해 주세요</string>
+    <string name="debug_prerun_message">디버그 로깅으로 게임을 실행하고, 종료 시 로그를 Discord의 AI에 공유합니다. AI 답변은 구독자 전용입니다. 리포트는 누구나 공유해 사람의 도움을 받을 수 있습니다.</string>
     <string name="debug_paywall_title">AI 디버그 지원 받기</string>
     <string name="debug_paywall_pitch">AI가 로그와 설정을 그대로 읽고 무엇을 바꿔야 할지 알려드립니다. 보통 5분 이내입니다.</string>
     <string name="debug_paywall_tier5_title">$5/월 · Supporter</string>

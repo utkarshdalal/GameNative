@@ -1785,7 +1785,7 @@
     <string name="wrapper_quality_high">Wysoka (ostrzejsze obrazy, więcej pamięci RAM)</string>
     <string name="option_play_with_diagnostics">Uruchomienie diagnostyczne</string>
     <string name="option_share_diagnostics">Udostępnij diagnostykę</string>
-    <string name="option_ai_debug_run">Uzyskaj pomoc AI (tylko subskrybenci)</string>
+    <string name="option_ai_debug_run">Uzyskaj pomoc AI</string>
     <string name="debug_report_title">Raport debugowania AI</string>
     <string name="debug_report_summary">%1$s · %2$s · przechwycono log (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">Co poszło nie tak?</string>
@@ -1807,8 +1807,7 @@
     <string name="debug_offer_message">Ta sesja zakończyła się przedwcześnie. Uruchom %1$s jeszcze raz z logowaniem debugowania, a nasza AI przeczyta log i powie Ci, co zmienić.</string>
     <string name="debug_offer_confirm">Rozpocznij uruchomienie debugowania</string>
     <string name="debug_prerun_title">Uzyskaj pomoc AI</string>
-    <string name="debug_prerun_message">Spowoduje to uruchomienie gry z logowaniem debugowania. Po wyjściu log i Twój opis zostaną udostępnione naszej AI na Discordzie, a ona odpowie, co zmienić. Odpowiedzi AI są tylko dla subskrybentów. Każdy może udostępnić raport na Discordzie, aby uzyskać pomoc od ludzi.</string>
-    <string name="debug_prerun_describe">Opisz problem możliwie jak najdokładniej</string>
+    <string name="debug_prerun_message">Uruchamia grę z logowaniem debugowania i po wyjściu udostępnia log naszemu AI na Discordzie. Odpowiedzi AI są dla subskrybentów. Każdy może udostępnić raport, aby uzyskać pomoc od ludzi.</string>
     <string name="debug_paywall_title">Uzyskaj pomoc AI w debugowaniu</string>
     <string name="debug_paywall_pitch">Nasza AI czyta dokładnie Twój log i konfigurację i mówi, co zmienić, zwykle w niecałe 5 minut.</string>
     <string name="debug_paywall_tier5_title">$5/miesiąc · Supporter</string>

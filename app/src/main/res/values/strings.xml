@@ -1747,7 +1747,7 @@
     <string name="option_test_graphics">Test graphics</string>
     <string name="option_play_with_diagnostics">Diagnostic Run</string>
     <string name="option_share_diagnostics">Share diagnostics</string>
-    <string name="option_ai_debug_run">Get AI help (subscribers only)</string>
+    <string name="option_ai_debug_run">Get AI help</string>
     <string name="debug_report_title">AI Debug Report</string>
     <string name="debug_report_summary">%1$s · %2$s · log captured (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">What went wrong?</string>
@@ -1782,8 +1782,7 @@
     <string name="debug_offer_message">That session ended early. Run %1$s once more with debug logging and our AI will read the log and tell you what to change.</string>
     <string name="debug_offer_confirm">Start debug run</string>
     <string name="debug_prerun_title">Get AI help</string>
-    <string name="debug_prerun_message">This will launch the game with debug logging. When you quit, the log and your description are shared with our AI on Discord and it replies with what to change. AI replies are for subscribers only. Anyone can share the report on Discord to get human help.</string>
-    <string name="debug_prerun_describe">Describe the issue in as much detail as possible</string>
+    <string name="debug_prerun_message">Runs the game with debug logging and shares the log with our AI on Discord when you quit. AI replies are for subscribers. Anyone can share the report for human help.</string>
     <string name="diagnostics_share_title">Share diagnostics log</string>
     <string name="diagnostics_share_none">No diagnostics log yet. Use \"Diagnostic Run\" first.</string>
     <string name="option_manage_dlc">Manage DLC</string>

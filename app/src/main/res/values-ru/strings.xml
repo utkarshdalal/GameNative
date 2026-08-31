@@ -1713,7 +1713,7 @@ https://gamenative.app
     <string name="wrapper_quality_high">Высокое (более чёткое изображение, больше ОЗУ)</string>
     <string name="option_play_with_diagnostics">Диагностический запуск</string>
     <string name="option_share_diagnostics">Поделиться диагностикой</string>
-    <string name="option_ai_debug_run">Получить помощь AI (только для подписчиков)</string>
+    <string name="option_ai_debug_run">Получить помощь AI</string>
     <string name="debug_report_title">AI-отчёт об отладке</string>
     <string name="debug_report_summary">%1$s · %2$s · лог записан (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">Что пошло не так?</string>
@@ -1735,8 +1735,7 @@ https://gamenative.app
     <string name="debug_offer_message">Сессия завершилась преждевременно. Запустите %1$s ещё раз с отладочным логированием. Наш AI прочитает лог и подскажет, что изменить.</string>
     <string name="debug_offer_confirm">Начать отладочный запуск</string>
     <string name="debug_prerun_title">Получить помощь AI</string>
-    <string name="debug_prerun_message">Игра будет запущена с отладочным логированием. Когда вы выйдете, лог и ваше описание будут отправлены нашему AI в Discord, и он ответит, что нужно изменить. Ответы AI доступны только подписчикам. Любой может поделиться отчётом в Discord, чтобы получить помощь от людей.</string>
-    <string name="debug_prerun_describe">Опишите проблему как можно подробнее</string>
+    <string name="debug_prerun_message">Запускает игру с отладочным журналом и после выхода отправляет журнал нашему AI в Discord. Ответы AI доступны подписчикам. Любой может поделиться отчётом, чтобы получить помощь людей.</string>
     <string name="debug_paywall_title">Получите AI-поддержку по отладке</string>
     <string name="debug_paywall_pitch">Наш AI читает именно ваш лог и конфигурацию и говорит, что изменить, обычно меньше чем за 5 минут.</string>
     <string name="debug_paywall_tier5_title">$5/месяц · Supporter</string>

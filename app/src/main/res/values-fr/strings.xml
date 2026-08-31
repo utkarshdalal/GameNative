@@ -1803,7 +1803,7 @@
     <string name="wrapper_quality_high">Élevé (images plus nettes, utilise plus de RAM)</string>
     <string name="option_play_with_diagnostics">Exécution de diagnostic</string>
     <string name="option_share_diagnostics">Partager le diagnostic</string>
-    <string name="option_ai_debug_run">Obtenir de l\'aide AI (abonnés uniquement)</string>
+    <string name="option_ai_debug_run">Obtenir de l\'aide AI</string>
     <string name="debug_report_title">Rapport de débogage AI</string>
     <string name="debug_report_summary">%1$s · %2$s · journal capturé (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">Qu\'est-ce qui n\'a pas fonctionné ?</string>
@@ -1825,8 +1825,7 @@
     <string name="debug_offer_message">Cette session s\'est terminée prématurément. Relancez %1$s avec la journalisation de débogage : notre AI lira le journal et vous dira quoi changer.</string>
     <string name="debug_offer_confirm">Démarrer l\'exécution de débogage</string>
     <string name="debug_prerun_title">Obtenez l\'aide de l\'AI</string>
-    <string name="debug_prerun_message">Cela lancera le jeu avec la journalisation de débogage. Lorsque vous quittez, le journal et votre description sont partagés avec notre AI sur Discord, qui répond en indiquant quoi changer. Les réponses de l\'AI sont réservées aux abonnés. Tout le monde peut partager le rapport sur Discord pour obtenir une aide humaine.</string>
-    <string name="debug_prerun_describe">Décrivez le problème avec autant de détails que possible</string>
+    <string name="debug_prerun_message">Lance le jeu avec les journaux de débogage et les partage avec notre AI sur Discord quand vous quittez. Les réponses de l\'AI sont réservées aux abonnés. Tout le monde peut partager le rapport pour obtenir de l\'aide humaine.</string>
     <string name="debug_paywall_title">Obtenez une assistance de débogage AI</string>
     <string name="debug_paywall_pitch">Notre AI lit votre journal et votre configuration exacts et vous dit quoi changer, généralement en moins de 5 minutes.</string>
     <string name="debug_paywall_tier5_title">$5/mois · Supporter</string>
