@@ -1802,6 +1802,9 @@
     <string name="debug_offer_title">Отримайте допомогу AI з цим збоєм</string>
     <string name="debug_offer_message">Сеанс завершився передчасно. Запустіть %1$s ще раз із налагоджувальним логуванням. Наш AI прочитає лог і підкаже, що змінити.</string>
     <string name="debug_offer_confirm">Почати налагоджувальний запуск</string>
+    <string name="debug_prerun_title">Отримати допомогу AI</string>
+    <string name="debug_prerun_message">Гра запуститься з налагоджувальним логуванням. Коли ви вийдете, лог і ваш опис буде надіслано нашому AI в Discord, і він відповість, що потрібно змінити. Відповіді AI доступні лише підписникам. Будь-хто може поділитися звітом у Discord, щоб отримати допомогу від людей.</string>
+    <string name="debug_prerun_describe">Опишіть проблему якомога детальніше</string>
     <string name="debug_paywall_title">Отримайте AI-підтримку з налагодження</string>
     <string name="debug_paywall_pitch">Наш AI читає саме ваш лог і конфігурацію та каже, що змінити, зазвичай менше ніж за 5 хвилин.</string>
     <string name="debug_paywall_tier5_title">$5/місяць · Supporter</string>

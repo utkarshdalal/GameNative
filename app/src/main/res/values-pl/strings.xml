@@ -1806,6 +1806,9 @@
     <string name="debug_offer_title">Uzyskaj pomoc AI przy tej awarii</string>
     <string name="debug_offer_message">Ta sesja zakończyła się przedwcześnie. Uruchom %1$s jeszcze raz z logowaniem debugowania, a nasza AI przeczyta log i powie Ci, co zmienić.</string>
     <string name="debug_offer_confirm">Rozpocznij uruchomienie debugowania</string>
+    <string name="debug_prerun_title">Uzyskaj pomoc AI</string>
+    <string name="debug_prerun_message">Spowoduje to uruchomienie gry z logowaniem debugowania. Po wyjściu log i Twój opis zostaną udostępnione naszej AI na Discordzie, a ona odpowie, co zmienić. Odpowiedzi AI są tylko dla subskrybentów. Każdy może udostępnić raport na Discordzie, aby uzyskać pomoc od ludzi.</string>
+    <string name="debug_prerun_describe">Opisz problem możliwie jak najdokładniej</string>
     <string name="debug_paywall_title">Uzyskaj pomoc AI w debugowaniu</string>
     <string name="debug_paywall_pitch">Nasza AI czyta dokładnie Twój log i konfigurację i mówi, co zmienić, zwykle w niecałe 5 minut.</string>
     <string name="debug_paywall_tier5_title">$5/miesiąc · Supporter</string>

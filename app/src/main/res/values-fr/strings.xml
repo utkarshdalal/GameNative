@@ -1824,6 +1824,9 @@
     <string name="debug_offer_title">Obtenez l\'aide de l\'AI pour ce plantage</string>
     <string name="debug_offer_message">Cette session s\'est terminée prématurément. Relancez %1$s avec la journalisation de débogage : notre AI lira le journal et vous dira quoi changer.</string>
     <string name="debug_offer_confirm">Démarrer l\'exécution de débogage</string>
+    <string name="debug_prerun_title">Obtenez l\'aide de l\'AI</string>
+    <string name="debug_prerun_message">Cela lancera le jeu avec la journalisation de débogage. Lorsque vous quittez, le journal et votre description sont partagés avec notre AI sur Discord, qui répond en indiquant quoi changer. Les réponses de l\'AI sont réservées aux abonnés. Tout le monde peut partager le rapport sur Discord pour obtenir une aide humaine.</string>
+    <string name="debug_prerun_describe">Décrivez le problème avec autant de détails que possible</string>
     <string name="debug_paywall_title">Obtenez une assistance de débogage AI</string>
     <string name="debug_paywall_pitch">Notre AI lit votre journal et votre configuration exacts et vous dit quoi changer, généralement en moins de 5 minutes.</string>
     <string name="debug_paywall_tier5_title">$5/mois · Supporter</string>

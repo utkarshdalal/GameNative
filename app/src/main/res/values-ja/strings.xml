@@ -1762,6 +1762,9 @@
     <string name="debug_offer_title">このクラッシュについて AI のサポートを受ける</string>
     <string name="debug_offer_message">セッションが途中で終了しました。デバッグログを有効にして %1$s をもう一度実行すると、AI がログを読んで変更すべき点をお伝えします。</string>
     <string name="debug_offer_confirm">デバッグ実行を開始</string>
+    <string name="debug_prerun_title">AI のサポートを受ける</string>
+    <string name="debug_prerun_message">デバッグログを有効にしてゲームを起動します。終了すると、ログとあなたの説明が Discord 上の AI に共有され、AI が変更すべき点を返信します。AI の返信はサブスクライバー限定です。レポートは誰でも Discord で共有して、人によるサポートを受けられます。</string>
+    <string name="debug_prerun_describe">問題をできるだけ詳しく説明してください</string>
     <string name="debug_paywall_title">AI デバッグサポートを利用</string>
     <string name="debug_paywall_pitch">AI があなたのログと設定をそのまま読み取り、変更すべき点を教えます。通常 5 分以内です。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Supporter</string>

@@ -1734,6 +1734,9 @@ https://gamenative.app
     <string name="debug_offer_title">Получите помощь AI с этим сбоем</string>
     <string name="debug_offer_message">Сессия завершилась преждевременно. Запустите %1$s ещё раз с отладочным логированием. Наш AI прочитает лог и подскажет, что изменить.</string>
     <string name="debug_offer_confirm">Начать отладочный запуск</string>
+    <string name="debug_prerun_title">Получить помощь AI</string>
+    <string name="debug_prerun_message">Игра будет запущена с отладочным логированием. Когда вы выйдете, лог и ваше описание будут отправлены нашему AI в Discord, и он ответит, что нужно изменить. Ответы AI доступны только подписчикам. Любой может поделиться отчётом в Discord, чтобы получить помощь от людей.</string>
+    <string name="debug_prerun_describe">Опишите проблему как можно подробнее</string>
     <string name="debug_paywall_title">Получите AI-поддержку по отладке</string>
     <string name="debug_paywall_pitch">Наш AI читает именно ваш лог и конфигурацию и говорит, что изменить, обычно меньше чем за 5 минут.</string>
     <string name="debug_paywall_tier5_title">$5/месяц · Supporter</string>

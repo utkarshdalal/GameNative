@@ -1808,6 +1808,9 @@
     <string name="debug_offer_title">Primește ajutor de la AI pentru această blocare</string>
     <string name="debug_offer_message">Acea sesiune s-a încheiat prematur. Rulează %1$s încă o dată cu jurnalizarea de depanare, iar AI-ul nostru va citi jurnalul și îți va spune ce să schimbi.</string>
     <string name="debug_offer_confirm">Pornește rularea de depanare</string>
+    <string name="debug_prerun_title">Primește ajutor de la AI</string>
+    <string name="debug_prerun_message">Aceasta va porni jocul cu jurnalizarea de depanare. Când ieși, jurnalul și descrierea ta sunt partajate cu AI-ul nostru pe Discord, iar acesta răspunde cu ce trebuie schimbat. Răspunsurile AI sunt doar pentru abonați. Oricine poate partaja raportul pe Discord pentru a primi ajutor de la oameni.</string>
+    <string name="debug_prerun_describe">Descrie problema cât mai detaliat posibil</string>
     <string name="debug_paywall_title">Obține suport de depanare AI</string>
     <string name="debug_paywall_pitch">AI-ul nostru îți citește exact jurnalul și configurația și îți spune ce să schimbi, de obicei în mai puțin de 5 minute.</string>
     <string name="debug_paywall_tier5_title">$5/lună · Supporter</string>

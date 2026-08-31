@@ -1804,6 +1804,9 @@
     <string name="debug_offer_title">Obtén ayuda de la AI con este fallo</string>
     <string name="debug_offer_message">Esa sesión terminó antes de tiempo. Ejecuta %1$s una vez más con registro de depuración y nuestra AI leerá el registro y te dirá qué cambiar.</string>
     <string name="debug_offer_confirm">Iniciar ejecución de depuración</string>
+    <string name="debug_prerun_title">Obtén ayuda de la AI</string>
+    <string name="debug_prerun_message">Esto iniciará el juego con registro de depuración. Cuando salgas, el registro y tu descripción se compartirán con nuestra AI en Discord y esta responderá con lo que hay que cambiar. Las respuestas de la AI son solo para suscriptores. Cualquiera puede compartir el informe en Discord para recibir ayuda humana.</string>
+    <string name="debug_prerun_describe">Describe el problema con el mayor detalle posible</string>
     <string name="debug_paywall_title">Consigue soporte de depuración con AI</string>
     <string name="debug_paywall_pitch">Nuestra AI lee tu registro y tu configuración exactos y te dice qué cambiar, normalmente en menos de 5 minutos.</string>
     <string name="debug_paywall_tier5_title">$5/mes · Supporter</string>
