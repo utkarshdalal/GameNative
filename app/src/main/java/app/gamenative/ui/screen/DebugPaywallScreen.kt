@@ -1,6 +1,5 @@
 package app.gamenative.ui.screen
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -55,6 +54,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
 import java.util.Locale
@@ -72,8 +73,13 @@ fun DebugPaywallScreen(
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    BackHandler(onBack = onDismiss)
-
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnClickOutside = false,
+        ),
+    ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -229,6 +235,7 @@ fun DebugPaywallScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
     }
 }
 
