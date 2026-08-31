@@ -60,6 +60,43 @@ class LsfgVkManagerTest {
     }
 
     @Test
+    fun isArmed_multiplierZeroKeepsLayerResidentForHotReload() {
+        val container = container(armed = true, multiplier = "0")
+
+        assertTrue(LsfgVkManager.isArmed(container))
+    }
+
+    @Test
+    fun applyLaunchEnv_multiplierZeroKeepsLayerResidentForHotReload() {
+        val container = container(armed = true, multiplier = "0")
+        val envVars = EnvVars().apply {
+            put("VK_LAYER_PATH", "/existing/explicit-layers")
+            put("VK_INSTANCE_LAYERS", "VK_LAYER_existing")
+        }
+
+        assertTrue(LsfgVkManager.applyLaunchEnv(container, envVars))
+        assertTrue(envVars["VK_LAYER_PATH"].orEmpty().contains(".local/share/vulkan/implicit_layer.d"))
+        assertTrue(envVars["VK_INSTANCE_LAYERS"].orEmpty().contains("VK_LAYER_LS_frame_generation"))
+        assertEquals(
+            File(rootDir, ".config/lsfg-vk/conf.toml").absolutePath,
+            envVars["LSFG_CONFIG"],
+        )
+        assertEquals("game.exe", envVars["LSFG_PROCESS_EXE"])
+    }
+
+    @Test
+    fun writeConfig_multiplierZeroSerializesNativePassThroughState() {
+        val container = container(armed = true, multiplier = "0")
+
+        assertTrue(LsfgVkManager.writeConfig(container))
+
+        val text = File(rootDir, ".config/lsfg-vk/conf.toml").readText()
+        assertTrue(text.contains("multiplier = 1"))
+        assertTrue(text.contains("performance_mode = false"))
+        assertTrue(text.contains("experimental_present_mode = \"fifo\""))
+    }
+
+    @Test
     fun applyLaunchEnv_isDriverAgnosticAndPreservesSelectedIcd() {
         val container = container(armed = true)
         val envVars = EnvVars().apply {
@@ -136,7 +173,7 @@ class LsfgVkManagerTest {
 
         assertTrue(loaderLib.readBytes().contentEquals(containerLib.readBytes()))
         assertEquals(containerManifest.readText(), loaderManifest.readText())
-        assertTrue(loaderVersion.readText().contains("e53ce6fc"))
+        assertTrue(loaderVersion.readText().contains("c1087946"))
         val loaderLayerDir = loaderManifest.parentFile!!.absolutePath
         assertEquals(loaderLayerDir, envVars["VK_LAYER_PATH"])
     }
@@ -250,7 +287,7 @@ class LsfgVkManagerTest {
         }
     }
 
-    private fun container(armed: Boolean): Container {
+    private fun container(armed: Boolean, multiplier: String = "2"): Container {
         File(rootDir, ".local/share/lsfg-vk/Lossless.dll").apply {
             parentFile?.mkdirs()
             writeBytes(byteArrayOf(1))
@@ -263,11 +300,17 @@ class LsfgVkManagerTest {
         whenever(container.getExtra(LsfgVkManager.EXTRA_ARMED, "false"))
             .thenReturn(armed.toString())
         whenever(container.getExtra(LsfgVkManager.EXTRA_MULTIPLIER, "2"))
-            .thenReturn("2")
+            .thenReturn(multiplier)
         whenever(container.getExtra(LsfgVkManager.EXTRA_FLOW_SCALE, "0.80"))
             .thenReturn("0.80")
         whenever(container.getExtra(LsfgVkManager.EXTRA_PERFORMANCE_MODE, "true"))
             .thenReturn("true")
+        whenever(container.getExtra(LsfgVkManager.EXTRA_PRESENT_MODE, "mailbox"))
+            .thenReturn("mailbox")
+        whenever(container.getExtra("fpsLimiterEnabled", "false"))
+            .thenReturn("false")
+        whenever(container.getExtra("fpsLimiterTarget", "0"))
+            .thenReturn("0")
         return container
     }
 }

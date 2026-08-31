@@ -90,10 +90,10 @@ object LsfgVkManager {
     private const val ENV_ADRENOTOOLS_DRIVER_PATH = "ADRENOTOOLS_DRIVER_PATH"
     private const val ENV_LD_LIBRARY_PATH = "LD_LIBRARY_PATH"
 
-    // Current runtime package revision. Include the exact verified native
-    // compatibility lineage so loader-visible copies are refreshed together.
+    // Current runtime package revision. Keep the exact native gitlink revision
+    // in the marker so loader-visible copies cannot masquerade as another build.
     private const val RUNTIME_VERSION =
-        "v1.3.3-android-arm64-v8a-gamenative-ahbdiag-e53ce6fc-r7"
+        "v1.3.5-android-arm64-v8a-gamenative-presentsync-c1087946-r9"
 
     // Asset path for manifest (still in assets)
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
@@ -107,15 +107,16 @@ object LsfgVkManager {
         container.containerVariant.equals(Container.BIONIC, ignoreCase = true)
 
     /**
-     * Whether LSFG is armed for this container.
+     * Whether the LSFG layer is armed/resident for this container.
      *
-     * This is a UI/runtime hot path. Never rescan Steam libraries here: launch
-     * setup owns discovery/copying, so the container-local DLL is authoritative.
+     * This deliberately does not require multiplier >= 2. A selected multiplier
+     * of 0 means frame generation is currently off, but the layer must remain
+     * resident so a Quick Menu config hot-reload can enable it without restart.
      */
     @JvmStatic
     fun isArmed(container: Container): Boolean =
         isSupported(container) &&
-            parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
+            layerRequested(container) &&
             containerDllPath(container) != null
 
     /** Whether Lossless Scaling is installed (Lossless.dll exists in Steam dir). */
@@ -139,6 +140,12 @@ object LsfgVkManager {
         val raw = container.getExtra(EXTRA_MULTIPLIER, "2").toIntOrNull() ?: 2
         return if (raw == 0) 0 else raw.coerceIn(2, 4)
     }
+
+    private fun layerRequested(container: Container): Boolean =
+        parseBool(container.getExtra(EXTRA_ARMED, "false"))
+
+    private fun frameGenerationActive(container: Container): Boolean =
+        isArmed(container) && multiplier(container) >= 2
 
     /** Get the flow scale (0.25-1.0, default 0.80). */
     fun flowScale(container: Container): Float =
@@ -337,8 +344,8 @@ object LsfgVkManager {
                 Timber.tag(TAG).e(t, "Failed to copy Lossless.dll into container")
                 success = false
             }
-        } else if (parseBool(container.getExtra(EXTRA_ARMED, "false"))) {
-            Timber.tag(TAG).w("LSFG enabled but Lossless.dll not found in Steam dir")
+        } else if (layerRequested(container)) {
+            Timber.tag(TAG).w("LSFG layer requested but Lossless.dll not found in Steam dir")
             success = false
         }
 
@@ -353,8 +360,7 @@ object LsfgVkManager {
             val dllPath = containerDllPath(container)
             val processExecutable = targetExecutable(container)
             val savedMultiplier = multiplier(container)
-            val frameGenActive = parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
-                dllPath != null && processExecutable != null && savedMultiplier >= 2
+            val frameGenActive = frameGenerationActive(container) && processExecutable != null
             val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
             val configText = buildConfigToml(
                 dllPath = dllPath,
@@ -390,12 +396,12 @@ object LsfgVkManager {
         }
 
         val dllPath = containerDllPath(container)
-        val armed = parseBool(container.getExtra(EXTRA_ARMED, "false")) && dllPath != null
+        val armed = isArmed(container)
 
         if (!armed) {
             disableLayerInContainer(container)
             Timber.tag(TAG).i(
-                "LSFG disabled (enabled=%s, dll=%s)",
+                "LSFG layer disabled (requested=%s, dll=%s)",
                 container.getExtra(EXTRA_ARMED, "false"),
                 dllPath ?: "null",
             )
@@ -404,7 +410,7 @@ object LsfgVkManager {
 
         val processExecutable = targetExecutable(container)
         if (processExecutable == null) {
-            Timber.tag(TAG).w("LSFG armed but target executable could not be resolved")
+            Timber.tag(TAG).w("LSFG layer armed but target executable could not be resolved")
             return false
         }
 
@@ -427,10 +433,11 @@ object LsfgVkManager {
         if (BuildConfig.DEBUG) probeAndroidLinker(container)
 
         Timber.tag(TAG).i(
-            "LSFG armed: dll=%s, target=%s, multiplier=%d, flowScale=%.2f, perf=%s, discovery=explicit-env-targeted",
+            "LSFG layer armed: dll=%s, target=%s, selectedMultiplier=%d, framegen=%s, flowScale=%.2f, perf=%s, discovery=explicit-env-targeted",
             dllPath,
             processExecutable,
             multiplier(container),
+            if (frameGenerationActive(container)) "on" else "off",
             flowScale(container),
             if (performanceMode(container)) "on" else "off",
         )
@@ -764,7 +771,8 @@ object LsfgVkManager {
 
         return try {
             val processExecutable = targetExecutable(container)
-            val frameGenActive = enabled && dllPath != null && processExecutable != null
+            val frameGenActive = enabled && multiplier >= 2 &&
+                dllPath != null && processExecutable != null
             val effectiveFpsLimit = (fpsLimitOverride ?: fpsLimit(container)).coerceAtLeast(0)
             val configText = buildConfigToml(
                 dllPath = dllPath,

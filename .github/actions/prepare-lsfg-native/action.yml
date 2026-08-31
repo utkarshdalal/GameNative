@@ -20,7 +20,14 @@ runs:
         layer=app/src/main/jniLibs/arm64-v8a/liblsfg-vk-layer.so
         native_manifest="$native_dir/VkLayer_LS_frame_generation.json"
         runtime_manifest=app/src/main/assets/lsfg_vk/android_arm64_v8a/VkLayer_LS_frame_generation.json
+        runtime_manager=app/src/main/java/app/gamenative/utils/LsfgVkManager.kt
         expected_commit="$(git rev-parse HEAD:${native_dir})"
+        expected_prefix="${expected_commit:0:8}"
+
+        if ! grep -Fq "$expected_prefix" "$runtime_manager"; then
+          echo "ERROR: LSFG runtime marker does not identify GameNative gitlink ${expected_commit}" >&2
+          exit 1
+        fi
 
         git submodule sync -- "$native_dir"
         git submodule update --init --recursive -- "$native_dir"
