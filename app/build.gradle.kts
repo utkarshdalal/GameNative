@@ -9,7 +9,6 @@ plugins {
     alias(libs.plugins.jetbrains.serialization)
     alias(libs.plugins.kotlinter)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.secrets.gradle)
     alias(libs.plugins.room)
 }
 
@@ -137,7 +136,7 @@ android {
             "ru",      // Russian
             "ko",      // Korean
             "ja",      // Japanese
-            // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
+            // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g. "pt-rPT" for European Portuguese)
         )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -239,9 +238,6 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
-        // Exposes the openxr_loader_for_android AAR's native headers/lib to CMake, for the
-        // (not yet wired into the default build — see xrimmersive/CMakeLists.txt) immersive
-        // VR native module.
         prefab = true
     }
 
@@ -253,8 +249,6 @@ android {
             excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
         jniLibs {
-            // 'extractNativeLibs' was not enough to keep the jniLibs and
-            // the libs went missing after adding on-demand feature delivery
             useLegacyPackaging = true
         }
     }
@@ -265,14 +259,10 @@ android {
     }
 
     lint {
-        // Locale files ship full AndroidX appcompat (abc_*) translations that aren't in the
-        // default locale. These extra translations are harmless and pre-existing; without this
-        // the release-only lintVital pass fails on 150+ ExtraTranslation errors.
         disable += "ExtraTranslation"
     }
     dynamicFeatures += setOf(":ubuntufs")
 
-    // Configure Assets to be used in different variants
     sourceSets {
         getByName("legacy") {
             java.srcDir("src/nonXr/java")
@@ -282,8 +272,6 @@ android {
         }
         getByName("legacyXr") {
             java.srcDir("src/nonXr/java")
-            // Superset of src/legacy/AndroidManifest.xml plus the immersive VR entries —
-            // keep the shared parts in sync with that file.
             manifest.srcFile("src/legacyXr/AndroidManifest.xml")
             assets {
                 srcDirs("src/legacy/assets", "src/main/assets")
@@ -314,159 +302,47 @@ android {
     kotlinter {
         ignoreFormatFailures  = false
     }
-
-    // externalNativeBuild {
-    //   cmake {
-    //       path = file("src/main/cpp/asurfacerenderer/CMakeLists.txt")
-    //   }
-    // }
-
-    // externalNativeBuild {
-    //    cmake {
-    //        path = file("src/main/cpp/evshim/CMakeLists.txt")
-    //    }
-    // }
-
-    // xconnectorpatch is shipped as a prebuilt jniLib because our APK packaging flow
-    // does not rebuild native libraries during release creation.
-    // externalNativeBuild {
-    //     cmake {
-    //         path = file("src/main/cpp/xconnectorpatch/CMakeLists.txt")
-    //         version = "3.22.1"
-    //     }
-    // }
-
-    // build extras needed in libwinlator_bionic.so
-    // externalNativeBuild {
-    //     cmake {
-    //         path = file("src/main/cpp/extras/CMakeLists.txt")   // the file shown above
-    //         version = "3.22.1"
-    //     }
-    // }
-
-    // cmake on release builds a proot that fails to process ld-2.31.so
-    // externalNativeBuild {
-    //     cmake {
-    //         path = file("src/main/cpp/CMakeLists.txt")
-    //         version = "3.22.1"
-    //     }
-    // }
-
-    // Meta Quest immersive launch mode's native OpenXR module. Same convention as the
-    // other native modules above: not part of the default build (native libs ship as
-    // prebuilt .so files in jniLibs/) — temporarily uncomment to build+test locally,
-    // then copy the resulting libxrimmersive.so into jniLibs/arm64-v8a/ and re-comment.
-    // externalNativeBuild {
-    //     cmake {
-    //         path = file("src/main/cpp/xrimmersive/CMakeLists.txt")
-    //         version = "3.22.1"
-    //     }
-    // }
-
-    // (For now) Uncomment for LeakCanary to work.
-    // configurations {
-    //     debugImplementation {
-    //         exclude(group = "junit", module = "junit")
-    //     }
-    // }
 }
 
 dependencies {
-    implementation(libs.material)
-
-    // Chrome Custom Tabs for GOG OAuth
-    implementation("androidx.browser:browser:1.8.0")
-    implementation("androidx.documentfile:documentfile:1.0.1")
-
-    // JavaSteam
-    val localBuild = false // Change to 'true' needed when building JavaSteam manually
-    if (localBuild) {
-        implementation(files("../../JavaSteam/build/libs/javasteam-1.8.0.1-26-SNAPSHOT.jar"))
-        implementation(files("../../JavaSteam/javasteam-depotdownloader/build/libs/javasteam-depotdownloader-1.8.0.1-26-SNAPSHOT.jar"))
-        implementation(libs.bundles.javasteam.dev)
-    } else {
-        implementation(libs.javasteam) {
-            isChanging = version?.contains("SNAPSHOT") ?: false
-        }
-        implementation(libs.javasteam.depotdownloader) {
-            isChanging = version?.contains("SNAPSHOT") ?: false
-        }
-    }
-    implementation(libs.spongycastle)
-    implementation(libs.okhttp.dnsoverhttps)
-
-    // Split Modules
-    implementation(libs.bundles.google)
-
-    // Official Khronos OpenXR loader (Apache-2.0) for the Meta Quest immersive launch mode's
-    // native module (app/src/main/cpp/xrimmersive) — not a Winlator/GameNativeXR dependency.
-    "modernXrImplementation"("org.khronos.openxr:openxr_loader_for_android:1.1.61")
-
-    // Winlator
-    implementation(libs.bundles.winlator)
-    implementation(libs.libarchive.android)
-    implementation(libs.zstd.jni) { artifact { type = "aar" } }
-    implementation(libs.xz)
-
-    // Jetpack Compose
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.bundles.compose)
-    implementation(libs.landscapist.coil)
-    implementation(libs.media3.exoplayer)
-    implementation(libs.media3.exoplayer.hls)
-    implementation(libs.media3.ui)
-    debugImplementation(libs.androidx.ui.tooling)
-
-    // Support
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.apng)
-    implementation(libs.datastore.preferences)
-    implementation(libs.jetbrains.kotlinx.json)
-    implementation(libs.kotlin.coroutines)
-    implementation(libs.timber)
-    implementation(libs.zxing)
-
-    // Google Protobufs
-    implementation(libs.protobuf.java)
-
-    // Hilt
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.bundles.compose)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    implementation(libs.bundles.room)
     implementation(libs.bundles.hilt)
+    implementation(libs.jetbrains.kotlinx.json)
+    implementation(libs.material)
+    implementation(libs.spongycastle)
+    implementation(libs.javasteam)
+    implementation(libs.javasteam.depotdownloader)
+    implementation(libs.apache.compress)
+    implementation(libs.orgJson)
+    implementation(libs.libarchive.android)
+    implementation(libs.zstd.jni)
+    implementation(libs.zxing)
+    implementation(libs.protobuf.java)
+    implementation(libs.feature.delivery)
+    implementation(libs.play.integrity)
 
-    // KSP (Hilt, Room)
     ksp(libs.bundles.ksp)
 
-    // Room Database
-    implementation(libs.bundles.room)
+    testImplementation(libs.junit)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.mockk)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.mockwebserver)
 
-    // Memory Leak Detection
-    // debugImplementation("com.squareup.leakcanary:leakcanary-android:3.0-alpha-8")
-
-    // Testing
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.runner)
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    testImplementation(libs.junit)
-    testImplementation(libs.robolectric)
-    testImplementation(libs.mockito.core)
-    testImplementation(libs.mockito.kotlin)
-    testImplementation(libs.mockk)
-    testImplementation(libs.androidx.ui.test.junit4)
-    testImplementation(libs.zstd.jni)
-    testImplementation(libs.orgJson)
-    testImplementation(libs.mockwebserver)
-
-    // Add PostHog Android SDK dependency
-    implementation("com.posthog:posthog-android:3.8.0")
-
-    implementation("com.auth0.android:jwtdecode:2.0.2")
-
-    // Samsung Performance SDK
-    implementation(files("src/main/lib/perfsdk-v1.0.0.jar"))
-
-    "modernXrImplementation"("com.meta.horizon.platform.sdk:core-kotlin:0.2.2")
-    "modernXrImplementation"("com.meta.horizon.platform.sdk:iap-kotlin:0.2.2")
 }
