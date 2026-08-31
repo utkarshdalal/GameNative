@@ -327,6 +327,7 @@ fun PluviaMain(
     var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
     var debugPreRunVisible by rememberSaveable { mutableStateOf(false) }
     var debugPreRunAppId by rememberSaveable { mutableStateOf("") }
+    var debugPreRunOffline by rememberSaveable { mutableStateOf(false) }
     val discordTokenPresent by PrefManager.discordRelayTokenPresent
 
     LaunchedEffect(Unit) {
@@ -1202,6 +1203,7 @@ fun PluviaMain(
                 setMessageDialogState(MessageDialogState(false))
                 if (aiDebugOfferAppId.isNotEmpty()) {
                     debugPreRunAppId = aiDebugOfferAppId
+                    debugPreRunOffline = viewModel.isOffline.value
                     debugPreRunVisible = true
                 }
             }
@@ -1448,7 +1450,7 @@ fun PluviaMain(
                     debugPreRunVisible = false
                     val appId = debugPreRunAppId
                     if (appId.isNotEmpty()) {
-                        val isOffline = viewModel.isOffline.value
+                        val isOffline = debugPreRunOffline
                         trackGameLaunched(appId)
                         viewModel.setLaunchedAppId(appId)
                         viewModel.setBootToContainer(false)
@@ -1719,6 +1721,7 @@ fun PluviaMain(
                         },
                         onAiDebugRun = { appId ->
                             debugPreRunAppId = appId
+                            debugPreRunOffline = isOffline
                             debugPreRunVisible = true
                         },
                         onClickExit = {
