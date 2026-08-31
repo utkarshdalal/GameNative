@@ -107,15 +107,16 @@ object LsfgVkManager {
         container.containerVariant.equals(Container.BIONIC, ignoreCase = true)
 
     /**
-     * Whether LSFG is armed for this container.
+     * Whether the LSFG layer is armed/resident for this container.
      *
-     * A legacy multiplier of 0 means Off even if the older boolean extra is
-     * still true. This is a UI/runtime hot path, so do not rescan Steam here.
+     * This deliberately does not require multiplier >= 2. A selected multiplier
+     * of 0 means frame generation is currently off, but the layer must remain
+     * resident so a Quick Menu config hot-reload can enable it without restart.
      */
     @JvmStatic
     fun isArmed(container: Container): Boolean =
         isSupported(container) &&
-            userRequestedFrameGeneration(container) &&
+            layerRequested(container) &&
             containerDllPath(container) != null
 
     /** Whether Lossless Scaling is installed (Lossless.dll exists in Steam dir). */
@@ -140,8 +141,11 @@ object LsfgVkManager {
         return if (raw == 0) 0 else raw.coerceIn(2, 4)
     }
 
-    private fun userRequestedFrameGeneration(container: Container): Boolean =
-        parseBool(container.getExtra(EXTRA_ARMED, "false")) && multiplier(container) >= 2
+    private fun layerRequested(container: Container): Boolean =
+        parseBool(container.getExtra(EXTRA_ARMED, "false"))
+
+    private fun frameGenerationActive(container: Container): Boolean =
+        isArmed(container) && multiplier(container) >= 2
 
     /** Get the flow scale (0.25-1.0, default 0.80). */
     fun flowScale(container: Container): Float =
@@ -340,8 +344,8 @@ object LsfgVkManager {
                 Timber.tag(TAG).e(t, "Failed to copy Lossless.dll into container")
                 success = false
             }
-        } else if (userRequestedFrameGeneration(container)) {
-            Timber.tag(TAG).w("LSFG enabled but Lossless.dll not found in Steam dir")
+        } else if (layerRequested(container)) {
+            Timber.tag(TAG).w("LSFG layer requested but Lossless.dll not found in Steam dir")
             success = false
         }
 
@@ -356,7 +360,7 @@ object LsfgVkManager {
             val dllPath = containerDllPath(container)
             val processExecutable = targetExecutable(container)
             val savedMultiplier = multiplier(container)
-            val frameGenActive = isArmed(container) && processExecutable != null
+            val frameGenActive = frameGenerationActive(container) && processExecutable != null
             val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
             val configText = buildConfigToml(
                 dllPath = dllPath,
@@ -397,9 +401,8 @@ object LsfgVkManager {
         if (!armed) {
             disableLayerInContainer(container)
             Timber.tag(TAG).i(
-                "LSFG disabled (enabled=%s, multiplier=%d, dll=%s)",
+                "LSFG layer disabled (requested=%s, dll=%s)",
                 container.getExtra(EXTRA_ARMED, "false"),
-                multiplier(container),
                 dllPath ?: "null",
             )
             return false
@@ -407,7 +410,7 @@ object LsfgVkManager {
 
         val processExecutable = targetExecutable(container)
         if (processExecutable == null) {
-            Timber.tag(TAG).w("LSFG armed but target executable could not be resolved")
+            Timber.tag(TAG).w("LSFG layer armed but target executable could not be resolved")
             return false
         }
 
@@ -430,10 +433,11 @@ object LsfgVkManager {
         if (BuildConfig.DEBUG) probeAndroidLinker(container)
 
         Timber.tag(TAG).i(
-            "LSFG armed: dll=%s, target=%s, multiplier=%d, flowScale=%.2f, perf=%s, discovery=explicit-env-targeted",
+            "LSFG layer armed: dll=%s, target=%s, selectedMultiplier=%d, framegen=%s, flowScale=%.2f, perf=%s, discovery=explicit-env-targeted",
             dllPath,
             processExecutable,
             multiplier(container),
+            if (frameGenerationActive(container)) "on" else "off",
             flowScale(container),
             if (performanceMode(container)) "on" else "off",
         )
