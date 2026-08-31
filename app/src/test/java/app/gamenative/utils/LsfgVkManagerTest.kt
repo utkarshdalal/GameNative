@@ -60,6 +60,28 @@ class LsfgVkManagerTest {
     }
 
     @Test
+    fun isArmed_multiplierZeroIsOffEvenWhenLegacyEnabledFlagIsSet() {
+        val container = container(armed = true, multiplier = "0")
+
+        assertFalse(LsfgVkManager.isArmed(container))
+    }
+
+    @Test
+    fun applyLaunchEnv_multiplierZeroDoesNotArmLayer() {
+        val container = container(armed = true, multiplier = "0")
+        val envVars = EnvVars().apply {
+            put("VK_LAYER_PATH", "/existing/explicit-layers")
+            put("VK_INSTANCE_LAYERS", "VK_LAYER_existing")
+        }
+
+        assertFalse(LsfgVkManager.applyLaunchEnv(container, envVars))
+        assertEquals("/existing/explicit-layers", envVars["VK_LAYER_PATH"])
+        assertEquals("VK_LAYER_existing", envVars["VK_INSTANCE_LAYERS"])
+        assertFalse(envVars.has("LSFG_CONFIG"))
+        assertFalse(envVars.has("LSFG_PROCESS_EXE"))
+    }
+
+    @Test
     fun applyLaunchEnv_isDriverAgnosticAndPreservesSelectedIcd() {
         val container = container(armed = true)
         val envVars = EnvVars().apply {
@@ -136,7 +158,7 @@ class LsfgVkManagerTest {
 
         assertTrue(loaderLib.readBytes().contentEquals(containerLib.readBytes()))
         assertEquals(containerManifest.readText(), loaderManifest.readText())
-        assertTrue(loaderVersion.readText().contains("e53ce6fc"))
+        assertTrue(loaderVersion.readText().contains("09584e0d"))
         val loaderLayerDir = loaderManifest.parentFile!!.absolutePath
         assertEquals(loaderLayerDir, envVars["VK_LAYER_PATH"])
     }
@@ -250,7 +272,7 @@ class LsfgVkManagerTest {
         }
     }
 
-    private fun container(armed: Boolean): Container {
+    private fun container(armed: Boolean, multiplier: String = "2"): Container {
         File(rootDir, ".local/share/lsfg-vk/Lossless.dll").apply {
             parentFile?.mkdirs()
             writeBytes(byteArrayOf(1))
@@ -263,7 +285,7 @@ class LsfgVkManagerTest {
         whenever(container.getExtra(LsfgVkManager.EXTRA_ARMED, "false"))
             .thenReturn(armed.toString())
         whenever(container.getExtra(LsfgVkManager.EXTRA_MULTIPLIER, "2"))
-            .thenReturn("2")
+            .thenReturn(multiplier)
         whenever(container.getExtra(LsfgVkManager.EXTRA_FLOW_SCALE, "0.80"))
             .thenReturn("0.80")
         whenever(container.getExtra(LsfgVkManager.EXTRA_PERFORMANCE_MODE, "true"))
