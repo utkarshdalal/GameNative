@@ -5,6 +5,8 @@ on:
     branches: [ "master" ]
     paths:
       - '.github/workflows/legacy-release-build.yml'
+      - '.github/actions/prepare-lsfg-native/**'
+      - 'app/build.gradle.kts'
   workflow_dispatch:
 
 concurrency:
@@ -35,20 +37,6 @@ jobs:
       - name: Prepare exact GameNative-pinned LSFG native runtime
         uses: ./.github/actions/prepare-lsfg-native
 
-      - name: Inject build credentials
-        env:
-          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          STEAMGRIDDB_API_KEY: ${{ secrets.STEAMGRIDDB_API_KEY }}
-          CLOUD_PROJECT_NUMBER: ${{ secrets.CLOUD_PROJECT_NUMBER }}
-        run: |
-          cat > local.properties <<EOF
-          POSTHOG_API_KEY=${POSTHOG_API_KEY:-}
-          POSTHOG_HOST=${POSTHOG_HOST:-https://us.i.posthog.com}
-          STEAMGRIDDB_API_KEY=${STEAMGRIDDB_API_KEY:-}
-          CLOUD_PROJECT_NUMBER=${CLOUD_PROJECT_NUMBER:-}
-          EOF
-
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v6
 
@@ -56,6 +44,11 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Assemble LegacyRelease only
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          STEAMGRIDDB_API_KEY: ${{ secrets.STEAMGRIDDB_API_KEY }}
+          CLOUD_PROJECT_NUMBER: ${{ secrets.CLOUD_PROJECT_NUMBER }}
         run: ./gradlew :app:assembleLegacyRelease --no-daemon --stacktrace
 
       - name: Validate release APK
