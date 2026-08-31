@@ -564,7 +564,18 @@ fun PluviaMain(
                 }
 
                 MainViewModel.MainUiEvent.OnBackPressed -> {
-                    if (SteamService.keepAlive){
+                    if (debugPaywallReason != null) {
+                        debugPaywallReason = null
+                        debugReportState = debugReportState.copy(
+                            visible = true,
+                            phase = DebugReportDialogState.PHASE_COMPOSE,
+                        )
+                    } else if (debugReportState.visible) {
+                        if (debugReportState.phase != DebugReportDialogState.PHASE_SENDING) {
+                            debugReportState = debugReportState.copy(visible = false)
+                            SteamService.keepAlive = false
+                        }
+                    } else if (SteamService.keepAlive){
                         gameBackAction?.invoke() ?: run { navController.popBackStack() }
                     } else if (hasBack) {
                         // TODO: check if back leads to log out and present confidence modal
