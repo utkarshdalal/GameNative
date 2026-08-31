@@ -731,6 +731,7 @@ object LsfgVkManager {
             processNames.forEach { processName ->
                 appendLine("[[game]]")
                 appendLine("exe = ${tomlString(processName)}")
+                appendLine("enabled = $enabled")
                 appendLine("multiplier = $effectiveMultiplier")
                 appendLine("flow_scale = ${formatFlowScale(flowScale)}")
                 appendLine("performance_mode = ${if (enabled && performanceMode) "true" else "false"}")

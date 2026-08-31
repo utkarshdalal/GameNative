@@ -84,6 +84,42 @@ public class PresentExtension implements Extension {
         this.frameRateLimit = Math.max(0, limit);
     }
 
+    /**
+     * Atomically transfer pacing ownership between the X Present scheduler and
+     * LSFG. Pending notifications belong to the old timing epoch and must be
+     * released before its phase/limit state is discarded.
+     */
+    public void transitionFramePacing(boolean lsfgOwnsPacing, int limit) {
+        final int nextLimit = lsfgOwnsPacing ? 0 : Math.max(0, limit);
+        if (this.eagerIdleRelease == lsfgOwnsPacing && this.frameRateLimit == nextLimit)
+            return;
+
+        this.eagerIdleRelease = lsfgOwnsPacing;
+        this.frameRateLimit = nextLimit;
+
+        android.view.Choreographer activeChoreographer = this.choreographer;
+        if (activeChoreographer != null && choreographerPosted) {
+            activeChoreographer.removeFrameCallback(vsyncCallback);
+            choreographerPosted = false;
+        }
+
+        for (java.util.Map.Entry<Integer, PendingIdle> entry : pendingIdles.entrySet()) {
+            PendingIdle pending = entry.getValue();
+            if (pendingIdles.remove(entry.getKey(), pending)) {
+                sendIdleNotify(pending.window, pending.pixmap,
+                        pending.serial, pending.idleFence);
+            }
+        }
+
+        PendingIdle queued;
+        while ((queued = cpuQueue.poll()) != null) {
+            sendIdleNotify(queued.window, queued.pixmap, queued.serial, queued.idleFence);
+        }
+
+        windowTimings.clear();
+        supersededDrops = 0;
+    }
+
     public void close() {
         if (cpuPacerThread != null) {
             cpuPacerThread.interrupt();
