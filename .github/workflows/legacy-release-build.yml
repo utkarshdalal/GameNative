@@ -44,12 +44,87 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Assemble LegacyRelease only
+        id: assemble
+        continue-on-error: true
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           STEAMGRIDDB_API_KEY: ${{ secrets.STEAMGRIDDB_API_KEY }}
           CLOUD_PROJECT_NUMBER: ${{ secrets.CLOUD_PROJECT_NUMBER }}
-        run: ./gradlew :app:assembleLegacyRelease --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleLegacyRelease --no-daemon --stacktrace 2>&1 | tee legacy-release-build.log
+
+      - name: Surface sanitized Gradle failure
+        if: steps.assemble.outcome == 'failure'
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          STEAMGRIDDB_API_KEY: ${{ secrets.STEAMGRIDDB_API_KEY }}
+          CLOUD_PROJECT_NUMBER: ${{ secrets.CLOUD_PROJECT_NUMBER }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          raw = Path("legacy-release-build.log").read_text(errors="replace").splitlines()
+          secrets = [
+              os.environ.get("POSTHOG_API_KEY", ""),
+              os.environ.get("POSTHOG_HOST", ""),
+              os.environ.get("STEAMGRIDDB_API_KEY", ""),
+              os.environ.get("CLOUD_PROJECT_NUMBER", ""),
+          ]
+
+          def redact(line: str) -> str:
+              for value in secrets:
+                  if value:
+                      line = line.replace(value, "<redacted>")
+              return line.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+          important = re.compile(
+              r"(?:^> Task .* FAILED$|^FAILURE:|^\* What went wrong:|Execution failed for task|"
+              r"^Caused by:|\berror:|\bERROR\b|Missing class|R8:|Compilation failed|"
+              r"Could not resolve|Could not determine|A failure occurred while executing)",
+              re.IGNORECASE,
+          )
+          selected = []
+          for i, line in enumerate(raw):
+              if important.search(line):
+                  start = max(0, i - 2)
+                  end = min(len(raw), i + 7)
+                  selected.extend(raw[start:end])
+
+          # Preserve order while removing duplicates and cap output so annotations stay useful.
+          seen = set()
+          unique = []
+          for line in selected:
+              if line not in seen:
+                  seen.add(line)
+                  unique.append(line)
+              if len(unique) >= 100:
+                  break
+
+          if not unique:
+              unique = raw[-80:]
+
+          Path("legacy-release-failure-summary.txt").write_text("\n".join(unique) + "\n")
+          for line in unique:
+              print(f"::error::{redact(line)}")
+          PY
+
+      - name: Upload failed-build summary
+        if: steps.assemble.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: LegacyRelease-failure-summary
+          path: legacy-release-failure-summary.txt
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Fail after diagnostics
+        if: steps.assemble.outcome == 'failure'
+        run: exit 1
 
       - name: Validate release APK
         run: |
