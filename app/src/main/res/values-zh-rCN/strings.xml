@@ -1824,7 +1824,9 @@
     <string name="debug_offer_message">该会话提前结束了。开启调试日志再运行一次 %1$s，我们的 AI 会阅读日志并告诉你需要更改什么。</string>
     <string name="debug_offer_confirm">开始调试运行</string>
     <string name="debug_prerun_title">获取 AI 帮助</string>
-    <string name="debug_prerun_message">以调试日志运行游戏，退出后将日志分享给我们在 Discord 上的 AI。AI 回复仅限订阅者。任何人都可以分享报告以获得人工帮助。</string>
+    <string name="debug_prerun_message_1">以调试日志运行游戏，退出后将日志分享给我们在 Discord 上的 AI。</string>
+    <string name="debug_prerun_message_2">AI 回复仅限订阅者。</string>
+    <string name="debug_prerun_message_3">任何人都可以分享报告以获得人工帮助。</string>
     <string name="debug_paywall_title">获取 AI 调试支持</string>
     <string name="debug_paywall_pitch">我们的 AI 会阅读你的完整日志和配置，并告诉你需要更改什么，通常不到 5 分钟。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Supporter</string>

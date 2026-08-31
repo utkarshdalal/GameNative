@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -55,7 +56,22 @@ fun DebugPreRunDialog(
                         modifier = Modifier.padding(bottom = 16.dp),
                     )
                     Text(
-                        text = stringResource(R.string.debug_prerun_message),
+                        text = stringResource(R.string.debug_prerun_message_1),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier
+                            .align(Alignment.Start)
+                            .padding(bottom = 8.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.debug_prerun_message_2),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .align(Alignment.Start)
+                            .padding(bottom = 8.dp),
+                    )
+                    Text(
+                        text = stringResource(R.string.debug_prerun_message_3),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier
                             .align(Alignment.Start)
