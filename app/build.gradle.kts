@@ -440,7 +440,7 @@ dependencies {
     implementation(libs.bundles.room)
 
     // Memory Leak Detection
-    // debugImplementation("com.squareup.leakcanary-android:3.0-alpha-8")
+    // debugImplementation("com.squareup.leakcanary:leakcanary-android:3.0-alpha-8")
 
     // Testing
     androidTestImplementation(platform(libs.androidx.compose.bom))
