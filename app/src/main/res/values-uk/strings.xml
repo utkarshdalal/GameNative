@@ -1781,7 +1781,7 @@
     <string name="wrapper_quality_high">Висока (чіткіші зображення, більше ОЗП)</string>
     <string name="option_play_with_diagnostics">Діагностичний запуск</string>
     <string name="option_share_diagnostics">Поділитися діагностикою</string>
-    <string name="option_ai_debug_run">Налагоджувальний запуск з AI \u00b7 Спонсори</string>
+    <string name="option_ai_debug_run">Виправити з AI \u00b7 Спонсори</string>
     <string name="debug_report_title">AI-звіт про налагодження</string>
     <string name="debug_report_summary">%1$s · %2$s · лог записано (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">Що пішло не так?</string>

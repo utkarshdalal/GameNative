@@ -1785,7 +1785,7 @@
     <string name="wrapper_quality_high">Wysoka (ostrzejsze obrazy, więcej pamięci RAM)</string>
     <string name="option_play_with_diagnostics">Uruchomienie diagnostyczne</string>
     <string name="option_share_diagnostics">Udostępnij diagnostykę</string>
-    <string name="option_ai_debug_run">Uruchomienie debugowania AI \u00b7 Wspierający</string>
+    <string name="option_ai_debug_run">Napraw z AI \u00b7 Wspierający</string>
     <string name="debug_report_title">Raport debugowania AI</string>
     <string name="debug_report_summary">%1$s · %2$s · przechwycono log (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">Co poszło nie tak?</string>

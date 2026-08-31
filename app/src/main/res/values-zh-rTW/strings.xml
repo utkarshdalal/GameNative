@@ -1793,7 +1793,7 @@
     <string name="wrapper_quality_high">高（圖像更清晰，佔用更多記憶體）</string>
     <string name="option_play_with_diagnostics">診斷執行</string>
     <string name="option_share_diagnostics">分享診斷</string>
-    <string name="option_ai_debug_run">AI 除錯執行 \u00b7 支持者</string>
+    <string name="option_ai_debug_run">用 AI 修復 \u00b7 支持者</string>
     <string name="debug_report_title">AI 除錯報告</string>
     <string name="debug_report_summary">%1$s · %2$s · 已擷取記錄（%3$s MB）</string>
     <string name="debug_report_what_went_wrong">發生了什麼問題？</string>
