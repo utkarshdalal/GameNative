@@ -27,6 +27,36 @@ val posthogHost: String = project.findProperty("POSTHOG_HOST") as String? ?: Sys
 val metaAppId: String = project.findProperty("META_APP_ID") as String? ?: System.getenv("META_APP_ID") ?: ""
 val productSku: String = project.findProperty("PRODUCT_SKU") as String? ?: System.getenv("PRODUCT_SKU") ?: ""
 
+// buildConfigField expects a complete Java expression, not a raw string. Escape all
+// characters that can terminate or corrupt the generated BuildConfig.java literal.
+fun javaStringLiteral(value: String): String = buildString(value.length + 2) {
+    append('"')
+    value.forEach { ch ->
+        when (ch) {
+            '\\' -> append("\\\\")
+            '"' -> append("\\\"")
+            '\n' -> append("\\n")
+            '\r' -> append("\\r")
+            '\t' -> append("\\t")
+            '\b' -> append("\\b")
+            '\u000C' -> append("\\f")
+            '\u2028', '\u2029' -> {
+                append("\\u")
+                append(ch.code.toString(16).padStart(4, '0'))
+            }
+            else -> {
+                if (ch.code < 0x20) {
+                    append("\\u")
+                    append(ch.code.toString(16).padStart(4, '0'))
+                } else {
+                    append(ch)
+                }
+            }
+        }
+    }
+    append('"')
+}
+
 room {
     schemaDirectory("$projectDir/schemas")
 }
@@ -68,13 +98,15 @@ android {
         versionName = "1.2.0"
 
         buildConfigField("boolean", "GOLD", "false")
-        fun secret(name: String) =
-            project.findProperty(name) as String? ?: System.getenv(name) ?: ""
+        fun secret(name: String, defaultValue: String = "") =
+            (project.findProperty(name) as String?)?.takeIf { it.isNotEmpty() }
+                ?: System.getenv(name)?.takeIf { it.isNotEmpty() }
+                ?: defaultValue
 
-        buildConfigField("String", "POSTHOG_API_KEY", "\"${secret("POSTHOG_API_KEY")}\"")
-        buildConfigField("String", "POSTHOG_HOST",  "\"${secret("POSTHOG_HOST")}\"")
-        buildConfigField("String", "STEAMGRIDDB_API_KEY", "\"${secret("STEAMGRIDDB_API_KEY")}\"")
-        buildConfigField("String", "CLOUD_PROJECT_NUMBER", "\"${secret("CLOUD_PROJECT_NUMBER")}\"")
+        buildConfigField("String", "POSTHOG_API_KEY", javaStringLiteral(secret("POSTHOG_API_KEY")))
+        buildConfigField("String", "POSTHOG_HOST", javaStringLiteral(secret("POSTHOG_HOST", "https://us.i.posthog.com")))
+        buildConfigField("String", "STEAMGRIDDB_API_KEY", javaStringLiteral(secret("STEAMGRIDDB_API_KEY")))
+        buildConfigField("String", "CLOUD_PROJECT_NUMBER", javaStringLiteral(secret("CLOUD_PROJECT_NUMBER")))
         val iconValue = "@mipmap/ic_launcher"
         val iconRoundValue = "@mipmap/ic_launcher_round"
         manifestPlaceholders.putAll(
@@ -155,8 +187,8 @@ android {
             buildConfigField("String", "PRELOAD_BIONIC_SO", "\"libredirect-bionic-wx.so\"")
             buildConfigField("boolean", "XR_BUILD", "true")
             buildConfigField("boolean", "MODERN_XR", "true")
-            buildConfigField("String", "META_APP_ID", "\"$metaAppId\"")
-            buildConfigField("String", "PRODUCT_SKU", "\"$productSku\"")
+            buildConfigField("String", "META_APP_ID", javaStringLiteral(metaAppId))
+            buildConfigField("String", "PRODUCT_SKU", javaStringLiteral(productSku))
             manifestPlaceholders["screenOrientation"] = "landscape"
         }
     }
@@ -408,7 +440,7 @@ dependencies {
     implementation(libs.bundles.room)
 
     // Memory Leak Detection
-    // debugImplementation("com.squareup.leakcanary:leakcanary-android:3.0-alpha-8")
+    // debugImplementation("com.squareup.leakcanary-android:3.0-alpha-8")
 
     // Testing
     androidTestImplementation(platform(libs.androidx.compose.bom))
