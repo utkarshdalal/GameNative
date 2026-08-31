@@ -7,6 +7,15 @@ on:
       - '.github/workflows/legacy-release-build.yml'
       - '.github/actions/prepare-lsfg-native/**'
       - 'app/build.gradle.kts'
+      - 'gradle/libs.versions.toml'
+      - 'settings.gradle.kts'
+  pull_request:
+    paths:
+      - '.github/workflows/legacy-release-build.yml'
+      - '.github/actions/prepare-lsfg-native/**'
+      - 'app/build.gradle.kts'
+      - 'gradle/libs.versions.toml'
+      - 'settings.gradle.kts'
   workflow_dispatch:
 
 concurrency:
@@ -42,6 +51,9 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
+
+      - name: Verify LegacyRelease compile classpath
+        run: ./gradlew :app:verifyLegacyReleaseCompileClasspath --no-daemon --stacktrace
 
       - name: Assemble LegacyRelease only
         id: assemble
