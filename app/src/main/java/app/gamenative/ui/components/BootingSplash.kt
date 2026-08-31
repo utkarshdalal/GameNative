@@ -5,13 +5,23 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import android.net.Uri
+import android.view.ViewGroup
+import androidx.annotation.OptIn
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,8 +50,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import app.gamenative.R
 import app.gamenative.data.BootAdItem
+import app.gamenative.data.BootAdRepository
 import app.gamenative.data.FeaturedCta
 import app.gamenative.data.localizedBody
 import app.gamenative.data.localizedLabel
@@ -51,6 +72,7 @@ import app.gamenative.ui.theme.BrandGradient
 import app.gamenative.ui.theme.PluviaTheme
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import java.io.File
 import kotlin.math.sin
 import kotlin.random.Random
 import kotlinx.coroutines.delay
@@ -107,6 +129,11 @@ fun BootingSplash(
     // Sponsor backdrop rotates hero art + screenshots, tips-style
     val adImages = remember(bootAd?.campaignId) {
         bootAd?.let { ad -> (listOf(ad.imageUrl) + ad.screenshots).filter { it.isNotEmpty() } } ?: emptyList()
+    }
+    val adVideoFile = remember(bootAd?.campaignId) {
+        bootAd
+            ?.takeIf { it.template == BootAdRepository.TEMPLATE_VIDEO_CARD }
+            ?.let { BootAdRepository.cachedVideoFile(context, it) }
     }
     var adImageIndex by remember(bootAd?.campaignId) { mutableStateOf(0) }
 
@@ -192,7 +219,12 @@ fun BootingSplash(
             AmbientParticles(phase = particlePhase)
 
             if (activeAd != null) {
-                Crossfade(
+                if (adVideoFile != null) {
+                    BootAdVideo(
+                        file = adVideoFile,
+                        fallbackImageUrl = activeAd.imageUrl,
+                    )
+                } else Crossfade(
                     targetState = adImageIndex,
                     animationSpec = tween(durationMillis = 800, easing = EaseInOutCubic),
                     label = "adImageCrossfade",
@@ -399,6 +431,97 @@ fun BootingSplash(
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(UnstableApi::class)
+@Composable
+private fun BootAdVideo(
+    file: File,
+    fallbackImageUrl: String,
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var showFallback by remember(file) { mutableStateOf(true) }
+    var soundOn by remember(file) { mutableStateOf(false) }
+
+    val exoPlayer = remember(file) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
+            repeatMode = Player.REPEAT_MODE_ALL
+            volume = 0f
+            playWhenReady = true
+            prepare()
+        }
+    }
+
+    DisposableEffect(exoPlayer, lifecycleOwner) {
+        val listener = object : Player.Listener {
+            override fun onRenderedFirstFrame() {
+                showFallback = false
+            }
+        }
+        exoPlayer.addListener(listener)
+
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> exoPlayer.pause()
+                Lifecycle.Event.ON_RESUME -> exoPlayer.play()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            exoPlayer.removeListener(listener)
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            exoPlayer.release()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        if (showFallback) {
+            CoilImage(
+                imageModel = { fallbackImageUrl },
+                imageOptions = ImageOptions(
+                    contentScale = ContentScale.Crop,
+                    contentDescription = null,
+                ),
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        IconButton(
+            onClick = {
+                soundOn = !soundOn
+                exoPlayer.volume = if (soundOn) 1f else 0f
+            },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(12.dp)
+                .background(Color.Black.copy(alpha = 0.45f), CircleShape),
+        ) {
+            Icon(
+                imageVector = if (soundOn) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                contentDescription = if (soundOn) "Mute" else "Unmute",
+                tint = Color.White,
+            )
         }
     }
 }

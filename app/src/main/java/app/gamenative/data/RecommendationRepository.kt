@@ -47,8 +47,9 @@ object RecommendationRepository {
           },
           "bootAd": {
             "campaignId": "mock-whisk-boot",
-            "template": "cta_card",
+            "template": "video_card",
             "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/92fb97a2832c9c075165c43d14d974c730ca716b/library_hero.jpg",
+            "videoUrl": "https://video.akamai.steamstatic.com/store_trailers/3602270/375401990/4aacd3fefc6bb18a96e07680487c46adb91ca04a/1767578512/microtrailer.mp4",
             "appId": 3602270,
             "screenshots": [
               "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/e0a52a09cd85472aecfb430ad086aae040cb100c/ss_e0a52a09cd85472aecfb430ad086aae040cb100c.1920x1080.jpg",
@@ -79,6 +80,7 @@ object RecommendationRepository {
             if (fetched != null) {
                 lastFeatured = fetched.featured
                 BootAdRepository.store(fetched.bootAd)
+                BootAdRepository.prefetchVideo(context, fetched.bootAd)
                 return@withContext HeroResponse(
                     recommendation = stableRecommendation(fetched.recommendation),
                     featured = fetched.featured,
