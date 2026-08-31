@@ -104,6 +104,19 @@ fun BootingSplash(
         }
     }
 
+    // Sponsor backdrop rotates hero art + screenshots, tips-style
+    val adImages = remember(bootAd?.campaignId) {
+        bootAd?.let { ad -> (listOf(ad.imageUrl) + ad.screenshots).filter { it.isNotEmpty() } } ?: emptyList()
+    }
+    var adImageIndex by remember(bootAd?.campaignId) { mutableStateOf(0) }
+
+    LaunchedEffect(visible, adImages) {
+        while (visible && adImages.size > 1) {
+            delay(6000)
+            adImageIndex = (adImageIndex + 1) % adImages.size
+        }
+    }
+
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(animationSpec = tween(durationMillis = 400)),
@@ -179,19 +192,29 @@ fun BootingSplash(
             AmbientParticles(phase = particlePhase)
 
             if (activeAd != null) {
-                CoilImage(
-                    modifier = Modifier.fillMaxSize(),
-                    imageModel = { activeAd.imageUrl },
-                    imageOptions = ImageOptions(
-                        contentScale = ContentScale.Crop,
-                        contentDescription = null,
-                    ),
-                    loading = {},
-                    failure = {
-                        adImageFailed = true
-                    },
-                    previewPlaceholder = painterResource(R.drawable.ic_logo_color),
-                )
+                Crossfade(
+                    targetState = adImageIndex,
+                    animationSpec = tween(durationMillis = 800, easing = EaseInOutCubic),
+                    label = "adImageCrossfade",
+                ) { idx ->
+                    val url = adImages.getOrElse(idx) { activeAd.imageUrl }
+                    CoilImage(
+                        modifier = Modifier.fillMaxSize(),
+                        imageModel = { url },
+                        imageOptions = ImageOptions(
+                            contentScale = ContentScale.Crop,
+                            contentDescription = null,
+                        ),
+                        loading = {},
+                        failure = {
+                            // Only the primary art disables the card; a bad screenshot just skips
+                            if (url == activeAd.imageUrl) {
+                                adImageFailed = true
+                            }
+                        },
+                        previewPlaceholder = painterResource(R.drawable.ic_logo_color),
+                    )
+                }
 
                 Box(
                     modifier = Modifier

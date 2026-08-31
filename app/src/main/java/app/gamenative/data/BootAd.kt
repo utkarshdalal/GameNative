@@ -14,6 +14,7 @@ data class BootAdItem(
     val campaignId: String,
     val template: String = "cta_card",
     val imageUrl: String = "",
+    val screenshots: List<String> = emptyList(),
     // Advertiser-supplied locale -> localized copy; resolved on-device.
     val title: Map<String, String> = emptyMap(),
     val body: Map<String, String> = emptyMap(),

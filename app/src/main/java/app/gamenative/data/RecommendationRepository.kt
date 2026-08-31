@@ -50,6 +50,10 @@ object RecommendationRepository {
             "template": "cta_card",
             "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/92fb97a2832c9c075165c43d14d974c730ca716b/library_hero.jpg",
             "appId": 3602270,
+            "screenshots": [
+              "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/e0a52a09cd85472aecfb430ad086aae040cb100c/ss_e0a52a09cd85472aecfb430ad086aae040cb100c.1920x1080.jpg",
+              "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/77719570b08d1b46facf8477df20aa5b97b54573/ss_77719570b08d1b46facf8477df20aa5b97b54573.1920x1080.jpg"
+            ],
             "title": { "en": "Whisk" },
             "body": { "en": "A two-player platformer about shared movement. Get every Dreamcat home." },
             "action": { "type": "WISHLIST", "url": "https://store.steampowered.com/app/3602270/", "store": "Steam", "style": "primary" },
@@ -149,7 +153,7 @@ object RecommendationRepository {
         return when {
             trimmed.startsWith("{") -> {
                 val hero = runCatching { json.decodeFromString<HeroResponse>(body) }.getOrNull()
-                if (hero != null && (hero.recommendation != null || hero.featured != null)) {
+                if (hero != null && (hero.recommendation != null || hero.featured != null || hero.bootAd != null)) {
                     hero
                 } else {
                     // Legacy: a single recommendation object.
