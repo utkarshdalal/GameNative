@@ -1769,6 +1769,7 @@
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
     <string name="debug_paywall_tier10_body">最も賢い AI モデルで、サポートスレッドでのやり取りは無制限です。</string>
     <string name="debug_paywall_cancel_anytime">いつでも解約できます。</string>
+    <string name="debug_paywall_costs_note">サブスクリプションは、この機能を支える AI サービスの費用に充てられます。</string>
     <string name="debug_paywall_subscribe">Discord で登録する</string>
     <string name="debug_paywall_kofi_alt">Ko-fi で登録する</string>
     <string name="debug_paywall_already">すでにサポーターですか？</string>

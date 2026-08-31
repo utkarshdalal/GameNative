@@ -179,6 +179,13 @@ fun DebugPaywallScreen(
                     color = PluviaTheme.colors.textMuted,
                 )
 
+                Text(
+                    text = stringResource(R.string.debug_paywall_costs_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    color = PluviaTheme.colors.textMuted,
+                )
+
                 Button(
                     onClick = onSubscribe,
                     modifier = Modifier.fillMaxWidth(),

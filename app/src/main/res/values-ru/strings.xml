@@ -1741,6 +1741,7 @@ https://gamenative.app
     <string name="debug_paywall_tier10_title">$10/месяц · Pro</string>
     <string name="debug_paywall_tier10_body">Наша самая умная модель AI с неограниченной перепиской в вашей ветке поддержки.</string>
     <string name="debug_paywall_cancel_anytime">Отмена в любой момент.</string>
+    <string name="debug_paywall_costs_note">Подписки покрывают расходы на сервис AI, благодаря которому работает эта функция.</string>
     <string name="debug_paywall_subscribe">Подпишитесь в Discord</string>
     <string name="debug_paywall_kofi_alt">Подпишитесь в Ko-fi</string>
     <string name="debug_paywall_already">Уже саппортер?</string>

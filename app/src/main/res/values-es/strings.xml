@@ -1811,6 +1811,7 @@
     <string name="debug_paywall_tier10_title">$10/mes · Pro</string>
     <string name="debug_paywall_tier10_body">Nuestro modelo de AI más inteligente, con conversación ilimitada en tu hilo de soporte.</string>
     <string name="debug_paywall_cancel_anytime">Cancela cuando quieras.</string>
+    <string name="debug_paywall_costs_note">Las suscripciones cubren los costes del servicio de AI que hace posible esta función.</string>
     <string name="debug_paywall_subscribe">Suscríbete en Discord</string>
     <string name="debug_paywall_kofi_alt">Suscríbete en Ko-fi</string>
     <string name="debug_paywall_already">¿Ya eres supporter?</string>

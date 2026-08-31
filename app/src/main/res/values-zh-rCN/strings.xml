@@ -1830,6 +1830,7 @@
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
     <string name="debug_paywall_tier10_body">我们最聪明的 AI 模型，在你的支持帖子中不限次数地交流。</string>
     <string name="debug_paywall_cancel_anytime">随时可取消。</string>
+    <string name="debug_paywall_costs_note">订阅费用用于支付支持此功能的 AI 服务成本。</string>
     <string name="debug_paywall_subscribe">在 Discord 上订阅</string>
     <string name="debug_paywall_kofi_alt">在 Ko-fi 上订阅</string>
     <string name="debug_paywall_already">已经是支持者？</string>

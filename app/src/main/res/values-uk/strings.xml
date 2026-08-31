@@ -1809,6 +1809,7 @@
     <string name="debug_paywall_tier10_title">$10/місяць · Pro</string>
     <string name="debug_paywall_tier10_body">Наша найрозумніша модель AI з необмеженим листуванням у вашій гілці підтримки.</string>
     <string name="debug_paywall_cancel_anytime">Скасувати можна будь-коли.</string>
+    <string name="debug_paywall_costs_note">Підписки покривають витрати на сервіс AI, завдяки якому працює ця функція.</string>
     <string name="debug_paywall_subscribe">Підпишіться в Discord</string>
     <string name="debug_paywall_kofi_alt">Підпишіться в Ko-fi</string>
     <string name="debug_paywall_already">Уже прихильник?</string>

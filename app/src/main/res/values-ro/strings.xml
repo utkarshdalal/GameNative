@@ -1815,6 +1815,7 @@
     <string name="debug_paywall_tier10_title">$10/lună · Pro</string>
     <string name="debug_paywall_tier10_body">Cel mai inteligent model AI al nostru, cu conversații nelimitate în firul tău de suport.</string>
     <string name="debug_paywall_cancel_anytime">Anulează oricând.</string>
+    <string name="debug_paywall_costs_note">Abonamentele acoperă costurile serviciului AI care face posibilă această funcție.</string>
     <string name="debug_paywall_subscribe">Abonează-te pe Discord</string>
     <string name="debug_paywall_kofi_alt">Abonează-te pe Ko-fi</string>
     <string name="debug_paywall_already">Ești deja susținător?</string>
