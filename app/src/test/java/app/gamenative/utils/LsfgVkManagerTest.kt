@@ -60,25 +60,40 @@ class LsfgVkManagerTest {
     }
 
     @Test
-    fun isArmed_multiplierZeroIsOffEvenWhenLegacyEnabledFlagIsSet() {
+    fun isArmed_multiplierZeroKeepsLayerResidentForHotReload() {
         val container = container(armed = true, multiplier = "0")
 
-        assertFalse(LsfgVkManager.isArmed(container))
+        assertTrue(LsfgVkManager.isArmed(container))
     }
 
     @Test
-    fun applyLaunchEnv_multiplierZeroDoesNotArmLayer() {
+    fun applyLaunchEnv_multiplierZeroKeepsLayerResidentForHotReload() {
         val container = container(armed = true, multiplier = "0")
         val envVars = EnvVars().apply {
             put("VK_LAYER_PATH", "/existing/explicit-layers")
             put("VK_INSTANCE_LAYERS", "VK_LAYER_existing")
         }
 
-        assertFalse(LsfgVkManager.applyLaunchEnv(container, envVars))
-        assertEquals("/existing/explicit-layers", envVars["VK_LAYER_PATH"])
-        assertEquals("VK_LAYER_existing", envVars["VK_INSTANCE_LAYERS"])
-        assertFalse(envVars.has("LSFG_CONFIG"))
-        assertFalse(envVars.has("LSFG_PROCESS_EXE"))
+        assertTrue(LsfgVkManager.applyLaunchEnv(container, envVars))
+        assertTrue(envVars["VK_LAYER_PATH"].orEmpty().contains(".local/share/vulkan/implicit_layer.d"))
+        assertTrue(envVars["VK_INSTANCE_LAYERS"].orEmpty().contains("VK_LAYER_LS_frame_generation"))
+        assertEquals(
+            File(rootDir, ".config/lsfg-vk/conf.toml").absolutePath,
+            envVars["LSFG_CONFIG"],
+        )
+        assertEquals("game.exe", envVars["LSFG_PROCESS_EXE"])
+    }
+
+    @Test
+    fun writeConfig_multiplierZeroSerializesNativePassThroughState() {
+        val container = container(armed = true, multiplier = "0")
+
+        assertTrue(LsfgVkManager.writeConfig(container))
+
+        val text = File(rootDir, ".config/lsfg-vk/conf.toml").readText()
+        assertTrue(text.contains("multiplier = 1"))
+        assertTrue(text.contains("performance_mode = false"))
+        assertTrue(text.contains("experimental_present_mode = \"fifo\""))
     }
 
     @Test
@@ -290,6 +305,12 @@ class LsfgVkManagerTest {
             .thenReturn("0.80")
         whenever(container.getExtra(LsfgVkManager.EXTRA_PERFORMANCE_MODE, "true"))
             .thenReturn("true")
+        whenever(container.getExtra(LsfgVkManager.EXTRA_PRESENT_MODE, "mailbox"))
+            .thenReturn("mailbox")
+        whenever(container.getExtra("fpsLimiterEnabled", "false"))
+            .thenReturn("false")
+        whenever(container.getExtra("fpsLimiterTarget", "0"))
+            .thenReturn("0")
         return container
     }
 }
