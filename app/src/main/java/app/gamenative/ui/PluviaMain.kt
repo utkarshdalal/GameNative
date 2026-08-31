@@ -78,6 +78,7 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.api.DebugReportApi
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.DebugPreRunDialog
 import app.gamenative.ui.component.dialog.DebugReportDialog
 import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
@@ -324,6 +325,9 @@ fun PluviaMain(
     }
     var debugPaywallReason by rememberSaveable { mutableStateOf<String?>(null) }
     var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
+    var debugPreRunVisible by rememberSaveable { mutableStateOf(false) }
+    var debugPreRunIssueText by rememberSaveable { mutableStateOf("") }
+    var debugPreRunAppId by rememberSaveable { mutableStateOf("") }
     val discordTokenPresent by PrefManager.discordRelayTokenPresent
 
     LaunchedEffect(Unit) {
@@ -700,7 +704,9 @@ fun PluviaMain(
                             ?: ContainerUtils.resolveGameName(event.appId),
                         deviceName = header?.optString("deviceName") ?: "",
                         logSizeBytes = withContext(Dispatchers.IO) { DebugReportUtils.logFile(dir).length() },
+                        issueText = debugPreRunIssueText,
                     )
+                    debugPreRunIssueText = ""
                 }
 
                 is MainViewModel.MainUiEvent.ShowAiDebugOffer -> {
@@ -1197,27 +1203,10 @@ fun PluviaMain(
         DialogType.AI_DEBUG_OFFER -> {
             onConfirmClick = {
                 setMessageDialogState(MessageDialogState(false))
-                val appId = aiDebugOfferAppId
-                if (appId.isNotEmpty()) {
-                    val isOffline = viewModel.isOffline.value
-                    trackGameLaunched(appId)
-                    viewModel.setLaunchedAppId(appId)
-                    viewModel.setBootToContainer(false)
-                    viewModel.setTestGraphics(false)
-                    viewModel.setDiagnostics(false)
-                    viewModel.setDebugRun(true)
-                    viewModel.setOffline(isOffline)
-                    preLaunchApp(
-                        context = context,
-                        appId = appId,
-                        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                        setLoadingProgress = viewModel::setLoadingDialogProgress,
-                        setLoadingMessage = viewModel::setLoadingDialogMessage,
-                        setMessageDialogState = setMessageDialogState,
-                        onSuccess = viewModel::launchApp,
-                        isOffline = isOffline,
-                        bootToContainer = false,
-                    )
+                if (aiDebugOfferAppId.isNotEmpty()) {
+                    debugPreRunAppId = aiDebugOfferAppId
+                    debugPreRunIssueText = ""
+                    debugPreRunVisible = true
                 }
             }
             onDismissClick = {
@@ -1456,6 +1445,41 @@ fun PluviaMain(
                     }
                 }
             }
+
+            DebugPreRunDialog(
+                visible = debugPreRunVisible,
+                issueText = debugPreRunIssueText,
+                onIssueTextChange = { debugPreRunIssueText = it },
+                onStart = {
+                    debugPreRunVisible = false
+                    val appId = debugPreRunAppId
+                    if (appId.isNotEmpty()) {
+                        val isOffline = viewModel.isOffline.value
+                        trackGameLaunched(appId)
+                        viewModel.setLaunchedAppId(appId)
+                        viewModel.setBootToContainer(false)
+                        viewModel.setTestGraphics(false)
+                        viewModel.setDiagnostics(false)
+                        viewModel.setDebugRun(true)
+                        viewModel.setOffline(isOffline)
+                        preLaunchApp(
+                            context = context,
+                            appId = appId,
+                            setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                            setLoadingProgress = viewModel::setLoadingDialogProgress,
+                            setLoadingMessage = viewModel::setLoadingDialogMessage,
+                            setMessageDialogState = setMessageDialogState,
+                            onSuccess = viewModel::launchApp,
+                            isOffline = isOffline,
+                            bootToContainer = false,
+                        )
+                    }
+                },
+                onDismiss = {
+                    debugPreRunVisible = false
+                    debugPreRunIssueText = ""
+                },
+            )
 
             val debugFlowActive = debugReportState.visible || debugPaywallReason != null
             LaunchedEffect(debugFlowActive) {
@@ -1701,24 +1725,9 @@ fun PluviaMain(
                             )
                         },
                         onAiDebugRun = { appId ->
-                            trackGameLaunched(appId)
-                            viewModel.setLaunchedAppId(appId)
-                            viewModel.setBootToContainer(false)
-                            viewModel.setTestGraphics(false)
-                            viewModel.setDiagnostics(false)
-                            viewModel.setDebugRun(true)
-                            viewModel.setOffline(isOffline)
-                            preLaunchApp(
-                                context = context,
-                                appId = appId,
-                                setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
-                                setLoadingProgress = viewModel::setLoadingDialogProgress,
-                                setLoadingMessage = viewModel::setLoadingDialogMessage,
-                                setMessageDialogState = { msgDialogState = it },
-                                onSuccess = viewModel::launchApp,
-                                isOffline = isOffline,
-                                bootToContainer = false,
-                            )
+                            debugPreRunAppId = appId
+                            debugPreRunIssueText = ""
+                            debugPreRunVisible = true
                         },
                         onClickExit = {
                             if (!PrefManager.warnBeforeExit) {

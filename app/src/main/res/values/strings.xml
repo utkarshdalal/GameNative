@@ -1781,6 +1781,9 @@
     <string name="debug_offer_title">Get AI help with this crash</string>
     <string name="debug_offer_message">That session ended early. Run %1$s once more with debug logging and our AI will read the log and tell you what to change.</string>
     <string name="debug_offer_confirm">Start debug run</string>
+    <string name="debug_prerun_title">Get AI help</string>
+    <string name="debug_prerun_message">This will launch the game with debug logging. When you quit, the log and your description are shared with our AI on Discord and it replies with what to change. AI replies are for subscribers only. Anyone can share the report on Discord to get human help.</string>
+    <string name="debug_prerun_describe">Describe the issue in as much detail as possible</string>
     <string name="diagnostics_share_title">Share diagnostics log</string>
     <string name="diagnostics_share_none">No diagnostics log yet. Use \"Diagnostic Run\" first.</string>
     <string name="option_manage_dlc">Manage DLC</string>
