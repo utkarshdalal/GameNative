@@ -40,10 +40,10 @@ fun GradientProgressBar(
             // Keep a barely-started fill from collapsing into a lens shape.
             val fillWidth = (size.width * fraction).coerceAtLeast(size.height)
             drawRoundRect(
-                brush = if (colors.size == 1) {
-                    SolidColor(colors.first())
-                } else {
+                brush = if (colors.size > 1) {
                     Brush.horizontalGradient(colors = colors, startX = 0f, endX = size.width)
+                } else {
+                    SolidColor(colors.firstOrNull() ?: trackColor)
                 },
                 size = Size(fillWidth, size.height),
                 cornerRadius = radius,
