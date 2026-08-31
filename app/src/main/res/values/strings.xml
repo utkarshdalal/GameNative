@@ -1109,6 +1109,8 @@
     <string name="settings_info_libraries_subtitle">See what technologies make GameNative possible</string>
     <string name="settings_info_privacy_title">Privacy Policy</string>
     <string name="settings_info_privacy_subtitle">Opens a link to GameNative\'s privacy policy</string>
+    <string name="settings_info_boot_ads_title">Sponsored loading screens</string>
+    <string name="settings_info_boot_ads_subtitle">Occasionally show a sponsor card while a game boots. It never delays your game.</string>
     <string name="settings_info_usage_analytics_title">Usage analytics</string>
     <string name="settings_info_usage_analytics_subtitle">We never track personal information. Disabling this stops non-essential analytics, however core game performance data is still collected as a legitimate interest to improve compatibility.</string>
 

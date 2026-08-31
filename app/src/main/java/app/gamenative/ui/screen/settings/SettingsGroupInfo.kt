@@ -77,6 +77,18 @@ fun SettingsGroupInfo() {
             },
         )
 
+        var bootScreenAds by rememberSaveable { mutableStateOf(PrefManager.bootScreenAdsEnabled) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            state = bootScreenAds,
+            title = { Text(stringResource(R.string.settings_info_boot_ads_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_boot_ads_subtitle)) },
+            onCheckedChange = {
+                bootScreenAds = it
+                PrefManager.bootScreenAdsEnabled = it
+            },
+        )
+
         var usageAnalytics by rememberSaveable { mutableStateOf(PrefManager.usageAnalyticsEnabled) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),

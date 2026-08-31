@@ -9,6 +9,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.BootAdRepository
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryPlayHistory
@@ -27,6 +28,7 @@ import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.utils.ConversionTracker
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
@@ -77,6 +79,7 @@ class MainViewModel @Inject constructor(
     }
 
     private var gameSessionStartTime = 0L
+    private var bootAdShownAtMs = 0L
     private var pendingWarmPitch: Pair<String, Boolean>? = null
 
     private fun warmPitchAllowed(): Boolean {
@@ -362,7 +365,26 @@ class MainViewModel @Inject constructor(
     }
 
     fun setShowBootingSplash(value: Boolean) {
-        _state.update { it.copy(showBootingSplash = value) }
+        val wasShowing = _state.value.showBootingSplash
+        if (value && !wasShowing) {
+            val ad = BootAdRepository.getActiveAd()
+            if (ad != null) {
+                bootAdShownAtMs = System.currentTimeMillis()
+                BootAdRepository.recordShown(ad.campaignId)
+            }
+            _state.update { it.copy(showBootingSplash = true, bootAd = ad) }
+        } else if (!value && wasShowing) {
+            _state.value.bootAd?.let { ad ->
+                ConversionTracker.bootAdShown(
+                    campaignId = ad.campaignId,
+                    dwellSeconds = (System.currentTimeMillis() - bootAdShownAtMs) / 1000L,
+                )
+            }
+            // bootAd stays in state so the exit fade keeps rendering it; the next show replaces it.
+            _state.update { it.copy(showBootingSplash = false) }
+        } else {
+            _state.update { it.copy(showBootingSplash = value) }
+        }
     }
 
     fun setBootingSplashText(value: String) {

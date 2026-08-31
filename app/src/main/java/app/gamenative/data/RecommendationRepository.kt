@@ -44,6 +44,16 @@ object RecommendationRepository {
               { "type": "GET_DEMO", "url": "https://store.steampowered.com/app/3602270/", "appId": 4320000 },
               { "type": "VISIT", "url": "https://store.steampowered.com/app/3602270/" }
             ]
+          },
+          "bootAd": {
+            "campaignId": "mock-whisk-boot",
+            "template": "cta_card",
+            "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3602270/92fb97a2832c9c075165c43d14d974c730ca716b/library_hero.jpg",
+            "appId": 3602270,
+            "title": { "en": "Whisk" },
+            "body": { "en": "A two-player platformer about shared movement. Get every Dreamcat home." },
+            "action": { "type": "WISHLIST", "url": "https://store.steampowered.com/app/3602270/", "store": "Steam", "style": "primary" },
+            "maxShowsPerDay": 5
           }
         }
     """.trimIndent()
@@ -64,6 +74,7 @@ object RecommendationRepository {
             val fetched = if (MOCK_HERO_RESPONSE) parseHero(MOCK_HERO_JSON) else fetchRemote()
             if (fetched != null) {
                 lastFeatured = fetched.featured
+                BootAdRepository.store(fetched.bootAd)
                 return@withContext HeroResponse(
                     recommendation = stableRecommendation(fetched.recommendation),
                     featured = fetched.featured,

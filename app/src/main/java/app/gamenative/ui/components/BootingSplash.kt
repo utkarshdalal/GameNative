@@ -33,12 +33,20 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
+import app.gamenative.data.BootAdItem
+import app.gamenative.data.FeaturedCta
+import app.gamenative.data.localizedBody
+import app.gamenative.data.localizedLabel
+import app.gamenative.data.localizedTitle
+import app.gamenative.ui.screen.library.FeaturedCtaButton
 import app.gamenative.ui.theme.BrandGradient
 import app.gamenative.ui.theme.PluviaTheme
 import com.skydoves.landscapist.ImageOptions
@@ -53,6 +61,7 @@ fun BootingSplash(
     text: String = "Initializing...",
     progress: Float = -1f, // -1 for indeterminate, 0-1 for determinate
     heroImageUrl: String = "",
+    bootAd: BootAdItem? = null,
 ) {
     // Tips rotation (no animation cost, safe outside visibility check)
     val context = LocalContext.current
@@ -104,6 +113,8 @@ fun BootingSplash(
         val infiniteTransition = rememberInfiniteTransition(label = "bootSplash")
         val scrimColor = MaterialTheme.colorScheme.scrim
         var heroImageFailed by remember(heroImageUrl) { mutableStateOf(false) }
+        var adImageFailed by remember(bootAd?.campaignId) { mutableStateOf(false) }
+        val activeAd = if (adImageFailed) null else bootAd
 
         val glowAlpha by infiniteTransition.animateFloat(
             initialValue = 0.4f,
@@ -167,7 +178,35 @@ fun BootingSplash(
 
             AmbientParticles(phase = particlePhase)
 
-            if (useHeroBackdrop) {
+            if (activeAd != null) {
+                CoilImage(
+                    modifier = Modifier.fillMaxSize(),
+                    imageModel = { activeAd.imageUrl },
+                    imageOptions = ImageOptions(
+                        contentScale = ContentScale.Crop,
+                        contentDescription = null,
+                    ),
+                    loading = {},
+                    failure = {
+                        adImageFailed = true
+                    },
+                    previewPlaceholder = painterResource(R.drawable.ic_logo_color),
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.0f to scrimColor.copy(alpha = 0.25f),
+                                    0.45f to scrimColor.copy(alpha = 0.15f),
+                                    1.0f to scrimColor.copy(alpha = 0.85f),
+                                ),
+                            ),
+                        ),
+                )
+            } else if (useHeroBackdrop) {
                 val desaturate = remember {
                     ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
                 }
@@ -212,7 +251,15 @@ fun BootingSplash(
             }
 
             // Main content
-            Column(
+            if (activeAd != null) {
+                BootAdContent(
+                    ad = activeAd,
+                    statusText = text,
+                    progress = progress,
+                    shimmerPosition = shimmerPosition,
+                    scrimColor = scrimColor,
+                )
+            } else Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(horizontal = 32.dp),
             ) {
@@ -329,6 +376,108 @@ fun BootingSplash(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BootAdContent(
+    ad: BootAdItem,
+    statusText: String,
+    progress: Float,
+    shimmerPosition: Float,
+    scrimColor: Color,
+) {
+    val context = LocalContext.current
+    val textShadow = Shadow(
+        color = scrimColor.copy(alpha = 0.9f),
+        offset = Offset(0f, 1f),
+        blurRadius = 6f,
+    )
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Text(
+            text = stringResource(R.string.featured_badge),
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.85f),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+                .background(scrimColor.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .widthIn(max = 520.dp)
+                .padding(horizontal = 32.dp)
+                .padding(bottom = 24.dp),
+        ) {
+            val title = ad.localizedTitle(context)
+            if (title.isNotEmpty()) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        shadow = textShadow,
+                    ),
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+            }
+
+            val body = ad.localizedBody(context)
+            if (body.isNotEmpty()) {
+                Text(
+                    text = body,
+                    style = MaterialTheme.typography.bodyMedium.copy(shadow = textShadow),
+                    color = Color.White.copy(alpha = 0.85f),
+                    textAlign = TextAlign.Center,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+            }
+
+            val cta = remember(ad) {
+                ad.action?.let {
+                    FeaturedCta(
+                        label = it.localizedLabel(context),
+                        url = it.url,
+                        primary = true,
+                        type = it.type.uppercase(),
+                        appId = it.appId ?: ad.appId,
+                    )
+                }
+            }
+            if (cta != null) {
+                FeaturedCtaButton(
+                    action = cta,
+                    campaignId = ad.campaignId,
+                    recSource = "boot_ad",
+                )
+                Spacer(modifier = Modifier.height(18.dp))
+            }
+
+            ProgressBar(
+                progress = progress,
+                shimmerPosition = shimmerPosition,
+                modifier = Modifier
+                    .fillMaxWidth(0.7f)
+                    .height(4.dp),
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = statusText,
+                style = MaterialTheme.typography.bodySmall.copy(shadow = textShadow),
+                color = Color.White.copy(alpha = 0.85f),
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
@@ -452,6 +601,28 @@ fun BootingSplashProgressPreview() {
             visible = true,
             text = "Loading game files...",
             progress = 0.5f,
+        )
+    }
+}
+
+@Preview(name = "BootingSplash - Sponsor card", device = "spec:width=1920px,height=1080px,dpi=440")
+@Composable
+fun BootingSplashAdPreview() {
+    PluviaTheme {
+        BootingSplash(
+            visible = true,
+            text = "Booting...",
+            bootAd = BootAdItem(
+                campaignId = "preview",
+                imageUrl = "https://example.com/hero.jpg",
+                title = mapOf("en" to "Whisk"),
+                body = mapOf("en" to "A two-player platformer about shared movement."),
+                action = app.gamenative.data.FeaturedAction(
+                    type = "WISHLIST",
+                    url = "https://example.com",
+                    store = "Steam",
+                ),
+            ),
         )
     }
 }

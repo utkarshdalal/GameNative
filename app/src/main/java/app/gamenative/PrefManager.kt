@@ -1226,6 +1226,29 @@ object PrefManager {
             setPref(RECOMMENDATION_CACHE_TIMESTAMP, value)
         }
 
+    // Cached boot-screen sponsor payload; boot renders from this, never from network
+    private val BOOT_AD_CACHE_JSON = stringPreferencesKey("boot_ad_cache_json")
+    var bootAdCacheJson: String
+        get() = getPref(BOOT_AD_CACHE_JSON, "")
+        set(value) {
+            setPref(BOOT_AD_CACHE_JSON, value)
+        }
+
+    // "campaignId:daySeed:count" — frequency cap bookkeeping for the boot-screen sponsor card
+    private val BOOT_AD_SHOW_COUNT = stringPreferencesKey("boot_ad_show_count")
+    var bootAdShowCount: String
+        get() = getPref(BOOT_AD_SHOW_COUNT, "")
+        set(value) {
+            setPref(BOOT_AD_SHOW_COUNT, value)
+        }
+
+    private val BOOT_SCREEN_ADS_ENABLED = booleanPreferencesKey("boot_screen_ads_enabled")
+    var bootScreenAdsEnabled: Boolean
+        get() = getPref(BOOT_SCREEN_ADS_ENABLED, true)
+        set(value) {
+            setPref(BOOT_SCREEN_ADS_ENABLED, value)
+        }
+
     // Show game recommendations in library
     private val SHOW_RECOMMENDATIONS = booleanPreferencesKey("show_recommendations")
     var showRecommendations: Boolean
