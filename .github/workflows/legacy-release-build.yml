@@ -1,0 +1,117 @@
+name: LegacyRelease APK
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - '.github/workflows/legacy-release-build.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: gamenative-legacy-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  legacy-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out GameNative
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Prepare exact GameNative-pinned LSFG native runtime
+        uses: ./.github/actions/prepare-lsfg-native
+
+      - name: Inject build credentials
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          STEAMGRIDDB_API_KEY: ${{ secrets.STEAMGRIDDB_API_KEY }}
+          CLOUD_PROJECT_NUMBER: ${{ secrets.CLOUD_PROJECT_NUMBER }}
+        run: |
+          cat > local.properties <<EOF
+          POSTHOG_API_KEY=${POSTHOG_API_KEY:-}
+          POSTHOG_HOST=${POSTHOG_HOST:-https://us.i.posthog.com}
+          STEAMGRIDDB_API_KEY=${STEAMGRIDDB_API_KEY:-}
+          CLOUD_PROJECT_NUMBER=${CLOUD_PROJECT_NUMBER:-}
+          EOF
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Assemble LegacyRelease only
+        run: ./gradlew :app:assembleLegacyRelease --no-daemon --stacktrace
+
+      - name: Validate release APK
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find app/build/outputs/apk/legacy/release -maxdepth 1 -type f -name '*.apk' -print)
+          if [[ ${#apks[@]} -ne 1 ]]; then
+            printf 'Expected exactly one LegacyRelease APK, found %d\n' "${#apks[@]}" >&2
+            printf '%s\n' "${apks[@]}" >&2
+            exit 1
+          fi
+
+          apk="${apks[0]}"
+          cp "$apk" gamenative-legacy-release.apk
+
+          # Release must not contain debug-only local manifest/probe payloads.
+          if unzip -Z1 gamenative-legacy-release.apk | grep -Eq '(^|/)manifest\.json$|DebugProbesKt\.bin$'; then
+            echo 'ERROR: debug-only payload found in LegacyRelease APK' >&2
+            exit 1
+          fi
+
+          # The exact Release-built LSFG runtime must be packaged for arm64.
+          unzip -Z1 gamenative-legacy-release.apk | grep -q '^lib/arm64-v8a/liblsfg-vk-layer\.so$'
+
+          apksigner="$(find "${ANDROID_HOME:-${ANDROID_SDK_ROOT}}/build-tools" -type f -name apksigner -print | sort -V | tail -n 1)"
+          test -x "$apksigner"
+          "$apksigner" verify --verbose --print-certs gamenative-legacy-release.apk
+
+          sha256sum gamenative-legacy-release.apk | tee gamenative-legacy-release.apk.sha256
+          ls -lh gamenative-legacy-release.apk
+
+      - name: Split APK for reliable transfer
+        run: |
+          set -euo pipefail
+          mkdir -p legacy-release-parts
+          split -n 4 -d -a 1 gamenative-legacy-release.apk legacy-release-parts/gamenative-legacy-release.apk.part-
+          for part in 0 1 2 3; do
+            test -s "legacy-release-parts/gamenative-legacy-release.apk.part-${part}"
+          done
+          cmp gamenative-legacy-release.apk <(cat legacy-release-parts/gamenative-legacy-release.apk.part-{0,1,2,3})
+          cp gamenative-legacy-release.apk.sha256 legacy-release-parts/
+
+      - name: Upload LegacyRelease APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamenative-legacy-release
+          path: |
+            gamenative-legacy-release.apk
+            gamenative-legacy-release.apk.sha256
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Upload LegacyRelease transfer parts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamenative-legacy-release-parts
+          path: legacy-release-parts/
+          if-no-files-found: error
+          compression-level: 0
