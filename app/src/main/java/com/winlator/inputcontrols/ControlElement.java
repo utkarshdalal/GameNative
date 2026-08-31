@@ -21,6 +21,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 public class ControlElement {
@@ -74,7 +75,7 @@ public class ControlElement {
     private final InputControlsView inputControlsView;
     private Type type = Type.BUTTON;
     private Shape shape = Shape.CIRCLE;
-    private Binding[] bindings = {Binding.NONE, Binding.NONE, Binding.NONE, Binding.NONE};
+    private BindingCombo[] bindings = {BindingCombo.none(), BindingCombo.none(), BindingCombo.none(), BindingCombo.none()};
     private float scale = 1.0f;
     private short x;
     private short y;
@@ -85,6 +86,7 @@ public class ControlElement {
     private boolean currentPointerActivatedButtonBindings = false;
     private final Rect boundingBox = new Rect();
     private boolean[] states = new boolean[4];
+    private boolean[] gamepadAxisActive = new boolean[4];
     private boolean radialMenuTouchActive = false;
     private boolean boundingBoxNeedsUpdate = true;
     private String text = "";
@@ -119,22 +121,22 @@ public class ControlElement {
         lookThrough = DEFAULT_LOOK_THROUGH;
 
         if (type == Type.STICK) {
-            bindings[0] = Binding.GAMEPAD_LEFT_THUMB_UP;
-            bindings[1] = Binding.GAMEPAD_LEFT_THUMB_RIGHT;
-            bindings[2] = Binding.GAMEPAD_LEFT_THUMB_DOWN;
-            bindings[3] = Binding.GAMEPAD_LEFT_THUMB_LEFT;
+            bindings[0] = BindingCombo.of(Binding.GAMEPAD_LEFT_THUMB_UP);
+            bindings[1] = BindingCombo.of(Binding.GAMEPAD_LEFT_THUMB_RIGHT);
+            bindings[2] = BindingCombo.of(Binding.GAMEPAD_LEFT_THUMB_DOWN);
+            bindings[3] = BindingCombo.of(Binding.GAMEPAD_LEFT_THUMB_LEFT);
         }
         else if (type == Type.D_PAD) {
-            bindings[0] = Binding.GAMEPAD_DPAD_UP;
-            bindings[1] = Binding.GAMEPAD_DPAD_RIGHT;
-            bindings[2] = Binding.GAMEPAD_DPAD_DOWN;
-            bindings[3] = Binding.GAMEPAD_DPAD_LEFT;
+            bindings[0] = BindingCombo.of(Binding.GAMEPAD_DPAD_UP);
+            bindings[1] = BindingCombo.of(Binding.GAMEPAD_DPAD_RIGHT);
+            bindings[2] = BindingCombo.of(Binding.GAMEPAD_DPAD_DOWN);
+            bindings[3] = BindingCombo.of(Binding.GAMEPAD_DPAD_LEFT);
         }
         else if (type == Type.TRACKPAD) {
-            bindings[0] = Binding.MOUSE_MOVE_UP;
-            bindings[1] = Binding.MOUSE_MOVE_RIGHT;
-            bindings[2] = Binding.MOUSE_MOVE_DOWN;
-            bindings[3] = Binding.MOUSE_MOVE_LEFT;
+            bindings[0] = BindingCombo.of(Binding.MOUSE_MOVE_UP);
+            bindings[1] = BindingCombo.of(Binding.MOUSE_MOVE_RIGHT);
+            bindings[2] = BindingCombo.of(Binding.MOUSE_MOVE_DOWN);
+            bindings[3] = BindingCombo.of(Binding.MOUSE_MOVE_LEFT);
         }
         else if (type == Type.RANGE_BUTTON) {
             scroller = new RangeScroller(inputControlsView, this);
@@ -176,9 +178,10 @@ public class ControlElement {
     }
 
     public void setBindingCount(int bindingCount) {
-        bindings = new Binding[bindingCount];
+        bindings = new BindingCombo[bindingCount];
         setBinding(Binding.NONE);
         states = new boolean[bindingCount];
+        gamepadAxisActive = new boolean[bindingCount];
         boundingBoxNeedsUpdate = true;
     }
 
@@ -225,22 +228,80 @@ public class ControlElement {
     }
 
     public Binding getBindingAt(int index) {
-        return index < bindings.length ? bindings[index] : Binding.NONE;
+        return getBindingComboAt(index).getPrimaryBinding();
+    }
+
+    public BindingCombo getBindingComboAt(int index) {
+        return index < bindings.length ? bindings[index] : BindingCombo.none();
     }
 
     public void setBindingAt(int index, Binding binding) {
+        setBindingComboAt(index, BindingCombo.of(binding));
+    }
+
+    public void setBindingComboAt(int index, BindingCombo binding) {
         if (index >= bindings.length) {
             int oldLength = bindings.length;
             bindings = Arrays.copyOf(bindings, index+1);
-            Arrays.fill(bindings, oldLength, bindings.length, Binding.NONE);
+            Arrays.fill(bindings, oldLength, bindings.length, BindingCombo.none());
             states = new boolean[bindings.length];
+            gamepadAxisActive = new boolean[bindings.length];
             boundingBoxNeedsUpdate = true;
         }
-        bindings[index] = binding;
+        bindings[index] = binding != null ? binding : BindingCombo.none();
     }
 
     public void setBinding(Binding binding) {
-        Arrays.fill(bindings, binding);
+        Arrays.fill(bindings, BindingCombo.of(binding));
+    }
+
+    private void handleBindingInputEvent(int index, boolean isActionDown) {
+        BindingCombo bindingCombo = getBindingComboAt(index);
+        if (bindingCombo.isSingleBinding()) {
+            inputControlsView.handleInputEvent(bindingCombo.getPrimaryBinding(), isActionDown);
+        }
+        else inputControlsView.handleInputEvent(bindingCombo, isActionDown);
+    }
+
+    private void handleBindingInputEvent(int index, boolean isActionDown, float offset) {
+        BindingCombo bindingCombo = getBindingComboAt(index);
+        if (bindingCombo.isSingleBinding()) {
+            inputControlsView.handleInputEvent(bindingCombo.getPrimaryBinding(), isActionDown, offset);
+        }
+        else inputControlsView.handleInputEvent(bindingCombo, isActionDown, offset);
+    }
+
+    private void handleSimultaneousBindingMembers(
+            BindingCombo bindingCombo,
+            Binding excludedBinding,
+            boolean isActionDown,
+            float offset) {
+        List<Binding> comboBindings = bindingCombo.getBindings();
+        if (isActionDown) {
+            for (Binding binding : comboBindings) {
+                if (binding != excludedBinding) inputControlsView.handleInputEvent(binding, true, offset);
+            }
+        }
+        else {
+            for (int i = comboBindings.size() - 1; i >= 0; i--) {
+                Binding binding = comboBindings.get(i);
+                if (binding != excludedBinding) inputControlsView.handleInputEvent(binding, false, offset);
+            }
+        }
+    }
+
+    private Binding findMouseMoveBinding(BindingCombo bindingCombo) {
+        for (Binding binding : bindingCombo.getBindings()) {
+            if (binding.isMouseMove()) return binding;
+        }
+        return Binding.NONE;
+    }
+
+    private Binding findGamepadAxisBinding(BindingCombo bindingCombo) {
+        for (Binding binding : bindingCombo.getBindings()) {
+            if (binding.isGamepadAxis()) return binding;
+        }
+        return Binding.NONE;
     }
 
     public String getShooterMovementType() {
@@ -500,12 +561,16 @@ public class ControlElement {
             return text;
         }
         else {
-            Binding binding = getBindingAt(0);
-            String text = binding.toString().replace("NUMPAD ", "NP").replace("BUTTON ", "").replace("SHOW KEYBOARD", "KEY");
+            BindingCombo bindingCombo = getBindingComboAt(0);
+            Binding binding = bindingCombo.getPrimaryBinding();
+            String text = bindingCombo.toString().replace("NUMPAD ", "NP").replace("BUTTON ", "").replace("SHOW KEYBOARD", "KEY");
             if (text.length() > 7) {
                 String[] parts = text.split(" ");
                 StringBuilder sb = new StringBuilder();
-                for (String part : parts) sb.append(part.charAt(0));
+                for (String part : parts) {
+                    if (part.isEmpty() || part.equals("+") || part.equals("->")) continue;
+                    sb.append(part.charAt(0));
+                }
                 return (binding.isMouse() ? "M" : "")+ sb;
             }
             else return text;
@@ -1042,7 +1107,7 @@ public class ControlElement {
             elementJSONObject.put("shape", shape.name());
 
             JSONArray bindingsJSONArray = new JSONArray();
-            for (Binding binding : bindings) bindingsJSONArray.put(binding.name());
+            for (BindingCombo binding : bindings) bindingsJSONArray.put(binding.toJsonValue());
 
             elementJSONObject.put("bindings", bindingsJSONArray);
             elementJSONObject.put("scale", Float.valueOf(scale));
@@ -1084,12 +1149,15 @@ public class ControlElement {
     }
 
     private boolean isKeepButtonPressedAfterMinTime() {
-        Binding binding = getBindingAt(0);
-        return !toggleSwitch && (binding == Binding.GAMEPAD_BUTTON_L3 || binding == Binding.GAMEPAD_BUTTON_R3);
+        BindingCombo bindingCombo = getBindingComboAt(0);
+        return !toggleSwitch &&
+                (bindingCombo.contains(Binding.GAMEPAD_BUTTON_L3) || bindingCombo.contains(Binding.GAMEPAD_BUTTON_R3));
     }
 
     private boolean isRadialMenuButton() {
-        return type == Type.BUTTON && (getBindingAt(0) == Binding.OPEN_RADIAL_MENU || getBindingAt(1) == Binding.OPEN_RADIAL_MENU);
+        return type == Type.BUTTON &&
+                (getBindingComboAt(0).contains(Binding.OPEN_RADIAL_MENU) ||
+                        getBindingComboAt(1).contains(Binding.OPEN_RADIAL_MENU));
     }
 
     private boolean handleRadialMenuDirectionalMove(int pointerId, boolean[] directionalStates, float x, float y) {
@@ -1100,7 +1168,7 @@ public class ControlElement {
         }
 
         for (byte i = 0; i < directionalStates.length && i < bindings.length; i++) {
-            if (bindings[i] == Binding.OPEN_RADIAL_MENU && directionalStates[i]) {
+            if (getBindingComboAt(i).contains(Binding.OPEN_RADIAL_MENU) && directionalStates[i]) {
                 releaseActiveDirectionalStates();
                 radialMenuTouchActive = true;
                 inputControlsView.handleRadialMenuTouchDown(pointerId, x, y);
@@ -1114,8 +1182,15 @@ public class ControlElement {
 
     private void releaseActiveDirectionalStates() {
         for (byte i = 0; i < states.length && i < bindings.length; i++) {
-            if (states[i]) inputControlsView.handleInputEvent(getBindingAt(i), false);
+            if (states[i]) handleBindingInputEvent(i, false);
+            else if (gamepadAxisActive[i]) {
+                Binding gamepadAxisBinding = findGamepadAxisBinding(getBindingComboAt(i));
+                if (gamepadAxisBinding != Binding.NONE) {
+                    inputControlsView.handleInputEvent(gamepadAxisBinding, false, 0);
+                }
+            }
             states[i] = false;
+            gamepadAxisActive[i] = false;
         }
     }
 
@@ -1133,8 +1208,8 @@ public class ControlElement {
                 if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
                 if (!toggleSwitch || !selected) {
                     currentPointerActivatedButtonBindings = !selected;
-                    inputControlsView.handleInputEvent(getBindingAt(0), true);
-                    inputControlsView.handleInputEvent(getBindingAt(1), true);
+                    handleBindingInputEvent(0, true);
+                    handleBindingInputEvent(1, true);
                 }
                 inputControlsView.invalidate();
                 return true;
@@ -1207,15 +1282,28 @@ public class ControlElement {
 
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
-                    Binding binding = getBindingAt(i);
-                    if (binding.isGamepad()) {
+                    BindingCombo bindingCombo = getBindingComboAt(i);
+                    Binding binding = bindingCombo.getPrimaryBinding();
+                    Binding gamepadAxisBinding = findGamepadAxisBinding(bindingCombo);
+                    if (gamepadAxisBinding != Binding.NONE && !bindingCombo.isSequence()) {
                         value = Mathf.clamp(Math.max(0, Math.abs(value) - 0.01f) * Mathf.sign(value) * STICK_SENSITIVITY, -1, 1);
-                        inputControlsView.handleInputEvent(binding, true, value);
-                        this.states[i] = true;
+                        inputControlsView.handleInputEvent(gamepadAxisBinding, true, value);
+                        gamepadAxisActive[i] = value != 0;
+                        boolean nextState = states[i];
+                        if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
+                            handleSimultaneousBindingMembers(
+                                    bindingCombo,
+                                    gamepadAxisBinding,
+                                    nextState,
+                                    value);
+                        }
+                        this.states[i] = bindingCombo.isSingleBinding() || nextState;
                     }
                     else {
                         boolean state = binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i];
-                        inputControlsView.handleInputEvent(binding, state, value);
+                        if (binding.isMouseMove() || this.states[i] != state) {
+                            handleBindingInputEvent(i, state, value);
+                        }
                         this.states[i] = state;
                     }
                 }
@@ -1230,25 +1318,51 @@ public class ControlElement {
 
                 for (byte i = 0; i < 4; i++) {
                     float value = (i == 1 || i == 3 ? deltaX : deltaY);
-                    Binding binding = getBindingAt(i);
-                    if (binding.isGamepad()) {
-                        if (interpolator == null) interpolator = new CubicBezierInterpolator();
-                        if (Math.abs(value) > TRACKPAD_ACCELERATION_THRESHOLD) value *= STICK_SENSITIVITY;
-                        interpolator.set(0.075f, 0.95f, 0.45f, 0.95f);
-                        float interpolatedValue = interpolator.getInterpolation(Math.min(1.0f, Math.abs(value / TRACKPAD_MAX_SPEED)));
-                        inputControlsView.handleInputEvent(binding, true, Mathf.clamp(interpolatedValue * Mathf.sign(value), -1, 1));
-                        this.states[i] = true;
-                    }
-                    else {
-                        if (Math.abs(value) > TouchpadView.CURSOR_ACCELERATION_THRESHOLD) value *= TouchpadView.CURSOR_ACCELERATION;
-                        if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
+                    BindingCombo bindingCombo = getBindingComboAt(i);
+                    Binding binding = bindingCombo.getPrimaryBinding();
+                    Binding mouseMoveBinding = findMouseMoveBinding(bindingCombo);
+                    if (mouseMoveBinding != Binding.NONE && !bindingCombo.isSequence()) {
+                        if (Math.abs(value) > TouchpadView.CURSOR_ACCELERATION_THRESHOLD) {
+                            value *= TouchpadView.CURSOR_ACCELERATION;
+                        }
+                        if (mouseMoveBinding == Binding.MOUSE_MOVE_LEFT || mouseMoveBinding == Binding.MOUSE_MOVE_RIGHT) {
                             cursorDx = Mathf.roundPoint(value);
                         }
-                        else if (binding == Binding.MOUSE_MOVE_UP || binding == Binding.MOUSE_MOVE_DOWN) {
+                        else {
                             cursorDy = Mathf.roundPoint(value);
                         }
-                        else {
-                            inputControlsView.handleInputEvent(binding, states[i], value);
+                        boolean nextState = states[i];
+                        if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
+                            handleSimultaneousBindingMembers(
+                                    bindingCombo,
+                                    mouseMoveBinding,
+                                    nextState,
+                                    Mathf.clamp(value, -1, 1));
+                        }
+                        this.states[i] = nextState;
+                    }
+                    else {
+                        Binding gamepadAxisBinding = findGamepadAxisBinding(bindingCombo);
+                        if (gamepadAxisBinding != Binding.NONE && !bindingCombo.isSequence()) {
+                            if (interpolator == null) interpolator = new CubicBezierInterpolator();
+                            if (Math.abs(value) > TRACKPAD_ACCELERATION_THRESHOLD) value *= STICK_SENSITIVITY;
+                            interpolator.set(0.075f, 0.95f, 0.45f, 0.95f);
+                            float interpolatedValue = interpolator.getInterpolation(Math.min(1.0f, Math.abs(value / TRACKPAD_MAX_SPEED)));
+                            float gamepadOffset = Mathf.clamp(interpolatedValue * Mathf.sign(value), -1, 1);
+                            inputControlsView.handleInputEvent(gamepadAxisBinding, true, gamepadOffset);
+                            gamepadAxisActive[i] = gamepadOffset != 0;
+                            boolean nextState = states[i];
+                            if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
+                                handleSimultaneousBindingMembers(
+                                        bindingCombo,
+                                        gamepadAxisBinding,
+                                        nextState,
+                                        gamepadOffset);
+                            }
+                            this.states[i] = bindingCombo.isSingleBinding() || nextState;
+                        }
+                        else if (this.states[i] != states[i]) {
+                            handleBindingInputEvent(i, states[i], value);
                             this.states[i] = states[i];
                         }
                     }
@@ -1266,13 +1380,13 @@ public class ControlElement {
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
                     if (this.states[i] && !states[i]) {
-                        inputControlsView.handleInputEvent(getBindingAt(i), false, value);
+                        handleBindingInputEvent(i, false, value);
                     }
                 }
 
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
-                    if (states[i]) inputControlsView.handleInputEvent(getBindingAt(i), true, value);
+                    if (states[i]) handleBindingInputEvent(i, true, value);
                     this.states[i] = states[i];
                 }
 
@@ -1310,15 +1424,15 @@ public class ControlElement {
                 else if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
                     selected = (System.currentTimeMillis() - (long)touchTime) > BUTTON_MIN_TIME_TO_KEEP_PRESSED;
                     if (!selected) {
-                        inputControlsView.handleInputEvent(getBindingAt(0), false);
-                        inputControlsView.handleInputEvent(getBindingAt(1), false);
+                        handleBindingInputEvent(0, false);
+                        handleBindingInputEvent(1, false);
                     }
                     touchTime = null;
                     inputControlsView.invalidate();
                 }
                 else if (!toggleSwitch || selected) {
-                    inputControlsView.handleInputEvent(getBindingAt(0), false);
-                    inputControlsView.handleInputEvent(getBindingAt(1), false);
+                    handleBindingInputEvent(0, false);
+                    handleBindingInputEvent(1, false);
                 }
 
                 if (toggleSwitch) {
@@ -1331,10 +1445,7 @@ public class ControlElement {
                 currentPointerActivatedButtonBindings = false;
             }
             else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
-                for (byte i = 0; i < states.length; i++) {
-                    if (states[i]) inputControlsView.handleInputEvent(getBindingAt(i), false);
-                    states[i] = false;
-                }
+                releaseActiveDirectionalStates();
 
                 if (type == Type.RANGE_BUTTON) {
                     scroller.handleTouchUp();
@@ -1368,17 +1479,14 @@ public class ControlElement {
         }
         else if (type == Type.BUTTON) {
             if (currentPointerActivatedButtonBindings) {
-                inputControlsView.handleInputEvent(getBindingAt(0), false);
-                inputControlsView.handleInputEvent(getBindingAt(1), false);
+                handleBindingInputEvent(0, false);
+                handleBindingInputEvent(1, false);
             }
             currentPointerActivatedButtonBindings = false;
             touchTime = null;
         }
         else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
-            for (byte i = 0; i < states.length; i++) {
-                if (states[i]) inputControlsView.handleInputEvent(getBindingAt(i), false);
-                states[i] = false;
-            }
+            releaseActiveDirectionalStates();
             if (type == Type.RANGE_BUTTON) scroller.handleTouchUp();
             currentPosition = null;
         }

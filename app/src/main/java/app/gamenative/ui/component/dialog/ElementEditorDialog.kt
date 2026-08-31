@@ -28,6 +28,7 @@ import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
+import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlElement
 import com.winlator.widget.InputControlsView
 import java.util.Locale
@@ -38,9 +39,15 @@ import kotlin.math.roundToInt
  * on-screen control buttons. Keeping this in one place so the derivation in
  * [ElementEditorDialog] stays consistent with [ControlElement.getDisplayText].
  */
-private fun bindingShortLabel(binding: com.winlator.inputcontrols.Binding?): String {
-    if (binding == null) return ""
-    return binding.toString()
+private fun bindingShortLabel(binding: com.winlator.inputcontrols.Binding?): String =
+    bindingShortLabelText(binding?.toString())
+
+private fun bindingShortLabel(bindingCombo: BindingCombo?): String =
+    bindingShortLabelText(bindingCombo?.toString())
+
+private fun bindingShortLabelText(value: String?): String {
+    if (value == null) return ""
+    return value
         .replace("NUMPAD ", "NP")
         .replace("BUTTON ", "")
         .replace("SHOW KEYBOARD", "KEY")
@@ -74,7 +81,7 @@ fun ElementEditorDialog(
     // Store original bindings for restore on cancel
     val originalBindings by remember {
         mutableStateOf(
-            (0 until element.bindingCount).map { element.getBindingAt(it) }
+            (0 until element.bindingCount).map { element.getBindingComboAt(it) }
         )
     }
 
@@ -90,17 +97,17 @@ fun ElementEditorDialog(
             customText
         } else {
             // Show what's actually displayed (based on first binding)
-            val binding = element.getBindingAt(0)
-            if (binding != null && binding != com.winlator.inputcontrols.Binding.NONE) {
+            val binding = element.getBindingComboAt(0)
+            if (!binding.isEmpty) {
                 var text = bindingShortLabel(binding)
                 if (text.length > 7) {
                     // Abbreviate long binding names (e.g., "KEY A B" -> "KAB")
                     val parts = text.split(" ")
                     val sb = StringBuilder()
                     for (part in parts) {
-                        if (part.isNotEmpty()) sb.append(part[0])
+                        if (part.isNotEmpty() && part != "+" && part != "->") sb.append(part[0])
                     }
-                    text = (if (binding.isMouse) "M" else "") + sb.toString()
+                    text = (if (binding.primaryBinding.isMouse) "M" else "") + sb.toString()
                 }
                 text
             } else {
@@ -559,8 +566,8 @@ fun ElementEditorDialog(
                             }
 
                             for (i in 0 until bindingCount) {
-                                val binding = element.getBindingAt(i)
-                                val bindingName = binding?.toString() ?: "NONE"
+                                val binding = element.getBindingComboAt(i)
+                                val bindingName = binding.toString()
 
                                 val slotLabel = when (element.type) {
                                     ControlElement.Type.BUTTON -> {
@@ -1027,16 +1034,19 @@ fun ElementEditorDialog(
     // Show binding selector dialog
     bindingSlotToEdit?.let { (slotIndex, slotLabel) ->
         val currentBinding = element.getBindingAt(slotIndex)
+        val currentBindingCombo = element.getBindingComboAt(slotIndex)
 
         ControllerBindingDialog(
             buttonName = slotLabel,
             currentBinding = currentBinding,
+            currentBindingCombo = currentBindingCombo,
             onDismiss = { bindingSlotToEdit = null },
-            onBindingSelected = { binding ->
+            onBindingSelected = {},
+            onBindingComboSelected = { bindingCombo ->
 
                 // Update binding in memory only (not saved to disk yet)
-                if (binding != null) {
-                    element.setBindingAt(slotIndex, binding)
+                if (bindingCombo != null) {
+                    element.setBindingComboAt(slotIndex, bindingCombo)
                 } else {
                     element.setBindingAt(slotIndex, com.winlator.inputcontrols.Binding.NONE)
                 }
@@ -1046,21 +1056,21 @@ fun ElementEditorDialog(
                 if (element.type == ControlElement.Type.BUTTON && slotIndex == 0) {
                     // Check if custom text is empty or same as old binding text
                     val customText = element.text
-                    if (customText.isNullOrEmpty() || customText == bindingShortLabel(currentBinding)) {
+                    if (customText.isNullOrEmpty() || customText == bindingShortLabel(currentBindingCombo)) {
                         // Clear custom text so new binding text will show
                         element.setText(null)
                         currentTextEdited = false
 
                         // Update currentText state to show what will actually be displayed (new binding text)
-                        val newBindingText = bindingShortLabel(binding)
+                        val newBindingText = bindingShortLabel(bindingCombo)
                         currentText = if (newBindingText.length > 7) {
                             // Abbreviate long names to match getDisplayText() logic
                             val parts = newBindingText.split(" ")
                             val sb = StringBuilder()
                             for (part in parts) {
-                                if (part.isNotEmpty()) sb.append(part[0])
+                                if (part.isNotEmpty() && part != "+" && part != "->") sb.append(part[0])
                             }
-                            (if (binding?.isMouse() == true) "M" else "") + sb.toString()
+                            (if (bindingCombo?.primaryBinding?.isMouse() == true) "M" else "") + sb.toString()
                         } else {
                             newBindingText
                         }
@@ -1114,9 +1124,7 @@ fun ElementEditorDialog(
                     }
                     // Restore original bindings
                     originalBindings.forEachIndexed { index, binding ->
-                        if (binding != null) {
-                            element.setBindingAt(index, binding)
-                        }
+                        element.setBindingComboAt(index, binding)
                     }
                     // Restore original shooter mode properties
                     element.shooterMovementType = originalMovementType

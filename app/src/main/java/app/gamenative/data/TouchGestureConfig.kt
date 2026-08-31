@@ -145,6 +145,13 @@ data class TouchGestureConfig(
         const val ACTION_OPEN_RADIAL_MENU = "open_radial_menu"
         const val ACTION_KEY_ESC = "key_ESC"
         const val ACTION_KEY_TILDE = "key_TILDE"
+        const val ACTION_COMBO_PREFIX = "combo:"
+        const val ACTION_SEQUENCE_PREFIX = "seq:"
+        const val ACTION_COMBO_SEPARATOR = "|"
+        const val MAX_ACTION_COMBO_SIZE = 3
+        const val DEFAULT_ACTION_SEQUENCE_DELAY_MS = 150
+        const val MIN_ACTION_SEQUENCE_DELAY_MS = 80
+        const val MAX_ACTION_SEQUENCE_DELAY_MS = 1000
 
         // ── Action identifiers: two-finger drag (pan) ───────────────────
         const val PAN_WASD = "wasd"
@@ -317,5 +324,92 @@ data class TouchGestureConfig(
             ZOOM_PLUS_MINUS,
             ZOOM_PAGE_UP_DOWN,
         )
+
+        fun actionComboOf(
+            actions: List<String>,
+            sequence: Boolean = false,
+            sequenceDelayMs: Int = DEFAULT_ACTION_SEQUENCE_DELAY_MS,
+        ): String {
+            val filtered = actions
+                .filter { it.isNotBlank() }
+                .distinct()
+                .take(MAX_ACTION_COMBO_SIZE)
+            val normalized = if (sequence) filtered else filtered.sortedBy { actionComboSortGroup(it) }
+            return when (normalized.size) {
+                0 -> ACTION_LEFT_CLICK
+                1 -> normalized.first()
+                else -> if (sequence) {
+                    ACTION_SEQUENCE_PREFIX +
+                        sequenceDelayMs.coerceIn(MIN_ACTION_SEQUENCE_DELAY_MS, MAX_ACTION_SEQUENCE_DELAY_MS) +
+                        ":" +
+                        normalized.joinToString(ACTION_COMBO_SEPARATOR)
+                } else {
+                    ACTION_COMBO_PREFIX + normalized.joinToString(ACTION_COMBO_SEPARATOR)
+                }
+            }
+        }
+
+        @JvmStatic
+        fun actionParts(action: String?): List<String> {
+            if (action.isNullOrBlank()) return emptyList()
+            val sequence = action.startsWith(ACTION_SEQUENCE_PREFIX)
+            val combo = action.startsWith(ACTION_COMBO_PREFIX)
+            if (!sequence && !combo) return listOf(action)
+            val parts = actionPayload(action, sequence)
+                .split(ACTION_COMBO_SEPARATOR)
+                .filter { it.isNotBlank() }
+                .distinct()
+                .take(MAX_ACTION_COMBO_SIZE)
+            return if (sequence) parts else parts.sortedBy { actionComboSortGroup(it) }
+        }
+
+        @JvmStatic
+        fun isActionSequence(action: String?): Boolean {
+            return action?.startsWith(ACTION_SEQUENCE_PREFIX) == true
+        }
+
+        @JvmStatic
+        fun actionSequenceDelayMs(action: String?): Int {
+            if (!isActionSequence(action)) return DEFAULT_ACTION_SEQUENCE_DELAY_MS
+            val payload = action.orEmpty().removePrefix(ACTION_SEQUENCE_PREFIX)
+            val separatorIndex = payload.indexOf(':')
+            if (separatorIndex <= 0) return DEFAULT_ACTION_SEQUENCE_DELAY_MS
+            return payload.substring(0, separatorIndex)
+                .toIntOrNull()
+                ?.coerceIn(MIN_ACTION_SEQUENCE_DELAY_MS, MAX_ACTION_SEQUENCE_DELAY_MS)
+                ?: DEFAULT_ACTION_SEQUENCE_DELAY_MS
+        }
+
+        @JvmStatic
+        fun primaryAction(action: String?): String {
+            return actionParts(action).lastOrNull() ?: ACTION_LEFT_CLICK
+        }
+
+        @JvmStatic
+        fun containsMouseButtonAction(action: String?): Boolean {
+            return actionParts(action).any {
+                it == ACTION_LEFT_CLICK || it == ACTION_RIGHT_CLICK || it == ACTION_MIDDLE_CLICK
+            }
+        }
+
+        private fun actionPayload(action: String, sequence: Boolean): String {
+            if (!sequence) return action.removePrefix(ACTION_COMBO_PREFIX)
+            val payload = action.removePrefix(ACTION_SEQUENCE_PREFIX)
+            val separatorIndex = payload.indexOf(':')
+            return if (separatorIndex > 0 && payload.substring(0, separatorIndex).all { it.isDigit() }) {
+                payload.substring(separatorIndex + 1)
+            } else {
+                payload
+            }
+        }
+
+        private fun actionComboSortGroup(action: String): Int {
+            return when (action) {
+                "key_CTRL_L", "key_CTRL_R",
+                "key_SHIFT_L", "key_SHIFT_R",
+                "key_ALT_L", "key_ALT_R" -> 0
+                else -> 1
+            }
+        }
     }
 }

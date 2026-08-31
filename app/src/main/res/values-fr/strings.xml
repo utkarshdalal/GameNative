@@ -2404,4 +2404,8 @@
     <string name="faster_external_loading_subtitle">Peut accélérer considérablement le démarrage des jeux depuis le stockage externe, mais peut causer des problèmes dans certains jeux</string>
     <string name="disable_libredirect_title">Désactiver libredirect</string>
     <string name="disable_libredirect_subtitle">Peut améliorer les performances, mais peut aussi causer des problèmes inattendus</string>
+    <string name="binding_mode_simultaneous">Simultané</string>
+    <string name="binding_mode_sequence">Séquence</string>
+    <string name="binding_sequence_delay_ms">Délai de séquence (ms)</string>
+    <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
 </resources>

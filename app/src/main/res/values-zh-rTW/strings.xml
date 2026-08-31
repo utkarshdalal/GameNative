@@ -2410,4 +2410,8 @@
     <string name="faster_external_loading_subtitle">可顯著加快從外部儲存空間啟動遊戲的速度，但可能導致部分遊戲出現問題</string>
     <string name="disable_libredirect_title">停用 libredirect</string>
     <string name="disable_libredirect_subtitle">可能提升效能，但也可能導致意外問題</string>
+    <string name="binding_mode_simultaneous">同時</string>
+    <string name="binding_mode_sequence">順序</string>
+    <string name="binding_sequence_delay_ms">順序延遲（毫秒）</string>
+    <string name="binding_sequence_current_format">%1$s（%2$d 毫秒）</string>
 </resources>
