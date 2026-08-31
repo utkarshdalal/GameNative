@@ -1787,7 +1787,7 @@
     <string name="wrapper_quality_high">Ridicată (imagini mai clare, folosește mai multă RAM)</string>
     <string name="option_play_with_diagnostics">Rulare de diagnosticare</string>
     <string name="option_share_diagnostics">Partajează diagnosticarea</string>
-    <string name="option_ai_debug_run">Repară cu AI \u00b7 Susținători</string>
+    <string name="option_ai_debug_run">Obține ajutor AI (doar abonați)</string>
     <string name="debug_report_title">Raport de depanare AI</string>
     <string name="debug_report_summary">%1$s · %2$s · jurnal capturat (%3$s MB)</string>
     <string name="debug_report_what_went_wrong">Ce nu a funcționat?</string>
