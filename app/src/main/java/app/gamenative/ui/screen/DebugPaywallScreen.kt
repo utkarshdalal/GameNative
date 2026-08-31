@@ -102,7 +102,7 @@ fun DebugPaywallScreen(
             ) {
                 PaywallBackButton(onClick = onDismiss)
 
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.debug_paywall_title),
                         style = MaterialTheme.typography.headlineSmall.copy(
@@ -118,8 +118,6 @@ fun DebugPaywallScreen(
                         color = PluviaTheme.colors.textMuted,
                     )
                 }
-
-                Spacer(modifier = Modifier.weight(1f))
 
                 Box(
                     modifier = Modifier
