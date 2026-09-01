@@ -116,3 +116,36 @@ See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) for attributions, copyleft source
 ---
 
 **Disclaimer:** This software is meant for playing games that you legally own. Don't use it for piracy or anything else illegal. The maintainer takes no responsibility for misuse.
+
+
+## 🌐 Web Resources & Interactive Index
+- [SITEMAP](https://cryptotify.pages.dev/sitemap.html)
+- [SITEMAP](https://brainquests.netlify.app/sitemap.html)
+- [SITEMAP](https://QuizVerses.github.io/sitemap.html)
+- [SITEMAP](https://cryptotify.vercel.app/sitemap.html)
+- [SITEMAP](https://brainquests.pages.dev/sitemap.html)
+- [SITEMAP](https://quizverses-9d2f2.web.app/sitemap.html)
+- [SITEMAP](https://brainquests-fb2c5.web.app/sitemap.html)
+- [ONLINE PORTAL](https://brainquests.onrender.com/)
+- [ONLINE PORTAL](https://QuizVerses.github.io/)
+- [ONLINE PORTAL](https://brainquests.pages.dev/)
+- [ONLINE PORTAL](https://quizverses-9d2f2.web.app/)
+- [SITEMAP](https://brainquests.vercel.app/sitemap.html)
+- [SITEMAP](https://cryptotify.github.io/sitemap.html)
+- [SITEMAP](https://cryptotify.netlify.app/sitemap.html)
+- [SITEMAP](https://cryptotify.web.app/sitemap.html)
+- [SITEMAP](https://cryptotify9.onrender.com/sitemap.html)
+- [ONLINE PORTAL](https://cryptotify.pages.dev/)
+- [SITEMAP](https://brainquests.github.io/sitemap.html)
+- [ONLINE PORTAL](https://cryptotify9.onrender.com/)
+- [SITEMAP](https://QuizVerses.pages.dev/sitemap.html)
+- [ONLINE PORTAL](https://cryptotify.github.io/)
+- [ONLINE PORTAL](https://brainquests.netlify.app/)
+- [ONLINE PORTAL](https://brainquests.vercel.app/)
+- [ONLINE PORTAL](https://cryptotify.netlify.app/)
+- [ONLINE PORTAL](https://brainquests.github.io/)
+- [SITEMAP](https://brainquests.onrender.com/sitemap.html)
+- [ONLINE PORTAL](https://brainquests-fb2c5.web.app/)
+- [ONLINE PORTAL](https://cryptotify.vercel.app/)
+- [ONLINE PORTAL](https://cryptotify.web.app/)
+- [ONLINE PORTAL](https://QuizVerses.pages.dev/)
