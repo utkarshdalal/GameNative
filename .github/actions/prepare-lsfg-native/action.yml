@@ -77,6 +77,12 @@ runs:
         python3 "$native_dir/tests/android_wsi_provenance_test.py"
         python3 "$native_dir/tests/android_runtime_stability_test.py"
         python3 "$native_dir/tests/android_capability_architecture_test.py"
+        g++ -std=c++20 -Wall -Wextra -Werror \
+          -I"$native_dir/include" \
+          "$native_dir/src/adaptive_scheduler.cpp" \
+          "$native_dir/tests/adaptive_scheduler_test.cpp" \
+          -o /tmp/lsfg-adaptive-scheduler-test
+        /tmp/lsfg-adaptive-scheduler-test
 
         sudo apt-get update -qq
         sudo apt-get install -y cmake ninja-build file

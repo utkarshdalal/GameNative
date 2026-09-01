@@ -51,7 +51,6 @@ public class PresentExtension implements Extension {
     // multiplier x the cap, so releases must track presents or its generated
     // frames starve the swapchain.
     private volatile boolean eagerIdleRelease = false;
-    private int supersededDrops = 0;
 
     public void setEagerIdleRelease(boolean eager) {
         this.eagerIdleRelease = eager;
@@ -117,7 +116,6 @@ public class PresentExtension implements Extension {
         }
 
         windowTimings.clear();
-        supersededDrops = 0;
     }
 
     public void close() {
@@ -228,14 +226,12 @@ public class PresentExtension implements Extension {
             PendingIdle superseded = pendingIdles.put(window.id,
                     new PendingIdle(window, pixmap, serial, idleFence, fireTime, 0));
             if (superseded != null) {
-                if (eagerIdleRelease) {
-                    sendIdleNotify(superseded.window, superseded.pixmap,
-                            superseded.serial, superseded.idleFence);
-                } else if (supersededDrops++ < 8) {
-                    android.util.Log.w("PresentExtension", "pending idle superseded and dropped"
-                            + " for window 0x" + Integer.toHexString(window.id)
-                            + " serial " + superseded.serial);
-                }
+                // ConcurrentHashMap.put transfers this window's mailbox slot to
+                // the replacement. The previous pixmap/fence is no longer
+                // scheduled, so it must be released regardless of who owns
+                // pacing; dropping it can stall the client after LSFG turns off.
+                sendIdleNotify(superseded.window, superseded.pixmap,
+                        superseded.serial, superseded.idleFence);
             }
             postChoreographerCallback();
         } else {

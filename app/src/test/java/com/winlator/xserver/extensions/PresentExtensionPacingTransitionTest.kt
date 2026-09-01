@@ -1,10 +1,16 @@
 package com.winlator.xserver.extensions
 
+import android.view.Choreographer
+import com.winlator.renderer.VulkanRenderer
+import com.winlator.xserver.Pixmap
+import com.winlator.xserver.Window
 import java.util.concurrent.ConcurrentHashMap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
 
 class PresentExtensionPacingTransitionTest {
     @Test
@@ -33,6 +39,37 @@ class PresentExtensionPacingTransitionTest {
         assertEquals(true, privateField(extension, "eagerIdleRelease"))
     }
 
+    @Test
+    fun scheduledPresent_releasesSupersededPixmapEvenWhenLsfgIsOff() {
+        val extension = PresentExtension()
+        val sync = mock(SyncExtension::class.java)
+        setPrivateField(extension, "syncExtension", sync)
+        setPrivateField(extension, "choreographer", mock(Choreographer::class.java))
+        setPrivateField(extension, "choreographerChecked", true)
+
+        val window = Window(7, null, 0, 0, 1, 1, null)
+        val firstPixmap = mock(Pixmap::class.java)
+        val replacementPixmap = mock(Pixmap::class.java)
+        val schedule = PresentExtension::class.java.getDeclaredMethod(
+            "scheduleIdleNotify",
+            Window::class.java,
+            Pixmap::class.java,
+            Int::class.javaPrimitiveType,
+            Int::class.javaPrimitiveType,
+            Int::class.javaPrimitiveType,
+            VulkanRenderer::class.java,
+        ).apply { isAccessible = true }
+
+        schedule.invoke(extension, window, firstPixmap, 1, 101, 60, null)
+        schedule.invoke(extension, window, replacementPixmap, 2, 202, 60, null)
+
+        verify(sync).setTriggered(101)
+    }
+
     private fun privateField(instance: Any, name: String): Any? =
         instance.javaClass.getDeclaredField(name).apply { isAccessible = true }.get(instance)
+
+    private fun setPrivateField(instance: Any, name: String, value: Any?) {
+        instance.javaClass.getDeclaredField(name).apply { isAccessible = true }.set(instance, value)
+    }
 }
