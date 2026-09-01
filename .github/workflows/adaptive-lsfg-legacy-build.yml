@@ -5,6 +5,7 @@ on:
     branches:
       - feat/adaptive-lsfg-cap
       - fix/lsfg-transition-stability-20260831
+      - fix/lsfg-log-regressions-20260901
   workflow_dispatch:
 
 concurrency:
