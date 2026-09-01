@@ -15,7 +15,7 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class PresentExtensionPacingTransitionTest {
     @Test
-    fun transitionFramePacing_resetsOldTimingEpochAndAppliesLsfgOwnership() {
+    fun transitionFramePacing_keepsLocalLimitUntilNativeLsfgIsReady() {
         val extension = PresentExtension()
         val timingsField = PresentExtension::class.java
             .getDeclaredField("windowTimings")
@@ -33,11 +33,11 @@ class PresentExtensionPacingTransitionTest {
             )
         }
         assertNotNull("Present pacing needs an explicit LSFG ownership transition", transition)
-        transition!!.invoke(extension, true, 0)
+        transition!!.invoke(extension, true, 60)
 
         assertTrue(timings.isEmpty())
-        assertEquals(0, privateField(extension, "frameRateLimit"))
-        assertEquals(true, privateField(extension, "eagerIdleRelease"))
+        assertEquals(60, privateField(extension, "frameRateLimit"))
+        assertEquals(false, privateField(extension, "eagerIdleRelease"))
     }
 
     @Test
