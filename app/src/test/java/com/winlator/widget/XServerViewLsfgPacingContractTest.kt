@@ -10,7 +10,10 @@ import org.junit.Test
 class XServerViewLsfgPacingContractTest {
     @Test
     fun source_keepsRendererLimiterBehindNativeReadinessGate() {
-        val source = Files.readString(sourcePath("com/winlator/widget/XServerView.java"))
+        val source = String(
+            Files.readAllBytes(sourcePath("com/winlator/widget/XServerView.java")),
+            Charsets.UTF_8,
+        )
         assertTrue(source.contains("LsfgRuntimeGate.isGenerationReady()"))
         assertTrue(source.contains("transitionLsfgFramePacing"))
         assertTrue(source.contains("refreshLsfgFramePacing"))
@@ -19,8 +22,11 @@ class XServerViewLsfgPacingContractTest {
 
     @Test
     fun presentPath_resynchronizesRendererPacingOnEveryPresent() {
-        val source = Files.readString(
-            sourcePath("com/winlator/xserver/extensions/PresentExtension.java"),
+        val source = String(
+            Files.readAllBytes(
+                sourcePath("com/winlator/xserver/extensions/PresentExtension.java"),
+            ),
+            Charsets.UTF_8,
         )
         assertTrue(source.contains("vr.xServerView.transitionLsfgFramePacing"))
         assertFalse(source.contains("pending idle superseded and dropped"))
