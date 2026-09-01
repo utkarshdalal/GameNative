@@ -10,15 +10,19 @@ object LsfgQuickMenuHelper {
         val multiplier: Int,
         val flowScale: Float,
         val performanceMode: Boolean,
+        val adaptiveFrameGen: Boolean,
     )
 
-    fun isAvailable(container: Container): Boolean =
-        LsfgVkManager.isSupported(container) && LsfgVkManager.isArmed(container)
+    fun isAvailable(container: Container): Boolean {
+        LsfgRuntimeGate.configure(container.rootDir)
+        return LsfgVkManager.isSupported(container) && LsfgVkManager.isArmed(container)
+    }
 
     fun readSettings(container: Container): Settings = Settings(
         multiplier = LsfgVkManager.multiplier(container),
         flowScale = LsfgVkManager.flowScale(container),
         performanceMode = LsfgVkManager.performanceMode(container),
+        adaptiveFrameGen = LsfgVkManager.adaptiveFrameGen(container),
     )
 
     private val applyExecutor =
@@ -37,6 +41,7 @@ object LsfgQuickMenuHelper {
                 if (settings.multiplier >= 2) settings.multiplier else 2,
                 settings.flowScale,
                 settings.performanceMode,
+                settings.adaptiveFrameGen,
                 fpsLimitOverride = capFps.coerceAtLeast(0),
             )
         }
@@ -64,6 +69,7 @@ object LsfgQuickMenuHelper {
         container.putExtra(LsfgVkManager.EXTRA_MULTIPLIER, multiplier.toString())
         container.putExtra(LsfgVkManager.EXTRA_FLOW_SCALE, String.format(Locale.US, "%.2f", flowScale))
         container.putExtra(LsfgVkManager.EXTRA_PERFORMANCE_MODE, settings.performanceMode.toString())
+        container.putExtra(LsfgVkManager.EXTRA_ADAPTIVE_FRAMEGEN, settings.adaptiveFrameGen.toString())
         container.saveData()
 
         val effectiveEnabled = multiplier >= 2
@@ -74,6 +80,7 @@ object LsfgQuickMenuHelper {
             effectiveMultiplier,
             flowScale,
             settings.performanceMode,
+            settings.adaptiveFrameGen,
         )
     }
 }

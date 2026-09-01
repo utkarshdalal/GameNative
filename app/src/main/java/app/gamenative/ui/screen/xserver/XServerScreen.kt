@@ -606,6 +606,7 @@ fun XServerScreen(
     var lsfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialLsfgSettings.multiplier) }
     var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
     var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
+    var lsfgAdaptiveFrameGen by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.adaptiveFrameGen) }
 
     fun persistFpsLimiterState() {
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
@@ -683,18 +684,21 @@ fun XServerScreen(
     }
 
     fun applyFpsLimiterToEngines(limit: Int) {
-        // With LSFG active the layer owns ALL pacing (vsync-locked via
-        // vsync.txt) and presents at limit * multiplier. Both the renderer's
-        // SurfaceControl frame-rate hint and the PresentExtension's scheduled
-        // idle-release pacing must stay off: the hint would clamp the display
-        // to the base rate, and the extension's Choreographer-scheduled pixmap
+        // With LSFG active the native layer owns Vulkan presentation pacing.
+        // In Adaptive FrameGen mode it treats this as the final-output cap and
+        // generates only the intermediate frames required to reach it. Both
+        // the renderer's SurfaceControl frame-rate hint and the
+        // PresentExtension's scheduled idle-release pacing must stay off. The
+        // hint would clamp the display to the base rate, while the extension's
+        // Choreographer-scheduled pixmap
         // releases mix stale pixmaps under multiplied present traffic
         // (measured as constant multi-exposure ghosting on the X11/turnip
         // present path).
-        xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+        val lsfgActive = isLsfgAvailable && lsfgMultiplier >= 2
+        xServerView?.setFrameRateLimit(if (lsfgActive) 0 else limit)
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
-            ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+            ?.transitionFramePacing(lsfgActive, limit)
         // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
         // presents, so SHM-presenting games never pass through it and would
         // otherwise run uncapped whenever LSFG is armed.
@@ -702,7 +706,7 @@ fun XServerScreen(
         PowerManager.targetFps = limit
         // keeps frame stats in base units while generated frames tick the ring
         PowerManager.frameSampleStride =
-            if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
+            if (lsfgActive && !lsfgAdaptiveFrameGen) lsfgMultiplier else 1
     }
 
     fun effectiveFpsLimit(): Int =
@@ -711,12 +715,20 @@ fun XServerScreen(
     fun applyLsfgSettings() {
         LsfgQuickMenuHelper.applySettings(
             container,
-            LsfgQuickMenuHelper.Settings(lsfgMultiplier, lsfgFlowScale, lsfgPerformanceMode),
+            LsfgQuickMenuHelper.Settings(
+                lsfgMultiplier,
+                lsfgFlowScale,
+                lsfgPerformanceMode,
+                lsfgAdaptiveFrameGen,
+            ),
         )
     }
 
     fun applyFpsLimiterEnabled(enabled: Boolean) {
         fpsLimiterEnabled = enabled
+        if (!enabled && lsfgAdaptiveFrameGen) {
+            lsfgAdaptiveFrameGen = false
+        }
         applyFpsLimiterToEngines(effectiveFpsLimit())
         persistFpsLimiterState()
         if (isLsfgAvailable && lsfgMultiplier >= 2) {
@@ -750,6 +762,16 @@ fun XServerScreen(
     fun applyLsfgPerformanceMode(enabled: Boolean) {
         lsfgPerformanceMode = enabled
         applyLsfgSettings()
+    }
+
+    fun applyLsfgAdaptiveFrameGen(enabled: Boolean) {
+        lsfgAdaptiveFrameGen = enabled
+        if (enabled && !fpsLimiterEnabled) {
+            fpsLimiterEnabled = true
+            persistFpsLimiterState()
+        }
+        applyLsfgSettings()
+        applyFpsLimiterToEngines(effectiveFpsLimit())
     }
 
     LaunchedEffect(xServerView) {
@@ -2844,9 +2866,11 @@ fun XServerScreen(
                 multiplier = lsfgMultiplier,
                 flowScale = lsfgFlowScale,
                 performanceMode = lsfgPerformanceMode,
+                adaptiveFrameGen = lsfgAdaptiveFrameGen,
                 onMultiplierChanged = ::applyLsfgMultiplier,
                 onFlowScaleChanged = ::applyLsfgFlowScale,
                 onPerformanceModeChanged = ::applyLsfgPerformanceMode,
+                onAdaptiveFrameGenChanged = ::applyLsfgAdaptiveFrameGen,
             ),
             onRequestOpen = { showQuickMenu = true },
             // Immersive tab (tab only visible when hosted by ImmersiveXrActivity)

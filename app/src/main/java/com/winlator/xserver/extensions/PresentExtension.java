@@ -4,6 +4,8 @@ import static com.winlator.xserver.XClientRequestHandler.RESPONSE_CODE_SUCCESS;
 
 import android.util.SparseArray;
 
+import app.gamenative.utils.LsfgRuntimeGate;
+
 import com.winlator.renderer.ASurfaceRenderer;
 import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
@@ -40,24 +42,23 @@ public class PresentExtension implements Extension {
     private byte firstEventId = 0;
     private byte firstErrorId = 0;
 
-    // Target FPS for the back-pressure limiter. 0 disables limiting (notifies fire
-    // immediately). Set from XServerScreen when the user toggles the FPS cap.
+    // Effective Target FPS for the back-pressure limiter. 0 means LSFG owns
+    // pacing and native readiness has been confirmed.
     private volatile int frameRateLimit = 0;
+    private volatile int localFrameRateLimit = 0;
+    private volatile boolean lsfgPacingRequested = false;
 
     // Mailbox semantics for the pacing scheduler: when a new present supersedes a
     // still-pending pixmap on the same window, release the superseded one
-    // immediately instead of holding it to the schedule. Armed only while
-    // bionic-fg is active — the layer owns base pacing then, and it presents at
-    // multiplier x the cap, so releases must track presents or its generated
-    // frames starve the swapchain.
+    // immediately instead of holding it to the schedule. This becomes active
+    // only after the native LSFG context has published readiness.
     private volatile boolean eagerIdleRelease = false;
-    private int supersededDrops = 0;
 
     public void setEagerIdleRelease(boolean eager) {
         this.eagerIdleRelease = eager;
     }
 
-    private static class PendingIdle {
+    static class PendingIdle {
         Window window; Pixmap pixmap; int serial; int idleFence;
         long targetNs;
         int  vsyncSkips;    // vsyncs left to skip before firing (for fps < refresh)
@@ -81,7 +82,57 @@ public class PresentExtension implements Extension {
     private static final long FIRE_EARLY_NS = 700_000L; // 0.7 ms
 
     public void setFrameRateLimit(int limit) {
-        this.frameRateLimit = Math.max(0, limit);
+        this.localFrameRateLimit = Math.max(0, limit);
+        refreshLsfgPacingState();
+    }
+
+    /**
+     * Record the requested pacing owner. LSFG does not actually receive pacing
+     * ownership until its fresh native stats state confirms a ready swapchain
+     * context; until then the normal X Present limiter remains active.
+     */
+    public void transitionFramePacing(boolean lsfgOwnsPacing, int limit) {
+        this.lsfgPacingRequested = lsfgOwnsPacing;
+        this.localFrameRateLimit = Math.max(0, limit);
+        applyEffectivePacing(lsfgOwnsPacing && LsfgRuntimeGate.isGenerationReady());
+    }
+
+    private void refreshLsfgPacingState() {
+        final boolean lsfgReady = lsfgPacingRequested && LsfgRuntimeGate.isGenerationReady();
+        final int desiredLimit = lsfgReady ? 0 : localFrameRateLimit;
+        if (this.eagerIdleRelease == lsfgReady && this.frameRateLimit == desiredLimit)
+            return;
+        applyEffectivePacing(lsfgReady);
+    }
+
+    private synchronized void applyEffectivePacing(boolean lsfgReady) {
+        final int nextLimit = lsfgReady ? 0 : localFrameRateLimit;
+        if (this.eagerIdleRelease == lsfgReady && this.frameRateLimit == nextLimit)
+            return;
+
+        this.eagerIdleRelease = lsfgReady;
+        this.frameRateLimit = nextLimit;
+
+        android.view.Choreographer activeChoreographer = this.choreographer;
+        if (activeChoreographer != null && choreographerPosted) {
+            activeChoreographer.removeFrameCallback(vsyncCallback);
+            choreographerPosted = false;
+        }
+
+        for (java.util.Map.Entry<Integer, PendingIdle> entry : pendingIdles.entrySet()) {
+            PendingIdle pending = entry.getValue();
+            if (pendingIdles.remove(entry.getKey(), pending)) {
+                sendIdleNotify(pending.window, pending.pixmap,
+                        pending.serial, pending.idleFence);
+            }
+        }
+
+        PendingIdle queued;
+        while ((queued = cpuQueue.poll()) != null) {
+            sendIdleNotify(queued.window, queued.pixmap, queued.serial, queued.idleFence);
+        }
+
+        windowTimings.clear();
     }
 
     public void close() {
@@ -169,6 +220,11 @@ public class PresentExtension implements Extension {
     private final java.util.concurrent.ConcurrentHashMap<Integer, WindowTiming> windowTimings =
             new java.util.concurrent.ConcurrentHashMap<>();
 
+    void releaseSupersededIdle(PendingIdle superseded) {
+        sendIdleNotify(superseded.window, superseded.pixmap,
+                superseded.serial, superseded.idleFence);
+    }
+
     private void scheduleIdleNotify(Window window, Pixmap pixmap, int serial,
                                     int idleFence, int targetFps, VulkanRenderer renderer) {
         if (targetFps <= 0) {
@@ -192,14 +248,11 @@ public class PresentExtension implements Extension {
             PendingIdle superseded = pendingIdles.put(window.id,
                     new PendingIdle(window, pixmap, serial, idleFence, fireTime, 0));
             if (superseded != null) {
-                if (eagerIdleRelease) {
-                    sendIdleNotify(superseded.window, superseded.pixmap,
-                            superseded.serial, superseded.idleFence);
-                } else if (supersededDrops++ < 8) {
-                    android.util.Log.w("PresentExtension", "pending idle superseded and dropped"
-                            + " for window 0x" + Integer.toHexString(window.id)
-                            + " serial " + superseded.serial);
-                }
+                // ConcurrentHashMap.put transfers this window's mailbox slot to
+                // the replacement. The previous pixmap/fence is no longer
+                // scheduled, so it must be released regardless of who owns
+                // pacing; dropping it can stall the client after LSFG turns off.
+                releaseSupersededIdle(superseded);
             }
             postChoreographerCallback();
         } else {
@@ -315,6 +368,10 @@ public class PresentExtension implements Extension {
         final XServerRenderer xr = client.xServer.getRenderer();
         final VulkanRenderer vr = (xr instanceof VulkanRenderer) ? (VulkanRenderer) xr : null;
         final ASurfaceRenderer asr = (xr instanceof ASurfaceRenderer) ? (ASurfaceRenderer) xr : null;
+        refreshLsfgPacingState();
+        if (vr != null) {
+            vr.xServerView.transitionLsfgFramePacing(lsfgPacingRequested, localFrameRateLimit);
+        }
         final int targetFps = this.frameRateLimit;
 
         long ust = System.nanoTime() / 1000;

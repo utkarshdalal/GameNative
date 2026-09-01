@@ -1,0 +1,80 @@
+name: Adaptive LSFG Legacy build
+
+on:
+  push:
+    branches:
+      - feat/adaptive-lsfg-cap
+      - fix/lsfg-transition-stability-20260831
+      - fix/lsfg-log-regressions-20260901
+  workflow_dispatch:
+
+concurrency:
+  group: adaptive-lsfg-legacy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  legacy-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out GameNative and pinned LSFG runtime
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: temurin
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Verify and build pinned LSFG native runtime
+        uses: ./.github/actions/prepare-lsfg-native
+
+      - name: Configure build credentials
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+        run: |
+          printf 'POSTHOG_API_KEY=%s\n' "${POSTHOG_API_KEY:-dummy}" > local.properties
+          printf 'POSTHOG_HOST=%s\n' "${POSTHOG_HOST:-https://us.i.posthog.com}" >> local.properties
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run Adaptive LSFG contract tests
+        run: >-
+          ./gradlew :app:testLegacyDebugUnitTest --no-daemon
+          --tests app.gamenative.utils.LsfgVkManagerTest
+          --tests app.gamenative.utils.LsfgBuildWorkflowContractTest
+          --tests com.winlator.xserver.extensions.PresentExtensionPacingTransitionTest
+
+      - name: Assemble LegacyDebug APK
+        run: ./gradlew :app:assembleLegacyDebug --no-daemon
+
+      - name: Verify packaged LSFG runtime
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find app/build/outputs/apk/legacy/debug -maxdepth 1 -type f -name '*.apk' -print)
+          test ${#apks[@]} -eq 1
+          cp "${apks[0]}" gamenative-adaptive-lsfg-legacy-debug.apk
+          unzip -l gamenative-adaptive-lsfg-legacy-debug.apk | grep -F 'lib/arm64-v8a/liblsfg-vk-layer.so'
+          sha256sum gamenative-adaptive-lsfg-legacy-debug.apk \
+            | tee gamenative-adaptive-lsfg-legacy-debug.apk.sha256
+
+      - name: Upload Adaptive LSFG LegacyDebug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamenative-adaptive-lsfg-legacy-debug
+          path: |
+            gamenative-adaptive-lsfg-legacy-debug.apk
+            gamenative-adaptive-lsfg-legacy-debug.apk.sha256
+          if-no-files-found: error
+          compression-level: 0
