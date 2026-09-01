@@ -12,7 +12,7 @@ class LsfgRuntimeGateTest {
         val root = Files.createTempDirectory("lsfg-gate-ready")
         val stats = root.resolve(".config/lsfg-vk/stats.txt")
         Files.createDirectories(stats.parent)
-        Files.writeString(stats, "active=1\ngeneration_ready=1\n")
+        Files.write(stats, "active=1\ngeneration_ready=1\n".toByteArray(Charsets.UTF_8))
 
         LsfgRuntimeGate.configure(root.toFile())
 
@@ -24,14 +24,14 @@ class LsfgRuntimeGateTest {
         val inactiveRoot = Files.createTempDirectory("lsfg-gate-inactive")
         val inactive = inactiveRoot.resolve(".config/lsfg-vk/stats.txt")
         Files.createDirectories(inactive.parent)
-        Files.writeString(inactive, "active=0\ngeneration_ready=0\n")
+        Files.write(inactive, "active=0\ngeneration_ready=0\n".toByteArray(Charsets.UTF_8))
         LsfgRuntimeGate.configure(inactiveRoot.toFile())
         assertFalse(LsfgRuntimeGate.isGenerationReady())
 
         val staleRoot = Files.createTempDirectory("lsfg-gate-stale")
         val stale = staleRoot.resolve(".config/lsfg-vk/stats.txt")
         Files.createDirectories(stale.parent)
-        Files.writeString(stale, "active=1\ngeneration_ready=1\n")
+        Files.write(stale, "active=1\ngeneration_ready=1\n".toByteArray(Charsets.UTF_8))
         Files.setLastModifiedTime(
             stale,
             FileTime.fromMillis(System.currentTimeMillis() - 10_000L),
