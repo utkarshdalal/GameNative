@@ -11,10 +11,6 @@ import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
 import com.winlator.renderer.VulkanRenderer;
 import com.winlator.renderer.XServerRenderer;
-import com.winlator.xconnector.XInputStream;
-import com.winlator.xconnector.XOutputStream;
-import com.winlator.xconnector.XStreamLock;
-import com.winlator.xenvironment.components.VortekRendererComponent;
 import com.winlator.xserver.Bitmask;
 import com.winlator.xserver.Drawable;
 import com.winlator.xserver.Pixmap;
@@ -369,6 +365,9 @@ public class PresentExtension implements Extension {
         final VulkanRenderer vr = (xr instanceof VulkanRenderer) ? (VulkanRenderer) xr : null;
         final ASurfaceRenderer asr = (xr instanceof ASurfaceRenderer) ? (ASurfaceRenderer) xr : null;
         refreshLsfgPacingState();
+        if (vr != null) {
+            vr.xServerView.transitionLsfgFramePacing(lsfgPacingRequested, localFrameRateLimit);
+        }
         final int targetFps = this.frameRateLimit;
 
         long ust = System.nanoTime() / 1000;
