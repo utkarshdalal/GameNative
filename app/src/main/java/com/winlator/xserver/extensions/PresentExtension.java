@@ -4,6 +4,8 @@ import static com.winlator.xserver.XClientRequestHandler.RESPONSE_CODE_SUCCESS;
 
 import android.util.SparseArray;
 
+import app.gamenative.utils.LsfgRuntimeGate;
+
 import com.winlator.renderer.ASurfaceRenderer;
 import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
@@ -40,16 +42,16 @@ public class PresentExtension implements Extension {
     private byte firstEventId = 0;
     private byte firstErrorId = 0;
 
-    // Target FPS for the back-pressure limiter. 0 disables limiting (notifies fire
-    // immediately). Set from XServerScreen when the user toggles the FPS cap.
+    // Effective Target FPS for the back-pressure limiter. 0 means LSFG owns
+    // pacing and native readiness has been confirmed.
     private volatile int frameRateLimit = 0;
+    private volatile int localFrameRateLimit = 0;
+    private volatile boolean lsfgPacingRequested = false;
 
     // Mailbox semantics for the pacing scheduler: when a new present supersedes a
     // still-pending pixmap on the same window, release the superseded one
-    // immediately instead of holding it to the schedule. Armed only while
-    // bionic-fg is active — the layer owns base pacing then, and it presents at
-    // multiplier x the cap, so releases must track presents or its generated
-    // frames starve the swapchain.
+    // immediately instead of holding it to the schedule. This becomes active
+    // only after the native LSFG context has published readiness.
     private volatile boolean eagerIdleRelease = false;
 
     public void setEagerIdleRelease(boolean eager) {
@@ -80,20 +82,35 @@ public class PresentExtension implements Extension {
     private static final long FIRE_EARLY_NS = 700_000L; // 0.7 ms
 
     public void setFrameRateLimit(int limit) {
-        this.frameRateLimit = Math.max(0, limit);
+        this.localFrameRateLimit = Math.max(0, limit);
+        refreshLsfgPacingState();
     }
 
     /**
-     * Atomically transfer pacing ownership between the X Present scheduler and
-     * LSFG. Pending notifications belong to the old timing epoch and must be
-     * released before its phase/limit state is discarded.
+     * Record the requested pacing owner. LSFG does not actually receive pacing
+     * ownership until its fresh native stats state confirms a ready swapchain
+     * context; until then the normal X Present limiter remains active.
      */
     public void transitionFramePacing(boolean lsfgOwnsPacing, int limit) {
-        final int nextLimit = lsfgOwnsPacing ? 0 : Math.max(0, limit);
-        if (this.eagerIdleRelease == lsfgOwnsPacing && this.frameRateLimit == nextLimit)
+        this.lsfgPacingRequested = lsfgOwnsPacing;
+        this.localFrameRateLimit = Math.max(0, limit);
+        applyEffectivePacing(lsfgOwnsPacing && LsfgRuntimeGate.isGenerationReady());
+    }
+
+    private void refreshLsfgPacingState() {
+        final boolean lsfgReady = lsfgPacingRequested && LsfgRuntimeGate.isGenerationReady();
+        final int desiredLimit = lsfgReady ? 0 : localFrameRateLimit;
+        if (this.eagerIdleRelease == lsfgReady && this.frameRateLimit == desiredLimit)
+            return;
+        applyEffectivePacing(lsfgReady);
+    }
+
+    private synchronized void applyEffectivePacing(boolean lsfgReady) {
+        final int nextLimit = lsfgReady ? 0 : localFrameRateLimit;
+        if (this.eagerIdleRelease == lsfgReady && this.frameRateLimit == nextLimit)
             return;
 
-        this.eagerIdleRelease = lsfgOwnsPacing;
+        this.eagerIdleRelease = lsfgReady;
         this.frameRateLimit = nextLimit;
 
         android.view.Choreographer activeChoreographer = this.choreographer;
@@ -351,6 +368,7 @@ public class PresentExtension implements Extension {
         final XServerRenderer xr = client.xServer.getRenderer();
         final VulkanRenderer vr = (xr instanceof VulkanRenderer) ? (VulkanRenderer) xr : null;
         final ASurfaceRenderer asr = (xr instanceof ASurfaceRenderer) ? (ASurfaceRenderer) xr : null;
+        refreshLsfgPacingState();
         final int targetFps = this.frameRateLimit;
 
         long ust = System.nanoTime() / 1000;
