@@ -2,6 +2,9 @@ name: LSFG LegacyDebug single APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - fix/lsfg-transition-stability-20260831
 
 jobs:
   legacy-debug:
