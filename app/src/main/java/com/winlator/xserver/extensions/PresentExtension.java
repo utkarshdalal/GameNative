@@ -56,7 +56,7 @@ public class PresentExtension implements Extension {
         this.eagerIdleRelease = eager;
     }
 
-    private static class PendingIdle {
+    static class PendingIdle {
         Window window; Pixmap pixmap; int serial; int idleFence;
         long targetNs;
         int  vsyncSkips;    // vsyncs left to skip before firing (for fps < refresh)
@@ -203,6 +203,11 @@ public class PresentExtension implements Extension {
     private final java.util.concurrent.ConcurrentHashMap<Integer, WindowTiming> windowTimings =
             new java.util.concurrent.ConcurrentHashMap<>();
 
+    void releaseSupersededIdle(PendingIdle superseded) {
+        sendIdleNotify(superseded.window, superseded.pixmap,
+                superseded.serial, superseded.idleFence);
+    }
+
     private void scheduleIdleNotify(Window window, Pixmap pixmap, int serial,
                                     int idleFence, int targetFps, VulkanRenderer renderer) {
         if (targetFps <= 0) {
@@ -230,8 +235,7 @@ public class PresentExtension implements Extension {
                 // the replacement. The previous pixmap/fence is no longer
                 // scheduled, so it must be released regardless of who owns
                 // pacing; dropping it can stall the client after LSFG turns off.
-                sendIdleNotify(superseded.window, superseded.pixmap,
-                        superseded.serial, superseded.idleFence);
+                releaseSupersededIdle(superseded);
             }
             postChoreographerCallback();
         } else {
