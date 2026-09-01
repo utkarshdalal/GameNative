@@ -13,8 +13,10 @@ object LsfgQuickMenuHelper {
         val adaptiveFrameGen: Boolean,
     )
 
-    fun isAvailable(container: Container): Boolean =
-        LsfgVkManager.isSupported(container) && LsfgVkManager.isArmed(container)
+    fun isAvailable(container: Container): Boolean {
+        LsfgRuntimeGate.configure(container.rootDir)
+        return LsfgVkManager.isSupported(container) && LsfgVkManager.isArmed(container)
+    }
 
     fun readSettings(container: Container): Settings = Settings(
         multiplier = LsfgVkManager.multiplier(container),
