@@ -50,7 +50,7 @@ class PresentExtensionPacingTransitionTest {
         val root = Files.createTempDirectory("lsfg-ready")
         val stats = root.resolve(".config/lsfg-vk/stats.txt")
         Files.createDirectories(stats.parent)
-        Files.writeString(stats, "active=1\ngeneration_ready=1\n")
+        Files.write(stats, "active=1\ngeneration_ready=1\n".toByteArray(Charsets.UTF_8))
         LsfgRuntimeGate.configure(root.toFile())
 
         val extension = PresentExtension()
@@ -65,7 +65,7 @@ class PresentExtensionPacingTransitionTest {
         val root = Files.createTempDirectory("lsfg-stale")
         val stats = root.resolve(".config/lsfg-vk/stats.txt")
         Files.createDirectories(stats.parent)
-        Files.writeString(stats, "active=1\ngeneration_ready=1\n")
+        Files.write(stats, "active=1\ngeneration_ready=1\n".toByteArray(Charsets.UTF_8))
         Files.setLastModifiedTime(
             stats,
             FileTime.fromMillis(System.currentTimeMillis() - 10_000L),
