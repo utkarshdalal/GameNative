@@ -29,10 +29,11 @@ object DebugReportApi {
         header: JSONObject,
         logFile: File,
         relayToken: String,
+        perfFile: File? = null,
     ): SubmitResult = withContext(Dispatchers.IO) {
         try {
             val headerString = header.toString()
-            val body = MultipartBody.Builder()
+            val bodyBuilder = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart(
                     "report",
@@ -44,7 +45,14 @@ object DebugReportApi {
                     "log.gz",
                     logFile.asRequestBody("application/gzip".toMediaType()),
                 )
-                .build()
+            if (perfFile != null && perfFile.exists()) {
+                bodyBuilder.addFormDataPart(
+                    "perf",
+                    "perf.json",
+                    perfFile.asRequestBody("application/json".toMediaType()),
+                )
+            }
+            val body = bodyBuilder.build()
 
             val integrityToken = PlayIntegrity.requestToken(headerString.toByteArray())
 

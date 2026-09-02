@@ -1807,7 +1807,7 @@
     <string name="debug_offer_message">Ta sesja zakończyła się przedwcześnie. Uruchom %1$s jeszcze raz z logowaniem debugowania, a nasza AI przeczyta log i powie Ci, co zmienić.</string>
     <string name="debug_offer_confirm">Rozpocznij uruchomienie debugowania</string>
     <string name="debug_prerun_title">Uzyskaj pomoc AI</string>
-    <string name="debug_prerun_message_1">Uruchamia grę z logowaniem debugowania i po wyjściu udostępnia log naszemu AI na Discordzie.</string>
+    <string name="debug_prerun_message_1">Uruchamia grę z logowaniem debugowania i po wyjściu udostępnia log naszemu AI na Discordzie. Graj, aż wystąpi problem.</string>
     <string name="debug_prerun_message_2">Odpowiedzi AI są tylko dla subskrybentów.</string>
     <string name="debug_prerun_message_3">Każdy może udostępnić raport, aby uzyskać pomoc od ludzi.</string>
     <string name="debug_paywall_title">Uzyskaj pomoc AI w debugowaniu</string>

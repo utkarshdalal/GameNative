@@ -1803,7 +1803,7 @@
     <string name="debug_offer_message">Сеанс завершився передчасно. Запустіть %1$s ще раз із налагоджувальним логуванням. Наш AI прочитає лог і підкаже, що змінити.</string>
     <string name="debug_offer_confirm">Почати налагоджувальний запуск</string>
     <string name="debug_prerun_title">Отримати допомогу AI</string>
-    <string name="debug_prerun_message_1">Запускає гру з журналом налагодження і після виходу надсилає журнал нашому AI в Discord.</string>
+    <string name="debug_prerun_message_1">Запускає гру з журналом налагодження і після виходу надсилає журнал нашому AI в Discord. Грайте, доки не виникне проблема.</string>
     <string name="debug_prerun_message_2">Відповіді AI доступні лише підписникам.</string>
     <string name="debug_prerun_message_3">Будь-хто може поділитися звітом, щоб отримати допомогу людей.</string>
     <string name="debug_paywall_title">Отримайте AI-підтримку з налагодження</string>

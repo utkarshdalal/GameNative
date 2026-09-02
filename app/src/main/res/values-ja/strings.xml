@@ -1763,7 +1763,7 @@
     <string name="debug_offer_message">セッションが途中で終了しました。デバッグログを有効にして %1$s をもう一度実行すると、AI がログを読んで変更すべき点をお伝えします。</string>
     <string name="debug_offer_confirm">デバッグ実行を開始</string>
     <string name="debug_prerun_title">AI のサポートを受ける</string>
-    <string name="debug_prerun_message_1">デバッグログ付きでゲームを起動し、終了時にログを Discord の AI に共有します。</string>
+    <string name="debug_prerun_message_1">デバッグログ付きでゲームを起動し、終了時にログを Discord の AI に共有します。問題が発生するまでゲームをプレイしてください。</string>
     <string name="debug_prerun_message_2">AI の返信はサブスク会員限定です。</string>
     <string name="debug_prerun_message_3">レポートは誰でも共有でき、人間のサポートを受けられます。</string>
     <string name="debug_paywall_title">AI デバッグサポートを利用</string>

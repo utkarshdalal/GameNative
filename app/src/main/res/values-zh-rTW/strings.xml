@@ -1815,7 +1815,7 @@
     <string name="debug_offer_message">該工作階段提前結束了。開啟除錯記錄再執行一次 %1$s，我們的 AI 會閱讀記錄並告訴你需要更改什麼。</string>
     <string name="debug_offer_confirm">開始除錯執行</string>
     <string name="debug_prerun_title">取得 AI 協助</string>
-    <string name="debug_prerun_message_1">以除錯日誌執行遊戲，退出後將日誌分享給我們在 Discord 上的 AI。</string>
+    <string name="debug_prerun_message_1">以除錯日誌執行遊戲，退出後將日誌分享給我們在 Discord 上的 AI。請持續執行遊戲，直到問題出現。</string>
     <string name="debug_prerun_message_2">AI 回覆僅限訂閱者。</string>
     <string name="debug_prerun_message_3">任何人都可以分享報告以獲得人工協助。</string>
     <string name="debug_paywall_title">取得 AI 除錯支援</string>

@@ -17,6 +17,7 @@ object DebugReportUtils {
 
     private const val HEADER_FILE = "header.json"
     private const val LOG_FILE = "log.gz"
+    private const val PERF_FILE = "perf.json"
     private const val LOG_HEAD_BYTES = 1L * 1024 * 1024
     private const val LOG_TAIL_BYTES = 7L * 1024 * 1024
     private const val LOG_MAX_BYTES = LOG_HEAD_BYTES + LOG_TAIL_BYTES
@@ -30,6 +31,8 @@ object DebugReportUtils {
     fun headerFile(reportDir: File): File = File(reportDir, HEADER_FILE)
 
     fun logFile(reportDir: File): File = File(reportDir, LOG_FILE)
+
+    fun perfFile(reportDir: File): File = File(reportDir, PERF_FILE)
 
     fun readHeader(reportDir: File): JSONObject? = try {
         val file = headerFile(reportDir)
@@ -57,6 +60,7 @@ object DebugReportUtils {
 
     suspend fun createPendingReport(context: Context, appId: String): File? = withContext(Dispatchers.IO) {
         var reportDir: File? = null
+        val perf = PerfSampler.stop()
         try {
             val wineLog = wineLogFile(context, appId)
             if (!wineLog.exists() || wineLog.length() == 0L) {
@@ -80,7 +84,12 @@ object DebugReportUtils {
             }
 
             compressLog(claimedLog, logFile(dir))
-            headerFile(dir).writeText(buildHeader(context, appId).toString())
+            val header = buildHeader(context, appId)
+            if (perf != null) {
+                perfFile(dir).writeText(perf.perf.toString())
+                header.put("perf", perf.verdict)
+            }
+            headerFile(dir).writeText(header.toString())
             claimedLog.delete()
 
             dir

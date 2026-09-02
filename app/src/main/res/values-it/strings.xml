@@ -1798,7 +1798,7 @@
     <string name="debug_offer_message">La sessione è terminata in anticipo. Avvia %1$s ancora una volta con il logging di debug: la nostra AI leggerà il log e ti dirà cosa cambiare.</string>
     <string name="debug_offer_confirm">Avvia esecuzione di debug</string>
     <string name="debug_prerun_title">Ottieni aiuto dall\'AI</string>
-    <string name="debug_prerun_message_1">Avvia il gioco con i log di debug e li condivide con la nostra AI su Discord alla chiusura.</string>
+    <string name="debug_prerun_message_1">Avvia il gioco con i log di debug e li condivide con la nostra AI su Discord alla chiusura. Gioca finché il problema non si presenta.</string>
     <string name="debug_prerun_message_2">Le risposte dell\'AI sono solo per gli abbonati.</string>
     <string name="debug_prerun_message_3">Chiunque può condividere il report per ricevere aiuto umano.</string>
     <string name="debug_paywall_title">Ottieni supporto di debug AI</string>

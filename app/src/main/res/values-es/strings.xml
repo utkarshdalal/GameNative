@@ -1805,7 +1805,7 @@
     <string name="debug_offer_message">Esa sesión terminó antes de tiempo. Ejecuta %1$s una vez más con registro de depuración y nuestra AI leerá el registro y te dirá qué cambiar.</string>
     <string name="debug_offer_confirm">Iniciar ejecución de depuración</string>
     <string name="debug_prerun_title">Obtén ayuda de la AI</string>
-    <string name="debug_prerun_message_1">Ejecuta el juego con registro de depuración y comparte el registro con nuestra AI en Discord al salir.</string>
+    <string name="debug_prerun_message_1">Ejecuta el juego con registro de depuración y comparte el registro con nuestra AI en Discord al salir. Juega hasta que aparezca el problema.</string>
     <string name="debug_prerun_message_2">Las respuestas de la AI son solo para suscriptores.</string>
     <string name="debug_prerun_message_3">Cualquiera puede compartir el informe para recibir ayuda humana.</string>
     <string name="debug_paywall_title">Consigue soporte de depuración con AI</string>
