@@ -796,16 +796,22 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 // Beta-type apps (Playtests) previously PICS'd without an access token come
                 // back with an empty depots map and get stuck that way forever, since they're
-                // no longer "missing" once they have a row. Retry those alongside anything new.
-                val staleBetaAppIds = service.appDao.getBetaAppIdsWithEmptyDepots().toSet()
+                // no longer "missing" once they have a row. Retry those alongside anything new,
+                // but only ones still actually owned — otherwise a stale local row for a
+                // playtest the account lost access to would get re-queued on every refresh.
+                val staleBetaAppIds = service.appDao.getBetaAppIdsWithEmptyDepots()
+                    .filter { it in remoteAppIds }
+                    .toSet()
 
                 val appIdsToFetch = missingAppIds + staleBetaAppIds
                 if (appIdsToFetch.isEmpty()) {
                     return@runCatching 0
                 }
 
-                if (staleBetaAppIds.isNotEmpty()) {
-                    service.appDao.resetChangeNumberForApps(staleBetaAppIds.toList())
+                // Chunked: SQLite caps the number of bind parameters per statement, and this
+                // IN (...) list is expanded to one placeholder per id.
+                staleBetaAppIds.chunked(MAX_PICS_BUFFER).forEach { chunk ->
+                    service.appDao.resetChangeNumberForApps(chunk)
                 }
 
                 // Restricted apps (e.g. Playtests) only return their depots section when the
@@ -1031,15 +1037,22 @@ class SteamService : Service(), IChallengeUrlChanged {
             val appInfo = getAppInfoOf(appId) ?: return emptyMap()
             val ownedDlc = runBlocking { getOwnedAppDlc(appId) }
             val hasSteamUnlockedBranch = runBlocking { getSteamUnlockedBranches(appId).isNotEmpty() }
-            val licensedDepots = getLicensedDepotIds(appId).orEmpty().toMutableSet()
+            // Same null-vs-unknown distinction as in getMainAppDepots: an unresolved main
+            // package license must stay null through to eligibleDepots, otherwise has64Bit
+            // comes back false for a perfectly good 64-bit-only app (its own depot filtered
+            // out by the license gate), and DLC below then gets allowed to pick a 32-bit
+            // depot alongside the (correctly resolved) 64-bit parent.
+            val mainLicensedDepotIds = getLicensedDepotIds(appId)
+            val licensedDepots = mainLicensedDepotIds.orEmpty().toMutableSet()
+            val effectiveLicensedDepots = if (mainLicensedDepotIds == null) null else licensedDepots
 
             val map = getMainAppDepots(appId, preferredLanguage).toMutableMap()
 
             // parent app's arch applies to DLC arch selection
             val mainLanguage = SteamUtils.effectiveDepotLanguage(
-                appInfo.depots, preferredLanguage, ownedDlc, licensedDepots, hasSteamUnlockedBranch,
+                appInfo.depots, preferredLanguage, ownedDlc, effectiveLicensedDepots, hasSteamUnlockedBranch,
             )
-            val has64Bit = eligibleDepots(appInfo.depots, mainLanguage, ownedDlc, licensedDepots)
+            val has64Bit = eligibleDepots(appInfo.depots, mainLanguage, ownedDlc, effectiveLicensedDepots)
                 .any { it.osArch == OSArch.Arch64 }
 
             val indirectDlcApps = getDownloadableDlcAppsOf(appId).orEmpty()
