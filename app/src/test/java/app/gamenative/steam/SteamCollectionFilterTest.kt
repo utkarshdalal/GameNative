@@ -59,4 +59,14 @@ class SteamCollectionFilterTest {
         assertEquals(setOf(440, 570), SteamCollectionFilter.allowedAppIds(setOf("fav"), all))
         assertEquals(setOf(440, 570, 730), SteamCollectionFilter.allowedAppIds(setOf("fav", "sht"), all))
     }
+
+    @Test fun passesAllRequiresMembershipInEveryActiveGroup() {
+        assertTrue(SteamCollectionFilter.passesAll(570, setOf(440, 570), setOf(570, 730)))
+        assertFalse(SteamCollectionFilter.passesAll(440, setOf(440, 570), setOf(570, 730)))
+    }
+
+    @Test fun passesAllIgnoresInactiveGroups() {
+        assertTrue(SteamCollectionFilter.passesAll(440, setOf(440, 570), null))
+        assertTrue(SteamCollectionFilter.passesAll(999, null, null))
+    }
 }
