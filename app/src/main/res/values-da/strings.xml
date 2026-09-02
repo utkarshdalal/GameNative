@@ -1677,7 +1677,7 @@
     <string name="debug_offer_message">Den session sluttede for tidligt. Kør %1$s en gang til med fejlfindingslogning, så læser vores AI loggen og fortæller dig, hvad du skal ændre.</string>
     <string name="debug_offer_confirm">Start fejlfindingskørsel</string>
     <string name="debug_prerun_title">Få AI-hjælp</string>
-    <string name="debug_prerun_message_1">Kører spillet med debug-logning og deler loggen med vores AI på Discord, når du afslutter.</string>
+    <string name="debug_prerun_message_1">Kører spillet med debug-logning og deler loggen med vores AI på Discord, når du afslutter. Spil, indtil du oplever problemet.</string>
     <string name="debug_prerun_message_2">AI-svar er kun for abonnenter.</string>
     <string name="debug_prerun_message_3">Alle kan dele rapporten for at få menneskelig hjælp.</string>
     <string name="debug_paywall_title">Få AI-fejlfindingshjælp</string>

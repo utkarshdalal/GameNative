@@ -1809,7 +1809,7 @@
     <string name="debug_offer_message">Acea sesiune s-a încheiat prematur. Rulează %1$s încă o dată cu jurnalizarea de depanare, iar AI-ul nostru va citi jurnalul și îți va spune ce să schimbi.</string>
     <string name="debug_offer_confirm">Pornește rularea de depanare</string>
     <string name="debug_prerun_title">Primește ajutor de la AI</string>
-    <string name="debug_prerun_message_1">Rulează jocul cu jurnal de depanare și partajează jurnalul cu AI-ul nostru pe Discord la ieșire.</string>
+    <string name="debug_prerun_message_1">Rulează jocul cu jurnal de depanare și partajează jurnalul cu AI-ul nostru pe Discord la ieșire. Joacă până când apare problema.</string>
     <string name="debug_prerun_message_2">Răspunsurile AI sunt doar pentru abonați.</string>
     <string name="debug_prerun_message_3">Oricine poate partaja raportul pentru ajutor uman.</string>
     <string name="debug_paywall_title">Obține suport de depanare AI</string>

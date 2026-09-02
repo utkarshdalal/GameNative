@@ -1747,7 +1747,7 @@
     <string name="debug_offer_message">Diese Sitzung wurde vorzeitig beendet. Starte %1$s noch einmal mit Debug-Logging, dann liest unsere AI das Log und sagt dir, was du ändern musst.</string>
     <string name="debug_offer_confirm">Debug-Lauf starten</string>
     <string name="debug_prerun_title">AI-Hilfe erhalten</string>
-    <string name="debug_prerun_message_1">Startet das Spiel mit Debug-Logging und teilt das Log nach dem Beenden mit unserer AI auf Discord.</string>
+    <string name="debug_prerun_message_1">Startet das Spiel mit Debug-Logging und teilt das Log nach dem Beenden mit unserer AI auf Discord. Das Spiel so lange ausführen, bis das Problem auftritt.</string>
     <string name="debug_prerun_message_2">AI-Antworten sind nur für Abonnenten.</string>
     <string name="debug_prerun_message_3">Jeder kann den Bericht teilen, um menschliche Hilfe zu erhalten.</string>
     <string name="debug_paywall_title">AI-Debug-Support erhalten</string>
