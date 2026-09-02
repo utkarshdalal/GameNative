@@ -653,6 +653,7 @@
     <string name="app_filter_application">Aplicación</string>
     <string name="app_filter_tool">Herramienta</string>
     <string name="app_filter_demo">Demo</string>
+    <string name="app_filter_playtest">Beta/Playtest</string>
     <string name="app_filter_family">Préstamo familiar</string>
 
     <!-- Login & Connection -->

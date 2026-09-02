@@ -619,6 +619,7 @@
     <string name="app_filter_application">応用</string>
     <string name="app_filter_tool">道具</string>
     <string name="app_filter_demo">デモ</string>
+    <string name="app_filter_playtest">ベータ/プレイテスト</string>
     <string name="app_filter_family">家族</string>
 
     <!-- Login & Connection -->

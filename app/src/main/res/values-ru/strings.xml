@@ -80,6 +80,7 @@
     <string name="app_downloads">Загрузки</string>
     <string name="app_filter_application">Приложение</string>
     <string name="app_filter_demo">Демонстрация</string>
+    <string name="app_filter_playtest">Бета/Плейтест</string>
     <string name="app_filter_family">Семья</string>
     <string name="app_filter_game">Игра</string>
     <string name="app_filter_installed">Установлено</string>

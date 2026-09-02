@@ -604,6 +604,7 @@
     <string name="app_filter_application">Програми</string>
     <string name="app_filter_tool">Інструменти</string>
     <string name="app_filter_demo">Демо</string>
+    <string name="app_filter_playtest">Бета/Плейтест</string>
     <string name="app_filter_family">Сімейна бібліотека</string>
 
     <!-- Login & Connection -->

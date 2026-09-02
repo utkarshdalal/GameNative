@@ -617,6 +617,7 @@
     <string name="app_filter_application">Aplikacja</string>
     <string name="app_filter_tool">Narzędzie</string>
     <string name="app_filter_demo">Demo</string>
+    <string name="app_filter_playtest">Beta/Playtest</string>
     <string name="app_filter_family">Rodzina</string>
 
     <!-- Login & Connection -->

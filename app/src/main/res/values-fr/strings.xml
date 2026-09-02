@@ -609,6 +609,7 @@
     <string name="app_filter_application">Application</string>
     <string name="app_filter_tool">Outil</string>
     <string name="app_filter_demo">Démo</string>
+    <string name="app_filter_playtest">Bêta/Playtest</string>
     <string name="app_filter_family">Famille</string>
 
     <!-- Login & Connection -->

@@ -599,6 +599,7 @@
     <string name="app_filter_application">應用程式</string>
     <string name="app_filter_tool">工具</string>
     <string name="app_filter_demo">試玩版</string>
+    <string name="app_filter_playtest">測試版/試玩</string>
     <string name="app_filter_family">家庭共享</string>
 
     <!-- Login & Connection -->
