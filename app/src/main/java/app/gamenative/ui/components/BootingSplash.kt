@@ -16,10 +16,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import android.os.SystemClock
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontFamily
+import app.gamenative.PrefManager
+import app.gamenative.data.BootQuizQuestion
+import app.gamenative.data.localizedPrompt
+import app.gamenative.data.localizedWinBody
+import app.gamenative.data.localizedLoseBody
+import app.gamenative.data.isPlayable
+import com.posthog.PostHog
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -75,7 +89,6 @@ import com.skydoves.landscapist.coil.CoilImage
 import java.io.File
 import kotlin.math.sin
 import kotlin.random.Random
-import kotlinx.coroutines.delay
 
 @Composable
 fun BootingSplash(
@@ -218,7 +231,12 @@ fun BootingSplash(
 
             AmbientParticles(phase = particlePhase)
 
-            if (activeAd != null) {
+            LaunchedEffect(visible, activeAd?.campaignId, adVideoFile) {
+                timber.log.Timber.tag("BootAdTrace").i(
+                    "splash: visible=%s activeAd=%s videoFile=%s", visible, activeAd?.campaignId, adVideoFile?.exists(),
+                )
+            }
+            if (activeAd != null && (adVideoFile != null || activeAd.imageUrl.isNotEmpty())) {
                 if (adVideoFile != null) {
                     BootAdVideo(
                         file = adVideoFile,
@@ -474,6 +492,7 @@ private fun BootAdVideo(
         lifecycleOwner.lifecycle.addObserver(observer)
 
         onDispose {
+            timber.log.Timber.tag("BootAdTrace").i("video disposed")
             exoPlayer.removeListener(listener)
             lifecycleOwner.lifecycle.removeObserver(observer)
             exoPlayer.release()
@@ -483,10 +502,10 @@ private fun BootAdVideo(
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { ctx ->
-                PlayerView(ctx).apply {
+                // Inflated for app:surface_type="texture_view": a SurfaceView here loses the
+                // window's punch-through to the XServer's SurfaceView and renders black.
+                (android.view.LayoutInflater.from(ctx).inflate(R.layout.boot_ad_player, null) as PlayerView).apply {
                     player = exoPlayer
-                    useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -561,33 +580,6 @@ private fun BootAdContent(
                 .padding(horizontal = 32.dp)
                 .padding(bottom = 24.dp),
         ) {
-            val title = ad.localizedTitle(context)
-            if (title.isNotEmpty()) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        shadow = textShadow,
-                    ),
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-            }
-
-            val body = ad.localizedBody(context)
-            if (body.isNotEmpty()) {
-                Text(
-                    text = body,
-                    style = MaterialTheme.typography.bodyMedium.copy(shadow = textShadow),
-                    color = Color.White.copy(alpha = 0.85f),
-                    textAlign = TextAlign.Center,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-            }
-
             val cta = remember(ad) {
                 ad.action?.let {
                     FeaturedCta(
@@ -599,13 +591,59 @@ private fun BootAdContent(
                     )
                 }
             }
-            if (cta != null) {
-                FeaturedCtaButton(
-                    action = cta,
-                    campaignId = ad.campaignId,
-                    recSource = "boot_ad",
+            val quizQuestion = remember(ad.campaignId) {
+                if (ad.template == BootAdRepository.TEMPLATE_QUIZ_CARD) {
+                    ad.questions.filter { it.isPlayable() }.randomOrNull()
+                } else {
+                    null
+                }
+            }
+
+            if (quizQuestion != null) {
+                BootQuizCard(
+                    ad = ad,
+                    question = quizQuestion,
+                    cta = cta,
+                    scrimColor = scrimColor,
+                    textShadow = textShadow,
                 )
                 Spacer(modifier = Modifier.height(18.dp))
+            } else {
+                val title = ad.localizedTitle(context)
+                if (title.isNotEmpty()) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            shadow = textShadow,
+                        ),
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+
+                val body = ad.localizedBody(context)
+                if (body.isNotEmpty()) {
+                    Text(
+                        text = body,
+                        style = MaterialTheme.typography.bodyMedium.copy(shadow = textShadow),
+                        color = Color.White.copy(alpha = 0.85f),
+                        textAlign = TextAlign.Center,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
+                if (cta != null) {
+                    FeaturedCtaButton(
+                        action = cta,
+                        campaignId = ad.campaignId,
+                        recSource = "boot_ad",
+                    )
+                    Spacer(modifier = Modifier.height(18.dp))
+                }
             }
 
             ProgressBar(
@@ -624,6 +662,164 @@ private fun BootAdContent(
                 color = Color.White.copy(alpha = 0.85f),
                 textAlign = TextAlign.Center,
             )
+        }
+    }
+}
+
+@kotlin.OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun BootQuizCard(
+    ad: BootAdItem,
+    question: BootQuizQuestion,
+    cta: FeaturedCta?,
+    scrimColor: Color,
+    textShadow: Shadow,
+) {
+    val context = LocalContext.current
+    var selected by remember(question) { mutableStateOf<Int?>(null) }
+    var timedOut by remember(question) { mutableStateOf(false) }
+    val totalMs = (question.timerSeconds.coerceIn(3, 60)) * 1000L
+    var remainingMs by remember(question) { mutableStateOf(totalMs) }
+    val resolved = selected != null || timedOut
+    val won = selected == question.correctIndex
+
+    LaunchedEffect(question, resolved) {
+        if (resolved) return@LaunchedEffect
+        val start = SystemClock.elapsedRealtime()
+        while (true) {
+            delay(50)
+            val left = totalMs - (SystemClock.elapsedRealtime() - start)
+            if (selected != null) return@LaunchedEffect
+            if (left <= 0) {
+                remainingMs = 0
+                timedOut = true
+                return@LaunchedEffect
+            }
+            remainingMs = left
+        }
+    }
+
+    LaunchedEffect(resolved) {
+        if (resolved && PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(
+                event = "boot_quiz_answered",
+                properties = mapOf(
+                    "campaign_id" to ad.campaignId,
+                    "correct" to won,
+                    "timed_out" to timedOut,
+                    "answer_index" to (selected ?: -1),
+                    "time_left_ms" to remainingMs,
+                ),
+            )
+        }
+    }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(scrimColor.copy(alpha = 0.55f))
+            .padding(16.dp)
+            .fillMaxWidth(),
+    ) {
+        val prompt = question.localizedPrompt(context)
+        if (prompt.isNotEmpty()) {
+            Text(
+                text = prompt,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    shadow = textShadow,
+                ),
+                color = Color.White,
+                textAlign = TextAlign.Center,
+            )
+        }
+        if (question.code.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = question.code,
+                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                color = Color(0xFFB9F6CA),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (!resolved) {
+            LinearProgressIndicator(
+                progress = { remainingMs.toFloat() / totalMs },
+                color = if (remainingMs < totalMs / 4) Color(0xFFFF7043) else Color(0xFF80D8FF),
+                trackColor = Color.White.copy(alpha = 0.15f),
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp)),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                question.options.forEachIndexed { index, option ->
+                    OutlinedButton(
+                        onClick = { if (!resolved) selected = index },
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    ) {
+                        Text(text = option, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        } else {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                question.options.forEachIndexed { index, option ->
+                    val chipColor = when {
+                        index == question.correctIndex -> Color(0xFF66BB6A)
+                        index == selected -> Color(0xFFEF5350)
+                        else -> Color.White.copy(alpha = 0.25f)
+                    }
+                    Text(
+                        text = option,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(chipColor.copy(alpha = 0.45f))
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            val fallback = if (won) {
+                stringResource(R.string.boot_quiz_win_default)
+            } else {
+                stringResource(R.string.boot_quiz_lose_default, question.options[question.correctIndex])
+            }
+            val resultCopy = (if (won) question.localizedWinBody(context) else question.localizedLoseBody(context))
+                .ifEmpty { fallback }
+            Text(
+                text = resultCopy,
+                style = MaterialTheme.typography.bodyMedium.copy(shadow = textShadow),
+                color = Color.White.copy(alpha = 0.9f),
+                textAlign = TextAlign.Center,
+            )
+            if (cta != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                FeaturedCtaButton(
+                    action = cta,
+                    campaignId = ad.campaignId,
+                    recSource = "boot_ad_quiz",
+                )
+            }
         }
     }
 }

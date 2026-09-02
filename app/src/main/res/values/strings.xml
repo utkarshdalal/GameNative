@@ -2168,6 +2168,8 @@
 
     <!-- FeaturedItem (server-driven promoted slot) -->
     <string name="featured_badge">Sponsored</string>
+    <string name="boot_quiz_win_default">Correct!</string>
+    <string name="boot_quiz_lose_default">The answer was %1$s</string>
     <string name="featured_action_wishlist">Wishlist</string>
     <string name="featured_action_wishlist_on">Wishlist on %1$s</string>
     <string name="featured_action_wishlisted">Wishlisted</string>

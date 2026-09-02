@@ -28,7 +28,31 @@ data class BootAdItem(
     val maxShowsPerDay: Int = 5,
     val startsAt: String? = null,
     val endsAt: String? = null,
+    // template "quiz_card": one is picked at random per boot.
+    val questions: List<BootQuizQuestion> = emptyList(),
 )
+
+@Serializable
+data class BootQuizQuestion(
+    // Advertiser-supplied locale -> localized copy; resolved on-device.
+    val prompt: Map<String, String> = emptyMap(),
+    // Optional monospace block (code snippets); rendered verbatim, not localized.
+    val code: String = "",
+    val options: List<String> = emptyList(),
+    val correctIndex: Int = 0,
+    val timerSeconds: Int = 7,
+    val winBody: Map<String, String> = emptyMap(),
+    val loseBody: Map<String, String> = emptyMap(),
+)
+
+fun BootQuizQuestion.localizedPrompt(context: Context): String = prompt.forLocale(context) ?: ""
+
+fun BootQuizQuestion.localizedWinBody(context: Context): String = winBody.forLocale(context) ?: ""
+
+fun BootQuizQuestion.localizedLoseBody(context: Context): String = loseBody.forLocale(context) ?: ""
+
+fun BootQuizQuestion.isPlayable(): Boolean =
+    options.size in 2..4 && correctIndex in options.indices && (prompt.isNotEmpty() || code.isNotEmpty())
 
 fun BootAdItem.localizedTitle(context: Context): String = title.forLocale(context) ?: ""
 
@@ -38,6 +62,7 @@ object BootAdRepository {
 
     const val TEMPLATE_CTA_CARD = "cta_card"
     const val TEMPLATE_VIDEO_CARD = "video_card"
+    const val TEMPLATE_QUIZ_CARD = "quiz_card"
 
     private const val VIDEO_DIR = "boot_ads"
     private const val MAX_VIDEO_BYTES = 64L * 1024L * 1024L
@@ -59,8 +84,13 @@ object BootAdRepository {
         val cached = PrefManager.bootAdCacheJson
         if (cached.isEmpty()) return null
         val ad = runCatching { json.decodeFromString<BootAdItem>(cached) }.getOrNull() ?: return null
-        if (ad.template != TEMPLATE_CTA_CARD && ad.template != TEMPLATE_VIDEO_CARD) return null
-        if (ad.imageUrl.isEmpty()) return null
+        if (ad.template != TEMPLATE_CTA_CARD && ad.template != TEMPLATE_VIDEO_CARD && ad.template != TEMPLATE_QUIZ_CARD) return null
+        if (ad.template == TEMPLATE_QUIZ_CARD) {
+            // Quiz cards may run without art (plain gradient backdrop); they need questions.
+            if (ad.questions.none { it.isPlayable() }) return null
+        } else if (ad.imageUrl.isEmpty()) {
+            return null
+        }
         if (!isWithinWindow(ad)) return null
         if (ad.maxShowsPerDay > 0 && showsToday(ad.campaignId) >= ad.maxShowsPerDay) return null
         return ad

@@ -2,7 +2,23 @@ package app.gamenative.ui.screen.library
 
 import android.content.Context
 import android.content.Intent
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +49,7 @@ import app.gamenative.data.FeaturedCta
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamWishlistService
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.util.BootAdLinkSheet
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
@@ -57,7 +75,28 @@ internal fun FeaturedCtaButton(
         }
     }
 
-    val openUrl = { context.startActivity(Intent(Intent.ACTION_VIEW, action.url.toUri())) }
+    var inAppUrl by remember { mutableStateOf<String?>(null) }
+    // Leaving the app mid-boot kills the guest session, so boot-splash CTAs open in-app.
+    val openUrl = {
+        if (recSource.startsWith("boot_ad")) {
+            inAppUrl = action.url
+            BootAdLinkSheet.open.value = true
+        } else {
+            context.startActivity(Intent(Intent.ACTION_VIEW, action.url.toUri()))
+        }
+    }
+    inAppUrl?.let { url ->
+        InAppLinkDialog(
+            url = url,
+            onClose = {
+                inAppUrl = null
+                BootAdLinkSheet.open.value = false
+            },
+        )
+    }
+    DisposableEffect(Unit) {
+        onDispose { if (inAppUrl != null) BootAdLinkSheet.open.value = false }
+    }
 
     val inert = cta != null && (busy || done == true)
 
@@ -76,6 +115,14 @@ internal fun FeaturedCtaButton(
             )
         }
         if (cta == null) {
+            // Plain-link CTAs (VISIT etc.) are billable clicks too: count them like in-app
+            // conversions so per-CTA campaigns bill even with usage analytics disabled.
+            ConversionTracker.featuredConversion(
+                campaignId = campaignId,
+                actionType = action.type,
+                appId = action.appId,
+                source = recSource,
+            )
             openUrl()
         } else {
             busy = true
@@ -166,3 +213,50 @@ private sealed class InAppCta(
         }
     }
 }
+
+@Composable
+private fun InAppLinkDialog(url: String, onClose: () -> Unit) {
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .fillMaxHeight(0.9f),
+        ) {
+            Column {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 4.dp),
+                ) {
+                    Text(
+                        text = url.toUri().host ?: url,
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = onClose) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = stringResource(R.string.close))
+                    }
+                }
+                AndroidView(
+                    factory = { ctx ->
+                        WebView(ctx).apply {
+                            settings.javaScriptEnabled = true
+                            webViewClient = WebViewClient()
+                            loadUrl(url)
+                        }
+                    },
+                    onRelease = { it.destroy() },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+    }
+}
+
