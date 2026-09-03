@@ -33,7 +33,6 @@ import app.gamenative.utils.CustomGameScanner
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
-import app.gamenative.ui.util.BootAdLinkSheet
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
@@ -57,7 +56,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -388,6 +386,7 @@ class MainViewModel @Inject constructor(
                 }
             }
             Timber.tag("BootAdTrace").i("show: wasShowing=false held=%s reuse=%s ad=%s", held != null, reuse, ad?.campaignId)
+            PluviaApp.isBootingSplashShowing = true
             _state.update { it.copy(showBootingSplash = true, bootAd = ad) }
         } else if (!value && wasShowing) {
             Timber.tag("BootAdTrace").i("hide: ad=%s", _state.value.bootAd?.campaignId)
@@ -402,8 +401,10 @@ class MainViewModel @Inject constructor(
                 }
             }
             // bootAd stays in state so the exit fade keeps rendering it; the next show replaces it.
+            PluviaApp.isBootingSplashShowing = false
             _state.update { it.copy(showBootingSplash = false) }
         } else {
+            PluviaApp.isBootingSplashShowing = value
             _state.update { it.copy(showBootingSplash = value) }
         }
     }
@@ -576,6 +577,8 @@ class MainViewModel @Inject constructor(
             }
 
             bootAwaitingGameWindow = true
+            // A new launch is a new impression: never reuse the previous launch's ad.
+            bootAdHiddenAtMs = 0L
             setShowBootingSplash(true)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
@@ -854,12 +857,6 @@ class MainViewModel @Inject constructor(
                 bootAwaitingGameWindow = false
                 bootingSplashTimeoutJob?.cancel()
                 bootingSplashTimeoutJob = null
-                // A boot-ad link sheet lives inside the splash: keep the splash (and sheet) up
-                // until the user closes it; the game is already running underneath.
-                if (BootAdLinkSheet.open.value) {
-                    Timber.tag("BootAdTrace").i("deferring splash hide until link sheet closes")
-                    BootAdLinkSheet.open.first { !it }
-                }
                 setShowBootingSplash(false)
                 // See onClearBootingSplash's kdoc — broadcast so MainActivity's own instance clears
                 // too when this call is actually running on ImmersiveXrActivity's separate instance.

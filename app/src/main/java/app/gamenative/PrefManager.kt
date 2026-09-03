@@ -1234,7 +1234,15 @@ object PrefManager {
             setPref(BOOT_AD_CACHE_JSON, value)
         }
 
-    // "campaignId:daySeed:count" — frequency cap bookkeeping for the boot-screen sponsor card
+    // campaignId shown on the most recent boot, so rotation never repeats back-to-back
+    private val BOOT_AD_LAST_SHOWN = stringPreferencesKey("boot_ad_last_shown")
+    var bootAdLastShown: String
+        get() = getPref(BOOT_AD_LAST_SHOWN, "")
+        set(value) {
+            setPref(BOOT_AD_LAST_SHOWN, value)
+        }
+
+    // Comma-separated "campaignId:daySeed:count" entries — per-campaign daily frequency caps
     private val BOOT_AD_SHOW_COUNT = stringPreferencesKey("boot_ad_show_count")
     var bootAdShowCount: String
         get() = getPref(BOOT_AD_SHOW_COUNT, "")

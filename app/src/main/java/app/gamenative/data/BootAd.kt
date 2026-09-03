@@ -6,6 +6,7 @@ import app.gamenative.PrefManager
 import app.gamenative.utils.Net
 import java.io.File
 import java.time.Instant
+import kotlin.random.Random
 import okhttp3.Request
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -26,6 +27,10 @@ data class BootAdItem(
     val action: FeaturedAction? = null,
     val appId: Int? = null,
     val maxShowsPerDay: Int = 5,
+    // Fraction of eligible boots that show the card; the rest get the plain splash.
+    val showRate: Double = 1.0,
+    // Rotation share among the cached boot campaigns.
+    val weight: Double = 1.0,
     val startsAt: String? = null,
     val endsAt: String? = null,
     // template "quiz_card": one is picked at random per boot.
@@ -69,31 +74,55 @@ object BootAdRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Persist the latest payload from a successful hero fetch; null clears an ended campaign. */
-    fun store(ad: BootAdItem?) {
-        PrefManager.bootAdCacheJson = if (ad == null) "" else json.encodeToString(ad)
+    /** Persist the latest payload from a successful hero fetch; empty clears ended campaigns. */
+    fun store(ads: List<BootAdItem>) {
+        PrefManager.bootAdCacheJson = if (ads.isEmpty()) "" else json.encodeToString(ads)
+    }
+
+    fun cachedAds(): List<BootAdItem> {
+        val cached = PrefManager.bootAdCacheJson
+        if (cached.isEmpty()) return emptyList()
+        return runCatching { json.decodeFromString<List<BootAdItem>>(cached) }.getOrNull()
+            // Payloads cached by builds that held a single ad
+            ?: runCatching { listOf(json.decodeFromString<BootAdItem>(cached)) }.getOrNull()
+            ?: emptyList()
     }
 
     /**
      * The ad to render on the next boot, or null for the plain splash. Served purely from the
-     * disk cache — boot never fetches. Null when the user disabled sponsored loading screens,
-     * the campaign window is over, or today's frequency cap is spent.
+     * disk cache — boot never fetches. Simultaneous campaigns rotate: a weighted random pick
+     * among the ones still in window, under their daily cap, and not the one shown on the
+     * previous boot. Each campaign's showRate is applied after the pick, so a
+     * campaign can keep some boots ad-free without handing them to a competitor.
      */
     fun getActiveAd(): BootAdItem? {
         if (!PrefManager.bootScreenAdsEnabled) return null
-        val cached = PrefManager.bootAdCacheJson
-        if (cached.isEmpty()) return null
-        val ad = runCatching { json.decodeFromString<BootAdItem>(cached) }.getOrNull() ?: return null
-        if (ad.template != TEMPLATE_CTA_CARD && ad.template != TEMPLATE_VIDEO_CARD && ad.template != TEMPLATE_QUIZ_CARD) return null
-        if (ad.template == TEMPLATE_QUIZ_CARD) {
-            // Quiz cards may run without art (plain gradient backdrop); they need questions.
-            if (ad.questions.none { it.isPlayable() }) return null
-        } else if (ad.imageUrl.isEmpty()) {
-            return null
-        }
-        if (!isWithinWindow(ad)) return null
-        if (ad.maxShowsPerDay > 0 && showsToday(ad.campaignId) >= ad.maxShowsPerDay) return null
+        val eligible = cachedAds().filter { isRenderable(it) && isWithinWindow(it) }
+            .filter { it.maxShowsPerDay <= 0 || showsToday(it.campaignId) < it.maxShowsPerDay }
+        if (eligible.isEmpty()) return null
+        val lastShown = PrefManager.bootAdLastShown
+        val candidates = eligible.filter { it.campaignId != lastShown }.ifEmpty { eligible }
+        val ad = weightedPick(candidates) ?: return null
+        if (ad.showRate < 1.0 && Random.nextDouble() >= ad.showRate.coerceAtLeast(0.0)) return null
         return ad
+    }
+
+    private fun isRenderable(ad: BootAdItem): Boolean = when (ad.template) {
+        // Quiz cards may run without art (plain gradient backdrop); they need questions.
+        TEMPLATE_QUIZ_CARD -> ad.questions.any { it.isPlayable() }
+        TEMPLATE_CTA_CARD, TEMPLATE_VIDEO_CARD -> ad.imageUrl.isNotEmpty()
+        else -> false
+    }
+
+    private fun weightedPick(ads: List<BootAdItem>): BootAdItem? {
+        if (ads.isEmpty()) return null
+        val weights = ads.map { if (it.weight.isFinite() && it.weight > 0) it.weight else 1.0 }
+        var roll = Random.nextDouble() * weights.sum()
+        ads.forEachIndexed { i, ad ->
+            roll -= weights[i]
+            if (roll < 0) return ad
+        }
+        return ads.last()
     }
 
     /** The pre-downloaded video for this campaign, or null so the UI falls back to the still card. */
@@ -108,38 +137,44 @@ object BootAdRepository {
      * WiFi/Ethernet only, and prunes videos of past campaigns. Boot itself never calls this —
      * it plays the cached file or shows the still card.
      */
-    fun prefetchVideo(context: Context, ad: BootAdItem?) {
+    fun prefetchVideos(context: Context, ads: List<BootAdItem>) {
         val dir = File(context.cacheDir, VIDEO_DIR)
-        val keep = ad?.let { "${it.campaignId}.mp4" }
-        dir.listFiles()?.forEach { if (it.name != keep) it.delete() }
+        val videoAds = ads.filter { it.template == TEMPLATE_VIDEO_CARD && it.videoUrl.isNotEmpty() }
+        val keep = videoAds.map { "${it.campaignId}.mp4" }.toSet()
+        dir.listFiles()?.forEach { if (it.name !in keep) it.delete() }
 
-        if (ad == null || ad.template != TEMPLATE_VIDEO_CARD || ad.videoUrl.isEmpty()) return
-        if (!NetworkMonitor.hasWifiOrEthernet.value) return
-        val target = File(dir, keep!!)
-        if (target.exists() && target.length() > 0) return
-
+        if (videoAds.isEmpty() || !NetworkMonitor.hasWifiOrEthernet.value) return
         dir.mkdirs()
-        val tmp = File(dir, "$keep.tmp")
-        try {
-            val request = Request.Builder().url(ad.videoUrl).build()
-            Net.http.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return
-                val body = response.body ?: return
-                if (body.contentLength() > MAX_VIDEO_BYTES) {
-                    Timber.tag("BootAdRepo").d("Boot ad video too large: %d", body.contentLength())
-                    return
+        for (ad in videoAds) {
+            val name = "${ad.campaignId}.mp4"
+            val target = File(dir, name)
+            if (target.exists() && target.length() > 0) continue
+            val tmp = File(dir, "$name.tmp")
+            try {
+                val request = Request.Builder().url(ad.videoUrl).build()
+                Net.http.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@use
+                    val body = response.body ?: return@use
+                    if (body.contentLength() > MAX_VIDEO_BYTES) {
+                        Timber.tag("BootAdRepo").d("Boot ad video too large: %d", body.contentLength())
+                        return@use
+                    }
+                    tmp.outputStream().use { out -> body.byteStream().copyTo(out) }
                 }
-                tmp.outputStream().use { out -> body.byteStream().copyTo(out) }
+                if (!tmp.exists() || !tmp.renameTo(target)) tmp.delete()
+            } catch (e: Exception) {
+                Timber.tag("BootAdRepo").d(e, "Boot ad video prefetch failed")
+                tmp.delete()
             }
-            if (!tmp.renameTo(target)) tmp.delete()
-        } catch (e: Exception) {
-            Timber.tag("BootAdRepo").d(e, "Boot ad video prefetch failed")
-            tmp.delete()
         }
     }
 
     fun recordShown(campaignId: String) {
-        PrefManager.bootAdShowCount = "$campaignId:${daySeed()}:${showsToday(campaignId) + 1}"
+        val day = daySeed().toString()
+        val others = showEntries().filter { it[0] != campaignId && it[1] == day }
+        val updated = others + listOf(listOf(campaignId, day, (showsToday(campaignId) + 1).toString()))
+        PrefManager.bootAdShowCount = updated.joinToString(",") { it.joinToString(":") }
+        PrefManager.bootAdLastShown = campaignId
     }
 
     private fun isWithinWindow(ad: BootAdItem): Boolean {
@@ -153,11 +188,12 @@ object BootAdRepository {
         }
     }
 
+    private fun showEntries(): List<List<String>> =
+        PrefManager.bootAdShowCount.split(",").map { it.split(":") }.filter { it.size == 3 }
+
     private fun showsToday(campaignId: String): Int {
-        val parts = PrefManager.bootAdShowCount.split(":")
-        if (parts.size != 3) return 0
-        if (parts[0] != campaignId || parts[1] != daySeed().toString()) return 0
-        return parts[2].toIntOrNull() ?: 0
+        val day = daySeed().toString()
+        return showEntries().firstOrNull { it[0] == campaignId && it[1] == day }?.get(2)?.toIntOrNull() ?: 0
     }
 
     private fun daySeed(): Long = System.currentTimeMillis() / 86_400_000L

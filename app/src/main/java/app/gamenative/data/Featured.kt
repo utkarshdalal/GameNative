@@ -10,6 +10,7 @@ data class HeroResponse(
     val recommendation: RecommendedGame? = null,
     val featured: FeaturedItem? = null,
     val bootAd: BootAdItem? = null,
+    val bootAds: List<BootAdItem> = emptyList(),
 )
 
 @Serializable
