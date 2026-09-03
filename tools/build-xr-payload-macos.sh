@@ -60,6 +60,8 @@ unzip -q -o "$aar" -d "$work/openxr"
 "$cmake" --build "$work/xrimmersive"
 mkdir -p "$repository/app/src/modernXr/jniLibs/arm64-v8a"
 cp "$work/xrimmersive/libxrimmersive.so" "$repository/app/src/modernXr/jniLibs/arm64-v8a/"
+mkdir -p "$repository/app/src/legacyXr/jniLibs/arm64-v8a"
+cp "$work/xrimmersive/libxrimmersive.so" "$repository/app/src/legacyXr/jniLibs/arm64-v8a/"
 
 # The Wine unixlib (plain NDK shared library).
 "$cmake" -S "$source_dir/unix" -B "$work/unixlib" -GNinja \
@@ -94,6 +96,10 @@ cd /repo && bash tools/provision-build-arm64x-wine-bridge.sh /repo'
 elif [ ! -f "$output/gamenative_xr_unixbridge.dll" ]; then
     echo "note: arm64x bridge DLL not present — run with --bridge to build it (Docker)"
 fi
+
+# legacyXr ships the same payload.
+mkdir -p "$repository/app/src/legacyXr/assets"
+cp "$output"/* "$repository/app/src/legacyXr/assets/"
 
 echo "payload ready:"
 ls -la "$output"
