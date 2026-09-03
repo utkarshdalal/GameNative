@@ -56,6 +56,34 @@ object GogRecommendationsRepository {
     /** Today's Discover cards if already fetched this session; no network. */
     fun cachedCards(): List<GogRecCard> = cache ?: emptyList()
 
+    // productId -> Steam HLS trailer ("" when the game has none), resolved in the background
+    // so the boot splash can play a trailer for Discover cards without fetching at boot.
+    private val trailerCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
+
+    fun cachedTrailer(productId: Long): String? = trailerCache[productId]?.takeIf { it.isNotEmpty() }
+
+    /**
+     * Resolve Steam trailers for the first [limit] cards that don't have one cached yet. Two
+     * store calls per card, a few at a time; failures are simply left unresolved for next time.
+     */
+    suspend fun prefetchTrailers(cards: List<GogRecCard>, limit: Int = 8) = withContext(Dispatchers.IO) {
+        cards.take(limit)
+            .filter { !trailerCache.containsKey(it.productId) }
+            .chunked(3)
+            .forEach { chunk ->
+                coroutineScope {
+                    chunk.map { card ->
+                        async {
+                            runCatching { fetchSteamMedia(card.productId, card.title)?.videoUrl }
+                                .getOrNull()
+                                ?.let { trailerCache[card.productId] = it }
+                                ?: run { trailerCache[card.productId] = "" }
+                        }
+                    }.forEach { it.await() }
+                }
+            }
+    }
+
     suspend fun getRecommendations(
         context: Context,
         owned: List<OwnedGameRef>,

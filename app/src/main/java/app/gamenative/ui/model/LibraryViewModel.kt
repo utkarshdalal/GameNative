@@ -334,10 +334,12 @@ class LibraryViewModel @Inject constructor(
                         amazonGameDao,
                     )
                     val userId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
-                    RecommendationRepository.setRecommendationPool(
-                        GogRecommendationsRepository.getRecommendations(context, owned, userId, daySeed),
-                    )
-                    GogRecommendationsRepository.getDailyHero(context, owned, userId, daySeed)
+                    val cards = GogRecommendationsRepository.getRecommendations(context, owned, userId, daySeed)
+                    RecommendationRepository.setRecommendationPool(cards)
+                    val pick = GogRecommendationsRepository.getDailyHero(context, owned, userId, daySeed)
+                    // Trailers for the boot-splash cards; the pick is already published above.
+                    launch { runCatching { GogRecommendationsRepository.prefetchTrailers(cards) } }
+                    pick
                 }.getOrNull() ?: hero.recommendation
                 else -> hero.recommendation
             }

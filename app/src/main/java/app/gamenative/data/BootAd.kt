@@ -153,10 +153,15 @@ object BootAdRepository {
         )
     }
 
-    private fun discoverCard(card: GogRecCard): BootAdItem = BootAdItem(
+    private fun discoverCard(card: GogRecCard): BootAdItem {
+        // Trailers are streamed, so WiFi only.
+        val trailer = app.gamenative.data.gog.GogRecommendationsRepository.cachedTrailer(card.productId)
+            ?.takeIf { NetworkMonitor.hasWifiOrEthernet.value }
+        return BootAdItem(
         campaignId = "rec-gog-${card.productId}",
-        template = TEMPLATE_CTA_CARD,
+        template = if (trailer != null) TEMPLATE_VIDEO_CARD else TEMPLATE_CTA_CARD,
         imageUrl = card.heroImage,
+        videoUrl = trailer ?: "",
         title = mapOf("en" to card.title),
         body = mapOf("en" to card.becausePlayed),
         action = card.affiliateUrl.ifEmpty { card.storeUrl }.takeIf { it.isNotEmpty() }?.let {
@@ -165,7 +170,8 @@ object BootAdRepository {
         maxShowsPerDay = 0,
         sponsored = false,
         priceLabel = card.priceLabel,
-    )
+        )
+    }
 
     /** House cards count for rotation only — no impression or cap bookkeeping. */
     fun noteShown(campaignId: String) {
