@@ -13,13 +13,13 @@ on:
           - emergency
   schedule:
     - cron: '17 6 * * *'
-  workflow_run:
-    workflows: ["Actions artifact retention cleanup"]
-    types: [completed]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
   actions: write
+  issues: write
 
 concurrency:
   group: artifact-retention-cleanup
@@ -27,11 +27,11 @@ concurrency:
 
 jobs:
   cleanup:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.id == 33717657543 }}
+    if: ${{ github.event_name != 'issue_comment' || (github.actor == github.repository_owner && github.event.issue.pull_request && github.event.comment.body == '/artifact-storage emergency-purge') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      CLEANUP_MODE: ${{ github.event_name == 'workflow_run' && 'emergency' || inputs.mode || 'normal' }}
+      CLEANUP_MODE: ${{ github.event_name == 'issue_comment' && 'emergency' || inputs.mode || 'normal' }}
     steps:
       - name: Keep latest known-good artifacts and purge the rest
         uses: actions/github-script@v8
@@ -118,3 +118,12 @@ jobs:
               .addHeading(emergency ? 'Emergency artifact cleanup' : 'Artifact cleanup')
               .addRaw(summary)
               .write();
+
+            if (context.eventName === 'issue_comment') {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: context.payload.issue.number,
+                body: `Emergency artifact cleanup completed. ${summary}`,
+              });
+            }
