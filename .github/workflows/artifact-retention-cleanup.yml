@@ -4,9 +4,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '17 6 * * *'
-  push:
-    paths:
-      - '.github/workflows/artifact-retention-cleanup.yml'
 
 permissions:
   contents: read
