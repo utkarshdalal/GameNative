@@ -828,7 +828,7 @@ public class ControlElement {
         boolean showGyroState = !inputControlsView.isEditMode()
                 && inputControlsView.isGyroEnabled() && isGyroModifierControl();
         boolean gyroActive = showGyroState && inputControlsView.isGyroActive();
-        boolean active = selected || (showGyroState ? gyroActive : currentPointerId != -1);
+        boolean active = selected || (showGyroState ? (gyroActive || currentPointerId != -1) : currentPointerId != -1);
         boolean editSelected = selected && inputControlsView.isEditMode();
         int normalColor = getAppearanceDrawColor(false);
         int activeColor = editSelected ? getEditorSelectionDrawColor() : getAppearanceDrawColor(true);

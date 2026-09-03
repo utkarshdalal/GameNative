@@ -424,8 +424,11 @@ public class InputControlsView extends View {
     }
 
     /** Hides the controls profile from drawing without disabling per-game gyro input. */
-    public synchronized void hideProfileForOverlay() {
-        this.profile = null;
+    public void hideProfileForOverlay() {
+        cancelTouchRouting();
+        synchronized (this) {
+            this.profile = null;
+        }
     }
 
     /** Re-evaluates latched gyro activation after the active profile is edited in place. */

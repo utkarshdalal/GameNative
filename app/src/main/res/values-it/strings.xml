@@ -2405,14 +2405,14 @@
     <string name="gyro_section_activation">Attivazione</string>
     <string name="gyro_section_response">Risposta</string>
     <string name="gyro_output">Uscita</string>
-    <string name="gyro_output_subtitle">Scegli cosa controlla il movimento del dispositivo.</string>
+    <string name="gyro_output_subtitle">Scegli cosa controllare con il movimento del dispositivo.</string>
     <string name="gyro_tilt_steering">Sterzo per inclinazione</string>
     <string name="gyro_tilt_steering_subtitle">Mantieni il dispositivo inclinato per sostenere l’input orizzontale dello stick. La posizione corrente viene centrata a ogni attivazione del giroscopio.</string>
     <string name="gyro_tilt_unavailable">Questo dispositivo non fornisce il sensore di orientamento necessario per lo sterzo per inclinazione.</string>
     <string name="gyro_activation">Attivazione</string>
     <string name="gyro_activation_help">Pressione, Commutazione e Cricchetto usano un controllo assegnato a Giroscopio.</string>
     <string name="gyro_activation_always">Sempre</string>
-    <string name="gyro_activation_hold">Pressione</string>
+    <string name="gyro_activation_hold">Tieni premuto</string>
     <string name="gyro_activation_toggle">Commutazione</string>
     <string name="gyro_activation_ratchet">Cricchetto</string>
     <string name="gyro_control_not_assigned">Giroscopio: Non assegnato</string>

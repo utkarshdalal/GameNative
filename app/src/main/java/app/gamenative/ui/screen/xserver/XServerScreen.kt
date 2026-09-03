@@ -610,10 +610,11 @@ fun XServerScreen(
     var fpsLimiterEnabled by rememberSaveable(container.id) { mutableStateOf(initialFpsLimiterEnabled(container)) }
     var fpsLimiterTarget by rememberSaveable(container.id) { mutableIntStateOf(initialFpsLimiterTarget(container)) }
 
+    val gyroOverlaySuppressed = showQuickMenu || keepPausedForEditor || showElementEditor ||
+        showPhysicalControllerDialog || showTouchGestureDialog || showShooterModeDialog ||
+        showPlayingBlockedDialog || isEditMode
     SyncGyroOverlaySuppression(
-        suppressed = showQuickMenu || keepPausedForEditor || showElementEditor ||
-            showPhysicalControllerDialog || showTouchGestureDialog || showShooterModeDialog ||
-            showPlayingBlockedDialog || isEditMode,
+        suppressed = gyroOverlaySuppressed,
         viewKey = xServerView,
     )
 
@@ -2479,11 +2480,7 @@ fun XServerScreen(
                 setXServer(xServerView.getxServer())
                 setTouchpadView(PluviaApp.touchpadView)
                 setGyroSettings(GyroSettings.fromContainer(container))
-                setGyroOverlaySuppressed(
-                    showQuickMenu || keepPausedForEditor || showElementEditor ||
-                        showPhysicalControllerDialog || showTouchGestureDialog || showShooterModeDialog ||
-                        showPlayingBlockedDialog || isEditMode,
-                )
+                setGyroOverlaySuppressed(gyroOverlaySuppressed)
 
                 // Load profile for this container
                 val manager = PluviaApp.inputControlsManager
