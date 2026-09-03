@@ -1194,8 +1194,22 @@ public class ControlElement {
     }
 
     private boolean isGyroModifierControl() {
-        for (BindingCombo bindingCombo : bindings) {
-            if (bindingCombo.contains(Binding.GYRO_MODIFIER)) return true;
+        int dispatchableBindingCount;
+        switch (type) {
+            case BUTTON:
+                dispatchableBindingCount = Math.min(2, bindings.length);
+                break;
+            case D_PAD:
+            case STICK:
+            case TRACKPAD:
+                dispatchableBindingCount = bindings.length;
+                break;
+            default:
+                dispatchableBindingCount = 0;
+                break;
+        }
+        for (int i = 0; i < dispatchableBindingCount; i++) {
+            if (bindings[i].contains(Binding.GYRO_MODIFIER)) return true;
         }
         return false;
     }

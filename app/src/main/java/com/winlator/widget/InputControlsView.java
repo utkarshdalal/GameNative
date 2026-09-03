@@ -234,6 +234,7 @@ public class InputControlsView extends View {
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
         if (profile != null && profile.isElementsLoaded() && oldw > 0 && w != oldw) {
+            cancelTouchRouting();
             profile.loadElements(this);
         }
     }
