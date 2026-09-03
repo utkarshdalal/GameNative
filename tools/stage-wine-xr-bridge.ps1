@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
-$output = Join-Path $repository "app\build\generated\xrPayload\modernXr"
+$output = Join-Path $repository "app\src\modernXr\assets"
 $unixlib = Join-Path $output "gamenative_xr_unixbridge.so"
 $companion32 = Join-Path $repository "app\src\main\windows\openxr_runtime\builtin\gamenative_xr_unixbridge32.dll"
 if (-not (Test-Path -LiteralPath $companion32 -PathType Leaf)) { throw "Missing x86 Wine XR bridge companion" }

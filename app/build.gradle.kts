@@ -268,7 +268,7 @@ android {
         }
         getByName("modernXr") {
             assets {
-                srcDirs("src/modern/assets", "src/main/assets", "build/generated/xrPayload/modernXr")
+                srcDirs("src/modern/assets", "src/main/assets")
             }
             jniLibs {
                 setSrcDirs(listOf("src/modern/jniLibs", "build/generated/xrNative/modernXr"))

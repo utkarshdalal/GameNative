@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
-$payload = Join-Path $repository "app\build\generated\xrPayload\modernXr"
+$payload = Join-Path $repository "app\src\modernXr\assets"
 $runtime64 = Join-Path $payload "gamenative_openxr_runtime64.dll"
 $runtime32 = Join-Path $payload "gamenative_openxr_runtime32.dll"
 $bridge = Join-Path $payload "gamenative_xr_unixbridge.dll"

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds the complete Windows-VR payload on macOS into app/build/generated/xrPayload/modernXr.
+# Builds the complete Windows-VR payload on macOS into app/src/modernXr/assets.
 #
 #   tools/build-xr-payload-macos.sh            # runtime DLLs + unixlib (the usual iteration loop)
 #   tools/build-xr-payload-macos.sh --bridge   # also the arm64x Wine builtin (Docker; slow first run)
@@ -15,7 +15,7 @@ cmake="$sdk/cmake/3.22.1/bin/cmake"
 ninja="$sdk/cmake/3.22.1/bin/ninja"
 source_dir="$repository/app/src/main/windows/openxr_runtime"
 work="$repository/app/build/xr-payload-macos"
-output="$repository/app/build/generated/xrPayload/modernXr"
+output="$repository/app/src/modernXr/assets"
 mkdir -p "$work" "$output"
 
 # OpenXR headers (pinned to the same release the Windows build uses).

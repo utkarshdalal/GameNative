@@ -12,7 +12,7 @@ toolchains="$base/toolchains"
 wine_source="$base/wine-arm64x-source"
 wine_tools="$base/wine-arm64x-tools"
 wine_build="$base/wine-arm64x-build"
-output="$repository/app/build/generated/xrPayload/modernXr"
+output="$repository/app/src/modernXr/assets"
 llvm="$toolchains/llvm-mingw-20250920-ucrt-ubuntu-22.04-x86_64"
 ndk="$HOME/Android/Sdk/ndk/27.3.13750724"
 

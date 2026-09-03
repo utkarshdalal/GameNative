@@ -17,7 +17,7 @@ $dependency = Join-Path $work "openxr"
 $build = Join-Path $work "build"
 $output = Join-Path $repository "app\build\generated\xrNative\modernXr\arm64-v8a"
 $unixBuild = Join-Path $repository "app\build\xr-unixlib"
-$payloadOutput = Join-Path $repository "app\build\generated\xrPayload\modernXr"
+$payloadOutput = Join-Path $repository "app\src\modernXr\assets"
 New-Item -ItemType Directory -Force -Path $dependency, $build, $output | Out-Null
 if (-not (Test-Path (Join-Path $dependency "prefab"))) {
     tar -xf $aar.FullName -C $dependency

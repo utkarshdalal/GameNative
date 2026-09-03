@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $repository = Split-Path -Parent $PSScriptRoot
-$payload = Join-Path $repository "app\build\generated\xrPayload\modernXr"
+$payload = Join-Path $repository "app\src\modernXr\assets"
 $destination = Join-Path $payload "opencomposite_x64.dll"
 $uri = "https://opencomposite.znix.xyz/builds/download_build?artefact_id=5r2yCwgFn_ozJ44c&build_id=49918237&commit=43e551a4506880ab1a71b8b9fec2fd7fbb27372f"
 $expected = "2f56d45323f252a2ea7c3047c806f9aca3cab36c3f9f71d1dad05a5008b7731a"
