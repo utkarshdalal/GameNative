@@ -146,7 +146,7 @@ fun BootingSplash(
     }
     // Sponsor videos play from the pre-downloaded file; the house recommendation card
     // streams its store trailer (built only on WiFi).
-    val adVideoUri = remember(bootAd?.campaignId) {
+    val adVideoUri = remember(bootAd?.campaignId, bootAd?.videoUrl) {
         bootAd?.takeIf { it.template == BootAdRepository.TEMPLATE_VIDEO_CARD }?.let { ad ->
             if (ad.sponsored) {
                 BootAdRepository.cachedVideoFile(context, ad)?.let(Uri::fromFile)

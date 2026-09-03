@@ -384,6 +384,12 @@ class MainViewModel @Inject constructor(
                     // House recommendation cards carry no cap and report no ad dwell.
                     bootAdDwellReported = !it.sponsored
                     if (it.sponsored) BootAdRepository.recordShown(it.campaignId) else BootAdRepository.noteShown(it.campaignId)
+                    if (!it.sponsored) {
+                        viewModelScope.launch(Dispatchers.IO) {
+                            val upgraded = BootAdRepository.resolveHouseTrailer(it) ?: return@launch
+                            _state.update { s -> if (s.bootAd?.campaignId == upgraded.campaignId) s.copy(bootAd = upgraded) else s }
+                        }
+                    }
                 }
             }
             Timber.tag("BootAdTrace").i("show: wasShowing=false held=%s reuse=%s ad=%s", held != null, reuse, ad?.campaignId)

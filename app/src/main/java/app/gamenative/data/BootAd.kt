@@ -3,6 +3,7 @@ package app.gamenative.data
 import android.content.Context
 import app.gamenative.NetworkMonitor
 import app.gamenative.data.gog.GogRecCard
+import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.PrefManager
 import app.gamenative.utils.Net
 import java.io.File
@@ -129,15 +130,22 @@ object BootAdRepository {
         }.distinctBy { it.campaignId }
         if (candidates.isEmpty()) return null
         val lastShown = PrefManager.bootAdLastShown
-        val fresh = candidates.filter { it.campaignId != lastShown }.ifEmpty { candidates }
-        // A trailer beats a still whenever one is available.
-        val pick = fresh.filter { it.template == TEMPLATE_VIDEO_CARD }.ifEmpty { fresh }.random()
-        Timber.tag("BootAdTrace").i(
-            "rec card: %s video=%s (pool %d, %d with video)",
-            pick.campaignId, pick.template == TEMPLATE_VIDEO_CARD, candidates.size,
-            candidates.count { it.template == TEMPLATE_VIDEO_CARD },
-        )
+        val pick = candidates.filter { it.campaignId != lastShown }.ifEmpty { candidates }.random()
+        Timber.tag("BootAdTrace").i("rec card: %s (pool %d)", pick.campaignId, candidates.size)
         return pick
+    }
+
+    /**
+     * Fetch the picked Discover card's Steam trailer now that it's on screen; the splash swaps
+     * the still for the video when this returns. Null when there's nothing to upgrade.
+     */
+    suspend fun resolveHouseTrailer(ad: BootAdItem): BootAdItem? {
+        if (ad.sponsored || ad.template == TEMPLATE_VIDEO_CARD) return null
+        if (!NetworkMonitor.hasWifiOrEthernet.value) return null
+        val productId = ad.campaignId.removePrefix("rec-gog-").toLongOrNull() ?: return null
+        val title = ad.title["en"] ?: return null
+        val url = GogRecommendationsRepository.resolveTrailer(productId, title) ?: return null
+        return ad.copy(template = TEMPLATE_VIDEO_CARD, videoUrl = url)
     }
 
     private fun heroPickCard(rec: RecommendedGame): BootAdItem {
@@ -162,14 +170,10 @@ object BootAdRepository {
     }
 
     private fun discoverCard(card: GogRecCard): BootAdItem {
-        // Trailers are streamed, so WiFi only.
-        val trailer = app.gamenative.data.gog.GogRecommendationsRepository.cachedTrailer(card.productId)
-            ?.takeIf { NetworkMonitor.hasWifiOrEthernet.value }
         return BootAdItem(
         campaignId = "rec-gog-${card.productId}",
-        template = if (trailer != null) TEMPLATE_VIDEO_CARD else TEMPLATE_CTA_CARD,
+        template = TEMPLATE_CTA_CARD,
         imageUrl = card.heroImage,
-        videoUrl = trailer ?: "",
         title = mapOf("en" to card.title),
         body = mapOf("en" to card.becausePlayed),
         action = card.affiliateUrl.ifEmpty { card.storeUrl }.takeIf { it.isNotEmpty() }?.let {
