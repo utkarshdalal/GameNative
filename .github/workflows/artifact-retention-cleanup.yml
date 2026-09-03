@@ -41,6 +41,12 @@ jobs:
             const repo = context.repo.repo;
             const emergency = process.env.CLEANUP_MODE === 'emergency';
 
+            async function inBatches(items, size, fn) {
+              for (let i = 0; i < items.length; i += size) {
+                await Promise.all(items.slice(i, i + size).map(fn));
+              }
+            }
+
             const artifacts = await github.paginate(
               github.rest.actions.listArtifactsForRepo,
               { owner, repo, per_page: 100 }
@@ -48,9 +54,8 @@ jobs:
             const liveArtifacts = artifacts.filter(a => !a.expired && a.workflow_run?.id);
 
             const runCache = new Map();
-            for (const artifact of liveArtifacts) {
-              const runId = artifact.workflow_run.id;
-              if (runCache.has(runId)) continue;
+            const runIds = [...new Set(liveArtifacts.map(a => a.workflow_run.id))];
+            await inBatches(runIds, 20, async (runId) => {
               try {
                 const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
                 runCache.set(runId, run);
@@ -58,7 +63,7 @@ jobs:
                 core.warning(`Could not resolve workflow run ${runId}: ${error.message}`);
                 runCache.set(runId, null);
               }
-            }
+            });
 
             const latestGoodRun = new Map();
             for (const artifact of [...liveArtifacts].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))) {
@@ -69,32 +74,26 @@ jobs:
             }
 
             const keepRunIds = new Set(latestGoodRun.values());
-            let deleted = 0;
-            let reclaimedBytes = 0;
+            const toDelete = [];
             let preserved = 0;
 
             for (const artifact of liveArtifacts) {
               const run = runCache.get(artifact.workflow_run.id);
-              if (run && run.status !== 'completed') {
-                preserved += 1;
-                core.info(`Keeping active-run artifact: ${artifact.name}`);
-                continue;
-              }
-              if (keepRunIds.has(artifact.workflow_run.id)) {
-                preserved += 1;
-                core.info(`Keeping latest known-good artifact: ${artifact.name}`);
-                continue;
-              }
-              if (!run) {
+              if ((run && run.status !== 'completed') || keepRunIds.has(artifact.workflow_run.id) || !run) {
                 preserved += 1;
                 continue;
               }
+              toDelete.push(artifact);
+            }
 
+            let deleted = 0;
+            let reclaimedBytes = 0;
+            await inBatches(toDelete, 20, async (artifact) => {
               await github.rest.actions.deleteArtifact({ owner, repo, artifact_id: artifact.id });
               deleted += 1;
               reclaimedBytes += artifact.size_in_bytes ?? 0;
               core.info(`Deleted superseded artifact: ${artifact.name}`);
-            }
+            });
 
             let cachesDeleted = 0;
             if (emergency) {
@@ -103,10 +102,10 @@ jobs:
                   github.rest.actions.getActionsCacheList,
                   { owner, repo, per_page: 100 }
                 );
-                for (const cache of caches) {
+                await inBatches(caches, 20, async (cache) => {
                   await github.rest.actions.deleteActionsCacheById({ owner, repo, cache_id: cache.id });
                   cachesDeleted += 1;
-                }
+                });
               } catch (error) {
                 core.warning(`Actions cache purge was not available: ${error.message}`);
               }
