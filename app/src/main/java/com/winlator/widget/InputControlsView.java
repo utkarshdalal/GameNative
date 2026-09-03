@@ -1821,14 +1821,20 @@ public class InputControlsView extends View {
         if (rightStick) {
             gyroThumbRX = x;
             gyroThumbRY = y;
-            state.thumbRX = Mathf.clamp(baseThumbRX + gyroThumbRX, -1f, 1f);
-            state.thumbRY = Mathf.clamp(baseThumbRY + gyroThumbRY, -1f, 1f);
+            float thumbRX = Mathf.clamp(baseThumbRX + gyroThumbRX, -1f, 1f);
+            float thumbRY = Mathf.clamp(baseThumbRY + gyroThumbRY, -1f, 1f);
+            if (thumbRX == state.thumbRX && thumbRY == state.thumbRY) return;
+            state.thumbRX = thumbRX;
+            state.thumbRY = thumbRY;
         }
         else {
             gyroThumbLX = x;
             gyroThumbLY = y;
-            state.thumbLX = Mathf.clamp(baseThumbLX + gyroThumbLX, -1f, 1f);
-            state.thumbLY = Mathf.clamp(baseThumbLY + gyroThumbLY, -1f, 1f);
+            float thumbLX = Mathf.clamp(baseThumbLX + gyroThumbLX, -1f, 1f);
+            float thumbLY = Mathf.clamp(baseThumbLY + gyroThumbLY, -1f, 1f);
+            if (thumbLX == state.thumbLX && thumbLY == state.thumbLY) return;
+            state.thumbLX = thumbLX;
+            state.thumbLY = thumbLY;
         }
 
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
