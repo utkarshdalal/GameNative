@@ -126,6 +126,7 @@ class PhysicalControllerHandler(
         clearScrollRepeats()
         closeRadialMenuIfOpen(commit = false)
         activeSequenceTriggerBindings.clear()
+        sendGamepadState()
         this.profile = profile
         Log.d(TAG, "PhysicalControllerHandler: Profile set to ${profile?.name}")
     }
@@ -144,6 +145,7 @@ class PhysicalControllerHandler(
         activeSequenceTriggerBindings.clear()
         showKeyboardPressed = false
         closeRadialMenuIfOpen(commit = false)
+        sendGamepadState()
     }
 
     fun onInputDeviceRemoved(deviceId: Int) {

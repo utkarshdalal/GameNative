@@ -19,6 +19,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.Mockito.clearInvocations
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
@@ -28,6 +30,43 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 
 @RunWith(RobolectricTestRunner::class)
 class PhysicalControllerHandlerTest {
+    @Test
+    fun `switching profiles transmits the released old gamepad state`() {
+        val deviceId = 42
+        val keyCode = KeyEvent.KEYCODE_BUTTON_A
+        val controllerBinding = ExternalControllerBinding().apply {
+            setKeyCode(keyCode)
+            setBinding(Binding.GAMEPAD_BUTTON_A)
+        }
+        val controller = mock<ExternalController>()
+        whenever(controller.getControllerBinding(keyCode)).thenReturn(controllerBinding)
+        val oldGamepadState = GamepadState()
+        val oldProfile = mock<ControlsProfile>()
+        whenever(oldProfile.getController(deviceId)).thenReturn(controller)
+        whenever(oldProfile.gamepadState).thenReturn(oldGamepadState)
+        val newProfile = mock<ControlsProfile>()
+        val xServer = mock<XServer>()
+        val handler = PhysicalControllerHandler(oldProfile, xServer)
+        val downEvent = mock<KeyEvent>()
+        whenever(downEvent.repeatCount).thenReturn(0)
+        whenever(downEvent.deviceId).thenReturn(deviceId)
+        whenever(downEvent.keyCode).thenReturn(keyCode)
+        whenever(downEvent.action).thenReturn(KeyEvent.ACTION_DOWN)
+
+        try {
+            assertTrue(handler.onKeyEvent(downEvent))
+            assertTrue(oldGamepadState.isPressed(ExternalController.IDX_BUTTON_A.toInt()))
+            clearInvocations(xServer)
+
+            handler.setProfile(newProfile)
+
+            assertFalse(oldGamepadState.isPressed(ExternalController.IDX_BUTTON_A.toInt()))
+            verify(xServer, times(2)).winHandler
+        } finally {
+            handler.cleanup()
+        }
+    }
+
     @Test
     fun `opening radial menu releases matching axes from other controllers`() {
         val radialDeviceId = 41
