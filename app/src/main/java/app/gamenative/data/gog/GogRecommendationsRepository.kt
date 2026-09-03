@@ -66,22 +66,21 @@ object GogRecommendationsRepository {
      * Resolve Steam trailers for the first [limit] cards that don't have one cached yet. Two
      * store calls per card, a few at a time; failures are simply left unresolved for next time.
      */
-    suspend fun prefetchTrailers(cards: List<GogRecCard>, limit: Int = 8) = withContext(Dispatchers.IO) {
-        cards.take(limit)
-            .filter { !trailerCache.containsKey(it.productId) }
-            .chunked(3)
-            .forEach { chunk ->
-                coroutineScope {
-                    chunk.map { card ->
-                        async {
-                            runCatching { fetchSteamMedia(card.productId, card.title)?.videoUrl }
-                                .getOrNull()
-                                ?.let { trailerCache[card.productId] = it }
-                                ?: run { trailerCache[card.productId] = "" }
-                        }
-                    }.forEach { it.await() }
-                }
+    suspend fun prefetchTrailers(cards: List<GogRecCard>, limit: Int = 40) = withContext(Dispatchers.IO) {
+        val pending = cards.take(limit).filter { !trailerCache.containsKey(it.productId) }
+        Timber.tag("BootAdTrace").i("trailers: resolving %d of %d cards", pending.size, cards.size)
+        pending.chunked(3).forEach { chunk ->
+            coroutineScope {
+                chunk.map { card ->
+                    async {
+                        val url = runCatching { fetchSteamMedia(card.productId, card.title)?.videoUrl }.getOrNull()
+                        trailerCache[card.productId] = url ?: ""
+                        Timber.tag("BootAdTrace").i("trailer %s '%s': %s", card.productId, card.title, if (url != null) "yes" else "none")
+                    }
+                }.forEach { it.await() }
             }
+        }
+        Timber.tag("BootAdTrace").i("trailers: %d with video", trailerCache.values.count { it.isNotEmpty() })
     }
 
     suspend fun getRecommendations(

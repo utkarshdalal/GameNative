@@ -129,7 +129,15 @@ object BootAdRepository {
         }.distinctBy { it.campaignId }
         if (candidates.isEmpty()) return null
         val lastShown = PrefManager.bootAdLastShown
-        return candidates.filter { it.campaignId != lastShown }.ifEmpty { candidates }.random()
+        val fresh = candidates.filter { it.campaignId != lastShown }.ifEmpty { candidates }
+        // A trailer beats a still whenever one is available.
+        val pick = fresh.filter { it.template == TEMPLATE_VIDEO_CARD }.ifEmpty { fresh }.random()
+        Timber.tag("BootAdTrace").i(
+            "rec card: %s video=%s (pool %d, %d with video)",
+            pick.campaignId, pick.template == TEMPLATE_VIDEO_CARD, candidates.size,
+            candidates.count { it.template == TEMPLATE_VIDEO_CARD },
+        )
+        return pick
     }
 
     private fun heroPickCard(rec: RecommendedGame): BootAdItem {
