@@ -1257,7 +1257,7 @@ public class ControlElement {
                 }
                 if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
                 if (!usesToggleSwitch() || !selected) {
-                    currentPointerActivatedButtonBindings = !selected;
+                    currentPointerActivatedButtonBindings = true;
                     handleBindingInputEvent(0, true);
                     handleBindingInputEvent(1, true);
                 }
