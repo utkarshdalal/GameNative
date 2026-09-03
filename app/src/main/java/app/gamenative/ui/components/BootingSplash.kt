@@ -562,7 +562,7 @@ private fun BootAdContent(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Text(
-            text = stringResource(R.string.featured_badge),
+            text = stringResource(if (ad.sponsored) R.string.featured_badge else R.string.boot_rec_badge),
             style = MaterialTheme.typography.labelSmall,
             color = Color.White.copy(alpha = 0.85f),
             modifier = Modifier
@@ -640,7 +640,7 @@ private fun BootAdContent(
                     FeaturedCtaButton(
                         action = cta,
                         campaignId = ad.campaignId,
-                        recSource = "boot_ad",
+                        recSource = if (ad.sponsored) "boot_ad" else "boot_rec",
                     )
                     Spacer(modifier = Modifier.height(18.dp))
                 }

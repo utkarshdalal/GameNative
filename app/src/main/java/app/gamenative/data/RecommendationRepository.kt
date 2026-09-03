@@ -325,6 +325,9 @@ object RecommendationRepository {
     /** Latest featured (if any) — used by the detail screen; no network. */
     fun getCachedFeatured(): FeaturedItem? = lastFeatured
 
+    /** The day's cached recommendation, if any; no network. */
+    fun getCachedRecommendation(): RecommendedGame? = loadCachedRecommendation()
+
     fun getFeaturedGame(context: Context): RecommendedGame? =
         lastFeatured?.toRecommendedGame(context)
 

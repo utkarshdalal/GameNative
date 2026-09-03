@@ -89,6 +89,18 @@ fun SettingsGroupInfo() {
             },
         )
 
+        var bootScreenRecs by rememberSaveable { mutableStateOf(PrefManager.bootScreenRecommendationsEnabled) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            state = bootScreenRecs,
+            title = { Text(stringResource(R.string.settings_info_boot_recs_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_boot_recs_subtitle)) },
+            onCheckedChange = {
+                bootScreenRecs = it
+                PrefManager.bootScreenRecommendationsEnabled = it
+            },
+        )
+
         var usageAnalytics by rememberSaveable { mutableStateOf(PrefManager.usageAnalyticsEnabled) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),

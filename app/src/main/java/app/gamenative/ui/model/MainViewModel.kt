@@ -379,10 +379,11 @@ class MainViewModel @Inject constructor(
             val ad = if (reuse) {
                 held
             } else {
-                BootAdRepository.getActiveAd()?.also {
+                (BootAdRepository.getActiveAd() ?: BootAdRepository.recommendationCard())?.also {
                     bootAdShownAtMs = System.currentTimeMillis()
-                    bootAdDwellReported = false
-                    BootAdRepository.recordShown(it.campaignId)
+                    // House recommendation cards carry no cap and report no ad dwell.
+                    bootAdDwellReported = !it.sponsored
+                    if (it.sponsored) BootAdRepository.recordShown(it.campaignId)
                 }
             }
             Timber.tag("BootAdTrace").i("show: wasShowing=false held=%s reuse=%s ad=%s", held != null, reuse, ad?.campaignId)

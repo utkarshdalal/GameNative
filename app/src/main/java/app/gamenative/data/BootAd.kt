@@ -31,6 +31,8 @@ data class BootAdItem(
     val showRate: Double = 1.0,
     // Rotation share among the cached boot campaigns.
     val weight: Double = 1.0,
+    // False for the house recommendation card: no Sponsored badge, no ad bookkeeping.
+    val sponsored: Boolean = true,
     val startsAt: String? = null,
     val endsAt: String? = null,
     // template "quiz_card": one is picked at random per boot.
@@ -105,6 +107,29 @@ object BootAdRepository {
         val ad = weightedPick(candidates) ?: return null
         if (ad.showRate < 1.0 && Random.nextDouble() >= ad.showRate.coerceAtLeast(0.0)) return null
         return ad
+    }
+
+    /**
+     * The day's game recommendation as a house card, for boots with no eligible sponsor.
+     * Opt-in via settings; needs a cached recommendation with hero art.
+     */
+    fun recommendationCard(): BootAdItem? {
+        if (!PrefManager.bootScreenRecommendationsEnabled) return null
+        val rec = RecommendationRepository.getCachedRecommendation() ?: return null
+        if (rec.heroImageUrl.isEmpty()) return null
+        return BootAdItem(
+            campaignId = "rec-${rec.id}",
+            template = TEMPLATE_CTA_CARD,
+            imageUrl = rec.heroImageUrl,
+            screenshots = rec.screenshots,
+            title = mapOf("en" to rec.name),
+            body = mapOf("en" to (rec.becausePlayed?.takeIf { it.isNotBlank() } ?: rec.description)),
+            action = rec.affiliateUrl.takeIf { it.isNotEmpty() }?.let {
+                FeaturedAction(type = "VISIT", url = it, style = "primary")
+            },
+            maxShowsPerDay = 0,
+            sponsored = false,
+        )
     }
 
     private fun isRenderable(ad: BootAdItem): Boolean = when (ad.template) {

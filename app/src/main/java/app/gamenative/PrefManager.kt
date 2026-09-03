@@ -1250,6 +1250,14 @@ object PrefManager {
             setPref(BOOT_AD_SHOW_COUNT, value)
         }
 
+    // Show the day's game recommendation on the booting splash when no sponsor card is eligible
+    private val BOOT_SCREEN_RECOMMENDATIONS_ENABLED = booleanPreferencesKey("boot_screen_recommendations_enabled")
+    var bootScreenRecommendationsEnabled: Boolean
+        get() = getPref(BOOT_SCREEN_RECOMMENDATIONS_ENABLED, false)
+        set(value) {
+            setPref(BOOT_SCREEN_RECOMMENDATIONS_ENABLED, value)
+        }
+
     private val BOOT_SCREEN_ADS_ENABLED = booleanPreferencesKey("boot_screen_ads_enabled")
     var bootScreenAdsEnabled: Boolean
         get() = getPref(BOOT_SCREEN_ADS_ENABLED, true)
