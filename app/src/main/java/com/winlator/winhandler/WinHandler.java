@@ -18,6 +18,7 @@ import com.winlator.inputcontrols.ControllerManager;
 import com.winlator.inputcontrols.ControlsProfile;
 import com.winlator.inputcontrols.ExternalController;
 import com.winlator.inputcontrols.GamepadState;
+import com.winlator.inputcontrols.JoyConSupport;
 import com.winlator.inputcontrols.TouchMouse;
 import com.winlator.math.XForm;
 import com.winlator.widget.InputControlsView;
@@ -235,6 +236,17 @@ public class WinHandler {
         if (slot < 0 || slot >= MAX_PLAYERS) return null;
 
         return extraControllers[slot -1];
+    }
+
+    private boolean isEventFromController(ExternalController controller, int eventDeviceId) {
+        if (controller == null) return false;
+        if (controller.getDeviceId() == eventDeviceId) return true;
+        InputDevice eventDevice = InputDevice.getDevice(eventDeviceId);
+        InputDevice controllerDevice = InputDevice.getDevice(controller.getDeviceId());
+        return JoyConSupport.isJoyCon(eventDevice)
+                && JoyConSupport.isJoyCon(controllerDevice)
+                && JoyConSupport.PAIRED_IDENTIFIER.equals(
+                        ControllerManager.getDeviceIdentifier(eventDevice));
     }
 
     private MappedByteBuffer getGamepadBuffer(int slot) {
@@ -958,14 +970,14 @@ public class WinHandler {
         int slot = controllerManager.getSlotForDevice(event.getDeviceId());
         if (slot >= 0) {
             ExternalController controller = getControllerFromSlot(slot);
-            if (controller == null || controller.getDeviceId() != event.getDeviceId()) {
+            if (!isEventFromController(controller, event.getDeviceId())) {
                 Log.d(TAG, "Motion event refresh for deviceId=" + event.getDeviceId()
                         + " slot=" + slot
                         + " controller=" + (controller != null ? controller.getDeviceId() : -1));
                 refreshControllerMappings();
                 controller = getControllerFromSlot(slot);
             }
-            if (controller != null && controller.getDeviceId() == event.getDeviceId()) {
+            if (isEventFromController(controller, event.getDeviceId())) {
                 handled = controller.updateStateFromMotionEvent(event);
                 if (handled) {
                     sendMemoryFileState(controller, getGamepadBuffer(slot), slot);
@@ -1017,14 +1029,14 @@ public class WinHandler {
 
         if (slot >= 0) {
             ExternalController controller = getControllerFromSlot(slot);
-            if (controller == null || controller.getDeviceId() != event.getDeviceId()) {
+            if (!isEventFromController(controller, event.getDeviceId())) {
                 Log.d(TAG, "Key event refresh for deviceId=" + event.getDeviceId()
                         + " slot=" + slot
                         + " controller=" + (controller != null ? controller.getDeviceId() : -1));
                 refreshControllerMappings();
                 controller = getControllerFromSlot(slot);
             }
-            if (controller != null && controller.getDeviceId() == event.getDeviceId()) {
+            if (isEventFromController(controller, event.getDeviceId())) {
                 if (event.getRepeatCount() > 0) return true;
                 handled = controller.updateStateFromKeyEvent(event); // or motion variant
                 Log.d(TAG, "Key routed deviceId=" + event.getDeviceId()

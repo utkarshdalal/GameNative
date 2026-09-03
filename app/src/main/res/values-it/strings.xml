@@ -2221,6 +2221,21 @@
     <string name="featured_status_out_now_body">Ora disponibile</string>
     <string name="tab_recommended">Consigliati</string>
     <string name="gog_rec_empty">Aggiungi o gioca ad alcuni giochi per ricevere consigli GOG basati sulla tua libreria.</string>
+    <!-- Steam achievements -->
+    <string name="achievements">Obiettivi</string>
+    <string name="achievements_all_title">Tutti gli obiettivi</string>
+    <string name="achievements_unlocked_at">Sbloccato il %1$s alle %2$s</string>
+    <string name="achievements_complete">Tutti i traguardi sbloccati</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">%1$d obiettivo nascosto rimanente</item>
+        <item quantity="other">%1$d obiettivi nascosti rimanenti</item>
+    </plurals>
+    <string name="achievements_hidden_subtitle">I dettagli di ogni obiettivo verranno rivelati una volta sbloccati</string>
+    <string name="achievements_reveal_title">Mostrare gli obiettivi nascosti?</string>
+    <string name="achievements_reveal_message">Mostra temporaneamente gli obiettivi segreti rimanenti e i loro dettagli. Non verrà memorizzato.</string>
+    <string name="achievements_reveal_confirm">Mostra</string>
+    <string name="achievements_locked">Bloccato</string>
     <string name="steam_collections_removed">Una raccolta salvata è stata rimossa da Steam e non viene più filtrata.</string>
     <string name="steam_collections_title">Collezioni Steam</string>
     <string name="steam_collections_loading">Caricamento delle raccolte…</string>

@@ -2227,6 +2227,20 @@
     <string name="featured_status_out_now_body">지금 이용 가능</string>
     <string name="tab_recommended">추천</string>
     <string name="gog_rec_empty">게임을 추가하거나 플레이하면 라이브러리를 기반으로 한 GOG 추천을 받을 수 있습니다.</string>
+    <!-- Steam achievements -->
+    <string name="achievements">업적</string>
+    <string name="achievements_all_title">모든 업적</string>
+    <string name="achievements_unlocked_at">%1$s %2$s에 달성</string>
+    <string name="achievements_complete">모든 업적 달성</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="other">숨겨진 도전 과제 %1$d개 남음</item>
+    </plurals>
+    <string name="achievements_hidden_subtitle">각 도전 과제의 세부 정보는 잠금 해제 시 공개됩니다</string>
+    <string name="achievements_reveal_title">숨겨진 도전 과제를 표시할까요?</string>
+    <string name="achievements_reveal_message">남은 비밀 도전 과제와 세부 정보를 지금만 표시합니다. 기억되지 않습니다.</string>
+    <string name="achievements_reveal_confirm">표시</string>
+    <string name="achievements_locked">잠김</string>
     <string name="steam_collections_removed">저장된 컬렉션이 Steam에서 제거되어 더 이상 필터링되지 않습니다.</string>
     <string name="steam_collections_title">Steam 컬렉션</string>
     <string name="steam_collections_loading">컬렉션 불러오는 중…</string>

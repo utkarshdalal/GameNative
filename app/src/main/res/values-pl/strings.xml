@@ -2230,6 +2230,23 @@
     <string name="featured_status_out_now_body">Dostępne teraz</string>
     <string name="tab_recommended">Polecane</string>
     <string name="gog_rec_empty">Dodaj lub zagraj w kilka gier, aby otrzymać rekomendacje GOG na podstawie Twojej biblioteki.</string>
+    <!-- Steam achievements -->
+    <string name="achievements">Osiągnięcia</string>
+    <string name="achievements_all_title">Wszystkie osiągnięcia</string>
+    <string name="achievements_unlocked_at">Odblokowano %1$s o %2$s</string>
+    <string name="achievements_complete">Wszystkie osiągnięcia odblokowane</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">Pozostało %1$d ukryte osiągnięcie</item>
+        <item quantity="few">Pozostały %1$d ukryte osiągnięcia</item>
+        <item quantity="many">Pozostało %1$d ukrytych osiągnięć</item>
+        <item quantity="other">Pozostało %1$d ukrytych osiągnięć</item>
+    </plurals>
+    <string name="achievements_hidden_subtitle">Szczegóły każdego osiągnięcia zostaną ujawnione po odblokowaniu</string>
+    <string name="achievements_reveal_title">Pokazać ukryte osiągnięcia?</string>
+    <string name="achievements_reveal_message">Tymczasowo pokazuje pozostałe sekretne osiągnięcia i ich szczegóły. Nie zostanie zapamiętane.</string>
+    <string name="achievements_reveal_confirm">Pokaż</string>
+    <string name="achievements_locked">Zablokowane</string>
     <string name="steam_collections_removed">Zapisana kolekcja została usunięta w Steam i nie jest już filtrowana.</string>
     <string name="steam_collections_title">Kolekcje Steam</string>
     <string name="steam_collections_loading">Wczytywanie kolekcji…</string>

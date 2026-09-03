@@ -2226,6 +2226,23 @@
     <string name="featured_status_out_now_body">Доступно зараз</string>
     <string name="tab_recommended">Рекомендовані</string>
     <string name="gog_rec_empty">Додайте або пограйте в ігри, щоб отримати рекомендації GOG на основі вашої бібліотеки.</string>
+    <!-- Steam achievements -->
+    <string name="achievements">Досягнення</string>
+    <string name="achievements_all_title">Всі досягнення</string>
+    <string name="achievements_unlocked_at">Розблоковано %1$s о %2$s</string>
+    <string name="achievements_complete">Усі досягнення розблоковано</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">Залишилося %1$d приховане досягнення</item>
+        <item quantity="few">Залишилося %1$d приховані досягнення</item>
+        <item quantity="many">Залишилося %1$d прихованих досягнень</item>
+        <item quantity="other">Залишилося %1$d прихованих досягнень</item>
+    </plurals>
+    <string name="achievements_hidden_subtitle">Деталі кожного досягнення буде розкрито після розблокування</string>
+    <string name="achievements_reveal_title">Показати приховані досягнення?</string>
+    <string name="achievements_reveal_message">Тимчасово показує решту секретних досягнень та їхні деталі. Це не запам’ятовується.</string>
+    <string name="achievements_reveal_confirm">Показати</string>
+    <string name="achievements_locked">Заблоковано</string>
     <string name="steam_collections_removed">Збережену колекцію було видалено в Steam, і вона більше не фільтрується.</string>
     <string name="steam_collections_title">Колекції Steam</string>
     <string name="steam_collections_loading">Завантаження колекцій…</string>
