@@ -323,10 +323,7 @@ class LibraryViewModel @Inject constructor(
             val hero = RecommendationRepository.getHero(context)
             val daySeed = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
             cachedFeatured = hero.featured
-            cachedRecommendation = when {
-                // A live featured takes the slot (still gated by the showRecommendations
-                // toggle at display time), regardless of GOG consent.
-                hero.featured != null -> null
+            val recommendation = when {
                 PrefManager.showRecommendations && PrefManager.recDisclosureShown -> runCatching {
                     val owned = GogSeedCollector.collect(
                         context,
@@ -340,6 +337,10 @@ class LibraryViewModel @Inject constructor(
                 }.getOrNull() ?: hero.recommendation
                 else -> hero.recommendation
             }
+            RecommendationRepository.setCurrentHeroRecommendation(recommendation)
+            // A live featured takes the slot (still gated by the showRecommendations
+            // toggle at display time), regardless of GOG consent.
+            cachedRecommendation = if (hero.featured != null) null else recommendation
             // Frosted teaser: pre-consent only, never over a featured slot. Shows every day
             // until the first "Not now", then one day in three. A frosted day stays frosted
             // all day, dismissed or not.

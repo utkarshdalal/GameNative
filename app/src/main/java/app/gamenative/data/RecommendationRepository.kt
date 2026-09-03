@@ -325,8 +325,18 @@ object RecommendationRepository {
     /** Latest featured (if any) — used by the detail screen; no network. */
     fun getCachedFeatured(): FeaturedItem? = lastFeatured
 
-    /** The day's cached recommendation, if any; no network. */
+    /** The day's cached static recommendation, if any; no network. */
     fun getCachedRecommendation(): RecommendedGame? = loadCachedRecommendation()
+
+    // The recommendation the library hero currently shows: personalized when the user opted in,
+    // else the static pick. Set by LibraryViewModel; read by the boot splash so both agree.
+    @Volatile private var currentHeroRecommendation: RecommendedGame? = null
+
+    fun setCurrentHeroRecommendation(rec: RecommendedGame?) {
+        currentHeroRecommendation = rec
+    }
+
+    fun getCurrentHeroRecommendation(): RecommendedGame? = currentHeroRecommendation ?: loadCachedRecommendation()
 
     fun getFeaturedGame(context: Context): RecommendedGame? =
         lastFeatured?.toRecommendedGame(context)

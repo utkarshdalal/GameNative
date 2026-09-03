@@ -69,6 +69,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -143,10 +144,16 @@ fun BootingSplash(
     val adImages = remember(bootAd?.campaignId) {
         bootAd?.let { ad -> (listOf(ad.imageUrl) + ad.screenshots).filter { it.isNotEmpty() } } ?: emptyList()
     }
-    val adVideoFile = remember(bootAd?.campaignId) {
-        bootAd
-            ?.takeIf { it.template == BootAdRepository.TEMPLATE_VIDEO_CARD }
-            ?.let { BootAdRepository.cachedVideoFile(context, it) }
+    // Sponsor videos play from the pre-downloaded file; the house recommendation card
+    // streams its store trailer (built only on WiFi).
+    val adVideoUri = remember(bootAd?.campaignId) {
+        bootAd?.takeIf { it.template == BootAdRepository.TEMPLATE_VIDEO_CARD }?.let { ad ->
+            if (ad.sponsored) {
+                BootAdRepository.cachedVideoFile(context, ad)?.let(Uri::fromFile)
+            } else {
+                ad.videoUrl.takeIf { it.isNotEmpty() }?.let(Uri::parse)
+            }
+        }
     }
     var adImageIndex by remember(bootAd?.campaignId) { mutableStateOf(0) }
 
@@ -231,15 +238,15 @@ fun BootingSplash(
 
             AmbientParticles(phase = particlePhase)
 
-            LaunchedEffect(visible, activeAd?.campaignId, adVideoFile) {
+            LaunchedEffect(visible, activeAd?.campaignId, adVideoUri) {
                 timber.log.Timber.tag("BootAdTrace").i(
-                    "splash: visible=%s activeAd=%s videoFile=%s", visible, activeAd?.campaignId, adVideoFile?.exists(),
+                    "splash: visible=%s activeAd=%s video=%s", visible, activeAd?.campaignId, adVideoUri != null,
                 )
             }
-            if (activeAd != null && (adVideoFile != null || activeAd.imageUrl.isNotEmpty())) {
-                if (adVideoFile != null) {
+            if (activeAd != null && (adVideoUri != null || activeAd.imageUrl.isNotEmpty())) {
+                if (adVideoUri != null) {
                     BootAdVideo(
-                        file = adVideoFile,
+                        uri = adVideoUri,
                         fallbackImageUrl = activeAd.imageUrl,
                     )
                 } else Crossfade(
@@ -456,17 +463,21 @@ fun BootingSplash(
 @OptIn(UnstableApi::class)
 @Composable
 private fun BootAdVideo(
-    file: File,
+    uri: Uri,
     fallbackImageUrl: String,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var showFallback by remember(file) { mutableStateOf(true) }
-    var soundOn by remember(file) { mutableStateOf(false) }
+    var showFallback by remember(uri) { mutableStateOf(true) }
+    var soundOn by remember(uri) { mutableStateOf(false) }
 
-    val exoPlayer = remember(file) {
+    val exoPlayer = remember(uri) {
         ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
+            val item = MediaItem.Builder()
+                .setUri(uri)
+                .apply { if (uri.toString().contains(".m3u8")) setMimeType(MimeTypes.APPLICATION_M3U8) }
+                .build()
+            setMediaItem(item)
             repeatMode = Player.REPEAT_MODE_ALL
             volume = 0f
             playWhenReady = true

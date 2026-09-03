@@ -115,12 +115,16 @@ object BootAdRepository {
      */
     fun recommendationCard(): BootAdItem? {
         if (!PrefManager.bootScreenRecommendationsEnabled) return null
-        val rec = RecommendationRepository.getCachedRecommendation() ?: return null
+        val rec = RecommendationRepository.getCurrentHeroRecommendation() ?: return null
         if (rec.heroImageUrl.isEmpty()) return null
+        // Trailers are streamed (not pre-downloaded like sponsor videos), so WiFi only.
+        val trailer = (rec.videos.firstOrNull() ?: rec.videoUrl)
+            ?.takeIf { it.isNotEmpty() && NetworkMonitor.hasWifiOrEthernet.value }
         return BootAdItem(
             campaignId = "rec-${rec.id}",
-            template = TEMPLATE_CTA_CARD,
+            template = if (trailer != null) TEMPLATE_VIDEO_CARD else TEMPLATE_CTA_CARD,
             imageUrl = rec.heroImageUrl,
+            videoUrl = trailer ?: "",
             screenshots = rec.screenshots,
             title = mapOf("en" to rec.name),
             body = mapOf("en" to (rec.becausePlayed?.takeIf { it.isNotBlank() } ?: rec.description)),
