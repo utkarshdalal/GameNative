@@ -2,12 +2,24 @@ name: Actions artifact retention cleanup
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Cleanup mode
+        required: true
+        default: normal
+        type: choice
+        options:
+          - normal
+          - emergency
   schedule:
     - cron: '17 6 * * *'
+  issues:
+    types: [opened]
 
 permissions:
   contents: read
   actions: write
+  issues: write
 
 concurrency:
   group: artifact-retention-cleanup
@@ -15,45 +27,133 @@ concurrency:
 
 jobs:
   cleanup:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == '[artifact-storage] emergency purge' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    env:
+      CLEANUP_MODE: ${{ github.event_name == 'issues' && 'emergency' || inputs.mode || 'normal' }}
     steps:
-      - name: Delete stale Actions artifacts
+      - name: Keep latest known-good artifacts and purge the rest
         uses: actions/github-script@v8
         with:
           script: |
-            const now = Date.now();
-            const dayMs = 24 * 60 * 60 * 1000;
-            const releaseLike = /(release|signed|package|dpkg|rpm|alpm|aab|bundle)/i;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const emergency = process.env.CLEANUP_MODE === 'emergency';
+
             const artifacts = await github.paginate(
               github.rest.actions.listArtifactsForRepo,
-              {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                per_page: 100,
-              }
+              { owner, repo, per_page: 100 }
             );
+            const liveArtifacts = artifacts.filter(a => !a.expired && a.workflow_run?.id);
 
+            const runCache = new Map();
+            for (const artifact of liveArtifacts) {
+              const runId = artifact.workflow_run.id;
+              if (runCache.has(runId)) continue;
+              try {
+                const { data: run } = await github.rest.actions.getWorkflowRun({
+                  owner,
+                  repo,
+                  run_id: runId,
+                });
+                runCache.set(runId, run);
+              } catch (error) {
+                core.warning(`Could not resolve workflow run ${runId}: ${error.message}`);
+                runCache.set(runId, null);
+              }
+            }
+
+            // Preserve one newest successful artifact-bearing run for every
+            // workflow + branch pair. This keeps the latest known-good build
+            // for master/release and active feature branches independently.
+            const latestGoodRun = new Map();
+            for (const artifact of [...liveArtifacts].sort(
+              (a, b) => new Date(b.created_at) - new Date(a.created_at)
+            )) {
+              const run = runCache.get(artifact.workflow_run.id);
+              if (!run || run.status !== 'completed' || run.conclusion !== 'success') continue;
+              const key = `${run.path || run.name || 'unknown'}::${run.head_branch || 'detached'}`;
+              if (!latestGoodRun.has(key)) latestGoodRun.set(key, run.id);
+            }
+
+            const keepRunIds = new Set(latestGoodRun.values());
             let deleted = 0;
             let reclaimedBytes = 0;
-            for (const artifact of artifacts) {
-              if (artifact.expired) continue;
-              const retentionDays = releaseLike.test(artifact.name) ? 30 : 7;
-              const ageDays = (now - new Date(artifact.created_at).getTime()) / dayMs;
-              if (ageDays < retentionDays) continue;
+            let preserved = 0;
+
+            for (const artifact of liveArtifacts) {
+              const run = runCache.get(artifact.workflow_run.id);
+
+              // Never interfere with artifacts belonging to an active run.
+              if (run && run.status !== 'completed') {
+                preserved += 1;
+                core.info(`Keeping active-run artifact: ${artifact.name}`);
+                continue;
+              }
+
+              if (keepRunIds.has(artifact.workflow_run.id)) {
+                preserved += 1;
+                core.info(`Keeping latest known-good artifact: ${artifact.name}`);
+                continue;
+              }
+
+              // If run metadata could not be resolved, fail safe and keep it.
+              if (!run) {
+                preserved += 1;
+                continue;
+              }
 
               await github.rest.actions.deleteArtifact({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner,
+                repo,
                 artifact_id: artifact.id,
               });
               deleted += 1;
               reclaimedBytes += artifact.size_in_bytes ?? 0;
-              core.info(`Deleted ${artifact.name} (${ageDays.toFixed(1)} days old; policy ${retentionDays} days)`);
+              core.info(`Deleted superseded artifact: ${artifact.name}`);
+            }
+
+            let cachesDeleted = 0;
+            if (emergency) {
+              try {
+                const caches = await github.paginate(
+                  github.rest.actions.getActionsCacheList,
+                  { owner, repo, per_page: 100 }
+                );
+                for (const cache of caches) {
+                  await github.rest.actions.deleteActionsCacheById({
+                    owner,
+                    repo,
+                    cache_id: cache.id,
+                  });
+                  cachesDeleted += 1;
+                }
+              } catch (error) {
+                core.warning(`Actions cache purge was not available: ${error.message}`);
+              }
             }
 
             const reclaimedMiB = (reclaimedBytes / 1024 / 1024).toFixed(1);
+            const summary = `Deleted ${deleted} superseded artifact(s), preserved ${preserved} current/latest-known-good artifact(s), reclaimed approximately ${reclaimedMiB} MiB, and deleted ${cachesDeleted} Actions cache(s).`;
+
             await core.summary
-              .addHeading('Artifact cleanup')
-              .addRaw(`Deleted ${deleted} stale artifact(s), approximately ${reclaimedMiB} MiB.`)
+              .addHeading(emergency ? 'Emergency artifact cleanup' : 'Artifact cleanup')
+              .addRaw(summary)
               .write();
+
+            if (context.eventName === 'issues') {
+              const issue_number = context.payload.issue.number;
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body: `Emergency cleanup completed. ${summary}`,
+              });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number,
+                state: 'closed',
+              });
+            }
