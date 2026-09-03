@@ -1,0 +1,62 @@
+name: Actions artifact retention cleanup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * *'
+  push:
+    paths:
+      - '.github/workflows/artifact-retention-cleanup.yml'
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: artifact-retention-cleanup
+  cancel-in-progress: true
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Delete stale Actions artifacts
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const now = Date.now();
+            const dayMs = 24 * 60 * 60 * 1000;
+            const releaseLike = /(release|signed|package|dpkg|rpm|alpm|aab|bundle)/i;
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+              }
+            );
+
+            let deleted = 0;
+            let reclaimedBytes = 0;
+            for (const artifact of artifacts) {
+              if (artifact.expired) continue;
+              const retentionDays = releaseLike.test(artifact.name) ? 30 : 7;
+              const ageDays = (now - new Date(artifact.created_at).getTime()) / dayMs;
+              if (ageDays < retentionDays) continue;
+
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+              deleted += 1;
+              reclaimedBytes += artifact.size_in_bytes ?? 0;
+              core.info(`Deleted ${artifact.name} (${ageDays.toFixed(1)} days old; policy ${retentionDays} days)`);
+            }
+
+            const reclaimedMiB = (reclaimedBytes / 1024 / 1024).toFixed(1);
+            await core.summary
+              .addHeading('Artifact cleanup')
+              .addRaw(`Deleted ${deleted} stale artifact(s), approximately ${reclaimedMiB} MiB.`)
+              .write();
