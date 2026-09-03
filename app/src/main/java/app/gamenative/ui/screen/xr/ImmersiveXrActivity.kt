@@ -457,6 +457,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        PluviaApp.isImmersiveActivityResumed = true
         PluviaApp.isActivityInForeground = true
         if (SteamService.keepAlive && PluviaApp.hasValidSuspendPolicyState() && PluviaApp.xEnvironment != null) {
             when {
@@ -469,6 +470,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     }
 
     override fun onPause() {
+        PluviaApp.isImmersiveActivityResumed = false
         PluviaApp.isActivityInForeground = false
         Timber.i(
             "Immersive: onPause, isFinishing=%b isChangingConfigurations=%b",
