@@ -5,6 +5,7 @@ $destination = Join-Path $payload "opencomposite_x64.dll"
 $uri = "https://opencomposite.znix.xyz/builds/download_build?artefact_id=5r2yCwgFn_ozJ44c&build_id=49918237&commit=43e551a4506880ab1a71b8b9fec2fd7fbb27372f"
 $expected = "2f56d45323f252a2ea7c3047c806f9aca3cab36c3f9f71d1dad05a5008b7731a"
 New-Item -ItemType Directory -Force -Path $payload | Out-Null
+if ((Test-Path -LiteralPath $destination -PathType Leaf) -and (Get-FileHash -Algorithm SHA256 -LiteralPath $destination).Hash.ToLowerInvariant() -eq $expected) { exit 0 }
 $temporary = "$destination.download"
 Invoke-WebRequest -Uri $uri -OutFile $temporary
 $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $temporary).Hash.ToLowerInvariant()

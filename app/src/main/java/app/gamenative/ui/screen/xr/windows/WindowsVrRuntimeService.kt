@@ -24,6 +24,7 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
     fun beforeWineSystemSetup(container: Container) {
         this.container = container
         config = WindowsVrRuntimeConfig.from(container)
+        if (config?.enabled != true) return
         diagnostics.begin(container.id, container.executablePath, container.execArgs)
         diagnostics.record("activity", "Immersive VR host active")
         diagnostics.record("configuration", "enabled=${config?.enabled} openComposite=${config?.openCompositeEnabled}")
@@ -42,7 +43,9 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
                 "Windows VR D3D11 requires DXVK native interop"
             }
             diagnostics.record("launch", "Preparing Windows OpenXR payload")
-            payloadManager.prepare(container)
+            val prepared = payloadManager.prepare(container)
+            if (active.openCompositeEnabled) payloadManager.installOpenComposite(container)
+            prepared
         } catch (e: Exception) {
             val reason = e.message ?: e.javaClass.simpleName
             diagnostics.record("launch", "Windows VR disabled for this session: $reason")
@@ -54,7 +57,6 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
         }
         runtimeLogDirectory = payload.prefixDirectory
         listOf("runtime.log", "unix.log").forEach { payload.prefixDirectory.resolve(it).delete() }
-        if (active.openCompositeEnabled) payloadManager.installOpenComposite(container)
         env.put("XR_RUNTIME_JSON", active.runtimeManifest)
         env.put("GAMENATIVE_XR", "1")
         env.put("GAMENATIVE_XR_LOG", "1")
@@ -90,7 +92,19 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
     fun beforeGuestProcessStart() {
         val active = config ?: return
         if (!active.enabled || controlServer != null) return
-        controlServer = WindowsVrControlServer(active, diagnostics, snapshots).also { it.start() }
+        val server = WindowsVrControlServer(active, diagnostics, snapshots)
+        try {
+            server.start()
+        } catch (e: Exception) {
+            runCatching { server.close() }
+            val reason = e.message ?: e.javaClass.simpleName
+            diagnostics.record("control", "Windows VR disabled for this session: $reason")
+            Timber.w(e, "Windows VR control server failed to start")
+            SnackbarManager.show("VR mode unavailable: $reason")
+            config = active.copy(enabled = false)
+            return
+        }
+        controlServer = server
         diagnostics.record("control", "listening on 127.0.0.1:${active.controlPort}")
     }
 
@@ -117,7 +131,10 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
         check(directory.exists() || directory.mkdirs())
         val report = File(directory, "windows-vr-${System.currentTimeMillis()}.txt")
         diagnostics.record("diagnostics", "exported path=${report.path}")
-        report.writeText(diagnostics.logFile().takeIf(File::isFile)?.readText().orEmpty())
+        report.writeText(
+            runCatching { diagnostics.logFile().takeIf(File::isFile)?.readText() }.getOrNull()?.ifBlank { null }
+                ?: diagnostics.snapshot().joinToString("\n"),
+        )
         return report
     }
 
@@ -143,14 +160,14 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
                 File(active.rootDir, ".wine/drive_c/Program Files (x86)/Steam/ColdClientLoader.ini"),
             )
             val users = File(active.rootDir, ".wine/drive_c/users")
-            val openComposite = users.walkTopDown()
+            val openComposite = users.walkTopDown().maxDepth(6)
                 .filter { it.isFile && it.name.equals("opencomposite.log", ignoreCase = true) }
                 .maxByOrNull(File::lastModified)
             diagnostics.recordFileTail(
                 "OpenComposite log",
                 openComposite ?: File(users, "<wine-user>/AppData/Local/OpenComposite/logs/opencomposite.log"),
             )
-            val playerLog = users.walkTopDown()
+            val playerLog = users.walkTopDown().maxDepth(6)
                 .filter { it.isFile && it.name.equals("Player.log", ignoreCase = true) }
                 .maxByOrNull(File::lastModified)
             diagnostics.recordFileTail(
@@ -192,10 +209,10 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
 
     override fun close() {
         diagnostics.record("service", "closing")
-        controlServer?.close()
+        runCatching { controlServer?.close() }.onFailure { Timber.w(it, "Windows VR control server close failed") }
         controlServer = null
         snapshots.detach()
-        payloadManager.restore()
+        runCatching { payloadManager.restore() }.onFailure { Timber.w(it, "Windows VR payload restore failed") }
         runtimeLogDirectory = null
         container = null
     }

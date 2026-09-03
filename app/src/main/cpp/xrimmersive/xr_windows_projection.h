@@ -51,6 +51,7 @@ private:
     std::array<std::array<int, WindowsFrameTransport::kMaxImages>, 2> cpuTextureWidths_{};
     std::array<std::array<int, WindowsFrameTransport::kMaxImages>, 2> cpuTextureHeights_{};
     std::array<uint64_t, 2> renderedSerials_{0, 0};
+    EGLSyncKHR acquireSync_ = EGL_NO_SYNC_KHR;
     GLuint framebuffer_ = 0;
     GLuint program_ = 0;
     GLuint vertexBuffer_ = 0;

@@ -3,22 +3,24 @@ package app.gamenative.ui.screen.xr.windows
 import android.content.Context
 import android.os.Process
 import java.io.File
+import java.io.RandomAccessFile
 import java.text.SimpleDateFormat
 import java.util.ArrayDeque
 import java.util.Date
 import java.util.Locale
+import timber.log.Timber
 
 class WindowsVrDiagnostics(context: Context, private val capacity: Int = 512) {
     private val entries = ArrayDeque<String>(capacity)
     private val file = File(
         context.getExternalFilesDir(null) ?: context.filesDir,
         "gamenativevr/launch.log",
-    ).apply { parentFile?.mkdirs() }
+    ).apply { runCatching { parentFile?.mkdirs() } }
 
     @Synchronized
     fun begin(appId: String, executable: String, arguments: String) {
         trimIfNeeded()
-        file.appendText(
+        appendToFile(
             buildString {
                 appendLine()
                 appendLine("===== GameNativeVR immersive launch ${timestamp()} =====")
@@ -35,14 +37,12 @@ class WindowsVrDiagnostics(context: Context, private val capacity: Int = 512) {
         val entry = "${timestamp()} $stage $value"
         entries.addLast(entry)
         trimIfNeeded()
-        file.appendText("$entry\n")
+        appendToFile("$entry\n")
     }
 
     @Synchronized
     fun recordFileTail(label: String, source: File, maxChars: Int = 12_000) {
-        val tail = runCatching {
-            source.takeIf(File::isFile)?.readText()?.takeLast(maxChars)
-        }.getOrNull()
+        val tail = runCatching { readTail(source, maxChars) }.getOrNull()
         record(
             "diagnostics",
             if (tail.isNullOrBlank()) {
@@ -61,9 +61,26 @@ class WindowsVrDiagnostics(context: Context, private val capacity: Int = 512) {
 
     fun logFile(): File = file
 
+    private fun readTail(source: File, maxChars: Int): String? {
+        if (!source.isFile) return null
+        return RandomAccessFile(source, "r").use { input ->
+            val length = input.length()
+            val bytes = ByteArray(minOf(length, maxChars.toLong() * 4).toInt())
+            input.seek(length - bytes.size)
+            input.readFully(bytes)
+            bytes.toString(Charsets.UTF_8).takeLast(maxChars)
+        }
+    }
+
+    private fun appendToFile(text: String) {
+        runCatching { file.appendText(text) }.onFailure { Timber.w(it, "Windows VR diagnostics write failed") }
+    }
+
     private fun trimIfNeeded() {
-        if (!file.isFile || file.length() <= 512 * 1024L) return
-        file.writeText("[older GameNativeVR diagnostics trimmed]\n${file.readText().takeLast(256 * 1024)}")
+        runCatching {
+            if (!file.isFile || file.length() <= 512 * 1024L) return
+            file.writeText("[older GameNativeVR diagnostics trimmed]\n${readTail(file, 256 * 1024).orEmpty()}")
+        }
     }
 
     private fun timestamp(): String =

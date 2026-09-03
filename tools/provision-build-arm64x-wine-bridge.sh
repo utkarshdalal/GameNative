@@ -1,3 +1,4 @@
+#!/bin/bash
 set -eu
 
 repository="$1"
@@ -30,6 +31,7 @@ if test ! -x "$llvm/bin/clang"; then
 fi
 if test ! -x "$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang"; then
     unzip -q "$downloads/$ndk_archive" -d "$HOME/Android/Sdk/ndk"
+    rm -rf "$ndk"
     mv "$HOME/Android/Sdk/ndk/android-ndk-r27d" "$ndk"
 fi
 if test ! -d "$wine_source/.git"; then
@@ -41,8 +43,6 @@ mkdir -p "$module"
 cp "$repository/app/src/main/windows/openxr_runtime/builtin/Makefile.in" "$module/Makefile.in"
 cp "$repository/app/src/main/windows/openxr_runtime/builtin/gamenative_xr_unixbridge.c" "$module/gamenative_xr_unixbridge.c"
 cp "$repository/app/src/main/windows/openxr_runtime/builtin/gamenative_xr_unixbridge.spec" "$module/gamenative_xr_unixbridge.spec"
-cp "$repository/app/src/main/windows/openxr_runtime/gamenative_openxr_unix_abi.h" "$module/gamenative_openxr_unix_abi.h"
-sed -i 's#"../gamenative_openxr_unix_abi.h"#"gamenative_openxr_unix_abi.h"#' "$module/gamenative_xr_unixbridge.c"
 if ! grep -q 'WINE_CONFIG_MAKEFILE(dlls/gamenative_xr_unixbridge)' "$wine_source/configure.ac"; then
     sed -i '/WINE_CONFIG_MAKEFILE(dlls\/gameinput)/aWINE_CONFIG_MAKEFILE(dlls/gamenative_xr_unixbridge)' "$wine_source/configure.ac"
 fi

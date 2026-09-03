@@ -294,7 +294,10 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                     },
                     onGameLaunchError = { error ->
                         viewModel.onGameLaunchError(error)
-                        if (windowsVrEnabled) {
+                        val vrEnabled = (cachedContainer ?: runCatching { ContainerUtils.getContainer(this@ImmersiveXrActivity, appId) }.getOrNull())
+                            ?.let { app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeConfig.from(it).enabled }
+                            ?: windowsVrEnabled
+                        if (vrEnabled) {
                             runOnUiThread { windowsVrStatus = "Guest stopped: $error" }
                             windowsVrRuntimeService?.onGuestProcessError(error)
                         } else {
@@ -363,9 +366,11 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                         windowsVrStatus = windowsVrStatus,
                         windowsVrRuntimePath = if (openCompositeEnabled) "OpenVR compatibility" else "Native OpenXR",
                         onExportWindowsVrDiagnostics = {
-                            val result = runCatching { windowsVrRuntimeService?.exportDiagnostics() }
-                            val message = result.getOrNull()?.path ?: result.exceptionOrNull()?.message ?: "Windows VR is inactive"
-                            app.gamenative.ui.util.SnackbarManager.show(message)
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                val result = runCatching { windowsVrRuntimeService?.exportDiagnostics() }
+                                val message = result.getOrNull()?.path ?: result.exceptionOrNull()?.message ?: "Windows VR is inactive"
+                                app.gamenative.ui.util.SnackbarManager.show(message)
+                            }
                         },
                     ),
                     ),

@@ -99,6 +99,8 @@ private:
     void storeEyeDmabuf(int eye, const EyeFrame& incoming);
     void releaseSlotLocked(int eye, int imageIndex);
     void releaseEye(int eye);
+    void resetEye(int eye);
+    void dropRetainedLocked(int eye);
 
     std::string socketPath_;
     std::atomic<bool> running_{false};
@@ -110,6 +112,7 @@ private:
     std::condition_variable releaseCv_;
     EyeFrame buffers_[kEyeCount][kMaxImages];
     EyeFrame latest_[kEyeCount];
+    EyeFrame retained_[kEyeCount];
     bool latestClaimed_[kEyeCount]{false, false};
     int releaseFenceFds_[kEyeCount][kMaxImages];
     bool releasePending_[kEyeCount][kMaxImages]{};

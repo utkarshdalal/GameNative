@@ -96,6 +96,7 @@ bool XrImmersiveSession::windowsStereoActive() const {
 
 bool XrImmersiveSession::applyWindowsHaptic(uint32_t hand, float amplitude, XrDuration duration,
                                             float frequency) {
+    std::lock_guard<std::mutex> lock(sessionMutex_);
     if (hand > 1 || session_ == XR_NULL_HANDLE || hapticAction_ == XR_NULL_HANDLE) return false;
     XrHapticActionInfo actionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
     actionInfo.action = hapticAction_;
@@ -1096,7 +1097,8 @@ bool XrImmersiveSession::submitWindowsProjection(XrTime predictedDisplayTime) {
                                                        : XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
     endInfo.layerCount = layerCount;
     endInfo.layers = layers.data();
-    return XrCheck(xrEndFrame(session_, &endInfo), "xrEndFrame(windows projection)");
+    XrCheck(xrEndFrame(session_, &endInfo), "xrEndFrame(windows projection)");
+    return true;
 }
 
 void XrImmersiveSession::submitQuadLayer(XrTime predictedDisplayTime, XrSpace space,
@@ -1512,6 +1514,8 @@ void XrImmersiveSession::syncWindowsTrackingPoses(InputSnapshot *snapshot,
 }
 
 void XrImmersiveSession::teardown() {
+    stereoActive_.store(false);
+    stereoMisses_ = 0;
     windowsTransport_.stop();
     windowsProjection_.shutdown();
     teardownPassthrough();
@@ -1579,13 +1583,17 @@ void XrImmersiveSession::teardown() {
         xrDestroySpace(gripSpaceRight_);
         gripSpaceRight_ = XR_NULL_HANDLE;
     }
-    if (actionSet_ != XR_NULL_HANDLE) {
-        xrDestroyActionSet(actionSet_);
-        actionSet_ = XR_NULL_HANDLE;
-    }
-    if (session_ != XR_NULL_HANDLE) {
-        xrDestroySession(session_);
-        session_ = XR_NULL_HANDLE;
+    {
+        std::lock_guard<std::mutex> lock(sessionMutex_);
+        if (actionSet_ != XR_NULL_HANDLE) {
+            xrDestroyActionSet(actionSet_);
+            actionSet_ = XR_NULL_HANDLE;
+        }
+        hapticAction_ = XR_NULL_HANDLE;
+        if (session_ != XR_NULL_HANDLE) {
+            xrDestroySession(session_);
+            session_ = XR_NULL_HANDLE;
+        }
     }
     if (instance_ != XR_NULL_HANDLE) {
         xrDestroyInstance(instance_);

@@ -171,13 +171,21 @@ EGLImageKHR WindowsProjectionPresenter::createImageFromDmabuf(const EyeFrame &fr
 }
 
 bool WindowsProjectionPresenter::waitForAcquireFence(int fenceFd) {
+    if (acquireSync_ != EGL_NO_SYNC_KHR) {
+        eglDestroySyncKHR(display_, acquireSync_);
+        acquireSync_ = EGL_NO_SYNC_KHR;
+    }
     if (fenceFd < 0) return true;
     const EGLint attributes[] = {EGL_SYNC_NATIVE_FENCE_FD_ANDROID, fenceFd, EGL_NONE};
     EGLSyncKHR sync = eglCreateSyncKHR(display_, EGL_SYNC_NATIVE_FENCE_ANDROID, attributes);
     if (sync != EGL_NO_SYNC_KHR) {
         const EGLBoolean result = eglWaitSyncKHR(display_, sync, 0);
+        if (result == EGL_TRUE) {
+            acquireSync_ = sync;
+            return true;
+        }
         eglDestroySyncKHR(display_, sync);
-        return result == EGL_TRUE;
+        return false;
     }
     pollfd descriptor{fenceFd, POLLIN, 0};
     int result;
@@ -253,6 +261,11 @@ bool WindowsProjectionPresenter::uploadLinearDmabufToTexture(
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_ALPHA);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, frame.width, frame.height, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    }
+    if (acquireSync_ != EGL_NO_SYNC_KHR) {
+        eglClientWaitSyncKHR(display_, acquireSync_, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
+        eglDestroySyncKHR(display_, acquireSync_);
+        acquireSync_ = EGL_NO_SYNC_KHR;
     }
     DmaBufSync sync{kDmaBufSyncRead};
     ioctl(frame.dmabufFds[0], DMA_BUF_IOCTL_SYNC, &sync);
@@ -461,6 +474,10 @@ bool WindowsProjectionPresenter::render(WindowsFrameTransport &transport, XrSpac
 }
 
 void WindowsProjectionPresenter::shutdown() {
+    if (acquireSync_ != EGL_NO_SYNC_KHR) {
+        eglDestroySyncKHR(display_, acquireSync_);
+        acquireSync_ = EGL_NO_SYNC_KHR;
+    }
     for (uint32_t eye = 0; eye < 2; ++eye) {
         for (int image = 0; image < WindowsFrameTransport::kMaxImages; ++image) {
             if (eglImages_[eye][image] != EGL_NO_IMAGE_KHR) {

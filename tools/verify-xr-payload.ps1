@@ -15,8 +15,10 @@ foreach ($file in @($runtime64, $runtime32, $bridge, $bridge32, $unixlib, $openC
 function Get-PeMachine([string]$Path) {
     $bytes = [System.IO.File]::ReadAllBytes($Path)
     if ($bytes.Length -lt 256) { throw "Invalid PE image: $Path" }
+    if ($bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) { throw "Invalid PE image: $Path" }
     $offset = [BitConverter]::ToInt32($bytes, 0x3c)
     if ($offset -lt 0x40 -or $offset + 6 -gt $bytes.Length) { throw "Invalid PE header: $Path" }
+    if ([BitConverter]::ToUInt32($bytes, $offset) -ne 0x00004550) { throw "Invalid PE header: $Path" }
     return [BitConverter]::ToUInt16($bytes, $offset + 4)
 }
 

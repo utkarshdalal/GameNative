@@ -15,7 +15,7 @@ set(BUILD_CONFORMANCE_TESTS OFF CACHE BOOL "" FORCE)
 set(BUILD_SDK_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(openxr_sdk)
 
-add_library(gamenative_openxr_runtime SHARED gamenative_openxr_runtime.c gamenative_control.c gamenative_actions.c gamenative_dxvk.c)
+add_library(gamenative_openxr_runtime SHARED gamenative_openxr_runtime.c)
 target_compile_definitions(gamenative_openxr_runtime PRIVATE XR_USE_PLATFORM_WIN32 XR_USE_GRAPHICS_API_D3D11 WIN32_LEAN_AND_MEAN)
 target_include_directories(gamenative_openxr_runtime PRIVATE
     ${openxr_sdk_BINARY_DIR}/include

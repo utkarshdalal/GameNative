@@ -105,12 +105,12 @@ class WindowsVrPayloadManager(
             val iniBackup = File(directory, "opencomposite.ini.gamenative-original")
             val iniMissing = File(directory, "opencomposite.ini.gamenative-missing")
             check(!backup.exists() && !owner.exists())
+            writeIfChanged(owner, "2\n".toByteArray())
+            openCompositeDirectories += directory
             writeIfChanged(backup, target.readBytes())
             if (ini.isFile) writeIfChanged(iniBackup, ini.readBytes()) else writeIfChanged(iniMissing, byteArrayOf(1))
-            writeIfChanged(owner, "2\n".toByteArray())
             writeIfChanged(target, adapter)
             writeIfChanged(ini, "enableAudio=false\nlogEnabled=true\n".toByteArray())
-            openCompositeDirectories += directory
             diagnostics.record("opencomposite", "installed path=${target.path}")
         }
     }

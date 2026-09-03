@@ -169,6 +169,7 @@ private:
     XrInstance instance_ = XR_NULL_HANDLE;
     XrSystemId systemId_ = XR_NULL_SYSTEM_ID;
     XrSession session_ = XR_NULL_HANDLE;
+    std::mutex sessionMutex_;
     XrSpace localSpace_ = XR_NULL_HANDLE;
     XrSpace stageSpace_ = XR_NULL_HANDLE;
     XrSpace windowsTrackingSpace_ = XR_NULL_HANDLE;

@@ -76,6 +76,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         if (!enabled) {
             scenePending.set(false);
         } else {
+            onPointerMove(xServer.pointer.getX(), xServer.pointer.getY());
             queueSceneUpdate();
             xServerView.requestRender();
         }

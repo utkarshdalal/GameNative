@@ -15,13 +15,17 @@ class WindowsVrSnapshotProvider {
     @Volatile
     private var latest: WindowsVrRuntimeSnapshot? = null
 
+    private val lock = Any()
+
     fun attach(handle: Long) {
-        this.handle = handle
+        synchronized(lock) { this.handle = handle }
     }
 
     fun detach() {
-        handle = 0L
-        latest = null
+        synchronized(lock) {
+            handle = 0L
+            latest = null
+        }
     }
 
     fun waitFrame(afterSerial: Long, timeoutMs: Int): WindowsVrRuntimeSnapshot? {
@@ -37,7 +41,11 @@ class WindowsVrSnapshotProvider {
                 snapshot.input,
                 snapshot.flags,
             )) return null
-        latest = snapshot
+        synchronized(lock) {
+            if (handle != activeHandle) return null
+            val current = latest
+            if (current == null || current.timing[0] <= snapshot.timing[0]) latest = snapshot
+        }
         return snapshot
     }
 

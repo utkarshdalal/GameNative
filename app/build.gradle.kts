@@ -309,6 +309,7 @@ android {
 
     tasks.register<Exec>("stageWineXrBridge") {
         enabled = hostCanRunXrPayloadScripts
+        dependsOn("buildModernXrNative")
         val companion = providers.environmentVariable("GAMENATIVE_WINE_XR_BRIDGE")
         doFirst {
             check(companion.isPresent) { "GAMENATIVE_WINE_XR_BRIDGE must point to the ARM64X Wine builtin companion" }

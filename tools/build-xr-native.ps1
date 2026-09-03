@@ -10,8 +10,10 @@ $sdk = $sdkLine.Substring(8).Replace("\\", "\").Replace("\:", ":")
 $ndk = Join-Path $sdk "ndk\27.3.13750724"
 $cmake = Join-Path $sdk "cmake\3.22.1\bin\cmake.exe"
 $ninja = Join-Path $sdk "cmake\3.22.1\bin\ninja.exe"
-$aar = Get-ChildItem (Join-Path $env:USERPROFILE ".gradle\caches\modules-2\files-2.1\org.khronos.openxr\openxr_loader_for_android\1.1.61") -Recurse -Filter "openxr_loader_for_android-1.1.61.aar" | Select-Object -First 1
-if (-not $aar) { throw "OpenXR Android loader 1.1.61 is not available in the Gradle cache" }
+$gradleHome = if ($env:GRADLE_USER_HOME) { $env:GRADLE_USER_HOME } else { Join-Path $env:USERPROFILE ".gradle" }
+$aarCache = Join-Path $gradleHome "caches\modules-2\files-2.1\org.khronos.openxr\openxr_loader_for_android\1.1.61"
+$aar = if (Test-Path -LiteralPath $aarCache) { Get-ChildItem $aarCache -Recurse -Filter "openxr_loader_for_android-1.1.61.aar" | Select-Object -First 1 }
+if (-not $aar) { throw "OpenXR Android loader 1.1.61 is not in the Gradle cache ($gradleHome); run a Gradle sync first so it is downloaded" }
 $work = Join-Path $repository "app\build\xr-native"
 $dependency = Join-Path $work "openxr"
 $build = Join-Path $work "build"

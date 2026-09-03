@@ -186,17 +186,20 @@ void WindowsFrameTransport::start(const std::string& socketPath) {
 }
 
 void WindowsFrameTransport::stop() {
-    if (!running_.exchange(false)) return;
-    releaseCv_.notify_all();
-    int client = clientFd_.exchange(-1);
-    if (client >= 0) ::shutdown(client, SHUT_RDWR);
-    int fd = listenFd_.exchange(-1);
-    if (fd >= 0) {
-        ::shutdown(fd, SHUT_RDWR);
-        ::close(fd);
+    if (running_.exchange(false)) {
+        releaseCv_.notify_all();
+        int client = clientFd_.exchange(-1);
+        if (client >= 0) ::shutdown(client, SHUT_RDWR);
+        int fd = listenFd_.exchange(-1);
+        if (fd >= 0) {
+            ::shutdown(fd, SHUT_RDWR);
+            ::close(fd);
+        }
     }
     if (acceptThread_.joinable()) acceptThread_.join();
     for (int eye = 0; eye < kEyeCount; ++eye) releaseEye(eye);
+    std::lock_guard<std::mutex> lock(eyesMutex_);
+    for (int eye = 0; eye < kEyeCount; ++eye) dropRetainedLocked(eye);
 }
 
 void WindowsFrameTransport::acceptLoop() {
@@ -239,7 +242,7 @@ void WindowsFrameTransport::acceptLoop() {
         int expectedClient = clientFd;
         clientFd_.compare_exchange_strong(expectedClient, -1);
         ::close(clientFd);
-        for (int eye = 0; eye < kEyeCount; ++eye) releaseEye(eye);
+        for (int eye = 0; eye < kEyeCount; ++eye) resetEye(eye);
         LOGI("xr transport: producer disconnected");
     }
 
@@ -553,12 +556,53 @@ void WindowsFrameTransport::releaseEye(int eye) {
     releaseCv_.notify_all();
 }
 
+void WindowsFrameTransport::resetEye(int eye) {
+    std::lock_guard<std::mutex> lock(eyesMutex_);
+    if (latest_[eye].acquireFenceFd >= 0) {
+        ::close(latest_[eye].acquireFenceFd);
+    }
+    latest_[eye] = EyeFrame{};
+    latestClaimed_[eye] = false;
+    for (int image = 0; image < kMaxImages; ++image) {
+        if (releaseFenceFds_[eye][image] >= 0) {
+            ::close(releaseFenceFds_[eye][image]);
+            releaseFenceFds_[eye][image] = -1;
+        }
+        releasePending_[eye][image] = false;
+    }
+    releaseCv_.notify_all();
+}
+
+void WindowsFrameTransport::dropRetainedLocked(int eye) {
+    EyeFrame& held = retained_[eye];
+    if (held.kind == BufferKind::HardwareBuffer && held.buffer != nullptr) {
+        AHardwareBuffer_release(held.buffer);
+    } else if (held.kind == BufferKind::DmaBuf) {
+        for (int plane = 0; plane < held.planeCount; ++plane) {
+            if (held.dmabufFds[plane] >= 0) ::close(held.dmabufFds[plane]);
+        }
+    }
+    held = EyeFrame{};
+}
+
 EyeFrame WindowsFrameTransport::pollEye(int eye) {
     if (eye < 0 || eye >= kEyeCount) return EyeFrame{};
     std::lock_guard<std::mutex> lock(eyesMutex_);
     EyeFrame snapshot = latest_[eye];
     latest_[eye].acquireFenceFd = -1;
-    if (snapshot.kind != BufferKind::None) latestClaimed_[eye] = true;
+    if (snapshot.kind == BufferKind::None) return snapshot;
+    latestClaimed_[eye] = true;
+    dropRetainedLocked(eye);
+    if (snapshot.kind == BufferKind::HardwareBuffer && snapshot.buffer != nullptr) {
+        AHardwareBuffer_acquire(snapshot.buffer);
+    } else if (snapshot.kind == BufferKind::DmaBuf) {
+        for (int plane = 0; plane < snapshot.planeCount; ++plane) {
+            snapshot.dmabufFds[plane] =
+                snapshot.dmabufFds[plane] >= 0 ? ::dup(snapshot.dmabufFds[plane]) : -1;
+        }
+    }
+    retained_[eye] = snapshot;
+    retained_[eye].acquireFenceFd = -1;
     return snapshot;
 }
 

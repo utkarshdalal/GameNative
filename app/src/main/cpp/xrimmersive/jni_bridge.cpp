@@ -3,6 +3,8 @@
 #include <android/hardware_buffer_jni.h>
 #include <android/log.h>
 
+#include <atomic>
+#include <condition_variable>
 #include <mutex>
 #include <unordered_set>
 
@@ -13,6 +15,7 @@ namespace {
 struct NativeHandle {
     xrimmersive::XrImmersiveSession *session;
     jobject activityGlobalRef;
+    std::atomic<int> waiters{0};
 };
 
 // Lock ordering: gHandleMutex is the outermost lock — it may be held while calling into
@@ -20,6 +23,7 @@ struct NativeHandle {
 // never held across XrImmersiveSession::join() or AndroidBitmap_lockPixels/unlockPixels. Every
 // entry point must hold it for the WHOLE call into the session, not just the lookup.
 std::mutex gHandleMutex;
+std::condition_variable gHandleCondition;
 std::unordered_set<NativeHandle *> gLiveHandles;
 
 NativeHandle *LiveHandle(jlong handlePtr) {
@@ -68,8 +72,10 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativeJoinAndDestroy(JNIEnv *env, jcla
     {
         // Retiring the handle under the lock means every in-flight caller has already left its
         // critical section, and no new one can enter, before anything is destroyed.
-        std::lock_guard<std::mutex> lock(gHandleMutex);
+        std::unique_lock<std::mutex> lock(gHandleMutex);
         if (gLiveHandles.erase(handle) == 0) return;
+        handle->session->requestStop();
+        gHandleCondition.wait(lock, [handle] { return handle->waiters.load() == 0; });
     }
     handle->session->join();
     delete handle->session;
@@ -134,15 +140,23 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativeWaitWindowsFrame(
     if (env->GetArrayLength(outTiming) < 11 || env->GetArrayLength(outViews) < 22 ||
         env->GetArrayLength(outInput) < 36 || env->GetArrayLength(outFlags) < 3) return JNI_FALSE;
     xrimmersive::WindowsRuntimeSnapshot snapshot;
+    xrimmersive::XrImmersiveSession *session = nullptr;
+    NativeHandle *handle = nullptr;
     {
         std::lock_guard<std::mutex> lock(gHandleMutex);
-        auto *handle = LiveHandle(handlePtr);
+        handle = LiveHandle(handlePtr);
         if (handle == nullptr) return JNI_FALSE;
-        if (!handle->session->waitWindowsRuntimeSnapshot(
-                static_cast<uint64_t>(afterSerial), static_cast<uint32_t>(timeoutMs), &snapshot)) {
-            return JNI_FALSE;
-        }
+        session = handle->session;
+        handle->waiters.fetch_add(1);
     }
+    const bool got = session->waitWindowsRuntimeSnapshot(
+        static_cast<uint64_t>(afterSerial), static_cast<uint32_t>(timeoutMs), &snapshot);
+    {
+        std::lock_guard<std::mutex> lock(gHandleMutex);
+        handle->waiters.fetch_sub(1);
+    }
+    gHandleCondition.notify_all();
+    if (!got) return JNI_FALSE;
     const jlong timing[11] = {
         static_cast<jlong>(snapshot.frameSerial),
         static_cast<jlong>(snapshot.predictedDisplayTime),

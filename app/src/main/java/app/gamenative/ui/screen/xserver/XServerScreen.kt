@@ -2096,6 +2096,7 @@ fun XServerScreen(
 
                         private fun refreshFrameRatingTracking(reason: String) {
                             val rating = frameRating ?: return
+                            if (!getxServer().isFlatPresentationEnabled) return
                             val topmost = findTopmostApplicationWindow(getxServer().windowManager.rootWindow)
                             val nextId = topmost?.id ?: -1
                             if (frameRatingWindowId == nextId) return
