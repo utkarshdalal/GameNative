@@ -15,7 +15,7 @@ if (-not $aar) { throw "OpenXR Android loader 1.1.61 is not available in the Gra
 $work = Join-Path $repository "app\build\xr-native"
 $dependency = Join-Path $work "openxr"
 $build = Join-Path $work "build"
-$output = Join-Path $repository "app\build\generated\xrNative\modernXr\arm64-v8a"
+$output = Join-Path $repository "app\src\modernXr\jniLibs\arm64-v8a"
 $unixBuild = Join-Path $repository "app\build\xr-unixlib"
 $payloadOutput = Join-Path $repository "app\src\modernXr\assets"
 New-Item -ItemType Directory -Force -Path $dependency, $build, $output | Out-Null

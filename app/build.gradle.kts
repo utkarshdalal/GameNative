@@ -271,7 +271,7 @@ android {
                 srcDirs("src/modern/assets", "src/main/assets")
             }
             jniLibs {
-                setSrcDirs(listOf("src/modern/jniLibs", "build/generated/xrNative/modernXr"))
+                setSrcDirs(listOf("src/modern/jniLibs", "src/modernXr/jniLibs"))
             }
         }
         getByName("debug") {

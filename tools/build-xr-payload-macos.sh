@@ -47,6 +47,20 @@ hash64=$(shasum -a 256 "$output/gamenative_openxr_runtime64.dll" | cut -d' ' -f1
 hash32=$(shasum -a 256 "$output/gamenative_openxr_runtime32.dll" | cut -d' ' -f1)
 printf "3 %s %s" "$hash64" "$hash32" > "$output/payload.version"
 
+# The native immersive compositor (libxrimmersive.so) against the Khronos loader prefab.
+aar=$(find "$HOME/.gradle/caches/modules-2/files-2.1/org.khronos.openxr/openxr_loader_for_android/1.1.61" -name "*.aar" | head -1)
+[ -n "$aar" ] || { echo "OpenXR Android loader 1.1.61 is not in the Gradle cache; run a gradle sync first"; exit 1; }
+mkdir -p "$work/openxr"
+unzip -q -o "$aar" -d "$work/openxr"
+"$cmake" -S "$repository/app/src/main/cpp/xrimmersive" -B "$work/xrimmersive" -GNinja \
+    -DCMAKE_MAKE_PROGRAM="$ninja" \
+    -DCMAKE_TOOLCHAIN_FILE="$ndk/build/cmake/android.toolchain.cmake" \
+    -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-29 -DCMAKE_BUILD_TYPE=Release \
+    -DOpenXR_DIR="$work/openxr/prefab/modules/openxr_loader/libs/android.arm64-v8a/cmake/openxr" >/dev/null
+"$cmake" --build "$work/xrimmersive"
+mkdir -p "$repository/app/src/modernXr/jniLibs/arm64-v8a"
+cp "$work/xrimmersive/libxrimmersive.so" "$repository/app/src/modernXr/jniLibs/arm64-v8a/"
+
 # The Wine unixlib (plain NDK shared library).
 "$cmake" -S "$source_dir/unix" -B "$work/unixlib" -GNinja \
     -DCMAKE_MAKE_PROGRAM="$ninja" \
