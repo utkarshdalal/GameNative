@@ -36,8 +36,10 @@ import coil.request.CachePolicy
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.events.AndroidEvent
+import app.gamenative.mods.NexusAuthManager
 import app.gamenative.mods.NexusDownloadLinkInbox
 import app.gamenative.mods.NexusIntegrationStatus
+import app.gamenative.mods.NexusNxmSubmission
 import app.gamenative.mods.NexusPendingDownloadStore
 import app.gamenative.ui.screen.library.appscreen.BaseAppScreen
 import app.gamenative.service.SteamService
@@ -49,6 +51,7 @@ import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.SnackbarHostController
 import app.gamenative.utils.AnimatedPngDecoder
 import app.gamenative.data.GameSource
+import app.gamenative.powercontrol.PowerManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
@@ -59,7 +62,12 @@ import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
 import com.winlator.inputcontrols.ControllerManager
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.util.EnumSet
 import kotlin.math.abs
 import okio.Path.Companion.toOkioPath
@@ -67,8 +75,9 @@ import timber.log.Timber
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
     companion object {
+        private val nxmIntentMutex = Mutex()
+
         private var totalIndex = 0
 
         private var currentOrientationChangeValue: Int = 0
@@ -79,6 +88,11 @@ class MainActivity : ComponentActivity() {
                 Build.MANUFACTURER.equals("Oculus", true) ||
                 Build.MANUFACTURER.equals("Meta", true) ||
                 Build.MANUFACTURER.equals("Pico", true)
+
+        fun isMetaQuest(): Boolean =
+            Build.MANUFACTURER.equals("Oculus", true) ||
+                Build.MANUFACTURER.equals("Meta", true) ||
+                Build.BRAND.equals("oculus", true)
 
         // Store pending launch request to be processed after UI is ready
         @Volatile
@@ -298,35 +312,33 @@ class MainActivity : ComponentActivity() {
             Timber.d("[IntentLaunch]: Ignoring intent re-delivered from recents")
             return
         }
+        if (intent.action == Intent.ACTION_VIEW &&
+            intent.data?.scheme.equals("gamenative", ignoreCase = true) &&
+            intent.data?.host.equals("discord-linked", ignoreCase = true)
+        ) {
+            val token = intent.data?.getQueryParameter("token").orEmpty()
+            val state = intent.data?.getQueryParameter("state").orEmpty()
+            // Do not retain the token-bearing link as the Activity's launch intent.
+            setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+            val expectedNonce = PrefManager.discordOauthNonce
+            if (token.isNotEmpty() && expectedNonce.isNotEmpty() && state == expectedNonce) {
+                PrefManager.discordOauthNonce = ""
+                PrefManager.discordRelayToken = token
+                SnackbarManager.show(getString(R.string.debug_report_discord_linked))
+            } else if (token.isNotEmpty()) {
+                Timber.w("[IntentLaunch]: Rejecting discord-linked token with mismatched state")
+            }
+            return
+        }
         if (intent.action == Intent.ACTION_VIEW && intent.data?.scheme.equals("nxm", ignoreCase = true)) {
+            val rawNxmUrl = intent.dataString.orEmpty()
             // Do not retain a signed NXM grant as the Activity's launch intent. Android can
             // otherwise replay it after a configuration change or process recreation.
             setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
-            if (!NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) {
-                Timber.i("[NexusDownload]: Ignoring NXM callback while online Nexus access is disabled")
-                SnackbarManager.show(getString(R.string.nexus_integration_temporarily_unavailable))
-                return
-            }
-            val restoredDownloads = NexusPendingDownloadStore.restore(this)
-            restoredDownloads.forEach { NexusDownloadLinkInbox.expect(it) }
-            val reference = intent.dataString?.let(NexusDownloadLinkInbox::submit)
-            if (reference != null) {
-                restoredDownloads.firstOrNull { pending ->
-                    pending.reference.gameDomain.equals(reference.gameDomain, ignoreCase = true) &&
-                        pending.reference.modId == reference.modId &&
-                        pending.file.fileId == reference.fileId
-                }?.let { pending -> BaseAppScreen.requestManageMods(pending.appId) }
-                NexusPendingDownloadStore.removeMatching(this, reference)
-                Timber.i(
-                    "[NexusDownload]: Received authorized NXM callback for %s/%d/%s",
-                    reference.gameDomain,
-                    reference.modId,
-                    reference.fileId,
-                )
-                SnackbarManager.show(getString(R.string.nexus_nxm_callback_received))
-            } else {
-                Timber.w("[NexusDownload]: Ignoring malformed or unsigned NXM callback")
-                SnackbarManager.show(getString(R.string.nexus_invalid_nxm_callback))
+            lifecycleScope.launch {
+                withContext(NonCancellable) {
+                    nxmIntentMutex.withLock { handleNxmIntent(rawNxmUrl) }
+                }
             }
             return
         }
@@ -360,6 +372,70 @@ class MainActivity : ComponentActivity() {
             }
         } catch (e: Exception) {
             Timber.e(e, "[IntentLaunch]: Failed to handle launch intent")
+        }
+    }
+
+    private suspend fun handleNxmIntent(rawNxmUrl: String) {
+        if (!NexusIntegrationStatus.ONLINE_ACCESS_AVAILABLE) {
+            Timber.i("[NexusDownload]: Ignoring NXM callback while online Nexus access is disabled")
+            SnackbarManager.show(getString(R.string.nexus_integration_temporarily_unavailable))
+            return
+        }
+        if (!NexusAuthManager.hasStoredSession()) {
+            // A signed NXM grant is short lived and account-bound. Do not restore or consume
+            // it while disconnected: the user must reconnect and request a fresh grant.
+            Timber.i("[NexusDownload]: Ignoring NXM callback while the Nexus account is disconnected")
+            SnackbarManager.show(getString(R.string.nexus_oauth_sign_in_required))
+            return
+        }
+        val restoredDownloads = withContext(Dispatchers.IO) {
+            NexusPendingDownloadStore.restore(this@MainActivity)
+        }
+        restoredDownloads.forEach { NexusDownloadLinkInbox.expect(it) }
+        when (val submission = NexusDownloadLinkInbox.submitIntent(rawNxmUrl)) {
+            is NexusNxmSubmission.Expected -> {
+                BaseAppScreen.requestManageMods(submission.appId)
+                withContext(Dispatchers.IO) {
+                    NexusPendingDownloadStore.removeMatching(this@MainActivity, submission.reference)
+                }
+                Timber.i(
+                    "[NexusDownload]: Received expected NXM callback for %s/%d/%s",
+                    submission.reference.gameDomain,
+                    submission.reference.modId,
+                    submission.reference.fileId,
+                )
+                SnackbarManager.show(getString(R.string.nexus_nxm_callback_received))
+            }
+            is NexusNxmSubmission.BrowserFirst -> {
+                Timber.i(
+                    "[NexusDownload]: Routed browser-first NXM callback for %s/%d/%s",
+                    submission.reference.gameDomain,
+                    submission.reference.modId,
+                    submission.reference.fileId,
+                )
+            }
+            NexusNxmSubmission.Expired -> {
+                Timber.i("[NexusDownload]: Ignoring expired NXM callback")
+                SnackbarManager.show(getString(R.string.nexus_authorization_expired))
+            }
+            NexusNxmSubmission.NoActiveTarget -> {
+                Timber.i("[NexusDownload]: Browser-first NXM callback has no active target")
+                SnackbarManager.show(getString(R.string.nexus_nxm_no_active_target))
+            }
+            NexusNxmSubmission.AmbiguousTarget -> {
+                Timber.w("[NexusDownload]: Browser-first NXM callback has multiple active targets")
+                SnackbarManager.show(getString(R.string.nexus_nxm_ambiguous_target))
+            }
+            NexusNxmSubmission.DeliveryFailed -> {
+                Timber.w("[NexusDownload]: Could not deliver NXM callback to the active target")
+                SnackbarManager.show(getString(R.string.download_failed_try_again))
+            }
+            NexusNxmSubmission.Replayed,
+            NexusNxmSubmission.Malformed,
+            -> {
+                Timber.w("[NexusDownload]: Ignoring malformed, unsigned, or replayed NXM callback")
+                SnackbarManager.show(getString(R.string.nexus_invalid_nxm_callback))
+            }
         }
     }
 
@@ -427,6 +503,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        PowerManager.resume()
         PluviaApp.isActivityInForeground = true
 
         lifecycleScope.launch { app.gamenative.launch.LaunchReadiness.refresh() }
@@ -475,6 +552,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        PowerManager.pause()
         PluviaApp.isActivityInForeground = false
         if (hasReadyGameLifecycleState("pause")) {
             when {

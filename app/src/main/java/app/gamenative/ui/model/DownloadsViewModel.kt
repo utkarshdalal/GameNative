@@ -62,12 +62,10 @@ class DownloadsViewModel @Inject constructor(
     private data class ObservedDownload(
         val info: DownloadInfo,
         val progressListener: (Float) -> Unit,
-        val statusJob: Job,
         val syncingJob: Job,
     ) {
         fun dispose() {
             info.removeProgressListener(progressListener)
-            statusJob.cancel()
             syncingJob.cancel()
         }
     }
@@ -286,7 +284,7 @@ class DownloadsViewModel @Inject constructor(
     ): DownloadItemState {
         val key = downloadKey(gameSource, appId)
         val rawProgress = info.getProgress()
-        val statusMessage = normalizeStatusMessage(info.getStatusMessageFlow().value)
+        val statusMessage = normalizeStatusMessage(info.getCurrentStatusMessage())
         val isRunning = info.isActive() || info.isPostInstallSyncing()
         val status = when {
             rawProgress < 0f || statusMessage?.startsWith("Failed", ignoreCase = true) == true -> DownloadItemStatus.FAILED
@@ -416,12 +414,6 @@ class DownloadsViewModel @Inject constructor(
             }
             binding.info.addProgressListener(progressListener)
 
-            val statusJob = viewModelScope.launch(Dispatchers.Default) {
-                binding.info.getStatusMessageFlow().collect {
-                    updateObservedDownloadItem(binding)
-                }
-            }
-
             val syncingJob = viewModelScope.launch(Dispatchers.Default) {
                 binding.info.getPostInstallSyncingFlow().collect {
                     updateObservedDownloadItem(binding)
@@ -431,7 +423,6 @@ class DownloadsViewModel @Inject constructor(
             observedDownloads[key] = ObservedDownload(
                 info = binding.info,
                 progressListener = progressListener,
-                statusJob = statusJob,
                 syncingJob = syncingJob,
             )
         }

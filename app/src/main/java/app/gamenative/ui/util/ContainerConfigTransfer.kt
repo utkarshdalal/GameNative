@@ -93,14 +93,15 @@ object ContainerConfigTransfer {
             val matchType = "exact_gpu_match"
 
             // 1) Parse config into a validated map of fields to apply
-            val bestConfigMap = BestConfigService.parseConfigToContainerData(
+            val parsedResult = BestConfigService.parseConfigResult(
                 context = context,
                 configJson = configJson,
                 matchType = matchType,
                 applyKnownConfig = true,
-            ) ?: emptyMap()
+            )
+            val bestConfigMap = parsedResult.config
 
-            val missingComponents = BestConfigService.consumeLastMissingComponents()
+            val missingComponents = parsedResult.missingComponents
             if (bestConfigMap.isEmpty()) {
                 if (missingComponents.isNotEmpty()) {
                     BaseAppScreen.showMissingComponentsDialog(appId, missingComponents) {
@@ -109,8 +110,8 @@ object ContainerConfigTransfer {
                             try {
                                 val forced = BestConfigService.parseConfigToContainerData(
                                     context, configJson, matchType, true, forceApply = true,
-                                ) ?: emptyMap()
-                                if (forced.isEmpty()) {
+                                )
+                                if (forced.isNullOrEmpty()) {
                                     SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
                                     return@launch
                                 }

@@ -5,14 +5,11 @@ import android.content.res.Resources
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
-import com.winlator.container.Container
-import com.winlator.container.ContainerData
-import com.winlator.contents.AdrenotoolsManager
+import java.io.File
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import java.io.File
 import org.junit.Assert.*
 import org.junit.Assume.assumeFalse
 import org.junit.Before
@@ -293,16 +290,17 @@ class BestConfigServiceTest {
                 "wineVersion": "invalid-wine-version",
                 "dxwrapper": "dxvk",
                 "dxwrapperConfig": "version=999.999.999",
-                "containerVariant": "glibc",
+                "containerVariant": "bionic",
                 "graphicsDriver": "turnip",
                 "graphicsDriverConfig": "version=999.999.999"
             }
         """.trimIndent()
 
         val bestConfig = Json.parseToJsonElement(invalidConfigJson).jsonObject
-        val result = runBlocking { BestConfigService.parseConfigToContainerData(context, bestConfig, "exact_gpu_match", true) }
+        val parsed = runBlocking { BestConfigService.parseConfigResult(context, bestConfig, "exact_gpu_match", true) }
 
-        assertTrue("Result should not be null", result!!.isEmpty())
+        assertTrue("Invalid config should not produce updates", parsed.config.isEmpty())
+        assertTrue("Missing components should be returned with this parse", parsed.missingComponents.isNotEmpty())
     }
 
     @Test
@@ -1047,6 +1045,29 @@ class BestConfigServiceTest {
         assertEquals(entry, ManifestComponentHelper.findManifestEntryForVersion("Turnip_v26.2.0_R4", listOf(entry)))
         assertEquals(entry, ManifestComponentHelper.findManifestEntryForVersion("Turnip v26.2.0 R4", listOf(entry)))
         assertNull(ManifestComponentHelper.findManifestEntryForVersion("nope", listOf(entry)))
+    }
+
+    @Test
+    fun fallbackFilter_keepsRuntimeVariantButRemovesGpuSpecificSettings() {
+        val config = Json.parseToJsonElement(
+            """{
+                "containerVariant":"bionic",
+                "wineVersion":"wine",
+                "graphicsDriver":"turnip",
+                "graphicsDriverConfig":"version=test",
+                "dxwrapper":"dxvk",
+                "dxwrapperConfig":"version=test"
+            }""",
+        ).jsonObject
+
+        val filtered = BestConfigService.filterConfigByMatchType(config, "fallback_match")
+
+        assertEquals("bionic", filtered["containerVariant"]?.toString()?.trim('"'))
+        assertEquals("wine", filtered["wineVersion"]?.toString()?.trim('"'))
+        assertFalse(filtered.containsKey("graphicsDriver"))
+        assertFalse(filtered.containsKey("graphicsDriverConfig"))
+        assertFalse(filtered.containsKey("dxwrapper"))
+        assertFalse(filtered.containsKey("dxwrapperConfig"))
     }
 
     /**

@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -130,25 +131,50 @@ fun DelayTextField(
     LaunchedEffect(clampedValue, value) {
         if (value != clampedValue) onValueChange(clampedValue)
     }
+    var text by remember { mutableStateOf(clampedValue.toString()) }
+    var isFocused by remember { mutableStateOf(false) }
+    var lastSubmittedValue by remember { mutableStateOf(clampedValue) }
+
+    fun normalizedDraftValue(draft: String): Int? {
+        if (draft.isEmpty()) return null
+        return draft.toLongOrNull()
+            ?.coerceIn(valueRange.first.toLong(), valueRange.last.toLong())
+            ?.toInt()
+            ?: valueRange.last
+    }
+
+    LaunchedEffect(clampedValue, isFocused) {
+        if (!isFocused || clampedValue != lastSubmittedValue) {
+            text = clampedValue.toString()
+            lastSubmittedValue = clampedValue
+        }
+    }
 
     NoExtractOutlinedTextField(
-        value = clampedValue.toString(),
+        value = text,
         onValueChange = { newText ->
             val filtered = newText.filter { it.isDigit() }
-            val nextValue = when {
-                filtered.isEmpty() -> valueRange.first
-                else -> filtered.toLongOrNull()
-                    ?.coerceIn(valueRange.first.toLong(), valueRange.last.toLong())
-                    ?.toInt()
-                    ?: valueRange.last
+            text = filtered
+            normalizedDraftValue(filtered)?.let { nextValue ->
+                lastSubmittedValue = nextValue
+                if (nextValue != value) onValueChange(nextValue)
             }
-            onValueChange(nextValue)
         },
         label = { Text(label) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         singleLine = true,
         modifier = Modifier
             .fillMaxWidth()
+            .onFocusChanged { focusState ->
+                val wasFocused = isFocused
+                isFocused = focusState.isFocused
+                if (wasFocused && !focusState.isFocused) {
+                    val nextValue = normalizedDraftValue(text) ?: clampedValue
+                    text = nextValue.toString()
+                    lastSubmittedValue = nextValue
+                    if (nextValue != value) onValueChange(nextValue)
+                }
+            }
             .padding(horizontal = 12.dp, vertical = 0.dp),
     )
 }

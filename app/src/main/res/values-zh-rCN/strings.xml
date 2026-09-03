@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">登录</string>
     <string name="login_2fa">双重验证</string>
@@ -309,7 +309,7 @@
     <string name="performance_hud_fps_limiter_target">目标 FPS</string>
     <string name="performance_hud_fps_limiter_off">无限制</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_override">LSFG 启用时，限制器被覆盖。源帧率由倍数控制。</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">限制基础帧率。屏幕帧率为上限乘以 LSFG 倍数。</string>
     <string name="performance_hud_presets">预设</string>
     <string name="performance_hud_presets_description">快速切换常用 HUD 布局。</string>
     <string name="performance_hud_preset_fps_only">1</string>
@@ -554,6 +554,8 @@
     <string name="downloading">下载中...</string>
     <string name="calculating_time">计算中...</string>
     <string name="download_failed_try_again">下载失败，请重试</string>
+    <string name="download_preparing">正在准备下载...</string>
+    <string name="download_preparing_depots">正在准备仓库 (%1$d/%2$d)</string>
     <string name="update_available">有可用更新</string>
     <string name="game_information">游戏信息</string>
     <string name="status">状态</string>
@@ -578,6 +580,11 @@
     <string name="add_custom_game_content_desc">添加自定义游戏</string>
     <string name="add_custom_game_dialog_title">添加自定义游戏</string>
     <string name="add_custom_game_dialog_message">请选择包含您要添加为自定义游戏的文件夹</string>
+    <string name="custom_game_importing">正在导入游戏…</string>
+    <string name="custom_game_import_success">游戏已导入</string>
+    <string name="custom_game_import_failed">导入失败</string>
+    <string name="custom_game_import_dialog_message">请选择包含游戏的文件夹。游戏将被导入到 GameNative 的存储空间，无需任何存储权限即可运行。大型游戏可能需要几分钟。</string>
+    <string name="custom_game_import_remove_original">导入后删除原文件</string>
     <string name="add_custom_game_dont_show_again">不再显示</string>
     <string name="base_app_shortcut_created">快捷方式已创建</string>
     <string name="base_app_shortcut_failed">无法创建快捷方式：%s</string>
@@ -912,6 +919,11 @@
     <string name="settings_language_restart_confirm">重新启动</string>
     <string name="settings_language_changing">切换语言并重新启动中...</string>
 
+    <!-- 设置：性能组 -->
+    <string name="settings_performance_title">性能</string>
+    <string name="settings_performance_power_control_title">性能控制</string>
+    <string name="settings_performance_power_control_subtitle">默认启用游戏内性能控制（已在测试设备上启用：AYN Odin 3、Retroid Pocket 6/Nova）</string>
+
     <!-- 设置：模拟组 -->
     <string name="settings_emulation_title">模拟设置</string>
     <string name="settings_emulation_orientations_title">允许的屏幕方向</string>
@@ -953,10 +965,10 @@
 
     <!-- 设置：信息组 -->
     <string name="settings_info_title">信息</string>
-    <string name="settings_info_send_tip_title">捐款支持</string>
-    <string name="settings_info_send_tip_subtitle">为持续的应用程序开发贡献力量</string>
-    <string name="settings_info_ask_tip_title">启动时显示捐款信息</string>
-    <string name="settings_info_ask_tip_subtitle">停止显示捐款信息</string>
+    <string name="settings_info_send_tip_title">成为会员</string>
+    <string name="settings_info_send_tip_subtitle">版本抢先体验、优先支持等</string>
+    <string name="settings_info_ask_tip_title">会员优惠</string>
+    <string name="settings_info_ask_tip_subtitle">偶尔显示成为 GameNative 会员的优惠信息</string>
     <string name="settings_info_source_title">源代码</string>
     <string name="settings_info_source_subtitle">查看此项目的源代码</string>
     <string name="settings_info_libraries_title">使用的库</string>
@@ -1067,9 +1079,11 @@
     <!-- 主界面：崩溃与支持 -->
     <string name="main_recent_crash_title">最近应用程序崩溃</string>
     <string name="main_recent_crash_message">若能了解您最近遇到的问题，将有助于我们改善应用程序。\n您可在应用程序设置中查看并导出最近的崩溃日志，将其附加至项目源代码仓库的 Github Issue中\nGithub 源代码仓库的链接亦位于设置页面内</string>
-    <string name="main_thank_you_title">感谢您使用 GameNative！</string>
-    <string name="main_thank_you_message">通过与朋友分享应用程序或在 Ko-fi 成为会员，支持 Android 平台的开源 PC 游戏</string>
-    <string name="main_join_kofi">加入 Ko-fi</string>
+    <string name="main_thank_you_title">喜欢 GameNative 吗？</string>
+    <string name="main_thank_you_message">立即成为会员。会员可享受：\n\n• 新版本抢先体验\n• 游戏运行问题优先支持\n• Discord 高级身份组和专属频道\n• …以及更多\n\n每月 $5 起</string>
+    <string name="main_join_kofi">成为会员</string>
+    <string name="pitch_session_title">喜欢《%1$s》吗？</string>
+    <string name="pitch_five_star_title">很高兴《%1$s》运行顺畅！</string>
     <string name="main_share">分享</string>
     <string name="main_share_text">试试 GameNative - 在 Android 上畅玩您的 PC Steam 游戏，完整支持云存档！\nhttps://gamenative.app\n加入社区：https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">游戏运行正常吗？</string>
@@ -1180,6 +1194,63 @@
     <string name="best_config_apply_anyway">仍然应用</string>
     <string name="best_config_applied_with_defaults">配置已应用，缺失组件已替换为默认值</string>
     <string name="best_config_apply_failed">应用配置失败：%s</string>
+    <string name="community_config_title">社区配置</string>
+    <string name="community_config_close">关闭社区配置</string>
+    <string name="community_config_refresh">刷新社区配置</string>
+    <string name="community_config_retry">重试</string>
+    <string name="community_config_unknown_error">未知错误</string>
+    <string name="community_config_unknown">未知</string>
+    <string name="community_config_load_failed">无法加载社区配置：%1$s</string>
+    <string name="community_config_game_not_found">未找到 %1$s 的兼容性条目</string>
+    <string name="community_config_gpu_unknown">GPU 不可用</string>
+    <plurals name="community_config_result_count">
+        <item quantity="other">%1$d 个配置</item>
+    </plurals>
+    <string name="community_config_highest_rated">评分最高</string>
+    <string name="community_config_newest">最新</string>
+    <string name="community_config_same_device">相同设备</string>
+    <string name="community_config_this_gpu">相同 GPU</string>
+    <string name="community_config_compatible_gpus">兼容</string>
+    <string name="community_config_load_more">加载更多</string>
+    <string name="community_config_no_device_results">未找到适用于此设备的配置。</string>
+    <string name="community_config_no_gpu_results">未找到适用于此 GPU 的配置。</string>
+    <string name="community_config_no_compatible_results">未找到适用于兼容 GPU 的配置。</string>
+    <string name="community_config_show_this_gpu">显示此 GPU</string>
+    <string name="community_config_show_compatible_gpus">显示兼容 GPU</string>
+    <string name="community_config_rating_value">%1$d/5</string>
+    <string name="community_config_fps_value">%1$s FPS</string>
+    <string name="community_config_details_title">配置详情</string>
+    <string name="community_config_other_gpu_warning">此结果使用其他 GPU。不会应用 GPU 专用的驱动程序和封装器设置。</string>
+    <string name="community_config_run_details">测试运行</string>
+    <string name="community_config_rating">评分</string>
+    <string name="community_config_average_fps">平均 FPS</string>
+    <string name="community_config_device">设备</string>
+    <string name="community_config_gpu">GPU</string>
+    <string name="community_config_android">Android</string>
+    <string name="community_config_soc">SoC</string>
+    <string name="community_config_app_version">GameNative 版本</string>
+    <string name="community_config_submitted">提交时间</string>
+    <string name="community_config_session_length">会话时长</string>
+    <string name="community_config_game_store">游戏商店</string>
+    <string name="community_config_custom_game">自定义游戏</string>
+    <string name="community_config_settings">设置</string>
+    <string name="community_config_additional_launch_settings">其他启动设置</string>
+    <string name="community_config_apply_launch_arguments">应用启动参数</string>
+    <string name="community_config_apply_environment_variables">应用环境变量</string>
+    <string name="community_config_replaces_existing_value">替换当前值</string>
+    <string name="community_config_dependencies">依赖项</string>
+    <string name="community_config_dependencies_apply_check">应用配置时将检查依赖项。</string>
+    <string name="community_config_no_downloads">目前无需从清单下载任何内容。</string>
+    <string name="community_config_downloads_required">将自动下载以下组件：\n%1$s</string>
+    <string name="community_config_tags">标签</string>
+    <string name="community_config_notes">备注</string>
+    <string name="community_config_apply">应用配置</string>
+    <string name="community_config_container">容器</string>
+    <string name="community_config_wine">Wine 或 Proton</string>
+    <string name="community_config_emulator">模拟器</string>
+    <string name="community_config_wrapper">DirectX 封装器</string>
+    <string name="community_config_box64_preset">Box64 预设</string>
+    <string name="community_config_driver">图形驱动程序</string>
     <string name="import_config">导入配置</string>
     <string name="export_config">导出配置</string>
 
@@ -1445,8 +1516,9 @@
 
     <!-- Recommendations -->
     <string name="recommended_badge">推荐</string>
-    <string name="recommended_buy_button">查看游戏</string>
-    <string name="recommended_support_message">通过此链接购买有助于支持 GameNative 的开发。</string>
+    <string name="recommended_buy_button">在 GOG 购买</string>
+    <string name="rec_buy_with_price">%1$s · 在 GOG 购买</string>
+    <string name="recommended_support_message">通过此链接购买，我们会获得佣金。</string>
     <string name="recommended_about_heading">关于本游戏</string>
     <string name="recommended_review_count">基于 %1$s 条评价</string>
     <string name="review_overwhelmingly_positive">好评如潮</string>
@@ -1510,6 +1582,7 @@
     <string name="option_reset_drm">重置 DRM</string>
     <string name="option_update">更新</string>
     <string name="option_use_known_config">使用已知配置</string>
+    <string name="option_browse_community_configs">浏览社区配置</string>
     <string name="option_verify_files">验证文件</string>
 
     <!-- 性能 HUD -->
@@ -1573,6 +1646,8 @@
     <string name="lsfg_flow_scale">光流缩放</string>
     <string name="lsfg_flow_scale_desc">数值越低越稳定；越高越流畅，但可能出现伪影。</string>
     <string name="lsfg_performance_mode">性能模式</string>
+    <string name="lsfg_present_mode">呈现模式</string>
+    <string name="lsfg_present_mode_desc">推荐使用 Mailbox。当输出帧率（fps 上限 × 倍数）与屏幕刷新率一致时也可使用 FIFO；低于刷新率时 FIFO 可能出现抖动。</string>
     <string name="lsfg_not_supported">帧生成需要 Bionic 容器</string>
     <string name="lsfg_install_prompt">Lossless Scaling 未安装。点击安装。已知仅在 Adreno 6xx 及更高版本上可用。</string>
     <string name="lsfg_not_in_library">Lossless Scaling 不在你的 Steam 库中</string>
@@ -1646,9 +1721,32 @@
     <string name="nexus_filter_placement">放置</string>
     <string name="nexus_filter_manual">手动</string>
     <string name="nexus_filter_unsupported">不支持</string>
+    <string name="nexus_oauth_account_title">Nexus Mods 账号</string>
+    <string name="nexus_oauth_connect">连接 Nexus Mods</string>
+    <string name="nexus_oauth_connecting">正在连接 Nexus Mods…</string>
+    <string name="nexus_oauth_cancel_sign_in">取消登录</string>
+    <string name="nexus_oauth_connected">已连接到 Nexus Mods</string>
+    <string name="nexus_oauth_connected_as">已以 %1$s 身份连接</string>
+    <string name="nexus_oauth_disconnected_description">连接您的 Nexus Mods 账号以浏览和导入模组及合集。</string>
+    <string name="nexus_oauth_premium_account">高级账号</string>
+    <string name="nexus_oauth_free_account">免费账号</string>
+    <string name="nexus_oauth_disconnect">断开连接</string>
+    <string name="nexus_oauth_disconnecting">正在断开与 Nexus Mods 的连接…</string>
+    <string name="nexus_oauth_disconnect_title">断开 Nexus Mods 连接？</string>
+    <string name="nexus_oauth_disconnect_message">GameNative 将撤销此设备上该账号的 Nexus 令牌。已安装的模组和本地文件不会被删除。</string>
+    <string name="nexus_oauth_disconnected">已断开 Nexus Mods 账号连接。</string>
+    <string name="nexus_oauth_sign_in_failed">Nexus Mods 登录未完成。请重新连接。</string>
+    <string name="nexus_oauth_disconnect_failed">无法断开 Nexus Mods 账号连接。请重试。</string>
+    <string name="nexus_oauth_browser_failed">无法在浏览器中打开 Nexus Mods 登录页面。</string>
+    <string name="nexus_oauth_invalid_callback">GameNative 已拒绝无效的 Nexus Mods 登录响应。</string>
+    <string name="nexus_oauth_sign_in_required">使用 Nexus 在线功能前，请先连接 Nexus Mods 账号。</string>
+    <string name="nexus_oauth_session_unavailable">Nexus 授权暂时不可用。请重试。</string>
     <string name="nexus_integration_temporarily_unavailable">在 GameNative 向 Nexus Mods 注册期间，Nexus Mods 支持已暂时停用。仍可继续管理已安装的模组。</string>
     <string name="nexus_invalid_nxm_callback">此 Nexus 授权无效、已过期、已被使用，或不再与有效的 GameNative 请求匹配。请从“管理 Nexus 模组”重新开始下载。</string>
     <string name="nexus_nxm_callback_received">已收到 Nexus 下载授权。如果下载没有自动继续，请返回“管理 Nexus 模组”。</string>
+    <string name="nexus_nxm_no_active_target">打开目标游戏的“管理 Nexus 模组”，然后再次点击 Nexus Mods 上的 Mod Manager Download。</string>
+    <string name="nexus_nxm_ambiguous_target">GameNative 无法在多个已打开的模组对话框之间安全选择。请关闭多余的对话框，然后重试 Mod Manager Download。</string>
+    <string name="nexus_nxm_file_not_found">Nexus 授权的文件已不再由此模组提供。请重新请求下载。</string>
     <string name="nexus_authorize_in_browser">此账号需要在 Nexus 网站上确认。请在浏览器中依次选择“Download with Manager”和“Slow Download”，GameNative 将自动继续。</string>
     <string name="nexus_open_browser_failed">无法在浏览器中打开 Nexus Mods。</string>
     <string name="nexus_authorization_timed_out">Nexus 网站授权超时。请重试此文件，并在浏览器中完成“Download with Manager”操作。</string>
@@ -1704,6 +1802,44 @@
     <string name="wrapper_quality_high">高（图像更清晰，占用更多内存）</string>
     <string name="option_play_with_diagnostics">诊断运行</string>
     <string name="option_share_diagnostics">分享诊断</string>
+    <string name="option_ai_debug_run">获取 AI 帮助</string>
+    <string name="debug_report_title">AI 调试报告</string>
+    <string name="debug_report_summary">%1$s · %2$s · 已捕获日志（%3$s MB）</string>
+    <string name="debug_report_what_went_wrong">出了什么问题？</string>
+    <string name="debug_report_send">发送</string>
+    <string name="debug_report_share_instead">改为分享</string>
+    <string name="debug_report_connect_hint">连接你的 Discord 账号，我们的 AI 就能在支持帖子中回复你。</string>
+    <string name="debug_report_connect_discord">连接 Discord</string>
+    <string name="debug_report_sending">正在发送报告…</string>
+    <string name="debug_report_success_title">报告已发送</string>
+    <string name="debug_report_success_message">我们的 Discord 中已创建一个支持帖子。我们的 AI 正在阅读你的日志，并会在那里回复。</string>
+    <string name="debug_report_open_discord">打开 Discord</string>
+    <string name="debug_report_failed_title">无法发送报告</string>
+    <string name="debug_report_failed_message">报告已保存在此设备上。恢复联网后可重试，或改为分享日志。</string>
+    <string name="debug_report_retry">重试</string>
+    <string name="debug_report_share_log_title">分享调试日志</string>
+    <string name="debug_report_discord_linked">Discord 已连接</string>
+    <string name="debug_report_no_log">本次运行未捕获调试日志。</string>
+    <string name="debug_offer_title">获取 AI 帮助解决此崩溃</string>
+    <string name="debug_offer_message">该会话提前结束了。开启调试日志再运行一次 %1$s，我们的 AI 会阅读日志并告诉你需要更改什么。</string>
+    <string name="debug_offer_confirm">开始调试运行</string>
+    <string name="debug_prerun_title">获取 AI 帮助</string>
+    <string name="debug_prerun_message_1">以调试日志运行游戏，退出后将日志分享给我们在 Discord 上的 AI。请一直运行游戏，直到出现问题。</string>
+    <string name="debug_prerun_message_2">AI 回复仅限订阅者。</string>
+    <string name="debug_prerun_message_3">任何人都可以分享报告以获得人工帮助。</string>
+    <string name="debug_paywall_title">获取 AI 调试支持</string>
+    <string name="debug_paywall_pitch">我们的 AI 会阅读你的完整日志和配置，并告诉你需要更改什么，通常不到 5 分钟。</string>
+    <string name="debug_paywall_tier5_title">$5/月 · Supporter</string>
+    <string name="debug_paywall_tier5_body">我们的基础 AI 会阅读你的调试报告，并在 Discord 中回复一个可尝试的解决方案，另加最多两次后续解答。</string>
+    <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
+    <string name="debug_paywall_tier10_body">我们最聪明的 AI 模型，在你的支持帖子中不限次数地交流。</string>
+    <string name="debug_paywall_cancel_anytime">随时可取消。</string>
+    <string name="debug_paywall_costs_note">订阅费用用于支付支持此功能的 AI 服务成本。</string>
+    <string name="debug_paywall_subscribe">在 Discord 上订阅</string>
+    <string name="debug_paywall_kofi_alt">在 Ko-fi 上订阅</string>
+    <string name="debug_paywall_already">已经是支持者？</string>
+    <string name="debug_paywall_send_now">我已订阅，立即发送</string>
+    <string name="debug_paywall_not_now">暂不</string>
     <string name="diagnostics_share_title">分享诊断日志</string>
     <string name="diagnostics_share_none">尚无诊断日志。请先使用「诊断运行」。</string>
 
@@ -1944,6 +2080,7 @@
     <string name="nexus_resolving_collection_item">解决集合%1$d/%2$d</string>
     <string name="nexus_collection_resolve_ready">收藏就绪：%1$d模组</string>
     <string name="nexus_resolve_collection_failed">未能解决Nexus 集合</string>
+    <string name="nexus_adult_content_blocked">此合集因你的 Nexus Mods 成人内容设置而被隐藏。</string>
     <string name="nexus_no_selected_collection_mods_ready">没有可供下载的选定合集模组</string>
     <string name="nexus_collection_different_file_reused">集合请求不同的文件；重复使用现有的已安装文件</string>
     <string name="nexus_collection_existing_placement_kept">保留现有安置</string>
@@ -2070,8 +2207,8 @@
     <string name="control_stroke_width_default">默认</string>
     <string name="control_stroke_width_thick">粗</string>
     <string name="control_stroke_width_extra_thick">特粗</string>
-    <string name="button_shooter_look_through">射击模式穿透</string>
-    <string name="button_shooter_look_through_subtitle">允许此按钮触摸同时控制动态射击移动和视角</string>
+    <string name="button_look_through">拖动穿透</string>
+    <string name="button_look_through_subtitle">按住此按钮并拖动，也可控制移动或镜头视角。触摸屏模式下不可用。</string>
     <string name="preview">预览</string>
     <string name="active">激活</string>
     <string name="apply_all">全部应用</string>
@@ -2083,6 +2220,8 @@
     <string name="rec_disclosure_body">为提供个性化推荐，我们会将你玩过的游戏分享给 GOG。可随时在设置中关闭。</string>
     <string name="rec_disclosure_allow">允许</string>
     <string name="rec_disclosure_not_now">暂不</string>
+    <string name="rec_teaser_title">发现适合你设备的游戏</string>
+    <string name="rec_teaser_subtitle">点按查看</string>
 
     <!-- Sponsorship (featured slot) -->
     <string name="featured_badge">赞助</string>
@@ -2177,16 +2316,6 @@
     <string name="nexus_invalid_source_metadata">此受管理模组的来源信息不完整，无法重试。</string>
     <string name="nexus_archive_memory_error">此压缩包需要的内存超过 Android 允许的上限。请在更新 GameNative 后重试，或选择较小的文件。</string>
     <!-- Bionic FG (AI) Frame Generation -->
-    <string name="bfg_tab_title">AI 补帧</string>
-    <string name="bfg_enable">启用 AI 补帧</string>
-    <string name="bfg_description">内置 AI 补帧。无需额外购买。</string>
-    <string name="bfg_multiplier">帧倍率</string>
-    <string name="bfg_flow_scale">光流缩放</string>
-    <string name="bfg_flow_scale_desc">数值越低速度越快；越高对运动的跟踪越准确，但更耗 GPU。</string>
-    <string name="bfg_model">模型</string>
-    <string name="bfg_model_desc">Clear 更清晰，但开销更大</string>
-    <string name="bfg_model_standard">标准</string>
-    <string name="bfg_model_clear">Clear</string>
     <string name="steam_invite_tab_title">邀请</string>
     <string name="steam_invite_header">%1$d 位好友</string>
     <string name="steam_invite_joinable">正在玩此游戏 — 点按加入</string>
@@ -2197,4 +2326,101 @@
     <string name="steam_invite_joined">在你的游戏中</string>
     <string name="steam_invite_online">在线</string>
     <string name="steam_invite_offline">离线</string>
+    <string name="radial_menu">径向菜单</string>
+    <string name="radial_menu_settings_title">径向菜单</string>
+    <string name="radial_menu_cancel">取消</string>
+    <string name="radial_menu_slot_count">槽位</string>
+    <string name="radial_menu_slot_count_subtitle">已启用 %1$d 个槽位</string>
+    <string name="radial_menu_decrease_slots">减少槽位</string>
+    <string name="radial_menu_increase_slots">增加槽位</string>
+    <string name="radial_menu_slots">转盘槽位</string>
+    <string name="radial_menu_slot_title">槽位 %1$d</string>
+    <string name="radial_menu_slot_label_hint">标签</string>
+    <string name="radial_menu_slot_binding">槽位 %1$d 绑定</string>
+    <string name="radial_menu_slot_binding_summary">绑定：%1$s</string>
+    <string name="radial_menu_preset_common">常用</string>
+    <string name="radial_menu_preset_weapons">武器</string>
+    <string name="gesture_action_open_radial_menu">打开径向菜单</string>
+
+    <!-- Power Control -->
+    <string name="power_control">性能控制</string>
+    <string name="power_control_info">控制CPU频率调节和调速器设置。需要PServer服务。</string>
+    <string name="power_control_driver">驱动：%s</string>
+    <string name="power_control_profiles">性能配置</string>
+    <string name="power_control_governor">CPU调速器</string>
+    <string name="power_control_current_frequencies">当前频率</string>
+    <string name="power_control_frequencies">频率设置</string>
+    <string name="power_control_cpu_min_freq">最低CPU频率</string>
+    <string name="power_control_cpu_max_freq">最高CPU频率</string>
+    <string name="power_control_gpu_freq">GPU频率</string>
+    <string name="power_control_gpu_min_power">最低GPU功率</string>
+    <string name="power_control_gpu_max_power">最高GPU功率</string>
+    <string name="power_control_ram_min_power">最低RAM频率</string>
+    <string name="power_control_ram_max_power">最高RAM频率</string>
+    <string name="power_control_available_frequencies">可用频率</string>
+    <string name="power_control_auto_tuning">自动调整</string>
+    <string name="power_control_auto_tuning_desc">更稳定的性能、更长的续航、更少的发热：自动为游戏调节 CPU 和 GPU。已在 Retroid Pocket 6 上验证。</string>
+    <string name="power_control_adaptive_fps">自动降低 FPS</string>
+    <string name="power_control_adaptive_fps_desc">当游戏无法达到 FPS 上限时降低上限，以获得稳定的帧间隔。已在 Retroid Pocket 6 上验证。</string>
+    <string name="power_control_enable">游戏内功耗控制</string>
+    <string name="power_control_enable_desc">接管操作系统对 CPU/GPU 频率的控制</string>
+    <string name="power_control_tuning_mode">调整模式</string>
+    <string name="power_control_tuning_mode_per_cluster">分集群（已在 Retroid Pocket 6 上验证）</string>
+    <string name="power_control_tuning_mode_whole_cpu">PID 控制器</string>
+    <string name="power_control_fan_control">风扇控制</string>
+    <string name="power_control_fan_control_desc">以最小的风扇噪音保持目标温度。已在 Retroid Pocket 6 上验证。</string>
+    <string name="power_control_game_pinning">游戏核心绑定</string>
+    <string name="power_control_game_pinning_desc">将游戏保持在高性能 CPU 核心上。已在 Retroid Pocket 6 上验证。</string>
+    <string name="power_control_hud_show_fan">显示风扇转速</string>
+    <string name="power_control_hud_show_tuner">显示调整的频率上限</string>
+    <string name="power_control_tuning_strategy">调整策略</string>
+    <string name="power_control_strategy_balanced">平衡</string>
+    <string name="power_control_strategy_balanced_desc">均衡调整所有组件以获得最佳整体性能</string>
+    <string name="power_control_strategy_power_efficient">节能</string>
+    <string name="power_control_strategy_power_efficient_desc">降低非瓶颈组件以节省电量</string>
+    <string name="power_control_strategy_aggressive">积极</string>
+    <string name="power_control_strategy_aggressive_desc">最大化检测到的瓶颈性能</string>
+    <string name="power_control_strategy_conservative">保守</string>
+    <string name="power_control_strategy_conservative_desc">渐进式调整，注重稳定性</string>
+    <string name="launch_immersive_mode">以沉浸模式启动（VR）</string>
+    <string name="quick_menu_tab_immersive">沉浸</string>
+    <string name="immersive_passthrough">透视</string>
+    <string name="immersive_passthrough_desc">透过虚拟屏幕查看周围的真实环境</string>
+    <string name="immersive_passthrough_toggle">启用透视</string>
+    <string name="immersive_resize_mode_title">缩放/移动控制点</string>
+    <string name="immersive_resize_mode_desc">开启后会在游戏画面边缘内侧显示抓取控制点。默认关闭，因为不留边距可以避免画面变模糊。</string>
+    <string name="immersive_resize_mode_toggle">显示缩放/移动控制点</string>
+    <string name="immersive_direct_render_title">性能</string>
+    <string name="immersive_reset_effects_status_blocked">当前启用的画面效果、滤镜或亮度/对比度/伽马调整正在阻止使用最快的渲染路径。</string>
+    <string name="immersive_reset_effects_status_ok">当前没有任何设置阻止使用最快的渲染路径。</string>
+    <string name="immersive_reset_effects_button">重置画面效果</string>
+    <string name="immersive_reset_effects_desc">关闭所有效果、滤镜以及亮度/对比度/伽马调整。立即生效，无需重启。</string>
+    <string name="immersive_onboarding_disable_passthrough">关闭透视可提升性能</string>
+    <string name="immersive_onboarding_quick_menu">长按 Start 可打开或关闭快捷菜单</string>
+    <string name="immersive_onboarding_pointer_toggle">双击摇杆可在 Xbox 手柄与 XR 指针之间切换</string>
+    <string name="immersive_mode_xr_pointer">XR 指针模式</string>
+    <string name="immersive_mode_xbox">Xbox 手柄模式</string>
+    <string name="tab_favorites">收藏</string>
+    <string name="favorites_empty_title">还没有收藏</string>
+    <string name="favorites_empty_message">打开游戏详情菜单即可添加到收藏，或在游戏获得焦点时按下控制器左侧面键（Xbox 为 X、PlayStation 为方块键、Nintendo 布局为 Y）。</string>
+    <string name="favorites_empty_action">浏览所有游戏</string>
+    <string name="favorites_empty_filtered_title">没有可显示的收藏</string>
+    <string name="favorites_empty_filtered_message">没有符合当前搜索或筛选条件，或在您的游戏库中可用的收藏游戏。</string>
+    <string name="option_add_to_favorites">添加到收藏</string>
+    <string name="option_remove_from_favorites">从收藏中移除</string>
+    <string name="favorite_add_named">将 %1$s 添加到收藏</string>
+    <string name="favorite_remove_named">将 %1$s 从收藏中移除</string>
+    <string name="favorite_removed">已从收藏中移除</string>
+    <string name="favorite_removed_named">已将 %1$s 从收藏中移除</string>
+    <string name="favorite_added">已添加到收藏</string>
+    <string name="favorite_added_named">已将 %1$s 添加到收藏</string>
+    <string name="xr_refresh_rate">VR 刷新率</string>
+    <string name="faster_external_loading_title">从外部存储更快加载</string>
+    <string name="faster_external_loading_subtitle">可显著加快从外部存储启动游戏的速度，但可能导致部分游戏出现问题</string>
+    <string name="disable_libredirect_title">禁用 libredirect</string>
+    <string name="disable_libredirect_subtitle">可能提升性能，但也可能导致意外问题</string>
+    <string name="binding_mode_simultaneous">同时</string>
+    <string name="binding_mode_sequence">顺序</string>
+    <string name="binding_sequence_delay_ms">顺序延迟（毫秒）</string>
+    <string name="binding_sequence_current_format">%1$s（%2$d 毫秒）</string>
 </resources>

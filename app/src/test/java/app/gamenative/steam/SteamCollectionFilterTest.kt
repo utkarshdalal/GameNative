@@ -80,4 +80,14 @@ class SteamCollectionFilterTest {
             SteamCollectionFilter.visibleCollectionCounts(null, listOf(440), listOf(440)),
         )
     }
+
+    @Test fun passesAllRequiresMembershipInEveryActiveGroup() {
+        assertTrue(SteamCollectionFilter.passesAll(570, setOf(440, 570), setOf(570, 730)))
+        assertFalse(SteamCollectionFilter.passesAll(440, setOf(440, 570), setOf(570, 730)))
+    }
+
+    @Test fun passesAllIgnoresInactiveGroups() {
+        assertTrue(SteamCollectionFilter.passesAll(440, setOf(440, 570), null))
+        assertTrue(SteamCollectionFilter.passesAll(999, null, null))
+    }
 }

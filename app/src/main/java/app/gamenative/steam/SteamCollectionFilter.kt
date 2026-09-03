@@ -9,6 +9,11 @@ object SteamCollectionFilter {
         return appId in allowed
     }
 
+    fun passesAll(appId: Int, firstAllowed: Set<Int>?, secondAllowed: Set<Int>?): Boolean {
+        return (firstAllowed == null || appId in firstAllowed) &&
+            (secondAllowed == null || appId in secondAllowed)
+    }
+
     /**
      * The union of app ids across the selected collections, or null to keep everything (fail-open:
      * collections not loaded, no selection, or a selection that matches no known collection).

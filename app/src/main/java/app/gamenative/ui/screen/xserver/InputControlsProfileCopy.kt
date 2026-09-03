@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.xserver
 
 import com.winlator.inputcontrols.ControlElement
 import com.winlator.inputcontrols.ControlsProfile
+import com.winlator.inputcontrols.RadialMenu
 import com.winlator.widget.InputControlsView
 
 internal fun copyInputControlsProfileElements(
@@ -12,7 +13,12 @@ internal fun copyInputControlsProfileElements(
     sourceProfile.loadElements(view)
     targetProfile.elements.toList().forEach(targetProfile::removeElement)
     sourceProfile.elements.forEach { targetProfile.addElement(it.copyForView(view)) }
+    targetProfile.setDefaultRadialMenu(sourceProfile.defaultRadialMenu.deepCopy())
     view.invalidate()
+}
+
+private fun RadialMenu.deepCopy(): RadialMenu {
+    return toJSONObject()?.let(RadialMenu::fromJSONObject) ?: RadialMenu.createDefault()
 }
 
 private fun ControlElement.copyForView(view: InputControlsView) = ControlElement(view).also { newElement ->
@@ -34,7 +40,7 @@ private fun ControlElement.copyForView(view: InputControlsView) = ControlElement
     }
 
     for (i in 0 until bindingCount) {
-        newElement.setBindingAt(i, getBindingAt(i))
+        newElement.setBindingComboAt(i, getBindingComboAt(i))
     }
 
     if (type == ControlElement.Type.SHOOTER_MODE) {

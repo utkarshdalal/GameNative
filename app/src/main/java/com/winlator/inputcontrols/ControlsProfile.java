@@ -24,9 +24,11 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     private float cursorSpeed = 1.0f;
     private final ArrayList<ControlElement> elements = new ArrayList<>();
     private final ArrayList<ExternalController> controllers = new ArrayList<>();
+    private final ArrayList<RadialMenu> radialMenus = new ArrayList<>();
     private final List<ControlElement> immutableElements = Collections.unmodifiableList(elements);
     private boolean elementsLoaded = false;
     private boolean controllersLoaded = false;
+    private boolean radialMenusLoaded = false;
     private boolean virtualGamepad = false;
     private final Context context;
     private GamepadState gamepadState;
@@ -155,6 +157,20 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             }
             if (controllersJSONArray.length() > 0) data.put("controllers", controllersJSONArray);
 
+            JSONArray radialMenusJSONArray = new JSONArray();
+            if (!radialMenusLoaded && file.isFile()) {
+                JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
+                JSONArray storedRadialMenus = profileJSONObject.optJSONArray("radialMenus");
+                if (storedRadialMenus != null) radialMenusJSONArray = storedRadialMenus;
+            }
+            else {
+                for (RadialMenu menu : radialMenus) {
+                    JSONObject menuJSONObject = menu.toJSONObject();
+                    if (menuJSONObject != null) radialMenusJSONArray.put(menuJSONObject);
+                }
+            }
+            if (radialMenusJSONArray.length() > 0) data.put("radialMenus", radialMenusJSONArray);
+
             FileUtils.writeString(file, data.toString());
             Log.d("ControlsProfile", "Profile saved successfully: " + name + " (controllers: " + controllersJSONArray.length() + ", elements: " + elementsJSONArray.length() + ")");
         }
@@ -181,8 +197,59 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         return immutableElements;
     }
 
+    public RadialMenu getDefaultRadialMenu() {
+        if (!radialMenusLoaded) loadRadialMenus();
+        if (radialMenus.isEmpty()) {
+            radialMenus.add(RadialMenu.createDefault());
+            radialMenusLoaded = true;
+        }
+        return radialMenus.get(0);
+    }
+
+    public void setDefaultRadialMenu(RadialMenu menu) {
+        if (!radialMenusLoaded) loadRadialMenus();
+        radialMenus.clear();
+        radialMenus.add(menu != null ? menu : RadialMenu.createDefault());
+        radialMenusLoaded = true;
+    }
+
     public boolean isTemplate() {
         return name.toLowerCase(Locale.ENGLISH).contains("template");
+    }
+
+    public ArrayList<RadialMenu> loadRadialMenus() {
+        radialMenus.clear();
+        radialMenusLoaded = false;
+
+        File file = getProfileFile(context, id);
+        if (!file.isFile()) {
+            radialMenus.add(RadialMenu.createDefault());
+            radialMenusLoaded = true;
+            return radialMenus;
+        }
+
+        try {
+            JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
+            JSONArray radialMenusJSONArray = profileJSONObject.optJSONArray("radialMenus");
+            if (radialMenusJSONArray == null || radialMenusJSONArray.length() == 0) {
+                radialMenus.add(RadialMenu.createDefault());
+            }
+            else {
+                for (int i = 0; i < radialMenusJSONArray.length(); i++) {
+                    JSONObject radialMenuJSONObject = radialMenusJSONArray.optJSONObject(i);
+                    if (radialMenuJSONObject != null) radialMenus.add(RadialMenu.fromJSONObject(radialMenuJSONObject));
+                }
+                if (radialMenus.isEmpty()) radialMenus.add(RadialMenu.createDefault());
+            }
+            radialMenusLoaded = true;
+        }
+        catch (JSONException e) {
+            Log.e("ControlsProfile", "Failed to load radial menus for profile: " + name + " (ID: " + id + ")", e);
+            radialMenus.add(RadialMenu.createDefault());
+            radialMenusLoaded = true;
+        }
+
+        return radialMenus;
     }
 
     public ArrayList<ExternalController> loadControllers() {
@@ -216,7 +283,12 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     JSONObject controllerBindingJSONObject = controllerBindingsJSONArray.getJSONObject(j);
                     ExternalControllerBinding controllerBinding = new ExternalControllerBinding();
                     controllerBinding.setKeyCode(controllerBindingJSONObject.getInt("keyCode"));
-                    controllerBinding.setBinding(Binding.fromString(controllerBindingJSONObject.getString("binding")));
+                    if (controllerBindingJSONObject.has("bindings")) {
+                        controllerBinding.setBindingCombo(BindingCombo.fromJsonValue(controllerBindingJSONObject));
+                    }
+                    else {
+                        controllerBinding.setBinding(Binding.fromString(controllerBindingJSONObject.getString("binding")));
+                    }
                     controller.addControllerBinding(controllerBinding);
                 }
                 controllers.add(controller);
@@ -263,6 +335,12 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     Log.w("ControlsProfile", "Skipping element with unknown type: " + elementJSONObject.getString("type"));
                     continue;
                 }
+                if (elementJSONObject.has("lookThrough")) {
+                    element.setLookThroughSetting(elementJSONObject.getBoolean("lookThrough"));
+                }
+                else {
+                    element.setLookThroughSetting(null);
+                }
                 element.setShape(ControlElement.Shape.valueOf(elementJSONObject.getString("shape")));
                 element.setToggleSwitch(elementJSONObject.getBoolean("toggleSwitch"));
                 element.setX((int)(elementJSONObject.getDouble("x") * inputControlsView.getMaxWidth()));
@@ -292,9 +370,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 JSONArray bindingsJSONArray = elementJSONObject.getJSONArray("bindings");
                 element.setBindingCount(Math.max(bindingsJSONArray.length(), 4));
                 for (int j = 0; j < bindingsJSONArray.length(); j++) {
-                    Binding binding = Binding.fromString(bindingsJSONArray.getString(j));
-                    element.setBindingAt(j, binding);
-                    if (!binding.isGamepad()) hasGamepadBinding = false;
+                    BindingCombo binding = BindingCombo.fromJsonValue(bindingsJSONArray.get(j));
+                    element.setBindingComboAt(j, binding);
+                    if (!binding.isGamepadOnly()) hasGamepadBinding = false;
                 }
 
                 if (!virtualGamepad && hasGamepadBinding) virtualGamepad = true;

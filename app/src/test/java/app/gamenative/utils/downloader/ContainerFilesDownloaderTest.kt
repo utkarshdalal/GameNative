@@ -2,11 +2,16 @@ package app.gamenative.utils.downloader
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
+import com.winlator.container.ContainerManager
+import com.winlator.core.OnExtractFileListener
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.After
+import org.junit.Assume.assumeFalse
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -81,7 +86,106 @@ class ContainerFilesDownloaderTest {
 
         val component = manifest.components.find { it.id == "container_pattern_common" }
         assertNotNull("container_pattern_common should exist in manifest", component)
-        assertEquals("Name should match", "container_pattern_common.tzst", component!!.name)
+        assertEquals(
+            "Name should invalidate the previous cache",
+            "container_pattern_common_20260821.tzst",
+            component!!.name,
+        )
+        assertEquals(
+            "URL should reference the versioned archive",
+            "https://downloads.gamenative.app/container_files/container_pattern_common_20260821.tzst",
+            component.url,
+        )
+    }
+
+    @Test
+    fun testCacheFileUsesManifestFilename() {
+        val manifestJson = context.assets.open(ContainerFilesDownloader.CONTAINER_FILES_MANIFEST_FILE).bufferedReader().use { it.readText() }
+        val manifest = Json { ignoreUnknownKeys = true }
+            .decodeFromString<ContainerFilesDownloader.ContainerFilesManifest>(manifestJson)
+
+        val component = manifest.components.first { it.id == "container_pattern_common" }
+        val cacheFile = ContainerFilesDownloader.getCacheFile(cacheDir, component)
+        assertEquals(component.name, cacheFile.name)
+        assertFalse(
+            "The previous ID-based cache path must not be reused",
+            cacheFile.name == "${component.id}.tzst",
+        )
+    }
+
+    @Test
+    fun testReusableCacheRequiresNonEmptyRegularFile() {
+        cacheDir.mkdirs()
+        val missing = File(cacheDir, "missing.tzst")
+        val empty = File(cacheDir, "empty.tzst").apply { createNewFile() }
+        val directory = File(cacheDir, "directory.tzst").apply { mkdirs() }
+        val valid = File(cacheDir, "valid.tzst").apply { writeText("archive") }
+
+        assertFalse(ContainerFilesDownloader.isReusableCacheFile(missing))
+        assertFalse(ContainerFilesDownloader.isReusableCacheFile(empty))
+        assertFalse(ContainerFilesDownloader.isReusableCacheFile(directory))
+        assertTrue(ContainerFilesDownloader.isReusableCacheFile(valid))
+    }
+
+    @Test
+    fun testObsoleteArchiveCleanupKeepsCurrentAndUnrelatedFiles() {
+        cacheDir.mkdirs()
+        val currentCommon = File(cacheDir, "container_pattern_common_20260821.tzst").apply {
+            writeText("current common")
+        }
+        val currentExtras = File(cacheDir, "extras.tzst").apply { writeText("current extras") }
+        val oldCommon = File(cacheDir, "container_pattern_common.tzst").apply { writeText("old") }
+        val olderDatedCommon = File(cacheDir, "container_pattern_common_20260701.tzst").apply {
+            writeText("older")
+        }
+        val unrelatedFile = File(cacheDir, "download.version").apply { writeText("metadata") }
+        val unrelatedDirectory = File(cacheDir, "directory.tzst").apply { mkdirs() }
+
+        ContainerFilesDownloader.removeObsoleteCachedArchives(
+            cacheDir,
+            setOf(currentCommon.name, currentExtras.name),
+        )
+
+        assertTrue(currentCommon.isFile)
+        assertTrue(currentExtras.isFile)
+        assertFalse(oldCommon.exists())
+        assertFalse(olderDatedCommon.exists())
+        assertTrue(unrelatedFile.isFile)
+        assertTrue(unrelatedDirectory.isDirectory)
+    }
+
+    @Test
+    fun testWfmOnlyExtractionCreatesMissingParentDirectories() {
+        assumeFalse("Bundled archive is only available in the legacy variant", BuildConfig.MODERN_ANDROID)
+
+        val destination = File(context.cacheDir, "wfm-only-extraction")
+        destination.deleteRecursively()
+        try {
+            assertTrue(ContainerManager(context).extractContainerPatternCommonWfm(destination, null))
+            val wfm = File(destination, "home/xuser/.wine/drive_c/windows/wfm.exe")
+            assertTrue("WFM should be extracted into a newly created prefix", wfm.isFile)
+            assertTrue("Extracted WFM should not be empty", wfm.length() > 0)
+        } finally {
+            destination.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun testWfmOnlyExtractionFailsWhenWfmIsNotSelected() {
+        assumeFalse("Bundled archive is only available in the legacy variant", BuildConfig.MODERN_ANDROID)
+
+        val destination = File(context.cacheDir, "wfm-rejected-extraction")
+        destination.deleteRecursively()
+        try {
+            val rejectWfm = OnExtractFileListener { _, _ -> null }
+            assertFalse(
+                ContainerManager(context).extractContainerPatternCommonWfm(destination, rejectWfm),
+            )
+            val wfm = File(destination, "home/xuser/.wine/drive_c/windows/wfm.exe")
+            assertFalse("Rejected WFM should not be reported as extracted", wfm.exists())
+        } finally {
+            destination.deleteRecursively()
+        }
     }
 
     @Test
@@ -128,11 +232,6 @@ class ContainerFilesDownloaderTest {
                 "Component ${component.id} URL should end with .tzst",
                 component.url.endsWith(".tzst")
             )
-            assertEquals(
-                "Component ${component.id} name should match ID.tzst",
-                "${component.id}.tzst",
-                component.name
-            )
         }
     }
 
@@ -157,7 +256,7 @@ class ContainerFilesDownloaderTest {
         // Create some mock cached files
         cacheDir.mkdirs()
         val testFile1 = File(cacheDir, "extras.tzst")
-        val testFile2 = File(cacheDir, "container_pattern_common.tzst")
+        val testFile2 = File(cacheDir, "container_pattern_common_20260821.tzst")
         testFile1.writeText("test content 1")
         testFile2.writeText("test content 2")
 
@@ -206,7 +305,7 @@ class ContainerFilesDownloaderTest {
 
     @Test
     fun testCachedComponentReuse() = runBlocking {
-        val componentId = "container_pattern_common"
+        val componentId = "extras"
 
         // Create a mock cached file
         cacheDir.mkdirs()
@@ -276,13 +375,6 @@ class ContainerFilesDownloaderTest {
             assertTrue(
                 "Component ${component.id} URL should contain its name",
                 component.url.contains(component.name)
-            )
-
-            // Name should match ID with .tzst extension
-            assertEquals(
-                "Component ${component.id} name should match ID.tzst",
-                "${component.id}.tzst",
-                component.name
             )
         }
     }
