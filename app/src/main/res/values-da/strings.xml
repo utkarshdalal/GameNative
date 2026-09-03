@@ -2332,5 +2332,9 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Nulstil gyroindstillinger</string>
+    <string name="xr_windows_vr_toggle">Kør som VR-app (eksperimentel)</string>
+    <string name="xr_windows_vr_toggle_desc">Til native VR-titler som Beat Saber. Kræver arm64ec Wine og DXVK. Andre spil beholder den flade immersive skærm.</string>
+    <string name="xr_open_composite_toggle">SteamVR (OpenVR)-kompatibilitet</string>
+    <string name="xr_open_composite_toggle_desc">Sender spil bygget til SteamVR gennem OpenComposite. Slå til, hvis spillet siger, at SteamVR ikke kører, eller forbliver fladt med VR-tilstand slået til.</string>
     <string name="xr_render_scale">VR-gengivelsesskala</string>
 </resources>

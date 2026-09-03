@@ -2402,5 +2402,9 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Gyro-Einstellungen zurücksetzen</string>
+    <string name="xr_windows_vr_toggle">Als VR-App ausführen (experimentell)</string>
+    <string name="xr_windows_vr_toggle_desc">Für native VR-Titel wie Beat Saber. Benötigt arm64ec-Wine und DXVK. Andere Spiele behalten den flachen Immersiv-Bildschirm.</string>
+    <string name="xr_open_composite_toggle">SteamVR-(OpenVR-)Kompatibilität</string>
+    <string name="xr_open_composite_toggle_desc">Leitet für SteamVR entwickelte Spiele über OpenComposite. Aktivieren, wenn das Spiel meldet, dass SteamVR nicht läuft, oder im VR-Modus flach bleibt.</string>
     <string name="xr_render_scale">VR-Renderskalierung</string>
 </resources>

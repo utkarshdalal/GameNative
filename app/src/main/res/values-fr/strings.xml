@@ -2462,5 +2462,9 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Réinitialiser les réglages du gyroscope</string>
+    <string name="xr_windows_vr_toggle">Lancer en tant qu’application VR (expérimental)</string>
+    <string name="xr_windows_vr_toggle_desc">Pour les titres VR natifs comme Beat Saber. Nécessite Wine arm64ec et DXVK. Les autres jeux conservent l’écran immersif plat.</string>
+    <string name="xr_open_composite_toggle">Compatibilité SteamVR (OpenVR)</string>
+    <string name="xr_open_composite_toggle_desc">Fait passer les jeux conçus pour SteamVR par OpenComposite. À activer si le jeu indique que SteamVR n’est pas lancé ou reste à plat avec le mode VR activé.</string>
     <string name="xr_render_scale">Échelle de rendu VR</string>
 </resources>

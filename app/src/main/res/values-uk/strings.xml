@@ -2464,5 +2464,9 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/с</string>
     <string name="gyro_milliseconds_value">%1$d мс</string>
     <string name="reset_gyro_settings">Скинути налаштування гіроскопа</string>
+    <string name="xr_windows_vr_toggle">Запускати як VR-застосунок (експериментально)</string>
+    <string name="xr_windows_vr_toggle_desc">Для нативних VR-ігор, як-от Beat Saber. Потрібні Wine arm64ec і DXVK. Інші ігри зберігають плаский імерсивний екран.</string>
+    <string name="xr_open_composite_toggle">Сумісність зі SteamVR (OpenVR)</string>
+    <string name="xr_open_composite_toggle_desc">Запускає ігри, створені для SteamVR, через OpenComposite. Увімкніть, якщо гра повідомляє, що SteamVR не запущено, або залишається пласкою з увімкненим VR-режимом.</string>
     <string name="xr_render_scale">Масштаб рендерингу VR</string>
 </resources>

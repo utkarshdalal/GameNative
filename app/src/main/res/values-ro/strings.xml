@@ -2467,5 +2467,9 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Resetează setările giroscopului</string>
+    <string name="xr_windows_vr_toggle">Rulează ca aplicație VR (experimental)</string>
+    <string name="xr_windows_vr_toggle_desc">Pentru titluri VR native precum Beat Saber. Necesită Wine arm64ec și DXVK. Celelalte jocuri păstrează ecranul imersiv plat.</string>
+    <string name="xr_open_composite_toggle">Compatibilitate SteamVR (OpenVR)</string>
+    <string name="xr_open_composite_toggle_desc">Direcționează jocurile create pentru SteamVR prin OpenComposite. Activează dacă jocul spune că SteamVR nu rulează sau rămâne plat cu modul VR pornit.</string>
     <string name="xr_render_scale">Scară de randare VR</string>
 </resources>

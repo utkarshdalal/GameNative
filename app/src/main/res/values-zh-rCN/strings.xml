@@ -2476,5 +2476,9 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/秒</string>
     <string name="gyro_milliseconds_value">%1$d 毫秒</string>
     <string name="reset_gyro_settings">重置陀螺仪设置</string>
+    <string name="xr_windows_vr_toggle">以 VR 应用运行（实验性）</string>
+    <string name="xr_windows_vr_toggle_desc">适用于 Beat Saber 等原生 VR 游戏。需要 arm64ec Wine 和 DXVK。其他游戏仍使用平面沉浸式屏幕。</string>
+    <string name="xr_open_composite_toggle">SteamVR (OpenVR) 兼容</string>
+    <string name="xr_open_composite_toggle_desc">通过 OpenComposite 运行为 SteamVR 开发的游戏。若游戏提示 SteamVR 未运行，或开启 VR 模式后仍为平面显示，请开启此项。</string>
     <string name="xr_render_scale">VR 渲染比例</string>
 </resources>
