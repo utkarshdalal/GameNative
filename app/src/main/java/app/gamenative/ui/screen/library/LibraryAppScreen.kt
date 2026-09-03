@@ -519,6 +519,8 @@ internal data class ImmersiveModeUiState(
     val isSupported: Boolean = false,
     val isEnabled: Boolean = false,
     val onChange: (Boolean) -> Unit = {},
+    val isVrEnabled: Boolean = false,
+    val onVrChange: (Boolean) -> Unit = {},
 )
 
 @Composable
@@ -975,6 +977,28 @@ internal fun AppScreenContent(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = Color.White,
                             )
+                        }
+                        if (immersiveMode.isEnabled) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 24.dp)
+                                    .clickable { immersiveMode.onVrChange(!immersiveMode.isVrEnabled) },
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = immersiveMode.isVrEnabled,
+                                    onCheckedChange = immersiveMode.onVrChange,
+                                    colors = CheckboxDefaults.colors(
+                                        uncheckedColor = Color.White.copy(alpha = 0.7f),
+                                    ),
+                                )
+                                Text(
+                                    text = stringResource(R.string.xr_windows_vr_toggle),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White,
+                                )
+                            }
                         }
                     }
 

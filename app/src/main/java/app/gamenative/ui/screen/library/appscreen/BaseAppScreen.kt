@@ -157,6 +157,7 @@ internal suspend fun installMissingComponentsForConfig(
 
 abstract class BaseAppScreen {
     companion object {
+        private const val WINDOWS_VR_ENABLED_EXTRA = "windowsVrEnabled"
         private val installDialogStates = mutableStateMapOf<String, app.gamenative.ui.component.dialog.state.MessageDialogState>()
         private val exportConfigRequests = mutableStateMapOf<String, Boolean>()
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
@@ -1255,22 +1256,41 @@ abstract class BaseAppScreen {
             app.gamenative.BuildConfig.XR_BUILD && app.gamenative.MainActivity.isHeadset(context)
         }
         var isImmersiveModeEnabledState by remember(libraryItem.appId) { mutableStateOf<Boolean?>(null) }
+        var isVrModeEnabledState by remember(libraryItem.appId) { mutableStateOf(false) }
         val immersiveModeSaveRequests = remember(libraryItem.appId) { Channel<Boolean>(Channel.CONFLATED) }
+        val vrModeSaveRequests = remember(libraryItem.appId) { Channel<Boolean>(Channel.CONFLATED) }
         if (isImmersiveModeSupported) {
             LaunchedEffect(libraryItem.appId) {
                 val stored = withContext(Dispatchers.IO) {
-                    runCatching { ContainerUtils.getContainer(context, libraryItem.appId).isLaunchImmersiveMode() }
-                        .getOrDefault(true)
+                    runCatching {
+                        val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                        container.isLaunchImmersiveMode() to
+                            container.getExtra(WINDOWS_VR_ENABLED_EXTRA, "false").toBoolean()
+                    }.getOrDefault(true to false)
                 }
                 if (isImmersiveModeEnabledState == null) {
-                    isImmersiveModeEnabledState = stored
+                    isImmersiveModeEnabledState = stored.first
+                    isVrModeEnabledState = stored.second
                 }
-                for (enabled in immersiveModeSaveRequests) {
-                    withContext(Dispatchers.IO) {
-                        runCatching {
-                            val container = ContainerUtils.getContainer(context, libraryItem.appId)
-                            container.setLaunchImmersiveMode(enabled)
-                            container.saveData()
+                launch {
+                    for (enabled in immersiveModeSaveRequests) {
+                        withContext(Dispatchers.IO) {
+                            runCatching {
+                                val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                                container.setLaunchImmersiveMode(enabled)
+                                container.saveData()
+                            }
+                        }
+                    }
+                }
+                launch {
+                    for (enabled in vrModeSaveRequests) {
+                        withContext(Dispatchers.IO) {
+                            runCatching {
+                                val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                                container.putExtra(WINDOWS_VR_ENABLED_EXTRA, enabled.toString())
+                                container.saveData()
+                            }
                         }
                     }
                 }
@@ -1608,6 +1628,11 @@ abstract class BaseAppScreen {
                 onChange = { enabled ->
                     isImmersiveModeEnabledState = enabled
                     immersiveModeSaveRequests.trySend(enabled)
+                },
+                isVrEnabled = isVrModeEnabledState,
+                onVrChange = { enabled ->
+                    isVrModeEnabledState = enabled
+                    vrModeSaveRequests.trySend(enabled)
                 },
             ),
             onDownloadInstallClick = {
