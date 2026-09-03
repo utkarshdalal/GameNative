@@ -2238,6 +2238,20 @@
     <string name="featured_status_out_now_body">現在可用</string>
     <string name="tab_recommended">推薦</string>
     <string name="gog_rec_empty">新增或試玩一些遊戲，即可根據你的遊戲庫獲得 GOG 推薦。</string>
+    <!-- Steam achievements -->
+    <string name="achievements">成就</string>
+    <string name="achievements_all_title">所有成就</string>
+    <string name="achievements_unlocked_at">%1$s %2$s 解鎖</string>
+    <string name="achievements_complete">所有成就已解鎖</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="other">還有 %1$d 個隱藏成就</item>
+    </plurals>
+    <string name="achievements_hidden_subtitle">每個成就的詳細資訊將在解鎖後揭曉</string>
+    <string name="achievements_reveal_title">顯示隱藏成就？</string>
+    <string name="achievements_reveal_message">暫時顯示剩餘的隱藏成就及其詳情，不會被記住。</string>
+    <string name="achievements_reveal_confirm">顯示</string>
+    <string name="achievements_locked">未解鎖</string>
     <string name="steam_collections_removed">已儲存的收藏已在 Steam 中移除，不再用於篩選。</string>
     <string name="steam_collections_title">Steam 收藏</string>
     <string name="steam_collections_loading">正在載入收藏…</string>

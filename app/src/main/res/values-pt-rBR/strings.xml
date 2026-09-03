@@ -2100,6 +2100,21 @@
     <string name="featured_status_out_now_body">Disponível agora</string>
     <string name="tab_recommended">Recomendados</string>
     <string name="gog_rec_empty">Adicione ou jogue alguns jogos para receber recomendações da GOG com base na sua biblioteca.</string>
+    <!-- Steam achievements -->
+    <string name="achievements">Conquistas</string>
+    <string name="achievements_all_title">Todas as conquistas</string>
+    <string name="achievements_unlocked_at">Desbloqueado em %1$s às %2$s</string>
+    <string name="achievements_complete">Todas as conquistas desbloqueadas</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">%1$d conquista oculta restante</item>
+        <item quantity="other">%1$d conquistas ocultas restantes</item>
+    </plurals>
+    <string name="achievements_hidden_subtitle">Os detalhes de cada conquista serão revelados após o desbloqueio</string>
+    <string name="achievements_reveal_title">Revelar conquistas ocultas?</string>
+    <string name="achievements_reveal_message">Mostra por enquanto as conquistas secretas restantes e seus detalhes. Não é lembrado.</string>
+    <string name="achievements_reveal_confirm">Revelar</string>
+    <string name="achievements_locked">Bloqueado</string>
     <string name="steam_collections_removed">Uma coleção salva foi removida no Steam e não é mais filtrada.</string>
     <string name="steam_collections_title">Coleções da Steam</string>
     <string name="steam_collections_loading">Carregando coleções…</string>

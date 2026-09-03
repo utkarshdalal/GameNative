@@ -2158,6 +2158,23 @@ https://gamenative.app
     <string name="featured_status_out_now_body">Доступно сейчас</string>
     <string name="tab_recommended">Рекомендации</string>
     <string name="gog_rec_empty">Добавьте или поиграйте в игры, чтобы получить рекомендации GOG на основе вашей библиотеки.</string>
+    <!-- Steam achievements -->
+    <string name="achievements">Достижения</string>
+    <string name="achievements_all_title">Все достижения</string>
+    <string name="achievements_unlocked_at">Разблокировано %1$s в %2$s</string>
+    <string name="achievements_complete">Все достижения разблокированы</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">Осталось %1$d скрытое достижение</item>
+        <item quantity="few">Осталось %1$d скрытых достижения</item>
+        <item quantity="many">Осталось %1$d скрытых достижений</item>
+        <item quantity="other">Осталось %1$d скрытых достижений</item>
+    </plurals>
+    <string name="achievements_hidden_subtitle">Подробности каждого достижения будут раскрыты после разблокировки</string>
+    <string name="achievements_reveal_title">Показать скрытые достижения?</string>
+    <string name="achievements_reveal_message">Временно показывает оставшиеся секретные достижения и их детали. Это не запоминается.</string>
+    <string name="achievements_reveal_confirm">Показать</string>
+    <string name="achievements_locked">Заблокировано</string>
     <string name="steam_collections_removed">Сохранённая коллекция была удалена в Steam и больше не используется для фильтрации.</string>
     <string name="steam_collections_title">Коллекции Steam</string>
     <string name="steam_collections_loading">Загрузка коллекций…</string>

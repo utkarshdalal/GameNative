@@ -43,16 +43,19 @@ import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.enums.LoginResult
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
+import app.gamenative.events.SteamEvent
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.ui.component.dialog.MessageDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.state.MessageDialogState
+import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
@@ -678,6 +681,29 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean {
         return libraryItem.gameSource == app.gamenative.data.GameSource.STEAM
+    }
+
+    override val supportsAchievements: Boolean = true
+
+    override suspend fun fetchAchievements(libraryItem: LibraryItem): List<Achievement>? =
+        withContext(Dispatchers.IO) { SteamService.fetchAchievementsForDisplay(getGameId(libraryItem)) }
+
+    // Stats need a logged-on session, so a page opened before sign-in finds nothing.
+    @Composable
+    override fun achievementsReadyKey(): Any {
+        var logons by remember { mutableIntStateOf(0) }
+        DisposableEffect(true) {
+            val onLogonEnded: (SteamEvent.LogonEnded) -> Unit = { event ->
+                if (event.loginResult == LoginResult.Success) logons++
+            }
+
+            PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogonEnded)
+
+            onDispose {
+                PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogonEnded)
+            }
+        }
+        return logons
     }
 
     override suspend fun exportSaves(

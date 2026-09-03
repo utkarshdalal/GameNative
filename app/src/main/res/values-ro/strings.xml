@@ -2232,6 +2232,22 @@
     <string name="featured_status_out_now_body">Acum disponibil</string>
     <string name="tab_recommended">Recomandate</string>
     <string name="gog_rec_empty">Adaugă sau joacă câteva jocuri pentru a primi recomandări GOG pe baza bibliotecii tale.</string>
+    <!-- Steam achievements -->
+	<string name="achievements">Realizări</string>
+	<string name="achievements_all_title">Toate realizările</string>
+	<string name="achievements_unlocked_at">Deblocat pe %1$s la %2$s</string>
+    <string name="achievements_complete">Toate realizările deblocate</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">%1$d realizare ascunsă rămasă</item>
+        <item quantity="few">%1$d realizări ascunse rămase</item>
+        <item quantity="other">%1$d de realizări ascunse rămase</item>
+    </plurals>
+    <string name="achievements_hidden_subtitle">Detaliile fiecărei realizări vor fi dezvăluite după deblocare</string>
+    <string name="achievements_reveal_title">Afișezi realizările ascunse?</string>
+    <string name="achievements_reveal_message">Afișează temporar realizările secrete rămase și detaliile lor. Nu este memorat.</string>
+    <string name="achievements_reveal_confirm">Afișează</string>
+    <string name="achievements_locked">Blocat</string>
     <string name="steam_collections_removed">O colecție salvată a fost eliminată în Steam și nu mai este filtrată.</string>
     <string name="steam_collections_title">Colecții Steam</string>
     <string name="steam_collections_loading">Se încarcă colecțiile…</string>

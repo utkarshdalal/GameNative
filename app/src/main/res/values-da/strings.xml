@@ -2100,6 +2100,21 @@
     <string name="featured_status_out_now_body">Tilgængelig nu</string>
     <string name="tab_recommended">Anbefalet</string>
     <string name="gog_rec_empty">Tilføj eller spil nogle spil for at få GOG-anbefalinger baseret på dit bibliotek.</string>
+    <!-- Steam achievements -->
+    <string name="achievements">Præstationer</string>
+    <string name="achievements_all_title">Alle præstationer</string>
+    <string name="achievements_unlocked_at">Låst op den %1$s kl. %2$s</string>
+    <string name="achievements_complete">Alle præstationer låst op</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">%1$d skjult præstation tilbage</item>
+        <item quantity="other">%1$d skjulte præstationer tilbage</item>
+    </plurals>
+    <string name="achievements_hidden_subtitle">Detaljerne for hver præstation afsløres, når den låses op</string>
+    <string name="achievements_reveal_title">Afslør skjulte præstationer?</string>
+    <string name="achievements_reveal_message">Dette viser de resterende hemmelige præstationer og deres detaljer nu. Det huskes ikke.</string>
+    <string name="achievements_reveal_confirm">Afslør</string>
+    <string name="achievements_locked">Låst</string>
     <string name="steam_collections_removed">En gemt samling blev fjernet i Steam og filtreres ikke længere.</string>
     <string name="steam_collections_title">Steam-samlinger</string>
     <string name="steam_collections_loading">Indlæser samlinger…</string>
