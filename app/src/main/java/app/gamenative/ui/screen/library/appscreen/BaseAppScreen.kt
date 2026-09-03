@@ -67,6 +67,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -1259,6 +1260,7 @@ abstract class BaseAppScreen {
         var isVrModeEnabledState by remember(libraryItem.appId) { mutableStateOf(false) }
         val immersiveModeSaveRequests = remember(libraryItem.appId) { Channel<Boolean>(Channel.CONFLATED) }
         val vrModeSaveRequests = remember(libraryItem.appId) { Channel<Boolean>(Channel.CONFLATED) }
+        val containerSaveMutex = remember(libraryItem.appId) { kotlinx.coroutines.sync.Mutex() }
         if (isImmersiveModeSupported) {
             LaunchedEffect(libraryItem.appId) {
                 val stored = withContext(Dispatchers.IO) {
@@ -1274,22 +1276,26 @@ abstract class BaseAppScreen {
                 }
                 launch {
                     for (enabled in immersiveModeSaveRequests) {
-                        withContext(Dispatchers.IO) {
-                            runCatching {
-                                val container = ContainerUtils.getContainer(context, libraryItem.appId)
-                                container.setLaunchImmersiveMode(enabled)
-                                container.saveData()
+                        containerSaveMutex.withLock {
+                            withContext(Dispatchers.IO) {
+                                runCatching {
+                                    val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                                    container.setLaunchImmersiveMode(enabled)
+                                    container.saveData()
+                                }
                             }
                         }
                     }
                 }
                 launch {
                     for (enabled in vrModeSaveRequests) {
-                        withContext(Dispatchers.IO) {
-                            runCatching {
-                                val container = ContainerUtils.getContainer(context, libraryItem.appId)
-                                container.putExtra(WINDOWS_VR_ENABLED_EXTRA, enabled.toString())
-                                container.saveData()
+                        containerSaveMutex.withLock {
+                            withContext(Dispatchers.IO) {
+                                runCatching {
+                                    val container = ContainerUtils.getContainer(context, libraryItem.appId)
+                                    container.putExtra(WINDOWS_VR_ENABLED_EXTRA, enabled.toString())
+                                    container.saveData()
+                                }
                             }
                         }
                     }

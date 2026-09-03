@@ -172,7 +172,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                 },
             )
-            if (app.gamenative.BuildConfig.XR_BUILD) {
+            if (app.gamenative.BuildConfig.XR_BUILD && !default) {
                 val xrRates = listOf(72, 90, 120)
                 SettingsListDropdown(
                     colors = settingsTileColors(),

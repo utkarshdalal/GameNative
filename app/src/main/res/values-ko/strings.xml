@@ -2418,7 +2418,7 @@
     <string name="binding_sequence_delay_ms">순차 지연 (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
     <string name="xr_windows_vr_toggle">VR 앱으로 실행 (실험적)</string>
-    <string name="xr_windows_vr_toggle_desc">Beat Saber 같은 네이티브 VR 타이틀용입니다. arm64ec Wine과 DXVK가 필요합니다. 다른 게임은 평면 몰입형 화면을 유지합니다.</string>
+    <string name="xr_windows_vr_toggle_desc">Beat Saber 같은 네이티브 VR 타이틀용입니다. arm64ec Wine, DXVK, D3D11이 필요합니다. 다른 게임은 평면 몰입형 화면을 유지합니다.</string>
     <string name="xr_open_composite_toggle">SteamVR(OpenVR) 호환</string>
     <string name="xr_open_composite_toggle_desc">SteamVR용으로 만들어진 게임을 OpenComposite를 통해 실행합니다. 게임이 SteamVR이 실행 중이 아니라고 표시하거나 VR 모드에서도 평면으로 남아 있으면 켜세요.</string>
     <string name="xr_render_scale">VR 렌더링 배율</string>

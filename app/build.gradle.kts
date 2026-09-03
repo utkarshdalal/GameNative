@@ -352,11 +352,6 @@ android {
         dependsOn("verifyModernXrPayload")
     }
 
-    tasks.matching {
-        it.name.startsWith("mergeModernXr") && it.name.endsWith("Assets")
-    }.configureEach {
-        dependsOn("prepareModernXrPayload")
-    }
 
     // externalNativeBuild {
     //   cmake {

@@ -2364,7 +2364,7 @@
     <string name="binding_sequence_delay_ms">Sequenzverzögerung (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
     <string name="xr_windows_vr_toggle">Als VR-App ausführen (experimentell)</string>
-    <string name="xr_windows_vr_toggle_desc">Für native VR-Titel wie Beat Saber. Benötigt arm64ec-Wine und DXVK. Andere Spiele behalten den flachen Immersiv-Bildschirm.</string>
+    <string name="xr_windows_vr_toggle_desc">Für native VR-Titel wie Beat Saber. Benötigt arm64ec-Wine, DXVK und D3D11. Andere Spiele behalten den flachen Immersiv-Bildschirm.</string>
     <string name="xr_open_composite_toggle">SteamVR-(OpenVR-)Kompatibilität</string>
     <string name="xr_open_composite_toggle_desc">Leitet für SteamVR entwickelte Spiele über OpenComposite. Aktivieren, wenn das Spiel meldet, dass SteamVR nicht läuft, oder im VR-Modus flach bleibt.</string>
     <string name="xr_render_scale">VR-Renderskalierung</string>

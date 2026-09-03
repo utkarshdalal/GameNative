@@ -1350,7 +1350,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                         ?: Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { overlayLayerBitmap = it }
                     android.graphics.Canvas(bitmap)
                         .drawColor(android.graphics.Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
-                    if (directRenderActive && xrSessionHandle != 0L) {
+                    if ((directRenderActive || flatPresentationSuspended) && xrSessionHandle != 0L) {
                         XrNative.nativeSubmitFrame(xrSessionHandle, bitmap)
                     }
                 }
@@ -1377,7 +1377,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                         if (surfaceView != null) surfaceView.alpha = previousAlpha
                     }
                 }
-                if (directRenderActive && xrSessionHandle != 0L) {
+                if ((directRenderActive || flatPresentationSuspended) && xrSessionHandle != 0L) {
                     synchronized(overlayLock) {
                         overlayLayerBitmap?.let { XrNative.nativeSubmitFrame(xrSessionHandle, it) }
                     }

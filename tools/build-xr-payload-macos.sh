@@ -22,7 +22,10 @@ mkdir -p "$work" "$output"
 if [ ! -f "$work/inc/openxr/openxr.h" ]; then
     mkdir -p "$work/inc/openxr"
     curl -sL https://github.com/KhronosGroup/OpenXR-SDK/archive/refs/tags/release-1.1.61.tar.gz \
-        | tar -xz -C "$work" --strip-components=2 "OpenXR-SDK-release-1.1.61/include/openxr"
+        -o "$work/openxr-sdk-1.1.61.tar.gz"
+    echo "d5e2773d282642e6e250bd10266f316fc3ff3b8602c83db009a1f434205998e6  $work/openxr-sdk-1.1.61.tar.gz" \
+        | shasum -a 256 -c - >/dev/null || { echo "OpenXR SDK checksum mismatch"; exit 1; }
+    tar -xz -C "$work" --strip-components=2 -f "$work/openxr-sdk-1.1.61.tar.gz" "OpenXR-SDK-release-1.1.61/include/openxr"
     mv "$work/openxr/"*.h "$work/inc/openxr/" 2>/dev/null || true
     cp -R "$work"/*.h "$work/inc/openxr/" 2>/dev/null || true
     [ -f "$work/inc/openxr/openxr.h" ] || { echo "OpenXR headers missing"; exit 1; }
@@ -48,7 +51,7 @@ hash32=$(shasum -a 256 "$output/gamenative_openxr_runtime32.dll" | cut -d' ' -f1
 printf "3 %s %s" "$hash64" "$hash32" > "$output/payload.version"
 
 # The native immersive compositor (libxrimmersive.so) against the Khronos loader prefab.
-aar=$(find "$HOME/.gradle/caches/modules-2/files-2.1/org.khronos.openxr/openxr_loader_for_android/1.1.61" -name "*.aar" | head -1)
+aar=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/org.khronos.openxr/openxr_loader_for_android/1.1.61" -name "*.aar" 2>/dev/null | head -1)
 [ -n "$aar" ] || { echo "OpenXR Android loader 1.1.61 is not in the Gradle cache; run a gradle sync first"; exit 1; }
 mkdir -p "$work/openxr"
 unzip -q -o "$aar" -d "$work/openxr"

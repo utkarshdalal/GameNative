@@ -2377,7 +2377,7 @@
     <string name="binding_sequence_delay_ms">シーケンス遅延 (ミリ秒)</string>
     <string name="binding_sequence_current_format">%1$s（%2$d ミリ秒）</string>
     <string name="xr_windows_vr_toggle">VRアプリとして実行（試験的）</string>
-    <string name="xr_windows_vr_toggle_desc">Beat SaberなどのネイティブVRタイトル向け。arm64ec WineとDXVKが必要です。その他のゲームは平面の没入型画面のままです。</string>
+    <string name="xr_windows_vr_toggle_desc">Beat SaberなどのネイティブVRタイトル向け。arm64ec Wine、DXVK、D3D11が必要です。その他のゲームは平面の没入型画面のままです。</string>
     <string name="xr_open_composite_toggle">SteamVR（OpenVR）互換</string>
     <string name="xr_open_composite_toggle_desc">SteamVR向けに作られたゲームをOpenCompositeで動かします。ゲームがSteamVRが起動していないと表示する場合や、VRモードでも平面のままの場合に有効にしてください。</string>
     <string name="xr_render_scale">VRレンダースケール</string>

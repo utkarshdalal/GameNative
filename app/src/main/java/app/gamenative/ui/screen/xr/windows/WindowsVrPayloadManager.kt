@@ -27,37 +27,21 @@ class WindowsVrPayloadManager(
         val prefixDirectory = File(container.rootDir, ".wine/drive_c/gamenative-xr")
         check(prefixDirectory.exists() || prefixDirectory.mkdirs())
         recoverRegistry(container, prefixDirectory)
-        recoverSharedPayload(prefixDirectory)
+        recoverSharedPayload(container, prefixDirectory)
         recoverOpenComposite(container, prefixDirectory)
         val runtime64 = File(prefixDirectory, "gamenative_openxr_runtime64.dll")
         val runtime32 = File(prefixDirectory, "gamenative_openxr_runtime32.dll")
         copyAssetIfChanged("gamenative_openxr_runtime64.dll", runtime64)
         copyAssetIfChanged("gamenative_openxr_runtime32.dll", runtime32)
-        installSharedFile(
-            "gamenative_openxr_runtime64.dll",
-            File(container.rootDir, ".wine/drive_c/windows/system32/gamenative_openxr.dll"),
-            prefixDirectory,
-            "runtime64",
-        )
-        installSharedFile(
-            "gamenative_openxr_runtime32.dll",
-            File(container.rootDir, ".wine/drive_c/windows/syswow64/gamenative_openxr.dll"),
-            prefixDirectory,
-            "runtime32",
-        )
-        val winePath = ImageFs.find(context).winePath
-        val bridge = File(winePath, "lib/wine/aarch64-windows/gamenative_xr_unixbridge.dll")
+        val targets = sharedTargets(container)
+        val bridge = targets.getValue("bridge")
+        val bridge32 = targets.getValue("bridge32")
+        val unixlib = targets.getValue("unixlib")
         check(bridge.parentFile?.exists() == true || bridge.parentFile?.mkdirs() == true)
-        installSharedFile("gamenative_xr_unixbridge.dll", bridge, prefixDirectory, "bridge")
-        val prefixBridge = File(container.rootDir, ".wine/drive_c/windows/system32/gamenative_xr_unixbridge.dll")
-        installSharedFile("gamenative_xr_unixbridge.dll", prefixBridge, prefixDirectory, "bridgePrefix")
-        val bridge32 = File(winePath, "lib/wine/i386-windows/gamenative_xr_unixbridge.dll")
-        installSharedFile("gamenative_xr_unixbridge32.dll", bridge32, prefixDirectory, "bridge32")
-        val prefixBridge32 = File(container.rootDir, ".wine/drive_c/windows/syswow64/gamenative_xr_unixbridge.dll")
-        installSharedFile("gamenative_xr_unixbridge32.dll", prefixBridge32, prefixDirectory, "bridge32Prefix")
-        val unixlib = File(winePath, "lib/wine/aarch64-unix/gamenative_xr_unixbridge.so")
         check(unixlib.parentFile?.exists() == true || unixlib.parentFile?.mkdirs() == true)
-        installSharedFile("gamenative_xr_unixbridge.so", unixlib, prefixDirectory, "unixlib")
+        sharedAssets.forEach { (name, assetPath) ->
+            installSharedFile(assetPath, targets.getValue(name), prefixDirectory, name)
+        }
         val manifest = File(prefixDirectory, "active_runtime.json")
         val manifest64 = File(prefixDirectory, "active_runtime64.json")
         val manifest32 = File(prefixDirectory, "active_runtime32.json")
@@ -189,21 +173,45 @@ class WindowsVrPayloadManager(
         diagnostics.record("registry", "installed views=64,32")
     }
 
-    private fun recoverSharedPayload(payloadDirectory: File) {
-        listOf(
-            "runtime64", "runtime32", "bridge", "bridgePrefix", "bridge32", "bridge32Prefix", "unixlib",
-        ).forEach { name ->
+    private val sharedAssets = linkedMapOf(
+        "runtime64" to "gamenative_openxr_runtime64.dll",
+        "runtime32" to "gamenative_openxr_runtime32.dll",
+        "bridge" to "gamenative_xr_unixbridge.dll",
+        "bridgePrefix" to "gamenative_xr_unixbridge.dll",
+        "bridge32" to "gamenative_xr_unixbridge32.dll",
+        "bridge32Prefix" to "gamenative_xr_unixbridge32.dll",
+        "unixlib" to "gamenative_xr_unixbridge.so",
+    )
+
+    private fun sharedTargets(container: Container): Map<String, File> {
+        val winePath = ImageFs.find(context).winePath
+        return mapOf(
+            "runtime64" to File(container.rootDir, ".wine/drive_c/windows/system32/gamenative_openxr.dll"),
+            "runtime32" to File(container.rootDir, ".wine/drive_c/windows/syswow64/gamenative_openxr.dll"),
+            "bridge" to File(winePath, "lib/wine/aarch64-windows/gamenative_xr_unixbridge.dll"),
+            "bridgePrefix" to File(container.rootDir, ".wine/drive_c/windows/system32/gamenative_xr_unixbridge.dll"),
+            "bridge32" to File(winePath, "lib/wine/i386-windows/gamenative_xr_unixbridge.dll"),
+            "bridge32Prefix" to File(container.rootDir, ".wine/drive_c/windows/syswow64/gamenative_xr_unixbridge.dll"),
+            "unixlib" to File(winePath, "lib/wine/aarch64-unix/gamenative_xr_unixbridge.so"),
+        )
+    }
+
+    private fun recoverSharedPayload(container: Container, payloadDirectory: File) {
+        val targets = sharedTargets(container)
+        sharedAssets.keys.forEach { name ->
             val backup = File(payloadDirectory, "$name.backup")
             val missing = File(payloadDirectory, "$name.missing")
             val targetRecord = File(payloadDirectory, "$name.target")
-            val target = targetRecord.takeIf { it.isFile }?.readText()?.trim()?.takeIf { it.isNotEmpty() }?.let(::File)
-            if (target != null) {
-                val canonicalTarget = target.canonicalFile
+            val canonicalTarget = targets.getValue(name).canonicalFile
+            val recorded = targetRecord.takeIf { it.isFile }?.readText()?.trim()
+            if (recorded != null && recorded == canonicalTarget.path) {
                 validateSharedTarget(canonicalTarget)
                 when {
                     backup.isFile -> atomicReplace(backup, canonicalTarget)
                     missing.isFile -> canonicalTarget.delete()
                 }
+            } else if (recorded != null) {
+                diagnostics.record("payload", "ignoring unexpected recovery record for $name")
             }
             backup.delete()
             missing.delete()
