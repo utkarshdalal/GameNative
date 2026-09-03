@@ -2462,4 +2462,5 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Réinitialiser les réglages du gyroscope</string>
+    <string name="xr_render_scale">Échelle de rendu VR</string>
 </resources>

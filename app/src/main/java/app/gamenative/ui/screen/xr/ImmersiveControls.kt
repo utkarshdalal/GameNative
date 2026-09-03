@@ -12,6 +12,13 @@ data class ImmersiveControls(
     val onResetScreenEffects: () -> Unit = {},
     val resizeModeEnabled: Boolean = false,
     val onResizeModeToggle: (Boolean) -> Unit = {},
+    val windowsVrEnabled: Boolean = true,
+    val onWindowsVrToggle: (Boolean) -> Unit = {},
+    val openCompositeEnabled: Boolean = false,
+    val onOpenCompositeToggle: (Boolean) -> Unit = {},
+    val windowsVrStatus: String = "Waiting for runtime",
+    val windowsVrRuntimePath: String = "Native OpenXR",
+    val onExportWindowsVrDiagnostics: () -> Unit = {},
 ) {
     companion object {
         const val MIN_DISTANCE = 1.0f

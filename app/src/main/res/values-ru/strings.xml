@@ -2396,4 +2396,5 @@ https://gamenative.app
     <string name="gyro_degrees_per_second_value">%1$.1f°/с</string>
     <string name="gyro_milliseconds_value">%1$d мс</string>
     <string name="reset_gyro_settings">Сбросить настройки гироскопа</string>
+    <string name="xr_render_scale">Масштаб рендеринга VR</string>
 </resources>

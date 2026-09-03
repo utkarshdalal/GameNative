@@ -2464,4 +2464,5 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/с</string>
     <string name="gyro_milliseconds_value">%1$d мс</string>
     <string name="reset_gyro_settings">Скинути налаштування гіроскопа</string>
+    <string name="xr_render_scale">Масштаб рендерингу VR</string>
 </resources>

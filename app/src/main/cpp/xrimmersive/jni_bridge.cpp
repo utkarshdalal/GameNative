@@ -127,6 +127,116 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativePollSnapshot(JNIEnv *env, jclass
     return snapshot.quickMenuClicked ? JNI_TRUE : JNI_FALSE;
 }
 
+JNIEXPORT jboolean JNICALL
+Java_app_gamenative_ui_screen_xr_XrNative_nativeWaitWindowsFrame(
+    JNIEnv *env, jclass, jlong handlePtr, jlong afterSerial, jint timeoutMs,
+    jlongArray outTiming, jfloatArray outViews, jfloatArray outInput, jintArray outFlags) {
+    if (env->GetArrayLength(outTiming) < 11 || env->GetArrayLength(outViews) < 22 ||
+        env->GetArrayLength(outInput) < 36 || env->GetArrayLength(outFlags) < 3) return JNI_FALSE;
+    xrimmersive::WindowsRuntimeSnapshot snapshot;
+    {
+        std::lock_guard<std::mutex> lock(gHandleMutex);
+        auto *handle = LiveHandle(handlePtr);
+        if (handle == nullptr) return JNI_FALSE;
+        if (!handle->session->waitWindowsRuntimeSnapshot(
+                static_cast<uint64_t>(afterSerial), static_cast<uint32_t>(timeoutMs), &snapshot)) {
+            return JNI_FALSE;
+        }
+    }
+    const jlong timing[11] = {
+        static_cast<jlong>(snapshot.frameSerial),
+        static_cast<jlong>(snapshot.predictedDisplayTime),
+        static_cast<jlong>(snapshot.predictedDisplayPeriod),
+        static_cast<jlong>(snapshot.sessionState),
+        static_cast<jlong>(snapshot.shouldRender ? 1 : 0),
+        static_cast<jlong>(snapshot.recommendedWidth),
+        static_cast<jlong>(snapshot.recommendedHeight),
+        static_cast<jlong>(snapshot.stageAvailable ? 1 : 0),
+        static_cast<jlong>(snapshot.stageBounds.width * 1000000.0f),
+        static_cast<jlong>(snapshot.stageBounds.height * 1000000.0f),
+        static_cast<jlong>(snapshot.stageSpaceActive ? 1 : 0),
+    };
+    env->SetLongArrayRegion(outTiming, 0, 11, timing);
+    jfloat views[22]{};
+    for (size_t eye = 0; eye < 2; ++eye) {
+        const XrView &view = snapshot.views[eye];
+        const size_t base = eye * 11;
+        views[base] = view.pose.orientation.x;
+        views[base + 1] = view.pose.orientation.y;
+        views[base + 2] = view.pose.orientation.z;
+        views[base + 3] = view.pose.orientation.w;
+        views[base + 4] = view.pose.position.x;
+        views[base + 5] = view.pose.position.y;
+        views[base + 6] = view.pose.position.z;
+        views[base + 7] = view.fov.angleLeft;
+        views[base + 8] = view.fov.angleRight;
+        views[base + 9] = view.fov.angleUp;
+        views[base + 10] = view.fov.angleDown;
+    }
+    env->SetFloatArrayRegion(outViews, 0, 22, views);
+    const auto &input = snapshot.input;
+    jfloat inputValues[36]{};
+    for (size_t hand = 0; hand < 2; ++hand) {
+        const size_t base = hand * 18;
+        const XrPosef &grip = input.gripPoses[hand];
+        const XrPosef &aim = input.aimPoses[hand];
+        inputValues[base] = hand == 0 ? input.triggerL : input.triggerR;
+        inputValues[base + 1] = hand == 0 ? input.squeezeL : input.squeezeR;
+        inputValues[base + 2] = hand == 0 ? input.leftX : input.rightX;
+        inputValues[base + 3] = hand == 0 ? input.leftY : input.rightY;
+        inputValues[base + 4] = grip.orientation.x;
+        inputValues[base + 5] = grip.orientation.y;
+        inputValues[base + 6] = grip.orientation.z;
+        inputValues[base + 7] = grip.orientation.w;
+        inputValues[base + 8] = grip.position.x;
+        inputValues[base + 9] = grip.position.y;
+        inputValues[base + 10] = grip.position.z;
+        inputValues[base + 11] = aim.orientation.x;
+        inputValues[base + 12] = aim.orientation.y;
+        inputValues[base + 13] = aim.orientation.z;
+        inputValues[base + 14] = aim.orientation.w;
+        inputValues[base + 15] = aim.position.x;
+        inputValues[base + 16] = aim.position.y;
+        inputValues[base + 17] = aim.position.z;
+    }
+    env->SetFloatArrayRegion(outInput, 0, 36, inputValues);
+    const jint flags[3] = {
+        static_cast<jint>(snapshot.viewStateFlags),
+        static_cast<jint>(input.buttons),
+        static_cast<jint>((input.aimPoseValid[0] && input.gripPoseValid[0] ? 1 : 0) |
+                          (input.aimPoseValid[1] && input.gripPoseValid[1] ? 2 : 0)),
+    };
+    env->SetIntArrayRegion(outFlags, 0, 3, flags);
+    return JNI_TRUE;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_app_gamenative_ui_screen_xr_XrNative_nativeIsWindowsStereoActive(
+    JNIEnv *, jclass, jlong handlePtr) {
+    std::lock_guard<std::mutex> lock(gHandleMutex);
+    auto *handle = LiveHandle(handlePtr);
+    return handle != nullptr && handle->session->windowsStereoActive() ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_app_gamenative_ui_screen_xr_XrNative_nativeApplyWindowsHaptic(
+    JNIEnv *, jclass, jlong handlePtr, jint hand, jfloat amplitude, jlong duration,
+    jfloat frequency) {
+    std::lock_guard<std::mutex> lock(gHandleMutex);
+    auto *handle = LiveHandle(handlePtr);
+    return handle != nullptr && handle->session->applyWindowsHaptic(
+        static_cast<uint32_t>(hand), amplitude, static_cast<XrDuration>(duration), frequency)
+        ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_app_gamenative_ui_screen_xr_XrNative_nativeSetWindowsOverlayVisible(
+    JNIEnv *, jclass, jlong handlePtr, jboolean visible) {
+    std::lock_guard<std::mutex> lock(gHandleMutex);
+    auto *handle = LiveHandle(handlePtr);
+    if (handle != nullptr) handle->session->setWindowsOverlayVisible(visible == JNI_TRUE);
+}
+
 // Called from ImmersiveXrActivity's PixelCopy capture loop with the game's actual rendered
 // frame (ARGB_8888 bitmap). Copies the pixels into the session's pending-frame buffer; the
 // render thread uploads them to the GPU and draws them into the quad layer on its own.

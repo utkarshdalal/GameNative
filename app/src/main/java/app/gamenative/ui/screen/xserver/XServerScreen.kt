@@ -2158,6 +2158,7 @@ fun XServerScreen(
                                 if (shouldShowMouseCursor()) renderer?.setCursorVisible(true)
                                 xServerState.value.winStarted = true
                             }
+                            if (!getxServer().isFlatPresentationEnabled) return
                             if (frameRatingWindowId == -1 && window.isApplicationWindow()) {
                                 refreshFrameRatingTracking("content-update")
                             }
@@ -2304,6 +2305,7 @@ fun XServerScreen(
 
                             Timber.i("Doing things once")
                             val envVars = EnvVars()
+                            immersiveHooks?.windowsVr?.beforeWineSystemSetup(container)
 
                             runBlocking {
                                 setupWineSystemFiles(
@@ -2350,7 +2352,8 @@ fun XServerScreen(
                                 xServerView!!.getxServer(),
                                 containerVariantChanged,
                                 onGameLaunchError,
-                                isOffline
+                                isOffline,
+                                immersiveHooks,
                             )
 
                             // Autostart performance driver after environment is set up
@@ -3823,7 +3826,8 @@ private fun setupXEnvironment(
     xServer: XServer,
     containerVariantChanged: Boolean,
     onGameLaunchError: ((String) -> Unit)? = null,
-    offline: Boolean = false
+    offline: Boolean = false,
+    immersiveHooks: app.gamenative.ui.screen.xr.ImmersiveSessionHooks? = null,
 ): XEnvironment {
     ProcessHelper.hardKillStaleWineProcesses()
 
@@ -3974,6 +3978,7 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setSteamType(container.getSteamType())
 
         envVars.putAll(container.envVars)
+        immersiveHooks?.windowsVr?.afterContainerEnvironmentMerged(envVars, container)
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
@@ -4202,7 +4207,9 @@ private fun setupXEnvironment(
     }
 
     try {
+        immersiveHooks?.windowsVr?.beforeGuestProcessStart()
         environment.startEnvironmentComponents()
+        immersiveHooks?.windowsVr?.onEnvironmentStarted()
     } catch (e: Exception) {
         Timber.e(e, "Failed to start environment components, cleaning up")
         try {

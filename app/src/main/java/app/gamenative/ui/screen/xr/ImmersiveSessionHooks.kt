@@ -13,6 +13,7 @@ import androidx.compose.ui.focus.FocusManager
  */
 class ImmersiveSessionHooks(
     val controls: ImmersiveControls,
+    val windowsVr: app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeService? = null,
     val onQuickMenuVisibilityChanged: (Boolean) -> Unit = {},
     val registerFocusManager: ((FocusManager) -> Unit)? = null,
     val registerCycleTab: (((Boolean) -> Unit) -> Unit)? = null,

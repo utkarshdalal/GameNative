@@ -2415,4 +2415,5 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/秒</string>
     <string name="gyro_milliseconds_value">%1$d ミリ秒</string>
     <string name="reset_gyro_settings">ジャイロ設定をリセット</string>
+    <string name="xr_render_scale">VRレンダースケール</string>
 </resources>

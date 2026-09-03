@@ -2476,4 +2476,5 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/秒</string>
     <string name="gyro_milliseconds_value">%1$d 毫秒</string>
     <string name="reset_gyro_settings">重置陀螺仪设置</string>
+    <string name="xr_render_scale">VR 渲染比例</string>
 </resources>

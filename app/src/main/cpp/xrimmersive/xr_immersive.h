@@ -2,22 +2,23 @@
 
 #include <jni.h>
 #include <atomic>
+#include <array>
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <mutex>
 #include <thread>
 #include <vector>
 
-#define EGL_EGLEXT_PROTOTYPES
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-#define GL_GLEXT_PROTOTYPES
 #include <GLES3/gl3.h>
 #include <GLES2/gl2ext.h>
 #include <android/hardware_buffer.h>
 
-#define XR_USE_PLATFORM_ANDROID 1
-#define XR_USE_GRAPHICS_API_OPENGL_ES 1
+#include "xr_windows_projection.h"
+#include "xr_windows_transport.h"
+
 #include <openxr/openxr.h>
 #include <openxr/openxr_platform.h>
 
@@ -50,6 +51,8 @@ struct InputSnapshot {
     float rightY = 0.0f;
     float triggerL = 0.0f;
     float triggerR = 0.0f;
+    float squeezeL = 0.0f;
+    float squeezeR = 0.0f;
     // Rising-edge only: holding the Touch controllers' Menu button for 600ms summons
     // GameNative's own quick menu. A short press of the same button is still forwarded as a
     // normal gamepad Start press (games use it for their own pause/settings menu).
@@ -73,6 +76,26 @@ struct InputSnapshot {
     float leftHandFwdX = 0.0f, leftHandFwdY = 0.0f, leftHandFwdZ = -1.0f;
     float rightHandPosX = 0.0f, rightHandPosY = 0.0f, rightHandPosZ = 0.0f;
     float rightHandFwdX = 0.0f, rightHandFwdY = 0.0f, rightHandFwdZ = -1.0f;
+    XrPosef aimPoses[2]{{{0, 0, 0, 1}, {0, 0, 0}}, {{0, 0, 0, 1}, {0, 0, 0}}};
+    XrPosef gripPoses[2]{{{0, 0, 0, 1}, {0, 0, 0}}, {{0, 0, 0, 1}, {0, 0, 0}}};
+    bool aimPoseValid[2]{false, false};
+    bool gripPoseValid[2]{false, false};
+};
+
+struct WindowsRuntimeSnapshot {
+    uint64_t frameSerial = 0;
+    XrTime predictedDisplayTime = 0;
+    XrDuration predictedDisplayPeriod = 0;
+    XrSessionState sessionState = XR_SESSION_STATE_UNKNOWN;
+    bool shouldRender = false;
+    XrViewStateFlags viewStateFlags = 0;
+    uint32_t recommendedWidth = 0;
+    uint32_t recommendedHeight = 0;
+    bool stageAvailable = false;
+    bool stageSpaceActive = false;
+    XrExtent2Df stageBounds{0.0f, 0.0f};
+    std::array<XrView, 2> views{{{XR_TYPE_VIEW}, {XR_TYPE_VIEW}}};
+    InputSnapshot input;
 };
 
 // Owns the OpenXR instance/session and its dedicated frame-loop thread.
@@ -84,6 +107,11 @@ public:
     void join();
 
     InputSnapshot pollSnapshot();
+    bool waitWindowsRuntimeSnapshot(uint64_t afterSerial, uint32_t timeoutMs,
+                                    WindowsRuntimeSnapshot *snapshot);
+    bool windowsStereoActive() const;
+    bool applyWindowsHaptic(uint32_t hand, float amplitude, XrDuration duration, float frequency);
+    void setWindowsOverlayVisible(bool visible);
 
     // Called from the JNI bridge with a freshly PixelCopy'd RGBA_8888 frame of the game's
     // actual rendered output (see ImmersiveXrActivity's capture loop). Copies into a
@@ -125,8 +153,10 @@ private:
     // caller must NOT submit a layer referencing it.
     bool renderFrame();
     void syncControllerInputs(XrTime predictedDisplayTime);
+    void syncWindowsTrackingPoses(InputSnapshot *snapshot, XrTime predictedDisplayTime);
     void submitQuadLayer(XrTime predictedDisplayTime, XrSpace space, XrSwapchain swapchain,
                           int32_t width, int32_t height, bool sessionActive);
+    bool submitWindowsProjection(XrTime predictedDisplayTime);
     void ensureQuadGeometryAndShader();
     void uploadPendingGameFrameLocked();
     void setupPassthrough();
@@ -140,9 +170,17 @@ private:
     XrSystemId systemId_ = XR_NULL_SYSTEM_ID;
     XrSession session_ = XR_NULL_HANDLE;
     XrSpace localSpace_ = XR_NULL_HANDLE;
+    XrSpace stageSpace_ = XR_NULL_HANDLE;
+    XrSpace windowsTrackingSpace_ = XR_NULL_HANDLE;
     XrSwapchain swapchain_ = XR_NULL_HANDLE;
     XrSessionState sessionState_ = XR_SESSION_STATE_UNKNOWN;
     bool sessionRunning_ = false;
+    windowsvr::WindowsFrameTransport windowsTransport_;
+    windowsvr::WindowsProjectionPresenter windowsProjection_;
+    bool windowsProjectionReady_ = false;
+    std::atomic<bool> stereoActive_{false};
+    std::atomic<bool> windowsOverlayVisible_{false};
+    uint32_t stereoMisses_ = 0;
 
     // The quad swapchain follows the container's screen size (min width 1280) and the
     // refresh rate is per-container, both set through configure() before the session starts.
@@ -224,8 +262,14 @@ private:
     // InputSnapshot::pointerModeToggled.
     XrAction aimPoseLeftAction_ = XR_NULL_HANDLE;
     XrAction aimPoseRightAction_ = XR_NULL_HANDLE;
+    XrAction gripPoseLeftAction_ = XR_NULL_HANDLE;
+    XrAction gripPoseRightAction_ = XR_NULL_HANDLE;
+    XrAction hapticAction_ = XR_NULL_HANDLE;
+    XrPath handPaths_[2]{XR_NULL_PATH, XR_NULL_PATH};
     XrSpace aimSpaceLeft_ = XR_NULL_HANDLE;
     XrSpace aimSpaceRight_ = XR_NULL_HANDLE;
+    XrSpace gripSpaceLeft_ = XR_NULL_HANDLE;
+    XrSpace gripSpaceRight_ = XR_NULL_HANDLE;
     bool lastL3Pressed_ = false;
     std::chrono::steady_clock::time_point lastL3ClickTime_;
     int l3ClickCount_ = 0;
@@ -251,6 +295,9 @@ private:
 
     std::mutex snapshotMutex_;
     InputSnapshot snapshot_;
+    std::mutex windowsSnapshotMutex_;
+    std::condition_variable windowsSnapshotCondition_;
+    WindowsRuntimeSnapshot windowsSnapshot_;
 
     // Quad transform — defaults match the original hardcoded values (2m in front, 16:9,
     // 1.6m wide). Atomics: written from Kotlin/JNI callers, read from the render thread.

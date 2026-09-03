@@ -597,7 +597,7 @@ class MainViewModel @Inject constructor(
 
             if (app.gamenative.BuildConfig.XR_BUILD &&
                 container.isLaunchImmersiveMode() &&
-                app.gamenative.MainActivity.isMetaQuest()
+                app.gamenative.MainActivity.isHeadset(context)
             ) {
                 bootingSplashTimeoutJob?.cancel()
                 bootingSplashTimeoutJob = null

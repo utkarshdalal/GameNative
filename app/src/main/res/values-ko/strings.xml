@@ -2456,4 +2456,5 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/초</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">자이로 설정 초기화</string>
+    <string name="xr_render_scale">VR 렌더링 배율</string>
 </resources>

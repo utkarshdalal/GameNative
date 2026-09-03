@@ -76,6 +76,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         private const val POLL_INTERVAL_MS = 11L
         private const val CAPTURE_RETRY_DELAY_MS = 200L
         private const val OVERLAY_REFRESH_INTERVAL_MS = 33L // ~30fps — plenty for a menu/HUD,
+        private const val OVERLAY_IDLE_REFRESH_INTERVAL_MS = 250L
         private const val OVERLAY_CONTENT_GRACE_MS = 2500L
 
         private const val IMMERSIVE_UI_DENSITY = 2.5f
@@ -98,6 +99,8 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         private const val EXTRA_QUAD_DISTANCE = "immersiveQuadDistance"
         private const val EXTRA_QUAD_SCALE = "immersiveQuadScale"
         private const val EXTRA_PASSTHROUGH_ENABLED = "immersivePassthroughEnabled"
+        private const val EXTRA_WINDOWS_VR_ENABLED = "windowsVrEnabled"
+        private const val EXTRA_WINDOWS_VR_OPEN_COMPOSITE = "windowsVrOpenCompositeEnabled"
 
         fun start(context: Context, appId: String, isOffline: Boolean) {
             val intent = Intent(context, ImmersiveXrActivity::class.java).apply {
@@ -174,15 +177,18 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     private var directGLBridge: DirectGLBridge? = null
     private var directVulkanBridge: DirectVulkanBridge? = null
     private var bridgedRenderer: Any? = null
+    private var windowsVrRuntimeService: app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeService? = null
     @Volatile
     private var directRenderActive = false
+    @Volatile
+    private var flatPresentationSuspended = false
     private var directRenderProbeLogged = false
 
     private var lastMenuDpadKeyCode: Int? = null
     private var lastMenuDpadHeldSince = 0L
     private var lastMenuDpadEventTime = 0L
-    private var lastMenuButtonAPressed = false
-    private var lastMenuButtonBPressed = false
+    private var lastMenuConfirmPressed = false
+    private var lastMenuBackPressed = false
     private var lastMenuButtonLBPressed = false
     private var lastMenuButtonRBPressed = false
 
@@ -219,6 +225,9 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     private var quadVertical by mutableFloatStateOf(ImmersiveControls.DEFAULT_OFFSET)
     private var quadScale by mutableFloatStateOf(ImmersiveControls.DEFAULT_SCALE)
     private var passthroughEnabled by mutableStateOf(false)
+    private var windowsVrEnabled by mutableStateOf(true)
+    private var openCompositeEnabled by mutableStateOf(false)
+    private var windowsVrStatus by mutableStateOf("Waiting for runtime")
     private var showControlsOnboarding by mutableStateOf(false)
     private var mappedWindowCount by androidx.compose.runtime.mutableIntStateOf(0)
     private var overlayPausedUi by mutableStateOf(false)
@@ -247,6 +256,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             return
         }
         currentAppId = appId
+        windowsVrRuntimeService = app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeService(this)
 
         PluviaApp.isActivityInForeground = true
         AppUtils.keepScreenOn(this)
@@ -284,17 +294,20 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                     },
                     onGameLaunchError = { error ->
                         viewModel.onGameLaunchError(error)
-                        finish()
+                        runOnUiThread { windowsVrStatus = "Guest stopped: $error" }
+                        windowsVrRuntimeService?.onGuestProcessError(error)
                     },
                     immersiveHooks = ImmersiveSessionHooks(
-                    onQuickMenuVisibilityChanged = { visible ->
-                        Timber.i("Immersive: quick menu visibility changed to %b", visible)
-                        quickMenuVisible = visible
-                        if (visible) {
-                            directRenderBlockedByEffects = (PluviaApp.xServerView?.renderer as? com.winlator.renderer.VulkanRenderer)
-                                ?.isEffectsRequireCompositor()
-                        }
-                    },
+                        windowsVr = windowsVrRuntimeService,
+                        onQuickMenuVisibilityChanged = { visible ->
+                            Timber.i("Immersive: quick menu visibility changed to %b", visible)
+                            quickMenuVisible = visible
+                            if (xrSessionHandle != 0L) XrNative.nativeSetWindowsOverlayVisible(xrSessionHandle, visible)
+                            if (visible) {
+                                directRenderBlockedByEffects = (PluviaApp.xServerView?.renderer as? com.winlator.renderer.VulkanRenderer)
+                                    ?.isEffectsRequireCompositor()
+                            }
+                        },
                     registerToggle = { toggle -> quickMenuToggle = toggle },
                     registerStartHeld = { setter -> quickMenuSetStartHeld = setter },
                     registerFocusManager = { fm -> quickMenuFocusManager = fm },
@@ -330,6 +343,25 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                                 pointerCursorRightValid = false
                             }
                             Timber.i("Immersive: resize handles toggled %s from quick menu, pointer mode now %s", enabled, enabled)
+                        },
+                        windowsVrEnabled = windowsVrEnabled,
+                        onWindowsVrToggle = { enabled ->
+                            windowsVrEnabled = enabled
+                            windowsVrStatus = if (enabled) "Restart required" else "Disabled"
+                            persistImmersiveSettings(appId)
+                        },
+                        openCompositeEnabled = openCompositeEnabled,
+                        onOpenCompositeToggle = { enabled ->
+                            openCompositeEnabled = enabled
+                            windowsVrStatus = "Restart required"
+                            persistImmersiveSettings(appId)
+                        },
+                        windowsVrStatus = windowsVrStatus,
+                        windowsVrRuntimePath = if (openCompositeEnabled) "OpenVR compatibility" else "Native OpenXR",
+                        onExportWindowsVrDiagnostics = {
+                            val result = runCatching { windowsVrRuntimeService?.exportDiagnostics() }
+                            val message = result.getOrNull()?.path ?: result.exceptionOrNull()?.message ?: "Windows VR is inactive"
+                            app.gamenative.ui.util.SnackbarManager.show(message)
                         },
                     ),
                     ),
@@ -369,6 +401,9 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             quadScale = container.getExtra(EXTRA_QUAD_SCALE, ImmersiveControls.DEFAULT_SCALE.toString())
                 .toFloatOrNull() ?: ImmersiveControls.DEFAULT_SCALE
             passthroughEnabled = container.getExtra(EXTRA_PASSTHROUGH_ENABLED, "false").toBoolean()
+            windowsVrEnabled = container.getExtra(EXTRA_WINDOWS_VR_ENABLED, "true").toBoolean()
+            openCompositeEnabled = container.getExtra(EXTRA_WINDOWS_VR_OPEN_COMPOSITE, "false").toBoolean()
+            windowsVrStatus = if (windowsVrEnabled) "Waiting for runtime" else "Disabled"
             applyQuadTransform()
             if (xrSessionHandle != 0L) {
                 XrNative.nativeSetPassthroughEnabled(xrSessionHandle, passthroughEnabled)
@@ -387,6 +422,8 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             container.putExtra(EXTRA_QUAD_DISTANCE, quadDistance.toString())
             container.putExtra(EXTRA_QUAD_SCALE, quadScale.toString())
             container.putExtra(EXTRA_PASSTHROUGH_ENABLED, passthroughEnabled.toString())
+            container.putExtra(EXTRA_WINDOWS_VR_ENABLED, windowsVrEnabled.toString())
+            container.putExtra(EXTRA_WINDOWS_VR_OPEN_COMPOSITE, openCompositeEnabled.toString())
             container.saveData()
         }
     }
@@ -446,6 +483,8 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
 
     override fun onDestroy() {
         stopXrSession()
+        windowsVrRuntimeService?.close()
+        windowsVrRuntimeService = null
         PluviaApp.shutdownEnvironment()
         super.onDestroy()
     }
@@ -481,6 +520,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         }
 
         applyQuadTransform()
+        windowsVrRuntimeService?.attachSession(xrSessionHandle)
         XrNative.nativeSetPassthroughEnabled(xrSessionHandle, passthroughEnabled)
 
         startControllerPollingLoop()
@@ -503,6 +543,13 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                         cachedBridge = XrGamepadBridge(winHandler)
                     }
                     val quickMenuClicked = XrNative.nativePollSnapshot(xrSessionHandle, buttons, axes, handPoses, flags)
+                    val stereoActive = XrNative.nativeIsWindowsStereoActive(xrSessionHandle)
+                    if (stereoActive != flatPresentationSuspended) {
+                        flatPresentationSuspended = stereoActive
+                        windowsVrStatus = if (stereoActive) "Stereo active" else if (windowsVrEnabled) "Flat fallback" else "Disabled"
+                        windowsVrRuntimeService?.onPresentationState(windowsVrStatus)
+                        runOnUiThread { applyFlatPresentationGate(!stereoActive) }
+                    }
                     if (flags[2] != lastPushedStartHeld) {
                         lastPushedStartHeld = flags[2]
                         val setter = quickMenuSetStartHeld
@@ -943,9 +990,15 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         }
 
         val buttonAPressed = (buttons and (1 shl XrGamepadBridge.BUTTON_A)) != 0
-        if (buttonAPressed && !lastMenuButtonAPressed) {
+        val triggerPressed = axes[4] > POINTER_GRAB_PRESS_THRESHOLD || axes[5] > POINTER_GRAB_PRESS_THRESHOLD
+        val confirmPressed = buttonAPressed || triggerPressed
+        if (confirmPressed && !lastMenuConfirmPressed) {
             val focusedActivate = quickMenuFocusedActivate?.invoke()
-            Timber.i("Immersive: A pressed, focusedActivatePresent=%b", focusedActivate != null)
+            Timber.i(
+                "Immersive: menu confirm pressed, source=%s focusedActivatePresent=%b",
+                if (buttonAPressed) "A" else "trigger",
+                focusedActivate != null,
+            )
             if (focusedActivate != null) {
                 runOnUiThread { focusedActivate.invoke() }
             } else {
@@ -953,11 +1006,16 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                 dispatchMenuKeyEvent(android.view.KeyEvent.KEYCODE_BUTTON_A)
             }
         }
-        lastMenuButtonAPressed = buttonAPressed
+        lastMenuConfirmPressed = confirmPressed
 
         val buttonBPressed = (buttons and (1 shl XrGamepadBridge.BUTTON_B)) != 0
-        if (buttonBPressed && !lastMenuButtonBPressed) dispatchMenuKeyEvent(android.view.KeyEvent.KEYCODE_BACK)
-        lastMenuButtonBPressed = buttonBPressed
+        val rightStickPressed = (buttons and (1 shl XrGamepadBridge.BUTTON_R3)) != 0
+        val backPressed = buttonBPressed || rightStickPressed
+        if (backPressed && !lastMenuBackPressed) {
+            Timber.i("Immersive: menu back pressed, source=%s", if (buttonBPressed) "B" else "right-stick")
+            dispatchMenuKeyEvent(android.view.KeyEvent.KEYCODE_BACK)
+        }
+        lastMenuBackPressed = backPressed
 
         val stickClickHeld = (buttons and ((1 shl XrGamepadBridge.BUTTON_L3) or (1 shl XrGamepadBridge.BUTTON_R3))) != 0
         val buttonLBPressed = (buttons and (1 shl XrGamepadBridge.BUTTON_LB)) != 0
@@ -1115,21 +1173,47 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     }
 
     private fun teardownDirectRenderBridge() {
+        val renderer = bridgedRenderer
         bridgedRenderer = null
         directVulkanBridge = null
-        (PluviaApp.xServerView?.renderer as? com.winlator.renderer.VulkanRenderer)?.setVulkanXrFrameBridge(null)
+        (renderer as? com.winlator.renderer.VulkanRenderer)?.setVulkanXrFrameBridge(null)
         val bridge = directGLBridge
         if (bridge != null) {
             directGLBridge = null
-            (PluviaApp.xServerView?.renderer as? GLRenderer)?.setXrFrameBridge(null)
+            (renderer as? GLRenderer)?.setXrFrameBridge(null)
             PluviaApp.xServerView?.queueEvent { bridge.release() }
         }
         directRenderActive = false
     }
 
+    private fun applyFlatPresentationGate(enabled: Boolean) {
+        val xServerView = PluviaApp.xServerView
+        val renderer = xServerView?.renderer
+        xServerView?.getxServer()?.setFlatPresentationEnabled(enabled)
+        (renderer as? GLRenderer)?.setFlatPresentationEnabled(enabled)
+        (renderer as? com.winlator.renderer.VulkanRenderer)?.setFlatPresentationEnabled(enabled)
+        if (!enabled) {
+            teardownDirectRenderBridge()
+            gameCaptureBitmap = null
+            finalFrameBitmap = null
+        }
+        Timber.i(
+            "Immersive: flat presentation enabled=%s presentCopies=%s rendererUpdates=%s capture=%s",
+            enabled,
+            if (enabled) "active" else "suspended",
+            if (enabled) "active" else "suspended",
+            if (enabled) "fallback-ready" else "released",
+        )
+    }
+
     private fun scheduleNextCapture() {
         if (!captureActive.get()) return
         val handler = captureHandler ?: return
+
+        if (flatPresentationSuspended) {
+            handler.postDelayed({ scheduleNextCapture() }, CAPTURE_RETRY_DELAY_MS)
+            return
+        }
 
         setupDirectRenderBridgeIfSupported()
 
@@ -1179,7 +1263,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         val captureStartTime = android.os.SystemClock.uptimeMillis()
         try {
             PixelCopy.request(surfaceView, bitmap, { result ->
-                if (result == PixelCopy.SUCCESS) {
+                if (result == PixelCopy.SUCCESS && !flatPresentationSuspended) {
                     compositeGameFrame(width, height)
                 }
                 val elapsed = android.os.SystemClock.uptimeMillis() - captureStartTime
@@ -1195,7 +1279,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     /** Composites the game frame with the cached overlay on the capture thread. Runs only when
      * not direct-rendering (see scheduleNextCapture). */
     private fun compositeGameFrame(width: Int, height: Int) {
-        if (!captureActive.get() || xrSessionHandle == 0L) return
+        if (!captureActive.get() || flatPresentationSuspended || xrSessionHandle == 0L) return
         val gameFrame = gameCaptureBitmap ?: return
 
         val finalBitmap = finalFrameBitmap?.takeIf { it.width == width && it.height == height }
@@ -1215,10 +1299,10 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     /** Slow path: re-renders just the Compose overlay (transparent where the game is) into
      * [overlayLayerBitmap], on its own throttled timer, on the UI thread (required for
      * View.draw). Self-chaining like the capture loop, independent of it. */
-    private fun scheduleNextOverlayRefresh() {
+    private fun scheduleNextOverlayRefresh(delayMs: Long = OVERLAY_REFRESH_INTERVAL_MS) {
         if (!captureActive.get()) return
         val handler = captureHandler ?: return
-        handler.postDelayed({ refreshOverlayLayer() }, OVERLAY_REFRESH_INTERVAL_MS)
+        handler.postDelayed({ refreshOverlayLayer() }, delayMs)
     }
 
     private fun refreshOverlayLayer() {
@@ -1237,6 +1321,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
 
             val hasOverlayContent = quickMenuVisible || overlayPausedUi || showControlsOnboarding ||
                 xrPointerModeActive || bootingSplashVisible
+            if (xrSessionHandle != 0L) XrNative.nativeSetWindowsOverlayVisible(xrSessionHandle, hasOverlayContent)
             val now = android.os.SystemClock.uptimeMillis()
             if (hasOverlayContent) {
                 overlayContentLastVisibleAt = now
@@ -1245,7 +1330,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             // Fade-outs and the mode indicator outlive their flag, so keep drawing for a grace window.
             if (!hasOverlayContent && now - overlayContentLastVisibleAt > OVERLAY_CONTENT_GRACE_MS) {
                 if (overlayClearSubmitted) {
-                    scheduleNextOverlayRefresh()
+                    scheduleNextOverlayRefresh(OVERLAY_IDLE_REFRESH_INTERVAL_MS)
                     return@runOnUiThread
                 }
                 overlayClearSubmitted = true
@@ -1258,7 +1343,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                         XrNative.nativeSubmitFrame(xrSessionHandle, bitmap)
                     }
                 }
-                scheduleNextOverlayRefresh()
+                scheduleNextOverlayRefresh(OVERLAY_IDLE_REFRESH_INTERVAL_MS)
                 return@runOnUiThread
             }
 
@@ -1325,7 +1410,10 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         pollingThread = null
         stopFrameCaptureLoop()
         teardownDirectRenderBridge()
+        flatPresentationSuspended = false
+        applyFlatPresentationGate(true)
         if (xrSessionHandle != 0L) {
+            windowsVrRuntimeService?.detachSession()
             XrNative.nativeRequestStop(xrSessionHandle)
             XrNative.nativeJoinAndDestroy(xrSessionHandle)
             xrSessionHandle = 0L
