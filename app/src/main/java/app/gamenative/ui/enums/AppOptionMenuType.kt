@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import app.gamenative.R
 
 enum class AppOptionMenuType(@StringRes val title: Int) {
+    Screenshots(R.string.library_view_screenshots),
     StorePage(R.string.option_open_store_page),
     CreateShortcut(R.string.create_shortcut),
     ExportFrontend(R.string.option_export_for_frontend),

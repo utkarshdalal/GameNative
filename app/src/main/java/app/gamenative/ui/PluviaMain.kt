@@ -1,20 +1,27 @@
 package app.gamenative.ui
 
-import android.content.Context
+import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.browser.customtabs.CustomTabsIntent
-import androidx.core.content.FileProvider
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -35,8 +43,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.zIndex
+import androidx.core.content.FileProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -44,11 +59,13 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.FloatingWindow
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
@@ -59,6 +76,7 @@ import app.gamenative.NetworkMonitor
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.api.DebugReportApi
 import app.gamenative.data.GameSource
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
@@ -67,16 +85,16 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.gamefixes.GameFixesRegistry
+import app.gamenative.launch.LaunchReadiness
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
-import com.posthog.PostHog
+import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.AchievementOverlay
 import app.gamenative.ui.component.ConnectionStatusBanner
 import app.gamenative.ui.component.GameInviteOverlay
-import app.gamenative.service.epic.EpicService
-import app.gamenative.service.gog.GOGService
-import app.gamenative.api.DebugReportApi
+import app.gamenative.ui.component.ScreenshotToastOverlay
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.DebugPreRunDialog
 import app.gamenative.ui.component.dialog.DebugReportDialog
@@ -89,7 +107,6 @@ import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.components.BootingSplash
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.ConnectionState
-import app.gamenative.launch.LaunchReadiness
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
@@ -97,6 +114,7 @@ import app.gamenative.ui.screen.DebugPaywallScreen
 import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
+import app.gamenative.ui.screen.screenshots.ScreenshotGalleryScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
@@ -104,20 +122,21 @@ import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
-import app.gamenative.utils.DebugReportUtils
-import app.gamenative.utils.PlatformAuthUtils
 import app.gamenative.utils.CustomGameScanner
-import app.gamenative.utils.ManifestInstaller
+import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.GameFeedbackUtils
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.LaunchDependencies
+import app.gamenative.utils.ManifestInstaller
+import app.gamenative.utils.PlatformAuthUtils
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateChecker
 import app.gamenative.utils.UpdateInfo
 import app.gamenative.utils.UpdateInstaller
-import app.gamenative.utils.LaunchDependencies
 import app.gamenative.workshop.WorkshopManager
 import app.gamenative.workshop.compatibility.SlayTheSpireModTheSpireCompatibility
 import com.google.android.play.core.splitcompat.SplitCompat
+import com.posthog.PostHog
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
@@ -126,22 +145,21 @@ import com.winlator.core.TarCompressorUtils
 import com.winlator.xenvironment.ImageFSLegacyMigrator
 import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.ImageFsInstaller
-import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import java.io.File
 import java.security.SecureRandom
-import java.util.Locale
 import java.util.Date
 import java.util.EnumSet
+import java.util.Locale
 import kotlin.reflect.KFunction2
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import timber.log.Timber
 
 private const val PENDING_LAUNCH_TIMEOUT_MS = 10_000L
@@ -736,6 +754,9 @@ fun PluviaMain(
 
             PluviaApp.onDestinationChangedListener = NavController.OnDestinationChangedListener { _, destination, _ ->
                 Timber.i("onDestinationChanged to ${destination.route}")
+                // Dialog destinations (e.g. the screenshot gallery) overlay the current screen;
+                // don't treat them as a screen change or the in-game orientation/UI gets reset.
+                if (destination is FloatingWindow) return@OnDestinationChangedListener
                 // in order not to trigger the screen changed launch effect
                 viewModel.setCurrentScreen(destination.route)
             }
@@ -1825,7 +1846,71 @@ fun PluviaMain(
                         onGameLaunchError = { error ->
                             viewModel.onGameLaunchError(error)
                         },
+                        navigateToScreenshotGallery = { appId, index ->
+                            navController.navigate(PluviaScreen.ScreenshotGallery.route(appId, index))
+                        },
                     )
+                }
+
+                /** Screenshot gallery, a dialog destination so the screen below (e.g. a running game) stays composed **/
+                dialog(
+                    route = PluviaScreen.ScreenshotGallery.route,
+                    arguments = listOf(
+                        navArgument(PluviaScreen.ScreenshotGallery.ARG_APP_ID) {
+                            type = NavType.StringType
+                        },
+                        navArgument(PluviaScreen.ScreenshotGallery.ARG_INDEX) {
+                            type = NavType.IntType
+                            defaultValue = -1
+                        },
+                    ),
+                    dialogProperties = DialogProperties(
+                        usePlatformDefaultWidth = false,
+                        decorFitsSystemWindows = false,
+                    ),
+                ) { backStackEntry ->
+                    val galleryAppId = backStackEntry.arguments
+                        ?.getString(PluviaScreen.ScreenshotGallery.ARG_APP_ID).orEmpty()
+                    val initialViewerIndex = backStackEntry.arguments
+                        ?.getInt(PluviaScreen.ScreenshotGallery.ARG_INDEX) ?: -1
+
+                    // The dialog gets its own window; keep it as immersive as the activity underneath.
+                    // The gallery animates its own entrance, so drop the window dim to avoid a scrim flash.
+                    val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+                    SideEffect {
+                        dialogWindow?.let { window ->
+                            window.setDimAmount(0f)
+                            WindowCompat.setDecorFitsSystemWindows(window, false)
+                            WindowInsetsControllerCompat(window, window.decorView).apply {
+                                hide(WindowInsetsCompat.Type.systemBars())
+                                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                            }
+                        }
+                    }
+
+                    // Dialog destinations don't animate; fade/slide the content in and play the
+                    // exit animation before actually popping the back stack.
+                    val galleryVisible = remember { MutableTransitionState(false).apply { targetState = true } }
+                    LaunchedEffect(galleryVisible.isIdle) {
+                        if (galleryVisible.isIdle && !galleryVisible.currentState) {
+                            navController.popBackStack()
+                        }
+                    }
+                    val dismissGallery = { galleryVisible.targetState = false }
+                    BackHandler { dismissGallery() }
+                    AnimatedVisibility(
+                        visibleState = galleryVisible,
+                        enter = fadeIn(animationSpec = tween(200)) +
+                            slideInVertically(animationSpec = tween(200)) { it / 12 },
+                        exit = fadeOut(animationSpec = tween(150)) +
+                            slideOutVertically(animationSpec = tween(150)) { it / 12 },
+                    ) {
+                        ScreenshotGalleryScreen(
+                            appId = galleryAppId,
+                            initialViewerIndex = initialViewerIndex,
+                            onBack = dismissGallery,
+                        )
+                    }
                 }
 
                 /** Settings **/
@@ -1869,6 +1954,15 @@ fun PluviaMain(
             }
 
             AchievementOverlay()
+            ScreenshotToastOverlay(
+                // Open the viewer at the newest shot (index 0).
+                onOpen = { notification ->
+                    // singleTop so repeated toast taps don't stack gallery destinations.
+                    navController.navigate(PluviaScreen.ScreenshotGallery.route(notification.appId, 0)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
             GameInviteOverlay()
         }
     }

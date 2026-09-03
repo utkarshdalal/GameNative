@@ -1326,6 +1326,35 @@ object PrefManager {
             setPref(EXTERNAL_STORAGE_PATH, value)
         }
 
+    private val SCREENSHOT_USE_EXTERNAL = booleanPreferencesKey("screenshot_use_external")
+    var screenshotUseExternal: Boolean
+        get() = getPref(SCREENSHOT_USE_EXTERNAL, false)
+        set(value) {
+            setPref(SCREENSHOT_USE_EXTERNAL, value)
+        }
+
+    private val SCREENSHOT_EXTERNAL_PATH = stringPreferencesKey("screenshot_external_path")
+    var screenshotExternalPath: String
+        get() = getPref(SCREENSHOT_EXTERNAL_PATH, "")
+        set(value) {
+            setPref(SCREENSHOT_EXTERNAL_PATH, value)
+        }
+
+    // Comma-separated Android keyCodes that, when held together, take a screenshot. Empty = unbound.
+    // Defaults to L1 + R1 + L3 + R3 held simultaneously.
+    private val SCREENSHOT_COMBO_KEYS = stringPreferencesKey("screenshot_combo_keys")
+    private val DEFAULT_SCREENSHOT_COMBO = listOf(
+        android.view.KeyEvent.KEYCODE_BUTTON_L1,
+        android.view.KeyEvent.KEYCODE_BUTTON_R1,
+        android.view.KeyEvent.KEYCODE_BUTTON_THUMBL,
+        android.view.KeyEvent.KEYCODE_BUTTON_THUMBR,
+    ).joinToString(",")
+    var screenshotComboKeys: String
+        get() = getPref(SCREENSHOT_COMBO_KEYS, DEFAULT_SCREENSHOT_COMBO)
+        set(value) {
+            setPref(SCREENSHOT_COMBO_KEYS, value)
+        }
+
     private val FRONTEND_SYNC_DIR_STEAM = stringPreferencesKey("frontend_sync_dir_steam")
     private val FRONTEND_SYNC_DIR_EPIC = stringPreferencesKey("frontend_sync_dir_epic")
     private val FRONTEND_SYNC_DIR_GOG = stringPreferencesKey("frontend_sync_dir_gog")

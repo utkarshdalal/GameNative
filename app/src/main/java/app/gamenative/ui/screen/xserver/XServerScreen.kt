@@ -124,6 +124,8 @@ import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
+import app.gamenative.ui.util.ScreenshotNotificationManager
+import app.gamenative.utils.ScreenshotManager
 import app.gamenative.utils.AssetUtils
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
@@ -420,6 +422,7 @@ fun XServerScreen(
     // Non-null only when hosted by ImmersiveXrActivity. One bundled parameter, not nine — this
     // composable sits at the dex verifier's register limit (see ImmersiveSessionHooks' kdoc).
     immersiveHooks: app.gamenative.ui.screen.xr.ImmersiveSessionHooks? = null,
+    navigateToScreenshotGallery: (appId: String, viewerIndex: Int) -> Unit = { _, _ -> },
 ) {
     Timber.i("Starting up XServerScreen")
     val context = LocalContext.current
@@ -657,6 +660,7 @@ fun XServerScreen(
     var performanceHudConfig by remember { mutableStateOf(loadPerformanceHudConfig()) }
     var performanceHudView by remember { mutableStateOf<PerformanceHudView?>(null) }
     var performanceHudHost by remember { mutableStateOf<FrameLayout?>(null) }
+    var screenshotRefreshKey by remember { mutableStateOf(0) }
     var isDraggingPerformanceHud by remember { mutableStateOf(false) }
     var isTrackingPerformanceHudTouch by remember { mutableStateOf(false) }
     var performanceHudTouchDownRawX by remember { mutableStateOf(0f) }
@@ -889,6 +893,31 @@ fun XServerScreen(
             if (performanceHudView === hud) restorePerformanceHudPosition()
         }
         hud.bringToFront()
+    }
+
+    fun takeScreenshot() {
+        val surface = xServerView as? android.view.SurfaceView
+        if (surface == null) {
+            SnackbarManager.show(context.getString(R.string.screenshot_failed))
+            return
+        }
+        ScreenshotManager.capture(
+            surfaceView = surface,
+            appId = appId,
+            gameName = ContainerUtils.resolveGameName(appId),
+            context = context,
+            nowMillis = System.currentTimeMillis(),
+            scope = scope,
+        ) { result ->
+            result.onSuccess { file ->
+                screenshotRefreshKey++
+                // Toast with a thumbnail of the shot.
+                ScreenshotNotificationManager.show(file, appId)
+            }.onFailure {
+                Timber.w(it, "Screenshot capture failed")
+                SnackbarManager.show(context.getString(R.string.screenshot_failed))
+            }
+        }
     }
 
     fun clearOverlayPauseState() {
@@ -1432,6 +1461,11 @@ fun XServerScreen(
                 true
             }
 
+            QuickMenuAction.TAKE_SCREENSHOT -> {
+                takeScreenshot()
+                false
+            }
+
             else -> false
         }
     }
@@ -1593,6 +1627,8 @@ fun XServerScreen(
                 else -> false
             }
         } else if ((showElementEditor || keepPausedForEditor || showQuickMenu || isEditMode) && (isGamepad || isKeyboard)) {
+            // Menu/editor input isn't forwarded, so clear held keys to avoid a wedged combo.
+            physicalControllerHandler?.resetPressedKeys()
             val escPressed = !keepPausedForEditor &&
                 isKeyboard &&
                 it.event.keyCode == KeyEvent.KEYCODE_ESCAPE
@@ -2083,7 +2119,13 @@ fun XServerScreen(
                 frameLayout.addView(imeReceiver)
                 imeInputReceiver = imeReceiver
 
-                getxServer().winHandler = WinHandler(getxServer(), this)
+                // Don't replace the live WinHandler when reusing a running game; that would orphan the guest socket.
+                if (getxServer().winHandler == null) {
+                    getxServer().winHandler = WinHandler(getxServer(), this)
+                } else {
+                    // Keep the live handler, rebind it to the new view.
+                    getxServer().winHandler.setRendererView(this)
+                }
                 win32AppWorkarounds = Win32AppWorkarounds(getxServer())
                 touchMouse = TouchMouse(getxServer())
                 keyboard = Keyboard(getxServer())
@@ -2537,6 +2579,7 @@ fun XServerScreen(
                         gyroStickMixer = { binding, isDown, offset ->
                             updateBaseStickAndGetMixedValue(binding, isDown, offset)
                         },
+                        onTakeScreenshot = { takeScreenshot() },
                     )
                     radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)
 
@@ -2920,6 +2963,16 @@ fun XServerScreen(
                         resumeIfAllowedAfterOverlay()
                     }
                 }
+            },
+            appId = appId,
+            screenshotRefreshKey = screenshotRefreshKey,
+            onOpenScreenshotGallery = {
+                dismissOverlayMenu()
+                navigateToScreenshotGallery(appId, -1)
+            },
+            onOpenScreenshotViewer = { index ->
+                dismissOverlayMenu()
+                navigateToScreenshotGallery(appId, index)
             },
         )
 

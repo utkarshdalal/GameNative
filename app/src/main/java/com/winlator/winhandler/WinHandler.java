@@ -78,7 +78,8 @@ public class WinHandler {
     private DatagramSocket socket;
     private final ArrayList<Integer> xinputProcesses;
     private final XServer xServer;
-    private final XServerRendererView xServerView;
+    // Not final; rebound via setRendererView when the view is recreated across a screen change.
+    private XServerRendererView xServerView;
 
     private InputControlsView inputControlsView;
     private Thread[] rumblePollerThreads = new Thread[MAX_PLAYERS];
@@ -122,6 +123,12 @@ public class WinHandler {
     // Add method to set InputControlsView
     public void setInputControlsView(InputControlsView view) {
         this.inputControlsView = view;
+    }
+
+    // Rebind to a new renderer view and its context, keeping the live guest socket.
+    public void setRendererView(XServerRendererView view) {
+        this.xServerView = view;
+        this.activity = view.getContext();
     }
 
     private static String describeDevice(InputDevice device) {

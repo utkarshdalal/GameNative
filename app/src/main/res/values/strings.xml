@@ -2386,6 +2386,41 @@
     <string name="achievements_reveal_message">This shows the remaining secret achievements and their details for now. It is not remembered.</string>
     <string name="achievements_reveal_confirm">Reveal</string>
     <string name="achievements_locked">Locked</string>
+    <!-- Screenshots feature -->
+    <string name="settings_screenshots_title">Screenshots</string>
+    <string name="settings_screenshots_storage_title">Screenshot storage</string>
+    <string name="settings_screenshots_storage_internal">Internal (app storage)</string>
+    <string name="settings_screenshots_use_internal">Use internal storage</string>
+    <string name="settings_screenshots_folder_failed">Couldn\'t use that folder</string>
+    <string name="settings_screenshots_controller_bind">Controller button for screenshots</string>
+    <string name="settings_screenshots_controller_unbound">Not bound</string>
+    <string name="screenshots_bind_dialog_title">Bind a controller button</string>
+    <string name="screenshots_bind_prompt">Press one or more buttons together…</string>
+    <string name="screenshots_bind_current">Current: %s</string>
+    <string name="screenshots_bind_clear">Clear binding</string>
+    <string name="screenshot_take">Take screenshot</string>
+    <string name="screenshot_saved">Screenshot saved</string>
+    <string name="screenshot_failed">Couldn\'t take screenshot</string>
+    <string name="screenshots_tab">Screenshots</string>
+    <string name="screenshots_view_all">View all screenshots</string>
+    <string name="screenshots_empty">No screenshots yet</string>
+    <string name="screenshots_title">Screenshots</string>
+    <string name="screenshots_back">Back</string>
+    <string name="screenshot_open_with">Open with…</string>
+    <string name="screenshot_download">Save to Downloads</string>
+    <string name="screenshot_delete">Delete</string>
+    <string name="screenshot_share">Share</string>
+    <string name="screenshot_downloaded">Saved to Downloads</string>
+    <string name="screenshot_download_failed">Couldn\'t save to Downloads</string>
+    <string name="screenshot_deleted">Screenshot deleted</string>
+    <string name="screenshot_delete_confirm">Delete this screenshot?</string>
+    <string name="screenshots_delete_all">Delete all screenshots</string>
+    <string name="screenshots_delete_all_confirm">Delete all screenshots for this game?</string>
+    <plurals name="screenshots_deleted_all">
+        <item quantity="one">Deleted %d screenshot</item>
+        <item quantity="other">Deleted %d screenshots</item>
+    </plurals>
+    <string name="library_view_screenshots">Screenshots</string>
 
     <!-- Power Control -->
     <string name="power_control">Power Control</string>

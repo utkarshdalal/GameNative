@@ -61,6 +61,7 @@ fun HomeScreen(
             onTestGraphics = onTestGraphics,
             onPlayWithDiagnostics = onPlayWithDiagnostics,
             onAiDebugRun = onAiDebugRun,
+            onNavigateRoute = onNavigateRoute,
         )
     }
 }

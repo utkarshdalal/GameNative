@@ -118,6 +118,7 @@ fun HomeDownloadsScreen(
     onTestGraphics: (String) -> Unit,
     onPlayWithDiagnostics: (String) -> Unit,
     onAiDebugRun: (String) -> Unit,
+    onNavigateRoute: (String) -> Unit = {},
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -186,6 +187,7 @@ fun HomeDownloadsScreen(
                     onAiDebugRun(libraryItem.appId)
                 }
             },
+            onNavigateRoute = onNavigateRoute,
         )
     } else {
         Column(

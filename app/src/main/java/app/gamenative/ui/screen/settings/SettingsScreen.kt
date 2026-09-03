@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.HorizontalDivider
@@ -152,6 +153,15 @@ private fun SettingsScreenContent(
                         onAppTheme = onAppTheme,
                         onPaletteStyle = onPaletteStyle,
                     )
+                }
+
+                // Screenshots section
+                SettingsSection(
+                    title = stringResource(R.string.settings_screenshots_title),
+                    icon = Icons.Default.PhotoCamera,
+                    iconTint = PluviaTheme.colors.accentPurple,
+                ) {
+                    SettingsGroupScreenshots()
                 }
 
                 // Info section
