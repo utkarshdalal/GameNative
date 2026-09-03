@@ -20,6 +20,7 @@ permissions:
   contents: read
   actions: write
   issues: write
+  pull-requests: write
 
 concurrency:
   group: artifact-retention-cleanup
@@ -47,14 +48,11 @@ jobs:
               }
             }
 
-            const artifacts = await github.paginate(
-              github.rest.actions.listArtifactsForRepo,
-              { owner, repo, per_page: 100 }
-            );
+            const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, { owner, repo, per_page: 100 });
             const liveArtifacts = artifacts.filter(a => !a.expired && a.workflow_run?.id);
-
             const runCache = new Map();
             const runIds = [...new Set(liveArtifacts.map(a => a.workflow_run.id))];
+
             await inBatches(runIds, 20, async (runId) => {
               try {
                 const { data: run } = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: runId });
@@ -76,7 +74,6 @@ jobs:
             const keepRunIds = new Set(latestGoodRun.values());
             const toDelete = [];
             let preserved = 0;
-
             for (const artifact of liveArtifacts) {
               const run = runCache.get(artifact.workflow_run.id);
               if ((run && run.status !== 'completed') || keepRunIds.has(artifact.workflow_run.id) || !run) {
@@ -98,10 +95,7 @@ jobs:
             let cachesDeleted = 0;
             if (emergency) {
               try {
-                const caches = await github.paginate(
-                  github.rest.actions.getActionsCacheList,
-                  { owner, repo, per_page: 100 }
-                );
+                const caches = await github.paginate(github.rest.actions.getActionsCacheList, { owner, repo, per_page: 100 });
                 await inBatches(caches, 20, async (cache) => {
                   await github.rest.actions.deleteActionsCacheById({ owner, repo, cache_id: cache.id });
                   cachesDeleted += 1;
@@ -113,16 +107,12 @@ jobs:
 
             const reclaimedMiB = (reclaimedBytes / 1024 / 1024).toFixed(1);
             const summary = `Deleted ${deleted} superseded artifact(s), preserved ${preserved} current/latest-known-good artifact(s), reclaimed approximately ${reclaimedMiB} MiB, and deleted ${cachesDeleted} Actions cache(s).`;
-            await core.summary
-              .addHeading(emergency ? 'Emergency artifact cleanup' : 'Artifact cleanup')
-              .addRaw(summary)
-              .write();
+            await core.summary.addHeading(emergency ? 'Emergency artifact cleanup' : 'Artifact cleanup').addRaw(summary).write();
 
             if (context.eventName === 'issue_comment') {
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: context.payload.issue.number,
-                body: `Emergency artifact cleanup completed. ${summary}`,
-              });
+              try {
+                await github.rest.issues.createComment({ owner, repo, issue_number: context.payload.issue.number, body: `Emergency artifact cleanup completed. ${summary}` });
+              } catch (error) {
+                core.warning(`Could not post cleanup summary comment: ${error.message}`);
+              }
             }
