@@ -2,6 +2,7 @@ package app.gamenative.data
 
 import android.content.Context
 import app.gamenative.NetworkMonitor
+import app.gamenative.data.gog.GogRecCard
 import app.gamenative.PrefManager
 import app.gamenative.utils.Net
 import java.io.File
@@ -33,6 +34,8 @@ data class BootAdItem(
     val weight: Double = 1.0,
     // False for the house recommendation card: no Sponsored badge, no ad bookkeeping.
     val sponsored: Boolean = true,
+    // House recommendation card only: store price shown in the buy button.
+    val priceLabel: String? = null,
     val startsAt: String? = null,
     val endsAt: String? = null,
     // template "quiz_card": one is picked at random per boot.
@@ -110,13 +113,26 @@ object BootAdRepository {
     }
 
     /**
-     * The day's game recommendation as a house card, for boots with no eligible sponsor.
-     * Opt-in via settings; needs a cached recommendation with hero art.
+     * A game recommendation as a house card, for boots with no eligible sponsor. Opt-in via
+     * settings. Rotates through the user's personalized Discover cards (plus the day's hero
+     * pick, which carries a trailer), never repeating the previous boot's card.
      */
     fun recommendationCard(): BootAdItem? {
         if (!PrefManager.bootScreenRecommendationsEnabled) return null
-        val rec = RecommendationRepository.getCurrentHeroRecommendation() ?: return null
-        if (rec.heroImageUrl.isEmpty()) return null
+        val candidates = buildList {
+            RecommendationRepository.getCurrentHeroRecommendation()?.let { rec ->
+                if (rec.heroImageUrl.isNotEmpty()) add(heroPickCard(rec))
+            }
+            RecommendationRepository.getRecommendationPool()
+                .filter { it.heroImage.isNotEmpty() }
+                .forEach { add(discoverCard(it)) }
+        }.distinctBy { it.campaignId }
+        if (candidates.isEmpty()) return null
+        val lastShown = PrefManager.bootAdLastShown
+        return candidates.filter { it.campaignId != lastShown }.ifEmpty { candidates }.random()
+    }
+
+    private fun heroPickCard(rec: RecommendedGame): BootAdItem {
         // Trailers are streamed (not pre-downloaded like sponsor videos), so WiFi only.
         val trailer = (rec.videos.firstOrNull() ?: rec.videoUrl)
             ?.takeIf { it.isNotEmpty() && NetworkMonitor.hasWifiOrEthernet.value }
@@ -133,7 +149,27 @@ object BootAdRepository {
             },
             maxShowsPerDay = 0,
             sponsored = false,
+            priceLabel = rec.priceLabel,
         )
+    }
+
+    private fun discoverCard(card: GogRecCard): BootAdItem = BootAdItem(
+        campaignId = "rec-gog-${card.productId}",
+        template = TEMPLATE_CTA_CARD,
+        imageUrl = card.heroImage,
+        title = mapOf("en" to card.title),
+        body = mapOf("en" to card.becausePlayed),
+        action = card.affiliateUrl.ifEmpty { card.storeUrl }.takeIf { it.isNotEmpty() }?.let {
+            FeaturedAction(type = "VISIT", url = it, style = "primary")
+        },
+        maxShowsPerDay = 0,
+        sponsored = false,
+        priceLabel = card.priceLabel,
+    )
+
+    /** House cards count for rotation only — no impression or cap bookkeeping. */
+    fun noteShown(campaignId: String) {
+        PrefManager.bootAdLastShown = campaignId
     }
 
     private fun isRenderable(ad: BootAdItem): Boolean = when (ad.template) {

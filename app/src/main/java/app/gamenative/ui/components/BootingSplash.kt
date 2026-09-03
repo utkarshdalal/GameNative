@@ -594,7 +594,11 @@ private fun BootAdContent(
             val cta = remember(ad) {
                 ad.action?.let {
                     FeaturedCta(
-                        label = it.localizedLabel(context),
+                        label = when {
+                            ad.sponsored -> it.localizedLabel(context)
+                            ad.priceLabel != null -> context.getString(R.string.rec_buy_with_price, ad.priceLabel)
+                            else -> context.getString(R.string.recommended_buy_button)
+                        },
                         url = it.url,
                         primary = true,
                         type = it.type.uppercase(),

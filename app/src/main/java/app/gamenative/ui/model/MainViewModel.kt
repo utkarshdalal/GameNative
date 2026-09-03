@@ -383,7 +383,7 @@ class MainViewModel @Inject constructor(
                     bootAdShownAtMs = System.currentTimeMillis()
                     // House recommendation cards carry no cap and report no ad dwell.
                     bootAdDwellReported = !it.sponsored
-                    if (it.sponsored) BootAdRepository.recordShown(it.campaignId)
+                    if (it.sponsored) BootAdRepository.recordShown(it.campaignId) else BootAdRepository.noteShown(it.campaignId)
                 }
             }
             Timber.tag("BootAdTrace").i("show: wasShowing=false held=%s reuse=%s ad=%s", held != null, reuse, ad?.campaignId)

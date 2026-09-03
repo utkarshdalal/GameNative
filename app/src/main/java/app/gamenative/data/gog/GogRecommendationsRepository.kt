@@ -53,6 +53,9 @@ object GogRecommendationsRepository {
 
     private data class Seed(val gogId: String, val name: String, val weight: Double, val iconUrl: String?)
 
+    /** Today's Discover cards if already fetched this session; no network. */
+    fun cachedCards(): List<GogRecCard> = cache ?: emptyList()
+
     suspend fun getRecommendations(
         context: Context,
         owned: List<OwnedGameRef>,

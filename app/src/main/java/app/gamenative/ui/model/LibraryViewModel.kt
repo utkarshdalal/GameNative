@@ -323,8 +323,9 @@ class LibraryViewModel @Inject constructor(
             val hero = RecommendationRepository.getHero(context)
             val daySeed = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
             cachedFeatured = hero.featured
+            val personalized = PrefManager.showRecommendations && PrefManager.recDisclosureShown
             val recommendation = when {
-                PrefManager.showRecommendations && PrefManager.recDisclosureShown -> runCatching {
+                personalized -> runCatching {
                     val owned = GogSeedCollector.collect(
                         context,
                         libraryPlayHistoryDao,
@@ -333,10 +334,14 @@ class LibraryViewModel @Inject constructor(
                         amazonGameDao,
                     )
                     val userId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
+                    RecommendationRepository.setRecommendationPool(
+                        GogRecommendationsRepository.getRecommendations(context, owned, userId, daySeed),
+                    )
                     GogRecommendationsRepository.getDailyHero(context, owned, userId, daySeed)
                 }.getOrNull() ?: hero.recommendation
                 else -> hero.recommendation
             }
+            if (!personalized) RecommendationRepository.setRecommendationPool(emptyList())
             RecommendationRepository.setCurrentHeroRecommendation(recommendation)
             // A live featured takes the slot (still gated by the showRecommendations
             // toggle at display time), regardless of GOG consent.

@@ -338,6 +338,16 @@ object RecommendationRepository {
 
     fun getCurrentHeroRecommendation(): RecommendedGame? = currentHeroRecommendation ?: loadCachedRecommendation()
 
+    // Today's personalized Discover cards (empty unless the user opted in); the boot splash
+    // rotates through them so it isn't stuck on the single hero pick.
+    @Volatile private var recommendationPool: List<app.gamenative.data.gog.GogRecCard> = emptyList()
+
+    fun setRecommendationPool(cards: List<app.gamenative.data.gog.GogRecCard>) {
+        recommendationPool = cards
+    }
+
+    fun getRecommendationPool(): List<app.gamenative.data.gog.GogRecCard> = recommendationPool
+
     fun getFeaturedGame(context: Context): RecommendedGame? =
         lastFeatured?.toRecommendedGame(context)
 
