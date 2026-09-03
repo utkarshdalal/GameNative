@@ -225,7 +225,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     private var quadVertical by mutableFloatStateOf(ImmersiveControls.DEFAULT_OFFSET)
     private var quadScale by mutableFloatStateOf(ImmersiveControls.DEFAULT_SCALE)
     private var passthroughEnabled by mutableStateOf(false)
-    private var windowsVrEnabled by mutableStateOf(true)
+    private var windowsVrEnabled by mutableStateOf(false)
     private var openCompositeEnabled by mutableStateOf(false)
     private var windowsVrStatus by mutableStateOf("Waiting for runtime")
     private var showControlsOnboarding by mutableStateOf(false)
@@ -294,8 +294,12 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                     },
                     onGameLaunchError = { error ->
                         viewModel.onGameLaunchError(error)
-                        runOnUiThread { windowsVrStatus = "Guest stopped: $error" }
-                        windowsVrRuntimeService?.onGuestProcessError(error)
+                        if (windowsVrEnabled) {
+                            runOnUiThread { windowsVrStatus = "Guest stopped: $error" }
+                            windowsVrRuntimeService?.onGuestProcessError(error)
+                        } else {
+                            finish()
+                        }
                     },
                     immersiveHooks = ImmersiveSessionHooks(
                         windowsVr = windowsVrRuntimeService,
@@ -401,7 +405,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             quadScale = container.getExtra(EXTRA_QUAD_SCALE, ImmersiveControls.DEFAULT_SCALE.toString())
                 .toFloatOrNull() ?: ImmersiveControls.DEFAULT_SCALE
             passthroughEnabled = container.getExtra(EXTRA_PASSTHROUGH_ENABLED, "false").toBoolean()
-            windowsVrEnabled = container.getExtra(EXTRA_WINDOWS_VR_ENABLED, "true").toBoolean()
+            windowsVrEnabled = container.getExtra(EXTRA_WINDOWS_VR_ENABLED, "false").toBoolean()
             openCompositeEnabled = container.getExtra(EXTRA_WINDOWS_VR_OPEN_COMPOSITE, "false").toBoolean()
             windowsVrStatus = if (windowsVrEnabled) "Waiting for runtime" else "Disabled"
             applyQuadTransform()

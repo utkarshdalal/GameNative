@@ -12,7 +12,7 @@ data class ImmersiveControls(
     val onResetScreenEffects: () -> Unit = {},
     val resizeModeEnabled: Boolean = false,
     val onResizeModeToggle: (Boolean) -> Unit = {},
-    val windowsVrEnabled: Boolean = true,
+    val windowsVrEnabled: Boolean = false,
     val onWindowsVrToggle: (Boolean) -> Unit = {},
     val openCompositeEnabled: Boolean = false,
     val onOpenCompositeToggle: (Boolean) -> Unit = {},

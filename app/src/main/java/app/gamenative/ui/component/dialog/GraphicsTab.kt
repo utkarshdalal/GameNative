@@ -195,6 +195,15 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     )
                     Text(text = "${config.xrRenderScale}%")
                 }
+                SettingsSwitch(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(text = stringResource(R.string.xr_windows_vr_toggle)) },
+                    subtitle = { Text(text = stringResource(R.string.xr_windows_vr_toggle_desc)) },
+                    state = config.windowsVrEnabled,
+                    onCheckedChange = { checked ->
+                        state.config.value = config.copy(windowsVrEnabled = checked)
+                    },
+                )
             }
             SettingsListDropdown(
                 colors = settingsTileColors(),

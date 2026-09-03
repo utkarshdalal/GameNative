@@ -2477,5 +2477,7 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Reset gyro settings</string>
+    <string name="xr_windows_vr_toggle">Run as VR app (experimental)</string>
+    <string name="xr_windows_vr_toggle_desc">For native VR titles such as Beat Saber. Needs arm64ec Wine and DXVK. Other games keep the flat immersive screen.</string>
     <string name="xr_render_scale">VR Render Scale</string>
 </resources>

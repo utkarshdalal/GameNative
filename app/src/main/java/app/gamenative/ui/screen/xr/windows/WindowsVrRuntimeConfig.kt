@@ -15,7 +15,7 @@ data class WindowsVrRuntimeConfig(
     companion object {
         fun from(container: Container): WindowsVrRuntimeConfig {
             return WindowsVrRuntimeConfig(
-                enabled = container.getExtra("windowsVrEnabled", "true").toBoolean(),
+                enabled = container.getExtra("windowsVrEnabled", "false").toBoolean(),
                 openCompositeEnabled = container.getExtra("windowsVrOpenCompositeEnabled", "false").toBoolean(),
                 renderScalePercent = container.xrRenderScale.coerceIn(25, 100),
             )

@@ -2,11 +2,13 @@ package app.gamenative.ui.screen.xr.windows
 
 import android.content.Context
 import app.gamenative.CrashHandler
+import app.gamenative.ui.util.SnackbarManager
 import com.winlator.container.Container
 import com.winlator.core.ProcessHelper
 import com.winlator.core.envvars.EnvVars
 import java.io.Closeable
 import java.io.File
+import timber.log.Timber
 
 class WindowsVrRuntimeService(context: Context) : Closeable {
     private val applicationContext = context.applicationContext
@@ -32,14 +34,24 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
         this.container = container
         val active = config ?: WindowsVrRuntimeConfig.from(container).also { config = it }
         if (!active.enabled) return
-        check(container.wineVersion.contains("arm64ec", ignoreCase = true)) {
-            "Windows VR requires a supported ARM64EC Wine or Proton build"
+        val payload = try {
+            check(container.wineVersion.contains("arm64ec", ignoreCase = true)) {
+                "Windows VR requires a supported ARM64EC Wine or Proton build"
+            }
+            check(container.dxWrapper.contains("dxvk", ignoreCase = true)) {
+                "Windows VR D3D11 requires DXVK native interop"
+            }
+            diagnostics.record("launch", "Preparing Windows OpenXR payload")
+            payloadManager.prepare(container)
+        } catch (e: Exception) {
+            val reason = e.message ?: e.javaClass.simpleName
+            diagnostics.record("launch", "Windows VR disabled for this session: $reason")
+            Timber.w(e, "Windows VR disabled for this session")
+            SnackbarManager.show("VR mode unavailable: $reason")
+            runCatching { payloadManager.restore() }
+            config = active.copy(enabled = false)
+            return
         }
-        check(container.dxWrapper.contains("dxvk", ignoreCase = true)) {
-            "Windows VR D3D11 requires DXVK native interop"
-        }
-        diagnostics.record("launch", "Preparing Windows OpenXR payload")
-        val payload = payloadManager.prepare(container)
         runtimeLogDirectory = payload.prefixDirectory
         listOf("runtime.log", "unix.log").forEach { payload.prefixDirectory.resolve(it).delete() }
         if (active.openCompositeEnabled) payloadManager.installOpenComposite(container)

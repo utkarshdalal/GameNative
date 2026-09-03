@@ -111,6 +111,7 @@ data class ContainerData(
     // LSFG Vulkan frame generation
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
+    val windowsVrEnabled: Boolean = false,
 ) {
     companion object {
         val Saver = mapSaver(
@@ -186,6 +187,7 @@ data class ContainerData(
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
                     "lsfgEnabled" to state.lsfgEnabled,
+                    "windowsVrEnabled" to state.windowsVrEnabled,
                 )
             },
             restore = { savedMap ->
@@ -260,6 +262,7 @@ data class ContainerData(
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
+                    windowsVrEnabled = (savedMap["windowsVrEnabled"] as? Boolean) ?: false,
                 )
             },
         )
