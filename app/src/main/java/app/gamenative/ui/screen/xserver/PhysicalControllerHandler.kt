@@ -13,6 +13,7 @@ import com.winlator.inputcontrols.ControlElement
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.ExternalControllerBinding
+import com.winlator.inputcontrols.GamepadState
 import com.winlator.math.Mathf
 import com.winlator.xserver.XServer
 import java.util.Timer
@@ -31,6 +32,12 @@ class PhysicalControllerHandler(
     private val onRadialMenuVectorChanged: ((Float, Float) -> Unit)? = null,
     private val onGyroModifierChanged: ((Any, Boolean) -> Unit)? = null,
     private val gyroStickMixer: ((Binding, Boolean, Float) -> Float)? = null,
+    private val gamepadStateSender: (GamepadState?) -> Unit = { state ->
+        xServer?.winHandler?.let { winHandler ->
+            winHandler.sendGamepadState()
+            winHandler.sendVirtualGamepadState(state)
+        }
+    },
 ) {
     private data class PhysicalInputSource(val deviceId: Int, val keyCode: Int)
 
@@ -328,9 +335,7 @@ class PhysicalControllerHandler(
     }
 
     private fun sendGamepadState() {
-        val winHandler = xServer?.winHandler ?: return
-        winHandler.sendGamepadState()
-        winHandler.sendVirtualGamepadState(profile?.gamepadState)
+        gamepadStateSender(profile?.gamepadState)
     }
 
     /**
