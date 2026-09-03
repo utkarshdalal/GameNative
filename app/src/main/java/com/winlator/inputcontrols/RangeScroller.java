@@ -20,6 +20,7 @@ public class RangeScroller {
     private boolean isActionDown = false;
     private boolean scrolling = false;
     private Timer timer;
+    private int touchGeneration;
 
     public RangeScroller(InputControlsView inputControlsView, ControlElement element) {
         this.inputControlsView = inputControlsView;
@@ -88,6 +89,7 @@ public class RangeScroller {
     }
 
     public void handleTouchDown(float x, float y) {
+        final int generation = ++touchGeneration;
         destroyTimer();
 
         scrolling = false;
@@ -99,11 +101,15 @@ public class RangeScroller {
         element.setBinding(Binding.NONE);
         inputControlsView.invalidate();
 
+        final Binding scheduledBinding = binding;
         timer = new Timer(true);
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (!scrolling) inputControlsView.post(() -> inputControlsView.handleInputEvent(binding, true));
+                inputControlsView.post(() -> {
+                    if (generation != touchGeneration || !isActionDown || scrolling) return;
+                    inputControlsView.handleInputEvent(scheduledBinding, true);
+                });
             }
         }, TouchpadView.MAX_TAP_MILLISECONDS);
     }
@@ -136,6 +142,7 @@ public class RangeScroller {
     }
 
     public void handleTouchUp() {
+        touchGeneration++;
         if (isActionDown) {
             destroyTimer();
             if (isTap() && !scrolling) {
@@ -147,6 +154,18 @@ public class RangeScroller {
         }
         isActionDown = false;
         activeIndex = -1;
+        inputControlsView.invalidate();
+    }
+
+    public void cancelTouch() {
+        touchGeneration++;
+        if (isActionDown) {
+            destroyTimer();
+            inputControlsView.handleInputEvent(binding, false);
+        }
+        isActionDown = false;
+        activeIndex = -1;
+        scrolling = false;
         inputControlsView.invalidate();
     }
 }
