@@ -224,6 +224,18 @@ public class ControllerManager {
      */
     public static String getDeviceIdentifier(InputDevice device) {
         if (device == null) return null;
+        if (JoyConSupport.isJoyCon(device)) {
+            List<int[]> connectedDevices = new ArrayList<>();
+            for (int deviceId : InputDevice.getDeviceIds()) {
+                InputDevice connectedDevice = InputDevice.getDevice(deviceId);
+                if (connectedDevice != null) {
+                    connectedDevices.add(new int[]{connectedDevice.getVendorId(), connectedDevice.getProductId()});
+                }
+            }
+            if (JoyConSupport.hasExactlyOnePair(connectedDevices)) {
+                return JoyConSupport.PAIRED_IDENTIFIER;
+            }
+        }
         // The descriptor is the most reliable unique ID for a device.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             return device.getDescriptor();
