@@ -204,6 +204,17 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                         state.config.value = config.copy(windowsVrEnabled = checked)
                     },
                 )
+                if (config.windowsVrEnabled) {
+                    SettingsSwitch(
+                        colors = settingsTileColorsAlt(),
+                        title = { Text(text = stringResource(R.string.xr_open_composite_toggle)) },
+                        subtitle = { Text(text = stringResource(R.string.xr_open_composite_toggle_desc)) },
+                        state = config.openCompositeEnabled,
+                        onCheckedChange = { checked ->
+                            state.config.value = config.copy(openCompositeEnabled = checked)
+                        },
+                    )
+                }
             }
             SettingsListDropdown(
                 colors = settingsTileColors(),

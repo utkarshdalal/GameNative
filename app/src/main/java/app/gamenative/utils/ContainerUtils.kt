@@ -370,6 +370,7 @@ object ContainerUtils {
             // LSFG Vulkan frame generation
             lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean(),
             windowsVrEnabled = container.getExtra("windowsVrEnabled", "false").toBoolean(),
+            openCompositeEnabled = container.getExtra("windowsVrOpenCompositeEnabled", "false").toBoolean(),
         )
     }
 
@@ -559,6 +560,7 @@ object ContainerUtils {
         // LSFG Vulkan frame generation
         container.putExtra(LsfgVkManager.EXTRA_ARMED, containerData.lsfgEnabled.toString())
         container.putExtra("windowsVrEnabled", containerData.windowsVrEnabled.toString())
+        container.putExtra("windowsVrOpenCompositeEnabled", containerData.openCompositeEnabled.toString())
         try {
             container.language = containerData.language
         } catch (e: Exception) {
