@@ -53,7 +53,6 @@ import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Mouse
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QueryStats
-import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TouchApp
@@ -96,12 +95,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
-import app.gamenative.data.GyroSettings
 import app.gamenative.powercontrol.PowerManager
-import app.gamenative.ui.component.dialog.GyroSettingsDialog
 import app.gamenative.ui.component.quickMenus.PowerControlQuickMenuTab
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
@@ -127,7 +123,6 @@ object QuickMenuAction {
     const val DISABLE_MOUSE = 8
     const val SHOOTER_MODE = 9
     const val RADIAL_MENU = 10
-    const val GYRO = 11
 }
 
 private object QuickMenuTab {
@@ -139,37 +134,6 @@ private object QuickMenuTab {
     const val IMMERSIVE = 5
     const val INVITE = 6
     const val POWER = 7
-}
-
-private class GyroQuickMenuState(private val container: Container) {
-    var settings by mutableStateOf(GyroSettings.fromContainer(container))
-        private set
-
-    val isAvailable: Boolean
-        get() = PluviaApp.inputControlsView?.isGyroAvailable == true
-
-    val isTiltAvailable: Boolean
-        get() = PluviaApp.inputControlsView?.isGyroTiltAvailable == true
-
-    fun setEnabled(enabled: Boolean) {
-        if (enabled && !isAvailable) return
-        persistSettings(
-            settings.copy(mode = if (enabled) settings.lastTarget else GyroSettings.MODE_DISABLED),
-        )
-    }
-
-    fun persistSettings(value: GyroSettings) {
-        settings = value.normalized()
-        settings.saveTo(container)
-        applyToCurrentView()
-    }
-
-    fun hasGyroControlAssigned(activationMode: Int): Boolean =
-        PluviaApp.inputControlsView?.hasGyroControlAssigned(activationMode) == true
-
-    fun applyToCurrentView() {
-        PluviaApp.inputControlsView?.setGyroSettings(settings)
-    }
 }
 
 data class QuickMenuItem(
@@ -432,10 +396,6 @@ fun QuickMenu(
         accentColor = PluviaTheme.colors.accentDanger,
     )
 
-    // Kept here rather than plumbed through XServerScreen: that composable sits at the
-    // dex verifier's register limit and extra locals can produce invalid bytecode.
-    val gyroMenu = remember(container?.id) { container?.let(::GyroQuickMenuState) }
-
     val controllerItems = buildList {
         add(
             QuickMenuItem(
@@ -503,17 +463,6 @@ fun QuickMenu(
                 accentColor = PluviaTheme.colors.accentPurple,
             )
         )
-        if (container != null) {
-            add(
-                QuickMenuItem(
-                    id = QuickMenuAction.GYRO,
-                    icon = Icons.Default.ScreenRotation,
-                    labelResId = R.string.gyro_aiming,
-                    accentColor = PluviaTheme.colors.accentPurple,
-                    enabled = gyroMenu?.isAvailable == true,
-                ),
-            )
-        }
     }
 
     // Created here rather than plumbed through XServerScreen: that composable
@@ -521,7 +470,6 @@ fun QuickMenu(
     // trip a VerifyError at class load (dex methods over 255 registers hit a
     // broken D8 codegen path).
     val inviteMenu = remember(container?.id) { SteamInviteState.createIfAvailable(container) }
-    var showGyroSettingsDialog by rememberSaveable(container?.id) { mutableStateOf(false) }
     // Owned here, not plumbed through XServerScreen (register limit; see inviteMenu).
     var lsfgPresentMode by remember(container?.id) {
         mutableStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.presentMode(it) } ?: "mailbox")
@@ -1051,7 +999,7 @@ fun QuickMenu(
                                         }
                                     }
 
-                                    QuickMenuTab.CONTROLLER -> {
+                                    else -> {
                                         Column(
                                             modifier = Modifier
                                                 .fillMaxSize()
@@ -1059,20 +1007,12 @@ fun QuickMenu(
                                                 .focusGroup(),
                                             verticalArrangement = Arrangement.spacedBy(4.dp),
                                         ) {
-                                            val gyroEnabled = gyroMenu?.settings?.mode
-                                                ?.let { it != GyroSettings.MODE_DISABLED } == true
                                             controllerItems.forEachIndexed { index, item ->
                                                 QuickMenuItemRow(
                                                     item = item,
-                                                    isActive = if (item.id == QuickMenuAction.GYRO) {
-                                                        gyroEnabled
-                                                    } else {
-                                                        item.id in activeToggleIds
-                                                    },
+                                                    isActive = item.id in activeToggleIds,
                                                     onClick = {
-                                                        if (item.id == QuickMenuAction.GYRO && gyroMenu != null) {
-                                                            gyroMenu.setEnabled(!gyroEnabled)
-                                                        } else if (onItemSelected(item.id)) {
+                                                        if (onItemSelected(item.id)) {
                                                             onDismiss()
                                                         }
                                                     },
@@ -1081,29 +1021,21 @@ fun QuickMenu(
                                                         Icons.Default.Settings
                                                     else if (item.id == QuickMenuAction.SHOOTER_MODE && isShooterModeActive)
                                                         Icons.Default.Settings
-                                                    else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
-                                                        Icons.Default.Settings
                                                     else null,
                                                     secondaryContentDescriptionResId = if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && isTouchscreenModeActive)
                                                         R.string.gesture_settings_title
                                                     else if (item.id == QuickMenuAction.SHOOTER_MODE && isShooterModeActive)
                                                         R.string.shooter_mode_settings_title
-                                                    else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
-                                                        R.string.gyro_settings_title
                                                     else null,
                                                     onSecondaryClick = if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && isTouchscreenModeActive)
                                                         onTouchGestureSettingsClick
                                                     else if (item.id == QuickMenuAction.SHOOTER_MODE && isShooterModeActive)
                                                         onShooterModeSettingsClick
-                                                    else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
-                                                        ({ showGyroSettingsDialog = true })
                                                     else null,
                                                 )
                                             }
                                         }
                                     }
-
-                                    else -> Unit
                                 }
                             }
                         }
@@ -1114,30 +1046,8 @@ fun QuickMenu(
     }
     }
 
-    if (showGyroSettingsDialog && gyroMenu != null) {
-        GyroSettingsDialog(
-            gyroSettings = gyroMenu.settings,
-            tiltAvailable = gyroMenu.isTiltAvailable,
-            hasGyroControlAssigned = gyroMenu::hasGyroControlAssigned,
-            onDismiss = { showGyroSettingsDialog = false },
-            onSave = { settings ->
-                gyroMenu.persistSettings(settings)
-                showGyroSettingsDialog = false
-            },
-            onAssignControl = { settings ->
-                gyroMenu.persistSettings(settings)
-                showGyroSettingsDialog = false
-                if (onItemSelected(QuickMenuAction.EDIT_CONTROLS)) onDismiss()
-            },
-        )
-    }
-
     LaunchedEffect(isVisible, selectedTab) {
         onToolsVisibilityChanged(isVisible && selectedTab == QuickMenuTab.TOOLS)
-    }
-
-    LaunchedEffect(isVisible, gyroMenu) {
-        gyroMenu?.applyToCurrentView()
     }
 
     // Immersive also re-requests content focus on every tab switch (its LB/RB cycling moves
@@ -2692,25 +2602,11 @@ private fun QuickMenuItemRow(
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    // Flat mode keeps master's explicit focusable(); the immersive path drops it to
+    // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
     val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val fallbackFocusRequester = remember { FocusRequester() }
-    val rowFocusRequester = focusRequester ?: fallbackFocusRequester
-    val secondaryFocusRequester = remember { FocusRequester() }
-    val secondaryInteractionSource = remember { MutableInteractionSource() }
-    val isSecondaryFocused by secondaryInteractionSource.collectIsFocusedAsState()
     val isEnabled = item.enabled
-    val hasSecondaryAction = secondaryIcon != null && onSecondaryClick != null
-
-    LaunchedEffect(isFocused, onClick) {
-        inputBypass.reportActivate(interactionSource, if (isFocused) onClick else null)
-    }
-    LaunchedEffect(isSecondaryFocused, onSecondaryClick) {
-        inputBypass.reportActivate(
-            secondaryInteractionSource,
-            if (isSecondaryFocused) onSecondaryClick else null,
-        )
-    }
 
     val accentColor = if (item.accentColor != Color.Unspecified) {
         item.accentColor
@@ -2722,148 +2618,101 @@ private fun QuickMenuItemRow(
     val shape = RoundedCornerShape(12.dp)
 
     Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .clip(shape)
-                .then(
-                    if (isFocused && isEnabled) {
-                        Modifier.background(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    accentColor.copy(alpha = 0.15f),
-                                    accentColor.copy(alpha = 0.05f),
-                                ),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .then(
+                if (isFocused && isEnabled) {
+                    Modifier.background(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                accentColor.copy(alpha = 0.15f),
+                                accentColor.copy(alpha = 0.05f),
                             ),
-                        )
+                        ),
+                    )
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (isEnabled) {
+                    Modifier.focusRing(interactionSource, shape, width = 2.dp)
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (focusRequester != null) {
+                    Modifier.focusRequester(focusRequester)
+                } else {
+                    Modifier
+                }
+            )
+            .selectable(
+                selected = isFocused,
+                enabled = isEnabled,
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .then(
+                // Flat mode keeps master's second focus target; immersive drops it.
+                if (inputBypass.active) Modifier
+                else Modifier.focusable(enabled = isEnabled, interactionSource = interactionSource),
+            )
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .then(
+                    if (isActive) {
+                        Modifier.border(BorderStroke(2.dp, accentColor), CircleShape)
                     } else Modifier
                 )
-                .then(
-                    if (isEnabled) Modifier.focusRing(interactionSource, shape, width = 2.dp)
-                    else Modifier
-                )
-                .focusRequester(rowFocusRequester)
-                .onPreviewKeyEvent { keyEvent ->
-                    if (keyEvent.nativeKeyEvent.action != KeyEvent.ACTION_DOWN || !isFocused) {
-                        return@onPreviewKeyEvent false
-                    }
-                    when (keyEvent.nativeKeyEvent.keyCode) {
-                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            if (hasSecondaryAction) {
-                                secondaryFocusRequester.requestFocus()
-                                true
-                            } else false
-                        }
-                        KeyEvent.KEYCODE_BUTTON_A,
-                        KeyEvent.KEYCODE_DPAD_CENTER,
-                        KeyEvent.KEYCODE_ENTER,
-                        -> {
-                            onClick()
-                            true
-                        }
-                        else -> false
-                    }
-                }
-                .selectable(
-                    selected = isFocused,
-                    enabled = isEnabled,
-                    interactionSource = interactionSource,
-                    indication = null,
-                    onClick = onClick,
-                )
-                .then(
-                    if (inputBypass.active) Modifier
-                    else Modifier.focusable(enabled = isEnabled, interactionSource = interactionSource)
-                )
-                .padding(horizontal = 12.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .then(
-                        if (isActive) Modifier.border(BorderStroke(2.dp, accentColor), CircleShape)
-                        else Modifier
-                    )
-                    .clip(CircleShape)
-                    .background(
-                        when {
-                            !isEnabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                            isFocused || isActive -> accentColor.copy(alpha = 0.2f)
-                            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = item.icon,
-                    contentDescription = null,
-                    tint = when {
-                        !isEnabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = disabledAlpha)
-                        isFocused || isActive -> accentColor
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                .clip(CircleShape)
+                .background(
+                    when {
+                        !isEnabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        isFocused || isActive -> accentColor.copy(alpha = 0.2f)
+                        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     },
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-
-            Text(
-                text = stringResource(item.labelResId),
-                style = MaterialTheme.typography.bodyLarge,
-                color = when {
-                    !isEnabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = disabledAlpha)
-                    isFocused -> accentColor
-                    else -> MaterialTheme.colorScheme.onSurface
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = item.icon,
+                contentDescription = null,
+                tint = when {
+                    !isEnabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = disabledAlpha)
+                    isFocused || isActive -> accentColor
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.size(22.dp),
             )
         }
+
+        Text(
+            text = stringResource(item.labelResId),
+            style = MaterialTheme.typography.bodyLarge,
+            color = when {
+                !isEnabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = disabledAlpha)
+                isFocused -> accentColor
+                else -> MaterialTheme.colorScheme.onSurface
+            },
+            modifier = Modifier.weight(1f),
+        )
 
         if (secondaryIcon != null && onSecondaryClick != null) {
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .focusRing(secondaryInteractionSource, CircleShape, width = 2.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (isSecondaryFocused) accentColor.copy(alpha = 0.2f)
-                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    )
-                    .focusRequester(secondaryFocusRequester)
-                    .onPreviewKeyEvent { keyEvent ->
-                        if (keyEvent.nativeKeyEvent.action != KeyEvent.ACTION_DOWN || !isSecondaryFocused) {
-                            return@onPreviewKeyEvent false
-                        }
-                        when (keyEvent.nativeKeyEvent.keyCode) {
-                            KeyEvent.KEYCODE_DPAD_LEFT -> {
-                                rowFocusRequester.requestFocus()
-                                true
-                            }
-                            KeyEvent.KEYCODE_BUTTON_A,
-                            KeyEvent.KEYCODE_DPAD_CENTER,
-                            KeyEvent.KEYCODE_ENTER,
-                            -> {
-                                onSecondaryClick()
-                                true
-                            }
-                            else -> false
-                        }
-                    }
-                    .clickable(
-                        interactionSource = secondaryInteractionSource,
-                        indication = null,
-                        role = Role.Button,
-                        onClick = onSecondaryClick,
-                    )
-                    .then(
-                        if (inputBypass.active) Modifier
-                        else Modifier.focusable(interactionSource = secondaryInteractionSource)
-                    ),
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .clickable(role = Role.Button, onClick = onSecondaryClick),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -2871,7 +2720,7 @@ private fun QuickMenuItemRow(
                     contentDescription = stringResource(
                         secondaryContentDescriptionResId ?: R.string.gesture_settings_title,
                     ),
-                    tint = if (isSecondaryFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp),
                 )
             }
