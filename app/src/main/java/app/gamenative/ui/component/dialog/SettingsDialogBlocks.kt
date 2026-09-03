@@ -1,10 +1,6 @@
 package app.gamenative.ui.component.dialog
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -21,8 +17,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,31 +28,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
-import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.PluviaBackground
 import app.gamenative.ui.theme.PluviaBorder
 import app.gamenative.ui.theme.PluviaSurface
 import app.gamenative.ui.theme.PluviaSurfaceElevated
-import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.inputcontrols.Binding
-import kotlin.math.ceil
-import kotlin.math.floor
 
 @Composable
 fun SettingsDialogSectionHeader(text: String) {
@@ -135,169 +119,6 @@ fun GestureSubSettings(content: @Composable ColumnScope.() -> Unit) {
         content()
     }
 }
-
-@Composable
-fun <T> SettingsDropdownBlock(
-    title: String,
-    subtitle: String,
-    value: T,
-    values: List<T>,
-    labels: List<String>,
-    onValueChange: (T) -> Unit,
-    compact: Boolean = false,
-) {
-    val selectedIndex = values.indexOf(value).coerceAtLeast(0)
-    val content: @Composable () -> Unit = {
-        SettingsListDropdown(
-            colors = settingsTileColors(),
-            title = { Text(title) },
-            subtitle = { Text(subtitle) },
-            value = selectedIndex,
-            items = labels,
-            onItemSelected = { index -> onValueChange(values[index]) },
-        )
-    }
-
-    if (compact) content() else GestureBlock { content() }
-}
-
-@Composable
-fun SettingsSliderBlock(
-    title: String,
-    subtitle: String,
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
-    valueText: String,
-    onValueChange: (Float) -> Unit,
-    steps: Int = 0,
-    compact: Boolean = false,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-    val focusShape = RoundedCornerShape(10.dp)
-    val adjustmentStep = settingsSliderAdjustmentStep(valueRange, steps)
-
-    fun adjustValue(direction: Int) {
-        val nextValue = adjustSettingsSliderValue(value, valueRange, adjustmentStep, direction)
-        if (nextValue != value) onValueChange(nextValue)
-    }
-
-    val content: @Composable () -> Unit = {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (isFocused) {
-                        Modifier.border(
-                            width = 2.dp,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                            shape = focusShape,
-                        )
-                    } else Modifier,
-                )
-                .focusable(interactionSource = interactionSource)
-                .onPreviewKeyEvent { event ->
-                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                    when (event.key) {
-                        Key.DirectionLeft -> {
-                            adjustValue(-1)
-                            true
-                        }
-                        Key.DirectionRight -> {
-                            adjustValue(1)
-                            true
-                        }
-                        else -> false
-                    }
-                }
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Slider(
-                    value = value,
-                    onValueChange = onValueChange,
-                    valueRange = valueRange,
-                    steps = steps,
-                    colors = settingsSliderColors(showTickMarks = false),
-                    modifier = Modifier
-                        .weight(1f)
-                        .focusProperties { canFocus = false },
-                )
-                Text(
-                    text = valueText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-    }
-
-    if (compact) content() else GestureBlock { content() }
-}
-
-@Composable
-internal fun settingsSliderColors(showTickMarks: Boolean = true) = SliderDefaults.colors(
-    thumbColor = MaterialTheme.colorScheme.primary,
-    activeTrackColor = MaterialTheme.colorScheme.primary,
-    activeTickColor = if (showTickMarks) MaterialTheme.colorScheme.primary else Color.Transparent,
-    inactiveTickColor = if (showTickMarks) {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-    } else {
-        Color.Transparent
-    },
-    inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.22f),
-)
-
-internal fun settingsSliderAdjustmentStep(
-    valueRange: ClosedFloatingPointRange<Float>,
-    steps: Int,
-): Float {
-    val span = valueRange.endInclusive - valueRange.start
-    if (span <= 0f) return 0f
-    if (steps > 0) return span / (steps + 1)
-
-    return when {
-        span <= 1f -> 0.01f
-        span <= 10f -> 0.1f
-        span <= 100f -> 1f
-        else -> span / 100f
-    }.coerceAtMost(span)
-}
-
-internal fun adjustSettingsSliderValue(
-    value: Float,
-    valueRange: ClosedFloatingPointRange<Float>,
-    adjustmentStep: Float,
-    direction: Int,
-): Float {
-    if (adjustmentStep <= 0f || direction == 0) return value.coerceIn(valueRange)
-    val currentStep = (value - valueRange.start) / adjustmentStep
-    val nextStep = if (direction > 0) {
-        floor(currentStep + SLIDER_STEP_EPSILON).toInt() + 1
-    } else {
-        ceil(currentStep - SLIDER_STEP_EPSILON).toInt() - 1
-    }
-    return (valueRange.start + nextStep * adjustmentStep).coerceIn(valueRange)
-}
-
-private const val SLIDER_STEP_EPSILON = 0.0001f
 
 @Composable
 fun DelayTextField(
