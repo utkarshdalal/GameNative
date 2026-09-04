@@ -78,7 +78,11 @@ public class RangeScroller {
     }
 
     private boolean isTap() {
-        return (System.currentTimeMillis() - touchTime) < TouchpadView.MAX_TAP_MILLISECONDS;
+        return (currentTimeMillis() - touchTime) < TouchpadView.MAX_TAP_MILLISECONDS;
+    }
+
+    protected long currentTimeMillis() {
+        return System.currentTimeMillis();
     }
 
     private void destroyTimer() {
@@ -86,6 +90,16 @@ public class RangeScroller {
             timer.cancel();
             timer = null;
         }
+    }
+
+    protected void scheduleLongPress(Runnable callback) {
+        timer = new Timer(true);
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                callback.run();
+            }
+        }, TouchpadView.MAX_TAP_MILLISECONDS);
     }
 
     public void handleTouchDown(float x, float y) {
@@ -96,22 +110,16 @@ public class RangeScroller {
         isActionDown = true;
         activeIndex = getIndexByPosition(x, y);
         binding = getBindingByIndex(activeIndex);
-        touchTime = System.currentTimeMillis();
+        touchTime = currentTimeMillis();
         lastPosition = element.getOrientation() == 0 ? x : y;
         element.setBinding(Binding.NONE);
         inputControlsView.invalidate();
 
         final Binding scheduledBinding = binding;
-        timer = new Timer(true);
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                inputControlsView.post(() -> {
-                    if (generation != touchGeneration || !isActionDown || scrolling) return;
-                    inputControlsView.handleInputEvent(scheduledBinding, true);
-                });
-            }
-        }, TouchpadView.MAX_TAP_MILLISECONDS);
+        scheduleLongPress(() -> inputControlsView.post(() -> {
+            if (generation != touchGeneration || !isActionDown || scrolling) return;
+            inputControlsView.handleInputEvent(scheduledBinding, true);
+        }));
     }
 
     public void handleTouchMove(float x, float y) {

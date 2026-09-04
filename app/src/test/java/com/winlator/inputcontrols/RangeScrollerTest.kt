@@ -2,15 +2,14 @@ package com.winlator.inputcontrols
 
 import android.graphics.Rect
 import com.winlator.widget.InputControlsView
+import com.winlator.widget.TouchpadView
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(RobolectricTestRunner::class)
@@ -26,12 +25,12 @@ class RangeScrollerTest {
     }
 
     private fun verifyQueuedLongPressIsIgnored(endTouch: (RangeScroller) -> Unit) {
+        val currentTime = AtomicLong(0L)
+        val scheduledLongPress = AtomicReference<Runnable>()
         val postedCallback = AtomicReference<Runnable>()
-        val callbackPosted = CountDownLatch(1)
         val view = mockk<InputControlsView>(relaxed = true)
         every { view.post(any<Runnable>()) } answers {
             postedCallback.set(firstArg())
-            callbackPosted.countDown()
             true
         }
         val element = mockk<ControlElement>(relaxed = true)
@@ -39,12 +38,18 @@ class RangeScrollerTest {
         every { element.bindingCount } returns 1
         every { element.range } returns ControlElement.Range.FROM_A_TO_Z
         every { element.orientation } returns 0.toByte()
-        val scroller = RangeScroller(view, element)
+        val scroller = object : RangeScroller(view, element) {
+            override fun scheduleLongPress(callback: Runnable) {
+                scheduledLongPress.set(callback)
+            }
+
+            override fun currentTimeMillis(): Long = currentTime.get()
+        }
 
         scroller.handleTouchDown(50f, 50f)
-        assertTrue(callbackPosted.await(1, TimeUnit.SECONDS))
-
+        currentTime.set(TouchpadView.MAX_TAP_MILLISECONDS.toLong())
         endTouch(scroller)
+        scheduledLongPress.get().run()
         postedCallback.get().run()
 
         verify(exactly = 0) { view.handleInputEvent(Binding.KEY_A, true) }

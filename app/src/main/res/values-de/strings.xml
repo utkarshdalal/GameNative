@@ -2374,7 +2374,7 @@
     <string name="gyro_tilt_steering_subtitle">Halte das Gerät geneigt, um eine horizontale Stick-Eingabe beizubehalten. Die aktuelle Position wird bei jeder Gyro-Aktivierung zentriert.</string>
     <string name="gyro_tilt_unavailable">Dieses Gerät bietet nicht den für die Neigungslenkung erforderlichen Orientierungssensor.</string>
     <string name="gyro_activation">Aktivierung</string>
-    <string name="gyro_activation_help">Halten, Umschalten und Ratsche verwenden eine Gyro zugewiesene Steuerung.</string>
+    <string name="gyro_activation_help">Halten, Umschalten und Ratsche verwenden eine dem Gyro zugewiesene Steuerung.</string>
     <string name="gyro_activation_always">Immer</string>
     <string name="gyro_activation_hold">Halten</string>
     <string name="gyro_activation_toggle">Umschalten</string>

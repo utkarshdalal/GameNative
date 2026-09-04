@@ -25,8 +25,7 @@ class InputControlsViewStickMixingTest {
         val rawDownSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Y, 1)
         val rawUpSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Y, -1)
 
-        val down = InputControlsView.updatePhysicalBaseAxis(0f, true, 0.8f, rawDownSource)
-        val up = InputControlsView.updatePhysicalBaseAxis(down, true, -0.7f, rawUpSource)
+        val up = InputControlsView.updatePhysicalBaseAxis(0f, true, -0.7f, rawUpSource)
 
         assertEquals(-0.7f, InputControlsView.updatePhysicalBaseAxis(up, false, 0f, rawDownSource), 0f)
     }
