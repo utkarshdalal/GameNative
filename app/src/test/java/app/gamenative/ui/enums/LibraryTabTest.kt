@@ -7,17 +7,31 @@ import org.junit.Test
 
 class LibraryTabTest {
     private val supported = listOf(
+        LibraryTab.RECOMMENDED,
         LibraryTab.ALL,
+        LibraryTab.FAVORITES,
         LibraryTab.STEAM,
         LibraryTab.GOG,
         LibraryTab.EPIC,
+        LibraryTab.AMAZON,
+        LibraryTab.LOCAL,
     )
 
     @Test
     fun normalizeVisibleTabs_usesSupportedTabOrder() {
         val result = LibraryTab.normalizeVisibleTabs("v2:GOG,ALL,STEAM", supported)
 
-        assertEquals(listOf(LibraryTab.ALL, LibraryTab.STEAM, LibraryTab.GOG), result)
+        assertEquals(
+            listOf(
+                LibraryTab.RECOMMENDED,
+                LibraryTab.ALL,
+                LibraryTab.FAVORITES,
+                LibraryTab.STEAM,
+                LibraryTab.GOG,
+                LibraryTab.LOCAL,
+            ),
+            result,
+        )
     }
 
     @Test
@@ -28,17 +42,39 @@ class LibraryTabTest {
     }
 
     @Test
-    fun normalizeVisibleTabs_keepsAllVisibleAndDropsInvalidValues() {
+    fun normalizeVisibleTabs_keepsFixedTabsVisibleAndDropsInvalidValues() {
         val result = LibraryTab.normalizeVisibleTabs("v2:UNKNOWN,STEAM,STEAM", supported)
 
-        assertEquals(listOf(LibraryTab.ALL, LibraryTab.STEAM), result)
+        assertEquals(
+            listOf(
+                LibraryTab.RECOMMENDED,
+                LibraryTab.ALL,
+                LibraryTab.FAVORITES,
+                LibraryTab.STEAM,
+                LibraryTab.LOCAL,
+            ),
+            result,
+        )
     }
 
     @Test
     fun normalizeVisibleTabs_migratesHiddenPreferenceFormat() {
-        val result = LibraryTab.normalizeVisibleTabs("ALL,!EPIC,GOG,!STEAM", supported)
+        val result = LibraryTab.normalizeVisibleTabs(
+            "!RECOMMENDED,!ALL,!FAVORITES,!EPIC,!STEAM,!LOCAL",
+            supported,
+        )
 
-        assertEquals(listOf(LibraryTab.ALL, LibraryTab.GOG), result)
+        assertEquals(
+            listOf(
+                LibraryTab.RECOMMENDED,
+                LibraryTab.ALL,
+                LibraryTab.FAVORITES,
+                LibraryTab.GOG,
+                LibraryTab.AMAZON,
+                LibraryTab.LOCAL,
+            ),
+            result,
+        )
     }
 
     @Test
@@ -50,7 +86,13 @@ class LibraryTabTest {
 
     @Test
     fun serializeVisibleTabs_roundTripsSelection() {
-        val visibleTabs = listOf(LibraryTab.ALL, LibraryTab.GOG)
+        val visibleTabs = listOf(
+            LibraryTab.RECOMMENDED,
+            LibraryTab.ALL,
+            LibraryTab.FAVORITES,
+            LibraryTab.GOG,
+            LibraryTab.LOCAL,
+        )
 
         val restored = LibraryTab.normalizeVisibleTabs(
             LibraryTab.serializeVisibleTabs(visibleTabs),
@@ -58,6 +100,14 @@ class LibraryTabTest {
         )
 
         assertEquals(visibleTabs, restored)
+    }
+
+    @Test
+    fun configurableEntries_containsOnlyStoreTabs() {
+        assertEquals(
+            listOf(LibraryTab.STEAM, LibraryTab.GOG, LibraryTab.EPIC, LibraryTab.AMAZON),
+            LibraryTab.configurableEntries,
+        )
     }
 
     @Test

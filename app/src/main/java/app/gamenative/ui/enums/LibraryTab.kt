@@ -95,6 +95,8 @@ enum class LibraryTab(
     ;
 
     companion object {
+        val configurableEntries = listOf(STEAM, GOG, EPIC, AMAZON)
+
         /**
          * Tabs shown in the UI. Custom (LOCAL) games work on all flavors: legacy maps folders
          * in place via all-files access, modern imports them into app-owned storage.
@@ -120,7 +122,7 @@ enum class LibraryTab(
                     .filter { it.startsWith(HIDDEN_PREFIX) }
                     .map { it.removePrefix(HIDDEN_PREFIX) }
                     .toSet()
-                return supported.filter { it == ALL || it.name !in hiddenTabs }
+                return supported.filter { it !in configurableEntries || it.name !in hiddenTabs }
             }
 
             val selected = serialized
@@ -132,7 +134,7 @@ enum class LibraryTab(
                 }
                 .toSet()
 
-            return supported.filter { it == ALL || it in selected }
+            return supported.filter { it !in configurableEntries || it in selected }
         }
 
         fun serializeVisibleTabs(tabs: List<LibraryTab>): String =

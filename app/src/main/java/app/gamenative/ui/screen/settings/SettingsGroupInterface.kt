@@ -403,9 +403,7 @@ fun SettingsGroupInterface(
             },
         )
 
-        val configurableLibraryTabs = LibraryTab.entries.filter {
-            it != LibraryTab.ALL && (it != LibraryTab.RECOMMENDED || showRecommendations)
-        }
+        val configurableLibraryTabs = LibraryTab.configurableEntries
         val selectedLibraryTabIndices = configurableLibraryTabs.mapIndexedNotNull { index, tab ->
             index.takeIf { tab in libraryTabs }
         }
@@ -413,12 +411,14 @@ fun SettingsGroupInterface(
             colors = settingsTileColorsAlt(),
             values = selectedLibraryTabIndices,
             items = configurableLibraryTabs.map { stringResource(it.labelResId) },
-            fallbackDisplay = stringResource(R.string.settings_interface_library_tabs_all_only),
+            fallbackDisplay = stringResource(R.string.settings_interface_library_tabs_none),
             onItemSelected = { index ->
                 val selectedTab = configurableLibraryTabs[index]
                 val selectedTabs = libraryTabs.toMutableSet()
                 if (!selectedTabs.add(selectedTab)) selectedTabs.remove(selectedTab)
-                libraryTabs = LibraryTab.entries.filter { it == LibraryTab.ALL || it in selectedTabs }
+                libraryTabs = LibraryTab.entries.filter {
+                    it !in LibraryTab.configurableEntries || it in selectedTabs
+                }
                 PrefManager.libraryTabs = libraryTabs
                 PluviaApp.events.emit(
                     AndroidEvent.LibraryTabsChanged(

@@ -138,8 +138,8 @@
     <string name="curated_lists_empty">No curated lists available right now.</string>
     <string name="curated_list_4_3_name">Does it 4:3?</string>
     <string name="settings_interface_library_tabs_title">Library tabs</string>
-    <string name="settings_interface_library_tabs_subtitle">Choose which tabs appear in the library. All is always shown.</string>
-    <string name="settings_interface_library_tabs_all_only">All only</string>
+    <string name="settings_interface_library_tabs_subtitle">Choose which store tabs appear in the library.</string>
+    <string name="settings_interface_library_tabs_none">No store tabs</string>
     <string name="default_user_name">User</string>
 
     <!-- Custom Games -->
