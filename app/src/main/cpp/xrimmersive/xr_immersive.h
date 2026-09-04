@@ -93,6 +93,7 @@ struct WindowsRuntimeSnapshot {
     uint32_t recommendedHeight = 0;
     bool stageAvailable = false;
     bool stageSpaceActive = false;
+    uint32_t recenterSerial = 0;
     XrExtent2Df stageBounds{0.0f, 0.0f};
     std::array<XrView, 2> views{{{XR_TYPE_VIEW}, {XR_TYPE_VIEW}}};
     InputSnapshot input;
@@ -183,6 +184,8 @@ private:
     bool windowsProjectionReady_ = false;
     std::atomic<bool> stereoActive_{false};
     std::atomic<bool> windowsOverlayVisible_{false};
+    std::atomic<uint32_t> recenterSerial_{0};
+    XrTime lastTrackingPoseLogTime_ = 0;
     uint32_t stereoMisses_ = 0;
 
     // The quad swapchain follows the container's screen size (min width 1280) and the

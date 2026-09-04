@@ -614,6 +614,7 @@ static GnEyeView gn_eye_views[2];
 static int gn_eye_views_valid = 0;
 static XrPosef gn_local_origin;
 static int gn_local_origin_valid = 0;
+static long long gn_last_recenter_serial = -1;
 static XrPosef gn_last_head_pose;
 static XrTime gn_last_head_time = 0;
 static float gn_head_linear_velocity[3];
@@ -658,6 +659,7 @@ static ID3D12CommandQueue* gn_d3d12_queue = NULL;
 
 static int gn_bridge_call(const char* command, char* response, gn_size response_size);
 static void gn_identity_pose(XrPosef* pose);
+static void gn_level_pose(XrPosef* pose);
 static XrQuaternionf gn_quat_multiply(XrQuaternionf a, XrQuaternionf b);
 
 static const char* GN_VULKAN_INSTANCE_EXTENSIONS = "";
@@ -1570,9 +1572,8 @@ static void gn_update_pose_velocity(
             (dx * dx + dy * dy + dz * dz > 0.64f ||
              orientation_dot < 0.9238795f)) {
             gn_reference_space_event_pending = 1;
-
-
             gn_local_origin = *pose;
+            gn_level_pose(&gn_local_origin);
             *previous = *pose;
             *previous_time = time;
             return;
@@ -1638,6 +1639,7 @@ static XrResult XRAPI_CALL gn_xrCreateInstance(const XrInstanceCreateInfo* creat
     gn_action_sets_attached = 0;
     gn_exit_requested = 0;
     gn_local_origin_valid = 0;
+    gn_last_recenter_serial = -1;
     gn_vk_instance = NULL;
     gn_vk_physical_device = NULL;
     gn_vk_device = NULL;
@@ -2001,6 +2003,7 @@ static XrResult XRAPI_CALL gn_xrEnumerateReferenceSpaces(XrSession session, gn_u
 }
 
 static XrResult XRAPI_CALL gn_xrCreateReferenceSpace(XrSession session, const XrReferenceSpaceCreateInfo* createInfo, XrSpace* space) {
+    if (createInfo) gn_log_num("xrCreateReferenceSpace type=", (long long)createInfo->referenceSpaceType);
     if (session != gn_session) return XR_ERROR_HANDLE_INVALID;
     if (!space || !createInfo ||
         createInfo->type != XR_TYPE_REFERENCE_SPACE_CREATE_INFO)
@@ -2069,6 +2072,29 @@ static XrResult XRAPI_CALL gn_xrDestroySpace(XrSpace space) {
         return XR_SUCCESS;
     }
     return XR_ERROR_HANDLE_INVALID;
+}
+
+static float gn_sqrt(float v) {
+    float x = v > 1.0f ? v : 1.0f;
+    int i;
+    if (v <= 0.0f) return 0.0f;
+    for (i = 0; i < 24; ++i) x = 0.5f * (x + v / x);
+    return x;
+}
+
+static void gn_level_pose(XrPosef* pose) {
+    float y = pose->orientation.y;
+    float w = pose->orientation.w;
+    float n = gn_sqrt(y * y + w * w);
+    pose->orientation.x = 0.0f;
+    pose->orientation.z = 0.0f;
+    if (n < 1e-4f) {
+        pose->orientation.y = 0.0f;
+        pose->orientation.w = 1.0f;
+    } else {
+        pose->orientation.y = y / n;
+        pose->orientation.w = w / n;
+    }
 }
 
 static void gn_identity_pose(XrPosef* pose) {
@@ -2323,6 +2349,15 @@ static XrResult XRAPI_CALL gn_xrWaitFrame(XrSession session, const XrFrameWaitIn
         frameState->shouldRender = gn_parse_i64(response, "render", gn_session_running ? 1 : 0) != 0 ? XR_TRUE : XR_FALSE;
         gn_next_display_time = frameState->predictedDisplayTime + frameState->predictedDisplayPeriod;
 
+        long long recenter_serial = gn_parse_i64(response, "recenter", -1);
+        if (recenter_serial >= 0) {
+            if (gn_last_recenter_serial >= 0 && recenter_serial != gn_last_recenter_serial) {
+                gn_reference_space_event_pending = 1;
+                gn_local_origin_valid = 0;
+                gn_log_num("headset recenter serial=", recenter_serial);
+            }
+            gn_last_recenter_serial = recenter_serial;
+        }
         long long quest_state = gn_parse_i64(response, "state", 0);
         if (quest_state == XR_SESSION_STATE_LOSS_PENDING) {
             gn_instance_loss_event_pending = 1;
@@ -2545,6 +2580,7 @@ static XrResult XRAPI_CALL gn_xrLocateViews(
             gn_get_head_pose(&head_pose);
             if (!gn_local_origin_valid) {
                 gn_local_origin = head_pose;
+                gn_level_pose(&gn_local_origin);
                 gn_local_origin_valid = 1;
             }
             gn_update_pose_velocity(

@@ -258,6 +258,7 @@ void XrImmersiveSession::runLoop() {
         runtimeSnapshot.predictedDisplayPeriod = frameState.predictedDisplayPeriod;
         runtimeSnapshot.sessionState = sessionState_;
         runtimeSnapshot.shouldRender = frameState.shouldRender == XR_TRUE;
+        runtimeSnapshot.recenterSerial = recenterSerial_.load();
         XrViewLocateInfo viewLocateInfo{XR_TYPE_VIEW_LOCATE_INFO};
         viewLocateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
         viewLocateInfo.displayTime = frameState.predictedDisplayTime;
@@ -267,6 +268,15 @@ void XrImmersiveSession::runLoop() {
         if (XR_SUCCEEDED(xrLocateViews(session_, &viewLocateInfo, &viewState, 2, &viewCount,
                                        runtimeSnapshot.views.data())) && viewCount == 2) {
             runtimeSnapshot.viewStateFlags = viewState.viewStateFlags;
+            if (stereoActive_.load() &&
+                frameState.predictedDisplayTime - lastTrackingPoseLogTime_ > 2000000000LL) {
+                lastTrackingPoseLogTime_ = frameState.predictedDisplayTime;
+                const XrPosef &p = runtimeSnapshot.views[0].pose;
+                LOGI("Windows VR head pose in tracking space: pos=(%.2f %.2f %.2f) quat=(%.2f %.2f %.2f %.2f) recenter=%u",
+                     p.position.x, p.position.y, p.position.z,
+                     p.orientation.x, p.orientation.y, p.orientation.z, p.orientation.w,
+                     runtimeSnapshot.recenterSerial);
+            }
         } else {
             runtimeSnapshot.viewStateFlags = 0;
         }
@@ -783,6 +793,11 @@ void XrImmersiveSession::pollXrEvents() {
                 default:
                     break;
             }
+        } else if (event.type == XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING) {
+            const auto *change = reinterpret_cast<const XrEventDataReferenceSpaceChangePending *>(&event);
+            const uint32_t serial = recenterSerial_.fetch_add(1) + 1;
+            LOGI("OpenXR reference space change: type=%d poseValid=%d serial=%u",
+                 static_cast<int>(change->referenceSpaceType), change->poseValid ? 1 : 0, serial);
         } else if (event.type == XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED) {
             auto logProfile = [this](const char *hand, XrPath handPath) {
                 XrInteractionProfileState profileState{XR_TYPE_INTERACTION_PROFILE_STATE};

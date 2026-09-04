@@ -184,7 +184,7 @@ class WindowsVrControlServer(
                     "bounds=${if (snapshot.timing[7] != 0L) "${snapshot.timing[8]}x${snapshot.timing[9]}um" else "unavailable"}",
             )
         }
-        return "OK serial=${snapshot.timing[0]} time=${snapshot.timing[1]} period=${snapshot.timing[2]} shouldRender=${snapshot.timing[4]} state=${snapshot.timing[3]} render=${snapshot.timing[4]}"
+        return "OK serial=${snapshot.timing[0]} time=${snapshot.timing[1]} period=${snapshot.timing[2]} shouldRender=${snapshot.timing[4]} state=${snapshot.timing[3]} render=${snapshot.timing[4]} recenter=${snapshot.timing[11]}"
     }
 
     private fun currentSnapshot(): WindowsVrRuntimeSnapshot? {

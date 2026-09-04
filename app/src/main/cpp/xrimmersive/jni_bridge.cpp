@@ -140,7 +140,7 @@ JNIEXPORT jboolean JNICALL
 Java_app_gamenative_ui_screen_xr_XrNative_nativeWaitWindowsFrame(
     JNIEnv *env, jclass, jlong handlePtr, jlong afterSerial, jint timeoutMs,
     jlongArray outTiming, jfloatArray outViews, jfloatArray outInput, jintArray outFlags) {
-    if (env->GetArrayLength(outTiming) < 11 || env->GetArrayLength(outViews) < 22 ||
+    if (env->GetArrayLength(outTiming) < 12 || env->GetArrayLength(outViews) < 22 ||
         env->GetArrayLength(outInput) < 36 || env->GetArrayLength(outFlags) < 3) return JNI_FALSE;
     xrimmersive::WindowsRuntimeSnapshot snapshot;
     xrimmersive::XrImmersiveSession *session = nullptr;
@@ -160,7 +160,7 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativeWaitWindowsFrame(
     }
     gHandleCondition.notify_all();
     if (!got) return JNI_FALSE;
-    const jlong timing[11] = {
+    const jlong timing[12] = {
         static_cast<jlong>(snapshot.frameSerial),
         static_cast<jlong>(snapshot.predictedDisplayTime),
         static_cast<jlong>(snapshot.predictedDisplayPeriod),
@@ -172,8 +172,9 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativeWaitWindowsFrame(
         static_cast<jlong>(snapshot.stageBounds.width * 1000000.0f),
         static_cast<jlong>(snapshot.stageBounds.height * 1000000.0f),
         static_cast<jlong>(snapshot.stageSpaceActive ? 1 : 0),
+        static_cast<jlong>(snapshot.recenterSerial),
     };
-    env->SetLongArrayRegion(outTiming, 0, 11, timing);
+    env->SetLongArrayRegion(outTiming, 0, 12, timing);
     jfloat views[22]{};
     for (size_t eye = 0; eye < 2; ++eye) {
         const XrView &view = snapshot.views[eye];
