@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -19,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import app.gamenative.CrashHandler
+import app.gamenative.diagnostics.LsfgDiagnosticExporter
 import coil.annotation.ExperimentalCoilApi
 import coil.imageLoader
 import app.gamenative.R
@@ -34,6 +36,7 @@ import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.winlator.PrefManager as WinlatorPrefManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlinx.serialization.decodeFromString
@@ -45,6 +48,7 @@ import app.gamenative.ui.component.dialog.WineDebugChannelsDialog
 @Composable
 fun SettingsGroupDebug() {
     val context = LocalContext.current
+    val diagnosticsScope = rememberCoroutineScope()
     val isPreview = LocalInspectionMode.current
     if (!isPreview) {
         PrefManager.init(context)
@@ -128,6 +132,28 @@ fun SettingsGroupDebug() {
         }
     }
 
+    /* Unified LSFG diagnostics export. Capture/assembly happens only on explicit export. */
+    val saveLsfgDiagnostics = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/plain"),
+    ) { resultUri ->
+        resultUri ?: return@rememberLauncherForActivityResult
+        diagnosticsScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val report = LsfgDiagnosticExporter.buildReport(context)
+                    context.contentResolver.openOutputStream(resultUri)?.use { outputStream ->
+                        outputStream.write(report.toByteArray(Charsets.UTF_8))
+                    } ?: error("Unable to open selected destination")
+                }
+            }
+            result.onSuccess {
+                SnackbarManager.show("LSFG diagnostics exported")
+            }.onFailure {
+                SnackbarManager.show("Failed to export LSFG diagnostics: ${it.message ?: it.javaClass.simpleName}")
+            }
+        }
+    }
+
     if (showLogcatDialog && latestCrashFile != null) {
         val crashText by produceState("Loading...", latestCrashFile) {
             value = withContext(Dispatchers.IO) { readTail(latestCrashFile) }
@@ -183,6 +209,14 @@ fun SettingsGroupDebug() {
             title = { Text(text = stringResource(R.string.settings_save_logcat_title)) },
             subtitle = { Text(text = stringResource(R.string.settings_save_logcat_subtitle)) },
             onClick = { saveLogCat.launch("app_logs_${CrashHandler.timestamp}.txt") },
+        )
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(text = "Export LSFG Diagnostics") },
+            subtitle = {
+                Text(text = "Export the latest rolling LSFG, frame pacing, Vulkan, wrapper, and app diagnostics")
+            },
+            onClick = { saveLsfgDiagnostics.launch(LsfgDiagnosticExporter.defaultFileName()) },
         )
         // Link to open channel selector
         SettingsMenuLink(
