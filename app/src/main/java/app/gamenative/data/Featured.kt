@@ -9,6 +9,8 @@ import kotlinx.serialization.Serializable
 data class HeroResponse(
     val recommendation: RecommendedGame? = null,
     val featured: FeaturedItem? = null,
+    val bootAd: BootAdItem? = null,
+    val bootAds: List<BootAdItem> = emptyList(),
 )
 
 @Serializable
@@ -45,7 +47,7 @@ data class FeaturedAction(
 private fun deviceLanguage(context: Context): String =
     context.resources.configuration.locales[0].language
 
-private fun Map<String, String>.forLocale(context: Context): String? =
+internal fun Map<String, String>.forLocale(context: Context): String? =
     this[deviceLanguage(context)] ?: this["en"] ?: values.firstOrNull()
 
 fun FeaturedItem.localizedDescription(context: Context): String =

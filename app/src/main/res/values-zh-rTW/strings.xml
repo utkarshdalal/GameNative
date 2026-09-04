@@ -2433,6 +2433,13 @@
     <string name="xr_open_composite_toggle">SteamVR (OpenVR) 相容</string>
     <string name="xr_open_composite_toggle_desc">透過 OpenComposite 執行為 SteamVR 開發的遊戲。若遊戲提示 SteamVR 未執行，或開啟 VR 模式後仍為平面顯示，請開啟此項。</string>
     <string name="xr_render_scale">VR 算繪比例</string>
+    <string name="settings_info_boot_ads_title">贊助載入畫面</string>
+    <string name="settings_info_boot_ads_subtitle">保持開啟有助於支持 GameNative 的開發。它絕不會拖慢遊戲啟動，也不會以任何方式影響你。</string>
+    <string name="settings_info_boot_recs_title">在載入畫面顯示遊戲推薦</string>
+    <string name="settings_info_boot_recs_subtitle">沒有贊助商卡片時，在遊戲啟動期間顯示你可能喜歡的遊戲。</string>
+    <string name="boot_rec_badge">為你推薦</string>
+    <string name="boot_quiz_win_default">答對了！</string>
+    <string name="boot_quiz_lose_default">正確答案是 %1$s</string>
     <string name="gyro_aiming">陀螺儀瞄準</string>
     <string name="gyro_settings_title">陀螺儀設定</string>
     <string name="gyro_section_output">輸出與動作</string>

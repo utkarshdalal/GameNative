@@ -225,6 +225,9 @@ class PluviaApp : SplitCompatApplication() {
         @Volatile
         var isActivityInForeground: Boolean = true
         var isImmersiveActivityResumed: Boolean = false
+        // True while the booting splash covers the game screen (and its Resume overlay).
+        @Volatile
+        var isBootingSplashShowing: Boolean = false
 
         // Active runtime suspend policy for the current in-game session.
         var activeSuspendPolicy: String = Container.SUSPEND_POLICY_MANUAL

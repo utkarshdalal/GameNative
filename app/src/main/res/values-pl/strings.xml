@@ -2434,6 +2434,13 @@
     <string name="xr_open_composite_toggle">Zgodność ze SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Kieruje gry stworzone dla SteamVR przez OpenComposite. Włącz, jeśli gra zgłasza, że SteamVR nie działa, lub pozostaje płaska przy włączonym trybie VR.</string>
     <string name="xr_render_scale">Skala renderowania VR</string>
+    <string name="settings_info_boot_ads_title">Sponsorowane ekrany ładowania</string>
+    <string name="settings_info_boot_ads_subtitle">Pozostawienie tej opcji włączonej wspiera rozwój GameNative. Nigdy nie spowalnia uruchamiania gier i w żaden sposób na Ciebie nie wpływa.</string>
+    <string name="settings_info_boot_recs_title">Polecane gry na ekranach ładowania</string>
+    <string name="settings_info_boot_recs_subtitle">Pokazuj grę, która może Ci się spodobać, podczas uruchamiania gry, gdy nie ma karty sponsora.</string>
+    <string name="boot_rec_badge">Polecane dla Ciebie</string>
+    <string name="boot_quiz_win_default">Poprawnie!</string>
+    <string name="boot_quiz_lose_default">Odpowiedź to %1$s</string>
     <string name="gyro_aiming">Celowanie żyroskopowe</string>
     <string name="gyro_settings_title">Ustawienia żyroskopu</string>
     <string name="gyro_section_output">Wyjście i ruch</string>

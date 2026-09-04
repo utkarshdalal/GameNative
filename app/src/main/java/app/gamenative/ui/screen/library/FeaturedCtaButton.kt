@@ -76,6 +76,14 @@ internal fun FeaturedCtaButton(
             )
         }
         if (cta == null) {
+            // Plain-link CTAs (VISIT etc.) are billable clicks too: count them like in-app
+            // conversions so per-CTA campaigns bill even with usage analytics disabled.
+            ConversionTracker.featuredConversion(
+                campaignId = campaignId,
+                actionType = action.type,
+                appId = action.appId,
+                source = recSource,
+            )
             openUrl()
         } else {
             busy = true

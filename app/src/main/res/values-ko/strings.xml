@@ -2422,6 +2422,13 @@
     <string name="xr_open_composite_toggle">SteamVR(OpenVR) 호환</string>
     <string name="xr_open_composite_toggle_desc">SteamVR용으로 만들어진 게임을 OpenComposite를 통해 실행합니다. 게임이 SteamVR이 실행 중이 아니라고 표시하거나 VR 모드에서도 평면으로 남아 있으면 켜세요.</string>
     <string name="xr_render_scale">VR 렌더링 배율</string>
+    <string name="settings_info_boot_ads_title">스폰서 로딩 화면</string>
+    <string name="settings_info_boot_ads_subtitle">이 옵션을 켜 두면 GameNative 개발을 지원하는 데 도움이 됩니다. 게임 실행이 느려지거나 사용자에게 어떤 영향도 주지 않습니다.</string>
+    <string name="settings_info_boot_recs_title">로딩 화면에 게임 추천 표시</string>
+    <string name="settings_info_boot_recs_subtitle">스폰서 카드가 없을 때 게임이 부팅되는 동안 마음에 들 만한 게임을 표시합니다.</string>
+    <string name="boot_rec_badge">회원님을 위한 추천</string>
+    <string name="boot_quiz_win_default">정답!</string>
+    <string name="boot_quiz_lose_default">정답은 %1$s였습니다</string>
     <string name="gyro_aiming">자이로 조준</string>
     <string name="gyro_settings_title">자이로 설정</string>
     <string name="gyro_section_output">출력 및 모션</string>

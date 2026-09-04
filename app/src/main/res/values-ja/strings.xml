@@ -2381,6 +2381,13 @@
     <string name="xr_open_composite_toggle">SteamVR（OpenVR）互換</string>
     <string name="xr_open_composite_toggle_desc">SteamVR向けに作られたゲームをOpenCompositeで動かします。ゲームがSteamVRが起動していないと表示する場合や、VRモードでも平面のままの場合に有効にしてください。</string>
     <string name="xr_render_scale">VRレンダースケール</string>
+    <string name="settings_info_boot_ads_title">スポンサー付きローディング画面</string>
+    <string name="settings_info_boot_ads_subtitle">オンのままにしておくと GameNative の開発を支援できます。ゲームの起動が遅くなることはなく、あなたに影響することも一切ありません。</string>
+    <string name="settings_info_boot_recs_title">ローディング画面におすすめゲームを表示</string>
+    <string name="settings_info_boot_recs_subtitle">スポンサーカードがないとき、ゲームの起動中におすすめのゲームを表示します。</string>
+    <string name="boot_rec_badge">あなたへのおすすめ</string>
+    <string name="boot_quiz_win_default">正解！</string>
+    <string name="boot_quiz_lose_default">正解は %1$s でした</string>
     <string name="gyro_aiming">ジャイロエイム</string>
     <string name="gyro_settings_title">ジャイロ設定</string>
     <string name="gyro_section_output">出力とモーション</string>

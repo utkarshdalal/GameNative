@@ -2430,6 +2430,13 @@
     <string name="xr_open_composite_toggle">Сумісність зі SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Запускає ігри, створені для SteamVR, через OpenComposite. Увімкніть, якщо гра повідомляє, що SteamVR не запущено, або залишається пласкою з увімкненим VR-режимом.</string>
     <string name="xr_render_scale">Масштаб рендерингу VR</string>
+    <string name="settings_info_boot_ads_title">Спонсорські екрани завантаження</string>
+    <string name="settings_info_boot_ads_subtitle">Якщо залишити це увімкненим, ви підтримаєте розробку GameNative. Це ніколи не сповільнює запуск ігор і жодним чином на вас не впливає.</string>
+    <string name="settings_info_boot_recs_title">Рекомендації ігор на екранах завантаження</string>
+    <string name="settings_info_boot_recs_subtitle">Показувати гру, яка може вам сподобатися, під час запуску, якщо немає картки спонсора.</string>
+    <string name="boot_rec_badge">Рекомендовано для вас</string>
+    <string name="boot_quiz_win_default">Правильно!</string>
+    <string name="boot_quiz_lose_default">Правильна відповідь: %1$s</string>
     <string name="gyro_aiming">Гіроскопічне прицілювання</string>
     <string name="gyro_settings_title">Налаштування гіроскопа</string>
     <string name="gyro_section_output">Вивід і рух</string>

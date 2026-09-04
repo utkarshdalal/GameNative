@@ -371,6 +371,30 @@ fun SettingsGroupInterface(
             },
         )
 
+        var bootScreenAds by rememberSaveable { mutableStateOf(PrefManager.bootScreenAdsEnabled) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_info_boot_ads_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_boot_ads_subtitle)) },
+            state = bootScreenAds,
+            onCheckedChange = {
+                bootScreenAds = it
+                PrefManager.bootScreenAdsEnabled = it
+            },
+        )
+
+        var bootScreenRecs by rememberSaveable { mutableStateOf(PrefManager.bootScreenRecommendationsEnabled) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_info_boot_recs_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_info_boot_recs_subtitle)) },
+            state = bootScreenRecs,
+            onCheckedChange = {
+                bootScreenRecs = it
+                PrefManager.bootScreenRecommendationsEnabled = it
+            },
+        )
+
         if (!BuildConfig.MODERN_ANDROID) {
             val anyFrontendSyncConfigured by FrontendSyncManager.anyConfigured.collectAsState()
             SettingsMenuLink(

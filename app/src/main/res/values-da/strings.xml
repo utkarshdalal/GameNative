@@ -2298,6 +2298,13 @@
     <string name="xr_open_composite_toggle">SteamVR (OpenVR)-kompatibilitet</string>
     <string name="xr_open_composite_toggle_desc">Sender spil bygget til SteamVR gennem OpenComposite. Slå til, hvis spillet siger, at SteamVR ikke kører, eller forbliver fladt med VR-tilstand slået til.</string>
     <string name="xr_render_scale">VR-gengivelsesskala</string>
+    <string name="settings_info_boot_ads_title">Sponsorerede indlæsningsskærme</string>
+    <string name="settings_info_boot_ads_subtitle">At lade dette være slået til hjælper med at støtte udviklingen af GameNative. Det gør aldrig spilstart langsommere og påvirker dig ikke på nogen måde.</string>
+    <string name="settings_info_boot_recs_title">Spilanbefalinger på indlæsningsskærme</string>
+    <string name="settings_info_boot_recs_subtitle">Vis et spil, du måske kan lide, mens et spil starter, når der ikke er et sponsorkort.</string>
+    <string name="boot_rec_badge">Anbefalet til dig</string>
+    <string name="boot_quiz_win_default">Korrekt!</string>
+    <string name="boot_quiz_lose_default">Svaret var %1$s</string>
     <string name="gyro_aiming">Gyrosigte</string>
     <string name="gyro_settings_title">Gyroindstillinger</string>
     <string name="gyro_section_output">Output og bevægelse</string>
