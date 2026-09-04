@@ -1,0 +1,75 @@
+name: LSFG recovery one-shot patch
+
+on:
+  push:
+    branches:
+      - fix/restore-lsfg-regression-fixes-20260904
+    paths:
+      - .github/workflows/lsfg-recovery-one-shot.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/restore-lsfg-regression-fixes-20260904
+          fetch-depth: 0
+
+      - name: Restore readiness-gated LSFG pacing handoff
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt')
+          text = path.read_text()
+          old = '''        xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+          xServerView?.getxServer()
+              ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
+              ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+          // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
+          // presents, so SHM-presenting games never pass through it and would
+          // otherwise run uncapped whenever LSFG is armed.
+          ShmFramePacer.setFrameRateLimit(limit)
+          PowerManager.targetFps = limit
+          // keeps frame stats in base units while generated frames tick the ring
+          PowerManager.frameSampleStride =
+              if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
+          '''
+          new = '''        val lsfgActive = isLsfgAvailable && lsfgMultiplier >= 2
+          xServerView?.setFrameRateLimit(if (lsfgActive) 0 else limit)
+          xServerView?.getxServer()
+              ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
+              ?.transitionFramePacing(lsfgActive, limit)
+          // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
+          // presents, so SHM-presenting games never pass through it and would
+          // otherwise run uncapped whenever LSFG is armed.
+          ShmFramePacer.setFrameRateLimit(limit)
+          PowerManager.targetFps = limit
+          // keeps frame stats in base units while generated frames tick the ring
+          PowerManager.frameSampleStride =
+              if (lsfgActive) lsfgMultiplier else 1
+          '''
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'expected exactly one pacing block, found {count}')
+          path.write_text(text.replace(old, new, 1))
+
+          workflow = Path('.github/workflows/lsfg-recovery-one-shot.yml')
+          workflow.unlink()
+          PY
+
+          git diff --check
+          grep -Fq '?.transitionFramePacing(lsfgActive, limit)' app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt
+          ! grep -Fq '?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)' app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt
+
+      - name: Commit recovered pacing contract
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt .github/workflows/lsfg-recovery-one-shot.yml
+          git commit -m 'fix(lsfg): restore readiness-gated pacing handoff'
+          git push origin HEAD:fix/restore-lsfg-regression-fixes-20260904
