@@ -26,43 +26,31 @@ jobs:
 
           path = Path('app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt')
           text = path.read_text()
-          old = '''        xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
-          xServerView?.getxServer()
-              ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
-              ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
-          // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
-          // presents, so SHM-presenting games never pass through it and would
-          // otherwise run uncapped whenever LSFG is armed.
-          ShmFramePacer.setFrameRateLimit(limit)
-          PowerManager.targetFps = limit
-          // keeps frame stats in base units while generated frames tick the ring
-          PowerManager.frameSampleStride =
-              if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
-          '''
-          new = '''        val lsfgActive = isLsfgAvailable && lsfgMultiplier >= 2
-          xServerView?.setFrameRateLimit(if (lsfgActive) 0 else limit)
-          xServerView?.getxServer()
-              ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
-              ?.transitionFramePacing(lsfgActive, limit)
-          // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
-          // presents, so SHM-presenting games never pass through it and would
-          // otherwise run uncapped whenever LSFG is armed.
-          ShmFramePacer.setFrameRateLimit(limit)
-          PowerManager.targetFps = limit
-          // keeps frame stats in base units while generated frames tick the ring
-          PowerManager.frameSampleStride =
-              if (lsfgActive) lsfgMultiplier else 1
-          '''
-          count = text.count(old)
-          if count != 1:
-              raise SystemExit(f'expected exactly one pacing block, found {count}')
-          path.write_text(text.replace(old, new, 1))
 
-          workflow = Path('.github/workflows/lsfg-recovery-one-shot.yml')
-          workflow.unlink()
+          renderer_old = '        xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)'
+          renderer_new = '        val lsfgActive = isLsfgAvailable && lsfgMultiplier >= 2\n        xServerView?.setFrameRateLimit(if (lsfgActive) 0 else limit)'
+          present_old = '            ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)'
+          present_new = '            ?.transitionFramePacing(lsfgActive, limit)'
+          stride_old = '            if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1'
+          stride_new = '            if (lsfgActive) lsfgMultiplier else 1'
+
+          replacements = (
+              (renderer_old, renderer_new, 'renderer pacing handoff'),
+              (present_old, present_new, 'Present pacing handoff'),
+              (stride_old, stride_new, 'frame sample stride'),
+          )
+          for old, new, label in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected exactly one {label}, found {count}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          Path('.github/workflows/lsfg-recovery-one-shot.yml').unlink()
           PY
 
           git diff --check
+          grep -Fq 'val lsfgActive = isLsfgAvailable && lsfgMultiplier >= 2' app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt
           grep -Fq '?.transitionFramePacing(lsfgActive, limit)' app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt
           ! grep -Fq '?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)' app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt
 
