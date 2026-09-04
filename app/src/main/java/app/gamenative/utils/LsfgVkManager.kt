@@ -66,7 +66,6 @@ object LsfgVkManager {
     const val EXTRA_FLOW_SCALE = "lsfgFlowScale"
     const val EXTRA_PERFORMANCE_MODE = "lsfgPerformanceMode"
     const val EXTRA_PRESENT_MODE = "lsfgPresentMode"
-    const val EXTRA_ADAPTIVE_FRAMEGEN = "lsfgAdaptiveFrameGen"
 
     // FPS limiter extras (owned by XServerScreen)
     private const val EXTRA_FPS_LIMITER_ENABLED = "fpsLimiterEnabled"
@@ -94,7 +93,7 @@ object LsfgVkManager {
     // Current runtime package revision. Keep the exact native gitlink revision
     // in the marker so loader-visible copies cannot masquerade as another build.
     private const val RUNTIME_VERSION =
-        "v1.3.6-android-arm64-v8a-gamenative-presentsync-f0caa75a-r10"
+        "v1.3.5-android-arm64-v8a-gamenative-presentsync-c1087946-r9"
 
     // Asset path for manifest (still in assets)
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
@@ -156,10 +155,6 @@ object LsfgVkManager {
     fun performanceMode(container: Container): Boolean =
         parseBool(container.getExtra(EXTRA_PERFORMANCE_MODE, "true"))
 
-    /** Whether LSFG should vary its generated frame count to meet [fpsLimit]. */
-    fun adaptiveFrameGen(container: Container): Boolean =
-        parseBool(container.getExtra(EXTRA_ADAPTIVE_FRAMEGEN, "false"))
-
     /**
      * Swapchain present mode while frame generation runs ("mailbox" or
      * "fifo"). Mailbox is the default: the layer already paces vsync-locked,
@@ -170,9 +165,9 @@ object LsfgVkManager {
             .takeIf { it == "fifo" || it == "mailbox" } ?: "mailbox"
 
     /**
-     * Final-output fps cap supplied to the native layer (0 = uncapped).
-     * Adaptive FrameGen uses this as its target and generates only the
-     * intermediate frames needed to reach it.
+     * Base fps cap for the layer's limiter (0 = uncapped). The layer
+     * phase-locks its schedule to the vsync grid published by
+     * [startVsyncClock]; without that file it falls back to free-running.
      */
     fun fpsLimit(container: Container): Int {
         if (!parseBool(container.getExtra(EXTRA_FPS_LIMITER_ENABLED, "false"))) return 0
@@ -366,8 +361,6 @@ object LsfgVkManager {
             val processExecutable = targetExecutable(container)
             val savedMultiplier = multiplier(container)
             val frameGenActive = frameGenerationActive(container) && processExecutable != null
-            val outputCap = fpsLimit(container)
-            val adaptiveEffective = frameGenActive && adaptiveFrameGen(container) && outputCap > 0
             val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
             val configText = buildConfigToml(
                 dllPath = dllPath,
@@ -376,8 +369,7 @@ object LsfgVkManager {
                 multiplier = if (frameGenActive) savedMultiplier else 1,
                 flowScale = flowScale(container),
                 performanceMode = performanceMode(container) && frameGenActive,
-                adaptiveFrameGen = adaptiveEffective,
-                fpsLimit = outputCap,
+                fpsLimit = fpsLimit(container),
                 presentMode = presentMode(container),
             )
             writeConfigAtomic(configFile, configText)
@@ -441,13 +433,11 @@ object LsfgVkManager {
         if (BuildConfig.DEBUG) probeAndroidLinker(container)
 
         Timber.tag(TAG).i(
-            "LSFG layer armed: dll=%s, target=%s, selectedMultiplier=%d, framegen=%s, adaptive=%s, cap=%d, flowScale=%.2f, perf=%s, discovery=explicit-env-targeted",
+            "LSFG layer armed: dll=%s, target=%s, selectedMultiplier=%d, framegen=%s, flowScale=%.2f, perf=%s, discovery=explicit-env-targeted",
             dllPath,
             processExecutable,
             multiplier(container),
             if (frameGenerationActive(container)) "on" else "off",
-            if (adaptiveFrameGen(container) && fpsLimit(container) > 0) "on" else "off",
-            fpsLimit(container),
             flowScale(container),
             if (performanceMode(container)) "on" else "off",
         )
@@ -709,7 +699,6 @@ object LsfgVkManager {
         multiplier: Int,
         flowScale: Float,
         performanceMode: Boolean,
-        adaptiveFrameGen: Boolean,
         fpsLimit: Int,
         presentMode: String,
     ): String = buildString {
@@ -721,22 +710,15 @@ object LsfgVkManager {
         appendLine()
 
         if (!dllPath.isNullOrBlank() && !processExecutable.isNullOrBlank()) {
-            val adaptiveEffective = enabled && adaptiveFrameGen && fpsLimit > 0
-            val effectiveMultiplier = when {
-                !enabled -> 1
-                adaptiveEffective -> 4 // provision the native 0..3 generation ceiling
-                else -> multiplier.coerceIn(2, 4)
-            }
+            val effectiveMultiplier = if (enabled) multiplier.coerceIn(2, 4) else 1
             val processNames = listOf(processExecutable, processExecutable.take(15)).distinct()
             processNames.forEach { processName ->
                 appendLine("[[game]]")
                 appendLine("exe = ${tomlString(processName)}")
-                appendLine("enabled = $enabled")
                 appendLine("multiplier = $effectiveMultiplier")
                 appendLine("flow_scale = ${formatFlowScale(flowScale)}")
                 appendLine("performance_mode = ${if (enabled && performanceMode) "true" else "false"}")
                 appendLine("hdr_mode = false")
-                appendLine("adaptive_framegen = $adaptiveEffective")
                 appendLine("fps_limit = ${fpsLimit.coerceAtLeast(0)}")
                 appendLine("experimental_present_mode = ${tomlString(if (enabled) presentMode else "fifo")}")
             }
@@ -776,7 +758,6 @@ object LsfgVkManager {
         multiplier: Int,
         flowScale: Float,
         performanceMode: Boolean,
-        adaptiveFrameGen: Boolean,
         fpsLimitOverride: Int? = null,
     ): Boolean {
         if (!isSupported(container)) return false
@@ -793,7 +774,6 @@ object LsfgVkManager {
             val frameGenActive = enabled && multiplier >= 2 &&
                 dllPath != null && processExecutable != null
             val effectiveFpsLimit = (fpsLimitOverride ?: fpsLimit(container)).coerceAtLeast(0)
-            val adaptiveEffective = frameGenActive && adaptiveFrameGen && effectiveFpsLimit > 0
             val configText = buildConfigToml(
                 dllPath = dllPath,
                 processExecutable = processExecutable,
@@ -801,7 +781,6 @@ object LsfgVkManager {
                 multiplier = if (frameGenActive) multiplier.coerceIn(2, 4) else 1,
                 flowScale = flowScale.coerceIn(0.25f, 1.0f),
                 performanceMode = performanceMode && frameGenActive,
-                adaptiveFrameGen = adaptiveEffective,
                 fpsLimit = effectiveFpsLimit,
                 presentMode = presentMode(container),
             )
@@ -809,10 +788,9 @@ object LsfgVkManager {
             val ok = writeConfigAtomic(configFile, configText)
             if (ok) {
                 Timber.tag(TAG).i(
-                    "Hot-reloaded conf.toml: enabled=%s, multiplier=%d, adaptive=%s, flowScale=%.2f, perf=%s, fpsLimit=%d",
+                    "Hot-reloaded conf.toml: enabled=%s, multiplier=%d, flowScale=%.2f, perf=%s, fpsLimit=%d",
                     frameGenActive,
                     multiplier,
-                    adaptiveEffective,
                     flowScale,
                     performanceMode,
                     effectiveFpsLimit,

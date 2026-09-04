@@ -17,7 +17,6 @@ class LsfgBuildWorkflowContractTest {
         val workflows = listOf(
             ".github/workflows/pluvia-pr-check.yml",
             ".github/workflows/lsfg-legacy-single-apk.yml",
-            ".github/workflows/adaptive-lsfg-legacy-build.yml",
             ".github/workflows/tagged-release.yml",
             ".github/workflows/app-release-signed.yml",
             ".github/workflows/adhoc-signed-build.yml",
@@ -50,8 +49,6 @@ class LsfgBuildWorkflowContractTest {
             "liblsfg-vk-layer.so",
             "libnativewindow.so",
             "libandroid.so",
-            "android_wsi_provenance_test.py",
-            "adaptive_scheduler_test.cpp",
         ).forEach { token ->
             assertTrue(
                 "shared LSFG preparation action is missing $token",
