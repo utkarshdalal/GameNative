@@ -16,7 +16,7 @@ typedef unsigned long long gn_u64;
 typedef signed long long gn_i64;
 #endif
 
-#define GN_UNIX_ABI_VERSION 5u
+#define GN_UNIX_ABI_VERSION 6u
 #define GN_UNIX_MAX_SWAPCHAINS 32u
 #define GN_UNIX_MAX_IMAGES 4u
 
@@ -121,6 +121,7 @@ struct gn_unix_submit_image_args {
     gn_i64 orientation_micro[4];
     gn_i64 position_micro[3];
     gn_i64 fov_micro[4];
+    gn_u32 flip_y;
     gn_i32 result;
 };
 
