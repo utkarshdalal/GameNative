@@ -2349,7 +2349,7 @@
     <string name="binding_sequence_delay_ms">Sequenzverzögerung (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
     <string name="settings_info_boot_ads_title">Gesponserte Ladebildschirme</string>
-    <string name="settings_info_boot_ads_subtitle">Gelegentlich eine Sponsorkarte anzeigen, während ein Spiel startet. Das Spiel wird dadurch nie verzögert.</string>
+    <string name="settings_info_boot_ads_subtitle">Wenn du das aktiviert lässt, unterstützt du die Entwicklung von GameNative. Es verlangsamt niemals den Spielstart und beeinträchtigt dich in keiner Weise.</string>
     <string name="settings_info_boot_recs_title">Spielempfehlungen auf Ladebildschirmen</string>
     <string name="settings_info_boot_recs_subtitle">Während ein Spiel startet ein Spiel zeigen, das dir gefallen könnte – wenn keine Sponsorkarte vorliegt.</string>
     <string name="boot_rec_badge">Für dich empfohlen</string>

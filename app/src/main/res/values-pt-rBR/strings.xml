@@ -2279,7 +2279,7 @@
     <string name="binding_sequence_delay_ms">Atraso da sequência (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
     <string name="settings_info_boot_ads_title">Telas de carregamento patrocinadas</string>
-    <string name="settings_info_boot_ads_subtitle">Mostrar ocasionalmente um card de patrocinador enquanto um jogo inicia. Isso nunca atrasa o seu jogo.</string>
+    <string name="settings_info_boot_ads_subtitle">Manter isso ativado ajuda a apoiar o desenvolvimento do GameNative. Nunca deixa o início dos jogos mais lento nem afeta você de forma alguma.</string>
     <string name="settings_info_boot_recs_title">Recomendações de jogos nas telas de carregamento</string>
     <string name="settings_info_boot_recs_subtitle">Mostrar um jogo que você pode gostar enquanto um jogo inicia, quando não há card de patrocinador.</string>
     <string name="boot_rec_badge">Recomendado para você</string>

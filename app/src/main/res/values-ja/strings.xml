@@ -2363,7 +2363,7 @@
     <string name="binding_sequence_delay_ms">シーケンス遅延 (ミリ秒)</string>
     <string name="binding_sequence_current_format">%1$s（%2$d ミリ秒）</string>
     <string name="settings_info_boot_ads_title">スポンサー付きローディング画面</string>
-    <string name="settings_info_boot_ads_subtitle">ゲームの起動中にスポンサーカードをときどき表示します。ゲームが遅くなることはありません。</string>
+    <string name="settings_info_boot_ads_subtitle">オンのままにしておくと GameNative の開発を支援できます。ゲームの起動が遅くなることはなく、あなたに影響することも一切ありません。</string>
     <string name="settings_info_boot_recs_title">ローディング画面におすすめゲームを表示</string>
     <string name="settings_info_boot_recs_subtitle">スポンサーカードがないとき、ゲームの起動中におすすめのゲームを表示します。</string>
     <string name="boot_rec_badge">あなたへのおすすめ</string>

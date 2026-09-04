@@ -2409,7 +2409,7 @@
     <string name="binding_sequence_delay_ms">Затримка послідовності (мс)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d мс)</string>
     <string name="settings_info_boot_ads_title">Спонсорські екрани завантаження</string>
-    <string name="settings_info_boot_ads_subtitle">Іноді показувати картку спонсора під час запуску гри. Це ніколи не затримує гру.</string>
+    <string name="settings_info_boot_ads_subtitle">Якщо залишити це увімкненим, ви підтримаєте розробку GameNative. Це ніколи не сповільнює запуск ігор і жодним чином на вас не впливає.</string>
     <string name="settings_info_boot_recs_title">Рекомендації ігор на екранах завантаження</string>
     <string name="settings_info_boot_recs_subtitle">Показувати гру, яка може вам сподобатися, під час запуску, якщо немає картки спонсора.</string>
     <string name="boot_rec_badge">Рекомендовано для вас</string>

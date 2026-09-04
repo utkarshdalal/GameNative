@@ -2413,7 +2413,7 @@
     <string name="binding_sequence_delay_ms">Opóźnienie sekwencji (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
     <string name="settings_info_boot_ads_title">Sponsorowane ekrany ładowania</string>
-    <string name="settings_info_boot_ads_subtitle">Od czasu do czasu pokazuj kartę sponsora podczas uruchamiania gry. Nigdy nie opóźnia to gry.</string>
+    <string name="settings_info_boot_ads_subtitle">Pozostawienie tej opcji włączonej wspiera rozwój GameNative. Nigdy nie spowalnia uruchamiania gier i w żaden sposób na Ciebie nie wpływa.</string>
     <string name="settings_info_boot_recs_title">Polecane gry na ekranach ładowania</string>
     <string name="settings_info_boot_recs_subtitle">Pokazuj grę, która może Ci się spodobać, podczas uruchamiania gry, gdy nie ma karty sponsora.</string>
     <string name="boot_rec_badge">Polecane dla Ciebie</string>

@@ -2415,7 +2415,7 @@
     <string name="binding_sequence_delay_ms">順序延遲（毫秒）</string>
     <string name="binding_sequence_current_format">%1$s（%2$d 毫秒）</string>
     <string name="settings_info_boot_ads_title">贊助載入畫面</string>
-    <string name="settings_info_boot_ads_subtitle">遊戲啟動時偶爾顯示贊助商卡片，絕不會延遲你的遊戲。</string>
+    <string name="settings_info_boot_ads_subtitle">保持開啟有助於支持 GameNative 的開發。它絕不會拖慢遊戲啟動，也不會以任何方式影響你。</string>
     <string name="settings_info_boot_recs_title">在載入畫面顯示遊戲推薦</string>
     <string name="settings_info_boot_recs_subtitle">沒有贊助商卡片時，在遊戲啟動期間顯示你可能喜歡的遊戲。</string>
     <string name="boot_rec_badge">為你推薦</string>

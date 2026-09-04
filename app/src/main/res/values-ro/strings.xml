@@ -2413,7 +2413,7 @@
     <string name="binding_sequence_delay_ms">Întârziere secvență (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
     <string name="settings_info_boot_ads_title">Ecrane de încărcare sponsorizate</string>
-    <string name="settings_info_boot_ads_subtitle">Afișează ocazional un card sponsor în timp ce un joc pornește. Nu întârzie niciodată jocul.</string>
+    <string name="settings_info_boot_ads_subtitle">Păstrarea acestei opțiuni activate ajută la susținerea dezvoltării GameNative. Nu încetinește niciodată pornirea jocurilor și nu te afectează în niciun fel.</string>
     <string name="settings_info_boot_recs_title">Recomandări de jocuri pe ecranele de încărcare</string>
     <string name="settings_info_boot_recs_subtitle">Afișează un joc care ți-ar putea plăcea în timp ce un joc pornește, când nu există un card sponsor.</string>
     <string name="boot_rec_badge">Recomandat pentru tine</string>
