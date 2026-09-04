@@ -126,6 +126,7 @@ public class InputControlsView extends View {
 
     private final GyroController gyroController;
     private volatile boolean gyroEnabled;
+    private volatile int gyroMode = GyroSettings.MODE_DISABLED;
     private volatile boolean gyroActive;
     private float baseThumbLX;
     private float baseThumbLY;
@@ -478,7 +479,8 @@ public class InputControlsView extends View {
     public void setGyroSettings(GyroSettings settings) {
         if (settings == null) return;
         GyroSettings normalized = settings.normalized();
-        gyroEnabled = normalized.getMode() != GyroSettings.MODE_DISABLED;
+        gyroMode = normalized.getMode();
+        gyroEnabled = gyroMode != GyroSettings.MODE_DISABLED;
         gyroController.setSettings(normalized);
     }
 
@@ -1772,30 +1774,81 @@ public class InputControlsView extends View {
 
     /** Records a non-gyro stick contribution and returns it blended with the gyro value. */
     public synchronized float updateBaseStickAndGetMixedValue(Binding binding, boolean isActionDown, float offset) {
+        float base;
+        float gyro;
         switch (binding) {
             case GAMEPAD_LEFT_THUMB_UP:
             case GAMEPAD_LEFT_THUMB_DOWN:
                 baseThumbLY = updateBaseAxis(baseThumbLY, binding == Binding.GAMEPAD_LEFT_THUMB_UP,
                         isActionDown, offset);
-                return Mathf.clamp(baseThumbLY + gyroThumbLY, -1f, 1f);
+                base = baseThumbLY;
+                gyro = gyroThumbLY;
+                break;
             case GAMEPAD_LEFT_THUMB_LEFT:
             case GAMEPAD_LEFT_THUMB_RIGHT:
                 baseThumbLX = updateBaseAxis(baseThumbLX, binding == Binding.GAMEPAD_LEFT_THUMB_LEFT,
                         isActionDown, offset);
-                return Mathf.clamp(baseThumbLX + gyroThumbLX, -1f, 1f);
+                base = baseThumbLX;
+                gyro = gyroThumbLX;
+                break;
             case GAMEPAD_RIGHT_THUMB_UP:
             case GAMEPAD_RIGHT_THUMB_DOWN:
                 baseThumbRY = updateBaseAxis(baseThumbRY, binding == Binding.GAMEPAD_RIGHT_THUMB_UP,
                         isActionDown, offset);
-                return Mathf.clamp(baseThumbRY + gyroThumbRY, -1f, 1f);
+                base = baseThumbRY;
+                gyro = gyroThumbRY;
+                break;
             case GAMEPAD_RIGHT_THUMB_LEFT:
             case GAMEPAD_RIGHT_THUMB_RIGHT:
                 baseThumbRX = updateBaseAxis(baseThumbRX, binding == Binding.GAMEPAD_RIGHT_THUMB_LEFT,
                         isActionDown, offset);
-                return Mathf.clamp(baseThumbRX + gyroThumbRX, -1f, 1f);
+                base = baseThumbRX;
+                gyro = gyroThumbRX;
+                break;
             default:
                 return 0f;
         }
+        return isGyroStickTarget(binding)
+                ? Mathf.clamp(base + gyro, -1f, 1f)
+                : (isActionDown ? offset : 0f);
+    }
+
+    /** Records a physical stick contribution using the source axis' raw direction. */
+    public synchronized float updatePhysicalStickAndGetMixedValue(
+            Binding binding, boolean isActionDown, float offset, int sourceKeyCode) {
+        float base;
+        float gyro;
+        switch (binding) {
+            case GAMEPAD_LEFT_THUMB_UP:
+            case GAMEPAD_LEFT_THUMB_DOWN:
+                baseThumbLY = updatePhysicalBaseAxis(baseThumbLY, isActionDown, offset, sourceKeyCode);
+                base = baseThumbLY;
+                gyro = gyroThumbLY;
+                break;
+            case GAMEPAD_LEFT_THUMB_LEFT:
+            case GAMEPAD_LEFT_THUMB_RIGHT:
+                baseThumbLX = updatePhysicalBaseAxis(baseThumbLX, isActionDown, offset, sourceKeyCode);
+                base = baseThumbLX;
+                gyro = gyroThumbLX;
+                break;
+            case GAMEPAD_RIGHT_THUMB_UP:
+            case GAMEPAD_RIGHT_THUMB_DOWN:
+                baseThumbRY = updatePhysicalBaseAxis(baseThumbRY, isActionDown, offset, sourceKeyCode);
+                base = baseThumbRY;
+                gyro = gyroThumbRY;
+                break;
+            case GAMEPAD_RIGHT_THUMB_LEFT:
+            case GAMEPAD_RIGHT_THUMB_RIGHT:
+                baseThumbRX = updatePhysicalBaseAxis(baseThumbRX, isActionDown, offset, sourceKeyCode);
+                base = baseThumbRX;
+                gyro = gyroThumbRX;
+                break;
+            default:
+                return 0f;
+        }
+        return isGyroStickTarget(binding)
+                ? Mathf.clamp(base + gyro, -1f, 1f)
+                : (isActionDown ? offset : 0f);
     }
 
     private static float updateBaseAxis(float current, boolean negativeDirection, boolean isActionDown, float offset) {
@@ -1803,6 +1856,51 @@ public class InputControlsView extends View {
         if (current == 0f) return 0f;
         boolean currentIsNegative = current < 0f;
         return currentIsNegative == negativeDirection ? 0f : current;
+    }
+
+    public static float updatePhysicalBaseAxis(float current, boolean isActionDown, float offset, int sourceKeyCode) {
+        if (isActionDown) return offset;
+        if (current == 0f) return 0f;
+        int sourceDirection = getPhysicalSourceDirection(sourceKeyCode);
+        if (sourceDirection == 0) return 0f;
+        return (current < 0f) == (sourceDirection < 0) ? 0f : current;
+    }
+
+    private static int getPhysicalSourceDirection(int sourceKeyCode) {
+        switch (sourceKeyCode) {
+            case ExternalControllerBinding.AXIS_X_NEGATIVE:
+            case ExternalControllerBinding.AXIS_Y_POSITIVE:
+            case ExternalControllerBinding.AXIS_Z_NEGATIVE:
+            case ExternalControllerBinding.AXIS_RZ_POSITIVE:
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+            case KeyEvent.KEYCODE_DPAD_UP:
+                return -1;
+            case ExternalControllerBinding.AXIS_X_POSITIVE:
+            case ExternalControllerBinding.AXIS_Y_NEGATIVE:
+            case ExternalControllerBinding.AXIS_Z_POSITIVE:
+            case ExternalControllerBinding.AXIS_RZ_NEGATIVE:
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                return 1;
+            default:
+                return 0;
+        }
+    }
+
+    private boolean isGyroStickTarget(Binding binding) {
+        if (gyroMode == GyroSettings.MODE_LEFT_STICK) {
+            return binding == Binding.GAMEPAD_LEFT_THUMB_UP
+                    || binding == Binding.GAMEPAD_LEFT_THUMB_RIGHT
+                    || binding == Binding.GAMEPAD_LEFT_THUMB_DOWN
+                    || binding == Binding.GAMEPAD_LEFT_THUMB_LEFT;
+        }
+        if (gyroMode == GyroSettings.MODE_RIGHT_STICK) {
+            return binding == Binding.GAMEPAD_RIGHT_THUMB_UP
+                    || binding == Binding.GAMEPAD_RIGHT_THUMB_RIGHT
+                    || binding == Binding.GAMEPAD_RIGHT_THUMB_DOWN
+                    || binding == Binding.GAMEPAD_RIGHT_THUMB_LEFT;
+        }
+        return false;
     }
 
     private void updateGyroMouse(int x, int y) {
@@ -1863,11 +1961,6 @@ public class InputControlsView extends View {
 
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
         if (winHandler != null) {
-            ExternalController controller = winHandler.getCurrentController();
-            if (controller != null) {
-                controller.state.copyThumbstick(state, false);
-                controller.state.copyThumbstick(state, true);
-            }
             winHandler.sendGamepadState();
             winHandler.sendVirtualGamepadState(state);
         }

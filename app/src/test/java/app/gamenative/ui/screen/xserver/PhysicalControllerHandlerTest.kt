@@ -10,6 +10,7 @@ import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.ExternalControllerBinding
 import com.winlator.inputcontrols.GamepadState
+import com.winlator.widget.InputControlsView
 import com.winlator.xserver.Pointer
 import com.winlator.xserver.XServer
 import com.winlator.xserver.XKeycode
@@ -28,6 +29,48 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 
 @RunWith(RobolectricTestRunner::class)
 class PhysicalControllerHandlerTest {
+    @Test
+    fun `vertical physical stick release clears gyro mixed gamepad state`() {
+        val deviceId = 42
+        val rawDownSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Y, 1)
+        val rawUpSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Y, -1)
+        val controller = motionController(rawDownSource, Binding.GAMEPAD_LEFT_THUMB_UP).apply {
+            addControllerBinding(
+                ExternalControllerBinding().apply {
+                    setKeyCode(rawUpSource)
+                    setBinding(Binding.GAMEPAD_LEFT_THUMB_DOWN)
+                },
+            )
+        }
+        val gamepadState = GamepadState()
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        whenever(profile.gamepadState).thenReturn(gamepadState)
+        var baseAxis = 0f
+        val handler = PhysicalControllerHandler(
+            profile = profile,
+            xServer = mock<XServer>(),
+            gyroStickMixer = { _, isDown, offset, sourceKeyCode ->
+                InputControlsView.updatePhysicalBaseAxis(baseAxis, isDown, offset, sourceKeyCode)
+                    .also { baseAxis = it }
+            },
+            gamepadStateSender = {},
+        )
+        val event = motionEvent(deviceId)
+
+        try {
+            controller.state.thumbLY = 0.8f
+            assertTrue(handler.onGenericMotionEvent(event))
+            assertEquals(0.8f, gamepadState.thumbLY, 0f)
+
+            controller.state.thumbLY = 0f
+            assertTrue(handler.onGenericMotionEvent(event))
+            assertEquals(0f, gamepadState.thumbLY, 0f)
+        } finally {
+            handler.cleanup()
+        }
+    }
+
     @Test
     fun `switching profiles transmits the released old gamepad state`() {
         val deviceId = 42

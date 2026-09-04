@@ -2534,8 +2534,8 @@ fun XServerScreen(
                         onGyroModifierChanged = { source, pressed ->
                             setGyroModifierPressed(source, pressed)
                         },
-                        gyroStickMixer = { binding, isDown, offset ->
-                            updateBaseStickAndGetMixedValue(binding, isDown, offset)
+                        gyroStickMixer = { binding, isDown, offset, sourceKeyCode ->
+                            updatePhysicalStickAndGetMixedValue(binding, isDown, offset, sourceKeyCode)
                         },
                     )
                     radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)

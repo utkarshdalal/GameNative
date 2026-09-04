@@ -32,7 +32,7 @@ class PhysicalControllerHandler(
     private val onRadialMenuButtonStateChanged: ((Boolean, Boolean) -> Unit)? = null,
     private val onRadialMenuVectorChanged: ((Float, Float) -> Unit)? = null,
     private val onGyroModifierChanged: ((Any, Boolean) -> Unit)? = null,
-    private val gyroStickMixer: ((Binding, Boolean, Float) -> Float)? = null,
+    private val gyroStickMixer: ((Binding, Boolean, Float, Int) -> Float)? = null,
     private val gamepadStateSender: (GamepadState?) -> Unit = { state ->
         xServer?.winHandler?.let { winHandler ->
             winHandler.sendGamepadState()
@@ -830,19 +830,19 @@ class PhysicalControllerHandler(
                 else {
                     when (binding) {
                         Binding.GAMEPAD_LEFT_THUMB_UP, Binding.GAMEPAD_LEFT_THUMB_DOWN -> {
-                            state.thumbLY = gyroStickMixer?.invoke(binding, isActionDown, offset)
+                            state.thumbLY = gyroStickMixer?.invoke(binding, isActionDown, offset, sourceKeyCode)
                                 ?: if (isActionDown) offset else 0f
                         }
                         Binding.GAMEPAD_LEFT_THUMB_LEFT, Binding.GAMEPAD_LEFT_THUMB_RIGHT -> {
-                            state.thumbLX = gyroStickMixer?.invoke(binding, isActionDown, offset)
+                            state.thumbLX = gyroStickMixer?.invoke(binding, isActionDown, offset, sourceKeyCode)
                                 ?: if (isActionDown) offset else 0f
                         }
                         Binding.GAMEPAD_RIGHT_THUMB_UP, Binding.GAMEPAD_RIGHT_THUMB_DOWN -> {
-                            state.thumbRY = gyroStickMixer?.invoke(binding, isActionDown, offset)
+                            state.thumbRY = gyroStickMixer?.invoke(binding, isActionDown, offset, sourceKeyCode)
                                 ?: if (isActionDown) offset else 0f
                         }
                         Binding.GAMEPAD_RIGHT_THUMB_LEFT, Binding.GAMEPAD_RIGHT_THUMB_RIGHT -> {
-                            state.thumbRX = gyroStickMixer?.invoke(binding, isActionDown, offset)
+                            state.thumbRX = gyroStickMixer?.invoke(binding, isActionDown, offset, sourceKeyCode)
                                 ?: if (isActionDown) offset else 0f
                         }
                         Binding.GAMEPAD_DPAD_UP  -> {
