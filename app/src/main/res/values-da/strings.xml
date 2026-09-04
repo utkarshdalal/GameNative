@@ -2293,6 +2293,17 @@
     <string name="binding_mode_sequence">Sekvens</string>
     <string name="binding_sequence_delay_ms">Sekvensforsinkelse (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">Aktivér Windows VR</string>
+    <string name="immersive_openvr_compatibility_toggle">OpenVR-kompatibilitet (eksperimentel)</string>
+    <string name="immersive_windows_vr_restart_required">Ændringer af runtime og kompatibilitet træder i kraft ved næste start.</string>
+    <string name="immersive_windows_vr_export">Eksportér Windows VR-diagnostik</string>
+    <string name="immersive_windows_vr_export_desc">Gem den afgrænsede rapport over runtime-hændelser</string>
+    <string name="xr_windows_vr_toggle">Kør som VR-app (eksperimentel)</string>
+    <string name="xr_windows_vr_toggle_desc">Til native VR-titler som Beat Saber. Kræver arm64ec Wine, DXVK og D3D11. Andre spil beholder den flade immersive skærm.</string>
+    <string name="xr_open_composite_toggle">SteamVR (OpenVR)-kompatibilitet</string>
+    <string name="xr_open_composite_toggle_desc">Sender spil bygget til SteamVR gennem OpenComposite. Slå til, hvis spillet siger, at SteamVR ikke kører, eller forbliver fladt med VR-tilstand slået til.</string>
+    <string name="xr_render_scale">VR-gengivelsesskala</string>
     <string name="settings_info_boot_ads_title">Sponsorerede indlæsningsskærme</string>
     <string name="settings_info_boot_ads_subtitle">At lade dette være slået til hjælper med at støtte udviklingen af GameNative. Det gør aldrig spilstart langsommere og påvirker dig ikke på nogen måde.</string>
     <string name="settings_info_boot_recs_title">Spilanbefalinger på indlæsningsskærme</string>

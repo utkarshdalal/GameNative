@@ -2428,6 +2428,17 @@
     <string name="binding_mode_sequence">順序</string>
     <string name="binding_sequence_delay_ms">順序延遲（毫秒）</string>
     <string name="binding_sequence_current_format">%1$s（%2$d 毫秒）</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">啟用 Windows VR</string>
+    <string name="immersive_openvr_compatibility_toggle">OpenVR 相容（實驗性）</string>
+    <string name="immersive_windows_vr_restart_required">執行階段與相容性變更將在下次啟動時生效。</string>
+    <string name="immersive_windows_vr_export">匯出 Windows VR 診斷</string>
+    <string name="immersive_windows_vr_export_desc">儲存精簡的執行階段事件報告</string>
+    <string name="xr_windows_vr_toggle">以 VR 應用程式執行（實驗性）</string>
+    <string name="xr_windows_vr_toggle_desc">適用於 Beat Saber 等原生 VR 遊戲。需要 arm64ec Wine、DXVK 與 D3D11。其他遊戲仍使用平面沉浸式畫面。</string>
+    <string name="xr_open_composite_toggle">SteamVR (OpenVR) 相容</string>
+    <string name="xr_open_composite_toggle_desc">透過 OpenComposite 執行為 SteamVR 開發的遊戲。若遊戲提示 SteamVR 未執行，或開啟 VR 模式後仍為平面顯示，請開啟此項。</string>
+    <string name="xr_render_scale">VR 算繪比例</string>
     <string name="settings_info_boot_ads_title">贊助載入畫面</string>
     <string name="settings_info_boot_ads_subtitle">保持開啟有助於支持 GameNative 的開發。它絕不會拖慢遊戲啟動，也不會以任何方式影響你。</string>
     <string name="settings_info_boot_recs_title">在載入畫面顯示遊戲推薦</string>

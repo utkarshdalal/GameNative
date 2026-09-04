@@ -2423,6 +2423,17 @@
     <string name="binding_mode_sequence">Séquence</string>
     <string name="binding_sequence_delay_ms">Délai de séquence (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">Activer Windows VR</string>
+    <string name="immersive_openvr_compatibility_toggle">Compatibilité OpenVR (expérimental)</string>
+    <string name="immersive_windows_vr_restart_required">Les changements de runtime et de compatibilité s’appliquent au prochain lancement.</string>
+    <string name="immersive_windows_vr_export">Exporter le diagnostic Windows VR</string>
+    <string name="immersive_windows_vr_export_desc">Enregistrer le rapport limité des événements du runtime</string>
+    <string name="xr_windows_vr_toggle">Lancer en tant qu’application VR (expérimental)</string>
+    <string name="xr_windows_vr_toggle_desc">Pour les titres VR natifs comme Beat Saber. Nécessite Wine arm64ec, DXVK et D3D11. Les autres jeux conservent l’écran immersif plat.</string>
+    <string name="xr_open_composite_toggle">Compatibilité SteamVR (OpenVR)</string>
+    <string name="xr_open_composite_toggle_desc">Fait passer les jeux conçus pour SteamVR par OpenComposite. À activer si le jeu indique que SteamVR n’est pas lancé ou reste à plat avec le mode VR activé.</string>
+    <string name="xr_render_scale">Échelle de rendu VR</string>
     <string name="settings_info_boot_ads_title">Écrans de chargement sponsorisés</string>
     <string name="settings_info_boot_ads_subtitle">Laisser cette option activée aide à soutenir le développement de GameNative. Cela ne ralentit jamais le lancement des jeux et ne vous affecte en aucune façon.</string>
     <string name="settings_info_boot_recs_title">Recommandations de jeux sur les écrans de chargement</string>

@@ -2425,6 +2425,17 @@
     <string name="binding_mode_sequence">Послідовно</string>
     <string name="binding_sequence_delay_ms">Затримка послідовності (мс)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d мс)</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">Увімкнути Windows VR</string>
+    <string name="immersive_openvr_compatibility_toggle">Сумісність з OpenVR (експериментально)</string>
+    <string name="immersive_windows_vr_restart_required">Зміни середовища виконання та сумісності набудуть чинності після наступного запуску.</string>
+    <string name="immersive_windows_vr_export">Експортувати діагностику Windows VR</string>
+    <string name="immersive_windows_vr_export_desc">Зберегти стислий звіт про події середовища виконання</string>
+    <string name="xr_windows_vr_toggle">Запускати як VR-застосунок (експериментально)</string>
+    <string name="xr_windows_vr_toggle_desc">Для нативних VR-ігор, як-от Beat Saber. Потрібні Wine arm64ec, DXVK і D3D11. Інші ігри зберігають плаский імерсивний екран.</string>
+    <string name="xr_open_composite_toggle">Сумісність зі SteamVR (OpenVR)</string>
+    <string name="xr_open_composite_toggle_desc">Запускає ігри, створені для SteamVR, через OpenComposite. Увімкніть, якщо гра повідомляє, що SteamVR не запущено, або залишається пласкою з увімкненим VR-режимом.</string>
+    <string name="xr_render_scale">Масштаб рендерингу VR</string>
     <string name="settings_info_boot_ads_title">Спонсорські екрани завантаження</string>
     <string name="settings_info_boot_ads_subtitle">Якщо залишити це увімкненим, ви підтримаєте розробку GameNative. Це ніколи не сповільнює запуск ігор і жодним чином на вас не впливає.</string>
     <string name="settings_info_boot_recs_title">Рекомендації ігор на екранах завантаження</string>

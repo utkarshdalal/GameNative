@@ -2428,6 +2428,17 @@
     <string name="binding_mode_sequence">Secvență</string>
     <string name="binding_sequence_delay_ms">Întârziere secvență (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">Activează Windows VR</string>
+    <string name="immersive_openvr_compatibility_toggle">Compatibilitate OpenVR (experimental)</string>
+    <string name="immersive_windows_vr_restart_required">Modificările de runtime și compatibilitate se aplică la următoarea lansare.</string>
+    <string name="immersive_windows_vr_export">Exportă diagnosticul Windows VR</string>
+    <string name="immersive_windows_vr_export_desc">Salvează raportul restrâns al evenimentelor runtime</string>
+    <string name="xr_windows_vr_toggle">Rulează ca aplicație VR (experimental)</string>
+    <string name="xr_windows_vr_toggle_desc">Pentru titluri VR native precum Beat Saber. Necesită Wine arm64ec, DXVK și D3D11. Celelalte jocuri păstrează ecranul imersiv plat.</string>
+    <string name="xr_open_composite_toggle">Compatibilitate SteamVR (OpenVR)</string>
+    <string name="xr_open_composite_toggle_desc">Direcționează jocurile create pentru SteamVR prin OpenComposite. Activează dacă jocul spune că SteamVR nu rulează sau rămâne plat cu modul VR pornit.</string>
+    <string name="xr_render_scale">Scară de randare VR</string>
     <string name="settings_info_boot_ads_title">Ecrane de încărcare sponsorizate</string>
     <string name="settings_info_boot_ads_subtitle">Păstrarea acestei opțiuni activate ajută la susținerea dezvoltării GameNative. Nu încetinește niciodată pornirea jocurilor și nu te afectează în niciun fel.</string>
     <string name="settings_info_boot_recs_title">Recomandări de jocuri pe ecranele de încărcare</string>

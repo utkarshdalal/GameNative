@@ -2417,6 +2417,17 @@
     <string name="binding_mode_sequence">순차</string>
     <string name="binding_sequence_delay_ms">순차 지연 (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">Windows VR 사용</string>
+    <string name="immersive_openvr_compatibility_toggle">OpenVR 호환 (실험적)</string>
+    <string name="immersive_windows_vr_restart_required">런타임 및 호환성 변경은 다음 실행 시 적용됩니다.</string>
+    <string name="immersive_windows_vr_export">Windows VR 진단 내보내기</string>
+    <string name="immersive_windows_vr_export_desc">런타임 이벤트 요약 보고서 저장</string>
+    <string name="xr_windows_vr_toggle">VR 앱으로 실행 (실험적)</string>
+    <string name="xr_windows_vr_toggle_desc">Beat Saber 같은 네이티브 VR 타이틀용입니다. arm64ec Wine, DXVK, D3D11이 필요합니다. 다른 게임은 평면 몰입형 화면을 유지합니다.</string>
+    <string name="xr_open_composite_toggle">SteamVR(OpenVR) 호환</string>
+    <string name="xr_open_composite_toggle_desc">SteamVR용으로 만들어진 게임을 OpenComposite를 통해 실행합니다. 게임이 SteamVR이 실행 중이 아니라고 표시하거나 VR 모드에서도 평면으로 남아 있으면 켜세요.</string>
+    <string name="xr_render_scale">VR 렌더링 배율</string>
     <string name="settings_info_boot_ads_title">스폰서 로딩 화면</string>
     <string name="settings_info_boot_ads_subtitle">이 옵션을 켜 두면 GameNative 개발을 지원하는 데 도움이 됩니다. 게임 실행이 느려지거나 사용자에게 어떤 영향도 주지 않습니다.</string>
     <string name="settings_info_boot_recs_title">로딩 화면에 게임 추천 표시</string>

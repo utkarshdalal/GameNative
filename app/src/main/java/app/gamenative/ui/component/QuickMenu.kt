@@ -586,6 +586,7 @@ fun QuickMenu(
     val powerItemFocusRequester = remember { FocusRequester() }
     val immersiveScrollState = rememberScrollState()
     val immersiveTabFocusRequester = remember { FocusRequester() }
+    val exitFocusRequester = remember { FocusRequester() }
     val immersiveItemFocusRequester = remember { FocusRequester() }
 
     val visibleState = remember { MutableTransitionState(false) }
@@ -617,6 +618,9 @@ fun QuickMenu(
     }
 
     LaunchedEffect(Unit) {
+        immersiveHooks?.registerFocusExit?.invoke {
+            runCatching { exitFocusRequester.requestFocus() }
+        }
         immersiveHooks?.registerFocusTabRail?.invoke {
             val requester = when (selectedTab) {
                 QuickMenuTab.HUD -> hudTabFocusRequester
@@ -908,6 +912,7 @@ fun QuickMenu(
                                     }
                                 },
                                 modifier = Modifier.width(56.dp),
+                                focusRequester = exitFocusRequester,
                             )
                         }
 
@@ -1780,6 +1785,38 @@ private fun ImmersiveQuickMenuTab(
     ) {
         // ── Passthrough ────────────────────────────────────────────────
         QuickMenuSectionHeader(
+            title = stringResource(R.string.immersive_windows_vr_title),
+            subtitle = "${controls.windowsVrStatus} · ${controls.windowsVrRuntimePath}",
+        )
+        QuickMenuToggleRow(
+            title = stringResource(R.string.immersive_windows_vr_toggle),
+            enabled = controls.windowsVrEnabled,
+            onToggle = { controls.onWindowsVrToggle(!controls.windowsVrEnabled) },
+            accentColor = accentColor,
+            focusRequester = focusRequester,
+        )
+        QuickMenuToggleRow(
+            title = stringResource(R.string.immersive_openvr_compatibility_toggle),
+            enabled = controls.openCompositeEnabled,
+            onToggle = { controls.onOpenCompositeToggle(!controls.openCompositeEnabled) },
+            accentColor = accentColor,
+        )
+        Text(
+            text = stringResource(R.string.immersive_windows_vr_restart_required),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        QuickMenuDetailRow(
+            title = stringResource(R.string.immersive_windows_vr_export),
+            subtitle = stringResource(R.string.immersive_windows_vr_export_desc),
+            accentColor = accentColor,
+            onActivate = controls.onExportWindowsVrDiagnostics,
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        QuickMenuSectionHeader(
             title = stringResource(R.string.immersive_passthrough),
             subtitle = stringResource(R.string.immersive_passthrough_desc),
         )
@@ -1788,7 +1825,6 @@ private fun ImmersiveQuickMenuTab(
             enabled = controls.passthroughEnabled,
             onToggle = { controls.onPassthroughToggle(!controls.passthroughEnabled) },
             accentColor = accentColor,
-            focusRequester = focusRequester,
         )
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -2016,6 +2052,9 @@ private fun QuickMenuRailActionButton(
     // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
     val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
+    LaunchedEffect(isFocused) {
+        inputBypass.reportActivate(interactionSource, if (isFocused) onClick else null)
+    }
     val accentColor = if (item.accentColor != Color.Unspecified) {
         item.accentColor
     } else {
