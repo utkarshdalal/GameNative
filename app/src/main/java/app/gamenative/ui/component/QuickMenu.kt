@@ -325,11 +325,9 @@ class LsfgQuickMenuState(
     val multiplier: Int = 2,
     val flowScale: Float = 0.80f,
     val performanceMode: Boolean = true,
-    val adaptiveFrameGen: Boolean = false,
     val onMultiplierChanged: (Int) -> Unit = {},
     val onFlowScaleChanged: (Float) -> Unit = {},
     val onPerformanceModeChanged: (Boolean) -> Unit = {},
-    val onAdaptiveFrameGenChanged: (Boolean) -> Unit = {},
 )
 
 @Composable
@@ -371,11 +369,9 @@ fun QuickMenu(
     val lsfgMultiplier = lsfg.multiplier
     val lsfgFlowScale = lsfg.flowScale
     val lsfgPerformanceMode = lsfg.performanceMode
-    val lsfgAdaptiveFrameGen = lsfg.adaptiveFrameGen
     val onLsfgMultiplierChanged = lsfg.onMultiplierChanged
     val onLsfgFlowScaleChanged = lsfg.onFlowScaleChanged
     val onLsfgPerformanceModeChanged = lsfg.onPerformanceModeChanged
-    val onLsfgAdaptiveFrameGenChanged = lsfg.onAdaptiveFrameGenChanged
     val focusManager = LocalFocusManager.current
     LaunchedEffect(immersiveHooks) {
         immersiveHooks?.registerFocusManager?.invoke(focusManager)
@@ -899,7 +895,6 @@ fun QuickMenu(
                                             fpsLimiterTarget = fpsLimiterTarget,
                                             fpsLimiterMax = fpsLimiterMax,
                                             lsfgMultiplier = if (isLsfgAvailable) lsfgMultiplier else 0,
-                                            lsfgAdaptiveFrameGen = isLsfgAvailable && lsfgAdaptiveFrameGen,
                                             onTogglePerformanceHud = {
                                                 onItemSelected(QuickMenuAction.PERFORMANCE_HUD)
                                             },
@@ -917,11 +912,9 @@ fun QuickMenu(
                                             multiplier = lsfgMultiplier,
                                             flowScale = lsfgFlowScale,
                                             performanceMode = lsfgPerformanceMode,
-                                            adaptiveFrameGen = lsfgAdaptiveFrameGen,
                                             onMultiplierChanged = onLsfgMultiplierChanged,
                                             onFlowScaleChanged = onLsfgFlowScaleChanged,
                                             onPerformanceModeChanged = onLsfgPerformanceModeChanged,
-                                            onAdaptiveFrameGenChanged = onLsfgAdaptiveFrameGenChanged,
                                             presentMode = lsfgPresentMode,
                                             onPresentModeChanged = { mode ->
                                                 lsfgPresentMode = mode
@@ -1201,7 +1194,6 @@ private fun PerformanceHudQuickMenuTab(
     fpsLimiterTarget: Int,
     fpsLimiterMax: Int,
     lsfgMultiplier: Int,
-    lsfgAdaptiveFrameGen: Boolean,
     onTogglePerformanceHud: () -> Unit,
     onPerformanceHudConfigChanged: (PerformanceHudConfig) -> Unit,
     onFpsLimiterEnabledChanged: (Boolean) -> Unit,
@@ -1222,9 +1214,7 @@ private fun PerformanceHudQuickMenuTab(
         val lsfgActive = lsfgMultiplier >= 2
         QuickMenuToggleRow(
             title = stringResource(R.string.performance_hud_fps_limiter),
-            subtitle = if (lsfgAdaptiveFrameGen) {
-                stringResource(R.string.performance_hud_fps_limiter_lsfg_adaptive)
-            } else if (lsfgActive) {
+            subtitle = if (lsfgActive) {
                 stringResource(R.string.performance_hud_fps_limiter_lsfg_base)
             } else null,
             enabled = fpsLimiterEnabled,
@@ -1577,11 +1567,9 @@ private fun LsfgQuickMenuTab(
     multiplier: Int,
     flowScale: Float,
     performanceMode: Boolean,
-    adaptiveFrameGen: Boolean,
     onMultiplierChanged: (Int) -> Unit,
     onFlowScaleChanged: (Float) -> Unit,
     onPerformanceModeChanged: (Boolean) -> Unit,
-    onAdaptiveFrameGenChanged: (Boolean) -> Unit,
     presentMode: String,
     onPresentModeChanged: (String) -> Unit,
     scrollState: ScrollState,
@@ -1654,16 +1642,6 @@ private fun LsfgQuickMenuTab(
                     subtitle = stringResource(R.string.lsfg_performance_mode_desc),
                     enabled = performanceMode,
                     onToggle = { onPerformanceModeChanged(!performanceMode) },
-                    accentColor = accentColor,
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                QuickMenuToggleRow(
-                    title = stringResource(R.string.lsfg_adaptive_framegen),
-                    subtitle = stringResource(R.string.lsfg_adaptive_framegen_desc),
-                    enabled = adaptiveFrameGen,
-                    onToggle = { onAdaptiveFrameGenChanged(!adaptiveFrameGen) },
                     accentColor = accentColor,
                 )
 
