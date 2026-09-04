@@ -14,6 +14,7 @@ internal fun copyInputControlsProfileElements(
     targetProfile.elements.toList().forEach(targetProfile::removeElement)
     sourceProfile.elements.forEach { targetProfile.addElement(it.copyForView(view)) }
     targetProfile.setDefaultRadialMenu(sourceProfile.defaultRadialMenu.deepCopy())
+    view.onControlsProfileContentChanged(true)
     view.invalidate()
 }
 
