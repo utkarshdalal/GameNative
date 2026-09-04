@@ -2421,6 +2421,13 @@
     <string name="binding_mode_sequence">Secuencia</string>
     <string name="binding_sequence_delay_ms">Retraso de secuencia (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="settings_info_boot_ads_title">Pantallas de carga patrocinadas</string>
+    <string name="settings_info_boot_ads_subtitle">Mantener esto activado ayuda a apoyar el desarrollo de GameNative. Nunca ralentiza el inicio de los juegos ni te afecta de ninguna manera.</string>
+    <string name="settings_info_boot_recs_title">Recomendaciones de juegos en pantallas de carga</string>
+    <string name="settings_info_boot_recs_subtitle">Mostrar un juego que podría gustarte mientras arranca un juego, cuando no hay tarjeta de patrocinador.</string>
+    <string name="boot_rec_badge">Recomendado para ti</string>
+    <string name="boot_quiz_win_default">¡Correcto!</string>
+    <string name="boot_quiz_lose_default">La respuesta era %1$s</string>
     <string name="gyro_aiming">Apuntado con giroscopio</string>
     <string name="gyro_settings_title">Ajustes del giroscopio</string>
     <string name="gyro_section_output">Salida y movimiento</string>

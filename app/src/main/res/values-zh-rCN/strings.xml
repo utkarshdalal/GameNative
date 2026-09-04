@@ -2437,6 +2437,13 @@
     <string name="binding_mode_sequence">顺序</string>
     <string name="binding_sequence_delay_ms">顺序延迟（毫秒）</string>
     <string name="binding_sequence_current_format">%1$s（%2$d 毫秒）</string>
+    <string name="settings_info_boot_ads_title">赞助加载画面</string>
+    <string name="settings_info_boot_ads_subtitle">保持开启有助于支持 GameNative 的开发。它绝不会拖慢游戏启动，也不会以任何方式影响你。</string>
+    <string name="settings_info_boot_recs_title">在加载画面显示游戏推荐</string>
+    <string name="settings_info_boot_recs_subtitle">没有赞助商卡片时，在游戏启动期间显示你可能喜欢的游戏。</string>
+    <string name="boot_rec_badge">为你推荐</string>
+    <string name="boot_quiz_win_default">答对了！</string>
+    <string name="boot_quiz_lose_default">正确答案是 %1$s</string>
     <string name="gyro_aiming">陀螺仪瞄准</string>
     <string name="gyro_settings_title">陀螺仪设置</string>
     <string name="gyro_section_output">输出和动作</string>

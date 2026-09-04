@@ -2425,6 +2425,13 @@
     <string name="binding_mode_sequence">Послідовно</string>
     <string name="binding_sequence_delay_ms">Затримка послідовності (мс)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d мс)</string>
+    <string name="settings_info_boot_ads_title">Спонсорські екрани завантаження</string>
+    <string name="settings_info_boot_ads_subtitle">Якщо залишити це увімкненим, ви підтримаєте розробку GameNative. Це ніколи не сповільнює запуск ігор і жодним чином на вас не впливає.</string>
+    <string name="settings_info_boot_recs_title">Рекомендації ігор на екранах завантаження</string>
+    <string name="settings_info_boot_recs_subtitle">Показувати гру, яка може вам сподобатися, під час запуску, якщо немає картки спонсора.</string>
+    <string name="boot_rec_badge">Рекомендовано для вас</string>
+    <string name="boot_quiz_win_default">Правильно!</string>
+    <string name="boot_quiz_lose_default">Правильна відповідь: %1$s</string>
     <string name="gyro_aiming">Гіроскопічне прицілювання</string>
     <string name="gyro_settings_title">Налаштування гіроскопа</string>
     <string name="gyro_section_output">Вивід і рух</string>
