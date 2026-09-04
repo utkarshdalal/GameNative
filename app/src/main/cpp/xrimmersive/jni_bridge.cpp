@@ -200,7 +200,7 @@ Java_app_gamenative_ui_screen_xr_XrNative_nativeWaitWindowsFrame(
         inputValues[base] = hand == 0 ? input.triggerL : input.triggerR;
         inputValues[base + 1] = hand == 0 ? input.squeezeL : input.squeezeR;
         inputValues[base + 2] = hand == 0 ? input.leftX : input.rightX;
-        inputValues[base + 3] = hand == 0 ? input.leftY : input.rightY;
+        inputValues[base + 3] = -(hand == 0 ? input.leftY : input.rightY);
         inputValues[base + 4] = grip.orientation.x;
         inputValues[base + 5] = grip.orientation.y;
         inputValues[base + 6] = grip.orientation.z;

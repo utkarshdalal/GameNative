@@ -85,14 +85,10 @@ class WindowsVrPayloadManager(
             val directory = checkNotNull(target.parentFile).canonicalFile
             val backup = File(directory, "openvr_api.dll.gamenative-original")
             val owner = File(directory, "openvr_api.dll.gamenative-owner")
-            val ini = File(directory, "opencomposite.ini")
-            val iniBackup = File(directory, "opencomposite.ini.gamenative-original")
-            val iniMissing = File(directory, "opencomposite.ini.gamenative-missing")
             check(!backup.exists() && !owner.exists())
             writeIfChanged(owner, "2\n".toByteArray())
             openCompositeDirectories += directory
             writeIfChanged(backup, target.readBytes())
-            if (ini.isFile) writeIfChanged(iniBackup, ini.readBytes()) else writeIfChanged(iniMissing, byteArrayOf(1))
             writeIfChanged(target, adapter)
             diagnostics.record("opencomposite", "installed path=${target.path}")
         }
@@ -249,14 +245,8 @@ class WindowsVrPayloadManager(
         if (!owner.isFile || owner.readText().trim() != "2") return
         val target = File(directory, "openvr_api.dll")
         val backup = File(directory, "openvr_api.dll.gamenative-original")
-        val ini = File(directory, "opencomposite.ini")
-        val iniBackup = File(directory, "opencomposite.ini.gamenative-original")
-        val iniMissing = File(directory, "opencomposite.ini.gamenative-missing")
         if (backup.isFile) atomicReplace(backup, target)
-        if (iniBackup.isFile) atomicReplace(iniBackup, ini) else if (iniMissing.isFile) ini.delete()
         backup.delete()
-        iniBackup.delete()
-        iniMissing.delete()
         owner.delete()
         diagnostics.record("opencomposite", "restored path=${target.path}")
     }
