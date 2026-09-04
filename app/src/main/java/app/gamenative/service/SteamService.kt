@@ -2000,7 +2000,11 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
 
                         calculatedDlcAppIds.forEach { dlcAppId ->
-                            val dlcDepots = selectedDepots.filter { it.value.dlcAppId == dlcAppId }
+                            val dlcAppDepotIds = getAppInfoOf(dlcAppId)?.depots?.keys.orEmpty()
+                            val dlcDepots = selectedDepots.filter { (depotId, depot) ->
+                                depot.dlcAppId == dlcAppId &&
+                                    (depotId !in mainAppDepots || depotId in dlcAppDepotIds)
+                            }
                             val dlcDepotIds = dlcDepots.keys.sorted()
 
                             val dlcAppItem = AppItem(
@@ -2176,7 +2180,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         // Complete dlc app download
                         calculatedDlcAppIds.forEach { dlcAppId ->
-                            val dlcDepots = selectedDepots.filter { it.value.dlcAppId == dlcAppId }
+                            val dlcAppDepotIds = getAppInfoOf(dlcAppId)?.depots?.keys.orEmpty()
+                            val dlcDepots = selectedDepots.filter { (depotId, depot) ->
+                                depot.dlcAppId == dlcAppId &&
+                                    (depotId !in mainAppDepots || depotId in dlcAppDepotIds)
+                            }
                             val dlcDepotIds = dlcDepots.keys.sorted()
                             completeAppDownload(
                                 downloadInfo = di,
