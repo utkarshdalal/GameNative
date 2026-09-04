@@ -2340,4 +2340,11 @@ https://gamenative.app
     <string name="binding_mode_sequence">Последовательно</string>
     <string name="binding_sequence_delay_ms">Задержка последовательности (мс)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d мс)</string>
+    <string name="settings_info_boot_ads_title">Спонсорские экраны загрузки</string>
+    <string name="settings_info_boot_ads_subtitle">Иногда показывать карточку спонсора во время запуска игры. Это никогда не задерживает игру.</string>
+    <string name="settings_info_boot_recs_title">Рекомендации игр на экранах загрузки</string>
+    <string name="settings_info_boot_recs_subtitle">Показывать игру, которая может вам понравиться, во время запуска, если нет карточки спонсора.</string>
+    <string name="boot_rec_badge">Рекомендовано для вас</string>
+    <string name="boot_quiz_win_default">Верно!</string>
+    <string name="boot_quiz_lose_default">Правильный ответ: %1$s</string>
 </resources>

@@ -2403,4 +2403,11 @@
     <string name="binding_mode_sequence">순차</string>
     <string name="binding_sequence_delay_ms">순차 지연 (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="settings_info_boot_ads_title">스폰서 로딩 화면</string>
+    <string name="settings_info_boot_ads_subtitle">게임이 부팅되는 동안 가끔 스폰서 카드를 표시합니다. 게임이 지연되지는 않습니다.</string>
+    <string name="settings_info_boot_recs_title">로딩 화면에 게임 추천 표시</string>
+    <string name="settings_info_boot_recs_subtitle">스폰서 카드가 없을 때 게임이 부팅되는 동안 마음에 들 만한 게임을 표시합니다.</string>
+    <string name="boot_rec_badge">회원님을 위한 추천</string>
+    <string name="boot_quiz_win_default">정답!</string>
+    <string name="boot_quiz_lose_default">정답은 %1$s였습니다</string>
 </resources>

@@ -2278,4 +2278,11 @@
     <string name="binding_mode_sequence">Sekvens</string>
     <string name="binding_sequence_delay_ms">Sekvensforsinkelse (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="settings_info_boot_ads_title">Sponsorerede indlæsningsskærme</string>
+    <string name="settings_info_boot_ads_subtitle">Vis af og til et sponsorkort, mens et spil starter. Det forsinker aldrig dit spil.</string>
+    <string name="settings_info_boot_recs_title">Spilanbefalinger på indlæsningsskærme</string>
+    <string name="settings_info_boot_recs_subtitle">Vis et spil, du måske kan lide, mens et spil starter, når der ikke er et sponsorkort.</string>
+    <string name="boot_rec_badge">Anbefalet til dig</string>
+    <string name="boot_quiz_win_default">Korrekt!</string>
+    <string name="boot_quiz_lose_default">Svaret var %1$s</string>
 </resources>

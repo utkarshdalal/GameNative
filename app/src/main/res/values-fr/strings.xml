@@ -2408,4 +2408,11 @@
     <string name="binding_mode_sequence">Séquence</string>
     <string name="binding_sequence_delay_ms">Délai de séquence (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="settings_info_boot_ads_title">Écrans de chargement sponsorisés</string>
+    <string name="settings_info_boot_ads_subtitle">Afficher parfois une carte sponsorisée pendant le démarrage d\'un jeu. Cela ne retarde jamais votre jeu.</string>
+    <string name="settings_info_boot_recs_title">Recommandations de jeux sur les écrans de chargement</string>
+    <string name="settings_info_boot_recs_subtitle">Afficher un jeu qui pourrait vous plaire pendant le démarrage, en l\'absence de carte sponsorisée.</string>
+    <string name="boot_rec_badge">Recommandé pour vous</string>
+    <string name="boot_quiz_win_default">Correct !</string>
+    <string name="boot_quiz_lose_default">La réponse était %1$s</string>
 </resources>

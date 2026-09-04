@@ -2399,4 +2399,11 @@
     <string name="binding_mode_sequence">Sequenza</string>
     <string name="binding_sequence_delay_ms">Ritardo sequenza (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="settings_info_boot_ads_title">Schermate di caricamento sponsorizzate</string>
+    <string name="settings_info_boot_ads_subtitle">Mostra ogni tanto una scheda sponsor durante l\'avvio di un gioco. Non ritarda mai il gioco.</string>
+    <string name="settings_info_boot_recs_title">Giochi consigliati nelle schermate di caricamento</string>
+    <string name="settings_info_boot_recs_subtitle">Mostra un gioco che potrebbe piacerti durante l\'avvio, quando non c\'è una scheda sponsor.</string>
+    <string name="boot_rec_badge">Consigliato per te</string>
+    <string name="boot_quiz_win_default">Corretto!</string>
+    <string name="boot_quiz_lose_default">La risposta era %1$s</string>
 </resources>
