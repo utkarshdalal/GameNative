@@ -616,6 +616,13 @@ static XrPosef gn_local_origin;
 static int gn_local_origin_valid = 0;
 static long long gn_last_recenter_serial = -1;
 static int gn_recenter_serial_supported = 0;
+static int gn_frame_trace_budget = 160;
+
+static void gn_trace(const char* what, long long value) {
+    if (gn_frame_trace_budget <= 0) return;
+    --gn_frame_trace_budget;
+    gn_log_num(what, value);
+}
 static XrPosef gn_last_head_pose;
 static XrTime gn_last_head_time = 0;
 static float gn_head_linear_velocity[3];
@@ -2342,6 +2349,7 @@ static XrResult XRAPI_CALL gn_xrWaitFrame(XrSession session, const XrFrameWaitIn
     char response[160];
     int synced;
     if (session != gn_session || !frameState) return XR_ERROR_HANDLE_INVALID;
+    gn_trace("trace xrWaitFrame enter", 0);
     synced = gn_frame_sync_supported && gn_bridge_frame_sync(response, sizeof(response));
     if (!synced && !gn_frame_sync_supported)
         synced = gn_bridge_call("WAIT_FRAME", response, sizeof(response));
@@ -2376,6 +2384,7 @@ static XrResult XRAPI_CALL gn_xrWaitFrame(XrSession session, const XrFrameWaitIn
         frameState->shouldRender = gn_session_running ? XR_TRUE : XR_FALSE;
         gn_next_display_time += frameState->predictedDisplayPeriod;
     }
+    gn_trace("trace xrWaitFrame exit", (long long)frameState->predictedDisplayTime);
     return XR_SUCCESS;
 }
 
@@ -2393,6 +2402,7 @@ static XrResult XRAPI_CALL gn_xrEndFrame(XrSession session, const XrFrameEndInfo
     if (!frameEndInfo || frameEndInfo->type != XR_TYPE_FRAME_END_INFO ||
         (frameEndInfo->layerCount && !frameEndInfo->layers))
         return XR_ERROR_VALIDATION_FAILURE;
+    gn_trace("trace xrEndFrame enter layers", (long long)frameEndInfo->layerCount);
 
     for (gn_uint32 layer_index = 0; layer_index < frameEndInfo->layerCount; ++layer_index) {
         const XrCompositionLayerBaseHeader* base = frameEndInfo->layers[layer_index];
@@ -2534,6 +2544,7 @@ static XrResult XRAPI_CALL gn_xrEndFrame(XrSession session, const XrFrameEndInfo
         n = gn_append_i64(cmd, sizeof(cmd), n, (long long)frameEndInfo->layerCount);
         if (gn_bridge_call(cmd, NULL, 0)) gn_frame_milestone_sent = 1;
     }
+    gn_trace("trace xrEndFrame exit failed", submission_failed ? 1 : 0);
     return submission_failed ? XR_ERROR_RUNTIME_FAILURE : XR_SUCCESS;
 }
 
@@ -3011,6 +3022,7 @@ static XrResult XRAPI_CALL gn_xrAcquireSwapchainImage(XrSwapchain swapchain, con
     if (!acquireInfo || acquireInfo->type != XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO || !index)
         return XR_ERROR_VALIDATION_FAILURE;
     GnSwapchain* state = &gn_swapchains[slot];
+    gn_trace("trace xrAcquireSwapchainImage slot", slot);
     if (state->acquire_count >= state->image_count)
         return XR_ERROR_CALL_ORDER_INVALID;
     for (gn_uint32 n = 0; n < state->image_count; ++n) {
@@ -3036,6 +3048,7 @@ static XrResult XRAPI_CALL gn_xrWaitSwapchainImage(XrSwapchain swapchain, const 
         (waitInfo->timeout < 0 && waitInfo->timeout != XR_INFINITE_DURATION))
         return XR_ERROR_VALIDATION_FAILURE;
     GnSwapchain* state = &gn_swapchains[slot];
+    gn_trace("trace xrWaitSwapchainImage enter slot", slot);
     if (!state->acquire_count) return XR_ERROR_CALL_ORDER_INVALID;
     gn_uint32 index = state->acquire_queue[state->acquire_head];
     if (index >= state->image_count || state->image_state[index] != GN_IMAGE_ACQUIRED) {
@@ -3053,6 +3066,7 @@ static XrResult XRAPI_CALL gn_xrWaitSwapchainImage(XrSwapchain swapchain, const 
         state->submitted[index] = 0;
     }
     state->image_state[index] = GN_IMAGE_WAITED;
+    gn_trace("trace xrWaitSwapchainImage exit slot", slot);
     return XR_SUCCESS;
 }
 
@@ -3062,6 +3076,7 @@ static XrResult XRAPI_CALL gn_xrReleaseSwapchainImage(XrSwapchain swapchain, con
     if (!releaseInfo || releaseInfo->type != XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO)
         return XR_ERROR_VALIDATION_FAILURE;
     GnSwapchain* state = &gn_swapchains[slot];
+    gn_trace("trace xrReleaseSwapchainImage slot", slot);
     if (!state->acquire_count) return XR_ERROR_CALL_ORDER_INVALID;
     gn_uint32 index = state->acquire_queue[state->acquire_head];
     if (index >= state->image_count || state->image_state[index] != GN_IMAGE_WAITED) {
