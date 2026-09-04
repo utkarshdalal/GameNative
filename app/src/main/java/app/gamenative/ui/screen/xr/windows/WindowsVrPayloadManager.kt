@@ -200,7 +200,7 @@ class WindowsVrPayloadManager(
             val canonicalTarget = targets.getValue(name).canonicalFile
             val recorded = targetRecord.takeIf { it.isFile }?.readText()?.trim()?.takeIf { it.isNotEmpty() }?.let(::File)?.canonicalFile
             val restoreTarget = recorded?.takeIf {
-                it.name == canonicalTarget.name && runCatching { validateSharedTarget(it) }.isSuccess
+                it == canonicalTarget && runCatching { validateSharedTarget(it) }.isSuccess
             }
             if (restoreTarget != null) {
                 when {
