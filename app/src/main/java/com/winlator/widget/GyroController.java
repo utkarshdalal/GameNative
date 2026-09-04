@@ -11,6 +11,7 @@ import android.view.WindowManager;
 import androidx.annotation.NonNull;
 
 import app.gamenative.data.GyroSettings;
+import com.winlator.inputcontrols.GamepadState;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -24,6 +25,7 @@ class GyroController implements SensorEventListener {
     }
 
     static final int SENSOR_PERIOD_US = 5_000;
+    static final long MIN_STICK_OUTPUT_INTERVAL_NS = 10_000_000L;
     static final float MOUSE_PIXELS_PER_RADIAN = 450f;
     static final float STICK_UNITS_PER_RADIAN_PER_SECOND = 0.35f;
     private static final float MAX_MOUSE_EVENT_DELTA_SECONDS = 0.25f;
@@ -64,6 +66,11 @@ class GyroController implements SensorEventListener {
     private float smoothedRateY;
     private boolean tiltCentered;
     private float tiltCenterRadians;
+    private boolean hasDispatchedStick;
+    private short lastDispatchedStickX;
+    private short lastDispatchedStickY;
+    private boolean lastDispatchedRightStick;
+    private long lastStickOutputTimestampNs;
 
     GyroController(@NonNull Context context, @NonNull Listener listener) {
         this.listener = listener;
@@ -237,7 +244,11 @@ class GyroController implements SensorEventListener {
         float y = rates[1] * STICK_UNITS_PER_RADIAN_PER_SECOND
                 * settings.getSensitivity() * settings.getVerticalScale();
         float[] stick = applyStickResponse(x, y, event.timestamp);
-        listener.onGyroStick(stick[0], stick[1], settings.getMode() == GyroSettings.MODE_RIGHT_STICK);
+        dispatchStickOutput(
+                stick[0],
+                stick[1],
+                settings.getMode() == GyroSettings.MODE_RIGHT_STICK,
+                event.timestamp);
     }
 
     private void processTiltSteering(SensorEvent event, int rotation) {
@@ -256,7 +267,33 @@ class GyroController implements SensorEventListener {
                 settings.getTiltDeadzoneDegrees(),
                 settings.getInvertX());
         float[] stick = applyStickResponse(x, 0f, event.timestamp);
-        listener.onGyroStick(stick[0], 0f, settings.getMode() == GyroSettings.MODE_RIGHT_STICK);
+        dispatchStickOutput(
+                stick[0],
+                0f,
+                settings.getMode() == GyroSettings.MODE_RIGHT_STICK,
+                event.timestamp);
+    }
+
+    void dispatchStickOutput(float x, float y, boolean rightStick, long timestampNs) {
+        short encodedX = GamepadState.encodeThumbAxis(x);
+        short encodedY = GamepadState.encodeThumbAxis(y);
+        if (hasDispatchedStick
+                && rightStick == lastDispatchedRightStick
+                && encodedX == lastDispatchedStickX
+                && encodedY == lastDispatchedStickY) return;
+
+        boolean neutral = encodedX == 0 && encodedY == 0;
+        if (hasDispatchedStick
+                && !neutral
+                && timestampNs > lastStickOutputTimestampNs
+                && timestampNs - lastStickOutputTimestampNs < MIN_STICK_OUTPUT_INTERVAL_NS) return;
+
+        hasDispatchedStick = true;
+        lastDispatchedStickX = encodedX;
+        lastDispatchedStickY = encodedY;
+        lastDispatchedRightStick = rightStick;
+        lastStickOutputTimestampNs = timestampNs;
+        listener.onGyroStick(x, y, rightStick);
     }
 
     private float getSteeringAngle(float[] rotationVector, int displayRotation) {
@@ -488,6 +525,11 @@ class GyroController implements SensorEventListener {
         smoothedRateY = 0f;
         tiltCentered = false;
         tiltCenterRadians = 0f;
+        hasDispatchedStick = false;
+        lastDispatchedStickX = 0;
+        lastDispatchedStickY = 0;
+        lastDispatchedRightStick = false;
+        lastStickOutputTimestampNs = 0L;
     }
 
     private static float clamp(float value) {

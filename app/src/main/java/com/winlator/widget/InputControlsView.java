@@ -1818,29 +1818,26 @@ public class InputControlsView extends View {
     private synchronized void updateGyroStick(boolean rightStick, float x, float y) {
         if (gyroProfile == null) return;
         GamepadState state = gyroProfile.getGamepadState();
+        final float mixedX;
+        final float mixedY;
         if (rightStick) {
             gyroThumbRX = x;
             gyroThumbRY = y;
-            float thumbRX = Mathf.clamp(baseThumbRX + gyroThumbRX, -1f, 1f);
-            float thumbRY = Mathf.clamp(baseThumbRY + gyroThumbRY, -1f, 1f);
-            if (thumbRX == state.thumbRX && thumbRY == state.thumbRY) return;
-            state.thumbRX = thumbRX;
-            state.thumbRY = thumbRY;
+            mixedX = Mathf.clamp(baseThumbRX + gyroThumbRX, -1f, 1f);
+            mixedY = Mathf.clamp(baseThumbRY + gyroThumbRY, -1f, 1f);
         }
         else {
             gyroThumbLX = x;
             gyroThumbLY = y;
-            float thumbLX = Mathf.clamp(baseThumbLX + gyroThumbLX, -1f, 1f);
-            float thumbLY = Mathf.clamp(baseThumbLY + gyroThumbLY, -1f, 1f);
-            if (thumbLX == state.thumbLX && thumbLY == state.thumbLY) return;
-            state.thumbLX = thumbLX;
-            state.thumbLY = thumbLY;
+            mixedX = Mathf.clamp(baseThumbLX + gyroThumbLX, -1f, 1f);
+            mixedY = Mathf.clamp(baseThumbLY + gyroThumbLY, -1f, 1f);
         }
+        if (!state.updateThumbstick(rightStick, mixedX, mixedY)) return;
 
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
         if (winHandler != null) {
             ExternalController controller = winHandler.getCurrentController();
-            if (controller != null) controller.state.copy(state);
+            if (controller != null) controller.state.copyThumbstick(state, rightStick);
             winHandler.sendGamepadState();
             winHandler.sendVirtualGamepadState(state);
         }
@@ -1867,7 +1864,10 @@ public class InputControlsView extends View {
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
         if (winHandler != null) {
             ExternalController controller = winHandler.getCurrentController();
-            if (controller != null) controller.state.copy(state);
+            if (controller != null) {
+                controller.state.copyThumbstick(state, false);
+                controller.state.copyThumbstick(state, true);
+            }
             winHandler.sendGamepadState();
             winHandler.sendVirtualGamepadState(state);
         }

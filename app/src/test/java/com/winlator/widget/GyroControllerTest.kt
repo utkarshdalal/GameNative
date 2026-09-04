@@ -185,6 +185,34 @@ class GyroControllerTest {
     }
 
     @Test
+    fun stickOutput_deduplicatesQuantizedValuesCapsRateAndReleasesImmediately() {
+        val listener = RecordingListener()
+        val controller = controller(listener)
+        val start = 1_000_000_000L
+
+        controller.dispatchStickOutput(0.1f, 0f, true, start)
+        controller.dispatchStickOutput(
+            0.1f + 0.25f / Short.MAX_VALUE,
+            0f,
+            true,
+            start + 5_000_000L,
+        )
+        controller.dispatchStickOutput(0.2f, 0f, true, start + 5_000_000L)
+        controller.dispatchStickOutput(0.2f, 0f, true, start + 10_000_000L)
+        controller.dispatchStickOutput(0f, 0f, true, start + 11_000_000L)
+        controller.dispatchStickOutput(0f, 0f, true, start + 20_000_000L)
+
+        assertEquals(
+            listOf(
+                Triple(0.1f, 0f, true),
+                Triple(0.2f, 0f, true),
+                Triple(0f, 0f, true),
+            ),
+            listener.stickEvents,
+        )
+    }
+
+    @Test
     fun stickSmoothing_decaysBelowAntiDeadzoneAfterMotionStops() {
         val controller = controller()
         controller.setSettings(
