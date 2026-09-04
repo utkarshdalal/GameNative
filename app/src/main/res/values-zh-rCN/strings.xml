@@ -2437,6 +2437,12 @@
     <string name="binding_mode_sequence">顺序</string>
     <string name="binding_sequence_delay_ms">顺序延迟（毫秒）</string>
     <string name="binding_sequence_current_format">%1$s（%2$d 毫秒）</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">启用 Windows VR</string>
+    <string name="immersive_openvr_compatibility_toggle">OpenVR 兼容（实验性）</string>
+    <string name="immersive_windows_vr_restart_required">运行时和兼容性更改将在下次启动时生效。</string>
+    <string name="immersive_windows_vr_export">导出 Windows VR 诊断</string>
+    <string name="immersive_windows_vr_export_desc">保存精简的运行时事件报告</string>
     <string name="xr_windows_vr_toggle">以 VR 应用运行（实验性）</string>
     <string name="xr_windows_vr_toggle_desc">适用于 Beat Saber 等原生 VR 游戏。需要 arm64ec Wine、DXVK 和 D3D11。其他游戏仍使用平面沉浸式屏幕。</string>
     <string name="xr_open_composite_toggle">SteamVR (OpenVR) 兼容</string>

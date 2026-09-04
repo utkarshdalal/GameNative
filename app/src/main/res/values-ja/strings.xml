@@ -2376,6 +2376,12 @@
     <string name="binding_mode_sequence">シーケンス</string>
     <string name="binding_sequence_delay_ms">シーケンス遅延 (ミリ秒)</string>
     <string name="binding_sequence_current_format">%1$s（%2$d ミリ秒）</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">Windows VRを有効化</string>
+    <string name="immersive_openvr_compatibility_toggle">OpenVR互換（試験的）</string>
+    <string name="immersive_windows_vr_restart_required">ランタイムと互換性の変更は次回起動時に反映されます。</string>
+    <string name="immersive_windows_vr_export">Windows VR診断をエクスポート</string>
+    <string name="immersive_windows_vr_export_desc">ランタイムイベントの要約レポートを保存</string>
     <string name="xr_windows_vr_toggle">VRアプリとして実行（試験的）</string>
     <string name="xr_windows_vr_toggle_desc">Beat SaberなどのネイティブVRタイトル向け。arm64ec Wine、DXVK、D3D11が必要です。その他のゲームは平面の没入型画面のままです。</string>
     <string name="xr_open_composite_toggle">SteamVR（OpenVR）互換</string>

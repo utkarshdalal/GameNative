@@ -2417,6 +2417,12 @@
     <string name="binding_mode_sequence">순차</string>
     <string name="binding_sequence_delay_ms">순차 지연 (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">Windows VR 사용</string>
+    <string name="immersive_openvr_compatibility_toggle">OpenVR 호환 (실험적)</string>
+    <string name="immersive_windows_vr_restart_required">런타임 및 호환성 변경은 다음 실행 시 적용됩니다.</string>
+    <string name="immersive_windows_vr_export">Windows VR 진단 내보내기</string>
+    <string name="immersive_windows_vr_export_desc">런타임 이벤트 요약 보고서 저장</string>
     <string name="xr_windows_vr_toggle">VR 앱으로 실행 (실험적)</string>
     <string name="xr_windows_vr_toggle_desc">Beat Saber 같은 네이티브 VR 타이틀용입니다. arm64ec Wine, DXVK, D3D11이 필요합니다. 다른 게임은 평면 몰입형 화면을 유지합니다.</string>
     <string name="xr_open_composite_toggle">SteamVR(OpenVR) 호환</string>

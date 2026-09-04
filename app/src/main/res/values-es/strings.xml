@@ -2421,6 +2421,12 @@
     <string name="binding_mode_sequence">Secuencia</string>
     <string name="binding_sequence_delay_ms">Retraso de secuencia (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">Activar Windows VR</string>
+    <string name="immersive_openvr_compatibility_toggle">Compatibilidad con OpenVR (experimental)</string>
+    <string name="immersive_windows_vr_restart_required">Los cambios de runtime y compatibilidad se aplican en el próximo inicio.</string>
+    <string name="immersive_windows_vr_export">Exportar diagnóstico de Windows VR</string>
+    <string name="immersive_windows_vr_export_desc">Guardar el informe acotado de eventos del runtime</string>
     <string name="xr_windows_vr_toggle">Ejecutar como app de VR (experimental)</string>
     <string name="xr_windows_vr_toggle_desc">Para títulos de VR nativos como Beat Saber. Requiere Wine arm64ec, DXVK y D3D11. Los demás juegos mantienen la pantalla inmersiva plana.</string>
     <string name="xr_open_composite_toggle">Compatibilidad con SteamVR (OpenVR)</string>

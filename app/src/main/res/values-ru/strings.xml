@@ -2357,6 +2357,12 @@ https://gamenative.app
     <string name="binding_mode_sequence">Последовательно</string>
     <string name="binding_sequence_delay_ms">Задержка последовательности (мс)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d мс)</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">Включить Windows VR</string>
+    <string name="immersive_openvr_compatibility_toggle">Совместимость с OpenVR (экспериментально)</string>
+    <string name="immersive_windows_vr_restart_required">Изменения среды выполнения и совместимости вступят в силу при следующем запуске.</string>
+    <string name="immersive_windows_vr_export">Экспорт диагностики Windows VR</string>
+    <string name="immersive_windows_vr_export_desc">Сохранить краткий отчёт о событиях среды выполнения</string>
     <string name="xr_windows_vr_toggle">Запускать как VR-приложение (экспериментально)</string>
     <string name="xr_windows_vr_toggle_desc">Для нативных VR-игр, таких как Beat Saber. Требуются Wine arm64ec, DXVK и D3D11. Остальные игры сохраняют плоский иммерсивный экран.</string>
     <string name="xr_open_composite_toggle">Совместимость со SteamVR (OpenVR)</string>

@@ -2429,6 +2429,12 @@
     <string name="binding_mode_sequence">Sekwencja</string>
     <string name="binding_sequence_delay_ms">Opóźnienie sekwencji (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">Włącz Windows VR</string>
+    <string name="immersive_openvr_compatibility_toggle">Zgodność z OpenVR (eksperymentalne)</string>
+    <string name="immersive_windows_vr_restart_required">Zmiany środowiska i zgodności zostaną zastosowane przy następnym uruchomieniu.</string>
+    <string name="immersive_windows_vr_export">Eksportuj diagnostykę Windows VR</string>
+    <string name="immersive_windows_vr_export_desc">Zapisz ograniczony raport zdarzeń środowiska</string>
     <string name="xr_windows_vr_toggle">Uruchom jako aplikację VR (eksperymentalne)</string>
     <string name="xr_windows_vr_toggle_desc">Dla natywnych tytułów VR, takich jak Beat Saber. Wymaga Wine arm64ec, DXVK i D3D11. Pozostałe gry zachowują płaski ekran immersyjny.</string>
     <string name="xr_open_composite_toggle">Zgodność ze SteamVR (OpenVR)</string>
