@@ -2,6 +2,7 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <cache-path name="cache" path="." />
     <external-cache-path name="external_cache" path="." />
+    <files-path name="screenshots" path="screenshots/" />
     <files-path name="diagnostics" path="imagefs/usr/tmp/" />
     <external-files-path name="debug_reports" path="debug_reports/" />
 </paths>

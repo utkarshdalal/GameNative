@@ -7,6 +7,8 @@ import android.util.Log
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
+import app.gamenative.PrefManager
+import app.gamenative.ui.component.dialog.screenshotComboKeyId
 import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlElement
@@ -39,6 +41,7 @@ class PhysicalControllerHandler(
             winHandler.sendVirtualGamepadState(state)
         }
     },
+    private val onTakeScreenshot: (() -> Unit)? = null,
 ) {
     private data class PhysicalInputSource(val deviceId: Int, val keyCode: Int)
 
@@ -124,6 +127,19 @@ class PhysicalControllerHandler(
         }
     }
 
+    // Currently-held physical keys per input device + screenshot combo state (settings-defined
+    // multi-button shortcut). Scoped by deviceId so keys from two different controllers can't
+    // be combined into a false combo trigger.
+    private val pressedKeyCodesByDevice = mutableMapOf<Int, MutableSet<Int>>()
+    private var screenshotComboFired = false
+    // Cached so the key hot-path never does a blocking DataStore read. Refreshed at construction and
+    // in setProfile() (i.e. whenever the game/profile (re)loads), which covers a binding changed in
+    // Settings before returning to the game. Avoids a runBlocking read on the input dispatch thread.
+    private var screenshotCombo: List<Int> = parseScreenshotCombo()
+
+    private fun parseScreenshotCombo(): List<Int> =
+        PrefManager.screenshotComboKeys.split(",").mapNotNull { it.trim().toIntOrNull() }
+
     fun setProfile(profile: ControlsProfile?) {
         releaseActiveBindings(activeButtonBindings)
         releaseActiveBindings(activeTriggerBindings, fromMotion = true)
@@ -136,6 +152,7 @@ class PhysicalControllerHandler(
         activeSequenceTriggerBindings.clear()
         sendGamepadState()
         this.profile = profile
+        screenshotCombo = parseScreenshotCombo()
         Log.d(TAG, "PhysicalControllerHandler: Profile set to ${profile?.name}")
     }
 
@@ -154,6 +171,21 @@ class PhysicalControllerHandler(
         showKeyboardPressed = false
         closeRadialMenuIfOpen(commit = false)
         sendGamepadState()
+        pressedKeyCodesByDevice.clear()
+        screenshotComboFired = false
+    }
+
+    /**
+     * Clear held-key tracking. Call when key events stop being forwarded to this handler (e.g. an
+     * overlay/menu/editor opens), so a held binding whose ACTION_UP is routed elsewhere can't linger:
+     * a combo key would otherwise falsely satisfy the screenshot combo on a partial press, and a held
+     * SHOW_KEYBOARD binding would leave [showKeyboardPressed] latched so the next press is ignored.
+     */
+    fun resetPressedKeys() {
+        if (pressedKeyCodesByDevice.isEmpty() && !screenshotComboFired && !showKeyboardPressed) return
+        pressedKeyCodesByDevice.clear()
+        screenshotComboFired = false
+        showKeyboardPressed = false
     }
 
     fun onInputDeviceRemoved(deviceId: Int) {
@@ -175,6 +207,19 @@ class PhysicalControllerHandler(
      * Extracted from InputControlsView.onKeyEvent()
      */
     fun onKeyEvent(event: KeyEvent): Boolean {
+        // Track held keys and fire the settings-defined screenshot combo. Additive: does not consume
+        // the event, so the buttons keep their normal game function.
+        if (event.repeatCount == 0) {
+            // Match the bind dialog's id: keyCode, or -scanCode for buttons with no keyCode (paddles).
+            val keyId = screenshotComboKeyId(event.keyCode, event.scanCode)
+            val deviceKeys = pressedKeyCodesByDevice.getOrPut(event.deviceId) { mutableSetOf() }
+            when (event.action) {
+                KeyEvent.ACTION_DOWN -> deviceKeys.add(keyId)
+                KeyEvent.ACTION_UP -> deviceKeys.remove(keyId)
+            }
+            checkScreenshotCombo()
+        }
+
         if (profile != null && event.repeatCount == 0) {
             val keyCode = JoyConSupport.remapKeyCode(event.device, event)
             if (radialMenuPressed && !isRadialMenuOpenerDevice(event.deviceId)) return true
@@ -243,6 +288,25 @@ class PhysicalControllerHandler(
             }
         }
         return false
+    }
+
+    /**
+     * Fires once when every combo key is held. Re-arms as soon as any key lifts, so a combo button the
+     * game holds (e.g. L1) doesn't wedge the shortcut.
+     */
+    private fun checkScreenshotCombo() {
+        val combo = screenshotCombo
+        if (combo.isEmpty()) return
+        // A single device must hold the entire combo; keys from different devices don't combine.
+        val satisfied = pressedKeyCodesByDevice.values.any { it.containsAll(combo) }
+        if (satisfied) {
+            if (!screenshotComboFired) {
+                screenshotComboFired = true
+                onTakeScreenshot?.invoke()
+            }
+        } else {
+            screenshotComboFired = false
+        }
     }
 
     private fun deviceHasTriggerAxis(device: InputDevice?, keyCode: Int): Boolean {

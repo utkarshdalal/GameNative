@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Search
@@ -324,6 +325,7 @@ private fun OptionItem(
 
 private fun getIconForOption(type: AppOptionMenuType): ImageVector {
     return when (type) {
+        AppOptionMenuType.Screenshots -> Icons.Default.PhotoLibrary
         AppOptionMenuType.StorePage -> Icons.AutoMirrored.Filled.OpenInNew
         AppOptionMenuType.CreateShortcut -> Icons.AutoMirrored.Filled.AddToHomeScreen
         AppOptionMenuType.ExportFrontend -> Icons.Default.Share
@@ -372,6 +374,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
     options.forEach { option ->
         when (option.optionType) {
             // Quick Actions
+            AppOptionMenuType.Screenshots,
             AppOptionMenuType.EditContainer,
             AppOptionMenuType.RunContainer,
             AppOptionMenuType.AiDebugRun,

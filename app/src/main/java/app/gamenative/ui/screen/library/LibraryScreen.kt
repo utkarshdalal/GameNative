@@ -331,7 +331,7 @@ private fun LibraryScreenContent(
         }
     }
 
-    var selectedAppId by remember { mutableStateOf<String?>(null) }
+    var selectedAppId by rememberSaveable { mutableStateOf<String?>(null) }
     val carouselListState = rememberLazyListState()
     val isViewWide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var currentPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
@@ -374,6 +374,13 @@ private fun LibraryScreenContent(
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
     val favorites by FavoritesManager.favorites.collectAsStateWithLifecycle()
     val favoritesLoaded by FavoritesManager.loaded.collectAsStateWithLifecycle()
+    // Re-select the detail item after returning from a sub-screen (e.g. the screenshot gallery): the
+    // composable was disposed but selectedAppId survived via rememberSaveable.
+    LaunchedEffect(selectedAppId, state.appInfoList) {
+        if (selectedAppId != null && selectedLibraryItem == null) {
+            selectedLibraryItem = state.appInfoList.find { it.appId == selectedAppId }
+        }
+    }
     val filterFabExpanded by remember(currentPaneType, listState, carouselListState) {
         derivedStateOf {
             if (currentPaneType == PaneType.CAROUSEL) {
@@ -1231,6 +1238,7 @@ private fun LibraryScreenContent(
                         onAiDebugRun(libraryItem.appId)
                     }
                 },
+                onNavigateRoute = onNavigateRoute,
             )
         }
 
