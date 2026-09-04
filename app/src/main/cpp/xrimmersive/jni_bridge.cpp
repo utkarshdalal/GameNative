@@ -21,7 +21,10 @@ struct NativeHandle {
 // Lock ordering: gHandleMutex is the outermost lock — it may be held while calling into
 // XrImmersiveSession (which takes its own inner mutexes), never the other way round, and it is
 // never held across XrImmersiveSession::join() or AndroidBitmap_lockPixels/unlockPixels. Every
-// entry point must hold it for the WHOLE call into the session, not just the lookup.
+// entry point must hold it for the WHOLE call into the session, not just the lookup. The one
+// exception is nativeWaitWindowsFrame, which pins the handle with NativeHandle::waiters instead so
+// the (up to 1 s) wait does not block every other entry point; nativeJoinAndDestroy waits for
+// waiters to drain before freeing the session.
 std::mutex gHandleMutex;
 std::condition_variable gHandleCondition;
 std::unordered_set<NativeHandle *> gLiveHandles;

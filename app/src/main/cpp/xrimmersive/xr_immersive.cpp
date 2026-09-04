@@ -343,6 +343,8 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     if (threadSettingsExtensionAvailable_) extensions.push_back(XR_KHR_ANDROID_THREAD_SETTINGS_EXTENSION_NAME);
     refreshRateExtensionAvailable_ = IsInstanceExtensionSupported(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
     if (refreshRateExtensionAvailable_) extensions.push_back(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
+    localFloorExtensionAvailable_ = IsInstanceExtensionSupported(XR_EXT_LOCAL_FLOOR_EXTENSION_NAME);
+    if (localFloorExtensionAvailable_) extensions.push_back(XR_EXT_LOCAL_FLOOR_EXTENSION_NAME);
     const char *picoControllerExtension = "XR_BD_controller_interaction";
     const bool picoControllerExtensionAvailable = IsInstanceExtensionSupported(picoControllerExtension);
     if (picoControllerExtensionAvailable) extensions.push_back(picoControllerExtension);
@@ -429,8 +431,13 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     XrSessionCreateInfo sessionCreateInfo{XR_TYPE_SESSION_CREATE_INFO};
     sessionCreateInfo.next = &graphicsBinding;
     sessionCreateInfo.systemId = systemId_;
-    if (!XrCheck(xrCreateSession(instance_, &sessionCreateInfo, &session_), "xrCreateSession")) {
+    XrSession createdSession = XR_NULL_HANDLE;
+    if (!XrCheck(xrCreateSession(instance_, &sessionCreateInfo, &createdSession), "xrCreateSession")) {
         return false;
+    }
+    {
+        std::lock_guard<std::mutex> lock(sessionMutex_);
+        session_ = createdSession;
     }
 
     // Perf levels: request BOOST for both CPU and GPU domains — this game is running Box64
@@ -505,11 +512,19 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     windowsTrackingSpace_ = localSpace_;
     spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_STAGE;
     const XrResult stageSpaceResult = xrCreateReferenceSpace(session_, &spaceCreateInfo, &stageSpace_);
-    if (stageSpaceResult == XR_SUCCESS && stageSpace_ != XR_NULL_HANDLE) {
+    if (stageSpaceResult != XR_SUCCESS) stageSpace_ = XR_NULL_HANDLE;
+    if (localFloorExtensionAvailable_) {
+        spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR_EXT;
+        const XrResult floorResult = xrCreateReferenceSpace(session_, &spaceCreateInfo, &localFloorSpace_);
+        if (floorResult != XR_SUCCESS) localFloorSpace_ = XR_NULL_HANDLE;
+    }
+    if (localFloorSpace_ != XR_NULL_HANDLE) {
+        windowsTrackingSpace_ = localFloorSpace_;
+        LOGI("Windows VR tracking space: LOCAL_FLOOR (recenter follows the headset)");
+    } else if (stageSpace_ != XR_NULL_HANDLE) {
         windowsTrackingSpace_ = stageSpace_;
         LOGI("Windows VR tracking space: STAGE");
     } else {
-        stageSpace_ = XR_NULL_HANDLE;
         LOGI("Windows VR tracking space: LOCAL fallback (xrCreateReferenceSpace STAGE=%d)",
              static_cast<int>(stageSpaceResult));
     }
@@ -646,7 +661,12 @@ bool XrImmersiveSession::setupInstanceAndSession() {
     hapticInfo.actionType = XR_ACTION_TYPE_VIBRATION_OUTPUT;
     hapticInfo.countSubactionPaths = 2;
     hapticInfo.subactionPaths = handPaths_;
-    XrCheck(xrCreateAction(actionSet_, &hapticInfo, &hapticAction_), "haptic");
+    XrAction hapticAction = XR_NULL_HANDLE;
+    XrCheck(xrCreateAction(actionSet_, &hapticInfo, &hapticAction), "haptic");
+    {
+        std::lock_guard<std::mutex> lock(sessionMutex_);
+        hapticAction_ = hapticAction;
+    }
 
     std::vector<XrActionSuggestedBinding> bindings = {
         {buttonXAction_, path("/user/hand/left/input/x/click")},
@@ -1097,7 +1117,9 @@ bool XrImmersiveSession::submitWindowsProjection(XrTime predictedDisplayTime) {
                                                        : XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
     endInfo.layerCount = layerCount;
     endInfo.layers = layers.data();
-    XrCheck(xrEndFrame(session_, &endInfo), "xrEndFrame(windows projection)");
+    if (!XrCheck(xrEndFrame(session_, &endInfo), "xrEndFrame(windows projection)")) {
+        stereoActive_.store(false);
+    }
     return true;
 }
 
@@ -1565,6 +1587,10 @@ void XrImmersiveSession::teardown() {
     if (stageSpace_ != XR_NULL_HANDLE) {
         xrDestroySpace(stageSpace_);
         stageSpace_ = XR_NULL_HANDLE;
+    }
+    if (localFloorSpace_ != XR_NULL_HANDLE) {
+        xrDestroySpace(localFloorSpace_);
+        localFloorSpace_ = XR_NULL_HANDLE;
     }
     windowsTrackingSpace_ = XR_NULL_HANDLE;
     if (aimSpaceLeft_ != XR_NULL_HANDLE) {

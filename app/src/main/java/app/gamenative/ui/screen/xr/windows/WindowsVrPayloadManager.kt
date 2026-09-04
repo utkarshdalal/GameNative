@@ -94,7 +94,6 @@ class WindowsVrPayloadManager(
             writeIfChanged(backup, target.readBytes())
             if (ini.isFile) writeIfChanged(iniBackup, ini.readBytes()) else writeIfChanged(iniMissing, byteArrayOf(1))
             writeIfChanged(target, adapter)
-            writeIfChanged(ini, "enableAudio=false\nlogEnabled=true\n".toByteArray())
             diagnostics.record("opencomposite", "installed path=${target.path}")
         }
     }
@@ -203,12 +202,14 @@ class WindowsVrPayloadManager(
             val missing = File(payloadDirectory, "$name.missing")
             val targetRecord = File(payloadDirectory, "$name.target")
             val canonicalTarget = targets.getValue(name).canonicalFile
-            val recorded = targetRecord.takeIf { it.isFile }?.readText()?.trim()
-            if (recorded != null && recorded == canonicalTarget.path) {
-                validateSharedTarget(canonicalTarget)
+            val recorded = targetRecord.takeIf { it.isFile }?.readText()?.trim()?.takeIf { it.isNotEmpty() }?.let(::File)?.canonicalFile
+            val restoreTarget = recorded?.takeIf {
+                it.name == canonicalTarget.name && runCatching { validateSharedTarget(it) }.isSuccess
+            }
+            if (restoreTarget != null) {
                 when {
-                    backup.isFile -> atomicReplace(backup, canonicalTarget)
-                    missing.isFile -> canonicalTarget.delete()
+                    backup.isFile -> atomicReplace(backup, restoreTarget)
+                    missing.isFile -> restoreTarget.delete()
                 }
             } else if (recorded != null) {
                 diagnostics.record("payload", "ignoring unexpected recovery record for $name")

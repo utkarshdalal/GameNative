@@ -45,12 +45,25 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
             diagnostics.record("launch", "Preparing Windows OpenXR payload")
             val prepared = payloadManager.prepare(container)
             if (active.openCompositeEnabled) payloadManager.installOpenComposite(container)
+            if (controlServer == null) {
+                val server = WindowsVrControlServer(active, diagnostics, snapshots)
+                try {
+                    server.start()
+                } catch (e: Exception) {
+                    runCatching { server.close() }
+                    throw e
+                }
+                controlServer = server
+                diagnostics.record("control", "listening on 127.0.0.1:${active.controlPort}")
+            }
             prepared
         } catch (e: Exception) {
             val reason = e.message ?: e.javaClass.simpleName
             diagnostics.record("launch", "Windows VR disabled for this session: $reason")
             Timber.w(e, "Windows VR disabled for this session")
             SnackbarManager.show("VR mode unavailable: $reason")
+            runCatching { controlServer?.close() }
+            controlServer = null
             runCatching { payloadManager.restore() }
             config = active.copy(enabled = false)
             return
@@ -91,21 +104,10 @@ class WindowsVrRuntimeService(context: Context) : Closeable {
 
     fun beforeGuestProcessStart() {
         val active = config ?: return
-        if (!active.enabled || controlServer != null) return
-        val server = WindowsVrControlServer(active, diagnostics, snapshots)
-        try {
-            server.start()
-        } catch (e: Exception) {
-            runCatching { server.close() }
-            val reason = e.message ?: e.javaClass.simpleName
-            diagnostics.record("control", "Windows VR disabled for this session: $reason")
-            Timber.w(e, "Windows VR control server failed to start")
-            SnackbarManager.show("VR mode unavailable: $reason")
+        if (active.enabled && controlServer == null) {
+            diagnostics.record("control", "control server missing at guest start; disabling Windows VR")
             config = active.copy(enabled = false)
-            return
         }
-        controlServer = server
-        diagnostics.record("control", "listening on 127.0.0.1:${active.controlPort}")
     }
 
     fun onEnvironmentStarted() {

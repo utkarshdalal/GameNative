@@ -226,6 +226,8 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
     private var quadScale by mutableFloatStateOf(ImmersiveControls.DEFAULT_SCALE)
     private var passthroughEnabled by mutableStateOf(false)
     private var windowsVrEnabled by mutableStateOf(false)
+    @Volatile
+    private var immersiveSettingsLoaded = false
     private var openCompositeEnabled by mutableStateOf(false)
     private var windowsVrStatus by mutableStateOf("Waiting for runtime")
     private var showControlsOnboarding by mutableStateOf(false)
@@ -294,9 +296,13 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                     },
                     onGameLaunchError = { error ->
                         viewModel.onGameLaunchError(error)
-                        val vrEnabled = (cachedContainer ?: runCatching { ContainerUtils.getContainer(this@ImmersiveXrActivity, appId) }.getOrNull())
-                            ?.let { app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeConfig.from(it).enabled }
-                            ?: windowsVrEnabled
+                        val vrEnabled = if (immersiveSettingsLoaded) {
+                            windowsVrEnabled
+                        } else {
+                            (cachedContainer ?: runCatching { ContainerUtils.getContainer(this@ImmersiveXrActivity, appId) }.getOrNull())
+                                ?.let { app.gamenative.ui.screen.xr.windows.WindowsVrRuntimeConfig.from(it).enabled }
+                                ?: windowsVrEnabled
+                        }
                         if (vrEnabled) {
                             runOnUiThread { windowsVrStatus = "Guest stopped: $error" }
                             windowsVrRuntimeService?.onGuestProcessError(error)
@@ -413,6 +419,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
             windowsVrEnabled = container.getExtra(EXTRA_WINDOWS_VR_ENABLED, "false").toBoolean()
             openCompositeEnabled = container.getExtra(EXTRA_WINDOWS_VR_OPEN_COMPOSITE, "false").toBoolean()
             windowsVrStatus = if (windowsVrEnabled) "Waiting for runtime" else "Disabled"
+            immersiveSettingsLoaded = true
             applyQuadTransform()
             if (xrSessionHandle != 0L) {
                 XrNative.nativeSetPassthroughEnabled(xrSessionHandle, passthroughEnabled)

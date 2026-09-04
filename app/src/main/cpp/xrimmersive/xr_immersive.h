@@ -172,6 +172,8 @@ private:
     std::mutex sessionMutex_;
     XrSpace localSpace_ = XR_NULL_HANDLE;
     XrSpace stageSpace_ = XR_NULL_HANDLE;
+    XrSpace localFloorSpace_ = XR_NULL_HANDLE;
+    bool localFloorExtensionAvailable_ = false;
     XrSpace windowsTrackingSpace_ = XR_NULL_HANDLE;
     XrSwapchain swapchain_ = XR_NULL_HANDLE;
     XrSessionState sessionState_ = XR_SESSION_STATE_UNKNOWN;
