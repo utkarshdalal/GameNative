@@ -586,6 +586,7 @@ fun QuickMenu(
     val powerItemFocusRequester = remember { FocusRequester() }
     val immersiveScrollState = rememberScrollState()
     val immersiveTabFocusRequester = remember { FocusRequester() }
+    val exitFocusRequester = remember { FocusRequester() }
     val immersiveItemFocusRequester = remember { FocusRequester() }
 
     val visibleState = remember { MutableTransitionState(false) }
@@ -617,6 +618,9 @@ fun QuickMenu(
     }
 
     LaunchedEffect(Unit) {
+        immersiveHooks?.registerFocusExit?.invoke {
+            runCatching { exitFocusRequester.requestFocus() }
+        }
         immersiveHooks?.registerFocusTabRail?.invoke {
             val requester = when (selectedTab) {
                 QuickMenuTab.HUD -> hudTabFocusRequester
@@ -908,6 +912,7 @@ fun QuickMenu(
                                     }
                                 },
                                 modifier = Modifier.width(56.dp),
+                                focusRequester = exitFocusRequester,
                             )
                         }
 
@@ -2047,6 +2052,9 @@ private fun QuickMenuRailActionButton(
     // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
     val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
+    LaunchedEffect(isFocused) {
+        inputBypass.reportActivate(interactionSource, if (isFocused) onClick else null)
+    }
     val accentColor = if (item.accentColor != Color.Unspecified) {
         item.accentColor
     } else {

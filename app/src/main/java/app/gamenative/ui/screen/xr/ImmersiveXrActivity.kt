@@ -131,6 +131,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
 
     @Volatile
     private var quickMenuFocusTabRail: (() -> Unit)? = null
+    private var quickMenuFocusExit: (() -> Unit)? = null
 
     @Volatile
     private var quickMenuFocusedActivate: (() -> (() -> Unit)?)? = null
@@ -326,6 +327,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                     registerCycleTab = { cycle -> quickMenuCycleTab = cycle },
                     registerAdjustmentControl = { control -> quickMenuAdjustmentControl = control },
                     registerFocusTabRail = { action -> quickMenuFocusTabRail = action },
+                    registerFocusExit = { action -> quickMenuFocusExit = action },
                     registerFocusedActivate = { getter -> quickMenuFocusedActivate = getter },
                     controls = ImmersiveControls(
                         passthroughEnabled = passthroughEnabled,
@@ -1086,6 +1088,9 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         runOnUiThread {
             val moved = quickMenuFocusManager?.moveFocus(direction)
             Timber.i("Immersive: moveFocus direction=%s focusManagerPresent=%b result=%s", direction, quickMenuFocusManager != null, moved)
+            if (moved == false && direction == androidx.compose.ui.focus.FocusDirection.Down) {
+                quickMenuFocusExit?.invoke()
+            }
         }
     }
 

@@ -19,6 +19,7 @@ class ImmersiveSessionHooks(
     val registerCycleTab: (((Boolean) -> Unit) -> Unit)? = null,
     val registerAdjustmentControl: ((() -> Pair<() -> Unit, () -> Unit>?) -> Unit)? = null,
     val registerFocusTabRail: ((() -> Unit) -> Unit)? = null,
+    val registerFocusExit: ((() -> Unit) -> Unit)? = null,
     val registerFocusedActivate: ((() -> (() -> Unit)?) -> Unit)? = null,
     val registerToggle: ((() -> Unit) -> Unit)? = null,
     val registerStartHeld: (((Boolean) -> Unit) -> Unit)? = null,

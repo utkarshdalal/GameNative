@@ -236,7 +236,16 @@ class WindowsVrControlServer(
             "${inputFields[field]}=${(snapshot.input[base + field] * 1_000_000f).toLong()}"
         }
         val active = (snapshot.flags[2] shr hand) and 1
-        return "OK active=$active buttons=${snapshot.flags[1]} $rawValues $namedValues"
+        return "OK active=$active buttons=${handButtons(snapshot.flags[1], hand)} $rawValues $namedValues"
+    }
+
+    private fun handButtons(buttons: Int, hand: Int): Int {
+        val sourceBits = if (hand == 0) intArrayOf(2, 3, 8, 7) else intArrayOf(0, 1, 9, -1)
+        var packed = 0
+        sourceBits.forEachIndexed { index, bit ->
+            if (bit >= 0 && buttons and (1 shl bit) != 0) packed = packed or (1 shl index)
+        }
+        return packed
     }
 
     private fun haptic(tokens: List<String>): String {
