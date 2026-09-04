@@ -615,6 +615,7 @@ static int gn_eye_views_valid = 0;
 static XrPosef gn_local_origin;
 static int gn_local_origin_valid = 0;
 static long long gn_last_recenter_serial = -1;
+static int gn_recenter_serial_supported = 0;
 static XrPosef gn_last_head_pose;
 static XrTime gn_last_head_time = 0;
 static float gn_head_linear_velocity[3];
@@ -1640,6 +1641,7 @@ static XrResult XRAPI_CALL gn_xrCreateInstance(const XrInstanceCreateInfo* creat
     gn_exit_requested = 0;
     gn_local_origin_valid = 0;
     gn_last_recenter_serial = -1;
+    gn_recenter_serial_supported = 0;
     gn_vk_instance = NULL;
     gn_vk_physical_device = NULL;
     gn_vk_device = NULL;
@@ -2351,6 +2353,7 @@ static XrResult XRAPI_CALL gn_xrWaitFrame(XrSession session, const XrFrameWaitIn
 
         long long recenter_serial = gn_parse_i64(response, "recenter", -1);
         if (recenter_serial >= 0) {
+            gn_recenter_serial_supported = 1;
             if (gn_last_recenter_serial >= 0 && recenter_serial != gn_last_recenter_serial) {
                 gn_reference_space_event_pending = 1;
                 gn_local_origin_valid = 0;
@@ -2590,7 +2593,7 @@ static XrResult XRAPI_CALL gn_xrLocateViews(
                 &gn_last_head_time,
                 gn_head_linear_velocity,
                 gn_head_angular_velocity,
-                1);
+                gn_recenter_serial_supported ? 0 : 1);
         }
     }
 

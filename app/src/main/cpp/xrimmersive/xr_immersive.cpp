@@ -528,11 +528,14 @@ bool XrImmersiveSession::setupInstanceAndSession() {
         const XrResult floorResult = xrCreateReferenceSpace(session_, &spaceCreateInfo, &localFloorSpace_);
         if (floorResult != XR_SUCCESS) localFloorSpace_ = XR_NULL_HANDLE;
     }
+    windowsTrackingSpaceType_ = XR_REFERENCE_SPACE_TYPE_LOCAL;
     if (localFloorSpace_ != XR_NULL_HANDLE) {
         windowsTrackingSpace_ = localFloorSpace_;
+        windowsTrackingSpaceType_ = XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR_EXT;
         LOGI("Windows VR tracking space: LOCAL_FLOOR (recenter follows the headset)");
     } else if (stageSpace_ != XR_NULL_HANDLE) {
         windowsTrackingSpace_ = stageSpace_;
+        windowsTrackingSpaceType_ = XR_REFERENCE_SPACE_TYPE_STAGE;
         LOGI("Windows VR tracking space: STAGE");
     } else {
         LOGI("Windows VR tracking space: LOCAL fallback (xrCreateReferenceSpace STAGE=%d)",
@@ -795,9 +798,10 @@ void XrImmersiveSession::pollXrEvents() {
             }
         } else if (event.type == XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING) {
             const auto *change = reinterpret_cast<const XrEventDataReferenceSpaceChangePending *>(&event);
-            const uint32_t serial = recenterSerial_.fetch_add(1) + 1;
-            LOGI("OpenXR reference space change: type=%d poseValid=%d serial=%u",
-                 static_cast<int>(change->referenceSpaceType), change->poseValid ? 1 : 0, serial);
+            const bool tracked = change->referenceSpaceType == windowsTrackingSpaceType_ && change->poseValid;
+            const uint32_t serial = tracked ? recenterSerial_.fetch_add(1) + 1 : recenterSerial_.load();
+            LOGI("OpenXR reference space change: type=%d poseValid=%d counted=%d serial=%u",
+                 static_cast<int>(change->referenceSpaceType), change->poseValid ? 1 : 0, tracked ? 1 : 0, serial);
         } else if (event.type == XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED) {
             auto logProfile = [this](const char *hand, XrPath handPath) {
                 XrInteractionProfileState profileState{XR_TYPE_INTERACTION_PROFILE_STATE};

@@ -72,7 +72,7 @@ class WindowsVrPayloadManager(
             .toList()
         check(candidates.size <= 20000) { "OpenComposite scan exceeded 20000 files" }
         val targets = candidates.filter { it.isFile && it.name.equals("openvr_api.dll", ignoreCase = true) }
-            .filter { runCatching { peMachine(it.readBytes()) == 0x8664 }.getOrDefault(false) }
+            .filter { runCatching { peMachineOf(it) == 0x8664 }.getOrDefault(false) }
         check(targets.isNotEmpty()) { "No x64 openvr_api.dll was found under the launched game" }
         val adapter = context.assets.open("opencomposite_x64.dll").use { it.readBytes() }
         val record = File(File(container.rootDir, ".wine/drive_c/gamenative-xr"), "opencomposite.targets")
@@ -314,6 +314,24 @@ class WindowsVrPayloadManager(
 
     private fun sha256(bytes: ByteArray): String {
         return MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+    }
+
+    private fun peMachineOf(file: File): Int {
+        java.io.RandomAccessFile(file, "r").use { input ->
+            val header = ByteArray(0x40)
+            input.readFully(header)
+            check(header[0] == 'M'.code.toByte() && header[1] == 'Z'.code.toByte())
+            val offset = (header[0x3c].toInt() and 0xff) or
+                ((header[0x3d].toInt() and 0xff) shl 8) or
+                ((header[0x3e].toInt() and 0xff) shl 16) or
+                ((header[0x3f].toInt() and 0xff) shl 24)
+            check(offset >= 0x40 && offset.toLong() + 6 <= input.length())
+            input.seek(offset.toLong())
+            val pe = ByteArray(6)
+            input.readFully(pe)
+            check(pe[0] == 'P'.code.toByte() && pe[1] == 'E'.code.toByte() && pe[2] == 0.toByte() && pe[3] == 0.toByte())
+            return (pe[4].toInt() and 0xff) or ((pe[5].toInt() and 0xff) shl 8)
+        }
     }
 
     private fun peMachine(bytes: ByteArray): Int {

@@ -174,6 +174,7 @@ private:
     XrSpace localSpace_ = XR_NULL_HANDLE;
     XrSpace stageSpace_ = XR_NULL_HANDLE;
     XrSpace localFloorSpace_ = XR_NULL_HANDLE;
+    XrReferenceSpaceType windowsTrackingSpaceType_ = XR_REFERENCE_SPACE_TYPE_LOCAL;
     bool localFloorExtensionAvailable_ = false;
     XrSpace windowsTrackingSpace_ = XR_NULL_HANDLE;
     XrSwapchain swapchain_ = XR_NULL_HANDLE;
