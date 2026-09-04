@@ -1,0 +1,46 @@
+name: LSFG renderer pacing recovery
+
+on:
+  push:
+    branches:
+      - fix/restore-lsfg-regression-fixes-20260904
+    paths:
+      - .github/workflows/lsfg-renderer-pacing-one-shot.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/restore-lsfg-regression-fixes-20260904
+          fetch-depth: 0
+
+      - name: Restore renderer readiness gate call site
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt')
+          text = path.read_text()
+          old = '        xServerView?.setFrameRateLimit(if (lsfgActive) 0 else limit)'
+          new = '        xServerView?.transitionLsfgFramePacing(lsfgActive, limit)'
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'expected exactly one renderer pacing call, found {count}')
+          path.write_text(text.replace(old, new, 1))
+          Path('.github/workflows/lsfg-renderer-pacing-one-shot.yml').unlink()
+          PY
+          git diff --check
+          grep -Fq 'xServerView?.transitionLsfgFramePacing(lsfgActive, limit)' app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt
+          ! grep -Fq 'xServerView?.setFrameRateLimit(if (lsfgActive) 0 else limit)' app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt
+
+      - name: Commit recovered renderer handoff
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app/src/main/java/app/gamenative/ui/screen/xserver/XServerScreen.kt .github/workflows/lsfg-renderer-pacing-one-shot.yml
+          git commit -m 'fix(lsfg): gate renderer pacing on native readiness'
+          git push origin HEAD:fix/restore-lsfg-regression-fixes-20260904
