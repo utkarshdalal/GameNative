@@ -40,6 +40,7 @@ import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
+import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.screen.library.components.toggleFavorite
@@ -659,6 +660,15 @@ abstract class BaseAppScreen {
 
     protected open fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean = false
 
+    protected open val supportsAchievements: Boolean = false
+
+    /** Null when the fetch failed, so the caller can retry. Empty means the game has none. */
+    protected open suspend fun fetchAchievements(libraryItem: LibraryItem): List<Achievement>? = null
+
+    /** Changes once the storefront can answer, retrying a fetch that ran too early. */
+    @Composable
+    protected open fun achievementsReadyKey(): Any = Unit
+
     protected open suspend fun exportSaves(
         context: Context,
         libraryItem: LibraryItem,
@@ -1237,6 +1247,9 @@ abstract class BaseAppScreen {
         var hasLeftoverInstallState by remember(libraryItem.appId) {
             mutableStateOf(hasLeftoverInstall(context, libraryItem))
         }
+        var achievementsState by remember(libraryItem.appId) {
+            mutableStateOf<List<Achievement>?>(null)
+        }
 
         // Immersive/VR launch mode is only offered on the modernXr build running on Meta Quest.
         val isImmersiveModeSupported = remember(libraryItem.appId) {
@@ -1288,6 +1301,27 @@ abstract class BaseAppScreen {
 
         LaunchedEffect(libraryItem.appId) {
             performStateRefresh(true)
+        }
+
+        val achievementsReadyKey = achievementsReadyKey()
+        LaunchedEffect(libraryItem.appId, achievementsReadyKey) {
+            if (!supportsAchievements) return@LaunchedEffect
+            // Retry so a transient error doesn't silently drop the section.
+            repeat(3) { attempt ->
+                val result = try {
+                    fetchAchievements(libraryItem)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to fetch achievements for ${getGameId(libraryItem)}")
+                    null
+                }
+                if (result != null) {
+                    achievementsState = result
+                    return@LaunchedEffect
+                }
+                if (attempt < 2) delay(2000)
+            }
         }
 
         var showConfigDialog by androidx.compose.runtime.remember {
@@ -1559,13 +1593,15 @@ abstract class BaseAppScreen {
         // Render the common UI
         app.gamenative.ui.screen.library.AppScreenContent(
             displayInfo = displayInfo,
-            isInstalled = isInstalledState,
-            isValidToDownload = isValidToDownloadState,
-            isDownloading = isDownloadingState,
-            downloadProgress = downloadProgressState,
-            hasPartialDownload = hasPartialDownloadState,
-            hasLeftoverInstall = hasLeftoverInstallState,
-            isUpdatePending = isUpdatePendingState,
+            downloadDisplayDetails = app.gamenative.ui.data.DownloadDisplayDetails(
+                isInstalled = isInstalledState,
+                isValidToDownload = isValidToDownloadState,
+                isDownloading = isDownloadingState,
+                downloadProgress = downloadProgressState,
+                hasPartialDownload = hasPartialDownloadState,
+                hasLeftoverInstall = hasLeftoverInstallState,
+                isUpdatePending = isUpdatePendingState,
+            ),
             downloadInfo = downloadInfo,
             immersiveMode = app.gamenative.ui.screen.library.ImmersiveModeUiState(
                 isSupported = isImmersiveModeSupported && isImmersiveModeEnabledState != null,
@@ -1600,6 +1636,7 @@ abstract class BaseAppScreen {
                 }
             },
             onBack = onBack,
+            achievements = achievementsState,
             optionsMenu = optionsMenu,
             dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested,
         )

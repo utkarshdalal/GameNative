@@ -1391,14 +1391,23 @@ fun PluviaMain(
             }
 
             val shareDebugLog: () -> Unit = {
-                val logFile = DebugReportUtils.logFile(File(debugReportState.reportDir))
-                if (logFile.exists()) {
-                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", logFile)
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "application/gzip"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                val reportDir = File(debugReportState.reportDir)
+                val files = listOf(DebugReportUtils.logFile(reportDir), DebugReportUtils.perfFile(reportDir))
+                    .filter { it.exists() }
+                if (files.isNotEmpty()) {
+                    val uris = files.map { FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", it) }
+                    val intent = if (uris.size == 1) {
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = if (files.single().name.endsWith(".gz")) "application/gzip" else "application/json"
+                            putExtra(Intent.EXTRA_STREAM, uris.single())
+                        }
+                    } else {
+                        Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                            type = "*/*"
+                            putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                        }
                     }
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     context.startActivity(
                         Intent.createChooser(intent, context.getString(R.string.debug_report_share_log_title)),
                     )
@@ -1423,7 +1432,8 @@ fun PluviaMain(
                         debugReportState = debugReportState.copy(phase = DebugReportDialogState.PHASE_ERROR)
                         return@launch
                     }
-                    when (val result = DebugReportApi.submit(header, logFile, PrefManager.discordRelayToken)) {
+                    val perfFile = DebugReportUtils.perfFile(dir)
+                    when (val result = DebugReportApi.submit(header, logFile, PrefManager.discordRelayToken, perfFile)) {
                         is DebugReportApi.SubmitResult.Success -> {
                             withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(dir) }
                             debugReportState = debugReportState.copy(

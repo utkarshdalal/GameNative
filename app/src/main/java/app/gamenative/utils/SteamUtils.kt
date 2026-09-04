@@ -145,6 +145,32 @@ object SteamUtils {
         }
     }
 
+    fun getBaseAchievementIconUrl(appId: Int): String = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$appId/"
+
+    /**
+     * Steam achievement-schema language name for the app's current UI locale. Steam's names are the
+     * lowercase English name of the language (german, french, ukrainian, romanian, …) apart from a
+     * few proprietary ones, so we special-case those and derive the rest. A name the schema doesn't
+     * carry falls back to English per-achievement when it is read.
+     */
+    fun steamLanguageForAppLocale(locale: Locale = Locale.getDefault()): String {
+        return when (locale.language) {
+            "ko" -> "koreana"
+            // Steam splits Spanish into Castilian ("spanish") and Latin American ("latam").
+            "es" -> if (locale.country.isNotEmpty() && !locale.country.equals("ES", true)) "latam" else "spanish"
+            "pt" -> if (locale.country.equals("BR", true)) "brazilian" else "portuguese"
+            "zh" -> if (locale.country.equals("TW", true) || locale.country.equals("HK", true) ||
+                locale.country.equals("MO", true) || locale.script.equals("Hant", true)
+            ) {
+                "tchinese"
+            } else {
+                "schinese"
+            }
+            // substringBefore drops variant suffixes like "Norwegian Bokmål" -> "norwegian".
+            else -> locale.getDisplayLanguage(Locale.ENGLISH).lowercase(Locale.ENGLISH).substringBefore(' ')
+        }
+    }
+
     internal val http = Net.http.newBuilder()
         .readTimeout(5, TimeUnit.MINUTES)
         .callTimeout(0, TimeUnit.MILLISECONDS)

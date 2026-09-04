@@ -130,6 +130,13 @@
     <string name="steam_collections_offline">Showing last synced collections. Connect to update.</string>
     <string name="steam_collections_clear">Clear</string>
     <string name="steam_collections_smart_unsupported">Only standard collections are shown. Smart collections aren\'t supported yet.</string>
+
+    <string name="curated_lists_title">Steam curated lists</string>
+    <string name="curated_lists_loading">Loading curated lists…</string>
+    <string name="curated_lists_offline">Using the saved list. Connect to update.</string>
+    <string name="curated_lists_clear">Clear</string>
+    <string name="curated_lists_empty">No curated lists available right now.</string>
+    <string name="curated_list_4_3_name">Does it 4:3?</string>
     <string name="default_user_name">User</string>
 
     <!-- Custom Games -->
@@ -1786,7 +1793,7 @@
     <string name="debug_offer_message">That session ended early. Run %1$s once more with debug logging and our AI will read the log and tell you what to change.</string>
     <string name="debug_offer_confirm">Start debug run</string>
     <string name="debug_prerun_title">Get AI help</string>
-    <string name="debug_prerun_message_1">Runs the game with debug logging and shares the log with our AI on Discord when you quit.</string>
+    <string name="debug_prerun_message_1">Runs the game with debug logging and shares the log with our AI on Discord when you quit. Run the game until you experience the issue.</string>
     <string name="debug_prerun_message_2">AI replies are for subscribers only.</string>
     <string name="debug_prerun_message_3">Anyone can share the report for human help.</string>
     <string name="diagnostics_share_title">Share diagnostics log</string>
@@ -2371,6 +2378,22 @@
     <string name="nexus_invalid_source_metadata">This managed mod has incomplete source information and cannot be retried.</string>
     <string name="nexus_archive_memory_error">Archive needs more memory than Android allows. Retry after updating GameNative or choose a smaller file.</string>
 
+    <!-- Steam achievements -->
+    <string name="achievements">Achievements</string>
+    <string name="achievements_all_title">All Achievements</string>
+    <string name="achievements_unlocked_at">Unlocked on %1$s at %2$s</string>
+    <string name="achievements_complete">All achievements unlocked</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">%1$d hidden achievement remaining</item>
+        <item quantity="other">%1$d hidden achievements remaining</item>
+    </plurals>
+    <string name="achievements_hidden_subtitle">The details of each achievement will be revealed once unlocked</string>
+    <string name="achievements_reveal_title">Reveal hidden achievements?</string>
+    <string name="achievements_reveal_message">This shows the remaining secret achievements and their details for now. It is not remembered.</string>
+    <string name="achievements_reveal_confirm">Reveal</string>
+    <string name="achievements_locked">Locked</string>
+
     <!-- Power Control -->
     <string name="power_control">Power Control</string>
     <string name="power_control_info">Control CPU frequency scaling and governor settings. Requires PServer service.</string>
@@ -2416,4 +2439,43 @@
     <string name="binding_mode_sequence">Sequence</string>
     <string name="binding_sequence_delay_ms">Sequence delay (ms)</string>
     <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="gyro_aiming">Gyro aiming</string>
+    <string name="gyro_settings_title">Gyro settings</string>
+    <string name="gyro_section_output">Output and motion</string>
+    <string name="gyro_section_activation">Activation</string>
+    <string name="gyro_section_response">Response</string>
+    <string name="gyro_output">Output</string>
+    <string name="gyro_output_subtitle">Choose what device motion controls.</string>
+    <string name="gyro_tilt_steering">Tilt steering</string>
+    <string name="gyro_tilt_steering_subtitle">Hold the device at an angle to sustain horizontal stick input. The current position is centered whenever gyro activates.</string>
+    <string name="gyro_tilt_unavailable">This device does not provide the orientation sensor required for tilt steering.</string>
+    <string name="gyro_activation">Activation</string>
+    <string name="gyro_activation_help">Hold, Toggle, and Ratchet use a control assigned to Gyro.</string>
+    <string name="gyro_activation_always">Always</string>
+    <string name="gyro_activation_hold">Hold</string>
+    <string name="gyro_activation_toggle">Toggle</string>
+    <string name="gyro_activation_ratchet">Ratchet</string>
+    <string name="gyro_control_not_assigned">Gyro: Not assigned</string>
+    <string name="gyro_assign_in_controls_editor">Assign in controls editor</string>
+    <string name="gyro_sensitivity">Sensitivity</string>
+    <string name="gyro_sensitivity_subtitle">Controls how strongly device rotation affects the selected output.</string>
+    <string name="gyro_tilt_full_scale">Full steering angle</string>
+    <string name="gyro_tilt_full_scale_subtitle">Device tilt from center required to reach full left or right stick input.</string>
+    <string name="gyro_tilt_deadzone">Tilt deadzone</string>
+    <string name="gyro_tilt_deadzone_subtitle">Ignores small tilts around the centered position.</string>
+    <string name="gyro_vertical_scale">Vertical sensitivity</string>
+    <string name="gyro_vertical_scale_subtitle">Adjusts vertical movement relative to horizontal movement.</string>
+    <string name="gyro_steadying">Steadying threshold</string>
+    <string name="gyro_steadying_subtitle">Ignores very small unintentional motion before applying sensitivity.</string>
+    <string name="gyro_smoothing">Smoothing</string>
+    <string name="gyro_smoothing_subtitle">Reduces sensor jitter at the cost of some aiming latency.</string>
+    <string name="gyro_stick_anti_deadzone">Stick anti-deadzone</string>
+    <string name="gyro_stick_anti_deadzone_subtitle">Compensates for the game’s inner stick deadzone.</string>
+    <string name="gyro_invert_horizontal">Invert horizontal gyro</string>
+    <string name="gyro_invert_vertical">Invert vertical gyro</string>
+    <string name="gyro_percent_value">%1$d%%</string>
+    <string name="gyro_degrees_value">%1$d°</string>
+    <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
+    <string name="gyro_milliseconds_value">%1$d ms</string>
+    <string name="reset_gyro_settings">Reset gyro settings</string>
 </resources>

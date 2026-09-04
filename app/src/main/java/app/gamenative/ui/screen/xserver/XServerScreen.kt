@@ -93,6 +93,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.SteamBootstrap
 import app.gamenative.data.GameSource
+import app.gamenative.data.GyroSettings
 import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.gamefixes.GameInputCompatibility
 import app.gamenative.data.LaunchInfo
@@ -131,6 +132,7 @@ import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
+import app.gamenative.utils.PerfSampler
 import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
 import app.gamenative.utils.downloader.DXWrapperDownloader
 import app.gamenative.utils.downloader.GraphicsDriverDownloader
@@ -390,6 +392,13 @@ private fun buildEssentialProcessAllowlist(): Set<String> {
     return (essentialServices + CORE_WINE_PROCESSES).toSet()
 }
 
+@Composable
+private fun SyncGyroOverlaySuppression(suppressed: Boolean, viewKey: XServerRendererView?) {
+    LaunchedEffect(suppressed, viewKey) {
+        PluviaApp.inputControlsView?.setGyroOverlaySuppressed(suppressed)
+    }
+}
+
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
 
 @Composable
@@ -600,6 +609,14 @@ fun XServerScreen(
     var detectedMaxRefreshRateHz by remember { mutableIntStateOf(detectMaxRefreshRateHz(context, null)) }
     var fpsLimiterEnabled by rememberSaveable(container.id) { mutableStateOf(initialFpsLimiterEnabled(container)) }
     var fpsLimiterTarget by rememberSaveable(container.id) { mutableIntStateOf(initialFpsLimiterTarget(container)) }
+
+    val gyroOverlaySuppressed = showQuickMenu || keepPausedForEditor || showElementEditor ||
+        showPhysicalControllerDialog || showTouchGestureDialog || showShooterModeDialog ||
+        showPlayingBlockedDialog || isEditMode
+    SyncGyroOverlaySuppression(
+        suppressed = gyroOverlaySuppressed,
+        viewKey = xServerView,
+    )
 
     // LSFG tab in QuickMenu only visible when enabled in container settings
     val isLsfgAvailable = LsfgQuickMenuHelper.isAvailable(container)
@@ -876,6 +893,7 @@ fun XServerScreen(
 
     fun clearOverlayPauseState() {
         PluviaApp.isOverlayPaused = false
+        PluviaApp.inputControlsView?.setGyroGameplayActive(true)
     }
 
     fun pauseForOverlayIfAllowed() {
@@ -885,6 +903,7 @@ fun XServerScreen(
         }
         PluviaApp.xEnvironment?.onPause()
         PluviaApp.isOverlayPaused = true
+        PluviaApp.inputControlsView?.setGyroGameplayActive(false)
     }
 
     fun resumeIfAllowedAfterOverlay() {
@@ -1470,6 +1489,7 @@ fun XServerScreen(
             }
 
             override fun onInputDeviceRemoved(deviceId: Int) {
+                physicalControllerHandler?.onInputDeviceRemoved(deviceId)
                 ControllerManager.getInstance().onDeviceDisconnected(deviceId)
                 scanForExternalDevices()
             }
@@ -1736,16 +1756,24 @@ fun XServerScreen(
             onDispose { }
         } else {
             fun syncRendererToCurrentLifecycleState() {
+                val lifecycleState = lifecycleOwner.lifecycle.currentState
+                if (lifecycleState == Lifecycle.State.DESTROYED) {
+                    PluviaApp.inputControlsView?.setGyroForeground(false)
+                }
                 if (!currentXServerViewAsView.isAttachedToWindow) return
 
                 when {
-                    lifecycleOwner.lifecycle.currentState == Lifecycle.State.DESTROYED -> Unit
-                    lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) -> {
+                    lifecycleState == Lifecycle.State.DESTROYED -> {
+                        currentXServerView.onPause()
+                    }
+                    lifecycleState.isAtLeast(Lifecycle.State.RESUMED) -> {
                         Timber.d("Synchronizing XServerView renderer to current resumed lifecycle state")
+                        PluviaApp.inputControlsView?.setGyroForeground(true)
                         currentXServerView.onResume()
                     }
                     else -> {
                         Timber.d("Synchronizing XServerView renderer to current paused lifecycle state")
+                        PluviaApp.inputControlsView?.setGyroForeground(false)
                         currentXServerView.onPause()
                     }
                 }
@@ -2328,6 +2356,21 @@ fun XServerScreen(
                             // Autostart performance driver after environment is set up
                             PowerManager.autoStart(container.rootDir)
 
+                            if (debugRun) {
+                                PerfSampler.start(
+                                    context,
+                                    fpsProvider = {
+                                        val raw = frameRating?.currentFPS ?: 0f
+                                        if (isLsfgAvailable && lsfgMultiplier >= 2) {
+                                            LsfgVkManager.readMeasuredFps(container) ?: raw
+                                        } else {
+                                            raw
+                                        }
+                                    },
+                                    drives = container.drives,
+                                )
+                            }
+
                             // Pin game process to performance cores (CPUs 4-7)
                             container.executablePath
                                 .substringAfterLast('/')
@@ -2436,6 +2479,8 @@ fun XServerScreen(
                 // Configure InputControlsView
                 setXServer(xServerView.getxServer())
                 setTouchpadView(PluviaApp.touchpadView)
+                setGyroSettings(GyroSettings.fromContainer(container))
+                setGyroOverlaySuppressed(gyroOverlaySuppressed)
 
                 // Load profile for this container
                 val manager = PluviaApp.inputControlsManager
@@ -2486,6 +2531,12 @@ fun XServerScreen(
                             { isDown, commit -> coordinator.onRadialMenuButtonStateChanged(isDown, commit) }
                         },
                         onRadialMenuVectorChanged = radialMenuCoordinator?.let { it::onRadialMenuVectorChanged },
+                        onGyroModifierChanged = { source, pressed ->
+                            setGyroModifierPressed(source, pressed)
+                        },
+                        gyroStickMixer = { binding, isDown, offset, sourceKeyCode ->
+                            updatePhysicalStickAndGetMixedValue(binding, isDown, offset, sourceKeyCode)
+                        },
                     )
                     radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)
 
@@ -2671,6 +2722,7 @@ fun XServerScreen(
             }
         },
         onRelease = { view ->
+            PluviaApp.inputControlsView?.setGyroForeground(false)
             gameRoot = null
             removePerformanceHud()
             performanceHudHost = null
@@ -2747,6 +2799,7 @@ fun XServerScreen(
                 onSave = {
                     // Save profile changes
                     PluviaApp.inputControlsView?.profile?.save()
+                    PluviaApp.inputControlsView?.onControlsProfileContentChanged(false)
                     // Clear snapshot since changes were accepted
                     elementPositionsSnapshot = emptyMap()
                     // Exit edit mode
@@ -3041,10 +3094,9 @@ fun XServerScreen(
                             profile.save()
                             profile.loadControllers()
 
-                            // Update handler with reloaded profile if on-screen controls are shown
-                            if (PluviaApp.inputControlsView?.profile != null) {
-                                PluviaApp.inputControlsView?.setProfile(profile)
-                            }
+                            // Keep gyro and binding inspection on the reloaded profile without
+                            // unintentionally showing controls that were hidden for a controller.
+                            PluviaApp.inputControlsView?.setProfilePreservingOverlayVisibility(profile)
                             physicalControllerHandler?.setProfile(profile)
                             PluviaApp.radialMenuCoordinator?.setProfile(profile)
                             showPhysicalControllerDialog = false
@@ -3295,7 +3347,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
 private fun hideInputControls() {
     PluviaApp.inputControlsView?.setShowTouchscreenControls(false)
     PluviaApp.inputControlsView?.setVisibility(View.GONE)
-    PluviaApp.inputControlsView?.setProfile(null)
+    PluviaApp.inputControlsView?.hideProfileForOverlay()
     PluviaApp.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 
     PluviaApp.touchpadView?.setSensitivity(1.0f)
@@ -4676,6 +4728,8 @@ private fun exit(
         Timber.i("Exit already in progress, ignoring duplicate request")
         return
     }
+
+    PerfSampler.halt()
 
     PostHog.capture(
         event = "game_exited",
