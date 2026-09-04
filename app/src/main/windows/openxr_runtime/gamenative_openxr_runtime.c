@@ -2360,6 +2360,7 @@ static XrResult XRAPI_CALL gn_xrWaitFrame(XrSession session, const XrFrameWaitIn
             if (gn_last_recenter_serial >= 0 && recenter_serial != gn_last_recenter_serial) {
                 gn_reference_space_event_pending = 1;
                 gn_local_origin_valid = 0;
+                gn_last_head_time = 0;
                 gn_log_num("headset recenter serial=", recenter_serial);
             }
             gn_last_recenter_serial = recenter_serial;
