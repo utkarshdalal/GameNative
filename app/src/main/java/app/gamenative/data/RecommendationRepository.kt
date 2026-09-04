@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -306,7 +307,7 @@ object RecommendationRepository {
                 lastFeatured = fetched.featured
                 val bootAds = fetched.bootAds.ifEmpty { listOfNotNull(fetched.bootAd) }
                 BootAdRepository.store(bootAds)
-                BootAdRepository.prefetchVideos(context, bootAds)
+                if (PrefManager.bootScreenAdsEnabled) BootAdRepository.prefetchVideos(context, bootAds)
                 return@withContext HeroResponse(
                     recommendation = stableRecommendation(fetched.recommendation),
                     featured = fetched.featured,
@@ -404,7 +405,10 @@ object RecommendationRepository {
         return when {
             trimmed.startsWith("{") -> {
                 val hero = runCatching { json.decodeFromString<HeroResponse>(body) }.getOrNull()
-                if (hero != null && (hero.recommendation != null || hero.featured != null || hero.bootAd != null || hero.bootAds.isNotEmpty())) {
+                // A payload that carries the bootAds key (even empty) is the current shape: an
+                // empty list means "no campaigns" and must clear the cache, not fall to legacy.
+                val currentShape = runCatching { json.parseToJsonElement(body).jsonObject.containsKey("bootAds") }.getOrDefault(false)
+                if (hero != null && (currentShape || hero.recommendation != null || hero.featured != null || hero.bootAd != null || hero.bootAds.isNotEmpty())) {
                     hero
                 } else {
                     // Legacy: a single recommendation object.

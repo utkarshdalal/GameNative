@@ -375,26 +375,29 @@ class MainViewModel @Inject constructor(
             // impression. Re-querying here would record extra shows and null the ad mid-boot
             // once the daily cap is crossed, unmounting the sponsor card while the splash is up.
             val held = _state.value.bootAd
-            val reuse = held != null && System.currentTimeMillis() - bootAdHiddenAtMs < BOOT_AD_REUSE_WINDOW_MS
+            val heldAllowed = held != null &&
+                (if (held.sponsored) PrefManager.bootScreenAdsEnabled else PrefManager.bootScreenRecommendationsEnabled)
+            val reuse = heldAllowed && System.currentTimeMillis() - bootAdHiddenAtMs < BOOT_AD_REUSE_WINDOW_MS
             val ad = if (reuse) {
                 held
             } else {
-                (BootAdRepository.getActiveAd() ?: BootAdRepository.recommendationCard())?.also {
+                BootAdRepository.pickBootCard()?.also {
                     bootAdShownAtMs = System.currentTimeMillis()
                     // House recommendation cards carry no cap and report no ad dwell.
                     bootAdDwellReported = !it.sponsored
                     if (it.sponsored) BootAdRepository.recordShown(it.campaignId) else BootAdRepository.noteShown(it.campaignId)
-                    if (!it.sponsored) {
-                        viewModelScope.launch(Dispatchers.IO) {
-                            val upgraded = BootAdRepository.resolveHouseTrailer(it) ?: return@launch
-                            _state.update { s -> if (s.bootAd?.campaignId == upgraded.campaignId) s.copy(bootAd = upgraded) else s }
-                        }
-                    }
                 }
             }
             Timber.tag("BootAdTrace").i("show: wasShowing=false held=%s reuse=%s ad=%s", held != null, reuse, ad?.campaignId)
             PluviaApp.isBootingSplashShowing = true
             _state.update { it.copy(showBootingSplash = true, bootAd = ad) }
+            // Resolve after publishing so an instant cache hit can't race the state write.
+            if (ad != null && !ad.sponsored && !reuse) {
+                viewModelScope.launch(Dispatchers.IO) {
+                    val upgraded = BootAdRepository.resolveHouseTrailer(ad) ?: return@launch
+                    _state.update { s -> if (s.bootAd?.campaignId == upgraded.campaignId) s.copy(bootAd = upgraded) else s }
+                }
+            }
         } else if (!value && wasShowing) {
             Timber.tag("BootAdTrace").i("hide: ad=%s", _state.value.bootAd?.campaignId)
             bootAdHiddenAtMs = System.currentTimeMillis()

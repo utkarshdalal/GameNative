@@ -267,6 +267,8 @@ fun BootingSplash(
                             // Only the primary art disables the card; a bad screenshot just skips
                             if (url == activeAd.imageUrl) {
                                 adImageFailed = true
+                            } else if (adImages.size > 1) {
+                                adImageIndex = (adImageIndex + 1) % adImages.size
                             }
                         },
                         previewPlaceholder = painterResource(R.drawable.ic_logo_color),

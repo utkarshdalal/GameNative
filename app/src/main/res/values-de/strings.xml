@@ -2366,7 +2366,7 @@
     <string name="settings_info_boot_ads_title">Gesponserte Ladebildschirme</string>
     <string name="settings_info_boot_ads_subtitle">Wenn du das aktiviert lässt, unterstützt du die Entwicklung von GameNative. Es verlangsamt niemals den Spielstart und beeinträchtigt dich in keiner Weise.</string>
     <string name="settings_info_boot_recs_title">Spielempfehlungen auf Ladebildschirmen</string>
-    <string name="settings_info_boot_recs_subtitle">Während ein Spiel startet ein Spiel zeigen, das dir gefallen könnte – wenn keine Sponsorkarte vorliegt.</string>
+    <string name="settings_info_boot_recs_subtitle">Zeigt beim Start eines Spiels ein Spiel, das dir gefallen könnte – wenn keine Sponsorkarte vorliegt.</string>
     <string name="boot_rec_badge">Für dich empfohlen</string>
     <string name="boot_quiz_win_default">Richtig!</string>
     <string name="boot_quiz_lose_default">Die Antwort war %1$s</string>

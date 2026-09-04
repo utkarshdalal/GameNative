@@ -101,17 +101,31 @@ object BootAdRepository {
      * previous boot. Each campaign's showRate is applied after the pick, so a
      * campaign can keep some boots ad-free without handing them to a competitor.
      */
-    fun getActiveAd(): BootAdItem? {
+    fun getActiveAd(): BootAdItem? = eligibleSponsor()?.takeIf { passesShowRate(it) }
+
+    /**
+     * The card for this boot: the sponsor if one is eligible (or nothing when it loses its
+     * showRate roll — that boot is deliberately ad-free, never handed to a house card), else the
+     * opt-in recommendation card.
+     */
+    fun pickBootCard(): BootAdItem? {
+        val sponsor = eligibleSponsor()
+        if (sponsor != null) return sponsor.takeIf { passesShowRate(it) }
+        return recommendationCard()
+    }
+
+    // Weighted random among sponsors in window, under cap, renderable, not shown last boot.
+    private fun eligibleSponsor(): BootAdItem? {
         if (!PrefManager.bootScreenAdsEnabled) return null
         val eligible = cachedAds().filter { isRenderable(it) && isWithinWindow(it) }
             .filter { it.maxShowsPerDay <= 0 || showsToday(it.campaignId) < it.maxShowsPerDay }
         if (eligible.isEmpty()) return null
         val lastShown = PrefManager.bootAdLastShown
-        val candidates = eligible.filter { it.campaignId != lastShown }.ifEmpty { eligible }
-        val ad = weightedPick(candidates) ?: return null
-        if (ad.showRate < 1.0 && Random.nextDouble() >= ad.showRate.coerceAtLeast(0.0)) return null
-        return ad
+        return weightedPick(eligible.filter { it.campaignId != lastShown }.ifEmpty { eligible })
     }
+
+    private fun passesShowRate(ad: BootAdItem): Boolean =
+        ad.showRate >= 1.0 || Random.nextDouble() < ad.showRate.coerceAtLeast(0.0)
 
     /**
      * A game recommendation as a house card, for boots with no eligible sponsor. Opt-in via
@@ -242,7 +256,24 @@ object BootAdRepository {
                         Timber.tag("BootAdRepo").d("Boot ad video too large: %d", body.contentLength())
                         return@use
                     }
-                    tmp.outputStream().use { out -> body.byteStream().copyTo(out) }
+                    // Bounded copy: a missing Content-Length must not bypass the size cap.
+                    var written = 0L
+                    tmp.outputStream().use { out ->
+                        val buf = ByteArray(64 * 1024)
+                        body.byteStream().use { input ->
+                            while (true) {
+                                val n = input.read(buf)
+                                if (n < 0) break
+                                written += n
+                                if (written > MAX_VIDEO_BYTES) {
+                                    Timber.tag("BootAdRepo").d("Boot ad video exceeded cap, discarding")
+                                    return@use
+                                }
+                                out.write(buf, 0, n)
+                            }
+                        }
+                    }
+                    if (written > MAX_VIDEO_BYTES) { tmp.delete(); return@use }
                 }
                 if (!tmp.exists() || !tmp.renameTo(target)) tmp.delete()
             } catch (e: Exception) {
