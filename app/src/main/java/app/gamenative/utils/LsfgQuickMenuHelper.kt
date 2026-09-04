@@ -6,6 +6,8 @@ import java.util.concurrent.Executors
 
 /** Helpers for Quick Menu LSFG state persistence and runtime hot-reload. */
 object LsfgQuickMenuHelper {
+    private const val SETTINGS_APPLY_DEBOUNCE_MS = 400L
+
     data class Settings(
         val multiplier: Int,
         val flowScale: Float,
@@ -24,7 +26,9 @@ object LsfgQuickMenuHelper {
     )
 
     private val applyExecutor =
-        Executors.newSingleThreadExecutor { r -> Thread(r, "lsfg-apply").apply { isDaemon = true } }
+        Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "lsfg-apply").apply { isDaemon = true } }
+    private val settingsApplyDebouncer =
+        LsfgRuntimeUpdateDebouncer(applyExecutor, SETTINGS_APPLY_DEBOUNCE_MS)
 
     fun presentMode(container: Container): String = LsfgVkManager.presentMode(container)
 
@@ -43,12 +47,12 @@ object LsfgQuickMenuHelper {
         }
     }
 
-    /** Persist the present mode and hot-apply it. */
+    /** Persist the present mode and publish it once the adjustment burst settles. */
     fun applyPresentMode(container: Container, mode: String) {
         applyExecutor.execute {
             container.putExtra(LsfgVkManager.EXTRA_PRESENT_MODE, mode)
             container.saveData()
-            applySettings(container, readSettings(container))
+            scheduleSettledRuntimePublish(container)
         }
     }
 
@@ -62,19 +66,38 @@ object LsfgQuickMenuHelper {
         val multiplier = sanitizeMultiplier(settings.multiplier)
         val flowScale = sanitizeFlowScale(settings.flowScale)
 
+        // Persist immediately so the UI remains authoritative, but avoid
+        // publishing every intermediate button-repeat/slider value to the
+        // Vulkan layer. Multiplier and present-mode changes may recreate the
+        // swapchain, and repeated OUT_OF_DATE transitions destabilize some
+        // games and WSI paths.
         container.putExtra(LsfgVkManager.EXTRA_MULTIPLIER, multiplier.toString())
         container.putExtra(LsfgVkManager.EXTRA_FLOW_SCALE, String.format(Locale.US, "%.2f", flowScale))
         container.putExtra(LsfgVkManager.EXTRA_PERFORMANCE_MODE, settings.performanceMode.toString())
         container.saveData()
 
+        scheduleSettledRuntimePublish(container)
+    }
+
+    private fun scheduleSettledRuntimePublish(container: Container) {
+        settingsApplyDebouncer.submit {
+            publishSettledRuntimeSnapshot(container)
+        }
+    }
+
+    private fun publishSettledRuntimeSnapshot(container: Container) {
+        // Re-read after the settle window so the newest persisted state wins;
+        // don't publish a stale snapshot captured by an earlier UI event.
+        val latest = readSettings(container)
+        val multiplier = sanitizeMultiplier(latest.multiplier)
         val effectiveEnabled = multiplier >= 2
         val effectiveMultiplier = if (effectiveEnabled) multiplier else 2
         LsfgVkManager.updateConfigAtRuntime(
             container,
             effectiveEnabled,
             effectiveMultiplier,
-            flowScale,
-            settings.performanceMode,
+            sanitizeFlowScale(latest.flowScale),
+            latest.performanceMode,
         )
     }
 }
