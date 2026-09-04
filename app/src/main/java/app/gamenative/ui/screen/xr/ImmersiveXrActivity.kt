@@ -306,9 +306,8 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
                         if (vrEnabled) {
                             runOnUiThread { windowsVrStatus = "Guest stopped: $error" }
                             windowsVrRuntimeService?.onGuestProcessError(error)
-                        } else {
-                            finish()
                         }
+                        finish()
                     },
                     immersiveHooks = ImmersiveSessionHooks(
                         windowsVr = windowsVrRuntimeService,

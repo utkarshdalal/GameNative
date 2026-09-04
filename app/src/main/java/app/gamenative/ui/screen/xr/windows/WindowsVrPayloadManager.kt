@@ -72,7 +72,8 @@ class WindowsVrPayloadManager(
             .toList()
         check(candidates.size <= 20000) { "OpenComposite scan exceeded 20000 files" }
         val targets = candidates.filter { it.isFile && it.name.equals("openvr_api.dll", ignoreCase = true) }
-        check(targets.isNotEmpty()) { "No openvr_api.dll was found under the launched game" }
+            .filter { runCatching { peMachine(it.readBytes()) == 0x8664 }.getOrDefault(false) }
+        check(targets.isNotEmpty()) { "No x64 openvr_api.dll was found under the launched game" }
         val adapter = context.assets.open("opencomposite_x64.dll").use { it.readBytes() }
         val record = File(File(container.rootDir, ".wine/drive_c/gamenative-xr"), "opencomposite.targets")
         val encodedTargets = targets.map { checkNotNull(it.parentFile).canonicalPath }
@@ -81,7 +82,6 @@ class WindowsVrPayloadManager(
         writeIfChanged(record, encodedTargets.toByteArray())
         openCompositeRecord = record
         targets.forEach { target ->
-            check(peMachine(target.readBytes()) == 0x8664) { "OpenVR library is not x64: ${target.path}" }
             val directory = checkNotNull(target.parentFile).canonicalFile
             val backup = File(directory, "openvr_api.dll.gamenative-original")
             val owner = File(directory, "openvr_api.dll.gamenative-owner")
