@@ -2209,12 +2209,13 @@ static int send_frame(const struct gn_unix_submit_view_args *view, int fence_fd,
     const uint32_t transport_index =
         view->slot * GN_UNIX_MAX_IMAGES + view->image_index;
     snprintf(line, sizeof(line),
-             "FRAME frame=%llu eye=%u index=%u fence=%u x=%d y=%d w=%u h=%u "
+             "FRAME frame=%llu eye=%u index=%u fence=%u x=%d y=%d w=%u h=%u flip=%u "
              "projection=1 qx=%lld qy=%lld qz=%lld qw=%lld "
              "px=%lld py=%lld pz=%lld fl=%lld fr=%lld fu=%lld fd=%lld\n",
              (unsigned long long)frame_id, view->eye, transport_index,
              fence_fd >= 0 ? 1u : 0u,
              view->rect_x, view->rect_y, view->rect_width, view->rect_height,
+             view->flip_y ? 1u : 0u,
              (long long)view->orientation_micro[0],
              (long long)view->orientation_micro[1],
              (long long)view->orientation_micro[2],
@@ -2531,10 +2532,10 @@ static int control_fast_read_line(char *out, size_t out_size)
 {
     size_t offset = 0;
     char value = 0;
-    while (offset + 1 < out_size) {
+    for (;;) {
         if (!control_fast_read_byte(&value)) return 0;
         if (value == '\n') break;
-        out[offset++] = value;
+        if (offset + 1 < out_size) out[offset++] = value;
     }
     out[offset] = 0;
     return 1;
@@ -2595,18 +2596,22 @@ static int32_t unix_control_transact(void *opaque)
         return 0;
     }
     size_t offset = 0;
+    int truncated = 0;
     for (uint32_t i = 0; i < lines; ++i) {
-        char line[512];
+        char line[1024];
         if (!control_fast_read_line(line, sizeof(line))) {
             control_fast_close();
             pthread_mutex_unlock(&control_fast_mutex);
             return 0;
         }
         size_t line_length = strlen(line);
-        if (offset + line_length + 2 > sizeof(args->response)) break;
-        if (i) args->response[offset++] = '\n';
-        memcpy(args->response + offset, line, line_length);
-        offset += line_length;
+        if (truncated || offset + line_length + 2 > sizeof(args->response)) {
+            truncated = 1;
+        } else {
+            if (i) args->response[offset++] = '\n';
+            memcpy(args->response + offset, line, line_length);
+            offset += line_length;
+        }
         /* single-line commands whose reply is an error carry no continuation lines */
         if (i == 0 && strncmp(line, "OK", 2) != 0) break;
     }

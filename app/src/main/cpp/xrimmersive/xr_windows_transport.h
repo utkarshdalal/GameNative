@@ -54,6 +54,7 @@ struct EyeFrame {
     int32_t sourceY{0};
     int32_t sourceWidth{0};
     int32_t sourceHeight{0};
+    bool flipY{false};
     bool projectionValid{false};
     float projectionOrientation[4]{0.0f, 0.0f, 0.0f, 1.0f};
     float projectionPosition[3]{0.0f, 0.0f, 0.0f};

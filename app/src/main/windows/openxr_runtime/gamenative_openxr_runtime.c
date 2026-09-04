@@ -616,13 +616,6 @@ static XrPosef gn_local_origin;
 static int gn_local_origin_valid = 0;
 static long long gn_last_recenter_serial = -1;
 static int gn_recenter_serial_supported = 0;
-static int gn_frame_trace_budget = 160;
-
-static void gn_trace(const char* what, long long value) {
-    if (gn_frame_trace_budget <= 0) return;
-    --gn_frame_trace_budget;
-    gn_log_num(what, value);
-}
 static XrPosef gn_last_head_pose;
 static XrTime gn_last_head_time = 0;
 static float gn_head_linear_velocity[3];
@@ -1198,14 +1191,14 @@ static int gn_bridge_call_locked(const char* command, char* response, gn_size re
         return 0;
     }
 
-    while (offset + 1 < out_size) {
+    for (;;) {
         if (!gn_bridge_recv_byte(&ch)) {
             gn_bridge_close();
             gn_log2("bridge recv failed for: ", command);
             return 0;
         }
         if (ch == '\n') break;
-        out[offset++] = ch;
+        if (offset + 1 < out_size) out[offset++] = ch;
     }
     out[offset] = 0;
     return gn_starts_with(out, "OK");
@@ -1249,13 +1242,13 @@ static int gn_unix_control_transact(const char* command, gn_uint32 lines,
 static int gn_bridge_read_line_locked(char* out, gn_size out_size) {
     gn_size offset = 0;
     char ch = 0;
-    while (offset + 1 < out_size) {
+    for (;;) {
         if (!gn_bridge_recv_byte(&ch)) {
             gn_bridge_close();
             return 0;
         }
         if (ch == '\n') break;
-        out[offset++] = ch;
+        if (offset + 1 < out_size) out[offset++] = ch;
     }
     out[offset] = 0;
     return gn_starts_with(out, "OK");
@@ -1264,7 +1257,7 @@ static int gn_bridge_read_line_locked(char* out, gn_size out_size) {
 
 static int gn_bridge_call(const char* command, char* response, gn_size response_size) {
     int ok;
-    char local[512];
+    char local[1024];
     gn_lock_acquire();
     if (gn_unix_control_state >= 0 &&
         gn_unix_control_transact(command, 1, local, sizeof(local))) {
@@ -1278,15 +1271,18 @@ static int gn_bridge_call(const char* command, char* response, gn_size response_
     return ok;
 }
 
-static char gn_cached_views[512];
-static char gn_cached_input[2][512];
+static char gn_cached_views[1024];
+static char gn_cached_input[2][1024];
 static int gn_cache_valid = 0;
 static int gn_frame_sync_supported = 1;
 static int gn_split_line(const char** cursor, char* out, gn_size out_size) {
     const char* p = *cursor;
     gn_size n = 0;
     if (!*p) return 0;
-    while (*p && *p != '\n' && n + 1 < out_size) out[n++] = *p++;
+    while (*p && *p != '\n') {
+        if (n + 1 < out_size) out[n++] = *p;
+        ++p;
+    }
     out[n] = 0;
     if (*p == '\n') ++p;
     *cursor = p;
@@ -1298,19 +1294,19 @@ static int gn_bridge_frame_sync(char* frame_out, gn_size frame_size) {
     gn_lock_acquire();
     gn_cache_valid = 0;
     if (gn_unix_control_state >= 0) {
-        char bundle[896];
+        char bundle[2048];
         if (gn_unix_control_transact("FRAME_SYNC", 4, bundle, sizeof(bundle))) {
             const char* cursor = bundle;
             char first[192];
             if (gn_split_line(&cursor, first, sizeof(first)) &&
                 gn_starts_with(first, "OK")) {
                 gn_copy(frame_out, frame_size, first);
-                ok = gn_split_line(&cursor, gn_cached_views, sizeof(gn_cached_views)) &&
-                     gn_split_line(&cursor, gn_cached_input[0], sizeof(gn_cached_input[0])) &&
-                     gn_split_line(&cursor, gn_cached_input[1], sizeof(gn_cached_input[1]));
-                gn_cache_valid = ok;
+                gn_cache_valid =
+                    gn_split_line(&cursor, gn_cached_views, sizeof(gn_cached_views)) &&
+                    gn_split_line(&cursor, gn_cached_input[0], sizeof(gn_cached_input[0])) &&
+                    gn_split_line(&cursor, gn_cached_input[1], sizeof(gn_cached_input[1]));
                 gn_lock_release();
-                return ok;
+                return 1;
             }
             gn_copy(frame_out, frame_size, first);
             if (gn_starts_with(first, "ERROR")) {
@@ -1323,10 +1319,10 @@ static int gn_bridge_frame_sync(char* frame_out, gn_size frame_size) {
     }
     ok = gn_bridge_call_locked("FRAME_SYNC", frame_out, frame_size);
     if (ok) {
-        ok = gn_bridge_read_line_locked(gn_cached_views, sizeof(gn_cached_views)) &&
-             gn_bridge_read_line_locked(gn_cached_input[0], sizeof(gn_cached_input[0])) &&
-             gn_bridge_read_line_locked(gn_cached_input[1], sizeof(gn_cached_input[1]));
-        gn_cache_valid = ok;
+        gn_cache_valid =
+            gn_bridge_read_line_locked(gn_cached_views, sizeof(gn_cached_views)) &&
+            gn_bridge_read_line_locked(gn_cached_input[0], sizeof(gn_cached_input[0])) &&
+            gn_bridge_read_line_locked(gn_cached_input[1], sizeof(gn_cached_input[1]));
     } else if (gn_starts_with(frame_out, "ERROR")) {
         gn_frame_sync_supported = 0;
         gn_log_line("FRAME_SYNC unsupported by bridge; using separate per-frame requests");
@@ -1838,7 +1834,7 @@ static XrResult XRAPI_CALL gn_xrEnumerateViewConfigurationViews(
     if (gn_bridge_call("GET_VIEWS", response, sizeof(response))) {
         long long w = gn_parse_i64(response, "width", 0);
         long long h = gn_parse_i64(response, "height", 0);
-        if (w > 0 && h > 0) {
+        if (w > 0 && h > 0 && w <= 16384 && h <= 16384) {
             gn_view_width = (gn_uint32)w;
             gn_view_height = (gn_uint32)h;
         }
@@ -2349,7 +2345,6 @@ static XrResult XRAPI_CALL gn_xrWaitFrame(XrSession session, const XrFrameWaitIn
     char response[160];
     int synced;
     if (session != gn_session || !frameState) return XR_ERROR_HANDLE_INVALID;
-    gn_trace("trace xrWaitFrame enter", 0);
     synced = gn_frame_sync_supported && gn_bridge_frame_sync(response, sizeof(response));
     if (!synced && !gn_frame_sync_supported)
         synced = gn_bridge_call("WAIT_FRAME", response, sizeof(response));
@@ -2384,7 +2379,6 @@ static XrResult XRAPI_CALL gn_xrWaitFrame(XrSession session, const XrFrameWaitIn
         frameState->shouldRender = gn_session_running ? XR_TRUE : XR_FALSE;
         gn_next_display_time += frameState->predictedDisplayPeriod;
     }
-    gn_trace("trace xrWaitFrame exit", (long long)frameState->predictedDisplayTime);
     return XR_SUCCESS;
 }
 
@@ -2397,12 +2391,21 @@ static XrResult XRAPI_CALL gn_xrBeginFrame(XrSession session, const XrFrameBegin
     return XR_SUCCESS;
 }
 
+static XrRect2Di gn_normalize_rect(XrRect2Di rect, int* flip_y) {
+    if (flip_y) *flip_y = 0;
+    if (rect.extent.height < 0) {
+        rect.offset.y += rect.extent.height;
+        rect.extent.height = -rect.extent.height;
+        if (flip_y) *flip_y = 1;
+    }
+    return rect;
+}
+
 static XrResult XRAPI_CALL gn_xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo) {
     if (session != gn_session) return XR_ERROR_HANDLE_INVALID;
     if (!frameEndInfo || frameEndInfo->type != XR_TYPE_FRAME_END_INFO ||
         (frameEndInfo->layerCount && !frameEndInfo->layers))
         return XR_ERROR_VALIDATION_FAILURE;
-    gn_trace("trace xrEndFrame enter layers", (long long)frameEndInfo->layerCount);
 
     for (gn_uint32 layer_index = 0; layer_index < frameEndInfo->layerCount; ++layer_index) {
         const XrCompositionLayerBaseHeader* base = frameEndInfo->layers[layer_index];
@@ -2421,17 +2424,16 @@ static XrResult XRAPI_CALL gn_xrEndFrame(XrSession session, const XrFrameEndInfo
                 int slot = gn_swapchain_index(sub_image->swapchain);
                 if (slot < 0) return XR_ERROR_LAYER_INVALID;
                 const GnSwapchain* state = &gn_swapchains[slot];
+                XrRect2Di rect = gn_normalize_rect(sub_image->imageRect, NULL);
                 if (sub_image->imageArrayIndex >= state->create_info.arraySize ||
-                    sub_image->imageRect.offset.x < 0 ||
-                    sub_image->imageRect.offset.y < 0 ||
-                    sub_image->imageRect.extent.width <= 0 ||
-                    sub_image->imageRect.extent.height <= 0 ||
-                    sub_image->imageRect.extent.width >
-                        (int32_t)state->create_info.width -
-                            sub_image->imageRect.offset.x ||
-                    sub_image->imageRect.extent.height >
-                        (int32_t)state->create_info.height -
-                            sub_image->imageRect.offset.y)
+                    rect.offset.x < 0 ||
+                    rect.offset.y < 0 ||
+                    rect.extent.width <= 0 ||
+                    rect.extent.height <= 0 ||
+                    rect.extent.width >
+                        (int32_t)state->create_info.width - rect.offset.x ||
+                    rect.extent.height >
+                        (int32_t)state->create_info.height - rect.offset.y)
                     return XR_ERROR_SWAPCHAIN_RECT_INVALID;
             }
         }
@@ -2474,14 +2476,16 @@ static XrResult XRAPI_CALL gn_xrEndFrame(XrSession session, const XrFrameEndInfo
             view->eye = eye;
             view->array_index =
                 projection->views[eye].subImage.imageArrayIndex;
-            view->rect_x =
-                projection->views[eye].subImage.imageRect.offset.x;
-            view->rect_y =
-                projection->views[eye].subImage.imageRect.offset.y;
-            view->rect_width = (gn_u32)
-                projection->views[eye].subImage.imageRect.extent.width;
-            view->rect_height = (gn_u32)
-                projection->views[eye].subImage.imageRect.extent.height;
+            {
+                int flip_y = 0;
+                XrRect2Di rect = gn_normalize_rect(
+                    projection->views[eye].subImage.imageRect, &flip_y);
+                view->rect_x = rect.offset.x;
+                view->rect_y = rect.offset.y;
+                view->rect_width = (gn_u32)rect.extent.width;
+                view->rect_height = (gn_u32)rect.extent.height;
+                view->flip_y = (gn_u32)flip_y;
+            }
             {
                 XrPosef absolute_view = gn_pose_multiply(
                     layer_space_pose, projection->views[eye].pose);
@@ -2544,7 +2548,6 @@ static XrResult XRAPI_CALL gn_xrEndFrame(XrSession session, const XrFrameEndInfo
         n = gn_append_i64(cmd, sizeof(cmd), n, (long long)frameEndInfo->layerCount);
         if (gn_bridge_call(cmd, NULL, 0)) gn_frame_milestone_sent = 1;
     }
-    gn_trace("trace xrEndFrame exit failed", submission_failed ? 1 : 0);
     return submission_failed ? XR_ERROR_RUNTIME_FAILURE : XR_SUCCESS;
 }
 
@@ -2555,7 +2558,7 @@ static XrResult XRAPI_CALL gn_xrLocateViews(
     gn_uint32 capacity,
     gn_uint32* count,
     XrView* views) {
-    char response[512];
+    char response[1024];
     if (session != gn_session) return XR_ERROR_HANDLE_INVALID;
     if (!viewLocateInfo || viewLocateInfo->type != XR_TYPE_VIEW_LOCATE_INFO ||
         !viewState || viewState->type != XR_TYPE_VIEW_STATE || !count ||
@@ -3022,7 +3025,6 @@ static XrResult XRAPI_CALL gn_xrAcquireSwapchainImage(XrSwapchain swapchain, con
     if (!acquireInfo || acquireInfo->type != XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO || !index)
         return XR_ERROR_VALIDATION_FAILURE;
     GnSwapchain* state = &gn_swapchains[slot];
-    gn_trace("trace xrAcquireSwapchainImage slot", slot);
     if (state->acquire_count >= state->image_count)
         return XR_ERROR_CALL_ORDER_INVALID;
     for (gn_uint32 n = 0; n < state->image_count; ++n) {
@@ -3048,7 +3050,6 @@ static XrResult XRAPI_CALL gn_xrWaitSwapchainImage(XrSwapchain swapchain, const 
         (waitInfo->timeout < 0 && waitInfo->timeout != XR_INFINITE_DURATION))
         return XR_ERROR_VALIDATION_FAILURE;
     GnSwapchain* state = &gn_swapchains[slot];
-    gn_trace("trace xrWaitSwapchainImage enter slot", slot);
     if (!state->acquire_count) return XR_ERROR_CALL_ORDER_INVALID;
     gn_uint32 index = state->acquire_queue[state->acquire_head];
     if (index >= state->image_count || state->image_state[index] != GN_IMAGE_ACQUIRED) {
@@ -3066,7 +3067,6 @@ static XrResult XRAPI_CALL gn_xrWaitSwapchainImage(XrSwapchain swapchain, const 
         state->submitted[index] = 0;
     }
     state->image_state[index] = GN_IMAGE_WAITED;
-    gn_trace("trace xrWaitSwapchainImage exit slot", slot);
     return XR_SUCCESS;
 }
 
@@ -3076,7 +3076,6 @@ static XrResult XRAPI_CALL gn_xrReleaseSwapchainImage(XrSwapchain swapchain, con
     if (!releaseInfo || releaseInfo->type != XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO)
         return XR_ERROR_VALIDATION_FAILURE;
     GnSwapchain* state = &gn_swapchains[slot];
-    gn_trace("trace xrReleaseSwapchainImage slot", slot);
     if (!state->acquire_count) return XR_ERROR_CALL_ORDER_INVALID;
     gn_uint32 index = state->acquire_queue[state->acquire_head];
     if (index >= state->image_count || state->image_state[index] != GN_IMAGE_WAITED) {

@@ -268,15 +268,6 @@ void XrImmersiveSession::runLoop() {
         if (XR_SUCCEEDED(xrLocateViews(session_, &viewLocateInfo, &viewState, 2, &viewCount,
                                        runtimeSnapshot.views.data())) && viewCount == 2) {
             runtimeSnapshot.viewStateFlags = viewState.viewStateFlags;
-            if (stereoActive_.load() &&
-                frameState.predictedDisplayTime - lastTrackingPoseLogTime_ > 2000000000LL) {
-                lastTrackingPoseLogTime_ = frameState.predictedDisplayTime;
-                const XrPosef &p = runtimeSnapshot.views[0].pose;
-                LOGI("Windows VR head pose in tracking space: pos=(%.2f %.2f %.2f) quat=(%.2f %.2f %.2f %.2f) recenter=%u",
-                     p.position.x, p.position.y, p.position.z,
-                     p.orientation.x, p.orientation.y, p.orientation.z, p.orientation.w,
-                     runtimeSnapshot.recenterSerial);
-            }
         } else {
             runtimeSnapshot.viewStateFlags = 0;
         }

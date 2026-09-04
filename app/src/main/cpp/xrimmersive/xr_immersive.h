@@ -186,7 +186,6 @@ private:
     std::atomic<bool> stereoActive_{false};
     std::atomic<bool> windowsOverlayVisible_{false};
     std::atomic<uint32_t> recenterSerial_{0};
-    XrTime lastTrackingPoseLogTime_ = 0;
     uint32_t stereoMisses_ = 0;
 
     // The quad swapchain follows the container's screen size (min width 1280) and the

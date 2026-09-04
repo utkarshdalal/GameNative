@@ -79,9 +79,9 @@ cp "$source_dir/builtin/gamenative_xr_unixbridge32.dll" "$output/"
 
 # OpenComposite (pinned download, checksum-verified) for OpenVR titles.
 if [ ! -f "$output/opencomposite_x64.dll" ]; then
-    curl -sL "https://opencomposite.znix.xyz/builds/download_build?artefact_id=5r2yCwgFn_ozJ44c&build_id=49918237&commit=43e551a4506880ab1a71b8b9fec2fd7fbb27372f" \
+    curl -sL "https://opencomposite.znix.xyz/builds/download_build?artefact_id=JjRFMXaxas695QK-&build_id=52366409&commit=a27e7e6a64bdcd1eff6b7fba1ea2ea34bcf1273d" \
         -o "$output/opencomposite_x64.dll"
-    echo "2f56d45323f252a2ea7c3047c806f9aca3cab36c3f9f71d1dad05a5008b7731a  $output/opencomposite_x64.dll" \
+    echo "827ad85f3606a4dc4a8f5561a8ca69e4c6c1b5d2b9cd3315a461b9270b08242c  $output/opencomposite_x64.dll" \
         | shasum -a 256 -c - >/dev/null || { echo "OpenComposite checksum mismatch"; exit 1; }
 fi
 

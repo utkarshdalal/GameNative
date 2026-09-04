@@ -372,9 +372,11 @@ void WindowsProjectionPresenter::drawEye(uint32_t eye, const EyeFrame &source,
     glBindTexture(GL_TEXTURE_2D, textures_[eye][source.imageIndex]);
     const float sourceWidth = source.sourceWidth > 0 ? source.sourceWidth : source.width;
     const float sourceHeight = source.sourceHeight > 0 ? source.sourceHeight : source.height;
-    glUniform4f(uvTransformLocation_, source.sourceX / static_cast<float>(source.width),
-                source.sourceY / static_cast<float>(source.height),
-                sourceWidth / source.width, sourceHeight / source.height);
+    const float v0 = (source.flipY ? source.sourceY + sourceHeight : source.sourceY) /
+                     static_cast<float>(source.height);
+    const float vScale = (source.flipY ? -sourceHeight : sourceHeight) / source.height;
+    glUniform4f(uvTransformLocation_, source.sourceX / static_cast<float>(source.width), v0,
+                sourceWidth / source.width, vScale);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
