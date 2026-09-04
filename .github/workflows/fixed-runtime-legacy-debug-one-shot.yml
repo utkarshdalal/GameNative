@@ -42,12 +42,32 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Assemble LegacyDebug only
-        run: ./gradlew :app:assembleLegacyDebug --no-daemon
+      - name: Compile LegacyDebug and capture materialized GameDb source
+        shell: bash
+        run: |
+          set +e
+          ./gradlew :app:compileLegacyDebugKotlin --no-daemon
+          status=$?
+          echo '--- GameDb files after compile ---'
+          find app -type f \( -iname '*GameDb*' -o -ipath '*gamedb*' \) -print || true
+          echo '--- helper references under app/src ---'
+          grep -R -n -E '\bhelper\b|class GameDbManager|object GameDbManager' app/src 2>/dev/null | head -300 || true
+          target='app/src/main/java/app/gamenative/data/gamedb/GameDbManager.kt'
+          if [[ -f "$target" ]]; then
+            echo '--- GameDbManager.kt lines 120-190 ---'
+            nl -ba "$target" | sed -n '120,190p'
+            echo '--- git status for materialized source ---'
+            git status --short -- "$target"
+            echo '--- git check-ignore ---'
+            git check-ignore -v "$target" || true
+          fi
+          exit "$status"
 
       - name: Prepare single LegacyDebug APK
+        if: success()
         run: |
           set -euo pipefail
+          ./gradlew :app:assembleLegacyDebug --no-daemon
           mapfile -t apks < <(find app/build/outputs/apk/legacy/debug -maxdepth 1 -type f -name '*.apk' -print)
           test ${#apks[@]} -eq 1
           cp "${apks[0]}" gamenative-legacy-debug.apk
@@ -55,6 +75,7 @@ jobs:
           ls -lh gamenative-legacy-debug.apk
 
       - name: Upload single LegacyDebug APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: gamenative-legacy-debug
