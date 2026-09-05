@@ -1432,6 +1432,9 @@
     <string name="review_overwhelmingly_negative">Overvældende negativ</string>
     <string name="settings_interface_show_recommendations_title">Vis spilanbefalinger</string>
     <string name="settings_interface_show_recommendations_subtitle">Vis personlige anbefalinger. At holde dette slået til hjælper med at støtte GameNative.</string>
+    <string name="settings_interface_library_tabs_title">Bibliotekfaner</string>
+    <string name="settings_interface_library_tabs_subtitle">Vælg, hvilke butiksfaner der vises i biblioteket.</string>
+    <string name="settings_interface_library_tabs_none">Ingen butiksfaner</string>
      <string name="steam_save_export_success">Gemte filer eksporteret</string>
      <string name="steam_save_export_no_saves_found">Ingen gemte filer fundet</string>
      <string name="steam_save_export_failed">Kunne ikke eksportere gemte filer: %s</string>

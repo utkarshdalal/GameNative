@@ -1531,6 +1531,9 @@
     <string name="review_overwhelmingly_negative">壓倒性負評</string>
     <string name="settings_interface_show_recommendations_title">顯示遊戲推薦</string>
     <string name="settings_interface_show_recommendations_subtitle">顯示個人化推薦。保持開啟有助於支持 GameNative。</string>
+    <string name="settings_interface_library_tabs_title">遊戲庫分頁</string>
+    <string name="settings_interface_library_tabs_subtitle">選擇要在遊戲庫中顯示哪些商店分頁。</string>
+    <string name="settings_interface_library_tabs_none">沒有商店分頁</string>
      <string name="steam_save_export_success">存檔已匯出</string>
      <string name="steam_save_export_no_saves_found">未找到存檔檔案</string>
      <string name="steam_save_export_failed">匯出存檔失敗：%s</string>

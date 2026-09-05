@@ -1564,6 +1564,9 @@
     <string name="review_overwhelmingly_negative">Copleșitor de negativ</string>
     <string name="settings_interface_show_recommendations_title">Afișează recomandări de jocuri</string>
     <string name="settings_interface_show_recommendations_subtitle">Afișează recomandări personalizate. Menținerea activă ajută la susținerea GameNative.</string>
+    <string name="settings_interface_library_tabs_title">File bibliotecă</string>
+    <string name="settings_interface_library_tabs_subtitle">Alege ce file de magazine apar în bibliotecă.</string>
+    <string name="settings_interface_library_tabs_none">Fără file de magazine</string>
      <string name="steam_save_export_success">Salvari exportate</string>
      <string name="steam_save_export_no_saves_found">Nu s-au găsit fișiere de salvare</string>
      <string name="steam_save_export_failed">Exportul salvărilor a eșuat: %s</string>

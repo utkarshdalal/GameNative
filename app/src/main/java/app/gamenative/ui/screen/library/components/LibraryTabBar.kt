@@ -70,6 +70,7 @@ import app.gamenative.ui.util.rememberWindowWidthClass
 @Composable
 fun LibraryTabBar(
     currentTab: LibraryTab,
+    tabs: List<LibraryTab>,
     tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
@@ -86,6 +87,7 @@ fun LibraryTabBar(
     when (widthClass) {
         WindowWidthClass.COMPACT -> CompactLibraryTabBar(
             currentTab = currentTab,
+            tabs = tabs,
             tabCounts = tabCounts,
             onTabSelected = onTabSelected,
             onOptionsClick = onOptionsClick,
@@ -100,6 +102,7 @@ fun LibraryTabBar(
 
         else -> ExpandedLibraryTabBar(
             currentTab = currentTab,
+            tabs = tabs,
             tabCounts = tabCounts,
             onTabSelected = onTabSelected,
             onOptionsClick = onOptionsClick,
@@ -121,6 +124,7 @@ fun LibraryTabBar(
 @Composable
 private fun CompactLibraryTabBar(
     currentTab: LibraryTab,
+    tabs: List<LibraryTab>,
     tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
@@ -132,7 +136,6 @@ private fun CompactLibraryTabBar(
     onNextTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LibraryTab.visibleEntries
     val currentIndex = tabs.indexOf(currentTab)
     val scrollState = rememberScrollState()
     val tabPositions = remember { mutableStateMapOf<Int, Float>() }
@@ -347,6 +350,7 @@ private fun CompactIconButton(
 @Composable
 private fun ExpandedLibraryTabBar(
     currentTab: LibraryTab,
+    tabs: List<LibraryTab>,
     tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
@@ -358,7 +362,6 @@ private fun ExpandedLibraryTabBar(
     onNextTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LibraryTab.visibleEntries
     val currentIndex = tabs.indexOf(currentTab)
     val scrollState = rememberScrollState()
 
@@ -696,6 +699,7 @@ private fun Preview_LibraryTabBar() {
         ) {
             LibraryTabBar(
                 currentTab = LibraryTab.ALL,
+                tabs = LibraryTab.visibleEntries,
                 tabCounts = mapOf(
                     LibraryTab.ALL to 42,
                     LibraryTab.STEAM to 30,
@@ -725,6 +729,7 @@ private fun Preview_LibraryTabBar_Steam() {
         ) {
             LibraryTabBar(
                 currentTab = LibraryTab.STEAM,
+                tabs = LibraryTab.visibleEntries,
                 tabCounts = mapOf(
                     LibraryTab.ALL to 42,
                     LibraryTab.STEAM to 30,

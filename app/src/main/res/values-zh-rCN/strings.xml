@@ -1529,6 +1529,9 @@
     <string name="review_overwhelmingly_negative">差评如潮</string>
     <string name="settings_interface_show_recommendations_title">显示游戏推荐</string>
     <string name="settings_interface_show_recommendations_subtitle">显示个性化推荐。保持开启有助于支持 GameNative。</string>
+    <string name="settings_interface_library_tabs_title">游戏库标签页</string>
+    <string name="settings_interface_library_tabs_subtitle">选择在游戏库中显示哪些商店标签页。</string>
+    <string name="settings_interface_library_tabs_none">无商店标签页</string>
      <string name="steam_save_export_success">存档已导出</string>
      <string name="steam_save_export_no_saves_found">未找到存档文件</string>
      <string name="steam_save_export_failed">导出存档失败：%s</string>

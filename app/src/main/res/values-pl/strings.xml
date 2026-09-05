@@ -1562,6 +1562,9 @@
     <string name="review_overwhelmingly_negative">Przytłaczająco negatywne</string>
     <string name="settings_interface_show_recommendations_title">Pokaż rekomendacje gier</string>
     <string name="settings_interface_show_recommendations_subtitle">Pokazuje spersonalizowane rekomendacje. Pozostawienie tej opcji włączonej wspiera GameNative.</string>
+    <string name="settings_interface_library_tabs_title">Karty biblioteki</string>
+    <string name="settings_interface_library_tabs_subtitle">Wybierz, które karty sklepów mają być widoczne w bibliotece.</string>
+    <string name="settings_interface_library_tabs_none">Brak kart sklepów</string>
      <string name="steam_save_export_success">Zapisy wyeksportowane</string>
      <string name="steam_save_export_no_saves_found">Nie znaleziono plików zapisów</string>
      <string name="steam_save_export_failed">Nie udało się wyeksportować zapisów: %s</string>
