@@ -19,6 +19,7 @@ data class ShooterModeConfig(
     val mouseAccelerationEnabled: Boolean = false,
     val mouseAccelerationStrength: Float = 1.0f,
     val mouseAccelerationMaxMultiplier: Float = 3.0f,
+    val win32RelativeMouseInput: Boolean = false,
     val movementJoystickSize: Float = 1.0f,
     val lookJoystickSize: Float = 1.0f,
     val movementJoystickDeadzone: Float = DEFAULT_ANALOG_STICK_DEADZONE,
@@ -49,6 +50,7 @@ data class ShooterModeConfig(
             put(KEY_MOUSE_ACCELERATION_ENABLED, mouseAccelerationEnabled)
             put(KEY_MOUSE_ACCELERATION_STRENGTH, mouseAccelerationStrength.toDouble())
             put(KEY_MOUSE_ACCELERATION_MAX_MULTIPLIER, mouseAccelerationMaxMultiplier.toDouble())
+            put(KEY_WIN32_RELATIVE_MOUSE_INPUT, win32RelativeMouseInput)
             put(KEY_MOVEMENT_JOYSTICK_SIZE, movementJoystickSize.toDouble())
             put(KEY_LOOK_JOYSTICK_SIZE, lookJoystickSize.toDouble())
             put(KEY_MOVEMENT_JOYSTICK_DEADZONE, movementJoystickDeadzone.toDouble())
@@ -135,6 +137,7 @@ data class ShooterModeConfig(
         private const val KEY_MOUSE_ACCELERATION_ENABLED = "mouseAccelerationEnabled"
         private const val KEY_MOUSE_ACCELERATION_STRENGTH = "mouseAccelerationStrength"
         private const val KEY_MOUSE_ACCELERATION_MAX_MULTIPLIER = "mouseAccelerationMaxMultiplier"
+        private const val KEY_WIN32_RELATIVE_MOUSE_INPUT = "win32RelativeMouseInput"
         private const val KEY_MOVEMENT_ZONE_SPLIT = "movementZoneSplit"
         private const val KEY_BUTTON_LOOK_THROUGH_ENABLED = "buttonLookThroughEnabled"
         private const val KEY_BUTTON_LOOK_THROUGH_DRAG_THRESHOLD = "buttonLookThroughDragThreshold"
@@ -196,6 +199,7 @@ data class ShooterModeConfig(
                         1.0f,
                         8.0f,
                     ),
+                    win32RelativeMouseInput = obj.optBoolean(KEY_WIN32_RELATIVE_MOUSE_INPUT, false),
                     movementJoystickSize = clampFloat(
                         obj.optDouble(KEY_MOVEMENT_JOYSTICK_SIZE, legacyJoystickSize.toDouble()).toFloat(),
                         0.5f,

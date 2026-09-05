@@ -543,6 +543,7 @@ public class InputControlsView extends View {
 
     public void setXServer(XServer xServer) {
         this.xServer = xServer;
+        applyShooterMouseInputMode();
         createMouseMoveTimer();
     }
 
@@ -634,6 +635,7 @@ public class InputControlsView extends View {
         releaseAllShooterInputs();
         commitGamepadState();
         this.shooterModeConfig = config != null ? config : ShooterModeConfig.fromJson("");
+        applyShooterMouseInputMode();
         lookAccumX = 0;
         lookAccumY = 0;
         lookDeadzoneAccumX = 0;
@@ -641,6 +643,14 @@ public class InputControlsView extends View {
         lookSmoothX = 0;
         lookSmoothY = 0;
         invalidate();
+    }
+
+    private void applyShooterMouseInputMode() {
+        if (xServer == null || shooterModeConfig == null) return;
+        boolean useWin32RelativeInput =
+                ShooterModeConfig.LOOK_MOUSE.equals(shooterModeConfig.getLookType())
+                        && shooterModeConfig.getWin32RelativeMouseInput();
+        xServer.setRelativeMouseMovement(useWin32RelativeInput);
     }
 
     public void setShooterModeConfigJson(String json) {
