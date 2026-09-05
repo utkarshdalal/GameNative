@@ -118,13 +118,6 @@ android {
             getDefaultProguardFile("proguard-android.txt"),
             "proguard-rules.pro",
         )
-        externalNativeBuild {
-            cmake {
-                targets("vulkan_renderer")
-                arguments.add("-DSKIP_WINLATOR=ON")
-                abiFilters("arm64-v8a")
-            }
-        }
     }
 
     flavorDimensions += "androidApi"
@@ -313,12 +306,13 @@ android {
     //     }
     // }
 
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
+    // cmake on release builds a proot that fails to process ld-2.31.so
+    // externalNativeBuild {
+    //     cmake {
+    //         path = file("src/main/cpp/CMakeLists.txt")
+    //         version = "3.22.1"
+    //     }
+    // }
 
     // (For now) Uncomment for LeakCanary to work.
     // configurations {

@@ -10,25 +10,23 @@ add_subdirectory(virglrenderer)
 add_subdirectory(patchelf)
 add_subdirectory(extras/adrenotools)
 
-if(NOT SKIP_WINLATOR)
-    add_library(winlator SHARED
-                winlator/drawable.c
-                winlator/sysvshared_memory.c
-                winlator/xconnector_epoll.c
-                winlator/alsa_client.c
-                winlator/patchelf_wrapper.cpp)
+add_library(winlator SHARED
+            winlator/drawable.c
+            winlator/sysvshared_memory.c
+            winlator/xconnector_epoll.c
+            winlator/alsa_client.c
+            winlator/patchelf_wrapper.cpp)
 
-    target_link_libraries(winlator
-                          log
-                          android
-                          jnigraphics
-                          aaudio
-                          EGL
-                          GLESv2
-                          GLESv3)
+target_link_libraries(winlator
+                      log
+                      android
+                      jnigraphics
+                      aaudio
+                      EGL
+                      GLESv2
+                      GLESv3)
 
-    target_link_options(winlator PRIVATE -Wl,-z,max-page-size=16384)
-endif()
+target_link_options(winlator PRIVATE -Wl,-z,max-page-size=16384)
 
 
 add_custom_command(
