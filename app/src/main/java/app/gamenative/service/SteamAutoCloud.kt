@@ -27,6 +27,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileInfo
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.SteamCloud
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.io.BufferedInputStream
+import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.RandomAccessFile
@@ -297,20 +298,20 @@ object SteamAutoCloud {
 
         val getFilesDiff: (List<UserFileInfo>, List<UserFileInfo>) -> Pair<Boolean, FileChanges> = { currentFiles, oldFiles ->
             val overlappingFiles = currentFiles.filter { currentFile ->
-                oldFiles.any { currentFile.prefixPath == it.prefixPath }
+                oldFiles.any { currentFile.prefixPath.equals(it.prefixPath, ignoreCase = true) }
             }
 
             val newFiles = currentFiles.filter { currentFile ->
-                !oldFiles.any { currentFile.prefixPath == it.prefixPath }
+                !oldFiles.any { currentFile.prefixPath.equals(it.prefixPath, ignoreCase = true) }
             }
 
             val deletedFiles = oldFiles.filter { oldFile ->
-                !currentFiles.any { oldFile.prefixPath == it.prefixPath }
+                !currentFiles.any { oldFile.prefixPath.equals(it.prefixPath, ignoreCase = true) }
             }
 
             val modifiedFiles = overlappingFiles.filter { file ->
                 oldFiles.first {
-                    it.prefixPath == file.prefixPath
+                    it.prefixPath.equals(file.prefixPath, ignoreCase = true)
                 }.let {
                     Timber.i("Comparing SHA of ${it.prefixPath} and ${file.prefixPath}")
                     Timber.i("[${it.sha.joinToString(", ")}]\n[${file.sha.joinToString(", ")}]")
@@ -329,11 +330,12 @@ object SteamAutoCloud {
                 fileList.files.any { file ->
                     Timber.i("Checking for " + "${getFilePrefix(file, fileList)} in ${localUserFiles.keys}")
 
-                    localUserFiles[getFilePrefix(file, fileList)]?.let { localUserFile ->
+                    val cloudPrefix = getFilePrefix(file, fileList)
+                    localUserFiles.entries.firstOrNull { it.key.equals(cloudPrefix, ignoreCase = true) }?.value?.let { localUserFile ->
                         localUserFile.firstOrNull {
                             Timber.i("Comparing ${file.filename} and ${it.filename}")
 
-                            it.filename == file.filename
+                            it.filename.equals(file.filename, ignoreCase = true)
                         }?.let {
                             Timber.i("Comparing SHA of ${getFilePrefixPath(file, fileList)} and ${it.prefixPath}")
                             Timber.i("[${file.shaFile.joinToString(", ")}]\n[${it.sha.joinToString(", ")}]")
@@ -356,7 +358,10 @@ object SteamAutoCloud {
                         return@forEach
                     }
 
-                    val basePath = Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath)
+                    val basePath = FileUtils.resolveCaseInsensitive(
+                        File("/"),
+                        Paths.get(prefixToPath(userFile.root.toString()), userFile.substitutedPath).toString().trimStart('/'),
+                    ).toPath()
 
                     Timber.i("Looking for saves in $basePath with pattern ${userFile.pattern} (prefix ${userFile.prefix})")
 
@@ -1170,7 +1175,10 @@ object SteamAutoCloud {
         onProgress: ((message: String, progress: Float) -> Unit)?, // invoked from IO thread
     ): UserFilesDownloadResult? {
         val prefixedPath = getFilePrefixPath(file, fileList)
-        val actualFilePath = getFullFilePath(file, fileList)
+        val actualFilePath = FileUtils.resolveCaseInsensitive(
+            File("/"),
+            getFullFilePath(file, fileList).toString().trimStart('/'),
+        ).toPath()
 
         Timber.i("$prefixedPath -> $actualFilePath")
 
