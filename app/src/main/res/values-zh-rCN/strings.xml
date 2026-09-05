@@ -1474,6 +1474,7 @@
     <string name="amazon_logout_in_progress">正在从 Amazon Games 注销…</string>
 
     <!-- Epic Install/Uninstall -->
+    <string name="epic_disabled_warning_third_party_client">Epic 商店目前不支持需要第三方启动器的游戏</string>
     <string name="epic_uninstall_game_title">卸载游戏</string>
     <string name="epic_uninstall_game_message">您确定要卸载 %1$s 吗？此操作无法撤回。</string>
     <string name="epic_install_game_title">下载游戏</string>

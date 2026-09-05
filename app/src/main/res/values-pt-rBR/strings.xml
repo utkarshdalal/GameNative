@@ -1367,6 +1367,7 @@
     <string name="amazon_logout_in_progress">Saindo do Amazon Games…</string>
 
     <!-- Epic Install/Uninstall -->
+    <string name="epic_disabled_warning_third_party_client">Jogos com launcher de terceiros não são suportados atualmente na Epic Store</string>
     <string name="epic_uninstall_game_title">Desinstalar jogo</string>
     <string name="epic_uninstall_game_message">Tem certeza de que deseja desinstalar %1$s? Esta ação não pode ser desfeita.</string>
     <string name="epic_install_game_title">Baixar jogo</string>

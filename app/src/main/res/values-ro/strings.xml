@@ -1499,6 +1499,7 @@
 	<string name="amazon_logout_in_progress">Se deconectează de la Amazon Games…</string>
 
 	<!-- Epic Install/Uninstall -->
+	<string name="epic_disabled_warning_third_party_client">Jocurile cu lansator terț nu sunt acceptate în prezent pe Epic Store</string>
 	<string name="epic_uninstall_game_title">Dezinstalare joc</string>
 	<string name="epic_uninstall_game_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
 	<string name="epic_install_game_title">Descărcare joc</string>

@@ -56,6 +56,7 @@
     <string name="gog_uninstall_confirmation_message">¿Deseas desinstalar %1$s? Esta acción no se puede deshacer.</string>
     <string name="gog_install_game_title">Instalar juego</string>
     <string name="gog_install_confirmation_message">La aplicación a instalar requiere el siguiente espacio. ¿Deseas continuar?\n\n\tTamaño de descarga: %1$s\n\tEspacio disponible: %2$s</string>
+    <string name="epic_disabled_warning_third_party_client">Los juegos con lanzador de terceros no son compatibles actualmente en Epic Store</string>
     <string name="epic_uninstall_game_title">Desinstalar juego</string>
     <string name="epic_uninstall_game_message">¿Deseas desinstalar %1$s? Esta acción no se puede deshacer.</string>
     <string name="epic_install_game_title">Instalar juego</string>
