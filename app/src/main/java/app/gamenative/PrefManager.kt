@@ -19,6 +19,7 @@ import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.HomeDestination
+import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.enums.PaneType
 import com.materialkolor.PaletteStyle
@@ -930,6 +931,20 @@ object PrefManager {
         get() = getPref(LIBRARY_CURATED_LISTS_CACHE, "")
         set(value) { setPref(LIBRARY_CURATED_LISTS_CACHE, value) }
 
+    private val LIBRARY_TAB_PREFERENCES = stringPreferencesKey("library_tab_preferences")
+    var libraryTabs: List<LibraryTab>
+        get() = LibraryTab.normalizeVisibleTabs(
+            getPref(LIBRARY_TAB_PREFERENCES, ""),
+            LibraryTab.entries.toList(),
+        )
+        set(value) {
+            val normalized = LibraryTab.normalizeVisibleTabs(
+                LibraryTab.serializeVisibleTabs(value),
+                LibraryTab.entries.toList(),
+            )
+            setPref(LIBRARY_TAB_PREFERENCES, LibraryTab.serializeVisibleTabs(normalized))
+        }
+
     /**
      * Get or Set the last known Persona State. See [EPersonaState]
      */
@@ -1240,6 +1255,45 @@ object PrefManager {
         get() = getPref(RECOMMENDATION_CACHE_TIMESTAMP, 0L)
         set(value) {
             setPref(RECOMMENDATION_CACHE_TIMESTAMP, value)
+        }
+
+    // Cached boot-screen sponsor payload; boot renders from this, never from network
+    private val BOOT_AD_CACHE_JSON = stringPreferencesKey("boot_ad_cache_json")
+    var bootAdCacheJson: String
+        get() = getPref(BOOT_AD_CACHE_JSON, "")
+        set(value) {
+            setPref(BOOT_AD_CACHE_JSON, value)
+        }
+
+    // campaignId shown on the most recent boot, so rotation never repeats back-to-back
+    private val BOOT_AD_LAST_SHOWN = stringPreferencesKey("boot_ad_last_shown")
+    var bootAdLastShown: String
+        get() = getPref(BOOT_AD_LAST_SHOWN, "")
+        set(value) {
+            setPref(BOOT_AD_LAST_SHOWN, value)
+        }
+
+    // Comma-separated "campaignId:daySeed:count" entries — per-campaign daily frequency caps
+    private val BOOT_AD_SHOW_COUNT = stringPreferencesKey("boot_ad_show_count")
+    var bootAdShowCount: String
+        get() = getPref(BOOT_AD_SHOW_COUNT, "")
+        set(value) {
+            setPref(BOOT_AD_SHOW_COUNT, value)
+        }
+
+    // Show the day's game recommendation on the booting splash when no sponsor card is eligible
+    private val BOOT_SCREEN_RECOMMENDATIONS_ENABLED = booleanPreferencesKey("boot_screen_recommendations_enabled")
+    var bootScreenRecommendationsEnabled: Boolean
+        get() = getPref(BOOT_SCREEN_RECOMMENDATIONS_ENABLED, false)
+        set(value) {
+            setPref(BOOT_SCREEN_RECOMMENDATIONS_ENABLED, value)
+        }
+
+    private val BOOT_SCREEN_ADS_ENABLED = booleanPreferencesKey("boot_screen_ads_enabled")
+    var bootScreenAdsEnabled: Boolean
+        get() = getPref(BOOT_SCREEN_ADS_ENABLED, true)
+        set(value) {
+            setPref(BOOT_SCREEN_ADS_ENABLED, value)
         }
 
     // Show game recommendations in library

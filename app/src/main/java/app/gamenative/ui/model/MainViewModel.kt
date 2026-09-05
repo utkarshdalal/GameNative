@@ -9,6 +9,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.BootAdRepository
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryPlayHistory
@@ -27,6 +28,7 @@ import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.utils.ConversionTracker
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
@@ -71,12 +73,17 @@ class MainViewModel @Inject constructor(
         private const val KEY_CURRENT_SCREEN_ROUTE = "current_screen_route"
         private const val MIN_WARM_PITCH_SESSION_MS = 7 * 60 * 1000L
         private const val WARM_PITCH_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000L
+        private const val BOOT_AD_REUSE_WINDOW_MS = 2 * 60 * 1000L
 
         var gamePlayedThisSession = false
             private set
     }
 
     private var gameSessionStartTime = 0L
+    private var bootAdShownAtMs = 0L
+    private var bootAdHiddenAtMs = 0L
+    private var bootAdDwellReported = false
+    private var bootAwaitingGameWindow = false
     private var pendingWarmPitch: Pair<String, Boolean>? = null
 
     private fun warmPitchAllowed(): Boolean {
@@ -362,7 +369,54 @@ class MainViewModel @Inject constructor(
     }
 
     fun setShowBootingSplash(value: Boolean) {
-        _state.update { it.copy(showBootingSplash = value) }
+        val wasShowing = _state.value.showBootingSplash
+        if (value && !wasShowing) {
+            // The splash hides and re-shows between boot phases; a quick re-show is the same
+            // impression. Re-querying here would record extra shows and null the ad mid-boot
+            // once the daily cap is crossed, unmounting the sponsor card while the splash is up.
+            val held = _state.value.bootAd
+            val heldAllowed = held != null &&
+                (if (held.sponsored) PrefManager.bootScreenAdsEnabled else PrefManager.bootScreenRecommendationsEnabled)
+            val reuse = heldAllowed && System.currentTimeMillis() - bootAdHiddenAtMs < BOOT_AD_REUSE_WINDOW_MS
+            val ad = if (reuse) {
+                held
+            } else {
+                BootAdRepository.pickBootCard()?.also {
+                    bootAdShownAtMs = System.currentTimeMillis()
+                    // House recommendation cards carry no cap and report no ad dwell.
+                    bootAdDwellReported = !it.sponsored
+                    if (it.sponsored) BootAdRepository.recordShown(it.campaignId) else BootAdRepository.noteShown(it.campaignId)
+                }
+            }
+            Timber.tag("BootAdTrace").i("show: wasShowing=false held=%s reuse=%s ad=%s", held != null, reuse, ad?.campaignId)
+            PluviaApp.isBootingSplashShowing = true
+            _state.update { it.copy(showBootingSplash = true, bootAd = ad) }
+            // Resolve after publishing so an instant cache hit can't race the state write.
+            if (ad != null && !ad.sponsored && !reuse) {
+                viewModelScope.launch(Dispatchers.IO) {
+                    val upgraded = BootAdRepository.resolveHouseTrailer(ad) ?: return@launch
+                    _state.update { s -> if (s.bootAd?.campaignId == upgraded.campaignId) s.copy(bootAd = upgraded) else s }
+                }
+            }
+        } else if (!value && wasShowing) {
+            Timber.tag("BootAdTrace").i("hide: ad=%s", _state.value.bootAd?.campaignId)
+            bootAdHiddenAtMs = System.currentTimeMillis()
+            _state.value.bootAd?.let { ad ->
+                if (!bootAdDwellReported) {
+                    bootAdDwellReported = true
+                    ConversionTracker.bootAdShown(
+                        campaignId = ad.campaignId,
+                        dwellSeconds = (System.currentTimeMillis() - bootAdShownAtMs) / 1000L,
+                    )
+                }
+            }
+            // bootAd stays in state so the exit fade keeps rendering it; the next show replaces it.
+            PluviaApp.isBootingSplashShowing = false
+            _state.update { it.copy(showBootingSplash = false) }
+        } else {
+            PluviaApp.isBootingSplashShowing = value
+            _state.update { it.copy(showBootingSplash = value) }
+        }
     }
 
     fun setBootingSplashText(value: String) {
@@ -532,6 +586,9 @@ class MainViewModel @Inject constructor(
                 }
             }
 
+            bootAwaitingGameWindow = true
+            // A new launch is a new impression: never reuse the previous launch's ad.
+            bootAdHiddenAtMs = 0L
             setShowBootingSplash(true)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
@@ -597,7 +654,7 @@ class MainViewModel @Inject constructor(
 
             if (app.gamenative.BuildConfig.XR_BUILD &&
                 container.isLaunchImmersiveMode() &&
-                app.gamenative.MainActivity.isMetaQuest()
+                app.gamenative.MainActivity.isHeadset(context)
             ) {
                 bootingSplashTimeoutJob?.cancel()
                 bootingSplashTimeoutJob = null
@@ -614,6 +671,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 Timber.tag("Exit").i("Exiting, getting feedback for appId: $appId")
+                bootAwaitingGameWindow = false
                 bootingSplashTimeoutJob?.cancel()
                 bootingSplashTimeoutJob = null
                 setShowBootingSplash(false)
@@ -800,13 +858,20 @@ class MainViewModel @Inject constructor(
 
     fun onWindowMapped(context: Context, window: Window, appId: String) {
         viewModelScope.launch {
-            // Hide the booting splash when a window is mapped
-            bootingSplashTimeoutJob?.cancel()
-            bootingSplashTimeoutJob = null
-            setShowBootingSplash(false)
-            // See onClearBootingSplash's kdoc — broadcast so MainActivity's own instance clears
-            // too when this call is actually running on ImmersiveXrActivity's separate instance.
-            PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+            // Hide the booting splash when a window is mapped. During boot, Wine's own shell
+            // windows (explorer.exe etc.) map long before the game renders, so they must not
+            // end it; outside boot (exit/teardown re-shows) any window map hides it as before.
+            if (bootAwaitingGameWindow && WineProcessSnapshotHelper.isSystemProcessName(window.className)) {
+                Timber.tag("BootAdTrace").i("ignoring system window map: %s", window.className)
+            } else {
+                bootAwaitingGameWindow = false
+                bootingSplashTimeoutJob?.cancel()
+                bootingSplashTimeoutJob = null
+                setShowBootingSplash(false)
+                // See onClearBootingSplash's kdoc — broadcast so MainActivity's own instance clears
+                // too when this call is actually running on ImmersiveXrActivity's separate instance.
+                PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+            }
 
             if (ContainerUtils.extractGameSourceFromContainerId(appId) != GameSource.STEAM) {
                 return@launch
@@ -875,6 +940,7 @@ class MainViewModel @Inject constructor(
     fun onGameLaunchError(error: String) {
         viewModelScope.launch {
             // Hide the splash screen if it's still showing
+            bootAwaitingGameWindow = false
             bootingSplashTimeoutJob?.cancel()
             bootingSplashTimeoutJob = null
             setShowBootingSplash(false)

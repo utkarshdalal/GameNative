@@ -567,6 +567,10 @@ class RadialMenuCoordinator(
         }
 
         val view = inputControlsView
+        if (binding == Binding.GYRO_MODIFIER) {
+            view?.handleInputEvent(binding, isActionDown, offset)
+            return
+        }
         if (view?.profile != null) {
             view.handleInputEvent(binding, isActionDown, offset)
             if (binding.isGamepad) {

@@ -1,6 +1,7 @@
 package app.gamenative.events
 
 import app.gamenative.data.GameSource
+import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.enums.Orientation
 import java.util.EnumSet
 
@@ -28,6 +29,7 @@ interface AndroidEvent<T> : Event<T> {
     data class CustomGameImagesFetched(val appId: String) : AndroidEvent<Unit>
     data object RecommendationToggleChanged : AndroidEvent<Unit>
     data class HiddenGamesSettingChanged(val showHiddenGamesByDefault: Boolean) : AndroidEvent<Unit>
+    data class LibraryTabsChanged(val visibleTabs: List<LibraryTab>) : AndroidEvent<Unit>
     data class GOGAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>
     data class EpicAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>
     data object ServiceReady : AndroidEvent<Unit>

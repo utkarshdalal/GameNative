@@ -48,6 +48,7 @@ public class XServer {
     private final boolean mouseDragCompatibilityEnabled;
     private boolean simulateTouchScreen = false;
     private final boolean runningFromGlibc;
+    private volatile boolean flatPresentationEnabled = true;
 
     public XServer(ScreenInfo screenInfo, boolean useGlibcContainer) {
         this(screenInfo, useGlibcContainer, false);
@@ -103,6 +104,14 @@ public class XServer {
 
     public void setRenderingEnabled(boolean enabled) {
         // intentionally empty
+    }
+
+    public void setFlatPresentationEnabled(boolean enabled) {
+        flatPresentationEnabled = enabled;
+    }
+
+    public boolean isFlatPresentationEnabled() {
+        return flatPresentationEnabled;
     }
 
     public WinHandler getWinHandler() {

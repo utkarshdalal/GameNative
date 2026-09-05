@@ -20,6 +20,7 @@ data class ContainerData(
     val rendererPresentMode: String = "fifo",
     val displayRenderer: String = Container.DEFAULT_DISPLAY_RENDERER,
     val xrRefreshRate: Int = 72,
+    val xrRenderScale: Int = 100,
     val sfCompatMode: Boolean = true,
     var dxwrapper: String = Container.DEFAULT_DXWRAPPER,
     val dxwrapperConfig: String = "",
@@ -110,6 +111,8 @@ data class ContainerData(
     // LSFG Vulkan frame generation
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
+    val windowsVrEnabled: Boolean = false,
+    val openCompositeEnabled: Boolean = false,
 ) {
     companion object {
         val Saver = mapSaver(
@@ -124,6 +127,7 @@ data class ContainerData(
                     "rendererPresentMode" to state.rendererPresentMode,
                     "displayRenderer" to state.displayRenderer,
                     "xrRefreshRate" to state.xrRefreshRate,
+                    "xrRenderScale" to state.xrRenderScale,
                     "sfCompatMode" to state.sfCompatMode,
                     "dxwrapper" to state.dxwrapper,
                     "dxwrapperConfig" to state.dxwrapperConfig,
@@ -184,6 +188,8 @@ data class ContainerData(
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
                     "lsfgEnabled" to state.lsfgEnabled,
+                    "windowsVrEnabled" to state.windowsVrEnabled,
+                    "openCompositeEnabled" to state.openCompositeEnabled,
                 )
             },
             restore = { savedMap ->
@@ -197,6 +203,7 @@ data class ContainerData(
                     rendererPresentMode = (savedMap["rendererPresentMode"] as? String) ?: "fifo",
                     displayRenderer = (savedMap["displayRenderer"] as? String) ?: "vulkan",
                     xrRefreshRate = (savedMap["xrRefreshRate"] as? Int) ?: 72,
+                    xrRenderScale = (savedMap["xrRenderScale"] as? Int) ?: 100,
                     sfCompatMode = (savedMap["sfCompatMode"] as? Boolean) ?: true,
                     dxwrapper = savedMap["dxwrapper"] as String,
                     dxwrapperConfig = savedMap["dxwrapperConfig"] as String,
@@ -257,6 +264,8 @@ data class ContainerData(
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
+                    windowsVrEnabled = (savedMap["windowsVrEnabled"] as? Boolean) ?: false,
+                    openCompositeEnabled = (savedMap["openCompositeEnabled"] as? Boolean) ?: false,
                 )
             },
         )

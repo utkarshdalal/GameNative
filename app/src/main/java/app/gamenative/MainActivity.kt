@@ -522,7 +522,13 @@ class MainActivity : ComponentActivity() {
                     Timber.d("Game resume skipped due to suspend policy=never")
                 }
                 PluviaApp.isOverlayPaused -> {
-                    if (PluviaApp.isManualSuspendMode()) {
+                    if (PluviaApp.isBootingSplashShowing) {
+                        // The Resume overlay sits under the booting splash, so the user could
+                        // never press it; nothing is being played yet, so just carry on booting.
+                        PluviaApp.xEnvironment?.onResume()
+                        PluviaApp.isOverlayPaused = false
+                        Timber.d("Game resumed automatically: still booting behind the splash")
+                    } else if (PluviaApp.isManualSuspendMode()) {
                         Timber.d("Game remains suspended until user presses Resume")
                     }
                 }
@@ -552,6 +558,11 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        if (PluviaApp.isImmersiveActivityResumed) {
+            Timber.d("Launcher paused behind the immersive activity; game stays in the foreground")
+            super.onPause()
+            return
+        }
         PowerManager.pause()
         PluviaApp.isActivityInForeground = false
         if (hasReadyGameLifecycleState("pause")) {

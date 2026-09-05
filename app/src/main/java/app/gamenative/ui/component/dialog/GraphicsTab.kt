@@ -172,7 +172,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                 },
             )
-            if (app.gamenative.BuildConfig.XR_BUILD) {
+            if (app.gamenative.BuildConfig.XR_BUILD && !default) {
                 val xrRates = listOf(72, 90, 120)
                 SettingsListDropdown(
                     colors = settingsTileColors(),
@@ -183,6 +183,29 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                         state.config.value = config.copy(xrRefreshRate = xrRates[idx])
                     },
                 )
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(text = stringResource(R.string.xr_render_scale))
+                    Slider(
+                        value = config.xrRenderScale.toFloat(),
+                        onValueChange = { newValue ->
+                            val stepped = ((newValue.roundToInt() + 2) / 5 * 5).coerceIn(25, 100)
+                            state.config.value = config.copy(xrRenderScale = stepped)
+                        },
+                        valueRange = 25f..100f,
+                    )
+                    Text(text = "${config.xrRenderScale}%")
+                }
+                if (config.windowsVrEnabled) {
+                    SettingsSwitch(
+                        colors = settingsTileColorsAlt(),
+                        title = { Text(text = stringResource(R.string.xr_open_composite_toggle)) },
+                        subtitle = { Text(text = stringResource(R.string.xr_open_composite_toggle_desc)) },
+                        state = config.openCompositeEnabled,
+                        onCheckedChange = { checked ->
+                            state.config.value = config.copy(openCompositeEnabled = checked)
+                        },
+                    )
+                }
             }
             SettingsListDropdown(
                 colors = settingsTileColors(),
