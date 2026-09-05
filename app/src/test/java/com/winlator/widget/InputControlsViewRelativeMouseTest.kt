@@ -12,9 +12,10 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class InputControlsViewRelativeMouseTest {
     @Test
-    fun `mouse look can enable Win32 relative input`() {
+    fun `mouse look enables Win32 relative input while container shooter mode is active`() {
         val xServer = mockk<XServer>(relaxed = true)
         val view = InputControlsView(ApplicationProvider.getApplicationContext())
+        view.setContainerShooterMode(true)
         view.setShooterModeConfig(
             ShooterModeConfig(
                 lookType = ShooterModeConfig.LOOK_MOUSE,
@@ -27,9 +28,48 @@ class InputControlsViewRelativeMouseTest {
     }
 
     @Test
+    fun `disabling container shooter mode restores normal pointer input`() {
+        val xServer = mockk<XServer>(relaxed = true)
+        val view = InputControlsView(ApplicationProvider.getApplicationContext())
+        view.setContainerShooterMode(true)
+        view.setShooterModeConfig(
+            ShooterModeConfig(
+                lookType = ShooterModeConfig.LOOK_MOUSE,
+                win32RelativeMouseInput = true,
+            ),
+        )
+        view.setXServer(xServer)
+
+        view.setContainerShooterMode(false)
+
+        verify { xServer.setRelativeMouseMovement(true) }
+        verify { xServer.setRelativeMouseMovement(false) }
+    }
+
+    @Test
+    fun `disabling shooter mode control restores normal pointer input`() {
+        val xServer = mockk<XServer>(relaxed = true)
+        val view = InputControlsView(ApplicationProvider.getApplicationContext())
+        view.setShooterModeActive(true)
+        view.setShooterModeConfig(
+            ShooterModeConfig(
+                lookType = ShooterModeConfig.LOOK_MOUSE,
+                win32RelativeMouseInput = true,
+            ),
+        )
+        view.setXServer(xServer)
+
+        view.setShooterModeActive(false)
+
+        verify { xServer.setRelativeMouseMovement(true) }
+        verify { xServer.setRelativeMouseMovement(false) }
+    }
+
+    @Test
     fun `right stick look keeps Win32 relative input disabled`() {
         val xServer = mockk<XServer>(relaxed = true)
         val view = InputControlsView(ApplicationProvider.getApplicationContext())
+        view.setContainerShooterMode(true)
         view.setShooterModeConfig(
             ShooterModeConfig(
                 lookType = ShooterModeConfig.LOOK_GAMEPAD_RIGHT_STICK,
