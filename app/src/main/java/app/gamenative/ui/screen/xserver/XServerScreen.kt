@@ -81,6 +81,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.util.applyScreenEffectsConfig
+import app.gamenative.ui.util.applyViewportOffsetConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -697,6 +698,10 @@ fun XServerScreen(
         when (val renderer = xServerView?.renderer) {
             is VulkanRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
             is GLRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
+            // No screen effects on the SurfaceFlinger renderer, but the viewport
+            // offset still applies (and the process-wide offset must be reset when
+            // this container has none saved).
+            is ASurfaceRenderer -> applyViewportOffsetConfig(renderer, screenEffectsConfig)
         }
     }
 

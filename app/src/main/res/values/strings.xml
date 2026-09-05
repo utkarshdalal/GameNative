@@ -279,6 +279,10 @@
     <string name="screen_effects_scaling">Scaling</string>
     <string name="screen_effects_upscaling">Upscaling</string>
     <string name="screen_effects_basic_scaling">Basic scaling</string>
+    <string name="screen_effects_viewport_position">Screen position</string>
+    <string name="screen_effects_viewport_offset_x">Horizontal position</string>
+    <string name="screen_effects_viewport_offset_y">Vertical position</string>
+    <string name="screen_effects_viewport_position_description">Moves the game image within the unused screen space, e.g. shift it up to free the bottom for on-screen controls. Only applies when the image doesn\'t fill the screen.</string>
     <string name="screen_effects_color_adjustments">Color adjustments</string>
     <string name="screen_effects_shader_toggles">Shader effects</string>
     <string name="screen_effects_scaling_mode">Scaling mode</string>
