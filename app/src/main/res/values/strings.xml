@@ -2262,6 +2262,7 @@
     <string name="hltb_all_styles">All Styles</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">How Long to Beat</string>
+    <string name="hltb_show_spoilers">Show spoilers</string>
 
     <!-- Frontend Sync Settings -->
     <string name="settings_interface_frontend_sync_title">Frontend Sync</string>

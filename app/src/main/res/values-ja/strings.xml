@@ -1618,6 +1618,16 @@
     <string name="settings_interface_library_tabs_title">ライブラリのタブ</string>
     <string name="settings_interface_library_tabs_subtitle">ライブラリに表示するストアのタブを選択します。</string>
     <string name="settings_interface_library_tabs_none">ストアのタブなし</string>
+
+    <!-- HLTB (How Long To Beat) -->
+    <string name="hltb_main_story">メインストーリー</string>
+    <string name="hltb_main_plus_extras">メイン + 追加要素</string>
+    <string name="hltb_completionist">コンプリート</string>
+    <string name="hltb_all_styles">すべてのスタイル</string>
+    <string name="hltb_hours_value">%sh</string>
+    <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">ネタバレを表示</string>
+
     <!-- Game Launch Tips -->
     <string name="game_launch_tip_1">初回起動時は起動に数分かかる場合があります</string>
     <string name="game_launch_tip_2">ヒント: ゲーム設定で \"%s\" を押すと、ゲーム ファイルを表示できます。</string>
