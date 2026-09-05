@@ -4,6 +4,31 @@ package app.gamenative.ui.screen.library
 
 import android.content.Intent
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.displayCutoutPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import app.gamenative.ui.component.GradientProgressBar
+import app.gamenative.ui.component.InfoCard
+import app.gamenative.ui.component.topbar.BackButton
+import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.screen.library.components.ambient.AmbientDownloadOverlay
 import android.content.ActivityNotFoundException
 import android.net.Uri
@@ -55,19 +80,24 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -99,9 +129,13 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.NetworkMonitor
@@ -115,6 +149,7 @@ import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.data.AppMenuOption
+import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.internal.fakeAppInfo
@@ -132,6 +167,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -287,7 +323,6 @@ private fun PrimaryActionButton(
     }
 }
 
-
 /**
  * Icon-only action button for the overlay action bar
  */
@@ -337,80 +372,6 @@ private fun ActionIconButton(
             tint = Color.White,
             modifier = Modifier.size(24.dp),
         )
-    }
-}
-
-/**
- * Info card for game details with optional status indicator
- */
-@Composable
-private fun InfoCard(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    statusColor: Color? = null,
-    isCompact: Boolean = false,
-    focusableForNavigation: Boolean = false,
-) {
-    var isFocused by remember { mutableStateOf(false) }
-    val interactionSource = remember { MutableInteractionSource() }
-    val bringIntoViewRequester = remember { BringIntoViewRequester() }
-    val scope = rememberCoroutineScope()
-    val cardModifier = if (focusableForNavigation) {
-        modifier
-            .bringIntoViewRequester(bringIntoViewRequester)
-            .onFocusChanged { state ->
-                isFocused = state.isFocused
-                if (state.isFocused) {
-                    scope.launch { bringIntoViewRequester.bringIntoView() }
-                }
-            }
-            .focusable(interactionSource = interactionSource)
-            .focusRing(interactionSource, RoundedCornerShape(16.dp), width = 2.dp)
-    } else {
-        modifier
-    }
-
-    Surface(
-        modifier = cardModifier,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shadowElevation = 2.dp,
-    ) {
-        Column(
-            modifier = Modifier.padding(if (isCompact) 14.dp else 18.dp),
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (statusColor != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .background(statusColor, CircleShape),
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                }
-                Text(
-                    text = value,
-                    style = if (isCompact) {
-                        MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                    } else {
-                        MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-                    },
-                    color = if (statusColor != null) statusColor else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
     }
 }
 
@@ -513,6 +474,7 @@ fun AppScreen(
     onClickPlay: (Boolean) -> Unit,
     onTestGraphics: () -> Unit,
     onPlayWithDiagnostics: () -> Unit,
+    onAiDebugRun: () -> Unit,
     onBack: () -> Unit,
 ) {
     // Get the appropriate screen model based on game source
@@ -532,6 +494,7 @@ fun AppScreen(
         onClickPlay = onClickPlay,
         onTestGraphics = onTestGraphics,
         onPlayWithDiagnostics = onPlayWithDiagnostics,
+        onAiDebugRun = onAiDebugRun,
         onBack = onBack,
     )
 }
@@ -552,26 +515,38 @@ private fun formatBytes(bytes: Long): String {
     }
 }
 
+internal data class ImmersiveModeUiState(
+    val isSupported: Boolean = false,
+    val isEnabled: Boolean = false,
+    val onChange: (Boolean) -> Unit = {},
+    val isVrEnabled: Boolean = false,
+    val onVrChange: (Boolean) -> Unit = {},
+)
+
 @Composable
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
     displayInfo: GameDisplayInfo,
-    isInstalled: Boolean,
-    isValidToDownload: Boolean,
-    isDownloading: Boolean,
-    downloadProgress: Float,
-    hasPartialDownload: Boolean,
-    hasLeftoverInstall: Boolean = false,
-    isUpdatePending: Boolean,
+    downloadDisplayDetails: DownloadDisplayDetails,
     downloadInfo: app.gamenative.data.DownloadInfo? = null,
     onDownloadInstallClick: () -> Unit,
     onPauseResumeClick: () -> Unit,
     onDeleteDownloadClick: () -> Unit,
     onUpdateClick: () -> Unit,
     onBack: () -> Unit = {},
+    achievements: List<Achievement>? = null,
     optionsMenu: List<AppMenuOption>,
     dialogOpen: Boolean = false,
+    immersiveMode: ImmersiveModeUiState = ImmersiveModeUiState(),
 ) {
+    // Unpacked so the body below is unchanged; bundling the params avoids a Compose VerifyError.
+    val isInstalled = downloadDisplayDetails.isInstalled
+    val isValidToDownload = downloadDisplayDetails.isValidToDownload
+    val isDownloading = downloadDisplayDetails.isDownloading
+    val downloadProgress = downloadDisplayDetails.downloadProgress
+    val hasPartialDownload = downloadDisplayDetails.hasPartialDownload
+    val hasLeftoverInstall = downloadDisplayDetails.hasLeftoverInstall
+    val isUpdatePending = downloadDisplayDetails.isUpdatePending
     val context = LocalContext.current
     // reactive — recomposes when network state changes
     val hasInternet by NetworkMonitor.hasInternet.collectAsState()
@@ -591,12 +566,44 @@ internal fun AppScreenContent(
     // Calculate parallax offset based on scroll
     val parallaxOffset = scrollState.value * 0.5f
 
+    var downloadTimeLeftText by remember { mutableStateOf("")}
+
+    val progressListener: (Float) -> Unit = {
+        val downloadStatusMessage = downloadInfo?.getCurrentStatusMessage()
+
+        downloadTimeLeftText = run {
+            val etaMs = downloadInfo?.getEstimatedTimeRemaining()
+            if (etaMs != null && etaMs > 0L) {
+                val totalSeconds = etaMs / 1000
+                val minutesLeft = totalSeconds / 60
+                val secondsPart = totalSeconds % 60
+                "${minutesLeft}m ${secondsPart}s left"
+            } else if (isDownloading && downloadProgress >= 1f) {
+                "Unpacking..."
+            } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
+                downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
+            } else {
+                ""
+            }
+        }
+    }
+
     LaunchedEffect(displayInfo.appId) {
         scrollState.animateScrollTo(0)
     }
 
     LaunchedEffect(Unit) {
         playButtonFocusRequester.requestFocus()
+    }
+
+    LaunchedEffect(downloadInfo) {
+        downloadInfo?.addProgressListener(progressListener)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            downloadInfo?.removeProgressListener(progressListener)
+        }
     }
 
     // Restore focus when options menu, dialogs
@@ -634,28 +641,7 @@ internal fun AppScreenContent(
         }
     }
 
-    // Download progress texts hoisted here so they can be shown inside the button
-    val downloadStatusMessageFlow = remember(downloadInfo) { downloadInfo?.getStatusMessageFlow() }
-    val downloadStatusMessage by (
-        downloadStatusMessageFlow?.collectAsState(initial = downloadStatusMessageFlow.value)
-            ?: remember { mutableStateOf<String?>(null) }
-        )
     val downloadingLabel = stringResource(R.string.downloading)
-    val downloadTimeLeftText = remember(displayInfo.appId, downloadProgress, downloadInfo, isDownloading, downloadStatusMessage) {
-        val etaMs = downloadInfo?.getEstimatedTimeRemaining()
-        if (etaMs != null && etaMs > 0L) {
-            val totalSeconds = etaMs / 1000
-            val minutesLeft = totalSeconds / 60
-            val secondsPart = totalSeconds % 60
-            "${minutesLeft}m ${secondsPart}s left"
-        } else if (isDownloading && downloadProgress >= 1f) {
-            downloadStatusMessage?.takeUnless { it.isBlank() } ?: "Unpacking..."
-        } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
-            downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
-        } else {
-            ""
-        }
-    }
     val downloadSizeText = remember(displayInfo.gameId, downloadProgress, downloadInfo) {
         val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
         if (bytesTotal > 0L) {
@@ -971,6 +957,51 @@ internal fun AppScreenContent(
                         }
                     }
 
+                    if (immersiveMode.isSupported && isInstalled) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp)
+                                .clickable { immersiveMode.onChange(!immersiveMode.isEnabled) },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = immersiveMode.isEnabled,
+                                onCheckedChange = immersiveMode.onChange,
+                                colors = CheckboxDefaults.colors(
+                                    uncheckedColor = Color.White.copy(alpha = 0.7f),
+                                ),
+                            )
+                            Text(
+                                text = stringResource(R.string.launch_immersive_mode),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White,
+                            )
+                        }
+                        if (immersiveMode.isEnabled) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 24.dp)
+                                    .clickable { immersiveMode.onVrChange(!immersiveMode.isVrEnabled) },
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = immersiveMode.isVrEnabled,
+                                    onCheckedChange = immersiveMode.onVrChange,
+                                    colors = CheckboxDefaults.colors(
+                                        uncheckedColor = Color.White.copy(alpha = 0.7f),
+                                    ),
+                                )
+                                Text(
+                                    text = stringResource(R.string.xr_windows_vr_toggle),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                    }
+
                     if (isDownloading && isPortrait) {
                         Row(
                             modifier = Modifier
@@ -1173,6 +1204,11 @@ internal fun AppScreenContent(
                     }
                 }
 
+                // Achievements
+                if (!achievements.isNullOrEmpty()) {
+                    AchievementsRow(achievements = achievements)
+                }
+
             }
         }
 
@@ -1291,6 +1327,519 @@ fun GameMigrationDialog(
     )
 }
 
+
+// Shared grayscale filter for locked achievement icons.
+private val grayMatrix = ColorMatrix().apply { setToSaturation(0f) }
+
+// Steam leaves some localized names blank.
+private val Achievement.label: String
+    get() = displayName.ifEmpty { name ?: "" }
+
+private fun Achievement.previewIconUrl(): String? =
+    if (isUnlocked) icon.ifEmpty { iconGray } else iconGray ?: icon.ifEmpty { null }
+
+// A still-locked secret achievement, whose details Steam keeps hidden.
+private val Achievement.isHiddenLocked: Boolean
+    get() = hidden && !isUnlocked
+
+// Achievement icon, grayed while locked. Pass masked = true to hide the art of a secret achievement.
+@Composable
+private fun AchievementIcon(ach: Achievement, size: Dp, corner: Dp, masked: Boolean = false) {
+    val box = Modifier
+        .size(size)
+        .clip(RoundedCornerShape(corner))
+        .background(MaterialTheme.colorScheme.surfaceContainer)
+    if (masked) {
+        Box(box, contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Filled.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(size / 2),
+            )
+        }
+    } else {
+        val iconUrl = ach.previewIconUrl()
+        CoilImage(
+            imageModel = { iconUrl ?: "" },
+            imageOptions = ImageOptions(
+                contentScale = ContentScale.Crop,
+                contentDescription = ach.label,
+                colorFilter = if (ach.isUnlocked) null else ColorFilter.colorMatrix(grayMatrix),
+            ),
+            modifier = box,
+        )
+    }
+}
+
+// Progress bar plus "current / max" for stat-linked achievements.
+@Composable
+private fun AchievementProgressBar(current: Float, max: Float, textStyle: TextStyle) {
+    val fraction = if (max > 0f) (current / max).coerceIn(0f, 1f) else 0f
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        GradientProgressBar(
+            progress = fraction,
+            modifier = Modifier.weight(1f),
+            height = 5.dp,
+        )
+        Text(
+            text = "${current.toInt()} / ${max.toInt()}",
+            style = textStyle,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+// Focusable, clickable achievement row.
+@Composable
+private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = null, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    Surface(
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusRing(interactionSource, shape),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            AchievementIcon(ach = ach, size = 40.dp, corner = 6.dp)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = ach.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (ach.description.isNotEmpty()) {
+                    Text(
+                        text = ach.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                val unlockedAt = ach.getFormattedUnlockDateTime()
+                if (ach.isUnlocked && unlockedAt != null) {
+                    Text(
+                        text = stringResource(R.string.achievements_unlocked_at, unlockedAt.first, unlockedAt.second),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PluviaTheme.colors.statusInstalled,
+                    )
+                } else if (ach.hasProgress) {
+                    AchievementProgressBar(
+                        current = ach.progressCurrent ?: 0f,
+                        max = ach.progressMax ?: 0f,
+                        textStyle = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Collapsed row standing in for still-locked secret achievements.
+@Composable
+private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    Surface(
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .focusRing(interactionSource, shape),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "+$count",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = pluralStringResource(R.plurals.achievements_hidden_remaining, count, count),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(R.string.achievements_hidden_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+// Full details for one achievement.
+@Composable
+private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+        },
+        icon = {
+            AchievementIcon(ach = ach, size = 64.dp, corner = 10.dp)
+        },
+        title = {
+            Text(
+                text = ach.label,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (ach.description.isNotEmpty()) {
+                    Text(
+                        text = ach.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                val unlockedAt = ach.getFormattedUnlockDateTime()
+                if (ach.isUnlocked && unlockedAt != null) {
+                    Text(
+                        text = stringResource(R.string.achievements_unlocked_at, unlockedAt.first, unlockedAt.second),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = PluviaTheme.colors.statusInstalled,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else if (ach.hasProgress) {
+                    AchievementProgressBar(
+                        current = ach.progressCurrent ?: 0f,
+                        max = ach.progressMax ?: 0f,
+                        textStyle = MaterialTheme.typography.labelMedium,
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.achievements_locked),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun AchievementsRow(
+    achievements: List<Achievement>,
+) {
+    val unlockedCount = achievements.count { it.isUnlocked }
+    val totalCount = achievements.size
+    var showDialog by remember { mutableStateOf(false) }
+
+    val sortedAchievements = remember(achievements) {
+        achievements.sortedWith(
+            compareByDescending<Achievement> { it.isUnlocked }
+                .thenByDescending { it.unlockTimestamp },
+        )
+    }
+
+    Spacer(modifier = Modifier.height(10.dp))
+
+    InfoCard(
+        label = stringResource(R.string.achievements),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 36.dp),
+        isCompact = true,
+        onClick = { showDialog = true },
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Fit as many icons as the width allows.
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val minIconSize = 48.dp
+                val spacing = 8.dp
+                val total = sortedAchievements.size
+                val slotsByWidth = ((maxWidth + spacing) / (minIconSize + spacing))
+                    .toInt()
+                    .coerceAtLeast(1)
+                val slots = slotsByWidth.coerceAtMost(total)
+                // A full row divides the width evenly so the strip ends flush with the bar below.
+                val iconSize = if (total >= slotsByWidth) {
+                    (maxWidth - spacing * (slots - 1)) / slots
+                } else {
+                    minIconSize
+                }
+                // Reserve the last slot for a "+N" stack when more achievements exist than fit.
+                val showStack = total > slots
+                val iconCount = if (showStack) (slots - 1).coerceAtLeast(0) else slots
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                    sortedAchievements.take(iconCount).forEach { ach ->
+                        AchievementIcon(
+                            ach = ach,
+                            size = iconSize,
+                            corner = 8.dp,
+                            masked = ach.isHiddenLocked,
+                        )
+                    }
+                    if (showStack) {
+                        val next = sortedAchievements[iconCount]
+                        Box(
+                            modifier = Modifier
+                                .size(iconSize)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (!next.isHiddenLocked) {
+                                val nextUrl = next.previewIconUrl()
+                                CoilImage(
+                                    imageModel = { nextUrl ?: "" },
+                                    imageOptions = ImageOptions(
+                                        contentScale = ContentScale.Crop,
+                                        contentDescription = next.label,
+                                        colorFilter = ColorFilter.colorMatrix(grayMatrix),
+                                    ),
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.55f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "+${total - iconCount}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                GradientProgressBar(
+                    progress = if (totalCount > 0) unlockedCount.toFloat() / totalCount else 0f,
+                    modifier = Modifier.weight(1f),
+                    height = 8.dp,
+                )
+                // Floors, so only a full set reads as 100%.
+                val percent = if (totalCount > 0) unlockedCount * 100 / totalCount else 0
+                Text(
+                    text = stringResource(R.string.achievements_progress_count, unlockedCount, totalCount, percent),
+                    style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+                // Give them a star for getting 100% completion
+                if (totalCount >= 1 && unlockedCount == totalCount) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = stringResource(R.string.achievements_complete),
+                        tint = Color(0xFFFFD700),
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+    }
+
+    if (showDialog) {
+        AchievementsDialog(
+            achievements = sortedAchievements,
+            onDismiss = { showDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun AchievementsDialog(
+    achievements: List<Achievement>,
+    onDismiss: () -> Unit,
+) {
+    // Dialog destinations don't animate; fade/slide the content in and play the exit before
+    // dismissing, matching the screenshot gallery.
+    val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
+    LaunchedEffect(visibleState.isIdle) {
+        if (visibleState.isIdle && !visibleState.currentState) onDismiss()
+    }
+    val dismiss = { visibleState.targetState = false }
+
+    // Secret achievements collapse into one row until revealed. Reveal is session-only.
+    val (hiddenLocked, visibleAchievements) = remember(achievements) {
+        achievements.partition { it.isHiddenLocked }
+    }
+    var revealHidden by remember { mutableStateOf(false) }
+    var showRevealConfirm by remember { mutableStateOf(false) }
+    var detailAchievement by remember { mutableStateOf<Achievement?>(null) }
+    // Keep focus on the freshly revealed achievements instead of jumping to the list top.
+    val revealedFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(revealHidden) {
+        if (revealHidden) {
+            repeat(5) {
+                try {
+                    if (revealedFocusRequester.requestFocus()) return@LaunchedEffect
+                } catch (_: IllegalStateException) {
+                }
+                delay(32)
+            }
+        }
+    }
+
+    Dialog(
+        onDismissRequest = dismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        // Drop the window dim so the entrance animation has no scrim flash.
+        val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect { dialogWindow?.setDimAmount(0f) }
+
+        AnimatedVisibility(
+            visibleState = visibleState,
+            enter = fadeIn(animationSpec = tween(200)) +
+                slideInVertically(animationSpec = tween(200)) { it / 12 },
+            exit = fadeOut(animationSpec = tween(150)) +
+                slideOutVertically(animationSpec = tween(150)) { it / 12 },
+        ) {
+        Surface(
+            color = MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .displayCutoutPadding()
+                    .navigationBarsPadding(),
+            ) {
+                // Header: back + title, mirroring the screenshot gallery.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    BackButton(onClick = dismiss)
+                    Text(
+                        text = stringResource(R.string.achievements_all_title),
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(visibleAchievements) { ach ->
+                        AchievementRow(ach) { detailAchievement = ach }
+                    }
+                    if (hiddenLocked.isNotEmpty()) {
+                        if (revealHidden) {
+                            itemsIndexed(hiddenLocked) { index, ach ->
+                                AchievementRow(
+                                    ach = ach,
+                                    focusRequester = if (index == 0) revealedFocusRequester else null,
+                                ) { detailAchievement = ach }
+                            }
+                        } else {
+                            item {
+                                HiddenAchievementsSummary(count = hiddenLocked.size) {
+                                    showRevealConfirm = true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        }
+    }
+
+    if (showRevealConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRevealConfirm = false },
+            title = { Text(stringResource(R.string.achievements_reveal_title)) },
+            text = { Text(stringResource(R.string.achievements_reveal_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    revealHidden = true
+                    showRevealConfirm = false
+                }) { Text(stringResource(R.string.achievements_reveal_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRevealConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+    detailAchievement?.let { ach ->
+        AchievementDetailDialog(ach) { detailAchievement = null }
+    }
+}
+
+
 /***********
  * PREVIEW *
  ***********/
@@ -1326,12 +1875,14 @@ private fun Preview_AppScreen() {
         Surface {
             AppScreenContent(
                 displayInfo = displayInfo,
-                isInstalled = false,
-                isValidToDownload = true,
-                isDownloading = isDownloading,
-                downloadProgress = .50f,
-                hasPartialDownload = false,
-                isUpdatePending = false,
+                downloadDisplayDetails = DownloadDisplayDetails(
+                    isInstalled = false,
+                    isValidToDownload = true,
+                    isDownloading = isDownloading,
+                    downloadProgress = .50f,
+                    hasPartialDownload = false,
+                    isUpdatePending = false,
+                ),
                 downloadInfo = null,
                 onDownloadInstallClick = { isDownloading = !isDownloading },
                 onPauseResumeClick = { },

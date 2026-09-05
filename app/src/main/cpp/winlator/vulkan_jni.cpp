@@ -99,6 +99,21 @@ Java_com_winlator_renderer_VulkanRenderer_nativeUpdateWindowContentAHB(
     auto* r=reinterpret_cast<VulkanRendererContext*>(handle);
     if (r&&ahbPtr) r->updateWindowContentAHB(id,reinterpret_cast<AHardwareBuffer*>(ahbPtr),w,h,x,y);
 }
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeEnableXrTarget(JNIEnv*, jobject, jlong handle) {
+    auto* r=reinterpret_cast<VulkanRendererContext*>(handle);
+    return r ? (jlong)r->enableXrTarget() : 0;
+}
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeDisableXrTarget(JNIEnv*, jobject, jlong handle) {
+    auto* r=reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->disableXrTarget();
+}
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeGetXrTargetExtent(JNIEnv*, jobject, jlong handle) {
+    auto* r=reinterpret_cast<VulkanRendererContext*>(handle);
+    return r ? (jlong)r->xrTargetExtentPacked() : 0;
+}
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_VulkanRenderer_nativeSetTransform(
     JNIEnv*, jobject, jlong handle, jfloat ox, jfloat oy, jfloat sx, jfloat sy)

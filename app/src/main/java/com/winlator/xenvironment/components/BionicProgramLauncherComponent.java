@@ -17,7 +17,6 @@ import androidx.annotation.NonNull;
 
 import com.winlator.PrefManager;
 
-import app.gamenative.utils.BionicFgManager;
 import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
@@ -82,6 +81,20 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     public Container getContainer() { return this.container; }
     public void setContainer(Container container) { this.container = container; }
+
+    // Resolve which libredirect shim to preload. Normally the flavor default
+    // (PRELOAD_BIONIC_SO). When the container disables libredirect, modern falls
+    // back to the W^X-only minimal shim (still required to run Wine on a strict
+    // W^X kernel) and legacy preloads nothing. Returns null to preload nothing.
+    private String resolveLibredirectPreload(ImageFs imageFs) {
+        if (container != null && container.isDisableLibredirect()) {
+            if (BuildConfig.MODERN_ANDROID) {
+                return imageFs.getLibDir() + "/libredirect-bionic-wx-minimal.so";
+            }
+            return null;
+        }
+        return imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+    }
 
     /** Numeric Steam appid for the game in this container (e.g. "221380").
      *  Set from XServerScreen before start(); only consumed in real-Steam mode
@@ -302,17 +315,36 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         String evshimPath = context.getApplicationInfo().nativeLibraryDir + "/libevshim.so";
-        String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+        String replacePath = resolveLibredirectPreload(imageFs);
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
 
         ld_preload += ":" + evshimPath;
-        ld_preload += ":" + replacePath;
+        if (replacePath != null) ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
         envVars.put("EVSHIM_WINE", 1);
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
+
+        if (container != null && container.isFasterExternalLoading()) {
+            String ffpGameDir = null;
+            for (String[] drive : Container.drivesIterator(container.getDrives())) {
+                if (drive[0].equals("A")) {
+                    try {
+                        ffpGameDir = new File(drive[1]).getCanonicalPath();
+                    } catch (IOException e) {
+                        ffpGameDir = drive[1];
+                    }
+                    break;
+                }
+            }
+            if (ffpGameDir != null && ffpGameDir.startsWith("/storage/")
+                    && !ffpGameDir.startsWith("/storage/emulated/")) {
+                envVars.put("FFP_ENABLE", "1");
+                envVars.put("FFP_MARKERS", "/steamapps/common/;/dosdevices/a:");
+            }
+        }
 
         // Check for specific shared memory libraries
 //        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){
@@ -347,12 +379,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             LsfgVkManager.ensureRuntimeInstalled(environment.getContext(), container);
             LsfgVkManager.writeConfig(container);
             LsfgVkManager.applyLaunchEnv(container, envVars);
-        }
-
-        if (BionicFgManager.isSupported(container)) {
-            BionicFgManager.ensureRuntimeInstalled(environment.getContext(), container);
-            BionicFgManager.writeConfig(container);
-            BionicFgManager.applyLaunchEnv(container, envVars);
         }
 
         Log.d("BionicProgramLauncherComponent", "env vars are " + envVars.toString());
@@ -679,11 +705,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
-        String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+        String replacePath = resolveLibredirectPreload(imageFs);
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
-        ld_preload += ":" + replacePath;
+        if (replacePath != null) ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 
