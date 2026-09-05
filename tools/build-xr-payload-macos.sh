@@ -1,0 +1,108 @@
+#!/bin/bash
+# Builds the complete Windows-VR payload on macOS into app/src/modernXr/assets.
+#
+#   tools/build-xr-payload-macos.sh            # runtime DLLs + unixlib (the usual iteration loop)
+#   tools/build-xr-payload-macos.sh --bridge   # also the arm64x Wine builtin (Docker; slow first run)
+#
+# After this, `./gradlew assembleModernXrDebug` packages everything.
+set -eu
+
+repository="$(cd "$(dirname "$0")/.." && pwd)"
+sdk="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+ndk="$sdk/ndk/27.3.13750724"
+bin="$ndk/toolchains/llvm/prebuilt/darwin-x86_64/bin"
+cmake="$sdk/cmake/3.22.1/bin/cmake"
+ninja="$sdk/cmake/3.22.1/bin/ninja"
+source_dir="$repository/app/src/main/windows/openxr_runtime"
+work="$repository/app/build/xr-payload-macos"
+output="$repository/app/src/modernXr/assets"
+mkdir -p "$work" "$output"
+
+# OpenXR headers (pinned to the same release the Windows build uses).
+if [ ! -f "$work/inc/openxr/openxr.h" ]; then
+    mkdir -p "$work/inc/openxr"
+    curl -sL https://github.com/KhronosGroup/OpenXR-SDK/archive/refs/tags/release-1.1.61.tar.gz \
+        -o "$work/openxr-sdk-1.1.61.tar.gz"
+    echo "d5e2773d282642e6e250bd10266f316fc3ff3b8602c83db009a1f434205998e6  $work/openxr-sdk-1.1.61.tar.gz" \
+        | shasum -a 256 -c - >/dev/null || { echo "OpenXR SDK checksum mismatch"; exit 1; }
+    tar -xz -C "$work" --strip-components=2 -f "$work/openxr-sdk-1.1.61.tar.gz" "OpenXR-SDK-release-1.1.61/include/openxr"
+    mv "$work/openxr/"*.h "$work/inc/openxr/" 2>/dev/null || true
+    cp -R "$work"/*.h "$work/inc/openxr/" 2>/dev/null || true
+    [ -f "$work/inc/openxr/openxr.h" ] || { echo "OpenXR headers missing"; exit 1; }
+fi
+
+# Import libraries from the .def files.
+for lib in ws2_32 kernel32 ntdll dxgi; do
+    "$bin/llvm-dlltool" -m i386:x86-64 -d "$source_dir/${lib}_x64.def" -l "$work/lib${lib}_x64.a"
+    "$bin/llvm-dlltool" -m i386 -k -d "$source_dir/${lib}_x86.def" -l "$work/lib${lib}_x86.a"
+done
+
+# The two OpenXR runtime DLLs (CRT-less PE, built with the NDK's clang).
+"$bin/clang" --target=x86_64-w64-windows-gnu -shared -nostdlib -Wl,-e,DllMain -I "$work/inc" \
+    -o "$output/gamenative_openxr_runtime64.dll" \
+    "$source_dir/gamenative_openxr_runtime.c" "$source_dir/gamenative_openxr_runtime_x64.def" \
+    "$work/libws2_32_x64.a" "$work/libkernel32_x64.a" "$work/libntdll_x64.a" "$work/libdxgi_x64.a"
+"$bin/clang" --target=i686-w64-windows-gnu -shared -nostdlib -Wl,-e,DllMain -I "$work/inc" \
+    -o "$output/gamenative_openxr_runtime32.dll" \
+    "$source_dir/gamenative_openxr_runtime.c" "$source_dir/gamenative_openxr_runtime_x86.def" \
+    "$work/libws2_32_x86.a" "$work/libkernel32_x86.a" "$work/libntdll_x86.a" "$work/libdxgi_x86.a"
+hash64=$(shasum -a 256 "$output/gamenative_openxr_runtime64.dll" | cut -d' ' -f1)
+hash32=$(shasum -a 256 "$output/gamenative_openxr_runtime32.dll" | cut -d' ' -f1)
+printf "3 %s %s" "$hash64" "$hash32" > "$output/payload.version"
+
+# The native immersive compositor (libxrimmersive.so) against the Khronos loader prefab.
+aar=$(find "${GRADLE_USER_HOME:-$HOME/.gradle}/caches/modules-2/files-2.1/org.khronos.openxr/openxr_loader_for_android/1.1.61" -name "*.aar" 2>/dev/null | head -1)
+[ -n "$aar" ] || { echo "OpenXR Android loader 1.1.61 is not in the Gradle cache; run a gradle sync first"; exit 1; }
+mkdir -p "$work/openxr"
+unzip -q -o "$aar" -d "$work/openxr"
+"$cmake" -S "$repository/app/src/main/cpp/xrimmersive" -B "$work/xrimmersive" -GNinja \
+    -DCMAKE_MAKE_PROGRAM="$ninja" \
+    -DCMAKE_TOOLCHAIN_FILE="$ndk/build/cmake/android.toolchain.cmake" \
+    -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-29 -DCMAKE_BUILD_TYPE=Release \
+    -DOpenXR_DIR="$work/openxr/prefab/modules/openxr_loader/libs/android.arm64-v8a/cmake/openxr" >/dev/null
+"$cmake" --build "$work/xrimmersive"
+mkdir -p "$repository/app/src/modernXr/jniLibs/arm64-v8a"
+cp "$work/xrimmersive/libxrimmersive.so" "$repository/app/src/modernXr/jniLibs/arm64-v8a/"
+mkdir -p "$repository/app/src/legacyXr/jniLibs/arm64-v8a"
+cp "$work/xrimmersive/libxrimmersive.so" "$repository/app/src/legacyXr/jniLibs/arm64-v8a/"
+
+# The Wine unixlib (plain NDK shared library).
+"$cmake" -S "$source_dir/unix" -B "$work/unixlib" -GNinja \
+    -DCMAKE_MAKE_PROGRAM="$ninja" \
+    -DCMAKE_TOOLCHAIN_FILE="$ndk/build/cmake/android.toolchain.cmake" \
+    -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 -DCMAKE_BUILD_TYPE=Release >/dev/null
+"$cmake" --build "$work/unixlib"
+cp "$work/unixlib/gamenative_xr_unixbridge.so" "$output/"
+
+# The 32-bit Wine builtin stub ships prebuilt in the repo.
+cp "$source_dir/builtin/gamenative_xr_unixbridge32.dll" "$output/"
+
+# OpenComposite (pinned download, checksum-verified) for OpenVR titles.
+if [ ! -f "$output/opencomposite_x64.dll" ]; then
+    curl -sL "https://opencomposite.znix.xyz/builds/download_build?artefact_id=JjRFMXaxas695QK-&build_id=52366409&commit=a27e7e6a64bdcd1eff6b7fba1ea2ea34bcf1273d" \
+        -o "$output/opencomposite_x64.dll"
+    echo "827ad85f3606a4dc4a8f5561a8ca69e4c6c1b5d2b9cd3315a461b9270b08242c  $output/opencomposite_x64.dll" \
+        | shasum -a 256 -c - >/dev/null || { echo "OpenComposite checksum mismatch"; exit 1; }
+fi
+
+# The arm64x Wine builtin needs Linux; run it in Docker on request.
+# The gn-arm64x volume caches the toolchains and Wine tree, so reruns take minutes.
+if [ "${1:-}" = "--bridge" ]; then
+    docker run --rm --platform linux/amd64 \
+        -v gn-arm64x:/root/gamenative-arm64x -v "$repository":/repo ubuntu:22.04 bash -c '
+set -e
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq build-essential flex bison git wget unzip xz-utils python3 perl pkg-config autoconf automake ca-certificates file >/dev/null
+mkdir -p /root/Android/Sdk/ndk
+cd /repo && bash tools/provision-build-arm64x-wine-bridge.sh /repo'
+elif [ ! -f "$output/gamenative_xr_unixbridge.dll" ]; then
+    echo "note: arm64x bridge DLL not present — run with --bridge to build it (Docker)"
+fi
+
+# legacyXr ships the same payload.
+mkdir -p "$repository/app/src/legacyXr/assets"
+cp "$output"/* "$repository/app/src/legacyXr/assets/"
+
+echo "payload ready:"
+ls -la "$output"

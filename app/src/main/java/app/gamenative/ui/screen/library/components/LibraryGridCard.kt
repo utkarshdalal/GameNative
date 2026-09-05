@@ -1,6 +1,8 @@
 package app.gamenative.ui.screen.library.components
 
 import android.content.Context
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Face4
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -48,6 +51,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
@@ -124,12 +131,51 @@ internal fun GridViewCard(
         Modifier
     }
     val cardShape = RoundedCornerShape(12.dp)
+    // 1f = frosted teaser, 0f = normal card; animates the reveal when consent is granted
+    val frost by animateFloatAsState(
+        targetValue = if (appInfo.isRecTeaser) 1f else 0f,
+        animationSpec = tween(durationMillis = 700),
+        label = "recTeaserFrost",
+    )
     val interactionSource = remember { MutableInteractionSource() }
     val isItemFocused by interactionSource.collectIsFocusedAsState()
 
     LaunchedEffect(isItemFocused) {
         onFocusChanged(isItemFocused)
         if (isItemFocused) onFocus()
+    }
+
+    val favoriteIndicator = rememberFavoriteCardIndicator(
+        appId = appInfo.appId,
+        isRecommended = appInfo.isRecommended,
+    )
+    val favoriteActionLabel = if (!appInfo.isRecommended) {
+        stringResource(
+            if (favoriteIndicator.isFavorite) {
+                R.string.favorite_remove_named
+            } else {
+                R.string.favorite_add_named
+            },
+            appInfo.name,
+        )
+    } else {
+        null
+    }
+    val favoriteState = if (favoriteIndicator.isFavorite) stringResource(R.string.favorite_added) else null
+    val favoriteSemantics = if (favoriteActionLabel != null) {
+        Modifier.semantics(mergeDescendants = true) {
+            if (favoriteState != null) {
+                stateDescription = favoriteState
+            }
+            customActions = listOf(
+                CustomAccessibilityAction(favoriteActionLabel) {
+                    toggleFavorite(context, appInfo.appId, appInfo.name)
+                    true
+                },
+            )
+        }
+    } else {
+        Modifier
     }
 
     Box(
@@ -143,6 +189,12 @@ internal fun GridViewCard(
                 .fillMaxWidth()
                 .aspectRatio(aspectRatio)
                 .focusRing(interactionSource, cardShape)
+                .favoriteInnerGlow(
+                    isFavorite = favoriteIndicator.isFavorite,
+                    glowAlpha = favoriteIndicator.glowAlpha,
+                    shape = cardShape,
+                )
+                .then(favoriteSemantics)
                 .clickable(
                     onClick = onClick,
                     interactionSource = interactionSource,
@@ -210,7 +262,8 @@ internal fun GridViewCard(
                     imageModifier = Modifier
                         .fillMaxSize()
                         .alpha(imageAlpha)
-                        .then(gridHeroZoom),
+                        .then(gridHeroZoom)
+                        .then(if (frost > 0f) Modifier.blur(10.dp * frost) else Modifier),
                     contentScale = getGridContentScale(paneType),
                     image = { currentImageUrl },
                     onFailure = {
@@ -222,6 +275,47 @@ internal fun GridViewCard(
                     },
                 )
 
+                val displayName = if (appInfo.isRecTeaser) {
+                    stringResource(R.string.rec_teaser_title)
+                } else {
+                    appInfo.name
+                }
+
+                if (frost > 0f) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .alpha(frost)
+                            .background(Color.Black.copy(alpha = 0.35f))
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        if (appInfo.isRecLoading) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(32.dp),
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(R.string.rec_teaser_title),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                ),
+                                color = Color.White,
+                                textAlign = TextAlign.Center,
+                            )
+                            Text(
+                                text = stringResource(R.string.rec_teaser_subtitle),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White.copy(alpha = 0.7f),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                    }
+                }
+
                 // Fallback text when image fails to load (drawn before overlays so badges/icons stay visible)
                 if (!hideText) {
                     Box(
@@ -231,7 +325,7 @@ internal fun GridViewCard(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = appInfo.name,
+                            text = displayName,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -242,11 +336,13 @@ internal fun GridViewCard(
                 }
 
                 // Gradient overlay at bottom for title
+                if (frost < 1f) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .height(bottomGradientHeight)
+                        .alpha(1f - frost)
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
@@ -262,6 +358,7 @@ internal fun GridViewCard(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
+                        .alpha(1f - frost)
                         .padding(horizontal = 10.dp, vertical = cardContentBottomPadding),
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
@@ -307,6 +404,7 @@ internal fun GridViewCard(
                             animate = animateStats,
                         )
                     }
+                }
                 }
 
                 // Top-left: Featured badge, GOG rating (store rec), or Recommended/compat badge

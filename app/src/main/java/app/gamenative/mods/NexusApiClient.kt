@@ -10,6 +10,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
@@ -80,6 +81,7 @@ data class NexusCollectionInfo(
 enum class NexusApiErrorReason {
     AUTHENTICATION,
     FORBIDDEN,
+    ADULT_CONTENT_BLOCKED,
     DOWNLOAD_AUTHORIZATION_REQUIRED,
     DOWNLOAD_AUTHORIZATION_INVALID,
     DOWNLOAD_AUTHORIZATION_EXPIRED,
@@ -105,9 +107,18 @@ class NexusApiClient(
         "https://api.nexusmods.com/v2/graphql",
         "https://api-router.nexusmods.com/graphql",
     ),
-    private val accessTokenProvider: () -> String? = { null },
+    private val accessTokenProvider: suspend (
+        forceRefresh: Boolean,
+        rejectedAccessToken: String?,
+    ) -> String? = { forceRefresh, rejectedAccessToken ->
+        NexusAuthManager.getValidAccessToken(forceRefresh, rejectedAccessToken)
+    },
+    private val accountProvider: () -> NexusOAuthAccount? = {
+        NexusAuthManager.state.value.account
+    },
 ) {
     private companion object {
+        private const val ADULT_CONTENT_BLOCKED_CODE = "ADULT_CONTENT_BLOCKED"
         private const val MAX_COLLECTION_PAYLOAD_BYTES = 256L * 1024L * 1024L
         private const val MAX_COLLECTION_JSON_BYTES = 64L * 1024L * 1024L
     }
@@ -125,11 +136,30 @@ class NexusApiClient(
 
     suspend fun getCurrentUser(): NexusUserInfo =
         withContext(Dispatchers.IO) {
-            val json = getObject("/users/validate.json")
+            val account = try {
+                accountProvider()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                throw NexusApiException(
+                    message = "Nexus account details are temporarily unavailable",
+                    reason = NexusApiErrorReason.AUTHENTICATION,
+                    cause = error,
+                )
+            } ?: throw NexusApiException(
+                message = "Nexus account details are temporarily unavailable",
+                reason = NexusApiErrorReason.AUTHENTICATION,
+            )
+            val userId = account.id.toLongOrNull()
+                ?.takeIf { it > 0L }
+                ?: throw NexusApiException(
+                    message = "Nexus account details are invalid",
+                    reason = NexusApiErrorReason.AUTHENTICATION,
+                )
             NexusUserInfo(
-                name = json.optString("name"),
-                userId = json.optLong("user_id", 0L),
-                isPremium = json.optBoolean("is_premium", false),
+                name = account.name,
+                userId = userId,
+                isPremium = account.isPremium,
             )
         }
 
@@ -256,13 +286,25 @@ class NexusApiClient(
         throw lastError ?: NexusApiException("Nexus collection was not found", 404)
     }
 
-    private fun getCollectionRevisionGraph(reference: NexusCollectionReference): NexusCollectionInfo {
+    private suspend fun getCollectionRevisionGraph(reference: NexusCollectionReference): NexusCollectionInfo {
         val payload = collectionRevisionGraphPayload(reference)
         var lastError: NexusApiException? = null
         for (url in graphUrls.distinct()) {
             try {
                 val response = postObject(url, payload)
                 val errors = response.optJSONArray("errors")
+                errors?.let { graphErrors ->
+                    for (i in 0 until graphErrors.length()) {
+                        val error = graphErrors.optJSONObject(i) ?: continue
+                        if (error.optJSONObject("extensions")?.optString("code") == ADULT_CONTENT_BLOCKED_CODE) {
+                            throw NexusApiException(
+                                message = error.optString("message").ifBlank { "Adult content blocked" },
+                                statusCode = 403,
+                                reason = NexusApiErrorReason.ADULT_CONTENT_BLOCKED,
+                            )
+                        }
+                    }
+                }
                 val data = response.optJSONObject("data")
                 val revision = data?.optJSONObject("collectionRevision")
                 if (revision == null) {
@@ -305,7 +347,7 @@ class NexusApiClient(
         val variables = JSONObject()
             .put("domainName", reference.gameDomain)
             .put("slug", reference.slug)
-            .put("viewAdultContent", true)
+            .put("viewAdultContent", false)
         reference.revision?.let { variables.put("revision", it) }
         return JSONObject()
             .put("operationName", "CollectionRevisionMods")
@@ -346,17 +388,17 @@ class NexusApiClient(
             )
     }
 
-    private fun getObject(path: String): JSONObject =
+    private suspend fun getObject(path: String): JSONObject =
         JSONObject(execute(path))
 
-    private fun postObject(url: String, payload: JSONObject): JSONObject {
+    private suspend fun postObject(url: String, payload: JSONObject): JSONObject {
         val request = authenticatedRequest(url)
             .post(payload.toString().toRequestBody(jsonMediaType))
             .build()
         return JSONObject(execute(request, url))
     }
 
-    private fun getCollectionManifest(
+    private suspend fun getCollectionManifest(
         downloadLink: String,
         graphInfo: NexusCollectionInfo,
     ): NexusCollectionInfo? {
@@ -377,7 +419,7 @@ class NexusApiClient(
         return parseCollectionManifest(JSONObject(jsonText), graphInfo)
     }
 
-    private fun fetchCollectionPayload(url: String): ByteArray {
+    private suspend fun fetchCollectionPayload(url: String): ByteArray {
         val parsed = url.toHttpUrlOrNull()
             ?: throw NexusApiException("Invalid Nexus collection download URL")
         if (!parsed.isAllowedCollectionScheme()) {
@@ -422,15 +464,20 @@ class NexusApiClient(
         }
     }
 
-    private fun execute(path: String): String {
+    private suspend fun execute(path: String): String {
         return execute(
             request = authenticatedRequest(baseUrl.trimEnd('/') + path).build(),
             displayPath = path,
         )
     }
 
-    private fun authenticatedRequest(url: String): Request.Builder {
-        val accessToken = accessTokenProvider()?.trim().orEmpty()
+    private suspend fun authenticatedRequest(url: String): Request.Builder {
+        val parsed = url.toHttpUrlOrNull()
+            ?: throw NexusApiException("Invalid Nexus API URL")
+        if (!parsed.requiresAuthentication()) {
+            throw NexusApiException("Refusing to send Nexus credentials to an untrusted host")
+        }
+        val accessToken = providedAccessToken(forceRefresh = false)?.trim().orEmpty()
         if (accessToken.isBlank()) {
             throw NexusApiException(
                 message = "Nexus Mods account connection is temporarily unavailable",
@@ -451,57 +498,88 @@ class NexusApiClient(
             .addHeader("Application-Version", BuildConfig.VERSION_NAME)
             .addHeader("User-Agent", "GameNative/${BuildConfig.VERSION_NAME}")
 
-    private fun execute(request: Request, displayPath: String): String {
-        client.newCall(request).execute().use { response ->
-            val hourly = response.header("x-rl-hourly-remaining")?.toIntOrNull()
-            val daily = response.header("x-rl-daily-remaining")?.toIntOrNull()
-            val body = response.body.string()
-            if (!response.isSuccessful) {
-                val message = when (response.code) {
-                    401 -> "Nexus account authorization was rejected"
-                    403 -> "Nexus denied access to this resource"
-                    404 -> if (displayPath.contains("download_link", ignoreCase = true)) {
-                        "This Nexus file is no longer downloadable"
-                    } else {
-                        "Nexus API request failed (404)"
+    private suspend fun execute(request: Request, displayPath: String): String =
+        executeWithRefresh(request, displayPath) { response -> response.body.string() }
+
+    private suspend fun executeBytes(request: Request, maxBytes: Long = Long.MAX_VALUE): ByteArray =
+        executeWithRefresh(request) { response ->
+            response.body.byteStream().use { it.readLimitedBytes(maxBytes) }
+        }
+
+    private suspend fun <T> executeWithRefresh(
+        request: Request,
+        displayPath: String? = null,
+        readSuccessfulBody: (Response) -> T,
+    ): T {
+        var currentRequest = request
+        var retriedAfterUnauthorized = false
+        while (true) {
+            client.newCall(currentRequest).execute().use { response ->
+                if (response.code == 401 && !retriedAfterUnauthorized && currentRequest.hasBearerAuthentication()) {
+                    val refreshedToken = providedAccessToken(
+                        forceRefresh = true,
+                        rejectedAccessToken = currentRequest.bearerToken(),
+                    )?.trim().orEmpty()
+                    if (refreshedToken.isNotBlank()) {
+                        currentRequest = currentRequest.newBuilder()
+                            .header("Authorization", "Bearer $refreshedToken")
+                            .build()
+                        retriedAfterUnauthorized = true
+                        return@use
                     }
-                    429 -> "Nexus API rate limit reached"
-                    else -> "Nexus API request failed (${response.code})"
                 }
-                throw NexusApiException(
-                    message = message,
-                    statusCode = response.code,
-                    hourlyRemaining = hourly,
-                    dailyRemaining = daily,
-                    reason = response.code.toApiErrorReason(),
-                )
+                val hourly = response.header("x-rl-hourly-remaining")?.toIntOrNull()
+                val daily = response.header("x-rl-daily-remaining")?.toIntOrNull()
+                if (!response.isSuccessful) {
+                    val message = when (response.code) {
+                        401 -> "Nexus account authorization was rejected"
+                        403 -> "Nexus denied access to this resource"
+                        404 -> if (displayPath?.contains("download_link", ignoreCase = true) == true) {
+                            "This Nexus file is no longer downloadable"
+                        } else {
+                            "Nexus API request failed (404)"
+                        }
+                        429 -> "Nexus API rate limit reached"
+                        else -> "Nexus API request failed (${response.code})"
+                    }
+                    throw NexusApiException(
+                        message = message,
+                        statusCode = response.code,
+                        hourlyRemaining = hourly,
+                        dailyRemaining = daily,
+                        reason = response.code.toApiErrorReason(),
+                    )
+                }
+                return readSuccessfulBody(response)
             }
-            return body
         }
     }
 
-    private fun executeBytes(request: Request, maxBytes: Long = Long.MAX_VALUE): ByteArray {
-        client.newCall(request).execute().use { response ->
-            val hourly = response.header("x-rl-hourly-remaining")?.toIntOrNull()
-            val daily = response.header("x-rl-daily-remaining")?.toIntOrNull()
-            if (!response.isSuccessful) {
-                val message = when (response.code) {
-                    401 -> "Nexus account authorization was rejected"
-                    403 -> "Nexus denied access to this resource"
-                    429 -> "Nexus API rate limit reached"
-                    else -> "Nexus API request failed (${response.code})"
-                }
-                throw NexusApiException(
-                    message = message,
-                    statusCode = response.code,
-                    hourlyRemaining = hourly,
-                    dailyRemaining = daily,
-                    reason = response.code.toApiErrorReason(),
-                )
-            }
-            return response.body.byteStream().use { it.readLimitedBytes(maxBytes) }
+    private suspend fun providedAccessToken(
+        forceRefresh: Boolean,
+        rejectedAccessToken: String? = null,
+    ): String? =
+        try {
+            accessTokenProvider(forceRefresh, rejectedAccessToken)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            throw NexusApiException(
+                message = "Nexus account authorization could not be refreshed",
+                reason = NexusApiErrorReason.AUTHENTICATION,
+                cause = error,
+            )
         }
-    }
+
+    private fun Request.hasBearerAuthentication(): Boolean =
+        url.requiresAuthentication() && bearerToken() != null
+
+    private fun Request.bearerToken(): String? =
+        header("Authorization")
+            ?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
+            ?.substringAfter(' ')
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
 
     private fun NexusApiException.asDownloadLinkError(
         hasAuthorization: Boolean,

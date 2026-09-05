@@ -1,5 +1,6 @@
 package com.winlator.core;
 
+import app.gamenative.powercontrol.PowerManager;
 import com.winlator.core.envvars.EnvVars;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.ScreenInfo;
@@ -100,6 +101,12 @@ public class Win32AppWorkarounds {
         WinHandler winHandler = this.xServer.getWinHandler();
         if (className.equals("steam.exe")) {
             Timber.i("Steam.exe found, not applying affinity!");
+            return;
+        }
+        String pinnedProcessName = PowerManager.INSTANCE.getPinnedGameProcessName();
+        if (PowerManager.INSTANCE.getOwnsGameAffinity() && pinnedProcessName != null
+                && pinnedProcessName.equalsIgnoreCase(className)) {
+            Timber.tag("PowerManager").i("Power control holds the affinity of %s, container CPU list not applied", className);
             return;
         }
         if (processId > 0) {

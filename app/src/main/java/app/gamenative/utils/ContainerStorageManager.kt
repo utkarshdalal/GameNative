@@ -779,7 +779,15 @@ object ContainerStorageManager {
         }
     }
 
-    private fun getStorageLocation(context: Context, gameSource: GameSource, installPath: String): StorageLocation {
+    /**
+     * True when [installPath] resolves to a removable/external volume. Defaults to
+     * false on any resolution failure so callers fall back to internal-storage behavior.
+     */
+    fun isOnExternalStorage(context: Context, gameSource: GameSource, installPath: String): Boolean =
+        runCatching { getStorageLocation(context, gameSource, installPath) == StorageLocation.EXTERNAL }
+            .getOrDefault(false)
+
+    fun getStorageLocation(context: Context, gameSource: GameSource, installPath: String): StorageLocation {
         val normalizedPath = normalizePath(installPath)
 
         val internalRoots = when (gameSource) {

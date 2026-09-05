@@ -172,6 +172,41 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                 },
             )
+            if (app.gamenative.BuildConfig.XR_BUILD && !default) {
+                val xrRates = listOf(72, 90, 120)
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.xr_refresh_rate)) },
+                    value = xrRates.indexOf(config.xrRefreshRate).coerceAtLeast(0),
+                    items = xrRates.map { "$it Hz" },
+                    onItemSelected = { idx ->
+                        state.config.value = config.copy(xrRefreshRate = xrRates[idx])
+                    },
+                )
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(text = stringResource(R.string.xr_render_scale))
+                    Slider(
+                        value = config.xrRenderScale.toFloat(),
+                        onValueChange = { newValue ->
+                            val stepped = ((newValue.roundToInt() + 2) / 5 * 5).coerceIn(25, 100)
+                            state.config.value = config.copy(xrRenderScale = stepped)
+                        },
+                        valueRange = 25f..100f,
+                    )
+                    Text(text = "${config.xrRenderScale}%")
+                }
+                if (config.windowsVrEnabled) {
+                    SettingsSwitch(
+                        colors = settingsTileColorsAlt(),
+                        title = { Text(text = stringResource(R.string.xr_open_composite_toggle)) },
+                        subtitle = { Text(text = stringResource(R.string.xr_open_composite_toggle_desc)) },
+                        state = config.openCompositeEnabled,
+                        onCheckedChange = { checked ->
+                            state.config.value = config.copy(openCompositeEnabled = checked)
+                        },
+                    )
+                }
+            }
             SettingsListDropdown(
                 colors = settingsTileColors(),
                 title = { Text(text = stringResource(R.string.renderer_present_modes)) },
@@ -365,11 +400,10 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             }
         }
 
-        // Frame Generation (LSFG / bionic-fg) — hooks the Vulkan swapchain for
+        // Frame Generation (LSFG) — hooks the Vulkan swapchain for
         // transparent frame generation. Only effective on Bionic containers
         // with a Vortek/Adreno graphics driver.
         if (!default) LsfgSection(state)
-        if (!default) BionicFgSection(state)
 
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
@@ -542,7 +576,7 @@ private fun LsfgSection(state: ContainerConfigState) {
                     state = config.lsfgEnabled,
                     onCheckedChange = {
                         state.config.value = if (it) {
-                            config.copy(lsfgEnabled = true, bionicFgEnabled = false)
+                            config.copy(lsfgEnabled = true)
                         } else {
                             config.copy(lsfgEnabled = false)
                         }
@@ -563,7 +597,7 @@ private fun LsfgSection(state: ContainerConfigState) {
                         ) {
                             dllAvailable = LsfgVkManager.isDllAvailable()
                             if (dllAvailable) {
-                                state.config.value = state.config.value.copy(lsfgEnabled = true, bionicFgEnabled = false)
+                                state.config.value = state.config.value.copy(lsfgEnabled = true)
                             }
                         }
                     },
@@ -583,24 +617,3 @@ private fun LsfgSection(state: ContainerConfigState) {
     }
 }
 
-@Composable
-private fun BionicFgSection(state: ContainerConfigState) {
-    val config = state.config.value
-    if (!config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) return
-
-    SettingsGroup {
-        SettingsSwitch(
-            colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.bfg_enable)) },
-            subtitle = { Text(text = stringResource(R.string.bfg_description)) },
-            state = config.bionicFgEnabled,
-            onCheckedChange = {
-                state.config.value = if (it) {
-                    config.copy(bionicFgEnabled = true, lsfgEnabled = false)
-                } else {
-                    config.copy(bionicFgEnabled = false)
-                }
-            },
-        )
-    }
-}

@@ -114,6 +114,19 @@ public class MITSHMExtension implements Extension {
         }
 
         drawable.drawImage(srcX, srcY, dstX, dstY, srcWidth, srcHeight, depth, data, totalWidth, totalHeight);
+
+        // Only a blit whose clipped destination covers >=80% of the drawable
+        // counts as a presented frame.
+        int clippedW = Math.min((int) srcWidth, drawable.width - Math.max(0, (int) dstX));
+        int clippedH = Math.min((int) srcHeight, drawable.height - Math.max(0, (int) dstY));
+        if (clippedW > 0 && clippedH > 0
+                && clippedW * clippedH * 5 >= drawable.width * drawable.height * 4
+                && client.connectorClient != null) {
+            long delayNs = com.winlator.xserver.ShmFramePacer.framePresented(drawableId);
+            if (delayNs > 0) {
+                client.connectorClient.getConnector().pauseClientReads(client.connectorClient, delayNs);
+            }
+        }
     }
 
     @Override

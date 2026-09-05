@@ -66,6 +66,52 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private Drawable rootCursorDrawable;
     private Cursor lastCursor = null;
     private boolean xRenderingPausedForScanout = false;
+    private volatile VulkanXrFrameBridge xrFrameBridge = null;
+    private volatile long xrTargetAhbPtr = 0;
+    private volatile boolean flatPresentationEnabled = true;
+
+    public void setFlatPresentationEnabled(boolean enabled) {
+        if (flatPresentationEnabled == enabled) return;
+        flatPresentationEnabled = enabled;
+        if (!enabled) {
+            scenePending.set(false);
+        } else {
+            onPointerMove(xServer.pointer.getX(), xServer.pointer.getY());
+            queueSceneUpdate();
+            xServerView.requestRender();
+        }
+    }
+
+    /** See VulkanXrFrameBridge's kdoc — null except for the Meta Quest immersive path. */
+    public void setVulkanXrFrameBridge(VulkanXrFrameBridge xrFrameBridge) {
+        if (!app.gamenative.BuildConfig.XR_BUILD) return;
+        this.xrFrameBridge = xrFrameBridge;
+        synchronized (lock) {
+            if (xrFrameBridge == null) {
+                if (nativeHandle != 0 && xrTargetAhbPtr != 0) nativeDisableXrTarget(nativeHandle);
+                xrTargetAhbPtr = 0;
+            } else {
+                enableXrTargetLocked();
+            }
+        }
+    }
+
+    /**
+     * Points the immersive session at a persistent scene-sized AHardwareBuffer that the native
+     * compositor renders into instead of the (hidden) swapchain. Covers every present path,
+     * including SHM/CPU ones that never produce a per-window AHardwareBuffer.
+     */
+    private void enableXrTargetLocked() {
+        VulkanXrFrameBridge bridge = xrFrameBridge;
+        if (bridge == null || nativeHandle == 0) return;
+        xrTargetAhbPtr = nativeEnableXrTarget(nativeHandle);
+        if (xrTargetAhbPtr != 0) {
+            long ext = nativeGetXrTargetExtent(nativeHandle);
+            bridge.onScanoutBuffer(xrTargetAhbPtr, (int)(ext >>> 32), (int)(ext & 0xFFFFFFFFL));
+        } else {
+            android.util.Log.w("VulkanRenderer", "XR scene target unavailable, falling back to per-window forwarding");
+        }
+    }
 
     private volatile ArrayList<RenderableWindow> renderableWindows = new ArrayList<>();
     private static final java.util.concurrent.atomic.AtomicLong ID_GEN =
@@ -130,6 +176,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeSetPresentMode(long handle, int mode);
     private native void nativeSetEffect(long handle, int effectId, float sharpness,
         int effectMask, float brightness, float contrast, float gamma);
+    private native long nativeEnableXrTarget(long handle);
+    private native void nativeDisableXrTarget(long handle);
+    private native long nativeGetXrTargetExtent(long handle);
 
     private static volatile boolean gpuImageChecked = false;
 
@@ -138,6 +187,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     }
 
     public void queueSceneUpdate() {
+        if (!flatPresentationEnabled) return;
         if (scenePending.compareAndSet(false, true)) {
             xServerView.queueEvent(() -> {
                 scenePending.set(false);
@@ -161,7 +211,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     if (!ok) {
                         nativeDestroy(nativeHandle);
                         nativeHandle = 0;
+                        xrTargetAhbPtr = 0;
                     } else {
+                        enableXrTargetLocked();
                         initComplete = true;
                         xServerView.queueEvent(this::updateScene);
                         return;
@@ -219,6 +271,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                 if (nativeHandle != 0) {
                     nativeSetVerboseLog(nativeHandle, true);
                     nativeDumpRendererInfo(nativeHandle);
+                    enableXrTargetLocked();
                 }
             }
             initComplete = true;
@@ -230,7 +283,13 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         surfaceWidth = width; surfaceHeight = height;
         viewTransformation.update(width, height, xServer.screenInfo.width, xServer.screenInfo.height);
         synchronized (lock) {
-            if (nativeHandle != 0) { nativeResize(nativeHandle, width, height); updateTransform(); }
+            if (nativeHandle != 0) {
+                nativeResize(nativeHandle, width, height);
+                updateTransform();
+                // Recreate the XR scene target at the new extent and republish the
+                // replacement buffer; a no-op (same pointer back) when the size is unchanged.
+                if (xrFrameBridge != null) enableXrTargetLocked();
+            }
         }
     }
 
@@ -248,6 +307,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     nativeDestroyScanout(nativeHandle);
                     nativeDestroy(nativeHandle);
                     nativeHandle = 0;
+                    xrTargetAhbPtr = 0;
                 } else {
                     nativeDetachSurface(nativeHandle);
                 }
@@ -332,6 +392,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     }
 
     public void updateScene() {
+        if (!flatPresentationEnabled) return;
         ArrayList<RenderableWindow> newList = new ArrayList<>();
         try (XLock xl = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
             collectWindows(newList, xServer.windowManager.rootWindow,
@@ -432,6 +493,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     }
 
     public void onUpdateWindowContentDirect(Window window, Drawable pixmap, short xOff, short yOff) {
+        if (!flatPresentationEnabled) return;
         if (hudRef != null && !nativeMode) hudRef.update();
         if (nativeHandle == 0 || pixmap == null) return;
         Drawable targetDrawable = window.getContent();
@@ -450,6 +512,14 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                             rx, ry, pixmap.width, pixmap.height, fenceFd);
                         g.lock();
                     } else {
+                        if (xrFrameBridge != null && xrTargetAhbPtr == 0) {
+                            // The immersive session samples this AHB directly; skipping the
+                            // native update leaves the render loop parked on its condvar, so
+                            // no scene is composited or presented to the invisible surface.
+                            // Only used when the scene target could not be created.
+                            xrFrameBridge.onScanoutBuffer(ahbPtr, pixmap.width, pixmap.height);
+                            return;
+                        }
                         nativeUpdateWindowContentAHB(nativeHandle, targetId, ahbPtr,
                             pixmap.width, pixmap.height, rx, ry);
                     }
@@ -473,6 +543,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     @Override
     public void onUpdateWindowContent(Window window) {
+        if (!flatPresentationEnabled) return;
         if (hudRef != null) hudRef.update();
         final long handle;
         synchronized (lock) { handle = nativeHandle; }
@@ -529,6 +600,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     @Override
     public void onPointerMove(short x, short y) {
+        if (!flatPresentationEnabled) return;
         synchronized (lock) {
             if (nativeHandle == 0) return;
             nativeSetPointerPos(nativeHandle, x, y);
@@ -553,7 +625,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         });
     }
 
-    @Override public void onMapWindow(Window window) { queueSceneUpdate(); }
+    @Override public void onMapWindow(Window window) {
+        if (flatPresentationEnabled) queueSceneUpdate();
+    }
 
     @Override
     public void onUnmapWindow(Window window) {
@@ -564,15 +638,18 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         });
     }
 
-    @Override public void onChangeWindowZOrder(Window window) { queueSceneUpdate(); }
+    @Override public void onChangeWindowZOrder(Window window) {
+        if (flatPresentationEnabled) queueSceneUpdate();
+    }
 
     @Override
     public void onUpdateWindowGeometry(Window window, boolean resized) {
-        queueSceneUpdate();
+        if (flatPresentationEnabled) queueSceneUpdate();
     }
 
     @Override
     public void onUpdateWindowAttributes(Window window, Bitmask mask) {
+        if (!flatPresentationEnabled) return;
         if (mask.isSet(WindowAttributes.FLAG_CURSOR)) {
             synchronized (lock) {
                 Window pw = xServer.inputDeviceManager.getPointWindow();
@@ -693,8 +770,6 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         synchronized (lock) { if (nativeHandle != 0) nativeDumpRendererInfo(nativeHandle); }
     }
 
-
-
     public void setFilterMode(int mode) {
         pendingFilterMode = mode;
         synchronized (lock) { if (nativeHandle != 0) nativeSetFilterMode(nativeHandle, mode); }
@@ -754,18 +829,26 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             || Math.abs(pendingGamma - 1.0f) > 1e-3f
             || pendingFilterMode != 0;
     }
+
+    /** Whether any active effect/filter/color adjustment is currently forcing the compositor
+     * path, blocking the zero-copy scanout fast-path. See {@link #resetScreenEffects()}. */
+    public boolean isEffectsRequireCompositor() { return effectsRequireCompositor; }
+
+    /** Turns off every effect, filter, and color adjustment (back to defaults), letting scanout
+     * re-establish itself if nothing else is blocking it. Used by the immersive quick-menu tab's
+     * "reset" action — screen effects are the single most common reason a user would otherwise
+     * need to hunt through several unrelated settings to get the zero-copy path back. */
+    public void resetScreenEffects() {
+        setFilterMode(0);
+        setEffect(EFFECT_NONE, 0.0f, outputScalingMode, 0, 0.0f, 0.0f, 1.0f);
+    }
     public int getEffectId() { return pendingEffectId; }
     public float getSharpness() { return pendingSharpness; }
-
-
-
 
     public void setVkPresentMode(int mode) {
         pendingPresentMode = mode;
         synchronized (lock) { if (nativeHandle != 0) nativeSetPresentMode(nativeHandle, mode); }
     }
-
-
 
     private FrameRating hudRef = null;
 
