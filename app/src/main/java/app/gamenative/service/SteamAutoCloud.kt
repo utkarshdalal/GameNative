@@ -1067,14 +1067,39 @@ object SteamAutoCloud {
                 microsecAcExit = measureTime {
                     // var fileChanges: FileChanges? = null
 
-                    val hasLocalChanges = cachedFileList
-                        ?.let {
-                            val result = getFilesDiff(allLocalUserFiles, it.userFileInfo)
-                            // fileChanges = result.second
-                            result.first
-                        } == true
+                    val localDiff = cachedFileList?.let { getFilesDiff(allLocalUserFiles, it.userFileInfo) }
+                    val hasLocalChanges = localDiff?.first == true
 
-                    if (hasLocalChanges) {
+                    // A local file the cache never saw, but which already exists in the cloud with
+                    // different content, is a save this device never synced (e.g. downloaded under a
+                    // different casing). Uploading it would silently replace the cloud save.
+                    val remoteByPath = appFileListChange.files.associate {
+                        getFullFilePath(it, appFileListChange).toString().lowercase() to it.shaFile
+                    }
+                    val overwritesUnsyncedCloudFile = localDiff?.second?.filesCreated?.any { local ->
+                        remoteByPath[local.getAbsPath(prefixToPath).toString().lowercase()]
+                            ?.let { !it.contentEquals(local.sha) } == true
+                    } == true
+
+                    if (hasLocalChanges && overwritesUnsyncedCloudFile) {
+                        Timber.i("Found local changes that would overwrite never-synced cloud user files, conflict resolution...")
+
+                        when (preferredSave) {
+                            SaveLocation.Local -> uploadUserFiles(parentScope).await()
+
+                            SaveLocation.Remote -> {
+                                downloadUserFiles(parentScope).await()?.let {
+                                    return@async it
+                                }
+                            }
+
+                            SaveLocation.None -> {
+                                syncResult = SyncResult.Conflict
+                                remoteTimestamp = appFileListChange.files.map { it.timestamp.time }.maxOrNull() ?: 0L
+                                localTimestamp = allLocalUserFiles.map { it.timestamp }.maxOrNull() ?: 0L
+                            }
+                        }
+                    } else if (hasLocalChanges) {
                         Timber.i("Found local changes and no new cloud user files")
 
                         uploadUserFiles(parentScope).await()
