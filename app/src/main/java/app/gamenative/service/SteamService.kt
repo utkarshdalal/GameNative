@@ -326,15 +326,6 @@ class SteamService : Service(), IChallengeUrlChanged {
      */
     @Volatile
     private var familySharedLibraryReadyForDlcCounts: Boolean = false
-    /** Debug: SharedApp metadata from the last successful GetSharedLibraryApps. */
-    private data class SharedLibraryAppMeta(
-        val appType: Int,
-        val name: String,
-        val excludeReason: Int,
-    )
-    private val familySharedLibraryAppMeta: ConcurrentHashMap<Int, SharedLibraryAppMeta> = ConcurrentHashMap()
-    /** Debug: appIds from shared library whose app_type is DLC (32). */
-    private val familySharedLibraryDlcAppIds: MutableSet<Int> = ConcurrentHashMap.newKeySet()
     /** appId → preferred lender steamId64 from GetPreferredLenders / user choice */
     private val preferredLenderByAppId: ConcurrentHashMap<Int, Long> = ConcurrentHashMap()
     /** steamId64 → display name for family members when known */
@@ -790,41 +781,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return@withContext options.map { it.copy(ownedDlcCount = null) }
             }
 
-            val sharedOwnersForGame = familyOwners[appId].orEmpty()
-            val sharedDlcHits = dlcIds.count { familyOwners.containsKey(it) }
-            val licenseDlcHits = dlcIds.count { dlcId ->
-                allLicenses.any { dlcId in it.appIds }
-            }
-            val missingFromShared = dlcIds.filterNot { familyOwners.containsKey(it) }
-            val catalogInShared = dlcIds.filter { familyOwners.containsKey(it) }
-
-            Timber.d(
-                "ensurePreferredCopyDlcCounts DETAIL appId=$appId " +
-                    "baseGameSharedOwners=$sharedOwnersForGame " +
-                    "catalogDlcIds=$dlcIds " +
-                    "catalogInShared=$catalogInShared " +
-                    "missingFromShared=$missingFromShared " +
-                    "sharedLibrarySize=${familyOwners.size} " +
-                    "sharedDlcTypeCount=${svc.familySharedLibraryDlcAppIds.size} " +
-                    "freshSuccess=${refresh.freshSuccess} sharedReady=$sharedReady",
-            )
-            dlcIds.forEach { dlcId ->
-                val sharedOwners = familyOwners[dlcId]
-                val licenseOwners = allLicenses
-                    .filter { dlcId in it.appIds }
-                    .flatMap { it.ownerAccountId }
-                    .distinct()
-                val meta = svc.familySharedLibraryAppMeta[dlcId]
-                Timber.d(
-                    "ensurePreferredCopyDlcCounts DLC appId=$appId dlcId=$dlcId " +
-                        "inShared=${sharedOwners != null} sharedOwners=$sharedOwners " +
-                        "licenseOwnerAccounts=$licenseOwners " +
-                        "sharedMeta=${meta?.let {
-                            "type=${it.appType} exclude=${it.excludeReason} name=${it.name}"
-                        } ?: "n/a"}",
-                )
-            }
-
             val withCounts = options.map { option ->
                 val lenderLicenses = allLicenses.filter { option.accountId in it.ownerAccountId }
                 val viaShared = if (sharedReady) {
@@ -844,7 +800,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
             Timber.i(
                 "ensurePreferredCopyDlcCounts appId=$appId dlcIds=${dlcIds.size} " +
-                    "sharedDlcHits=$sharedDlcHits licenseDlcHits=$licenseDlcHits " +
                     "packagesFilled=$packagesFilled " +
                     "freshSuccess=${refresh.freshSuccess} sharedReady=$sharedReady " +
                     "counts=${withCounts.map { "${it.accountId}:${it.ownedDlcCount}" }}",
@@ -1071,68 +1026,19 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // Full replace under the mutex so readers never see a half-cleared map from
                 // concurrent login + modal refreshes.
                 val next = ConcurrentHashMap<Int, List<Long>>()
-                val nextMeta = ConcurrentHashMap<Int, SharedLibraryAppMeta>()
-                val nextDlcIds = ConcurrentHashMap.newKeySet<Int>()
-                var appTypeGame = 0
-                var appTypeDlc = 0
-                var appTypeOther = 0
-                val excludeReasonCounts = mutableMapOf<Int, Int>()
                 sharedResult.body.appsList.forEach { sharedApp ->
                     if (sharedApp.ownerSteamidsCount >= 1) {
                         next[sharedApp.appid] = sharedApp.ownerSteamidsList.toList()
                     }
-                    val appType = sharedApp.appType.number
-                    val excludeReason = sharedApp.excludeReason.number
-                    val name = sharedApp.name.orEmpty()
-                    nextMeta[sharedApp.appid] = SharedLibraryAppMeta(
-                        appType = appType,
-                        name = name,
-                        excludeReason = excludeReason,
-                    )
-                    excludeReasonCounts[excludeReason] = (excludeReasonCounts[excludeReason] ?: 0) + 1
-                    when (appType) {
-                        1 -> appTypeGame++
-                        32 -> {
-                            appTypeDlc++
-                            nextDlcIds.add(sharedApp.appid)
-                        }
-                        else -> appTypeOther++
-                    }
                 }
                 svc.familyAppOwnerSteamIds.clear()
                 svc.familyAppOwnerSteamIds.putAll(next)
-                svc.familySharedLibraryAppMeta.clear()
-                svc.familySharedLibraryAppMeta.putAll(nextMeta)
-                svc.familySharedLibraryDlcAppIds.clear()
-                svc.familySharedLibraryDlcAppIds.addAll(nextDlcIds)
                 // Only mark DLC-ready when this successful response requested both flags.
                 svc.familySharedLibraryReadyForDlcCounts = includeNonGames && includeExcluded
-                val excludeHistogram = excludeReasonCounts.entries
-                    .sortedByDescending { it.value }
-                    .take(10)
-                    .joinToString { "${it.key}=${it.value}" }
                 Timber.i(
                     "Cached shared library owners for ${svc.familyAppOwnerSteamIds.size} apps " +
-                        "(includeNonGames=$includeNonGames includeExcluded=$includeExcluded " +
-                        "game=$appTypeGame dlc=$appTypeDlc other=$appTypeOther " +
-                        "excludeTop=[$excludeHistogram])",
+                        "(includeNonGames=$includeNonGames includeExcluded=$includeExcluded)",
                 )
-                if (nextDlcIds.isNotEmpty()) {
-                    Timber.d(
-                        "GetSharedLibraryApps DLC sample (up to 30): " +
-                            nextDlcIds.take(30).map { id ->
-                                val meta = nextMeta[id]
-                                "$id(type=${meta?.appType},exclude=${meta?.excludeReason}," +
-                                    "name=${meta?.name},owners=${next[id]})"
-                            },
-                    )
-                } else {
-                    Timber.d(
-                        "GetSharedLibraryApps returned 0 app_type=DLC entries " +
-                            "(includeNonGames=$includeNonGames includeExcluded=$includeExcluded " +
-                            "totalApps=${sharedResult.body.appsList.size})",
-                    )
-                }
                 SharedLibraryRefreshResult(
                     svc.familyAppOwnerSteamIds.toMap(),
                     freshSuccess = true,
@@ -1207,7 +1113,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             svc.preferredLenderByAppId[appId] = lenderSteamId
             PrefManager.setPreferredFamilyLender(appId, lenderSteamId)
-            applyPreferredLenderLocally(appId, lenderSteamId)
+            applyPreferredLenderLocally(appId, lenderSteamId, svc.licenseDao.getAllLicenses())
             // Emit on Main so Compose listeners can safely update UI state.
             withContext(Dispatchers.Main.immediate) {
                 PluviaApp.events.emit(AndroidEvent.PreferredCopyChanged(appId))
@@ -1229,10 +1135,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        private suspend fun applyPreferredLenderLocally(appId: Int, lenderSteamId: Long) {
+        private suspend fun applyPreferredLenderLocally(
+            appId: Int,
+            lenderSteamId: Long,
+            allLicenses: List<SteamLicense>,
+        ) {
             val svc = instance ?: return
             val lenderAccountId = SteamID(lenderSteamId).accountID.toInt()
-            val licensesForApp = svc.licenseDao.getAllLicenses().filter { appId in it.appIds }
+            val licensesForApp = allLicenses.filter { appId in it.appIds }
             val license = findLicenseForLender(licensesForApp, lenderAccountId)
             val app = svc.appDao.findApp(appId) ?: return
             if (license != null) {
@@ -1259,8 +1169,10 @@ class SteamService : Service(), IChallengeUrlChanged {
             val svc = instance ?: return
             val preferred = PrefManager.preferredFamilyLenders.toMutableMap()
             preferred.putAll(svc.preferredLenderByAppId)
+            if (preferred.isEmpty()) return
+            val allLicenses = svc.licenseDao.getAllLicenses()
             for ((appId, lenderSteamId) in preferred) {
-                applyPreferredLenderLocally(appId, lenderSteamId)
+                applyPreferredLenderLocally(appId, lenderSteamId, allLicenses)
             }
         }
 
@@ -4481,8 +4393,6 @@ class SteamService : Service(), IChallengeUrlChanged {
         familyGroupMembers.clear()
         familyAppOwnerSteamIds.clear()
         familySharedLibraryReadyForDlcCounts = false
-        familySharedLibraryAppMeta.clear()
-        familySharedLibraryDlcAppIds.clear()
         preferredLenderByAppId.clear()
         familyMemberNames.clear()
         bumpFamilyPreferredCopyDataVersion()
@@ -4708,7 +4618,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 val steamId = SteamID(member.steamid)
                                 val accountID = steamId.accountID.toInt()
                                 familyGroupMembers.add(accountID)
-                                familyMemberNames[member.steamid] = "Family member"
                             }
                         }
 
@@ -4719,8 +4628,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     familyGroupMembers.clear()
                     familyAppOwnerSteamIds.clear()
                     familySharedLibraryReadyForDlcCounts = false
-                    familySharedLibraryAppMeta.clear()
-                    familySharedLibraryDlcAppIds.clear()
                     preferredLenderByAppId.clear()
                     familyMemberNames.clear()
                     bumpFamilyPreferredCopyDataVersion()
@@ -5417,12 +5324,13 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                             // Prefer non-expired user-owned packages so a live sub wins over an expired remnant.
                             // When a preferred family lender is set for an app, prefer that lender's packages higher.
-                            fun preferredLenderAccountForApp(appId: Int): Int? {
-                                val lenderSteamId = preferredLenderByAppId[appId]
-                                    ?: PrefManager.preferredFamilyLenders[appId]
-                                    ?: return null
-                                return SteamID(lenderSteamId).accountID.toInt()
+                            val preferredLenders = if (familyGroupId != 0L) {
+                                preferredLenderByAppId.toMap().ifEmpty { PrefManager.preferredFamilyLenders }
+                            } else {
+                                emptyMap()
                             }
+                            fun preferredLenderAccountForApp(appId: Int): Int? =
+                                preferredLenders[appId]?.let { SteamID(it).accountID.toInt() }
 
                             fun pkgRank(pkgId: Int, forAppId: Int? = null): Int {
                                 val preferredAccount = forAppId?.let { preferredLenderAccountForApp(it) }

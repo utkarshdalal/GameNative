@@ -538,7 +538,6 @@ internal fun AppScreenContent(
     onBack: () -> Unit = {},
     achievements: List<Achievement>? = null,
     optionsMenu: List<AppMenuOption>,
-    onChangePreferredCopy: (() -> Unit)? = null,
     dialogOpen: Boolean = false,
     immersiveMode: ImmersiveModeUiState = ImmersiveModeUiState(),
 ) {
@@ -1052,7 +1051,7 @@ internal fun AppScreenContent(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                    } else if (displayInfo.showChangePreferredCopy && onChangePreferredCopy != null) {
+                    } else if (displayInfo.showChangePreferredCopy && displayInfo.onChangePreferredCopy != null) {
                         Spacer(modifier = Modifier.height(10.dp))
                         Column(modifier = Modifier.fillMaxWidth()) {
                             displayInfo.preferredCopyStatusText?.let { status ->
@@ -1071,7 +1070,7 @@ internal fun AppScreenContent(
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.clickable(
                                     role = Role.Button,
-                                    onClick = onChangePreferredCopy,
+                                    onClick = displayInfo.onChangePreferredCopy,
                                 ),
                             )
                         }

@@ -449,17 +449,10 @@ class SteamAppScreen : BaseAppScreen() {
             compatibilityColor = compatibilityColor,
             preferredCopyStatusText = preferredCopyUi?.statusText,
             showChangePreferredCopy = preferredCopyUi?.showChange == true,
+            onChangePreferredCopy = { showPreferredCopyDialog(gameId) },
             isLoadingPreferredCopy = preferredCopyUi?.isLoading == true ||
                 (preferredCopyUi == null && familyGroupId != 0L),
         )
-    }
-
-    override fun onChangePreferredCopyClick(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): (() -> Unit)? {
-        // Visibility is gated by GameDisplayInfo.showChangePreferredCopy (loaded async).
-        return { showPreferredCopyDialog(libraryItem.gameId) }
     }
 
     override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean {
