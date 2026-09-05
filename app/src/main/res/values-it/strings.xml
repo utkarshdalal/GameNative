@@ -2134,6 +2134,8 @@
     <string name="mouse_acceleration_strength_subtitle">Quanto rapidamente i trascinamenti veloci aggiungono velocità al mouse</string>
     <string name="mouse_acceleration_max">Accelerazione massima</string>
     <string name="mouse_acceleration_max_subtitle">Moltiplicatore massimo applicato durante trascinamenti rapidi della visuale mouse</string>
+    <string name="win32_relative_mouse_input">Input relativo del mouse</string>
+    <string name="win32_relative_mouse_input_subtitle">Invia il movimento direttamente a Wine come input relativo del mouse. Prova questa opzione quando il mouse non funziona nel gioco.</string>
     <string name="joystick_opacity">Opacità joystick</string>
     <string name="joystick_opacity_subtitle">Opacità di anelli e cursori dei joystick dinamici</string>
     <string name="show_shooter_runtime_toggle">Mostra pulsante in gioco</string>

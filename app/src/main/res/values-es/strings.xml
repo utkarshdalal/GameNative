@@ -2141,6 +2141,8 @@
     <string name="mouse_acceleration_strength_subtitle">Qué tan rápido los arrastres más rápidos añaden velocidad extra al ratón</string>
     <string name="mouse_acceleration_max">Aceleración máxima</string>
     <string name="mouse_acceleration_max_subtitle">Multiplicador máximo aplicado durante arrastres rápidos de vista con ratón</string>
+    <string name="win32_relative_mouse_input">Entrada relativa del ratón</string>
+    <string name="win32_relative_mouse_input_subtitle">Envía el movimiento directamente a Wine como entrada relativa del ratón. Prueba esta opción cuando el ratón no funcione dentro del juego.</string>
     <string name="joystick_opacity">Opacidad del joystick</string>
     <string name="joystick_opacity_subtitle">Opacidad de los anillos y controles de los joysticks dinámicos</string>
     <string name="show_shooter_runtime_toggle">Mostrar botón en juego</string>

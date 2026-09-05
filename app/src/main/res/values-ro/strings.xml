@@ -2145,6 +2145,8 @@
     <string name="mouse_acceleration_strength_subtitle">Cât de rapid adaugă glisările rapide viteză suplimentară mouse-ului</string>
     <string name="mouse_acceleration_max">Accelerație maximă</string>
     <string name="mouse_acceleration_max_subtitle">Multiplicatorul maxim aplicat în timpul glisărilor rapide pentru privirea cu mouse</string>
+    <string name="win32_relative_mouse_input">Intrare relativă a mouse-ului</string>
+    <string name="win32_relative_mouse_input_subtitle">Trimite mișcarea direct către Wine ca intrare relativă a mouse-ului. Încearcă această opțiune când mouse-ul nu funcționează în joc.</string>
     <string name="joystick_opacity">Opacitate joystick</string>
     <string name="joystick_opacity_subtitle">Opacitatea inelelor și butoanelor joystick-urilor dinamice</string>
     <string name="show_shooter_runtime_toggle">Afișează butonul în joc</string>

@@ -2161,6 +2161,8 @@
     <string name="mouse_acceleration_strength_subtitle">Vitesse à laquelle les glissements rapides ajoutent de la vitesse souris</string>
     <string name="mouse_acceleration_max">Accélération maximale</string>
     <string name="mouse_acceleration_max_subtitle">Multiplicateur maximal appliqué pendant les glissements rapides du regard souris</string>
+    <string name="win32_relative_mouse_input">Entrée relative de la souris</string>
+    <string name="win32_relative_mouse_input_subtitle">Envoie les mouvements directement à Wine sous forme d’entrée relative de la souris. Essayez cette option lorsque la souris ne fonctionne pas en jeu.</string>
     <string name="joystick_opacity">Opacité du joystick</string>
     <string name="joystick_opacity_subtitle">Opacité des anneaux et boutons des joysticks dynamiques</string>
     <string name="show_shooter_runtime_toggle">Afficher le bouton en jeu</string>

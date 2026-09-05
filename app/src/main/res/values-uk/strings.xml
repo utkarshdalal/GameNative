@@ -2139,6 +2139,8 @@
     <string name="mouse_acceleration_strength_subtitle">Як швидко швидші перетягування додають швидкість миші</string>
     <string name="mouse_acceleration_max">Максимальне прискорення</string>
     <string name="mouse_acceleration_max_subtitle">Верхній множник під час швидких перетягувань огляду мишею</string>
+    <string name="win32_relative_mouse_input">Відносне введення миші</string>
+    <string name="win32_relative_mouse_input_subtitle">Передає рух безпосередньо до Wine як відносне введення миші. Спробуйте, якщо миша не працює у грі.</string>
     <string name="joystick_opacity">Непрозорість джойстика</string>
     <string name="joystick_opacity_subtitle">Непрозорість кілець і ручок динамічних джойстиків</string>
     <string name="show_shooter_runtime_toggle">Показувати кнопку в грі</string>

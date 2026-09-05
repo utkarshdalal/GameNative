@@ -2151,6 +2151,8 @@
     <string name="mouse_acceleration_strength_subtitle">較快拖曳增加額外滑鼠速度的速度</string>
     <string name="mouse_acceleration_max">最大加速</string>
     <string name="mouse_acceleration_max_subtitle">快速滑鼠視角拖曳時套用的最高倍率</string>
+    <string name="win32_relative_mouse_input">相對滑鼠輸入</string>
+    <string name="win32_relative_mouse_input_subtitle">將移動以相對滑鼠輸入直接傳送至 Wine。若滑鼠在遊戲中無法運作，請嘗試啟用此選項。</string>
     <string name="joystick_opacity">搖桿不透明度</string>
     <string name="joystick_opacity_subtitle">動態搖桿圓環和拇指點的不透明度</string>
     <string name="show_shooter_runtime_toggle">顯示遊戲內按鈕</string>
