@@ -1528,6 +1528,7 @@
     <string name="hltb_all_styles">Alle Spielstile</string>
     <string name="hltb_hours_value">%sh</string>
     <string name="hltb_section_title">HLTB</string>
+    <string name="hltb_show_spoilers">Spoiler anzeigen</string>
 
     <!-- LSFG-VK frame generation -->
     <string name="lsfg_tab_title">LSFG-VK</string>
