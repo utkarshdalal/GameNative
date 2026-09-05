@@ -36,8 +36,6 @@ object EpicCloudSavesManager {
     private val syncMutex = Mutex()
     private val activeSyncs = mutableSetOf<Int>()
 
-    fun hasActiveSyncs(): Boolean = activeSyncs.isNotEmpty()
-
     // Data classes for API responses
     data class CloudSaveFiles(
         val files: Map<String, CloudFileInfo>,
@@ -592,8 +590,9 @@ object EpicCloudSavesManager {
             // 7. Download chunks referenced in manifest (parallel, with explicit read-link request)
             val chunks = downloadChunksParallel(context, game.appName, manifest)
 
-            if (chunks.isEmpty()) {
-                Timber.tag("Epic").e("[Cloud Saves] No chunks were downloaded, aborting")
+            val expectedChunks = manifest.chunkDataList?.elements?.size ?: 0
+            if (chunks.isEmpty() || chunks.size < expectedChunks) {
+                Timber.tag("Epic").e("[Cloud Saves] Downloaded ${chunks.size}/$expectedChunks chunks, aborting to avoid writing a truncated save")
                 return@withContext false
             }
 

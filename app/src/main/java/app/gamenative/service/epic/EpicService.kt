@@ -154,8 +154,7 @@ class EpicService : Service() {
         // ==========================================================================
 
         fun hasActiveOperations(): Boolean {
-            return syncInProgress || backgroundSyncJob?.isActive == true || hasActiveDownload() ||
-                EpicCloudSavesManager.hasActiveSyncs()
+            return syncInProgress || backgroundSyncJob?.isActive == true || hasActiveDownload()
         }
 
         private fun setSyncInProgress(inProgress: Boolean) {

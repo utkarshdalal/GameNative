@@ -405,14 +405,10 @@ class MainActivity : ComponentActivity() {
             GOGService.stop()
         }
 
-        // Stop EpicService when app is destroyed (unless config change or a cloud save sync is in flight)
+        // Stop EpicService when app is destroyed (unless config change)
         if (EpicService.isRunning && !isChangingConfigurations) {
-            if (!EpicService.hasActiveOperations()) {
-                Timber.i("Stopping EpicService - app destroyed")
-                EpicService.stop()
-            } else {
-                Timber.i("Not stopping EpicService on destroy - active operations in progress")
-            }
+            Timber.i("Stopping EpicService - app destroyed")
+            EpicService.stop()
         }
     }
 
