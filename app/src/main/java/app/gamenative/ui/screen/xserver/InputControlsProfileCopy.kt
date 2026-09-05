@@ -14,6 +14,7 @@ internal fun copyInputControlsProfileElements(
     targetProfile.elements.toList().forEach(targetProfile::removeElement)
     sourceProfile.elements.forEach { targetProfile.addElement(it.copyForView(view)) }
     targetProfile.setDefaultRadialMenu(sourceProfile.defaultRadialMenu.deepCopy())
+    view.onControlsProfileContentChanged(true)
     view.invalidate()
 }
 
@@ -40,7 +41,7 @@ private fun ControlElement.copyForView(view: InputControlsView) = ControlElement
     }
 
     for (i in 0 until bindingCount) {
-        newElement.setBindingAt(i, getBindingAt(i))
+        newElement.setBindingComboAt(i, getBindingComboAt(i))
     }
 
     if (type == ControlElement.Type.SHOOTER_MODE) {

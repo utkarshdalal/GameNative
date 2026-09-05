@@ -305,6 +305,7 @@ object ContainerUtils {
             rendererPresentMode = container.rendererPresentMode,
             displayRenderer = container.displayRenderer,
             xrRefreshRate = container.xrRefreshRate,
+            xrRenderScale = container.xrRenderScale,
             sfCompatMode = container.sfCompatMode,
             dxwrapper = container.dxWrapper,
             dxwrapperConfig = container.dxWrapperConfig,
@@ -335,11 +336,14 @@ object ContainerUtils {
             fexcorePreset = container.getFEXCorePreset(),
             language = container.language,
             sdlControllerAPI = container.isSdlControllerAPI,
+            fasterExternalLoading = container.isFasterExternalLoading,
+            disableLibredirect = container.isDisableLibredirect,
             useSteamInput = useSteamInput,
             forceDlc = container.isForceDlc,
             localSavesOnly = container.isLocalSavesOnly,
             steamOfflineMode = container.isSteamOfflineMode(),
             epicOfflineMode = container.isEpicOfflineMode(),
+            disableEpicOverlay = container.isDisableEpicOverlay,
             useLegacyDRM = container.isUseLegacyDRM(),
             unpackFiles = container.isUnpackFiles(),
             suspendPolicy = container.suspendPolicy,
@@ -366,6 +370,8 @@ object ContainerUtils {
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
             // LSFG Vulkan frame generation
             lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean(),
+            windowsVrEnabled = container.getExtra("windowsVrEnabled", "false").toBoolean(),
+            openCompositeEnabled = container.getExtra("windowsVrOpenCompositeEnabled", "false").toBoolean(),
         )
     }
 
@@ -438,6 +444,7 @@ object ContainerUtils {
                 "audioDriver" -> value?.let { updatedData.copy(audioDriver = it as? String ?: updatedData.audioDriver) } ?: updatedData
                 "wincomponents" -> value?.let { updatedData.copy(wincomponents = it as? String ?: updatedData.wincomponents) } ?: updatedData
                 "videoMemorySize" -> value?.let { updatedData.copy(videoMemorySize = it as? String ?: updatedData.videoMemorySize) } ?: updatedData
+                "launchBionicSteam" -> value?.let { updatedData.copy(launchBionicSteam = it as? Boolean ?: updatedData.launchBionicSteam) } ?: updatedData
                 else -> updatedData
             }
         }
@@ -489,6 +496,7 @@ object ContainerUtils {
         container.rendererPresentMode = containerData.rendererPresentMode
         container.displayRenderer = containerData.displayRenderer
         container.xrRefreshRate = containerData.xrRefreshRate
+        container.xrRenderScale = containerData.xrRenderScale
         container.sfCompatMode = containerData.sfCompatMode
         container.dxWrapper = containerData.dxwrapper
         container.dxWrapperConfig = containerData.dxwrapperConfig
@@ -519,6 +527,8 @@ object ContainerUtils {
         container.box86Preset = containerData.box86Preset
         container.box64Preset = containerData.box64Preset
         container.isSdlControllerAPI = containerData.sdlControllerAPI
+        container.isFasterExternalLoading = containerData.fasterExternalLoading
+        container.isDisableLibredirect = containerData.disableLibredirect
         container.putExtra("useSteamInput", containerData.useSteamInput)
         container.desktopTheme = containerData.desktopTheme
         container.graphicsDriverVersion = containerData.graphicsDriverVersion
@@ -538,6 +548,7 @@ object ContainerUtils {
         container.setLocalSavesOnly(containerData.localSavesOnly)
         container.setSteamOfflineMode(containerData.steamOfflineMode)
         container.setEpicOfflineMode(containerData.epicOfflineMode)
+        container.setDisableEpicOverlay(containerData.disableEpicOverlay)
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
         container.setSuspendPolicy(containerData.suspendPolicy)
@@ -550,6 +561,8 @@ object ContainerUtils {
         container.putExtra("sharpnessDenoise", containerData.sharpnessDenoise.toString())
         // LSFG Vulkan frame generation
         container.putExtra(LsfgVkManager.EXTRA_ARMED, containerData.lsfgEnabled.toString())
+        container.putExtra("windowsVrEnabled", containerData.windowsVrEnabled.toString())
+        container.putExtra("windowsVrOpenCompositeEnabled", containerData.openCompositeEnabled.toString())
         try {
             container.language = containerData.language
         } catch (e: Exception) {

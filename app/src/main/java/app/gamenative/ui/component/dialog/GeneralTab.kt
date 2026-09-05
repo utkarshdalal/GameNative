@@ -371,6 +371,13 @@ fun GeneralTabContent(
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.disable_epic_overlay_title)) },
+            subtitle = { Text(text = stringResource(R.string.disable_epic_overlay_subtitle)) },
+            state = config.disableEpicOverlay,
+            onCheckedChange = { state.config.value = config.copy(disableEpicOverlay = it) },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.launch_steam_client_beta)) },
             subtitle = { Text(text = stringResource(R.string.launch_steam_client_description)) },
             state = config.launchRealSteam,
@@ -396,7 +403,28 @@ fun GeneralTabContent(
                     }
                 },
             )
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.disable_libredirect_title)) },
+                subtitle = { Text(text = stringResource(R.string.disable_libredirect_subtitle)) },
+                state = config.disableLibredirect,
+                onCheckedChange = {
+                    state.config.value = if (it) {
+                        config.copy(disableLibredirect = true, fasterExternalLoading = false)
+                    } else {
+                        config.copy(disableLibredirect = false)
+                    }
+                },
+            )
         }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            enabled = !config.disableLibredirect,
+            title = { Text(text = stringResource(R.string.faster_external_loading_title)) },
+            subtitle = { Text(text = stringResource(R.string.faster_external_loading_subtitle)) },
+            state = config.fasterExternalLoading,
+            onCheckedChange = { state.config.value = config.copy(fasterExternalLoading = it) },
+        )
         val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
         val currentSteamTypeIndex = when (config.steamType.lowercase()) {
             Container.STEAM_TYPE_LIGHT -> 1

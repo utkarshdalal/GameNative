@@ -47,12 +47,14 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Star
@@ -326,6 +328,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.StorePage -> Icons.AutoMirrored.Filled.OpenInNew
         AppOptionMenuType.CreateShortcut -> Icons.AutoMirrored.Filled.AddToHomeScreen
         AppOptionMenuType.ExportFrontend -> Icons.Default.Share
+        AppOptionMenuType.CopyLaunchLink -> Icons.Default.Link
         AppOptionMenuType.RunContainer -> Icons.Default.PlayArrow
         AppOptionMenuType.EditContainer -> Icons.Default.Settings
         AppOptionMenuType.ResetToDefaults -> Icons.Default.RestartAlt
@@ -347,6 +350,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.TestGraphics -> Icons.Default.Build
         AppOptionMenuType.PlayWithDiagnostics -> Icons.Default.BugReport
         AppOptionMenuType.ShareDiagnostics -> Icons.Default.Share
+        AppOptionMenuType.AiDebugRun -> Icons.Default.SmartToy
         AppOptionMenuType.ImportConfig -> Icons.Default.ArrowDownward
         AppOptionMenuType.ExportConfig -> Icons.Default.ArrowUpward
         AppOptionMenuType.ImportSaves -> Icons.Default.ArrowDownward
@@ -372,8 +376,10 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             // Quick Actions
             AppOptionMenuType.EditContainer,
             AppOptionMenuType.RunContainer,
+            AppOptionMenuType.AiDebugRun,
             AppOptionMenuType.CreateShortcut,
             AppOptionMenuType.ExportFrontend,
+            AppOptionMenuType.CopyLaunchLink,
             AppOptionMenuType.AddToFavorites,
             AppOptionMenuType.RemoveFromFavorites,
             -> quickActions.add(option)

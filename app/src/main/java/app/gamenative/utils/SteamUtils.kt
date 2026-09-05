@@ -145,6 +145,32 @@ object SteamUtils {
         }
     }
 
+    fun getBaseAchievementIconUrl(appId: Int): String = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$appId/"
+
+    /**
+     * Steam achievement-schema language name for the app's current UI locale. Steam's names are the
+     * lowercase English name of the language (german, french, ukrainian, romanian, …) apart from a
+     * few proprietary ones, so we special-case those and derive the rest. A name the schema doesn't
+     * carry falls back to English per-achievement when it is read.
+     */
+    fun steamLanguageForAppLocale(locale: Locale = Locale.getDefault()): String {
+        return when (locale.language) {
+            "ko" -> "koreana"
+            // Steam splits Spanish into Castilian ("spanish") and Latin American ("latam").
+            "es" -> if (locale.country.isNotEmpty() && !locale.country.equals("ES", true)) "latam" else "spanish"
+            "pt" -> if (locale.country.equals("BR", true)) "brazilian" else "portuguese"
+            "zh" -> if (locale.country.equals("TW", true) || locale.country.equals("HK", true) ||
+                locale.country.equals("MO", true) || locale.script.equals("Hant", true)
+            ) {
+                "tchinese"
+            } else {
+                "schinese"
+            }
+            // substringBefore drops variant suffixes like "Norwegian Bokmål" -> "norwegian".
+            else -> locale.getDisplayLanguage(Locale.ENGLISH).lowercase(Locale.ENGLISH).substringBefore(' ')
+        }
+    }
+
     internal val http = Net.http.newBuilder()
         .readTimeout(5, TimeUnit.MINUTES)
         .callTimeout(0, TimeUnit.MILLISECONDS)
@@ -886,7 +912,8 @@ object SteamUtils {
         }
 
         // Update or modify localconfig.vdf
-        updateOrModifyLocalConfig(imageFs, container, steamAppId.toString(), SteamService.userSteamId!!.accountID.toString())
+        val steam3AccountId = getSteam3AccountId()?.toString().orEmpty()
+        updateOrModifyLocalConfig(imageFs, container, steamAppId.toString(), steam3AccountId)
 
         skipFirstTimeSteamSetup(imageFs.rootDir)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
@@ -898,7 +925,7 @@ object SteamUtils {
         Timber.i("Checking directory: $appDirPath")
 
         autoLoginUserChanges(imageFs)
-        setupLightweightSteamConfig(imageFs, SteamService.userSteamId!!.accountID.toString())
+        setupLightweightSteamConfig(imageFs, steam3AccountId)
 
         putBackSteamDlls(appDirPath)
 
@@ -975,6 +1002,30 @@ object SteamUtils {
                     Timber.w(e, "Failed to restore ${path.name} from backup")
                 }
             }
+        }
+    }
+
+    /**
+     * Deletes DRM backup artifacts (.original.exe, .unpacked.exe, steam_api*.dll.orig) left in
+     * the game directory by emulated-mode launches. Called when an update/verify download starts:
+     * the depot download restores pristine current-build files, so existing backups hold the
+     * previous build, and a later restore pass (bionic/real-Steam launch) would overwrite the
+     * freshly updated files with stale ones.
+     */
+    fun clearStaleDrmBackups(appDirPath: String) {
+        val root = File(appDirPath)
+        if (!root.exists()) return
+        var deleted = 0
+        root.walkTopDown().maxDepth(10).forEach { file ->
+            if (!file.isFile) return@forEach
+            val name = file.name
+            val isBackup = name.endsWith(".original.exe", ignoreCase = true) ||
+                name.endsWith(".unpacked.exe", ignoreCase = true) ||
+                (name.startsWith("steam_api", ignoreCase = true) && name.endsWith(".dll.orig", ignoreCase = true))
+            if (isBackup && file.delete()) deleted++
+        }
+        if (deleted > 0) {
+            Timber.i("Deleted $deleted stale DRM backup file(s) in $appDirPath")
         }
     }
 

@@ -169,7 +169,7 @@ object PowerManager {
             startPowerControl()
         }
 
-        if (currentProfile.enableAdaptiveFpsCap) {
+        if (currentProfile.adaptiveFpsCapEnabled) {
             AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
         }
 
@@ -304,7 +304,7 @@ object PowerManager {
         if (!isGameStarted) return
         driver.start()
         applyCurrentProfile()
-        if (currentProfile.enableAdaptiveFpsCap) {
+        if (currentProfile.adaptiveFpsCapEnabled) {
             AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
         }
         PerformanceMetricsCollector.resume()
@@ -550,12 +550,10 @@ object PowerManager {
             stopAutoTuning()
         }
 
-        if (previousProfile.enableAdaptiveFpsCap != profile.enableAdaptiveFpsCap) {
-            if (profile.enableAdaptiveFpsCap) {
-                AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
-            } else {
-                AdaptiveFpsCapController.stop()
-            }
+        if (profile.adaptiveFpsCapEnabled) {
+            AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
+        } else {
+            AdaptiveFpsCapController.stop()
         }
 
         if (isGameStarted) {
@@ -676,7 +674,7 @@ object PowerManager {
                 enablePowerControl = currentProfile.enablePowerControl,
                 enableAutoTuning = currentProfile.enableAutoTuning,
                 enablePerClusterTuning = currentProfile.enablePerClusterTuning,
-                enableAdaptiveFpsCap = currentProfile.enableAdaptiveFpsCap,
+                adaptiveFpsCapEnabled = currentProfile.adaptiveFpsCapEnabled,
                 enableFanControl = currentProfile.enableFanControl,
                 enableGamePinning = currentProfile.enableGamePinning,
                 tuningStrategy = currentProfile.tuningStrategy

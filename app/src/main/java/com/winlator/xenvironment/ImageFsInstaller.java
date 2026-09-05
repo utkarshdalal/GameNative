@@ -97,6 +97,11 @@ public abstract class ImageFsInstaller {
                 FileUtils.copy(context, "libredirect-bionic-wx.so", wxDest);
                 chmod(wxDest);
             }
+            File wxMinimalDest = new File(imagefs, "usr/lib/libredirect-bionic-wx-minimal.so");
+            if (!wxMinimalDest.exists()) {
+                FileUtils.copy(context, "libredirect-bionic-wx-minimal.so", wxMinimalDest);
+                chmod(wxMinimalDest);
+            }
         }
     }
 

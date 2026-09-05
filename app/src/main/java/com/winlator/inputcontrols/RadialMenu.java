@@ -19,7 +19,7 @@ public class RadialMenu {
 
     public static class Slot {
         private String label = "";
-        private Binding binding = Binding.NONE;
+        private BindingCombo bindingCombo = BindingCombo.none();
 
         public Slot() {
         }
@@ -27,6 +27,11 @@ public class RadialMenu {
         public Slot(String label, Binding binding) {
             setLabel(label);
             setBinding(binding);
+        }
+
+        public Slot(String label, BindingCombo bindingCombo) {
+            setLabel(label);
+            setBindingCombo(bindingCombo);
         }
 
         public String getLabel() {
@@ -38,32 +43,48 @@ public class RadialMenu {
         }
 
         public Binding getBinding() {
-            return binding;
+            return bindingCombo.getPrimaryBinding();
         }
 
         public void setBinding(Binding binding) {
-            this.binding = binding != null ? binding : Binding.NONE;
+            this.bindingCombo = BindingCombo.of(binding);
+        }
+
+        public BindingCombo getBindingCombo() {
+            return bindingCombo;
+        }
+
+        public void setBindingCombo(BindingCombo bindingCombo) {
+            this.bindingCombo = bindingCombo != null ? bindingCombo : BindingCombo.none();
         }
 
         public boolean isEnabled() {
-            return binding != Binding.NONE;
+            return !bindingCombo.isEmpty();
         }
 
         public String getDisplayLabel() {
-            return !label.isEmpty() ? label : binding.toString();
+            return !label.isEmpty() ? label : bindingCombo.toString();
         }
 
         public JSONObject toJSONObject() throws JSONException {
             JSONObject object = new JSONObject();
             object.put("label", label);
-            object.put("binding", binding.name());
+            object.put("binding", getBinding().name());
+            if (!bindingCombo.isSingleBinding()) {
+                bindingCombo.writeToJsonObject(object);
+            }
             return object;
         }
 
         public static Slot fromJSONObject(JSONObject object) {
             Slot slot = new Slot();
             slot.setLabel(object.optString("label", ""));
-            slot.setBinding(Binding.fromString(object.optString("binding", Binding.NONE.name())));
+            if (object.has("bindings")) {
+                slot.setBindingCombo(BindingCombo.fromJsonValue(object));
+            }
+            else {
+                slot.setBinding(Binding.fromString(object.optString("binding", Binding.NONE.name())));
+            }
             return slot;
         }
     }

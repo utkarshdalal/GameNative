@@ -91,9 +91,12 @@ enum class LibraryTab(
         showEpic = false,
         showAmazon = false,
         installedOnly = false,
-    );
+    ),
+    ;
 
     companion object {
+        val configurableEntries = listOf(STEAM, GOG, EPIC, AMAZON)
+
         /**
          * Tabs shown in the UI. Custom (LOCAL) games work on all flavors: legacy maps folders
          * in place via all-files access, modern imports them into app-owned storage.
@@ -105,16 +108,51 @@ enum class LibraryTab(
                 return result
             }
 
-        fun LibraryTab.next(): LibraryTab {
-            val values = visibleEntries
+        fun normalizeVisibleTabs(
+            serialized: String,
+            supportedTabs: List<LibraryTab> = visibleEntries,
+        ): List<LibraryTab> {
+            val supported = supportedTabs.distinct()
+            if (serialized.isBlank()) return supported
+
+            if (!serialized.startsWith(VISIBLE_TABS_PREFIX)) {
+                val hiddenTabs = serialized
+                    .split(',')
+                    .map { it.trim() }
+                    .filter { it.startsWith(HIDDEN_PREFIX) }
+                    .map { it.removePrefix(HIDDEN_PREFIX) }
+                    .toSet()
+                return supported.filter { it !in configurableEntries || it.name !in hiddenTabs }
+            }
+
+            val selected = serialized
+                .removePrefix(VISIBLE_TABS_PREFIX)
+                .split(',')
+                .mapNotNull { token ->
+                    val value = token.trim()
+                    entries.firstOrNull { it.name == value }
+                }
+                .toSet()
+
+            return supported.filter { it !in configurableEntries || it in selected }
+        }
+
+        fun serializeVisibleTabs(tabs: List<LibraryTab>): String =
+            tabs.distinct().joinToString(",", prefix = VISIBLE_TABS_PREFIX) { it.name }
+
+        fun LibraryTab.next(visibleTabs: List<LibraryTab> = visibleEntries): LibraryTab {
+            val values = visibleTabs.ifEmpty { listOf(ALL) }
             val index = values.indexOf(this).coerceAtLeast(0)
             return values[(index + 1) % values.size]
         }
 
-        fun LibraryTab.previous(): LibraryTab {
-            val values = visibleEntries
+        fun LibraryTab.previous(visibleTabs: List<LibraryTab> = visibleEntries): LibraryTab {
+            val values = visibleTabs.ifEmpty { listOf(ALL) }
             val index = values.indexOf(this).coerceAtLeast(0)
             return values[if (index == 0) values.size - 1 else index - 1]
         }
+
+        private const val HIDDEN_PREFIX = "!"
+        private const val VISIBLE_TABS_PREFIX = "v2:"
     }
 }

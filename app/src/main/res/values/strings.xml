@@ -130,6 +130,16 @@
     <string name="steam_collections_offline">Showing last synced collections. Connect to update.</string>
     <string name="steam_collections_clear">Clear</string>
     <string name="steam_collections_smart_unsupported">Only standard collections are shown. Smart collections aren\'t supported yet.</string>
+
+    <string name="curated_lists_title">Steam curated lists</string>
+    <string name="curated_lists_loading">Loading curated lists…</string>
+    <string name="curated_lists_offline">Using the saved list. Connect to update.</string>
+    <string name="curated_lists_clear">Clear</string>
+    <string name="curated_lists_empty">No curated lists available right now.</string>
+    <string name="curated_list_4_3_name">Does it 4:3?</string>
+    <string name="settings_interface_library_tabs_title">Library tabs</string>
+    <string name="settings_interface_library_tabs_subtitle">Choose which store tabs appear in the library.</string>
+    <string name="settings_interface_library_tabs_none">No store tabs</string>
     <string name="default_user_name">User</string>
 
     <!-- Custom Games -->
@@ -224,6 +234,12 @@
     <string name="open_file">Open File</string>
     <string name="download_file">Download File</string>
     <string name="processor_affinity">Processor Affinity</string>
+    <string name="faster_external_loading_title">Faster loading from external storage</string>
+    <string name="faster_external_loading_subtitle">Can significantly speed up game boot from external storage, but may cause issues in some games</string>
+    <string name="disable_libredirect_title">Disable libredirect</string>
+    <string name="disable_libredirect_subtitle">May improve performance but may also cause unexpected issues</string>
+    <string name="disable_epic_overlay_title">Disable Epic Overlay</string>
+    <string name="disable_epic_overlay_subtitle">Disables the EOS overlay and CEF renderer to prevent memory exhaustion crashes in certain games</string>
     <string name="bring_to_front">Bring to Front</string>
     <string name="end_process">End Process</string>
     <string name="new_file">New File</string>
@@ -331,6 +347,12 @@
     <string name="immersive_onboarding_pointer_toggle">Double-click a thumbstick to switch Xbox controller / XR pointer</string>
     <string name="immersive_mode_xr_pointer">XR pointer mode</string>
     <string name="immersive_mode_xbox">Xbox controller mode</string>
+    <string name="immersive_windows_vr_title">Windows VR</string>
+    <string name="immersive_windows_vr_toggle">Enable Windows VR</string>
+    <string name="immersive_openvr_compatibility_toggle">OpenVR compatibility (experimental)</string>
+    <string name="immersive_windows_vr_restart_required">Runtime and compatibility changes apply on the next launch.</string>
+    <string name="immersive_windows_vr_export">Export Windows VR diagnostics</string>
+    <string name="immersive_windows_vr_export_desc">Save the bounded runtime event report</string>
     <string name="tools_wine_processes_running_hint">%1$d running, tap/click a process to close</string>
     <string name="tools_wine_processes_empty">No running EXEs detected.</string>
     <string name="performance_hud">Performance HUD</string>
@@ -1105,6 +1127,10 @@
     <string name="settings_info_libraries_subtitle">See what technologies make GameNative possible</string>
     <string name="settings_info_privacy_title">Privacy Policy</string>
     <string name="settings_info_privacy_subtitle">Opens a link to GameNative\'s privacy policy</string>
+    <string name="settings_info_boot_ads_title">Sponsored loading screens</string>
+    <string name="settings_info_boot_ads_subtitle">Keeping this on helps support GameNative\'s development. It never slows down game launches or affects you in any way.</string>
+    <string name="settings_info_boot_recs_title">Game recommendations on loading screens</string>
+    <string name="settings_info_boot_recs_subtitle">Show a game you might like while a game boots, when there is no sponsor card.</string>
     <string name="settings_info_usage_analytics_title">Usage analytics</string>
     <string name="settings_info_usage_analytics_subtitle">We never track personal information. Disabling this stops non-essential analytics, however core game performance data is still collected as a legitimate interest to improve compatibility.</string>
 
@@ -1713,6 +1739,7 @@
     <!-- App option menu labels -->
     <string name="option_open_store_page">Open store page</string>
     <string name="option_export_for_frontend">Export for frontend</string>
+    <string name="option_copy_launch_link">Copy launch link</string>
     <string name="option_open_container">Open container</string>
     <string name="option_edit_container">Edit container</string>
     <string name="option_reset_to_defaults">Reset container</string>
@@ -1743,6 +1770,44 @@
     <string name="option_test_graphics">Test graphics</string>
     <string name="option_play_with_diagnostics">Diagnostic Run</string>
     <string name="option_share_diagnostics">Share diagnostics</string>
+    <string name="option_ai_debug_run">Get AI help</string>
+    <string name="debug_report_title">AI Debug Report</string>
+    <string name="debug_report_summary">%1$s · %2$s · log captured (%3$s MB)</string>
+    <string name="debug_report_what_went_wrong">What went wrong?</string>
+    <string name="debug_report_send">Send</string>
+    <string name="debug_report_share_instead">Share instead</string>
+    <string name="debug_report_connect_hint">Connect your Discord account so our AI can reply to you in a support thread.</string>
+    <string name="debug_report_connect_discord">Connect Discord</string>
+    <string name="debug_report_sending">Sending your report…</string>
+    <string name="debug_report_success_title">Report sent</string>
+    <string name="debug_report_success_message">A support thread was opened in our Discord. Our AI is reading your log and will reply there.</string>
+    <string name="debug_report_open_discord">Open Discord</string>
+    <string name="debug_report_failed_title">Could not send report</string>
+    <string name="debug_report_failed_message">Your report is saved on this device. Retry when you are back online, or share the log instead.</string>
+    <string name="debug_report_retry">Retry</string>
+    <string name="debug_report_share_log_title">Share debug log</string>
+    <string name="debug_report_discord_linked">Discord connected</string>
+    <string name="debug_report_no_log">No debug log was captured for this run.</string>
+    <string name="debug_paywall_title">Get AI debug support</string>
+    <string name="debug_paywall_pitch">Our AI reads your exact log and config and tells you what to change, usually in under 5 minutes.</string>
+    <string name="debug_paywall_tier5_title">$5/month · Supporter</string>
+    <string name="debug_paywall_tier5_body">Our base AI reads your debug report and replies in Discord with a fix to try, plus up to two follow-up answers.</string>
+    <string name="debug_paywall_tier10_title">$10/month · Pro</string>
+    <string name="debug_paywall_tier10_body">Our smartest AI model, with unlimited back-and-forth in your support thread.</string>
+    <string name="debug_paywall_cancel_anytime">Cancel anytime.</string>
+    <string name="debug_paywall_costs_note">Subscriptions cover the AI service costs that make this feature possible.</string>
+    <string name="debug_paywall_subscribe">Subscribe on Discord</string>
+    <string name="debug_paywall_kofi_alt">Subscribe on Ko-fi</string>
+    <string name="debug_paywall_already">Already a supporter?</string>
+    <string name="debug_paywall_send_now">I’ve subscribed, send now</string>
+    <string name="debug_paywall_not_now">Not now</string>
+    <string name="debug_offer_title">Get AI help with this crash</string>
+    <string name="debug_offer_message">That session ended early. Run %1$s once more with debug logging and our AI will read the log and tell you what to change.</string>
+    <string name="debug_offer_confirm">Start debug run</string>
+    <string name="debug_prerun_title">Get AI help</string>
+    <string name="debug_prerun_message_1">Runs the game with debug logging and shares the log with our AI on Discord when you quit. Run the game until you experience the issue.</string>
+    <string name="debug_prerun_message_2">AI replies are for subscribers only.</string>
+    <string name="debug_prerun_message_3">Anyone can share the report for human help.</string>
     <string name="diagnostics_share_title">Share diagnostics log</string>
     <string name="diagnostics_share_none">No diagnostics log yet. Use \"Diagnostic Run\" first.</string>
     <string name="option_manage_dlc">Manage DLC</string>
@@ -1754,9 +1819,32 @@
     <string name="nexus_filter_placement">Placement</string>
     <string name="nexus_filter_manual">Manual</string>
     <string name="nexus_filter_unsupported">Unsupported</string>
+    <string name="nexus_oauth_account_title">Nexus Mods account</string>
+    <string name="nexus_oauth_connect">Connect Nexus Mods</string>
+    <string name="nexus_oauth_connecting">Connecting to Nexus Mods…</string>
+    <string name="nexus_oauth_cancel_sign_in">Cancel sign-in</string>
+    <string name="nexus_oauth_connected">Connected to Nexus Mods</string>
+    <string name="nexus_oauth_connected_as">Connected as %1$s</string>
+    <string name="nexus_oauth_disconnected_description">Connect your Nexus Mods account to browse and import mods and collections.</string>
+    <string name="nexus_oauth_premium_account">Premium account</string>
+    <string name="nexus_oauth_free_account">Free account</string>
+    <string name="nexus_oauth_disconnect">Disconnect</string>
+    <string name="nexus_oauth_disconnecting">Disconnecting from Nexus Mods…</string>
+    <string name="nexus_oauth_disconnect_title">Disconnect Nexus Mods?</string>
+    <string name="nexus_oauth_disconnect_message">GameNative will revoke this account’s Nexus tokens on this device. Installed mods and local files will not be removed.</string>
+    <string name="nexus_oauth_disconnected">Nexus Mods account disconnected.</string>
+    <string name="nexus_oauth_sign_in_failed">Nexus Mods sign-in did not complete. Try connecting again.</string>
+    <string name="nexus_oauth_disconnect_failed">Could not disconnect the Nexus Mods account. Try again.</string>
+    <string name="nexus_oauth_browser_failed">Could not open a browser for Nexus Mods sign-in.</string>
+    <string name="nexus_oauth_invalid_callback">GameNative rejected an invalid Nexus Mods sign-in response.</string>
+    <string name="nexus_oauth_sign_in_required">Connect a Nexus Mods account before using online Nexus features.</string>
+    <string name="nexus_oauth_session_unavailable">Nexus authorization is temporarily unavailable. Try again.</string>
     <string name="nexus_integration_temporarily_unavailable">Nexus Mods support has been temporarily disabled while GameNative is being registered with Nexus Mods. Existing installed mods can still be managed.</string>
     <string name="nexus_invalid_nxm_callback">This Nexus authorization is invalid, expired, already used, or no longer matches an active GameNative request. Start the download from Manage Nexus Mods again.</string>
     <string name="nexus_nxm_callback_received">Nexus download authorization received. Return to Manage Nexus Mods if the download does not resume automatically.</string>
+    <string name="nexus_nxm_no_active_target">Open Manage Nexus Mods for the destination game, then tap Mod Manager Download on Nexus Mods again.</string>
+    <string name="nexus_nxm_ambiguous_target">GameNative cannot safely choose between multiple open mod dialogs. Close the extra dialog and try Mod Manager Download again.</string>
+    <string name="nexus_nxm_file_not_found">Nexus authorized a file that is no longer available for this mod. Request the download again.</string>
     <string name="nexus_authorize_in_browser">Nexus requires website confirmation for this account. In the browser, choose Download with Manager and then Slow Download; GameNative will resume automatically.</string>
     <string name="nexus_open_browser_failed">Could not open Nexus Mods in a browser.</string>
     <string name="nexus_authorization_timed_out">Nexus website authorization timed out. Retry the file and complete Download with Manager in the browser.</string>
@@ -2101,6 +2189,9 @@
 
     <!-- FeaturedItem (server-driven promoted slot) -->
     <string name="featured_badge">Sponsored</string>
+    <string name="boot_rec_badge">Recommended for you</string>
+    <string name="boot_quiz_win_default">Correct!</string>
+    <string name="boot_quiz_lose_default">The answer was %1$s</string>
     <string name="featured_action_wishlist">Wishlist</string>
     <string name="featured_action_wishlist_on">Wishlist on %1$s</string>
     <string name="featured_action_wishlisted">Wishlisted</string>
@@ -2300,6 +2391,22 @@
     <string name="nexus_invalid_source_metadata">This managed mod has incomplete source information and cannot be retried.</string>
     <string name="nexus_archive_memory_error">Archive needs more memory than Android allows. Retry after updating GameNative or choose a smaller file.</string>
 
+    <!-- Steam achievements -->
+    <string name="achievements">Achievements</string>
+    <string name="achievements_all_title">All Achievements</string>
+    <string name="achievements_unlocked_at">Unlocked on %1$s at %2$s</string>
+    <string name="achievements_complete">All achievements unlocked</string>
+    <string name="achievements_progress_count">%1$d / %2$d (%3$d%%)</string>
+    <plurals name="achievements_hidden_remaining">
+        <item quantity="one">%1$d hidden achievement remaining</item>
+        <item quantity="other">%1$d hidden achievements remaining</item>
+    </plurals>
+    <string name="achievements_hidden_subtitle">The details of each achievement will be revealed once unlocked</string>
+    <string name="achievements_reveal_title">Reveal hidden achievements?</string>
+    <string name="achievements_reveal_message">This shows the remaining secret achievements and their details for now. It is not remembered.</string>
+    <string name="achievements_reveal_confirm">Reveal</string>
+    <string name="achievements_locked">Locked</string>
+
     <!-- Power Control -->
     <string name="power_control">Power Control</string>
     <string name="power_control_info">Control CPU frequency scaling and governor settings. Requires PServer service.</string>
@@ -2341,4 +2448,52 @@
     <string name="power_control_strategy_conservative">Conservative</string>
     <string name="power_control_strategy_conservative_desc">AdjustsGradual gradually with a focus on stability</string>
     <string name="xr_refresh_rate">VR Refresh Rate</string>
+    <string name="binding_mode_simultaneous">Simultaneous</string>
+    <string name="binding_mode_sequence">Sequence</string>
+    <string name="binding_sequence_delay_ms">Sequence delay (ms)</string>
+    <string name="binding_sequence_current_format">%1$s (%2$d ms)</string>
+    <string name="xr_windows_vr_toggle">Run as VR app (experimental)</string>
+    <string name="xr_windows_vr_toggle_desc">For native VR titles such as Beat Saber. Needs arm64ec Wine, DXVK and D3D11. Other games keep the flat immersive screen.</string>
+    <string name="xr_open_composite_toggle">SteamVR (OpenVR) compatibility</string>
+    <string name="xr_open_composite_toggle_desc">Routes games built for SteamVR through OpenComposite. Turn on if the game says SteamVR is not running or stays flat with VR mode on.</string>
+    <string name="xr_render_scale">VR Render Scale</string>
+    <string name="gyro_aiming">Gyro aiming</string>
+    <string name="gyro_settings_title">Gyro settings</string>
+    <string name="gyro_section_output">Output and motion</string>
+    <string name="gyro_section_activation">Activation</string>
+    <string name="gyro_section_response">Response</string>
+    <string name="gyro_output">Output</string>
+    <string name="gyro_output_subtitle">Choose what device motion controls.</string>
+    <string name="gyro_tilt_steering">Tilt steering</string>
+    <string name="gyro_tilt_steering_subtitle">Hold the device at an angle to sustain horizontal stick input. The current position is centered whenever gyro activates.</string>
+    <string name="gyro_tilt_unavailable">This device does not provide the orientation sensor required for tilt steering.</string>
+    <string name="gyro_activation">Activation</string>
+    <string name="gyro_activation_help">Hold, Toggle, and Ratchet use a control assigned to Gyro.</string>
+    <string name="gyro_activation_always">Always</string>
+    <string name="gyro_activation_hold">Hold</string>
+    <string name="gyro_activation_toggle">Toggle</string>
+    <string name="gyro_activation_ratchet">Ratchet</string>
+    <string name="gyro_control_not_assigned">Gyro: Not assigned</string>
+    <string name="gyro_assign_in_controls_editor">Assign in controls editor</string>
+    <string name="gyro_sensitivity">Sensitivity</string>
+    <string name="gyro_sensitivity_subtitle">Controls how strongly device rotation affects the selected output.</string>
+    <string name="gyro_tilt_full_scale">Full steering angle</string>
+    <string name="gyro_tilt_full_scale_subtitle">Device tilt from center required to reach full left or right stick input.</string>
+    <string name="gyro_tilt_deadzone">Tilt deadzone</string>
+    <string name="gyro_tilt_deadzone_subtitle">Ignores small tilts around the centered position.</string>
+    <string name="gyro_vertical_scale">Vertical sensitivity</string>
+    <string name="gyro_vertical_scale_subtitle">Adjusts vertical movement relative to horizontal movement.</string>
+    <string name="gyro_steadying">Steadying threshold</string>
+    <string name="gyro_steadying_subtitle">Ignores very small unintentional motion before applying sensitivity.</string>
+    <string name="gyro_smoothing">Smoothing</string>
+    <string name="gyro_smoothing_subtitle">Reduces sensor jitter at the cost of some aiming latency.</string>
+    <string name="gyro_stick_anti_deadzone">Stick anti-deadzone</string>
+    <string name="gyro_stick_anti_deadzone_subtitle">Compensates for the game’s inner stick deadzone.</string>
+    <string name="gyro_invert_horizontal">Invert horizontal gyro</string>
+    <string name="gyro_invert_vertical">Invert vertical gyro</string>
+    <string name="gyro_percent_value">%1$d%%</string>
+    <string name="gyro_degrees_value">%1$d°</string>
+    <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
+    <string name="gyro_milliseconds_value">%1$d ms</string>
+    <string name="reset_gyro_settings">Reset gyro settings</string>
 </resources>

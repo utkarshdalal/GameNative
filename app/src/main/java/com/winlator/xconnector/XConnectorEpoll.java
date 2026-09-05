@@ -199,7 +199,7 @@ public class XConnectorEpoll implements Runnable {
     }
 
     public void pauseClientReads(Client client, long delayNs) {
-        if (this.multithreadedClients || !client.connected || !this.running) return;
+        if (this.multithreadedClients || !client.connected || !this.running || client.pacingExempt) return;
         long deadlineNs = System.nanoTime() + delayNs;
         final java.util.concurrent.ScheduledExecutorService sched = PauseScheduler.INSTANCE;
         synchronized (client) {
@@ -207,6 +207,16 @@ public class XConnectorEpoll implements Runnable {
             // earlier task firing first would resume reads before the newest
             // frame's slot.
             if (client.pauseTask != null && !client.pauseTask.isDone()) {
+                // Repeated supersedes within one pause window mean the client
+                // pipelines frames without a per-frame sync; read-suspension
+                // cannot pace such a client smoothly (its loop only feels the
+                // brake in whole batches), so it runs uncapped instead.
+                if (client.pacedSupersedes++ >= 8) {
+                    client.pacingExempt = true;
+                    Log.i(TAG, logPrefix() + " client fd " + client.clientSocket.fd
+                            + " pipelines frames without a per-frame sync; SHM pacing exempted");
+                    return;
+                }
                 if (client.pauseDeadlineNs >= deadlineNs) return;
                 client.pauseTask.cancel(false);
             }
@@ -215,6 +225,7 @@ public class XConnectorEpoll implements Runnable {
             client.pauseTask = sched.schedule(() -> {
                 synchronized (client) {
                     client.pauseTask = null;
+                    client.pacedSupersedes = 0;
                     if (client.connected && this.running) {
                         addFdToEpoll(this.epollFd, client.clientSocket.fd);
                     }

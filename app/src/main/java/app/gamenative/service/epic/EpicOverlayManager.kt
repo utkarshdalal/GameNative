@@ -112,6 +112,20 @@ class EpicOverlayManager @Inject constructor(
                 "Registry updated: HKCU\\$EOS_OVERLAY_REG_KEY\\$EOS_OVERLAY_REG_VALUE = $OVERLAY_WIN_PATH",
             )
         }
+
+        /**
+         * Clear the EOS overlay path from the Wine user.reg.
+         *
+         * Mirrors `remove_registry_entries` in legendary/lfs/eos.py.
+         */
+        fun removeRegistryPath(container: Container) {
+            val userRegFile = File(container.rootDir, ".wine/user.reg")
+            if (!userRegFile.exists()) return
+            WineRegistryEditor(userRegFile).use { editor ->
+                editor.setStringValue(EOS_OVERLAY_REG_KEY, EOS_OVERLAY_REG_VALUE, "")
+            }
+            Timber.tag("EOSOverlay").d("Removed HKCU\\$EOS_OVERLAY_REG_KEY\\$EOS_OVERLAY_REG_VALUE")
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -206,22 +220,4 @@ class EpicOverlayManager @Inject constructor(
                 Result.failure(e)
             }
         }
-
-    // ─────────────────────────────────────────────────────────────────────────────
-    // Internal helpers
-    // ─────────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Clear the EOS overlay path from the Wine user.reg.
-     *
-     * Mirrors `remove_registry_entries` in legendary/lfs/eos.py.
-     */
-    private fun removeRegistryPath(container: Container) {
-        val userRegFile = File(container.rootDir, ".wine/user.reg")
-        if (!userRegFile.exists()) return
-        WineRegistryEditor(userRegFile).use { editor ->
-            editor.setStringValue(EOS_OVERLAY_REG_KEY, EOS_OVERLAY_REG_VALUE, "")
-        }
-        Timber.tag("EOSOverlay").d("Removed HKCU\\$EOS_OVERLAY_REG_KEY\\$EOS_OVERLAY_REG_VALUE")
-    }
 }

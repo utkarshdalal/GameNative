@@ -2,6 +2,7 @@ package app.gamenative.mods
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NexusUrlParserTest {
@@ -38,8 +39,84 @@ class NexusUrlParserTest {
     }
 
     @Test
+    fun parseNxmDownloadGrant_preservesLiteralPlusInSignedKey() {
+        val result = NexusUrlParser.parseNxmDownloadGrant(
+            input = "nxm://newvegas/mods/12/files/34?key=signed+grant%2Bpart&expires=200&user_id=99",
+            nowEpochSeconds = 100L,
+        )
+
+        val reference = (result as NexusUrlParser.NxmDownloadGrantResult.Valid).reference
+        assertEquals("signed+grant+part", reference.downloadAuthorization?.key)
+        assertEquals(99L, reference.downloadAuthorization?.userId)
+    }
+
+    @Test
+    fun parseNxmReference_preservesLiteralPlusInSignedKey() {
+        val reference = NexusUrlParser.parse(
+            "nxm://newvegas/mods/12/files/34?key=signed+grant%2Bpart&expires=200&user_id=99",
+        )
+
+        assertEquals("signed+grant+part", reference?.downloadAuthorization?.key)
+    }
+
+    @Test
+    fun parseNxmDownloadGrant_rejectsExpiredGrantSeparately() {
+        val result = NexusUrlParser.parseNxmDownloadGrant(
+            input = "nxm://newvegas/mods/12/files/34?key=signed&expires=100&user_id=99",
+            nowEpochSeconds = 100L,
+        )
+
+        assertEquals(NexusUrlParser.NxmDownloadGrantResult.Expired, result)
+    }
+
+    @Test
+    fun parseNxmDownloadGrant_rejectsMissingOrDuplicateAccountBoundFields() {
+        val missingUser = NexusUrlParser.parseNxmDownloadGrant(
+            input = "nxm://newvegas/mods/12/files/34?key=signed&expires=200",
+            nowEpochSeconds = 100L,
+        )
+        val duplicateKey = NexusUrlParser.parseNxmDownloadGrant(
+            input = "nxm://newvegas/mods/12/files/34?key=one&key=two&expires=200&user_id=99",
+            nowEpochSeconds = 100L,
+        )
+
+        assertEquals(NexusUrlParser.NxmDownloadGrantResult.Malformed, missingUser)
+        assertEquals(NexusUrlParser.NxmDownloadGrantResult.Malformed, duplicateKey)
+    }
+
+    @Test
+    fun parseNxmDownloadGrant_rejectsNonCanonicalAuthorityPathAndFragment() {
+        val malformed = listOf(
+            "nxm://user@newvegas/mods/12/files/34?key=signed&expires=200&user_id=99",
+            "nxm://newvegas:443/mods/12/files/34?key=signed&expires=200&user_id=99",
+            "nxm://newvegas/extra/mods/12/files/34?key=signed&expires=200&user_id=99",
+            "nxm://newvegas/mods/12/files/34/extra?key=signed&expires=200&user_id=99",
+            "nxm://newvegas/mods/12/files/34?key=signed&expires=200&user_id=99#fragment",
+        )
+
+        assertTrue(
+            malformed.all {
+                NexusUrlParser.parseNxmDownloadGrant(it, nowEpochSeconds = 100L) ==
+                    NexusUrlParser.NxmDownloadGrantResult.Malformed
+            },
+        )
+    }
+
+    @Test
     fun parse_nonNexusUrl_returnsNull() {
         assertNull(NexusUrlParser.parse("https://example.com/skyrim/mods/1"))
+    }
+
+    @Test
+    fun parseNxmReference_preservesLegacyModOnlyAndQueryFileForms() {
+        val modOnly = NexusUrlParser.parse("nxm://skyrimspecialedition/mods/30379")
+        val queryFile = NexusUrlParser.parse(
+            "nxm://skyrimspecialedition/mods/30379?file_id=92910",
+        )
+
+        assertEquals(30379L, modOnly?.modId)
+        assertNull(modOnly?.fileId)
+        assertEquals(92910L, queryFile?.fileId)
     }
 
     @Test

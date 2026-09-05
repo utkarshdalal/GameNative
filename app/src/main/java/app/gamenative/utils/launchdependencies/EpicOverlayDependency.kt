@@ -22,7 +22,7 @@ object EpicOverlayDependency : LaunchDependency {
     private const val TAG = "EpicOverlayDep"
 
     override fun appliesTo(container: Container, gameSource: GameSource, gameId: Int): Boolean =
-        gameSource == GameSource.EPIC
+        gameSource == GameSource.EPIC && !container.isDisableEpicOverlay
 
     override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean =
         EpicOverlayManager.isOverlayConfigured(container)

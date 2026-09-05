@@ -816,19 +816,23 @@ class GOGManager @Inject constructor(
         val commonRedistDir = File(gameInstallDir, "_CommonRedist")
         val isiDir = File(commonRedistDir, "ISI")
         if (isiDir.isDirectory) {
-            val rootDirLink = File(isiDir, "rootdir")
-            if (!rootDirLink.exists() || !WinlatorFileUtils.isSymlink(rootDirLink)) {
-                try {
+            ensureRootDirSymlink(gameInstallDir, isiDir)
+        }
+    }
+
+    private fun ensureRootDirSymlink(gameInstallDir: File, parentDir: File) {
+        val rootDirLink = File(parentDir, "rootdir")
+        if (!rootDirLink.exists() || !WinlatorFileUtils.isSymlink(rootDirLink)) {
+            try {
                 WinlatorFileUtils.symlink(gameInstallDir, rootDirLink)
-                    Timber.tag("GOG").d(
-                        "Created scriptinterpreter rootdir symlink: ${rootDirLink.absolutePath} -> ${gameInstallDir.absolutePath}",
-                    )
-                } catch (e: Exception) {
-                    Timber.tag("GOG").e(
-                        e,
-                        "Failed to create scriptinterpreter rootdir symlink: ${rootDirLink.absolutePath} -> ${gameInstallDir.absolutePath}",
-                    )
-                }
+                Timber.tag("GOG").d(
+                    "Created rootdir symlink: ${rootDirLink.absolutePath} -> ${gameInstallDir.absolutePath}",
+                )
+            } catch (e: Exception) {
+                Timber.tag("GOG").e(
+                    e,
+                    "Failed to create rootdir symlink: ${rootDirLink.absolutePath} -> ${gameInstallDir.absolutePath}",
+                )
             }
         }
     }
@@ -893,6 +897,101 @@ class GOGManager @Inject constructor(
         }
 
         return parts
+    }
+
+    /**
+     * Returns command parts to run Gen 1 (legacy) support_commands setup executables for launch.
+     * These are per-game installers GOG ships in the support depot (downloaded to
+     * _CommonRedist/<gameID>/) that create registry keys, shortcuts, etc. — the same step
+     * Galaxy and Heroic perform after installing a Gen 1 game. Idempotent, so run each launch
+     * like the scriptinterpreter path; the registry also self-heals if the prefix is recreated.
+     */
+    fun getSupportCommandPartsForLaunch(appId: String, knownInstallDir: File? = null): List<String> {
+        val gameInstallDir = if (knownInstallDir != null && knownInstallDir.isDirectory) {
+            knownInstallDir
+        } else {
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId) ?: return emptyList()
+            val game = runBlocking { getGameFromDbById(gameId.toString()) } ?: return emptyList()
+            val computedPath = getGameInstallPath(gameId.toString(), game.title)
+            val gameInstallPath = when {
+                game.installPath.isNotEmpty() && File(game.installPath).exists() -> game.installPath
+                else -> computedPath
+            }
+            File(gameInstallPath)
+        }
+        val root = GOGManifestUtils.readLocalManifest(gameInstallDir) ?: return emptyList()
+        val commandsArray = root.optJSONArray("supportCommands") ?: return emptyList()
+        if (commandsArray.length() == 0) return emptyList()
+
+        val language = root.optString("language", "english")
+        val buildId = root.optString("buildId", "")
+        val versionName = root.optString("versionName", "")
+        val gameDriveLetter = "A"
+
+        val parts = mutableListOf<String>()
+        for (i in 0 until commandsArray.length()) {
+            val cmd = commandsArray.getJSONObject(i)
+            val executable = cmd.optString("executable", "").trimStart('/')
+            if (executable.isEmpty()) continue
+            val cmdGameId = cmd.optString("gameID", "")
+            if (cmdGameId.isEmpty()) continue
+
+            val langsArr = cmd.optJSONArray("languages")
+            var languageMatches = langsArr == null || langsArr.length() == 0
+            if (langsArr != null) {
+                val aliases = languageAliases(language)
+                for (j in 0 until langsArr.length()) {
+                    val l = langsArr.getString(j)
+                    if (l.equals("Neutral", ignoreCase = true) || l.lowercase() in aliases) {
+                        languageMatches = true
+                        break
+                    }
+                }
+            }
+            if (!languageMatches) continue
+
+            val supportSubDir = File(gameInstallDir, "_CommonRedist/$cmdGameId")
+            val exeFile = File(supportSubDir, executable)
+            if (!exeFile.exists()) {
+                Timber.tag("GOG").w("Support command executable missing, skipping: ${exeFile.absolutePath}")
+                continue
+            }
+
+            ensureRootDirSymlink(gameInstallDir, supportSubDir)
+
+            val exePathWin = "$gameDriveLetter:\\_CommonRedist\\$cmdGameId\\${executable.replace('/', '\\')}"
+            val dirArg = "$gameDriveLetter:\\_CommonRedist\\$cmdGameId\\rootdir"
+            val args = listOf(
+                "/VERYSILENT",
+                "/DIR=$dirArg",
+                "/Language=$language",
+                "/LANG=$language",
+                "/ProductId=$cmdGameId",
+                "/galaxyclient",
+                "/buildId=$buildId",
+                "/versionName=$versionName",
+                "/nodesktopshorctut",
+                "/nodesktopshortcut",
+            ).joinToString(" ")
+
+            val extraArg = cmd.optString("argument", "")
+            parts.add(if (extraArg.isNotEmpty()) "$exePathWin $extraArg $args" else "$exePathWin $args")
+        }
+
+        return parts
+    }
+
+    /**
+     * All spellings that refer to the same language as [language] (container name plus GOG
+     * codes, lowercased), so support_commands language names ("English") match whichever
+     * form the download saved ("english", "en-US", "en", ...).
+     */
+    private fun languageAliases(language: String): Set<String> {
+        val lower = language.lowercase()
+        val entry = GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.entries.firstOrNull { (name, codes) ->
+            name == lower || codes.any { it.equals(lower, ignoreCase = true) }
+        } ?: return setOf(lower)
+        return (entry.value.map { it.lowercase() } + entry.key).toSet()
     }
 
     // ==========================================================================

@@ -52,6 +52,7 @@ import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.winlator.inputcontrols.Binding
+import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.RadialMenu
 import kotlin.math.roundToInt
@@ -76,9 +77,9 @@ fun RadialMenuSettingsContent(
         }
     }
     val bindings = remember(menu) {
-        mutableStateListOf<Binding>().apply {
+        mutableStateListOf<BindingCombo>().apply {
             repeat(RadialMenu.MAX_SLOTS) { index ->
-                add(initialSlots.getOrNull(index)?.binding ?: Binding.NONE)
+                add(initialSlots.getOrNull(index)?.bindingCombo ?: BindingCombo.none())
             }
         }
     }
@@ -92,7 +93,7 @@ fun RadialMenuSettingsContent(
         slotCount = preset.size.coerceIn(1, RadialMenu.MAX_SLOTS)
         for (index in 0 until RadialMenu.MAX_SLOTS) {
             labels[index] = preset.getOrNull(index)?.first.orEmpty()
-            bindings[index] = preset.getOrNull(index)?.second ?: Binding.NONE
+            bindings[index] = BindingCombo.of(preset.getOrNull(index)?.second)
         }
     }
 
@@ -185,10 +186,16 @@ fun RadialMenuSettingsContent(
     bindingSlotToEdit?.let { slotIndex ->
         ControllerBindingDialog(
             buttonName = stringResource(R.string.radial_menu_slot_binding, slotIndex + 1),
-            currentBinding = bindings[slotIndex].takeIf { it != Binding.NONE },
+            currentBinding = bindings[slotIndex].primaryBinding.takeIf { it != Binding.NONE },
+            currentBindingCombo = bindings[slotIndex],
             onDismiss = { bindingSlotToEdit = null },
-            onBindingSelected = { binding ->
-                bindings[slotIndex] = if (binding == Binding.OPEN_RADIAL_MENU) Binding.NONE else binding ?: Binding.NONE
+            onBindingSelected = {},
+            onBindingComboSelected = { bindingCombo ->
+                bindings[slotIndex] = if (bindingCombo?.bindings?.contains(Binding.OPEN_RADIAL_MENU) == true) {
+                    BindingCombo.none()
+                } else {
+                    bindingCombo ?: BindingCombo.none()
+                }
                 bindingSlotToEdit = null
             },
         )
@@ -327,11 +334,11 @@ private fun SlotCountSetting(
 private fun SlotSetting(
     index: Int,
     label: String,
-    binding: Binding,
+    binding: BindingCombo,
     onLabelChange: (String) -> Unit,
     onEditBinding: () -> Unit,
 ) {
-    val bindingText = binding.takeIf { it != Binding.NONE }?.toString() ?: stringResource(R.string.not_set)
+    val bindingText = if (binding.isEmpty) stringResource(R.string.not_set) else binding.toString()
     SettingsMenuLink(
         colors = if (index % 2 == 0) settingsTileColorsAlt() else settingsTileColors(),
         title = { Text(stringResource(R.string.radial_menu_slot_title, index + 1)) },

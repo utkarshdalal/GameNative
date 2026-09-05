@@ -5,6 +5,9 @@
     <uses-feature
         android:glEsVersion="0x00020000"
         android:required="true" />
+    <uses-feature
+        android:name="android.hardware.sensor.gyroscope"
+        android:required="false" />
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -78,8 +81,25 @@
                 <data android:scheme="nxm" />
             </intent-filter>
             <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- Relay redirects here after the user links their Discord account. -->
+                <data
+                    android:host="discord-linked"
+                    android:scheme="gamenative" />
+            </intent-filter>
+            <intent-filter>
                 <action android:name="app.gamenative.LAUNCH_GAME" />
                 <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="gamenative" android:host="run" />
             </intent-filter>
 
             <!--Allows app window to be resized on Oculus Quest VR headsets-->
@@ -87,6 +107,30 @@
                 android:name="com.oculus.vrshell.supports_free_resizing"
                 android:value="true" />
 
+        </activity>
+
+        <!-- Nexus OAuth uses an external browser and returns only through this exact native redirect. -->
+        <activity
+            android:name=".ui.screen.auth.NexusOAuthCallbackActivity"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:finishOnTaskLaunch="true"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Pluvia.OAuthCallback">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="oauth"
+                    android:path="/callback"
+                    android:scheme="app.gamenative" />
+            </intent-filter>
         </activity>
 
         <!-- GOG OAuth (in-app WebView; intercepts redirect for automatic code capture) -->

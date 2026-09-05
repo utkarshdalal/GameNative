@@ -14,6 +14,7 @@ import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import android.view.View.OnLayoutChangeListener
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -92,6 +93,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.SteamBootstrap
 import app.gamenative.data.GameSource
+import app.gamenative.data.GyroSettings
 import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.gamefixes.GameInputCompatibility
 import app.gamenative.data.LaunchInfo
@@ -130,6 +132,7 @@ import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
+import app.gamenative.utils.PerfSampler
 import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
 import app.gamenative.utils.downloader.DXWrapperDownloader
 import app.gamenative.utils.downloader.GraphicsDriverDownloader
@@ -226,6 +229,7 @@ import java.nio.file.StandardCopyOption
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.Arrays
 import java.util.Locale
+import kotlin.math.ceil
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.name
 import kotlin.math.roundToInt
@@ -279,6 +283,9 @@ private fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int {
 private data class XServerViewReleaseBinding(
     val xServerView: XServerRendererView,
     val windowModificationListener: WindowManager.OnWindowModificationListener,
+    var gameHost: FrameLayout? = null,
+    var gameHostLayoutListener: OnLayoutChangeListener? = null,
+    val screenWidth: Int,
 )
 
 private data class ControllerSlotUiState(
@@ -322,6 +329,46 @@ private fun normalizeProcessName(name: String): String {
     return if (lower.endsWith(".exe")) lower.removeSuffix(".exe") else lower
 }
 
+internal fun parseScreenSize(screenSize: String): Pair<Int, Int>? {
+    val parts = screenSize.lowercase(Locale.getDefault()).split("x")
+    if (parts.size != 2) return null
+    val width = parts[0].trim().toIntOrNull() ?: return null
+    val height = parts[1].trim().toIntOrNull() ?: return null
+    if (width <= 0 || height <= 0) return null
+    return width to height
+}
+
+internal fun portraitGameHostHeight(
+    isPortrait: Boolean,
+    screenWidth: Int,
+    availableHeight: Int,
+    screenSize: String,
+): Int {
+    if (!isPortrait) return ViewGroup.LayoutParams.MATCH_PARENT
+    val (renderWidth, renderHeight) = parseScreenSize(screenSize) ?: return ViewGroup.LayoutParams.MATCH_PARENT
+    val aspectHeight = ceil(screenWidth * (renderHeight.toFloat() / renderWidth.toFloat())).toInt()
+    return if (availableHeight > 0) minOf(aspectHeight, availableHeight) else aspectHeight
+}
+
+private fun updatePortraitGameHostHeight(
+    gameHost: View,
+    isPortrait: Boolean,
+    screenWidth: Int,
+    screenSize: String,
+) {
+    val params = gameHost.layoutParams ?: return
+    val height = portraitGameHostHeight(
+        isPortrait,
+        screenWidth,
+        (gameHost.parent as? View)?.height ?: 0,
+        screenSize,
+    )
+    if (params.height != height) {
+        params.height = height
+        gameHost.layoutParams = params
+    }
+}
+
 private fun extractExecutableBasename(path: String): String {
     if (path.isBlank()) return ""
     return normalizeProcessName(path)
@@ -345,6 +392,13 @@ private fun buildEssentialProcessAllowlist(): Set<String> {
     return (essentialServices + CORE_WINE_PROCESSES).toSet()
 }
 
+@Composable
+private fun SyncGyroOverlaySuppression(suppressed: Boolean, viewKey: XServerRendererView?) {
+    LaunchedEffect(suppressed, viewKey) {
+        PluviaApp.inputControlsView?.setGyroOverlaySuppressed(suppressed)
+    }
+}
+
 // TODO logs in composables are 'unstable' which can cause recomposition (performance issues)
 
 @Composable
@@ -355,6 +409,7 @@ fun XServerScreen(
     bootToContainer: Boolean,
     testGraphics: Boolean = false,
     diagnostics: Boolean = false,
+    debugRun: Boolean = false,
     isOffline: Boolean = false,
     registerBackAction: ( ( ) -> Unit ) -> Unit,
     navigateBack: () -> Unit,
@@ -554,6 +609,14 @@ fun XServerScreen(
     var detectedMaxRefreshRateHz by remember { mutableIntStateOf(detectMaxRefreshRateHz(context, null)) }
     var fpsLimiterEnabled by rememberSaveable(container.id) { mutableStateOf(initialFpsLimiterEnabled(container)) }
     var fpsLimiterTarget by rememberSaveable(container.id) { mutableIntStateOf(initialFpsLimiterTarget(container)) }
+
+    val gyroOverlaySuppressed = showQuickMenu || keepPausedForEditor || showElementEditor ||
+        showPhysicalControllerDialog || showTouchGestureDialog || showShooterModeDialog ||
+        showPlayingBlockedDialog || isEditMode
+    SyncGyroOverlaySuppression(
+        suppressed = gyroOverlaySuppressed,
+        viewKey = xServerView,
+    )
 
     // LSFG tab in QuickMenu only visible when enabled in container settings
     val isLsfgAvailable = LsfgQuickMenuHelper.isAvailable(container)
@@ -830,6 +893,7 @@ fun XServerScreen(
 
     fun clearOverlayPauseState() {
         PluviaApp.isOverlayPaused = false
+        PluviaApp.inputControlsView?.setGyroGameplayActive(true)
     }
 
     fun pauseForOverlayIfAllowed() {
@@ -839,6 +903,7 @@ fun XServerScreen(
         }
         PluviaApp.xEnvironment?.onPause()
         PluviaApp.isOverlayPaused = true
+        PluviaApp.inputControlsView?.setGyroGameplayActive(false)
     }
 
     fun resumeIfAllowedAfterOverlay() {
@@ -1424,6 +1489,7 @@ fun XServerScreen(
             }
 
             override fun onInputDeviceRemoved(deviceId: Int) {
+                physicalControllerHandler?.onInputDeviceRemoved(deviceId)
                 ControllerManager.getInstance().onDeviceDisconnected(deviceId)
                 scanForExternalDevices()
             }
@@ -1690,16 +1756,24 @@ fun XServerScreen(
             onDispose { }
         } else {
             fun syncRendererToCurrentLifecycleState() {
+                val lifecycleState = lifecycleOwner.lifecycle.currentState
+                if (lifecycleState == Lifecycle.State.DESTROYED) {
+                    PluviaApp.inputControlsView?.setGyroForeground(false)
+                }
                 if (!currentXServerViewAsView.isAttachedToWindow) return
 
                 when {
-                    lifecycleOwner.lifecycle.currentState == Lifecycle.State.DESTROYED -> Unit
-                    lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) -> {
+                    lifecycleState == Lifecycle.State.DESTROYED -> {
+                        currentXServerView.onPause()
+                    }
+                    lifecycleState.isAtLeast(Lifecycle.State.RESUMED) -> {
                         Timber.d("Synchronizing XServerView renderer to current resumed lifecycle state")
+                        PluviaApp.inputControlsView?.setGyroForeground(true)
                         currentXServerView.onResume()
                     }
                     else -> {
                         Timber.d("Synchronizing XServerView renderer to current paused lifecycle state")
+                        PluviaApp.inputControlsView?.setGyroForeground(false)
                         currentXServerView.onPause()
                     }
                 }
@@ -1887,6 +1961,7 @@ fun XServerScreen(
             }
             val frameLayout = if (isPortrait) {
                 val top = FrameLayout(context)
+                top.setBackgroundColor(Color.BLACK)
                 mainRoot.addView(top, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
                 top
             } else {
@@ -1942,7 +2017,6 @@ fun XServerScreen(
                 }
                 getxServer().renderer = renderer
                 PluviaApp.touchpadView = TouchpadView(context, getxServer(), PrefManager.getBoolean("capture_pointer_on_external_mouse", true))
-                frameLayout.addView(PluviaApp.touchpadView)
                 PluviaApp.touchpadView?.setMoveCursorToTouchpoint(PrefManager.getBoolean("move_cursor_to_touchpoint", false))
 
                 // Wire keyboard toggle callback for gesture "Show Keyboard" action.
@@ -2049,6 +2123,7 @@ fun XServerScreen(
 
                         private fun refreshFrameRatingTracking(reason: String) {
                             val rating = frameRating ?: return
+                            if (!getxServer().isFlatPresentationEnabled) return
                             val topmost = findTopmostApplicationWindow(getxServer().windowManager.rootWindow)
                             val nextId = topmost?.id ?: -1
                             if (frameRatingWindowId == nextId) return
@@ -2084,6 +2159,7 @@ fun XServerScreen(
                                 if (shouldShowMouseCursor()) renderer?.setCursorVisible(true)
                                 xServerState.value.winStarted = true
                             }
+                            if (!getxServer().isFlatPresentationEnabled) return
                             if (frameRatingWindowId == -1 && window.isApplicationWindow()) {
                                 refreshFrameRatingTracking("content-update")
                             }
@@ -2140,7 +2216,7 @@ fun XServerScreen(
                     }
                 getxServer().windowManager.addOnWindowModificationListener(wmListener)
                 windowModificationListener = wmListener
-                mainRoot.tag = XServerViewReleaseBinding(this, wmListener)
+                mainRoot.tag = XServerViewReleaseBinding(this, wmListener, screenWidth = screenWidth)
 
                 if (PluviaApp.xEnvironment == null) {
                     // Launch all blocking wine setup operations on a background thread to avoid blocking main thread
@@ -2230,6 +2306,7 @@ fun XServerScreen(
 
                             Timber.i("Doing things once")
                             val envVars = EnvVars()
+                            immersiveHooks?.windowsVr?.beforeWineSystemSetup(container)
 
                             runBlocking {
                                 setupWineSystemFiles(
@@ -2268,6 +2345,7 @@ fun XServerScreen(
                                 bootToContainer,
                                 testGraphics,
                                 diagnostics,
+                                debugRun,
                                 xServerState,
                                 envVars,
                                 container,
@@ -2275,11 +2353,27 @@ fun XServerScreen(
                                 xServerView!!.getxServer(),
                                 containerVariantChanged,
                                 onGameLaunchError,
-                                isOffline
+                                isOffline,
+                                immersiveHooks,
                             )
 
                             // Autostart performance driver after environment is set up
                             PowerManager.autoStart(container.rootDir)
+
+                            if (debugRun) {
+                                PerfSampler.start(
+                                    context,
+                                    fpsProvider = {
+                                        val raw = frameRating?.currentFPS ?: 0f
+                                        if (isLsfgAvailable && lsfgMultiplier >= 2) {
+                                            LsfgVkManager.readMeasuredFps(container) ?: raw
+                                        } else {
+                                            raw
+                                        }
+                                    },
+                                    drives = container.drives,
+                                )
+                            }
 
                             // Pin game process to performance cores (CPUs 4-7)
                             container.executablePath
@@ -2331,11 +2425,39 @@ fun XServerScreen(
             val gameHost = FrameLayout(context).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    portraitGameHostHeight(
+                        isPortrait,
+                        screenWidth,
+                        frameLayout.height,
+                        container.screenSize,
+                    ),
                 )
             }
             frameLayout.addView(gameHost)
             gameHost.addView(xServerView as View)
+            (mainRoot.tag as? XServerViewReleaseBinding)?.let { binding ->
+                binding.gameHost = gameHost
+                val layoutListener = OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                    updatePortraitGameHostHeight(
+                        gameHost,
+                        isPortrait,
+                        screenWidth,
+                        container.screenSize,
+                    )
+                }
+                frameLayout.addOnLayoutChangeListener(layoutListener)
+                binding.gameHostLayoutListener = layoutListener
+                frameLayout.post {
+                    updatePortraitGameHostHeight(
+                        gameHost,
+                        isPortrait,
+                        screenWidth,
+                        container.screenSize,
+                    )
+                }
+            }
+            val touchpadHost = if (isPortrait) gameHost else frameLayout
+            touchpadHost.addView(PluviaApp.touchpadView)
 
             PluviaApp.inputControlsManager = InputControlsManager(context)
             RadialMenuCoordinator.install(
@@ -2361,6 +2483,8 @@ fun XServerScreen(
                 // Configure InputControlsView
                 setXServer(xServerView.getxServer())
                 setTouchpadView(PluviaApp.touchpadView)
+                setGyroSettings(GyroSettings.fromContainer(container))
+                setGyroOverlaySuppressed(gyroOverlaySuppressed)
 
                 // Load profile for this container
                 val manager = PluviaApp.inputControlsManager
@@ -2411,6 +2535,12 @@ fun XServerScreen(
                             { isDown, commit -> coordinator.onRadialMenuButtonStateChanged(isDown, commit) }
                         },
                         onRadialMenuVectorChanged = radialMenuCoordinator?.let { it::onRadialMenuVectorChanged },
+                        onGyroModifierChanged = { source, pressed ->
+                            setGyroModifierPressed(source, pressed)
+                        },
+                        gyroStickMixer = { binding, isDown, offset, sourceKeyCode ->
+                            updatePhysicalStickAndGetMixedValue(binding, isDown, offset, sourceKeyCode)
+                        },
                     )
                     radialMenuCoordinator?.bindPhysicalControllerHandler(physicalControllerHandler)
 
@@ -2584,8 +2714,19 @@ fun XServerScreen(
         },
         update = { view ->
             gameRoot = view
+            val binding = view.tag as? XServerViewReleaseBinding
+            val gameHost = binding?.gameHost
+            if (binding != null && gameHost != null) {
+                updatePortraitGameHostHeight(
+                    gameHost,
+                    isPortrait,
+                    binding.screenWidth,
+                    container.screenSize,
+                )
+            }
         },
         onRelease = { view ->
+            PluviaApp.inputControlsView?.setGyroForeground(false)
             gameRoot = null
             removePerformanceHud()
             performanceHudHost = null
@@ -2597,6 +2738,9 @@ fun XServerScreen(
                 // Remove the WindowManager listener associated with the released AndroidView.
                 binding.xServerView.renderer.setOnFrameRenderedListener(null)
                 binding.xServerView.getxServer().windowManager.removeOnWindowModificationListener(binding.windowModificationListener)
+                binding.gameHostLayoutListener?.let { listener ->
+                    (binding.gameHost?.parent as? View)?.removeOnLayoutChangeListener(listener)
+                }
                 if (PluviaApp.xServerView === binding.xServerView) {
                     PluviaApp.xServerView = null
                 }
@@ -2659,6 +2803,7 @@ fun XServerScreen(
                 onSave = {
                     // Save profile changes
                     PluviaApp.inputControlsView?.profile?.save()
+                    PluviaApp.inputControlsView?.onControlsProfileContentChanged(false)
                     // Clear snapshot since changes were accepted
                     elementPositionsSnapshot = emptyMap()
                     // Exit edit mode
@@ -2953,10 +3098,9 @@ fun XServerScreen(
                             profile.save()
                             profile.loadControllers()
 
-                            // Update handler with reloaded profile if on-screen controls are shown
-                            if (PluviaApp.inputControlsView?.profile != null) {
-                                PluviaApp.inputControlsView?.setProfile(profile)
-                            }
+                            // Keep gyro and binding inspection on the reloaded profile without
+                            // unintentionally showing controls that were hidden for a controller.
+                            PluviaApp.inputControlsView?.setProfilePreservingOverlayVisibility(profile)
                             physicalControllerHandler?.setProfile(profile)
                             PluviaApp.radialMenuCoordinator?.setProfile(profile)
                             showPhysicalControllerDialog = false
@@ -3207,7 +3351,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
 private fun hideInputControls() {
     PluviaApp.inputControlsView?.setShowTouchscreenControls(false)
     PluviaApp.inputControlsView?.setVisibility(View.GONE)
-    PluviaApp.inputControlsView?.setProfile(null)
+    PluviaApp.inputControlsView?.hideProfileForOverlay()
     PluviaApp.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 
     PluviaApp.touchpadView?.setSensitivity(1.0f)
@@ -3675,6 +3819,7 @@ private fun setupXEnvironment(
     bootToContainer: Boolean,
     testGraphics: Boolean,
     diagnostics: Boolean,
+    debugRun: Boolean,
     xServerState: MutableState<XServerState>,
     envVars: EnvVars,
     container: Container?,
@@ -3682,7 +3827,8 @@ private fun setupXEnvironment(
     xServer: XServer,
     containerVariantChanged: Boolean,
     onGameLaunchError: ((String) -> Unit)? = null,
-    offline: Boolean = false
+    offline: Boolean = false,
+    immersiveHooks: app.gamenative.ui.screen.xr.ImmersiveSessionHooks? = null,
 ): XEnvironment {
     ProcessHelper.hardKillStaleWineProcesses()
 
@@ -3729,7 +3875,9 @@ private fun setupXEnvironment(
     val enableBox86Logs = WinlatorPrefManager.getBoolean("enable_box86_64_logs", false)
     val wineDebugChannels = PrefManager.wineDebugChannels
     // explicitly enable or disable Wine debug channels
-    if (diagnostics) {
+    if (debugRun) {
+        envVars.put("WINEDEBUG", "warn+seh,+loaddll,+timestamp,+pid,+tid")
+    } else if (diagnostics) {
         envVars.put("WRAPPER_DIAG", "1")
         envVars.put("WRAPPER_DIAG_APPID", appId)
         envVars.put("WRAPPER_LOG_LEVEL", "info")
@@ -3747,11 +3895,11 @@ private fun setupXEnvironment(
     }
     // capture debug output to file if either Wine or Box86/64 logging is enabled
     var logFile: File? = null
-    val captureLogs = enableWineDebug || enableBox86Logs
+    val captureLogs = debugRun || enableWineDebug || enableBox86Logs
     if (captureLogs) {
         val wineLogDir = File(context.getExternalFilesDir(null), "wine_logs")
         wineLogDir.mkdirs()
-        logFile = File(wineLogDir, "wine_debug.log")
+        logFile = File(wineLogDir, if (debugRun) "debug_run_$appId.log" else "wine_debug.log")
         if (logFile.exists()) logFile.delete()
     }
 
@@ -3795,7 +3943,7 @@ private fun setupXEnvironment(
                 container.startupSelection = Container.STARTUP_SELECTION_ESSENTIAL
                 container.putExtra("startupSelection", java.lang.String.valueOf(Container.STARTUP_SELECTION_ESSENTIAL))
                 container.saveData()
-            } else if (EpicOverlayManager.isOverlayInstalled(container)) {
+            } else if (!container.isDisableEpicOverlay && EpicOverlayManager.isOverlayInstalled(container)) {
                 // The EOS overlay needs RpcSs/BITS; services were forced to normal
                 // in setupWineSystemFiles, so don't kill services.exe here.
                 Timber.d("Keeping services.exe alive for EOS overlay despite aggressive startup selection")
@@ -3831,18 +3979,10 @@ private fun setupXEnvironment(
         guestProgramLauncherComponent.setSteamType(container.getSteamType())
 
         envVars.putAll(container.envVars)
+        immersiveHooks?.windowsVr?.afterContainerEnvironmentMerged(envVars, container)
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
-
-        val ffpGameDir = runCatching {
-            Container.drivesIterator(container.drives).asSequence()
-                .firstOrNull { it[0] == "A" }?.let { File(it[1]).canonicalFile.path }
-        }.getOrNull() ?: ""
-        if (ffpGameDir.startsWith("/storage/") && !ffpGameDir.startsWith("/storage/emulated/")) {
-            envVars.put("FFP_ENABLE", "1")
-            envVars.put("FFP_MARKERS", "/steamapps/common/;/dosdevices/a:")
-        }
 
         val graphicsDriverConfig = KeyValueSet(container.getGraphicsDriverConfig())
         if (graphicsDriverConfig.get("version").lowercase(Locale.getDefault()).contains("gen8")) {
@@ -3951,6 +4091,10 @@ private fun setupXEnvironment(
     guestProgramLauncherComponent.envVars = envVars
 
     val gameTerminationCallback = Callback<Int> { status ->
+        if (!isExiting.get() && status != 0) {
+            container.putSessionMetadata("guest_self_exited", "true")
+            container.saveData()
+        }
         if (status != 0) {
             Timber.e("Guest program terminated with status: $status")
             onGameLaunchError?.invoke("Game terminated with error status: $status")
@@ -4064,7 +4208,9 @@ private fun setupXEnvironment(
     }
 
     try {
+        immersiveHooks?.windowsVr?.beforeGuestProcessStart()
         environment.startEnvironmentComponents()
+        immersiveHooks?.windowsVr?.onEnvironmentStarted()
     } catch (e: Exception) {
         Timber.e(e, "Failed to start environment components, cleaning up")
         try {
@@ -4591,6 +4737,8 @@ private fun exit(
         return
     }
 
+    PerfSampler.halt()
+
     PostHog.capture(
         event = "game_exited",
         properties = mapOf(
@@ -5107,7 +5255,11 @@ private suspend fun setupWineSystemFiles(
     // The EOS overlay's CEF browser needs RpcSs and BITS: without them it
     // crash-loops and EOS login fails. Force normal services only for containers
     // that actually have the overlay installed.
-    val needsOverlayServices = EpicOverlayManager.isOverlayInstalled(container)
+    val overlayInstalled = EpicOverlayManager.isOverlayInstalled(container)
+    val needsOverlayServices = overlayInstalled && !container.isDisableEpicOverlay
+    if (overlayInstalled && container.isDisableEpicOverlay) {
+        EpicOverlayManager.removeRegistryPath(container)
+    }
     if (needsOverlayServices) {
         // Prefix re-provisioning above (wine/proton version change) replaces user.reg,
         // so the overlay registry entries must be repaired here, not just at install time.

@@ -53,6 +53,21 @@ object GogRecommendationsRepository {
 
     private data class Seed(val gogId: String, val name: String, val weight: Double, val iconUrl: String?)
 
+    /** Today's Discover cards if already fetched this session; no network. */
+    fun cachedCards(): List<GogRecCard> = cache ?: emptyList()
+
+    // productId -> Steam HLS trailer ("" when the game has none), resolved on demand at boot.
+    private val trailerCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
+
+    /** The Steam trailer for a Discover card, fetched the first time it's asked for (2 store calls). */
+    suspend fun resolveTrailer(productId: Long, title: String): String? = withContext(Dispatchers.IO) {
+        trailerCache[productId]?.let { return@withContext it.takeIf { url -> url.isNotEmpty() } }
+        val url = runCatching { fetchSteamMedia(productId, title)?.videoUrl }.getOrNull()
+        trailerCache[productId] = url ?: ""
+        Timber.tag("BootAdTrace").i("trailer %s '%s': %s", productId, title, if (url != null) "yes" else "none")
+        url
+    }
+
     suspend fun getRecommendations(
         context: Context,
         owned: List<OwnedGameRef>,

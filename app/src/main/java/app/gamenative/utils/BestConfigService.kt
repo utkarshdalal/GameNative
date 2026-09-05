@@ -959,6 +959,9 @@ object BestConfigService {
                 if (filteredJson.has("useLegacyDRM") && !filteredJson.isNull("useLegacyDRM")) {
                     resultMap["useLegacyDRM"] = filteredJson.optBoolean("useLegacyDRM", PrefManager.useLegacyDRM)
                 }
+                if (filteredJson.has("launchBionicSteam") && !filteredJson.isNull("launchBionicSteam")) {
+                    resultMap["launchBionicSteam"] = filteredJson.optBoolean("launchBionicSteam", false)
+                }
                 if (filteredJson.has("steamOfflineMode") && !filteredJson.isNull("steamOfflineMode")) {
                     resultMap["steamOfflineMode"] = filteredJson.optBoolean("steamOfflineMode", PrefManager.steamOfflineMode)
                 }

@@ -3,6 +3,7 @@ package app.gamenative.ui.screen.library.components
 import android.content.res.Configuration
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -102,9 +103,15 @@ fun LibraryOptionsPanel(
     steamCollectionCounts: Map<String, Int>,
     skippedDynamicCollections: Boolean,
     isSteamConnected: Boolean,
+    hasSteamCredentials: Boolean,
     isOffline: Boolean,
     onSteamCollectionToggle: (String) -> Unit,
     onClearSteamCollections: () -> Unit,
+    curatedLists: List<SteamCollection>?,
+    selectedCuratedListIds: Set<String>,
+    curatedListCounts: Map<String, Int>,
+    onCuratedListToggle: (String) -> Unit,
+    onClearCuratedLists: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
@@ -324,112 +331,42 @@ fun LibraryOptionsPanel(
 
                         // Steam collections — local view filter, shown only when Steam is connected.
                         if (isSteamConnected) {
-                            Spacer(modifier = Modifier.height(20.dp))
-                            var collectionsExpanded by rememberSaveable {
-                                mutableStateOf(selectedSteamCollectionIds.isNotEmpty())
-                            }
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { collectionsExpanded = !collectionsExpanded }
-                                    .padding(end = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                OptionSectionHeader(text = stringResource(R.string.steam_collections_title))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (selectedSteamCollectionIds.isNotEmpty()) {
-                                        TextButton(onClick = onClearSteamCollections) {
-                                            Text(stringResource(R.string.steam_collections_clear))
-                                        }
+                            CollectionFilterSection(
+                                collections = steamCollections,
+                                selectedIds = selectedSteamCollectionIds,
+                                counts = steamCollectionCounts,
+                                titleRes = R.string.steam_collections_title,
+                                loadingRes = R.string.steam_collections_loading,
+                                clearRes = R.string.steam_collections_clear,
+                                // No static collections to list, but still explain why (offline /
+                                // only smart collections) so the section doesn't look broken.
+                                messageRes = buildList {
+                                    if (isOffline) add(R.string.steam_collections_offline)
+                                    if (skippedDynamicCollections) {
+                                        add(R.string.steam_collections_smart_unsupported)
                                     }
-                                    Icon(
-                                        imageVector = if (collectionsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                            AnimatedVisibility(visible = collectionsExpanded) {
-                                Column {
-                                    when {
-                                        steamCollections == null -> {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                            ) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(18.dp),
-                                                    strokeWidth = 2.dp,
-                                                )
-                                                Spacer(modifier = Modifier.width(12.dp))
-                                                Text(
-                                                    text = stringResource(R.string.steam_collections_loading),
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                )
-                                            }
-                                        }
-                                        steamCollections.isEmpty() -> {
-                                            // No static collections to list, but still explain why (offline /
-                                            // only smart collections) so the section doesn't look broken.
-                                            if (isOffline) {
-                                                Text(
-                                                    text = stringResource(R.string.steam_collections_offline),
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                                                )
-                                            }
-                                            if (skippedDynamicCollections) {
-                                                Text(
-                                                    text = stringResource(R.string.steam_collections_smart_unsupported),
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                                                )
-                                            }
-                                        }
-                                        else -> {
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .focusGroup()
-                                                    .padding(horizontal = 8.dp),
-                                                verticalArrangement = Arrangement.spacedBy(2.dp),
-                                            ) {
-                                                steamCollections.sortedBy { it.name.lowercase() }.forEach { collection ->
-                                                    OptionListItem(
-                                                        text = collection.name,
-                                                        selected = selectedSteamCollectionIds.contains(collection.id),
-                                                        onClick = { onSteamCollectionToggle(collection.id) },
-                                                        trailingText = steamCollectionCounts[collection.id]?.toString(),
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                    )
-                                                }
-                                            }
-                                            if (isOffline) {
-                                                Text(
-                                                    text = stringResource(R.string.steam_collections_offline),
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                                                )
-                                            }
-                                            if (skippedDynamicCollections) {
-                                                Text(
-                                                    text = stringResource(R.string.steam_collections_smart_unsupported),
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                                },
+                                onToggle = onSteamCollectionToggle,
+                                onClear = onClearSteamCollections,
+                            )
+                        }
+                        if (isSteamConnected || hasSteamCredentials) {
+                            CollectionFilterSection(
+                                collections = curatedLists,
+                                selectedIds = selectedCuratedListIds,
+                                counts = curatedListCounts,
+                                titleRes = R.string.curated_lists_title,
+                                loadingRes = R.string.curated_lists_loading,
+                                clearRes = R.string.curated_lists_clear,
+                                emptyRes = R.string.curated_lists_empty,
+                                messageRes = if (isOffline) {
+                                    listOf(R.string.curated_lists_offline)
+                                } else {
+                                    emptyList()
+                                },
+                                onToggle = onCuratedListToggle,
+                                onClear = onClearCuratedLists,
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -448,6 +385,105 @@ fun LibraryOptionsPanel(
             }
         }
     }
+}
+
+@Composable
+private fun CollectionFilterSection(
+    collections: List<SteamCollection>?,
+    selectedIds: Set<String>,
+    counts: Map<String, Int>,
+    @StringRes titleRes: Int,
+    @StringRes loadingRes: Int,
+    @StringRes clearRes: Int,
+    @StringRes emptyRes: Int? = null,
+    messageRes: List<Int> = emptyList(),
+    onToggle: (String) -> Unit,
+    onClear: () -> Unit,
+) {
+    var expanded by rememberSaveable { mutableStateOf(selectedIds.isNotEmpty()) }
+
+    Spacer(modifier = Modifier.height(20.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+            .padding(end = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OptionSectionHeader(text = stringResource(titleRes))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (selectedIds.isNotEmpty()) {
+                TextButton(onClick = onClear) {
+                    Text(stringResource(clearRes))
+                }
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+    AnimatedVisibility(visible = expanded) {
+        Column {
+            when {
+                collections == null -> {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = stringResource(loadingRes),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                collections.isEmpty() -> {
+                    val messages = messageRes.ifEmpty { listOfNotNull(emptyRes) }
+                    messages.forEach { message -> CollectionFilterMessage(message) }
+                }
+                else -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusGroup()
+                            .padding(horizontal = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        collections.sortedBy { it.name.lowercase() }.forEach { collection ->
+                            OptionListItem(
+                                text = collection.name,
+                                selected = collection.id in selectedIds,
+                                onClick = { onToggle(collection.id) },
+                                trailingText = counts[collection.id]?.toString(),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                    messageRes.forEach { message -> CollectionFilterMessage(message) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CollectionFilterMessage(@StringRes messageRes: Int) {
+    Text(
+        text = stringResource(messageRes),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
 }
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
@@ -493,9 +529,17 @@ private fun Preview_LibraryOptionsPanel() {
                     steamCollectionCounts = mapOf("fav" to 2, "rpg" to 1),
                     skippedDynamicCollections = true,
                     isSteamConnected = true,
+                    hasSteamCredentials = true,
                     isOffline = false,
                     onSteamCollectionToggle = { },
                     onClearSteamCollections = { },
+                    curatedLists = listOf(
+                        SteamCollection(id = "curated:4-3", name = "4:3 games", appIds = setOf(730, 240)),
+                    ),
+                    selectedCuratedListIds = emptySet(),
+                    curatedListCounts = mapOf("curated:4-3" to 2),
+                    onCuratedListToggle = { },
+                    onClearCuratedLists = { },
                 )
             }
         }

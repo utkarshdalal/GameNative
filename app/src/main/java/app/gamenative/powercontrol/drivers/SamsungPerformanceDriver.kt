@@ -262,7 +262,7 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
 
         return PowerProfile(
             enablePowerControl = PrefManager.powerControlDefaultEnabled,
-            enableAdaptiveFpsCap = true,
+            adaptiveFpsCapEnabled = DeviceGate.isDeviceSupported(),
             enableAutoTuning = false,
             enablePerClusterTuning = false,
             enableGamePinning = false,

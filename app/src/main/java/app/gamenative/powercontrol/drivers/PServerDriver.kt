@@ -1288,7 +1288,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
         val defaultProfile = PowerProfile(
             enablePowerControl = PrefManager.powerControlDefaultEnabled,
-            enableAdaptiveFpsCap = isTestedDevice,
+            adaptiveFpsCapEnabled = isTestedDevice,
             enableAutoTuning = isTestedDevice,
             enablePerClusterTuning = isTestedDevice,
             enableGamePinning = isTestedDevice,
