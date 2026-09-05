@@ -3943,7 +3943,7 @@ private fun setupXEnvironment(
                 container.startupSelection = Container.STARTUP_SELECTION_ESSENTIAL
                 container.putExtra("startupSelection", java.lang.String.valueOf(Container.STARTUP_SELECTION_ESSENTIAL))
                 container.saveData()
-            } else if (EpicOverlayManager.isOverlayInstalled(container)) {
+            } else if (!container.isDisableEpicOverlay && EpicOverlayManager.isOverlayInstalled(container)) {
                 // The EOS overlay needs RpcSs/BITS; services were forced to normal
                 // in setupWineSystemFiles, so don't kill services.exe here.
                 Timber.d("Keeping services.exe alive for EOS overlay despite aggressive startup selection")
@@ -5255,7 +5255,11 @@ private suspend fun setupWineSystemFiles(
     // The EOS overlay's CEF browser needs RpcSs and BITS: without them it
     // crash-loops and EOS login fails. Force normal services only for containers
     // that actually have the overlay installed.
-    val needsOverlayServices = EpicOverlayManager.isOverlayInstalled(container)
+    val overlayInstalled = EpicOverlayManager.isOverlayInstalled(container)
+    val needsOverlayServices = overlayInstalled && !container.isDisableEpicOverlay
+    if (overlayInstalled && container.isDisableEpicOverlay) {
+        EpicOverlayManager.removeRegistryPath(container)
+    }
     if (needsOverlayServices) {
         // Prefix re-provisioning above (wine/proton version change) replaces user.reg,
         // so the overlay registry entries must be repaired here, not just at install time.

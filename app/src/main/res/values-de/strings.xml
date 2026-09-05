@@ -2359,6 +2359,8 @@
     <string name="faster_external_loading_subtitle">Kann den Spielstart von externem Speicher deutlich beschleunigen, kann aber bei manchen Spielen Probleme verursachen</string>
     <string name="disable_libredirect_title">libredirect deaktivieren</string>
     <string name="disable_libredirect_subtitle">Kann die Leistung verbessern, aber auch unerwartete Probleme verursachen</string>
+    <string name="disable_epic_overlay_title">Epic-Overlay deaktivieren</string>
+    <string name="disable_epic_overlay_subtitle">Deaktiviert das EOS-Overlay und den CEF-Renderer, um Abstürze durch Speichermangel in bestimmten Spielen zu verhindern</string>
     <string name="binding_mode_simultaneous">Gleichzeitig</string>
     <string name="binding_mode_sequence">Sequenz</string>
     <string name="binding_sequence_delay_ms">Sequenzverzögerung (ms)</string>

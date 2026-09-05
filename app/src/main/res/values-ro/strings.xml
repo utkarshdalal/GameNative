@@ -2424,6 +2424,8 @@
     <string name="faster_external_loading_subtitle">Poate accelera semnificativ pornirea jocurilor de pe stocarea externă, dar poate cauza probleme în unele jocuri</string>
     <string name="disable_libredirect_title">Dezactivează libredirect</string>
     <string name="disable_libredirect_subtitle">Poate îmbunătăți performanța, dar poate cauza și probleme neașteptate</string>
+    <string name="disable_epic_overlay_title">Dezactivează overlay-ul Epic</string>
+    <string name="disable_epic_overlay_subtitle">Dezactivează overlay-ul EOS și motorul de randare CEF pentru a preveni blocările cauzate de epuizarea memoriei în anumite jocuri</string>
     <string name="binding_mode_simultaneous">Simultan</string>
     <string name="binding_mode_sequence">Secvență</string>
     <string name="binding_sequence_delay_ms">Întârziere secvență (ms)</string>

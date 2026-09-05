@@ -2424,6 +2424,8 @@
     <string name="faster_external_loading_subtitle">可顯著加快從外部儲存空間啟動遊戲的速度，但可能導致部分遊戲出現問題</string>
     <string name="disable_libredirect_title">停用 libredirect</string>
     <string name="disable_libredirect_subtitle">可能提升效能，但也可能導致意外問題</string>
+    <string name="disable_epic_overlay_title">停用 Epic 疊加層</string>
+    <string name="disable_epic_overlay_subtitle">停用 EOS 疊加層和 CEF 轉譯器，以防止某些遊戲因記憶體耗盡而當機</string>
     <string name="binding_mode_simultaneous">同時</string>
     <string name="binding_mode_sequence">順序</string>
     <string name="binding_sequence_delay_ms">順序延遲（毫秒）</string>

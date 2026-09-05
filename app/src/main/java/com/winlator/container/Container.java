@@ -22,8 +22,6 @@ import java.io.File;
 import java.util.Iterator;
 import java.util.Locale;
 
-import app.gamenative.BuildConfig;
-
 public class Container {
     public enum XrControllerMapping {
         BUTTON_A, BUTTON_B, BUTTON_X, BUTTON_Y, BUTTON_GRIP, BUTTON_TRIGGER,
@@ -96,7 +94,7 @@ public class Container {
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
-    private boolean launchImmersiveMode = BuildConfig.XR_BUILD;
+    private boolean launchImmersiveMode = app.gamenative.BuildConfig.XR_BUILD;
     private boolean launchRealSteam;
     private boolean launchBionicSteam;
     private boolean allowSteamUpdates;
@@ -142,7 +140,7 @@ public class Container {
     // Disable external mouse input
     private boolean disableMouseInput = false;
     // Touchscreen mode (defaults on for XR builds)
-    private boolean touchscreenMode = BuildConfig.XR_BUILD;
+    private boolean touchscreenMode = app.gamenative.BuildConfig.XR_BUILD;
     // Shooter mode
     private boolean shooterMode = true;
     // Serialised JSON gesture configuration (used when touchscreenMode is true)

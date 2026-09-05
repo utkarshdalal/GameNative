@@ -2433,6 +2433,8 @@
     <string name="faster_external_loading_subtitle">可显著加快从外部存储启动游戏的速度，但可能导致部分游戏出现问题</string>
     <string name="disable_libredirect_title">禁用 libredirect</string>
     <string name="disable_libredirect_subtitle">可能提升性能，但也可能导致意外问题</string>
+    <string name="disable_epic_overlay_title">禁用 Epic 叠加层</string>
+    <string name="disable_epic_overlay_subtitle">禁用 EOS 叠加层和 CEF 渲染器，以防止某些游戏因内存耗尽而崩溃</string>
     <string name="binding_mode_simultaneous">同时</string>
     <string name="binding_mode_sequence">顺序</string>
     <string name="binding_sequence_delay_ms">顺序延迟（毫秒）</string>

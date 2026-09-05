@@ -8,7 +8,6 @@ import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
-import app.gamenative.service.epic.EpicOverlayManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import com.winlator.container.Container
@@ -550,9 +549,6 @@ object ContainerUtils {
         container.setSteamOfflineMode(containerData.steamOfflineMode)
         container.setEpicOfflineMode(containerData.epicOfflineMode)
         container.setDisableEpicOverlay(containerData.disableEpicOverlay)
-        if (containerData.disableEpicOverlay) {
-            EpicOverlayManager.removeOverlaySync(container)
-        }
         container.setUseLegacyDRM(containerData.useLegacyDRM)
         container.setUnpackFiles(containerData.unpackFiles)
         container.setSuspendPolicy(containerData.suspendPolicy)

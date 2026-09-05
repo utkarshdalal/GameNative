@@ -2410,6 +2410,8 @@
     <string name="faster_external_loading_subtitle">Può velocizzare notevolmente l\'avvio dei giochi dalla memoria esterna, ma può causare problemi in alcuni giochi</string>
     <string name="disable_libredirect_title">Disattiva libredirect</string>
     <string name="disable_libredirect_subtitle">Può migliorare le prestazioni, ma può anche causare problemi imprevisti</string>
+    <string name="disable_epic_overlay_title">Disattiva overlay Epic</string>
+    <string name="disable_epic_overlay_subtitle">Disattiva l\'overlay EOS e il renderer CEF per evitare crash per esaurimento della memoria in alcuni giochi</string>
     <string name="binding_mode_simultaneous">Simultaneo</string>
     <string name="binding_mode_sequence">Sequenza</string>
     <string name="binding_sequence_delay_ms">Ritardo sequenza (ms)</string>
