@@ -1558,6 +1558,9 @@
     <string name="review_overwhelmingly_negative">Надзвичайно негативні</string>
     <string name="settings_interface_show_recommendations_title">Показувати рекомендації ігор</string>
     <string name="settings_interface_show_recommendations_subtitle">Показує персональні рекомендації. Залишивши це ввімкненим, ви допомагаєте підтримати GameNative.</string>
+    <string name="settings_interface_library_tabs_title">Вкладки бібліотеки</string>
+    <string name="settings_interface_library_tabs_subtitle">Виберіть, які вкладки магазинів показувати в бібліотеці.</string>
+    <string name="settings_interface_library_tabs_none">Немає вкладок магазинів</string>
      <string name="steam_save_export_success">Збереження експортовано</string>
      <string name="steam_save_export_no_saves_found">Збереження не знайдено</string>
      <string name="steam_save_export_failed">Не вдалося експортувати збереження: %s</string>

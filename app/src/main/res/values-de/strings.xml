@@ -1502,6 +1502,9 @@
     <string name="review_overwhelmingly_negative">Überwältigend negativ</string>
     <string name="settings_interface_show_recommendations_title">Spielempfehlungen anzeigen</string>
     <string name="settings_interface_show_recommendations_subtitle">Zeigt personalisierte Empfehlungen. Wenn du dies aktiviert lässt, unterstützt du GameNative.</string>
+    <string name="settings_interface_library_tabs_title">Bibliothek-Tabs</string>
+    <string name="settings_interface_library_tabs_subtitle">Wähle, welche Store-Tabs in der Bibliothek angezeigt werden.</string>
+    <string name="settings_interface_library_tabs_none">Keine Store-Tabs</string>
      <string name="steam_save_export_success">Spielstände exportiert</string>
      <string name="steam_save_export_no_saves_found">Keine Spielstände gefunden</string>
      <string name="steam_save_export_failed">Spielstände konnten nicht exportiert werden: %s</string>
