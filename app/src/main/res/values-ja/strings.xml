@@ -2376,6 +2376,8 @@
     <string name="faster_external_loading_subtitle">外部ストレージからのゲーム起動を大幅に高速化できますが、一部のゲームで問題が発生する可能性があります</string>
     <string name="disable_libredirect_title">libredirect を無効にする</string>
     <string name="disable_libredirect_subtitle">パフォーマンスが向上する場合がありますが、予期しない問題が発生する可能性もあります</string>
+    <string name="disable_epic_overlay_title">Epic オーバーレイを無効にする</string>
+    <string name="disable_epic_overlay_subtitle">EOS オーバーレイと CEF レンダラーを無効にして、一部のゲームでのメモリ不足によるクラッシュを防ぎます</string>
     <string name="binding_mode_simultaneous">同時</string>
     <string name="binding_mode_sequence">シーケンス</string>
     <string name="binding_sequence_delay_ms">シーケンス遅延 (ミリ秒)</string>

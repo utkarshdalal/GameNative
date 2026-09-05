@@ -129,6 +129,7 @@ public class Container {
     private boolean sdlControllerAPI;
     private boolean fasterExternalLoading;
     private boolean disableLibredirect;
+    private boolean disableEpicOverlay;
 
     // Preferred game language for Goldberg force_language.txt
     private String language = "english";
@@ -417,6 +418,14 @@ public class Container {
 
     public void setDisableLibredirect(boolean disableLibredirect) {
         this.disableLibredirect = disableLibredirect;
+    }
+
+    public boolean isDisableEpicOverlay() {
+        return disableEpicOverlay;
+    }
+
+    public void setDisableEpicOverlay(boolean disableEpicOverlay) {
+        this.disableEpicOverlay = disableEpicOverlay;
     }
 
     public String getLanguage() {
@@ -762,6 +771,7 @@ public class Container {
             data.put("sdlControllerAPI", sdlControllerAPI);
             data.put("fasterExternalLoading", fasterExternalLoading);
             data.put("disableLibredirect", disableLibredirect);
+            data.put("disableEpicOverlay", disableEpicOverlay);
             // Disable mouse input flag
             data.put("disableMouseInput", disableMouseInput);
             // Touchscreen mode flag
@@ -987,6 +997,9 @@ public class Container {
                     break;
                 case "disableLibredirect" :
                     setDisableLibredirect(data.getBoolean(key));
+                    break;
+                case "disableEpicOverlay" :
+                    setDisableEpicOverlay(data.getBoolean(key));
                     break;
                 case "disableMouseInput" :
                     setDisableMouseInput(data.getBoolean(key));

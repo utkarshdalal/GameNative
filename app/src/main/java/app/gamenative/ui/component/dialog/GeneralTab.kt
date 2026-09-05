@@ -371,6 +371,13 @@ fun GeneralTabContent(
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.disable_epic_overlay_title)) },
+            subtitle = { Text(text = stringResource(R.string.disable_epic_overlay_subtitle)) },
+            state = config.disableEpicOverlay,
+            onCheckedChange = { state.config.value = config.copy(disableEpicOverlay = it) },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.launch_steam_client_beta)) },
             subtitle = { Text(text = stringResource(R.string.launch_steam_client_description)) },
             state = config.launchRealSteam,

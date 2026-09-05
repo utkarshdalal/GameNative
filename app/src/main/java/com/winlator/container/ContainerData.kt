@@ -101,6 +101,7 @@ data class ContainerData(
     val localSavesOnly: Boolean = false,
     val steamOfflineMode: Boolean = false,
     val epicOfflineMode: Boolean = false,
+    val disableEpicOverlay: Boolean = false,
     val useLegacyDRM: Boolean = false,
     val unpackFiles: Boolean = false,
     val suspendPolicy: String = Container.SUSPEND_POLICY_MANUAL,
