@@ -651,7 +651,7 @@ public class InputControlsView extends View {
         if (xServer == null || shooterModeConfig == null) return;
         boolean useWin32RelativeInput =
                 (shooterModeActive || containerShooterModeRuntime)
-                        && ShooterModeConfig.LOOK_MOUSE.equals(shooterModeConfig.getLookType())
+                        && ShooterModeConfig.LOOK_MOUSE.equals(getResolvedShooterLookType())
                         && shooterModeConfig.getWin32RelativeMouseInput();
         xServer.setRelativeMouseMovement(useWin32RelativeInput);
     }
