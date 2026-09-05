@@ -1,13 +1,21 @@
 package app.gamenative.data
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.concurrent.Volatile
 
 data class DownloadInfo(
     val jobCount: Int = 1,
@@ -15,8 +23,14 @@ data class DownloadInfo(
     var downloadingAppIds: CopyOnWriteArrayList<Int>,
 ) {
     private var downloadJob: Job? = null
-    private val downloadProgressListeners = mutableListOf<((Float) -> Unit)>()
+    private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val downloadProgressListeners = CopyOnWriteArrayList<(Float) -> Unit>()
     private val progresses: Array<Float> = Array(jobCount) { 0f }
+
+    // Reservation-based persistence scheduler
+    private val nextWriteTime = AtomicLong(0L)
+    private var persistenceJob: Job? = null
+    private val persistenceGeneration = AtomicInteger(0)
 
     private val weights    = FloatArray(jobCount) { 1f }     // ⇐ new
     private var weightSum  = jobCount.toFloat()
@@ -32,7 +46,8 @@ data class DownloadInfo(
     private var emaSpeedBytesPerSec: Double = 0.0
     private var hasEmaSpeed: Boolean = false
     private var isActive: Boolean = true
-    private val statusMessage = MutableStateFlow<String?>(null)
+    @Volatile
+    private var currentStatusMessage: String = ""
     private val postInstallSyncing = MutableStateFlow(false)
 
     fun cancel() {
@@ -44,14 +59,21 @@ data class DownloadInfo(
     }
 
     fun cancel(message: String) {
-        // Persist the most recent progress so a resume can pick up where it left off.
-        persistProgressSnapshot()
         // Mark as inactive and clear speed tracking so a future resume
         // does not use stale samples.
         setActive(false)
         setPostInstallSyncing(false)
         resetSpeedTracking()
-        downloadJob?.cancel(CancellationException(message))
+        // The snapshot write hits the (possibly saturated) install volume and the
+        // job cancel cascades through many continuations; callers include UI click
+        // handlers on the main thread, so both must run off it (ANR otherwise).
+        ioScope.launch {
+            // Signal cancellation before the possibly-slow snapshot write, so a
+            // restarted download for the same path can't overlap the dying job.
+            downloadJob?.cancel(CancellationException(message))
+            // Persist the most recent progress so a resume can pick up where it left off.
+            persistProgressSnapshot()
+        }
     }
 
     fun setDownloadJob(job: Job) {
@@ -137,10 +159,11 @@ data class DownloadInfo(
     }
 
     fun updateStatusMessage(message: String?) {
-        statusMessage.value = message
+        currentStatusMessage = message ?: ""
+        emitProgressChange()
     }
 
-    fun getStatusMessageFlow(): StateFlow<String?> = statusMessage
+    fun getCurrentStatusMessage(): String = currentStatusMessage
 
     fun setPostInstallSyncing(syncing: Boolean) {
         postInstallSyncing.value = syncing
@@ -269,12 +292,49 @@ data class DownloadInfo(
     companion object {
         private const val PERSISTENCE_DIR = ".DownloadInfo"
         private const val PERSISTENCE_FILE = "bytes_downloaded.txt"
+        private const val PERSIST_DEBOUNCE_MS = 10_000L // 10 seconds
     }
 
     /**
      * Persist bytesDownloaded to a file in the app directory.
+     * Debounced to write at most once every 10 seconds to reduce I/O overhead.
      */
     fun persistBytesDownloaded(appDirPath: String) {
+        val now = System.currentTimeMillis()
+        val reserved = nextWriteTime.get()
+        val delayMs = reserved - now
+
+        // If we need to wait, schedule a delayed write
+        if (delayMs > 0) {
+            val currentGen = persistenceGeneration.get()
+            persistenceJob?.cancel()
+            persistenceJob = ioScope.launch {
+                delay(delayMs)
+                // Only write if generation hasn't been invalidated
+                if (persistenceGeneration.get() == currentGen) {
+                    writePersistedBytes(appDirPath)
+                }
+            }
+            return
+        }
+
+        // Reserve the next write time and write immediately. The generation guard
+        // keeps a late cancel-snapshot from recreating the resume file after
+        // clearPersistedBytesDownloaded() has removed it on completion.
+        nextWriteTime.set(now + PERSIST_DEBOUNCE_MS)
+        val currentGen = persistenceGeneration.get()
+        persistenceJob?.cancel()
+        persistenceJob = ioScope.launch {
+            if (persistenceGeneration.get() == currentGen) {
+                writePersistedBytes(appDirPath)
+            }
+        }
+    }
+
+    /**
+     * Internal method to actually write the bytes to disk.
+     */
+    private fun writePersistedBytes(appDirPath: String) {
         try {
             val dir = File(appDirPath, PERSISTENCE_DIR)
             if (!dir.exists()) {
@@ -282,6 +342,8 @@ data class DownloadInfo(
             }
             val file = File(dir, PERSISTENCE_FILE)
             file.writeText(bytesDownloaded.toString())
+            val now = System.currentTimeMillis()
+            nextWriteTime.set(now + PERSIST_DEBOUNCE_MS)
         } catch (e: Exception) {
             Timber.e(e, "Failed to persist bytes downloaded to $appDirPath")
         }
@@ -309,6 +371,9 @@ data class DownloadInfo(
      * Delete the persisted bytes file (called on download completion).
      */
     fun clearPersistedBytesDownloaded(appDirPath: String) {
+        // Invalidate any pending persistence to prevent recreating the file
+        persistenceGeneration.incrementAndGet()
+        persistenceJob?.cancel()
         try {
             val file = File(File(appDirPath, PERSISTENCE_DIR), PERSISTENCE_FILE)
             if (file.exists()) {

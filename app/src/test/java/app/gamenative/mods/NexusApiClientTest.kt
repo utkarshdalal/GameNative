@@ -4,8 +4,10 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -25,6 +27,7 @@ class NexusApiClientTest {
             baseUrl = server.url("/v1").toString().trimEnd('/'),
             nexusBaseUrl = server.url("").toString().trimEnd('/'),
             graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { _, _ -> "test-access-token" },
         )
     }
 
@@ -63,7 +66,7 @@ class NexusApiClientTest {
                 ),
         )
 
-        val files = client.getModFiles("skyrimspecialedition", 123, apiKey = "key")
+        val files = client.getModFiles("skyrimspecialedition", 123)
 
         assertEquals(1, files.size)
         assertEquals(55L, files.single().fileId)
@@ -74,8 +77,134 @@ class NexusApiClientTest {
         assertEquals(true, files.single().isPrimary)
         assertEquals("2024-01-02T03:04:05.000Z", files.single().uploadedTime)
         val request = server.takeRequest()
-        assertEquals("key", request.headers["APIKEY"])
+        assertEquals("Bearer test-access-token", request.headers["Authorization"])
+        assertEquals(null, request.headers["APIKEY"])
         assertEquals("GameNative", request.headers["Application-Name"])
+    }
+
+    @Test
+    fun missingAccessToken_failsBeforeSendingRequest() = runBlocking {
+        val disconnectedClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+        )
+
+        val error = runCatching {
+            disconnectedClient.getModInfo("fallout4", 1)
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(NexusApiErrorReason.AUTHENTICATION, (error as NexusApiException).reason)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun getCurrentUser_usesOAuthAccountWithoutLegacyValidationRequest() = runBlocking {
+        var accessTokenCalls = 0
+        val accountClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { _, _ ->
+                accessTokenCalls += 1
+                "unused-token"
+            },
+            accountProvider = {
+                NexusOAuthAccount(
+                    id = "51448566",
+                    name = "Recovered Modder",
+                    membershipRoles = listOf("member", "lifetime"),
+                )
+            },
+        )
+
+        val user = accountClient.getCurrentUser()
+
+        assertEquals("Recovered Modder", user.name)
+        assertEquals(51_448_566L, user.userId)
+        assertTrue(user.isPremium)
+        assertEquals(0, accessTokenCalls)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun getCurrentUser_missingOAuthAccountFailsWithoutNetworkRequest() = runBlocking {
+        val accountClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { _, _ -> "unused-token" },
+            accountProvider = { null },
+        )
+
+        val error = runCatching { accountClient.getCurrentUser() }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(NexusApiErrorReason.AUTHENTICATION, (error as NexusApiException).reason)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun unauthorized_forcesRefreshAndRetriesExactlyOnce() = runBlocking {
+        var forceRefreshCalls = 0
+        var rejectedAccessToken: String? = null
+        val retryingClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { forceRefresh, rejectedToken ->
+                if (forceRefresh) {
+                    forceRefreshCalls += 1
+                    rejectedAccessToken = rejectedToken
+                    "refreshed-token"
+                } else {
+                    "stale-token"
+                }
+            },
+        )
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"mod_id":1,"name":"Retry worked","summary":"","version":"1"}""",
+            ),
+        )
+
+        val mod = retryingClient.getModInfo("fallout4", 1)
+
+        assertEquals("Retry worked", mod.name)
+        assertEquals(1, forceRefreshCalls)
+        assertEquals("stale-token", rejectedAccessToken)
+        assertEquals("Bearer stale-token", server.takeRequest().headers["Authorization"])
+        assertEquals("Bearer refreshed-token", server.takeRequest().headers["Authorization"])
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun unauthorized_retriesOnceEvenWhenRefreshReturnsSameToken() = runBlocking {
+        var forceRefreshCalls = 0
+        val retryingClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { forceRefresh, _ ->
+                if (forceRefresh) forceRefreshCalls += 1
+                "same-token"
+            },
+        )
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+
+        val error = runCatching { retryingClient.getModInfo("fallout4", 1) }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(1, forceRefreshCalls)
+        assertEquals(2, server.requestCount)
     }
 
     @Test
@@ -89,7 +218,7 @@ class NexusApiClientTest {
         )
 
         val error = runCatching {
-            client.getModInfo("fallout4", 1, apiKey = "key")
+            client.getModInfo("fallout4", 1)
         }.exceptionOrNull()
 
         assertTrue(error is NexusApiException)
@@ -108,11 +237,57 @@ class NexusApiClientTest {
         )
 
         val error = runCatching {
-            client.getDownloadLinks("fallout4", 1, 2, apiKey = "key")
+            client.getDownloadLinks("fallout4", 1, 2)
         }.exceptionOrNull()
 
         assertTrue(error is NexusApiException)
         assertEquals("This Nexus file is no longer downloadable", error?.message)
+    }
+
+    @Test
+    fun getDownloadLinks_freeAccount403_requiresWebsiteAuthorization() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(403)
+                .setBody("{}"),
+        )
+
+        val error = runCatching {
+            client.getDownloadLinks(
+                gameDomain = "newvegas",
+                modId = 58_277,
+                fileId = 123_456,
+                isPremiumAccount = false,
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(
+            NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_REQUIRED,
+            (error as NexusApiException).reason,
+        )
+        assertTrue(NexusImportState.requiresWebsiteAuthorization(error))
+    }
+
+    @Test
+    fun getDownloadLinks_unknownAccount403_remainsForbidden() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(403)
+                .setBody("{}"),
+        )
+
+        val error = runCatching {
+            client.getDownloadLinks(
+                gameDomain = "newvegas",
+                modId = 58_277,
+                fileId = 123_456,
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(NexusApiErrorReason.FORBIDDEN, (error as NexusApiException).reason)
+        assertFalse(NexusImportState.requiresWebsiteAuthorization(error))
     }
 
     @Test
@@ -153,7 +328,6 @@ class NexusApiClientTest {
 
         val collection = client.getCollectionRevision(
             NexusCollectionReference("skyrimspecialedition", "test", 5),
-            apiKey = "key",
         )
 
         assertEquals("Test Collection", collection.name)
@@ -164,7 +338,57 @@ class NexusApiClientTest {
         assertTrue(collection.files.single().required)
         val request = server.takeRequest()
         assertEquals("/graphql", request.path)
-        assertTrue(request.body.readUtf8().contains("collectionRevision"))
+        assertEquals("Bearer test-access-token", request.headers["Authorization"])
+        val requestBody = JSONObject(request.body.readUtf8())
+        assertTrue(requestBody.getString("query").contains("collectionRevision"))
+        assertFalse(requestBody.getJSONObject("variables").getBoolean("viewAdultContent"))
+    }
+
+    @Test
+    fun getCollectionRevision_adultContentBlockInPartialResponseDoesNotFallBack() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "errors": [
+                        {
+                          "message": "Unrelated warning",
+                          "extensions": { "code": "OTHER" }
+                        },
+                        {
+                          "message": "Adult content blocked",
+                          "path": ["collectionRevision"],
+                          "extensions": { "code": "ADULT_CONTENT_BLOCKED" }
+                        }
+                      ],
+                      "data": {
+                        "collection": { "name": "Hidden Collection" },
+                        "collectionRevision": {
+                          "revisionNumber": 1,
+                          "modFiles": []
+                        }
+                      }
+                    }
+                    """.trimIndent(),
+                ),
+        )
+        server.enqueue(MockResponse().setResponseCode(403).setBody("{}"))
+
+        val error = runCatching {
+            client.getCollectionRevision(
+                NexusCollectionReference("fallout4", "adult-collection", 1),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        val nexusError = error as NexusApiException
+        assertEquals(403, nexusError.statusCode)
+        assertEquals(NexusApiErrorReason.ADULT_CONTENT_BLOCKED, nexusError.reason)
+        assertEquals("Adult content blocked", nexusError.message)
+        assertEquals(1, server.requestCount)
+        assertEquals("/graphql", server.takeRequest().path)
     }
 
     @Test
@@ -212,7 +436,6 @@ class NexusApiClientTest {
 
         val collection = client.getCollectionRevision(
             NexusCollectionReference("skyrimspecialedition", "test", 5),
-            apiKey = "key",
         )
 
         assertEquals("Test Collection", collection.name)
@@ -306,7 +529,6 @@ class NexusApiClientTest {
 
         val collection = client.getCollectionRevision(
             NexusCollectionReference("skyrimspecialedition", "test", 8),
-            apiKey = "key",
         )
 
         assertEquals("Big Collection", collection.name)
@@ -392,7 +614,6 @@ class NexusApiClientTest {
 
         val collection = client.getCollectionRevision(
             NexusCollectionReference("skyrimspecialedition", "test", 9),
-            apiKey = "key",
         )
 
         assertEquals(listOf(100L), collection.files.map { it.modId })

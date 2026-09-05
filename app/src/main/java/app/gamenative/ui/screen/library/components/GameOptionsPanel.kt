@@ -50,11 +50,15 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.HorizontalDivider
@@ -331,6 +335,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.SubmitFeedback -> Icons.Default.Feedback
         AppOptionMenuType.ResetDrm -> Icons.Default.Key
         AppOptionMenuType.UseKnownConfig -> Icons.Default.Build
+        AppOptionMenuType.BrowseCommunityConfigs -> Icons.Default.Search
         AppOptionMenuType.Uninstall -> Icons.Default.Delete
         AppOptionMenuType.VerifyFiles -> Icons.Default.VerifiedUser
         AppOptionMenuType.Update -> Icons.Default.Update
@@ -344,6 +349,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.TestGraphics -> Icons.Default.Build
         AppOptionMenuType.PlayWithDiagnostics -> Icons.Default.BugReport
         AppOptionMenuType.ShareDiagnostics -> Icons.Default.Share
+        AppOptionMenuType.AiDebugRun -> Icons.Default.SmartToy
         AppOptionMenuType.ImportConfig -> Icons.Default.ArrowDownward
         AppOptionMenuType.ExportConfig -> Icons.Default.ArrowUpward
         AppOptionMenuType.ImportSaves -> Icons.Default.ArrowDownward
@@ -353,6 +359,8 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.ManageMods -> Icons.Default.Extension
         AppOptionMenuType.ChangeBranch -> Icons.AutoMirrored.Filled.CallSplit
         AppOptionMenuType.ChangePreferredCopy -> Icons.Filled.Face4
+        AppOptionMenuType.AddToFavorites -> Icons.Filled.StarOutline
+        AppOptionMenuType.RemoveFromFavorites -> Icons.Filled.Star
     }
 }
 
@@ -368,8 +376,11 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             // Quick Actions
             AppOptionMenuType.EditContainer,
             AppOptionMenuType.RunContainer,
+            AppOptionMenuType.AiDebugRun,
             AppOptionMenuType.CreateShortcut,
             AppOptionMenuType.ExportFrontend,
+            AppOptionMenuType.AddToFavorites,
+            AppOptionMenuType.RemoveFromFavorites,
             -> quickActions.add(option)
 
             // Game Management
@@ -386,6 +397,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.ResetToDefaults,
             AppOptionMenuType.ResetDrm,
             AppOptionMenuType.UseKnownConfig,
+            AppOptionMenuType.BrowseCommunityConfigs,
             AppOptionMenuType.ImportConfig,
             AppOptionMenuType.ExportConfig,
             AppOptionMenuType.ImportSaves,

@@ -82,6 +82,20 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     public Container getContainer() { return this.container; }
     public void setContainer(Container container) { this.container = container; }
 
+    // Resolve which libredirect shim to preload. Normally the flavor default
+    // (PRELOAD_BIONIC_SO). When the container disables libredirect, modern falls
+    // back to the W^X-only minimal shim (still required to run Wine on a strict
+    // W^X kernel) and legacy preloads nothing. Returns null to preload nothing.
+    private String resolveLibredirectPreload(ImageFs imageFs) {
+        if (container != null && container.isDisableLibredirect()) {
+            if (BuildConfig.MODERN_ANDROID) {
+                return imageFs.getLibDir() + "/libredirect-bionic-wx-minimal.so";
+            }
+            return null;
+        }
+        return imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+    }
+
     /** Numeric Steam appid for the game in this container (e.g. "221380").
      *  Set from XServerScreen before start(); only consumed in real-Steam mode
      *  to publish SteamGameId / SteamAppId for the steam_helper handshake. */
@@ -250,6 +264,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
         envVars.put("TMPDIR", rootDir.getPath() + "/usr/tmp");
+        new File(imageFs.home_path + "/.wine/drive_c" + rootDir.getPath() + "/usr/tmp").mkdirs();
         envVars.put("DISPLAY", ":0");
 
         String winePath = imageFs.getWinePath() + "/bin";
@@ -300,17 +315,36 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         String evshimPath = context.getApplicationInfo().nativeLibraryDir + "/libevshim.so";
-        String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+        String replacePath = resolveLibredirectPreload(imageFs);
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
 
         ld_preload += ":" + evshimPath;
-        ld_preload += ":" + replacePath;
+        if (replacePath != null) ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
         envVars.put("EVSHIM_WINE", 1);
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
+
+        if (container != null && container.isFasterExternalLoading()) {
+            String ffpGameDir = null;
+            for (String[] drive : Container.drivesIterator(container.getDrives())) {
+                if (drive[0].equals("A")) {
+                    try {
+                        ffpGameDir = new File(drive[1]).getCanonicalPath();
+                    } catch (IOException e) {
+                        ffpGameDir = drive[1];
+                    }
+                    break;
+                }
+            }
+            if (ffpGameDir != null && ffpGameDir.startsWith("/storage/")
+                    && !ffpGameDir.startsWith("/storage/emulated/")) {
+                envVars.put("FFP_ENABLE", "1");
+                envVars.put("FFP_MARKERS", "/steamapps/common/;/dosdevices/a:");
+            }
+        }
 
         // Check for specific shared memory libraries
 //        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){
@@ -508,6 +542,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("BREAKPAD_DUMP_LOCATION", breakpadDir);
         envVars.put("STEAM_BASE_FOLDER", steamRootLinux);
         envVars.put("ENABLE_VK_LAYER_VALVE_steam_overlay_1", "0");
+        // ISteamUtils::IsOverlayEnabled() is not engine state -- it resolves in-process to
+        // `getenv("SteamOS") ? true : dlsym(RTLD_DEFAULT, "IsOverlayEnabled")`. No overlay
+        // module is loaded here (the bionic asset set ships none), so without this it returns
+        // false and games that gate their invite/host UI on it refuse to open it.
+        envVars.put("SteamOS", "1");
         envVars.put("STEAMVIDEOTOKEN", "1");
 
         // IPC endpoints; override defaults if the MCP-hosted .so listens elsewhere
@@ -578,6 +617,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 "ENABLE_VK_LAYER_VALVE_steam_overlay_1",
                 "STEAMVIDEOTOKEN",
                 "SteamUser",
+                "SteamOS",
         };
         for (String key : passthrough) {
             String val = envVars.get(key);
@@ -665,11 +705,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         String ld_preload = "";
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
-        String replacePath = imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+        String replacePath = resolveLibredirectPreload(imageFs);
 
         if (new File(sysvPath).exists()) ld_preload += sysvPath;
 
-        ld_preload += ":" + replacePath;
+        if (replacePath != null) ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
 

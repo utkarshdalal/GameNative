@@ -90,7 +90,7 @@ class SteamUtilsDepotLanguageTest {
         assertEquals("schinese", resolve(depots, "french"))
     }
 
-    // -- Untagged (neutral) depots are ignored by the fallback pool --
+    // -- A neutral (untagged) depot satisfies any requested language, so no fallback fires --
 
     @Test
     fun `keeps preferred language when the app only ships untagged depots`() {
@@ -99,12 +99,25 @@ class SteamUtilsDepotLanguageTest {
     }
 
     @Test
-    fun `untagged depot does not become the fallback`() {
+    fun `neutral depot keeps preferred language instead of forcing another localization`() {
         val depots = depotsOf(
             depot(depotId = 1, language = ""),
             depot(depotId = 2, language = "german"),
         )
-        assertEquals("german", resolve(depots, "french"))
+        assertEquals("french", resolve(depots, "french"))
+    }
+
+    @Test
+    fun `kotor layout keeps english against tagged-only localizations`() {
+        val depots = depotsOf(
+            depot(depotId = 32371, language = ""),
+            depot(depotId = 32372, language = "french"),
+            depot(depotId = 32373, language = "german"),
+            depot(depotId = 32374, language = "italian"),
+            depot(depotId = 32375, language = "spanish"),
+        )
+        assertEquals("english", resolve(depots, "english"))
+        assertEquals("german", resolve(depots, "german"))
     }
 
     // -- Only base-game depots steer the language --

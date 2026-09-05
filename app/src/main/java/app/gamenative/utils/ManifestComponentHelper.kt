@@ -38,6 +38,7 @@ object ManifestComponentHelper {
         val fexcore: List<String>,
         val wine: List<String>,
         val proton: List<String>,
+        val wrapper: List<String> = emptyList(),
     )
 
     data class InstalledContentListsAndDrivers(
@@ -109,6 +110,9 @@ object ManifestComponentHelper {
                 ),
                 proton = profilesToDisplay(
                     mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_PROTON),
+                ),
+                wrapper = profilesToDisplay(
+                    mgr.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WRAPPER),
                 ),
             )
         } catch (_: Exception) {

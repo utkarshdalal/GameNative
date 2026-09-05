@@ -12,6 +12,7 @@ import android.preference.PreferenceManager;
 import android.util.SparseArray;
 import android.view.InputDevice;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 
 import app.gamenative.PrefManager;
 
@@ -66,6 +67,8 @@ public class ControllerManager {
     private final Map<String, Long> firstSeenByIdentifier = new HashMap<>();
     private final Handler settleHandler = new Handler(Looper.getMainLooper());
     private final Runnable settleAssignRunnable = this::autoAssignConnectedDevices;
+    private final Set<String> sessionActiveIdentifiers = new HashSet<>();
+    private boolean sessionUsedExternalController;
 
     public interface OnSlotsChangedListener {
         void onSlotsChanged();
@@ -185,9 +188,14 @@ public class ControllerManager {
         boolean isGamepad = device.supportsSource(InputDevice.SOURCE_GAMEPAD);
         boolean isJoystick = device.supportsSource(InputDevice.SOURCE_JOYSTICK);
 
+        // Only consider axes reported under a controller source class. Composite HID
+        // devices (e.g. keyboards with built-in touchpads) expose AXIS_X/AXIS_Y through
+        // SOURCE_MOUSE and may wrongly claim SOURCE_JOYSTICK in their source mask, which
+        // caused them to be treated as gamepads. SOURCE_GAMEPAD is queried as well, for
+        // drivers that attach the sticks to the gamepad source instead.
         boolean hasAxes =
-                device.getMotionRange(android.view.MotionEvent.AXIS_X) != null ||
-                        device.getMotionRange(android.view.MotionEvent.AXIS_Y) != null;
+                ExternalController.hasControllerAxis(device, android.view.MotionEvent.AXIS_X) ||
+                        ExternalController.hasControllerAxis(device, android.view.MotionEvent.AXIS_Y);
 
         boolean[] hasGamepadKeysArray = device.hasKeys(
                 KeyEvent.KEYCODE_BUTTON_A,
@@ -216,6 +224,18 @@ public class ControllerManager {
      */
     public static String getDeviceIdentifier(InputDevice device) {
         if (device == null) return null;
+        if (JoyConSupport.isJoyCon(device)) {
+            List<int[]> connectedDevices = new ArrayList<>();
+            for (int deviceId : InputDevice.getDeviceIds()) {
+                InputDevice connectedDevice = InputDevice.getDevice(deviceId);
+                if (connectedDevice != null) {
+                    connectedDevices.add(new int[]{connectedDevice.getVendorId(), connectedDevice.getProductId()});
+                }
+            }
+            if (JoyConSupport.hasExactlyOnePair(connectedDevices)) {
+                return JoyConSupport.PAIRED_IDENTIFIER;
+            }
+        }
         // The descriptor is the most reliable unique ID for a device.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             return device.getDescriptor();
@@ -478,6 +498,72 @@ public class ControllerManager {
         }
         recentlyFreedSlots.remove(slot);
         recentlyFreedSlots.addLast(slot);
+    }
+
+    public void resetSessionActivity() {
+        sessionActiveIdentifiers.clear();
+        sessionUsedExternalController = false;
+    }
+
+    public int getSessionUsedControllerCount() {
+        return sessionActiveIdentifiers.size();
+    }
+
+    public boolean getSessionUsedExternalController() {
+        return sessionUsedExternalController;
+    }
+
+    public void noteGamepadActivity(MotionEvent event) {
+        if (isRealGamepadMotion(event)) markActive(event.getDeviceId());
+    }
+
+    public boolean noteGamepadButton(int deviceId) {
+        markActive(deviceId);
+        int slot = getSlotForDevice(deviceId);
+        if (slot == 0) return false;
+        InputDevice occupant = getAssignedDeviceForSlot(0);
+        if (occupant == null) {
+            String deviceIdentifier = getDeviceIdentifierForDeviceId(deviceId);
+            if (deviceIdentifier == null) return false;
+            assignDeviceIdentifierToSlot(0, deviceIdentifier);
+            saveAssignments();
+            notifySlotsChanged();
+            Log.i(TAG, "deviceId=" + deviceId + " claimed empty Player 1");
+            return true;
+        }
+        String occupantIdentifier = getDeviceIdentifier(occupant);
+        if (occupantIdentifier == null || sessionActiveIdentifiers.contains(occupantIdentifier)) return false;
+        String deviceIdentifier = getDeviceIdentifierForDeviceId(deviceId);
+        if (deviceIdentifier == null) return false;
+        assignDeviceIdentifierToSlot(0, deviceIdentifier);
+        if (slot > 0) {
+            assignDeviceIdentifierToSlot(slot, occupantIdentifier);
+        }
+        saveAssignments();
+        notifySlotsChanged();
+        Log.i(TAG, "deviceId=" + deviceId + " displaced idle Player 1");
+        return true;
+    }
+
+    private void markActive(int deviceId) {
+        String identifier = getDeviceIdentifierForDeviceId(deviceId);
+        if (identifier == null || !sessionActiveIdentifiers.add(identifier)) return;
+        InputDevice device = inputManager.getInputDevice(deviceId);
+        if (device != null &&
+                (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q || device.isExternal())) {
+            sessionUsedExternalController = true;
+        }
+    }
+
+    private static boolean isRealGamepadMotion(MotionEvent event) {
+        return Math.abs(event.getAxisValue(MotionEvent.AXIS_X)) > 0.25f
+                || Math.abs(event.getAxisValue(MotionEvent.AXIS_Y)) > 0.25f
+                || Math.abs(event.getAxisValue(MotionEvent.AXIS_Z)) > 0.25f
+                || Math.abs(event.getAxisValue(MotionEvent.AXIS_RZ)) > 0.25f
+                || Math.abs(event.getAxisValue(MotionEvent.AXIS_LTRIGGER)) > 0.25f
+                || Math.abs(event.getAxisValue(MotionEvent.AXIS_RTRIGGER)) > 0.25f
+                || Math.abs(event.getAxisValue(MotionEvent.AXIS_HAT_X)) > 0.25f
+                || Math.abs(event.getAxisValue(MotionEvent.AXIS_HAT_Y)) > 0.25f;
     }
 
     private boolean isSlotAvailable(int slot) {
