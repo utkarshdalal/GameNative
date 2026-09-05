@@ -1304,6 +1304,18 @@ object PrefManager {
             setPref(SHOW_RECOMMENDATIONS, value)
         }
 
+    /**
+     * Whether games marked hidden on Steam/GOG are shown in the library by default.
+     * Defaults to true so previously visible games do not disappear after an update; users can
+     * turn it off to hide them again.
+     */
+    private val SHOW_HIDDEN_GAMES_BY_DEFAULT = booleanPreferencesKey("show_hidden_games_by_default")
+    var showHiddenGamesByDefault: Boolean
+        get() = getPref(SHOW_HIDDEN_GAMES_BY_DEFAULT, true)
+        set(value) {
+            setPref(SHOW_HIDDEN_GAMES_BY_DEFAULT, value)
+        }
+
     private val REC_DISCLOSURE_SHOWN = booleanPreferencesKey("rec_disclosure_shown")
 
     // Cached in memory because the DataStore write is async: consumers read this back

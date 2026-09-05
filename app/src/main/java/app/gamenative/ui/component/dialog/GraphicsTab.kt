@@ -416,7 +416,6 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
         )
     }
 }
-
 @Composable
 private fun DxWrapperSection(state: ContainerConfigState) {
     val config = state.config.value
@@ -616,4 +615,3 @@ private fun LsfgSection(state: ContainerConfigState) {
         }
     }
 }
-

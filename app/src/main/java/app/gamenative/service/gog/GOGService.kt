@@ -151,6 +151,9 @@ class GOGService : Service() {
                     instance.gogManager.deleteAllNonInstalledGames()
                     Timber.i("[GOGService] All non-installed GOG games removed from database")
 
+                    // Hidden-game metadata belongs to the logged-out account.
+                    instance.gogManager.clearHiddenFlags()
+
                     // Stop the service
                     stop()
 
@@ -798,6 +801,8 @@ class GOGService : Service() {
                         // Mark that initial sync has been performed
                         hasPerformedInitialSync = true
                     }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "[GOGService]: Exception starting background sync")
                 } finally {

@@ -24,6 +24,7 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -98,7 +99,9 @@ class GOGManager @Inject constructor(
 
     suspend fun insertGame(game: GOGGame) {
         withContext(Dispatchers.IO) {
-            gogGameDao.insert(game)
+            // Preserve install state and the hidden flag when the row already exists, so a
+            // single-game refresh cannot reset them.
+            gogGameDao.upsertPreservingInstallStatus(listOf(game))
         }
     }
 
@@ -146,10 +149,48 @@ class GOGManager @Inject constructor(
                 Timber.e(error, "Background sync failed: ${error?.message}")
                 return@withContext Result.failure(error ?: Exception("Background sync failed"))
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Failed to sync GOG library in background")
             Result.failure(e)
         }
+    }
+
+    /**
+     * Fetches hidden-product IDs once per sync and stores them on the matching `gog_games` rows.
+     *
+     * Failures leave the existing hidden flags untouched and are logged; this never throws and
+     * never fails the caller. Staleness is corrected on the next sync.
+     *
+     * @return the fetched hidden product IDs, or null when the fetch failed or the user is not
+     * authenticated (callers can use it to stamp newly inserted rows).
+     */
+    suspend fun refreshHiddenIds(): Set<String>? {
+        if (!GOGAuthManager.hasStoredCredentials(context)) return null
+        val hiddenIdsResult = GOGApiClient.getHiddenGameIds(context)
+        if (hiddenIdsResult.isFailure) {
+            Timber.tag("GOG").w(
+                hiddenIdsResult.exceptionOrNull(),
+                "Failed to fetch hidden GOG game IDs; keeping existing hidden flags",
+            )
+            return null
+        }
+        val hiddenIds = hiddenIdsResult.getOrNull() ?: emptySet()
+        return try {
+            gogGameDao.applyHiddenFlags(hiddenIds)
+            hiddenIds
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Failed to persist hidden GOG game IDs; keeping existing hidden flags")
+            null
+        }
+    }
+
+    /** Clears the hidden flag on every GOG row (used when the logged-out account's metadata is removed). */
+    suspend fun clearHiddenFlags() {
+        gogGameDao.clearHiddenFlags()
     }
 
     /**
@@ -179,6 +220,10 @@ class GOGManager @Inject constructor(
 
             val gameIds = gameIdList.getOrNull() ?: emptyList()
             Timber.tag("GOG").i("Successfully fetched ${gameIds.size} game IDs from GOG")
+
+            // Refresh hidden-game metadata even when the owned library itself is unchanged.
+            // A failure keeps the existing flags and must not fail the library refresh.
+            val hiddenIds = refreshHiddenIds()
 
             if (gameIds.isEmpty()) {
                 Timber.w("No games found in GOG library")
@@ -220,12 +265,16 @@ class GOGManager @Inject constructor(
                             Timber.tag("GOG").d("Got Game Details for ID: $id")
                             val parsedGame = parseGameObject(gameDetails)
                             if (parsedGame != null) {
+                                val isHidden = hiddenIds?.contains(id) == true
                                 // Only real (non-excluded) games are shown, so only fetch
                                 // their portrait cover to avoid wasting GamesDB requests.
                                 val game = if (parsedGame.exclude) {
-                                    parsedGame
+                                    parsedGame.copy(hidden = isHidden)
                                 } else {
-                                    parsedGame.copy(verticalCoverUrl = GOGApiClient.getVerticalCoverUrl(id))
+                                    parsedGame.copy(
+                                        hidden = isHidden,
+                                        verticalCoverUrl = GOGApiClient.getVerticalCoverUrl(id),
+                                    )
                                 }
                                 games.add(game)
                                 Timber.tag("GOG").d("Refreshed Game: ${game.title}")
@@ -235,6 +284,8 @@ class GOGManager @Inject constructor(
                     } else {
                         Timber.w("GOG game ID $id not found in library after refresh")
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to parse game details for ID: $id")
                 }
@@ -253,6 +304,8 @@ class GOGManager @Inject constructor(
             }
             Timber.tag("GOG").i("Successfully refreshed GOG library with $totalProcessed games")
             return@withContext Result.success(totalProcessed)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Failed to refresh GOG library")
             return@withContext Result.failure(e)
@@ -471,8 +524,12 @@ class GOGManager @Inject constructor(
                 Timber.tag("GOG").w("Skipping Invalid GOG App with id: $gameId")
                 return Result.success(null)
             }
+            // insertGame preserves install state, hidden, and cover; a hidden game that has not
+            // been synced yet fails open (visible) until the next sync.
             insertGame(game)
-            return Result.success(game)
+            return Result.success(gogGameDao.getById(gameId) ?: game)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Error fetching single game data for $gameId")
             Result.failure(e)
