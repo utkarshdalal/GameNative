@@ -1538,6 +1538,7 @@
     <string name="workshop_download_failed">Pobieranie nie powiodło się</string>
     <string name="option_open_store_page">Otwórz stronę sklepu</string>
     <string name="option_export_for_frontend">Eksportuj dla frontendu</string>
+    <string name="option_copy_launch_link">Kopiuj link uruchamiania</string>
     <string name="option_open_container">Otwórz kontener</string>
     <string name="option_edit_container">Edytuj kontener</string>
     <string name="option_reset_to_defaults">Zresetuj kontener</string>

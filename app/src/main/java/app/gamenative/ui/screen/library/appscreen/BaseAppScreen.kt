@@ -560,20 +560,19 @@ abstract class BaseAppScreen {
     }
 
     @Composable
-    protected open fun getCopyWebUriOption(
+    protected open fun getCopyLaunchLinkOption(
         context: Context,
         libraryItem: LibraryItem,
     ): AppMenuOption? {
         val gameId = getGameId(libraryItem)
-        val gameSource = getGameSource(libraryItem)
+        val gameSource = getGameSource(libraryItem).name
         val gameName = getGameName(context, libraryItem)
         val uri = "gamenative://run?appid=$gameId&gamesource=$gameSource"
-        val labelText = context.getString(R.string.app_name) + " $gameName URI"
+        val labelText = context.getString(R.string.app_name) + " $gameName"
         val clipboardManager = LocalClipboard.current
         val scope = rememberCoroutineScope()
-        LaunchedEffect(Unit) { }
         return AppMenuOption(
-            optionType = AppOptionMenuType.CopyURI,
+            optionType = AppOptionMenuType.CopyLaunchLink,
             onClick = {
                 scope.launch {
                     clipboardManager.setClipEntry(
@@ -1160,7 +1159,7 @@ abstract class BaseAppScreen {
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
-            getCopyWebUriOption(context, libraryItem)?.let { menuOptions.add(it) }
+            getCopyLaunchLinkOption(context, libraryItem)?.let { menuOptions.add(it) }
         }
 
         // Always available options
@@ -1339,11 +1338,6 @@ abstract class BaseAppScreen {
                 }
             },
         )
-
-        // Export for web URI
-        val copyWebUri = {
-            val content = getGameId(libraryItem).toString()
-        }
 
         var exportConfigRequested by remember(appId) {
             mutableStateOf(shouldExportConfig(appId))

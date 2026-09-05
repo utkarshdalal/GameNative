@@ -1713,7 +1713,7 @@
     <!-- App option menu labels -->
     <string name="option_open_store_page">Open store page</string>
     <string name="option_export_for_frontend">Export for frontend</string>
-    <string name="option_copy_web_uri">Copy web URI</string>
+    <string name="option_copy_launch_link">Copy launch link</string>
     <string name="option_open_container">Open container</string>
     <string name="option_edit_container">Edit container</string>
     <string name="option_reset_to_defaults">Reset container</string>

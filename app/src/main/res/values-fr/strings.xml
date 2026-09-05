@@ -1556,6 +1556,7 @@
     <string name="workshop_download_failed">Échec du téléchargement</string>
     <string name="option_open_store_page">Ouvrir la page de la boutique</string>
     <string name="option_export_for_frontend">Exporter pour le frontend</string>
+    <string name="option_copy_launch_link">Copier le lien de lancement</string>
     <string name="option_open_container">Ouvrir le conteneur</string>
     <string name="option_edit_container">Modifier le conteneur</string>
     <string name="option_reset_to_defaults">Réinitialiser le conteneur</string>

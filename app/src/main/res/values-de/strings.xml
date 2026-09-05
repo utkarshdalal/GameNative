@@ -1478,6 +1478,7 @@
     <string name="workshop_download_failed">Download fehlgeschlagen</string>
     <string name="option_open_store_page">Store-Seite öffnen</string>
     <string name="option_export_for_frontend">Für Frontend exportieren</string>
+    <string name="option_copy_launch_link">Startlink kopieren</string>
     <string name="option_open_container">Container öffnen</string>
     <string name="option_edit_container">Container bearbeiten</string>
     <string name="option_reset_to_defaults">Container zurücksetzen</string>

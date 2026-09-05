@@ -1534,6 +1534,7 @@
     <string name="workshop_download_failed">Помилка завантаження</string>
     <string name="option_open_store_page">Відкрити сторінку магазину</string>
     <string name="option_export_for_frontend">Експортувати для frontend</string>
+    <string name="option_copy_launch_link">Копіювати посилання запуску</string>
     <string name="option_open_container">Відкрити контейнер</string>
     <string name="option_edit_container">Редагувати контейнер</string>
     <string name="option_reset_to_defaults">Скинути контейнер</string>

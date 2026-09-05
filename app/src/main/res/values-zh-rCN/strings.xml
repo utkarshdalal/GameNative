@@ -1537,6 +1537,7 @@
     <string name="option_import_saves">导入存档</string>
     <string name="option_export_saves">导出存档</string>
     <string name="option_export_for_frontend">导出至前端</string>
+    <string name="option_copy_launch_link">复制启动链接</string>
     <string name="option_open_container">打开容器</string>
     <string name="option_edit_container">编辑容器</string>
     <string name="option_reset_to_defaults">重置容器</string>
