@@ -112,6 +112,24 @@ class EpicOverlayManager @Inject constructor(
                 "Registry updated: HKCU\\$EOS_OVERLAY_REG_KEY\\$EOS_OVERLAY_REG_VALUE = $OVERLAY_WIN_PATH",
             )
         }
+
+        /**
+         * Synchronously remove all overlay files from [container] and clear the registry path.
+         */
+        fun removeOverlaySync(container: Container) {
+            val dir = overlayDir(container)
+            if (dir.exists()) {
+                dir.deleteRecursively()
+                Timber.tag("EOSOverlay").i("Removed overlay directory: ${dir.absolutePath}")
+            }
+            val userRegFile = File(container.rootDir, ".wine/user.reg")
+            if (userRegFile.exists()) {
+                WineRegistryEditor(userRegFile).use { editor ->
+                    editor.setStringValue(EOS_OVERLAY_REG_KEY, EOS_OVERLAY_REG_VALUE, "")
+                }
+                Timber.tag("EOSOverlay").d("Removed HKCU\\$EOS_OVERLAY_REG_KEY\\$EOS_OVERLAY_REG_VALUE")
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

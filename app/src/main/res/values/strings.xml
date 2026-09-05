@@ -235,6 +235,8 @@
     <string name="faster_external_loading_subtitle">Can significantly speed up game boot from external storage, but may cause issues in some games</string>
     <string name="disable_libredirect_title">Disable libredirect</string>
     <string name="disable_libredirect_subtitle">May improve performance but may also cause unexpected issues</string>
+    <string name="disable_epic_overlay_title">Disable Epic Overlay</string>
+    <string name="disable_epic_overlay_subtitle">Disables the EOS overlay and CEF renderer to prevent memory exhaustion crashes in certain games</string>
     <string name="bring_to_front">Bring to Front</string>
     <string name="end_process">End Process</string>
     <string name="new_file">New File</string>

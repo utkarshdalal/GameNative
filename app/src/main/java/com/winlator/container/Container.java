@@ -22,6 +22,8 @@ import java.io.File;
 import java.util.Iterator;
 import java.util.Locale;
 
+import app.gamenative.BuildConfig;
+
 public class Container {
     public enum XrControllerMapping {
         BUTTON_A, BUTTON_B, BUTTON_X, BUTTON_Y, BUTTON_GRIP, BUTTON_TRIGGER,
@@ -94,7 +96,7 @@ public class Container {
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
-    private boolean launchImmersiveMode = app.gamenative.BuildConfig.XR_BUILD;
+    private boolean launchImmersiveMode = BuildConfig.XR_BUILD;
     private boolean launchRealSteam;
     private boolean launchBionicSteam;
     private boolean allowSteamUpdates;
@@ -129,6 +131,7 @@ public class Container {
     private boolean sdlControllerAPI;
     private boolean fasterExternalLoading;
     private boolean disableLibredirect;
+    private boolean disableEpicOverlay;
 
     // Preferred game language for Goldberg force_language.txt
     private String language = "english";
@@ -139,7 +142,7 @@ public class Container {
     // Disable external mouse input
     private boolean disableMouseInput = false;
     // Touchscreen mode (defaults on for XR builds)
-    private boolean touchscreenMode = app.gamenative.BuildConfig.XR_BUILD;
+    private boolean touchscreenMode = BuildConfig.XR_BUILD;
     // Shooter mode
     private boolean shooterMode = true;
     // Serialised JSON gesture configuration (used when touchscreenMode is true)
@@ -417,6 +420,14 @@ public class Container {
 
     public void setDisableLibredirect(boolean disableLibredirect) {
         this.disableLibredirect = disableLibredirect;
+    }
+
+    public boolean isDisableEpicOverlay() {
+        return disableEpicOverlay;
+    }
+
+    public void setDisableEpicOverlay(boolean disableEpicOverlay) {
+        this.disableEpicOverlay = disableEpicOverlay;
     }
 
     public String getLanguage() {
@@ -762,6 +773,7 @@ public class Container {
             data.put("sdlControllerAPI", sdlControllerAPI);
             data.put("fasterExternalLoading", fasterExternalLoading);
             data.put("disableLibredirect", disableLibredirect);
+            data.put("disableEpicOverlay", disableEpicOverlay);
             // Disable mouse input flag
             data.put("disableMouseInput", disableMouseInput);
             // Touchscreen mode flag
@@ -987,6 +999,9 @@ public class Container {
                     break;
                 case "disableLibredirect" :
                     setDisableLibredirect(data.getBoolean(key));
+                    break;
+                case "disableEpicOverlay" :
+                    setDisableEpicOverlay(data.getBoolean(key));
                     break;
                 case "disableMouseInput" :
                     setDisableMouseInput(data.getBoolean(key));
