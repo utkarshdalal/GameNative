@@ -159,8 +159,18 @@ public class ControllerManager {
     public void saveAssignments() {
         SharedPreferences.Editor editor = preferences.edit();
         for (int i = 0; i < MAX_SLOTS; i++) {
-            // Save the assigned device identifier
+            // Save the assigned device identifier, with any session-only virtual-slot displacement undone so
+            // a pad moved off Player 1 for a Steam Controller never has that move written to preferences.
             String deviceIdentifier = slotAssignments.get(i);
+            boolean enabled = enabledSlots[i];
+            if (displacedIdentifier != null) {
+                if (i == displacedToSlot) {
+                    deviceIdentifier = null;
+                    enabled = displacedToSlotWasEnabled;
+                } else if (i == 0) {
+                    deviceIdentifier = displacedIdentifier;
+                }
+            }
             String prefKey = PREF_PLAYER_SLOT_PREFIX + i;
             if (deviceIdentifier != null) {
                 editor.putString(prefKey, deviceIdentifier);
@@ -170,7 +180,7 @@ public class ControllerManager {
 
             // Save the enabled state
             String enabledKey = PREF_ENABLED_SLOTS_PREFIX + i;
-            editor.putBoolean(enabledKey, enabledSlots[i]);
+            editor.putBoolean(enabledKey, enabled);
         }
         editor.apply();
     }
@@ -584,6 +594,7 @@ public class ControllerManager {
     // the reservation is released. Session-only, like the reservation itself.
     private String displacedIdentifier = null;
     private int displacedToSlot = -1;
+    private boolean displacedToSlotWasEnabled = false;
 
     /**
      * Reserves <b>Player 1</b> for a virtual controller, moving any physical pad sitting there to the next
@@ -618,6 +629,7 @@ public class ControllerManager {
             }
             slotAssignments.remove(0);
             slotAssignments.put(target, occupant);
+            displacedToSlotWasEnabled = enabledSlots[target];
             enabledSlots[target] = true;
             displacedIdentifier = occupant;
             displacedToSlot = target;
@@ -639,6 +651,7 @@ public class ControllerManager {
                 slotAssignments.remove(displacedToSlot);
             }
             slotAssignments.put(slot, displacedIdentifier);
+            enabledSlots[displacedToSlot] = displacedToSlotWasEnabled;
             Log.i(TAG, "Restored " + displacedIdentifier + " to Player " + (slot + 1));
             displacedIdentifier = null;
             displacedToSlot = -1;
