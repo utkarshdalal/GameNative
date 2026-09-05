@@ -1490,6 +1490,9 @@ https://gamenative.app
     <string name="review_overwhelmingly_negative">Крайне отрицательные</string>
     <string name="settings_interface_show_recommendations_title">Показывать рекомендации игр</string>
     <string name="settings_interface_show_recommendations_subtitle">Показывает персональные рекомендации. Оставив это включённым, вы помогаете поддержать GameNative.</string>
+    <string name="settings_interface_library_tabs_title">Вкладки библиотеки</string>
+    <string name="settings_interface_library_tabs_subtitle">Выберите, какие вкладки магазинов отображать в библиотеке.</string>
+    <string name="settings_interface_library_tabs_none">Нет вкладок магазинов</string>
      <string name="steam_save_export_success">Сохранения экспортированы</string>
      <string name="steam_save_export_no_saves_found">Сохранения не найдены</string>
      <string name="steam_save_export_failed">Не удалось экспортировать сохранения: %s</string>

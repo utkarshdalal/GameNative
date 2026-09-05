@@ -1560,6 +1560,9 @@
     <string name="review_overwhelmingly_negative">Abrumadoramente negativo</string>
     <string name="settings_interface_show_recommendations_title">Mostrar recomendaciones de juegos</string>
     <string name="settings_interface_show_recommendations_subtitle">Muestra recomendaciones personalizadas. Mantener esto activado ayuda a apoyar a GameNative.</string>
+    <string name="settings_interface_library_tabs_title">Pestañas de la biblioteca</string>
+    <string name="settings_interface_library_tabs_subtitle">Elige qué pestañas de tiendas aparecen en la biblioteca.</string>
+    <string name="settings_interface_library_tabs_none">Sin pestañas de tiendas</string>
      <string name="steam_save_export_success">Partidas guardadas exportadas</string>
      <string name="steam_save_export_no_saves_found">No se encontraron partidas guardadas</string>
      <string name="steam_save_export_failed">Error al exportar partidas: %s</string>

@@ -1168,6 +1168,7 @@ private fun LibraryScreenContent(
                     // Tab bar when not searching
                     LibraryTabBar(
                         currentTab = state.currentTab,
+                        tabs = state.visibleLibraryTabs,
                         tabCounts = mapOf(
                             LibraryTab.ALL to state.allCount,
                             LibraryTab.FAVORITES to state.favoritesCount,
@@ -1371,6 +1372,7 @@ private fun LibraryScreenContent(
                     )
                 },
             )
+
         }
 
         // Pre-import dialog (modern add path)

@@ -1432,6 +1432,9 @@
     <string name="review_overwhelmingly_negative">Extremamente negativo</string>
     <string name="settings_interface_show_recommendations_title">Mostrar recomendações de jogos</string>
     <string name="settings_interface_show_recommendations_subtitle">Mostra recomendações personalizadas. Manter isso ativado ajuda a apoiar o GameNative.</string>
+    <string name="settings_interface_library_tabs_title">Abas da biblioteca</string>
+    <string name="settings_interface_library_tabs_subtitle">Escolha quais abas de lojas aparecem na biblioteca.</string>
+    <string name="settings_interface_library_tabs_none">Nenhuma aba de loja</string>
      <string name="steam_save_export_success">Saves exportados</string>
      <string name="steam_save_export_no_saves_found">Nenhum save encontrado</string>
      <string name="steam_save_export_failed">Falha ao exportar saves: %s</string>

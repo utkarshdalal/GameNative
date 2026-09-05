@@ -1536,6 +1536,9 @@
     <string name="review_overwhelmingly_negative">압도적으로 부정적</string>
     <string name="settings_interface_show_recommendations_title">게임 추천 표시</string>
     <string name="settings_interface_show_recommendations_subtitle">맞춤 추천을 표시합니다. 켜 두면 GameNative를 지원하는 데 도움이 됩니다.</string>
+    <string name="settings_interface_library_tabs_title">라이브러리 탭</string>
+    <string name="settings_interface_library_tabs_subtitle">라이브러리에 표시할 스토어 탭을 선택하세요.</string>
+    <string name="settings_interface_library_tabs_none">스토어 탭 없음</string>
      <string name="steam_save_export_success">세이브 데이터 내보내기 완료</string>
      <string name="steam_save_export_no_saves_found">세이브 파일을 찾을 수 없음</string>
      <string name="steam_save_export_failed">세이브 데이터 내보내기 실패: %s</string>

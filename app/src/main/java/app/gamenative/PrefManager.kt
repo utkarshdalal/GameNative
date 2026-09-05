@@ -19,6 +19,7 @@ import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.HomeDestination
+import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.enums.PaneType
 import com.materialkolor.PaletteStyle
@@ -929,6 +930,20 @@ object PrefManager {
     var libraryCuratedListsCache: String
         get() = getPref(LIBRARY_CURATED_LISTS_CACHE, "")
         set(value) { setPref(LIBRARY_CURATED_LISTS_CACHE, value) }
+
+    private val LIBRARY_TAB_PREFERENCES = stringPreferencesKey("library_tab_preferences")
+    var libraryTabs: List<LibraryTab>
+        get() = LibraryTab.normalizeVisibleTabs(
+            getPref(LIBRARY_TAB_PREFERENCES, ""),
+            LibraryTab.entries.toList(),
+        )
+        set(value) {
+            val normalized = LibraryTab.normalizeVisibleTabs(
+                LibraryTab.serializeVisibleTabs(value),
+                LibraryTab.entries.toList(),
+            )
+            setPref(LIBRARY_TAB_PREFERENCES, LibraryTab.serializeVisibleTabs(normalized))
+        }
 
     /**
      * Get or Set the last known Persona State. See [EPersonaState]
