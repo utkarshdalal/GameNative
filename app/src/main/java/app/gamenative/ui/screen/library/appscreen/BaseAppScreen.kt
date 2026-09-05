@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.library.appscreen
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -20,6 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -567,6 +570,30 @@ abstract class BaseAppScreen {
             onClick = {
                 val suggested = "${gameName}$extension"
                 exportFrontendLauncher.launch(suggested)
+            },
+        )
+    }
+
+    @Composable
+    protected open fun getCopyLaunchLinkOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        val gameId = getGameId(libraryItem)
+        val gameSource = getGameSource(libraryItem).name
+        val gameName = getGameName(context, libraryItem)
+        val uri = "gamenative://run?appid=$gameId&gamesource=$gameSource"
+        val labelText = context.getString(R.string.app_name) + " $gameName"
+        val clipboardManager = LocalClipboard.current
+        val scope = rememberCoroutineScope()
+        return AppMenuOption(
+            optionType = AppOptionMenuType.CopyLaunchLink,
+            onClick = {
+                scope.launch {
+                    clipboardManager.setClipEntry(
+                        ClipEntry(ClipData.newPlainText(labelText, uri))
+                    )
+                }
             },
         )
     }
@@ -1158,6 +1185,7 @@ abstract class BaseAppScreen {
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
+            getCopyLaunchLinkOption(context, libraryItem)?.let { menuOptions.add(it) }
         }
 
         // Always available options

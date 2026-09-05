@@ -1408,6 +1408,7 @@
     <string name="workshop_download_failed">Download mislykkedes</string>
     <string name="option_open_store_page">Åbn butikssiden</string>
     <string name="option_export_for_frontend">Eksportér til frontend</string>
+    <string name="option_copy_launch_link">Kopiér startlink</string>
     <string name="option_open_container">Åbn container</string>
     <string name="option_edit_container">Redigér container</string>
     <string name="option_reset_to_defaults">Nulstil container</string>

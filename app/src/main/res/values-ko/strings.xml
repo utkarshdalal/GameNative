@@ -1664,6 +1664,7 @@
     <string name="main_downloading_entry">%s 다운로드 중</string>
     <string name="option_open_store_page">상점 페이지 열기</string>
     <string name="option_export_for_frontend">프론트엔드용으로 내보내기</string>
+    <string name="option_copy_launch_link">실행 링크 복사</string>
     <string name="option_open_container">컨테이너 열기</string>
     <string name="option_edit_container">컨테이너 편집</string>
     <string name="option_reset_to_defaults">컨테이너 초기화</string>

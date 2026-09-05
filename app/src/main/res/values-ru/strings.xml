@@ -1466,6 +1466,7 @@ https://gamenative.app
     <string name="workshop_download_failed">Ошибка загрузки</string>
     <string name="option_open_store_page">Открыть страницу в магазине</string>
     <string name="option_export_for_frontend">Экспортировать для фронтенда</string>
+    <string name="option_copy_launch_link">Копировать ссылку запуска</string>
     <string name="option_open_container">Открыть контейнер</string>
     <string name="option_edit_container">Редактировать контейнер</string>
     <string name="option_reset_to_defaults">Сбросить контейнер</string>

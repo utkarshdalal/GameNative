@@ -1540,6 +1540,7 @@
     <string name="workshop_download_failed">Descărcarea a eșuat</string>
     <string name="option_open_store_page">Deschide pagina din magazin</string>
     <string name="option_export_for_frontend">Exportă pentru frontend</string>
+    <string name="option_copy_launch_link">Copiază linkul de lansare</string>
     <string name="option_open_container">Deschide containerul</string>
     <string name="option_edit_container">Editează containerul</string>
     <string name="option_reset_to_defaults">Resetează containerul</string>

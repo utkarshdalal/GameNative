@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Search
@@ -327,6 +328,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.StorePage -> Icons.AutoMirrored.Filled.OpenInNew
         AppOptionMenuType.CreateShortcut -> Icons.AutoMirrored.Filled.AddToHomeScreen
         AppOptionMenuType.ExportFrontend -> Icons.Default.Share
+        AppOptionMenuType.CopyLaunchLink -> Icons.Default.Link
         AppOptionMenuType.RunContainer -> Icons.Default.PlayArrow
         AppOptionMenuType.EditContainer -> Icons.Default.Settings
         AppOptionMenuType.ResetToDefaults -> Icons.Default.RestartAlt
@@ -377,6 +379,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.AiDebugRun,
             AppOptionMenuType.CreateShortcut,
             AppOptionMenuType.ExportFrontend,
+            AppOptionMenuType.CopyLaunchLink,
             AppOptionMenuType.AddToFavorites,
             AppOptionMenuType.RemoveFromFavorites,
             -> quickActions.add(option)
