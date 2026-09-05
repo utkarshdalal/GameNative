@@ -31,6 +31,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.OwnedGames
 import app.gamenative.data.PostSyncInfo
+import app.gamenative.data.SteamLicenseForPics
 import app.gamenative.data.SteamApp
 import app.gamenative.data.SteamControllerConfigDetail
 import app.gamenative.data.SteamFriend
@@ -4342,7 +4343,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 // Chunk the input to reduce memory pressures for very large items.
                 licenses = callback.licenseList
                 cachedLicenseDao.deleteAll()
-                callback.licenseList.chunked(500).forEach { chunk ->
+                callback.licenseList.chunked(MAX_PICS_BUFFER).forEach { chunk ->
                     cachedLicenseDao.insertAll(
                         chunk.map { license ->
                             CachedLicense(licenseJson = LicenseSerializer.serializeLicense(license))
@@ -4381,22 +4382,26 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 if (licensesToAdd.isNotEmpty()) {
                     Timber.i("Adding ${licensesToAdd.size} licenses")
-                    licensesToAdd.chunked(500).forEach { chunk ->
+                    licensesToAdd.chunked(MAX_PICS_BUFFER).forEach { chunk ->
                         licenseDao.insertAll(chunk)
                     }
                 }
 
+                Timber.i("Finished adding ${licensesToAdd.size} licenses")
+
                 val licensesToRemove = licenseDao.findStaleLicences(
                     packageIds = callback.licenseList.map { it.packageID },
                 )
+
                 if (licensesToRemove.isNotEmpty()) {
                     Timber.i("Removing ${licensesToRemove.size} (stale) licenses")
                     val packageIds = licensesToRemove.map { it.packageId }
                     licenseDao.deleteStaleLicenses(packageIds)
                 }
 
+                Timber.i("Getting licenses from DB")
                 // Get PICS information with the current license database.
-                licenseDao.getAllLicenses()
+                licenseDao.getLicensesForPics()
                     .map { PICSRequest(it.packageId, it.accessToken) }
                     .chunked(MAX_PICS_BUFFER)
                     .forEach { chunk ->
