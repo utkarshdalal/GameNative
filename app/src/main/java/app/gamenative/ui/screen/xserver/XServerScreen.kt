@@ -5152,7 +5152,7 @@ private suspend fun setupWineSystemFiles(
     }
 
     // Always refresh components files
-    refreshComponentsFiles(context)
+    refreshComponentsFiles(context, container, imageFs, containerManager)
 
     // Normalize dxwrapper for state (dxvk includes version for extraction switch)
     if (xServerState.value.dxwrapper == "dxvk") {
@@ -5328,7 +5328,12 @@ private suspend fun applyGeneralPatches(
     WinlatorPrefManager.putString("current_box64_version", "")
 }
 
-private fun refreshComponentsFiles(context: Context) {
+private fun refreshComponentsFiles(
+    context: Context,
+    container: Container,
+    imageFs: ImageFs,
+    containerManager: ContainerManager
+) {
     val extractionPairs = listOf(
         "pulseaudio-gamenative-20260612.tzst" to File(context.filesDir, "pulseaudio")
     )
@@ -5338,6 +5343,14 @@ private fun refreshComponentsFiles(context: Context) {
         context.assets,
         TarCompressorUtils.Type.ZSTD
     )
+
+    // Extract DirectAudio driver files if the container uses DirectAudio
+    if (container.audioDriver == "directaudio") {
+        val containerDir = container.rootDir
+        if (!containerManager.extractDirectAudio(imageFs, containerDir)) {
+            Log.e("XServerScreen", "Failed to extract DirectAudio driver files")
+        }
+    }
 }
 
 /**
@@ -6163,6 +6176,8 @@ private fun changeWineAudioDriver(audioDriver: String, container: Container, ima
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "alsa")
             } else if (audioDriver == "pulseaudio") {
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse")
+            } else if (audioDriver == "directaudio") {
+                registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "directaudio")
             } else if (audioDriver == "disabled") {
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "")
             }

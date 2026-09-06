@@ -342,6 +342,47 @@ for more details.
 
 Full license text: https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
 
+## DirectAudio
+
+**Library:** DirectAudio v1 (winedirectaudio.drv)
+**Author:** The412Banner
+**Source:** https://github.com/The412Banner/directaudio
+**License:** LGPL-2.1-or-later (GNU Lesser General Public License v2.1 or later)
+
+DirectAudio is a native Wine → Android AAudio mmdevapi driver that provides
+direct audio output without requiring PulseAudio or ALSA middleware. The
+precompiled arm64ec binaries (winedirectaudio.drv and winedirectaudio.so) are
+included in `app/src/main/assets/directaudio-20260812.tzst` and are extracted
+at runtime into the Wine prefix when the user selects DirectAudio as their
+audio driver.
+
+The driver derives from and links Wine's LGPL mmdevapi internals and is
+modelled on winecoreaudio.drv, requiring it to remain under LGPL-2.1.
+
+Copyright © 2026 The412Banner. As required by LGPL-2.1, the complete source
+code is available at:
+  https://github.com/The412Banner/directaudio
+
+Users may rebuild the driver from source or substitute their own build by
+replacing the files in the wineprefix `lib/wine/aarch64-windows/` and
+`lib/wine/aarch64-unix/` directories.
+
+### License Text: LGPL-2.1
+
+This library is free software; you can redistribute it and/or modify it
+under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation; either version 2.1 of the License, or (at
+your option) any later version.
+
+This library is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
+for more details.
+
+Full license text: https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
+
+---
+
 ## Achievement Sound
 
 "Achievement sound from [Pixabay](https://pixabay.com), [Pixabay Content License](https://pixabay.com/service/license-summary/).
