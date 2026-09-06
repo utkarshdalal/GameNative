@@ -3895,7 +3895,7 @@ private fun setupXEnvironment(
     }
     if (container != null && container.isLaunchRealSteam && !debugRun) {
         val cur = envVars.get("WINEDEBUG") ?: "-all"
-        envVars.put("WINEDEBUG", (if (cur == "-all") "+err" else cur) + ",+loaddll")
+        envVars.put("WINEDEBUG", (if (cur == "-all") "+err" else cur) + ",+loaddll,warn+seh")
     }
     // capture debug output to file if either Wine or Box86/64 logging is enabled
     var logFile: File? = null
