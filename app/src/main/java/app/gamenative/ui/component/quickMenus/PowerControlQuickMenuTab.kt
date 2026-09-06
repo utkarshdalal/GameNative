@@ -112,18 +112,21 @@ fun PowerControlQuickMenuTab(
         },
         onProfileSelected = { profile ->
             coroutineScope.launch(Dispatchers.IO) {
-                Timber.d("Applying profile: $profile")
-
                 // Update PowerManager's current profile reference immediately
                 // Preserve current enableFanControl and enableGamePinning settings
-                val currentProfile = PowerManager.currentProfile
+                val currentProfile = PowerManager.currentProfile.copy()
+                Timber.d("Current profile: $currentProfile")
+
                 val updatedProfile = profile.copy(
+                    enablePowerControl = currentProfile.enablePowerControl,
                     adaptiveFpsCapEnabled = currentProfile.adaptiveFpsCapEnabled,
                     enableAutoTuning = false,
                     enablePerClusterTuning = false,
                     enableFanControl = currentProfile.enableFanControl,
                     enableGamePinning = currentProfile.enableGamePinning,
                 )
+
+                Timber.d("Applying profile: $updatedProfile")
                 PowerManager.setPowerProfile(updatedProfile)
 
                 val success = PowerManager.update {
