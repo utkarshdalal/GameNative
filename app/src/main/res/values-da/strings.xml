@@ -279,6 +279,10 @@
     <string name="performance_hud_clock_time">Klokkeslæt</string>
     <string name="performance_hud_cpu_temperature">CPU-temperatur</string>
     <string name="performance_hud_gpu_temperature">GPU-temperatur</string>
+    <string name="performance_hud_battery_level_warning">Batteriniveau-advarsel</string>
+    <string name="performance_hud_battery_level_limit">Batteriniveau-grænse</string>
+    <string name="performance_hud_battery_temp_warning">Batteritemperatur-advarsel</string>
+    <string name="performance_hud_battery_temp_limit">Batteritemperatur-grænse</string>
     <string name="touchpad_help">Touchpad-hjælp</string>
     <string name="hide_controls_with_controller">Skjul on-screen-kontroller med controller</string>
     <string name="hide_controls_with_controller_description">Skjul automatisk on-screen-kontroller når en fysisk controller er tilsluttet</string>
@@ -1214,6 +1218,7 @@
     <string name="app_filter_application">Applikation</string>
     <string name="app_filter_tool">Værktøj</string>
     <string name="app_filter_demo">Demo</string>
+    <string name="app_filter_playtest">Beta/Playtest</string>
     <string name="app_filter_family">Familie</string>
 
     <!-- TODO: Manual review - Game Feedback Dialog -->

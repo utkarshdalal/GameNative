@@ -410,6 +410,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.projected)
     implementation(libs.material)
 
     // Chrome Custom Tabs for GOG OAuth

@@ -356,6 +356,10 @@
     <string name="performance_hud_clock_time">시계</string>
     <string name="performance_hud_cpu_temperature">CPU 온도</string>
     <string name="performance_hud_gpu_temperature">GPU 온도</string>
+    <string name="performance_hud_battery_level_warning">배터리 잔량 경고</string>
+    <string name="performance_hud_battery_level_limit">배터리 잔량 제한</string>
+    <string name="performance_hud_battery_temp_warning">배터리 온도 경고</string>
+    <string name="performance_hud_battery_temp_limit">배터리 온도 제한</string>
     <string name="touchpad_help">터치패드 도움말</string>
     <string name="hide_controls_with_controller">컨트롤러 연결 시 화면 컨트롤 숨기기</string>
     <string name="hide_controls_with_controller_description">물리 컨트롤러가 연결되면 화면 컨트롤을 자동으로 숨깁니다</string>
@@ -618,6 +622,7 @@
     <string name="app_filter_application">애플리케이션</string>
     <string name="app_filter_tool">도구</string>
     <string name="app_filter_demo">데모</string>
+    <string name="app_filter_playtest">베타/플레이테스트</string>
     <string name="app_filter_family">가족</string>
 
     <!-- Login & Connection -->

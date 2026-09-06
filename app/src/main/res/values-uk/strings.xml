@@ -345,6 +345,10 @@
     <string name="performance_hud_clock_time">Час</string>
     <string name="performance_hud_cpu_temperature">Температура CPU</string>
     <string name="performance_hud_gpu_temperature">Температура GPU</string>
+    <string name="performance_hud_battery_level_warning">Попер. рівень батареї</string>
+    <string name="performance_hud_battery_level_limit">Ліміт рівня батареї</string>
+    <string name="performance_hud_battery_temp_warning">Попер. темп. батареї</string>
+    <string name="performance_hud_battery_temp_limit">Ліміт темп. батареї</string>
     <string name="touchpad_help">Довідка сенсорної панелі</string>
     <string name="hide_controls_with_controller">Приховувати екранні елементи з контролером</string>
     <string name="hide_controls_with_controller_description">Автоматично приховувати екранні елементи керування, коли під\'єднано фізичний контролер</string>
@@ -607,6 +611,7 @@
     <string name="app_filter_application">Програми</string>
     <string name="app_filter_tool">Інструменти</string>
     <string name="app_filter_demo">Демо</string>
+    <string name="app_filter_playtest">Бета/Плейтест</string>
     <string name="app_filter_family">Сімейна бібліотека</string>
 
     <!-- Login & Connection -->

@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import app.gamenative.data.SteamApp
+import app.gamenative.enums.AppType
 import app.gamenative.service.SteamService.Companion.INVALID_PKG_ID
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +33,10 @@ private const val OWNED_APPS_WHERE =
     "WHERE app.id != 480 " + // Actively filter out Spacewar
     "AND app.package_id != :invalidPkgId " +
     "AND app.type != 0 " +
+    // Exclude Steam Playtests (AppType.beta = 65536) whose store listing has been pulled
+    // (ReleaseState.disabled = 0) — the account keeps the license after a playtest ends,
+    // but the app is no longer runnable, so it shouldn't clutter the library.
+    "AND NOT (app.type = 65536 AND app.release_state = 0) " +
     "AND (" +
     "  :includeExpired = 1 " +
     "  OR EXISTS (" +
@@ -141,6 +146,21 @@ interface SteamAppDao {
         ownerId: Int,
         invalidPkgId: Int = INVALID_PKG_ID,
     ): List<SteamApp>
+
+    // Beta-type apps (e.g. Steam Playtests) whose depots came back empty because the PICS
+    // request that populated them wasn't sent with an app access token. Used to retry those
+    // apps once a token is available, so they stop showing an install button that never works.
+    @Query("SELECT id FROM steam_app WHERE type = :betaTypeCode AND depots = '{}'")
+    suspend fun getBetaAppIdsWithEmptyDepots(
+        betaTypeCode: Int = AppType.beta.code,
+    ): List<Int>
+
+    // PICS skips re-storing an app's response when its changeNumber matches what's already
+    // stored locally, so a plain retry of the same appId would fetch fresh (token-gated)
+    // data and then throw it away. Zeroing the local changeNumber first forces that diff
+    // check to see the retry as new content.
+    @Query("UPDATE steam_app SET last_change_number = 0 WHERE id IN (:appIds)")
+    suspend fun resetChangeNumberForApps(appIds: List<Int>)
 
     @Query("SELECT * FROM steam_app WHERE id = :appId")
     suspend fun findApp(appId: Int): SteamApp?

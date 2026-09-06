@@ -341,6 +341,10 @@
     <string name="performance_hud_clock_time">时间</string>
     <string name="performance_hud_cpu_temperature">CPU 温度</string>
     <string name="performance_hud_gpu_temperature">GPU 温度</string>
+    <string name="performance_hud_battery_level_warning">电量警告</string>
+    <string name="performance_hud_battery_level_limit">电量限制</string>
+    <string name="performance_hud_battery_temp_warning">电池温度警告</string>
+    <string name="performance_hud_battery_temp_limit">电池温度限制</string>
     <string name="touchpad_help">触摸板支持</string>
     <string name="hide_controls_with_controller">使用控制器时隐藏屏幕控制器</string>
     <string name="hide_controls_with_controller_description">当实体控制器连接时自动隐藏屏幕控制器</string>
@@ -601,6 +605,7 @@
     <string name="app_filter_application">应用程序</string>
     <string name="app_filter_tool">工具</string>
     <string name="app_filter_demo">试玩版</string>
+    <string name="app_filter_playtest">测试版/试玩</string>
     <string name="app_filter_family">家庭共享</string>
 
     <!-- 登录与连接 -->
