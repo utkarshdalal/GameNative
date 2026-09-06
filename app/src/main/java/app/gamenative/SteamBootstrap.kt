@@ -145,6 +145,8 @@ object SteamBootstrap {
             put("HOME", cfg.home)
             put("Steam3Master", cfg.master)
             put("SteamClientService", cfg.clientService)
+            put("STEAMNETWORKINGSOCKETS_LOG_LEVEL", "7")
+            put("STEAMNETWORKINGSOCKETS_LOG_FILE", File(cfg.context.cacheDir, "sb_netsockets.log").absolutePath)
             for ((k, v) in cfg.extraEnv) put(k, v)
             cfg.account?.let { put("SB_ACCOUNT", it) }
             cfg.refreshToken?.let { put("SB_REFRESH_TOKEN", it) }
