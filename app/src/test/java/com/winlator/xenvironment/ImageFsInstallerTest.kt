@@ -1,11 +1,13 @@
 package com.winlator.xenvironment
 
 import androidx.test.core.app.ApplicationProvider
+import com.winlator.container.Container
 import com.winlator.core.FileUtils
 import java.io.File
 import java.lang.reflect.Method
 import java.nio.file.Files
 import io.mockk.every
+import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
 import io.mockk.verify
@@ -22,10 +24,18 @@ class ImageFsInstallerTest {
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
     private val filesDir = context.filesDir
     private val sharedDir = File(filesDir, "imagefs_shared")
+    private val imageFsLink = File(filesDir, "imagefs")
+    private val glibcDir = File(filesDir, "glibc")
+    private val bionicDir = File(filesDir, "bionic")
 
     @After
     fun tearDown() {
         sharedDir.deleteRecursively()
+        if (Files.isSymbolicLink(imageFsLink.toPath()) || imageFsLink.exists()) {
+            imageFsLink.delete()
+        }
+        glibcDir.deleteRecursively()
+        bionicDir.deleteRecursively()
     }
 
     @Test
@@ -200,6 +210,22 @@ class ImageFsInstallerTest {
         }
 
         optDir.deleteRecursively()
+    }
+
+    @Test
+    fun ensureImageFsSymlinks_returnsFalseWhenLegacyMigrationFails() {
+        val legacyRoot = File(filesDir, "legacy-migration-fail-${System.nanoTime()}").apply { mkdirs() }
+        val container = mockk<Container>(relaxed = true)
+
+        mockkStatic(ImageFSLegacyMigrator::class)
+        try {
+            every { ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(any(), any()) } returns false
+
+            assertFalse(ImageFsInstaller.ensureImageFsSymlinks(context, legacyRoot, container))
+        } finally {
+            unmockkStatic(ImageFSLegacyMigrator::class)
+            legacyRoot.deleteRecursively()
+        }
     }
 
     private fun invokeEnsureSharedHomeRoot(context: android.content.Context, rootDir: File) {

@@ -1931,14 +1931,14 @@ fun preLaunchApp(
         // Migrate legacy on-disk imagefs layout (e.g. legacy Proton → shared paths) before manifest
         // installs or launch deps — resolveMissingManifestInstallRequests can install Proton too.
         val legacyImageFsRoot = File(context.filesDir, "imagefs")
-        val migrationOk = ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(
+        val symlinksOk = ImageFsInstaller.ensureImageFsSymlinks(
             context,
             legacyImageFsRoot,
-            container.wineVersion,
+            container,
         )
-        if (!migrationOk) {
+        if (!symlinksOk) {
             Timber.tag("preLaunchApp").e(
-                "Legacy ImageFS migration failed: ${legacyImageFsRoot.absolutePath}",
+                "ImageFS symlinks failed: ${legacyImageFsRoot.absolutePath}",
             )
             setLoadingDialogVisible(false)
             setMessageDialogState(
