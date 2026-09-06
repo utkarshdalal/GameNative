@@ -386,10 +386,19 @@ private fun windowMatchesExecutable(window: Window, targetExecutable: String): B
     }
 }
 
-private fun buildEssentialProcessAllowlist(): Set<String> {
+private val REAL_STEAM_PROCESSES = setOf(
+    "steam",
+    "steamerrorreporter",
+    "steamerrorreporter64",
+    "gameoverlayui",
+)
+
+private var realSteamGameExecutable = ""
+
+private fun buildEssentialProcessAllowlist(realSteam: Boolean): Set<String> {
     val essentialServices = WineUtils.getEssentialServiceNames()
         .map { normalizeProcessName(it) }
-    return (essentialServices + CORE_WINE_PROCESSES).toSet()
+    return (essentialServices + CORE_WINE_PROCESSES + (if (realSteam) REAL_STEAM_PROCESSES else emptySet())).toSet()
 }
 
 @Composable
@@ -939,11 +948,13 @@ fun XServerScreen(
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
         if (exitWatchJob?.isActive == true) return
-        val targetExecutable = extractExecutableBasename(container.executablePath)
+        val targetExecutable = extractExecutableBasename(
+            if (container.isLaunchRealSteam && realSteamGameExecutable.isNotEmpty()) realSteamGameExecutable else container.executablePath,
+        )
         if (!windowMatchesExecutable(window, targetExecutable)) return
 
         exitWatchJob = CoroutineScope(Dispatchers.IO).launch {
-            val allowlist = buildEssentialProcessAllowlist()
+            val allowlist = buildEssentialProcessAllowlist(container.isLaunchRealSteam)
             val previousListener = winHandler.getOnGetProcessInfoListener()
             val lock = Any()
             var pendingSnapshot: CompletableDeferred<List<ProcessInfo>?>? = null
@@ -3893,10 +3904,6 @@ private fun setupXEnvironment(
                 "-all",
         )
     }
-    if (container != null && container.isLaunchRealSteam && !debugRun) {
-        val cur = envVars.get("WINEDEBUG") ?: "-all"
-        envVars.put("WINEDEBUG", (if (cur == "-all") "+err" else cur) + ",+loaddll,warn+seh")
-    }
     // capture debug output to file if either Wine or Box86/64 logging is enabled
     var logFile: File? = null
     val captureLogs = debugRun || enableWineDebug || enableBox86Logs
@@ -4676,6 +4683,7 @@ private fun getWineStartCommand(
             val exeSubDir = relDir.replace('/', '\\')
             val gameDir = "$steamRoot\\steamapps\\common\\$gameFolderName" + (if (exeSubDir.isNotEmpty()) "\\$exeSubDir" else "")
             guestProgramLauncherComponent.workingDir = File(appDirPath + (if (relDir.isNotEmpty()) "/$relDir" else ""))
+            realSteamGameExecutable = normalizedExe
             envVars.put("STEAMHOST_ACCOUNT", PrefManager.username)
             envVars.put("STEAMHOST_TOKEN", PrefManager.refreshToken)
             envVars.put("STEAMHOST_STEAMID64", PrefManager.steamUserSteamId64.toString())
