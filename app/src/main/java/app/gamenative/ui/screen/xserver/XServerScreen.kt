@@ -4657,14 +4657,21 @@ private fun getWineStartCommand(
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe\""
         } else if (container.isLaunchRealSteam) {
             val appDirPath = SteamService.getAppDirPath(gameId)
-            val exePath = container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
+            // Mirror Steam's LaunchApp: the app's launch config supplies executable,
+            // arguments and working dir; a user-chosen exe in the container wins,
+            // and keeps the config's arguments only when it is the same executable.
+            val launchExe = appLaunchInfo?.executable?.trim('/').orEmpty()
+            val exePath = container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
+            val launchArgs = if (appLaunchInfo != null && exePath.replace('\\', '/').trim('/').equals(launchExe, ignoreCase = true)) appLaunchInfo.arguments.trim() else ""
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
             val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
             val steamRoot = "C:\\Program Files (x86)\\Steam"
-            val gameCmd = "\"$steamRoot\\steamapps\\common\\$gameFolderName\\$normalizedExe\""
-            val exeSubDir = exePath.substringBeforeLast("/", "").replace('/', '\\')
+            val gameCmd = "\"$steamRoot\\steamapps\\common\\$gameFolderName\\$normalizedExe\"" + (if (launchArgs.isNotEmpty()) " $launchArgs" else "")
+            val launchWorkDir = appLaunchInfo?.workingDir?.trim('/').orEmpty()
+            val relDir = if (launchWorkDir.isNotEmpty()) launchWorkDir else exePath.replace('\\', '/').substringBeforeLast("/", "")
+            val exeSubDir = relDir.replace('/', '\\')
             val gameDir = "$steamRoot\\steamapps\\common\\$gameFolderName" + (if (exeSubDir.isNotEmpty()) "\\$exeSubDir" else "")
-            guestProgramLauncherComponent.workingDir = File(appDirPath + "/" + exePath.substringBeforeLast("/", ""))
+            guestProgramLauncherComponent.workingDir = File(appDirPath + (if (relDir.isNotEmpty()) "/$relDir" else ""))
             envVars.put("STEAMHOST_ACCOUNT", PrefManager.username)
             envVars.put("STEAMHOST_TOKEN", PrefManager.refreshToken)
             envVars.put("STEAMHOST_STEAMID64", PrefManager.steamUserSteamId64.toString())
