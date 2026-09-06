@@ -1727,21 +1727,17 @@ class SteamService : Service(), IChallengeUrlChanged {
                 } else {
                     kv["Action Manifest"]
                 }
-                if (actionManifest === KeyValue.INVALID) return null
+                if (actionManifest === KeyValue.INVALID) {
+                    return findSiblingControllerConfig(manifestDirPath)
+                }
 
                 val configs = actionManifest["configurations"]
                 if (configs === KeyValue.INVALID || configs.children.isEmpty()) {
-                    throw IllegalStateException("No configurations found in Action Manifest")
+                    return findSiblingControllerConfig(manifestDirPath)
+                        ?: throw IllegalStateException("No configurations found in Action Manifest")
                 }
 
-                val preferredControllers = listOf(
-                    "controller_xboxone",
-                    "controller_steamcontroller_gordon",
-                    "controller_generic",
-                    "controller_xbox360",
-                )
-
-                for (controllerType in preferredControllers) {
+                for (controllerType in PREFERRED_CONTROLLER_TYPES) {
                     val controllerBlock = configs[controllerType]
                     if (controllerBlock === KeyValue.INVALID) continue
 
@@ -1756,11 +1752,28 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
-                throw IllegalStateException("No valid controller configuration found in Action Manifest")
+                findSiblingControllerConfig(manifestDirPath)
+                    ?: throw IllegalStateException("No valid controller configuration found in Action Manifest")
             } catch (e: Exception) {
                 Timber.e(e, "Failed to parse Steam Input manifest config")
                 null
             }
+        }
+
+        private val PREFERRED_CONTROLLER_TYPES = listOf(
+            "controller_xboxone",
+            "controller_steamcontroller_gordon",
+            "controller_generic",
+            "controller_xbox360",
+        )
+
+        private fun findSiblingControllerConfig(manifestDirPath: String): String? {
+            for (controllerType in PREFERRED_CONTROLLER_TYPES) {
+                val configFile = FileUtils.findFileCaseInsensitive(File(manifestDirPath), "$controllerType.vdf")
+                    ?: continue
+                return configFile.readText(Charsets.UTF_8)
+            }
+            return null
         }
 
         private fun readBuiltInSteamInputTemplate(fileName: String): String? {
