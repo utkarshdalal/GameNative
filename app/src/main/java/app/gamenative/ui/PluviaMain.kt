@@ -150,6 +150,9 @@ private const val SNACKBAR_SHOW_TIMEOUT_MS = 15_000L
 /** Used to suspend preLaunchApp while the user decides on large workshop updates. */
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
 
+/** Valve Windows client tree (build 2026-01-29) + headless steam.exe for Real Steam mode; see extractSteamFiles. */
+const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20260906.tzst"
+
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,
     logTag: String = "PluviaMain",
@@ -2066,7 +2069,16 @@ fun preLaunchApp(
                     "experimental-drm-20260116.tzst",
                 ).await()
             }
-            if ((container.isLaunchRealSteam || container.isLaunchBionicSteam) && !SteamService.isFileInstallable(context, "steam.tzst")) {
+            if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, REAL_STEAM_CLIENT_ARCHIVE)) {
+                setLoadingMessage(context.getString(R.string.main_downloading_steam))
+                SteamService.downloadFile(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    context = context,
+                    REAL_STEAM_CLIENT_ARCHIVE,
+                ).await()
+            }
+            if (container.isLaunchBionicSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {
                 setLoadingMessage(context.getString(R.string.main_downloading_steam))
                 SteamService.downloadSteam(
                     onDownloadProgress = { setLoadingProgress(it / 1.0f) },
