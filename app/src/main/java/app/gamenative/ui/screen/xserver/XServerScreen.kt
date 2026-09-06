@@ -4656,9 +4656,23 @@ private fun getWineStartCommand(
             val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe\""
         } else if (container.isLaunchRealSteam) {
-            // Launch Steam with the applaunch parameter to start the game
-            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
-                    "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $gameId"
+            val appDirPath = SteamService.getAppDirPath(gameId)
+            val exePath = container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
+            val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
+            val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
+            val steamRoot = "C:\\Program Files (x86)\\Steam"
+            val gameCmd = "\"$steamRoot\\steamapps\\common\\$gameFolderName\\$normalizedExe\""
+            val exeSubDir = exePath.substringBeforeLast("/", "").replace('/', '\\')
+            val gameDir = "$steamRoot\\steamapps\\common\\$gameFolderName" + (if (exeSubDir.isNotEmpty()) "\\$exeSubDir" else "")
+            guestProgramLauncherComponent.workingDir = File(appDirPath + "/" + exePath.substringBeforeLast("/", ""))
+            envVars.put("STEAMHOST_ACCOUNT", PrefManager.username)
+            envVars.put("STEAMHOST_TOKEN", PrefManager.refreshToken)
+            envVars.put("STEAMHOST_STEAMID64", PrefManager.steamUserSteamId64.toString())
+            envVars.put("STEAMHOST_APPID", gameId.toString())
+            envVars.put("STEAMHOST_GAME_CMD", gameCmd)
+            envVars.put("STEAMHOST_GAME_DIR", gameDir)
+            Timber.i("Real-Steam via steamhost: game=$gameCmd dir=$gameDir")
+            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamhost.exe\""
         } else {
             var executablePath = ""
             if (container.executablePath.isNotEmpty()) {
@@ -6111,16 +6125,29 @@ private fun extractSteamFiles(
         val cached = File(imageFs.getFilesDir(), name)
         cached.exists() && FileUtils.contentEquals(steamExe, cached)
     }
-    if (steamExe.exists() && !installedIsBionic) return
+    if (!(steamExe.exists() && !installedIsBionic)) {
+        val downloaded = File(imageFs.getFilesDir(), "steam.tzst")
+        Timber.i("Extracting steam.tzst")
+        TarCompressorUtils.extract(
+            TarCompressorUtils.Type.ZSTD,
+            downloaded,
+            imageFs.getRootDir(),
+            onExtractFileListener,
+        )
+    }
 
-    val downloaded = File(imageFs.getFilesDir(), "steam.tzst")
-    Timber.i("Extracting steam.tzst")
-    TarCompressorUtils.extract(
-        TarCompressorUtils.Type.ZSTD,
-        downloaded,
-        imageFs.getRootDir(),
-        onExtractFileListener,
-    )
+    val steamhostArchive = File(imageFs.getFilesDir(), "steamhost-20260906.tzst")
+    if (steamhostArchive.exists()) {
+        Timber.i("Extracting steamhost-20260906.tzst (current Valve client DLLs + headless host)")
+        TarCompressorUtils.extract(
+            TarCompressorUtils.Type.ZSTD,
+            steamhostArchive,
+            imageFs.getRootDir(),
+            onExtractFileListener,
+        )
+    } else {
+        Timber.e("steamhost-20260906.tzst missing at ${steamhostArchive.absolutePath}")
+    }
 }
 
 private fun cleanupBionicSteamAssets(imageFs: ImageFs) {
