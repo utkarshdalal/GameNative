@@ -930,6 +930,8 @@
     <string name="settings_debug_wine_logs_subtitle">Wine-Debug-Ausgaben in Datei schreiben</string>
     <string name="settings_debug_box_logs_title">Box86/64-Logs aktivieren</string>
     <string name="settings_debug_box_logs_subtitle">Box86 &amp; Box64-Debug-Ausgaben in Datei schreiben</string>
+    <string name="settings_debug_verbose_boot_title">Detaillierter Startfortschritt</string>
+    <string name="settings_debug_verbose_boot_subtitle">Aktuellen Schritt und einen echten Fortschrittsbalken anzeigen, während ein Container startet</string>
     <string name="settings_debug_view_crash_title">Letzten Absturz anzeigen</string>
     <string name="settings_debug_view_crash_subtitle">Zeigt das neueste Absturzprotokoll</string>
     <string name="settings_debug_no_crash_logs">Keine kürzlichen Absturzprotokolle gefunden</string>

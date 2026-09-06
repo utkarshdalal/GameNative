@@ -959,6 +959,8 @@
     <string name="settings_debug_wine_logs_subtitle">Записувати виведення налагодження Wine у файл</string>
     <string name="settings_debug_box_logs_title">Увімкнути журнали Box86/64</string>
     <string name="settings_debug_box_logs_subtitle">Записувати виведення налагодження Box86 та Box64 у файл</string>
+    <string name="settings_debug_verbose_boot_title">Докладний прогрес запуску</string>
+    <string name="settings_debug_verbose_boot_subtitle">Показувати поточний крок і реальний прогрес під час запуску контейнера</string>
     <string name="settings_debug_view_crash_title">Переглянути останній збій</string>
     <string name="settings_debug_view_crash_subtitle">Показує останній звіт про збій</string>
     <string name="settings_debug_no_crash_logs">Не знайдено нещодавніх звітів про збій</string>

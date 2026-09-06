@@ -982,6 +982,8 @@
     <string name="settings_debug_wine_logs_subtitle">Écrire la sortie de débogage Wine dans un fichier</string>
     <string name="settings_debug_box_logs_title">Activer les journaux Box86/64</string>
     <string name="settings_debug_box_logs_subtitle">Écrire la sortie de débogage Box86 &amp; Box64 dans un fichier</string>
+    <string name="settings_debug_verbose_boot_title">Progression de démarrage détaillée</string>
+    <string name="settings_debug_verbose_boot_subtitle">Afficher l\'étape en cours et une vraie barre de progression pendant le démarrage d\'un conteneur</string>
     <string name="settings_debug_view_crash_title">Voir le dernier plantage</string>
     <string name="settings_debug_view_crash_subtitle">Affiche le journal de plantage le plus récent</string>
     <string name="settings_debug_no_crash_logs">Aucun journal de plantage récent trouvé</string>

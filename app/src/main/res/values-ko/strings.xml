@@ -963,6 +963,8 @@
     <string name="settings_debug_wine_logs_subtitle">Wine 디버그 출력을 파일에 쓰기</string>
     <string name="settings_debug_box_logs_title">Box86/64 로그 활성화</string>
     <string name="settings_debug_box_logs_subtitle">Box86 &amp; Box64 디버그 출력을 파일에 쓰기</string>
+    <string name="settings_debug_verbose_boot_title">상세 실행 진행 상황</string>
+    <string name="settings_debug_verbose_boot_subtitle">컨테이너가 부팅되는 동안 현재 단계와 실제 진행 표시줄을 표시합니다</string>
     <string name="settings_debug_view_crash_title">최신 충돌 보기</string>
     <string name="settings_debug_view_crash_subtitle">가장 최근 충돌 로그 표시</string>
     <string name="settings_debug_no_crash_logs">최근 충돌 로그를 찾을 수 없음</string>

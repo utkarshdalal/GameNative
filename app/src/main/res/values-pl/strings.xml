@@ -973,6 +973,8 @@
     <string name="settings_debug_wine_logs_subtitle">Zapisz wyjście debugowania Wine do pliku</string>
     <string name="settings_debug_box_logs_title">Włącz logi Box86/64</string>
     <string name="settings_debug_box_logs_subtitle">Zapisz wyjście debugowania Box86 i Box64 do pliku</string>
+    <string name="settings_debug_verbose_boot_title">Szczegółowy postęp uruchamiania</string>
+    <string name="settings_debug_verbose_boot_subtitle">Pokazuj bieżący krok i rzeczywisty pasek postępu podczas uruchamiania kontenera</string>
     <string name="settings_debug_view_crash_title">Zobacz ostatni błąd</string>
     <string name="settings_debug_view_crash_subtitle">Pokazuje najnowszy log awarii</string>
     <string name="settings_debug_no_crash_logs">Nie znaleziono ostatnich logów awarii</string>

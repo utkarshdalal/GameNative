@@ -951,6 +951,8 @@
     <string name="settings_debug_wine_logs_subtitle">將 Wine 除錯輸出寫入檔案</string>
     <string name="settings_debug_box_logs_title">啟用 Box86/64 日誌</string>
     <string name="settings_debug_box_logs_subtitle">將 Box86 與 Box64 的除錯輸出寫入檔案</string>
+    <string name="settings_debug_verbose_boot_title">詳細啟動進度</string>
+    <string name="settings_debug_verbose_boot_subtitle">在容器啟動時顯示目前步驟和實際進度列</string>
     <string name="settings_debug_view_crash_title">檢視最新崩潰日誌</string>
     <string name="settings_debug_view_crash_subtitle">顯示最新的崩潰報告</string>
     <string name="settings_debug_no_crash_logs">未找到最近的崩潰報告</string>

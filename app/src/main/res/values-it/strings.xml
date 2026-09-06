@@ -956,6 +956,8 @@
     <string name="settings_debug_wine_logs_subtitle">Scrivi output debug Wine su file</string>
     <string name="settings_debug_box_logs_title">Abilita Log Box86/64</string>
     <string name="settings_debug_box_logs_subtitle">Scrivi output debug Box86 &amp; Box64 su file</string>
+    <string name="settings_debug_verbose_boot_title">Avanzamento avvio dettagliato</string>
+    <string name="settings_debug_verbose_boot_subtitle">Mostra il passaggio corrente e una barra di avanzamento reale durante l\'avvio di un container</string>
     <string name="settings_debug_view_crash_title">Visualizza ultimo crash</string>
     <string name="settings_debug_view_crash_subtitle">Mostra il log di crash più recente</string>
     <string name="settings_debug_no_crash_logs">Nessun log di crash recente trovato</string>
