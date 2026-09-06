@@ -1,0 +1,117 @@
+"controller_mappings"
+{
+	"version"		"3"
+	"title"		"DOOM + DOOM II — SC Test"
+	"description"		"Gamepad + gyro-camera + weapon-swipe layout for testing the Steam Controller in DOOM (KEX)."
+	"controller_type"		"controller_triton"
+	"group"
+	{
+		"id"		"0"
+		"mode"		"four_buttons"
+		"inputs"
+		{
+			"button_a" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button A" } } } }
+			"button_b" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button B" } } } }
+			"button_x" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button X" } } } }
+			"button_y" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button Y" } } } }
+		}
+	}
+	"group"
+	{
+		"id"		"1"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+			"click" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button JOYSTICK_LEFT" } } } }
+		}
+		"settings" { "deadzone_inner_radius" "3500" }
+	}
+	"group"
+	{
+		"id"		"2"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+			"click" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button JOYSTICK_RIGHT" } } } }
+		}
+		"settings" { "deadzone_inner_radius" "3500" }
+	}
+	"group"
+	{
+		"id"		"3"
+		"mode"		"trigger"
+		"inputs" {}
+		"settings" { "output_trigger" "1" }
+	}
+	"group"
+	{
+		"id"		"4"
+		"mode"		"trigger"
+		"inputs" {}
+		"settings" { "output_trigger" "2" }
+	}
+	"group"
+	{
+		"id"		"5"
+		"mode"		"2dscroll"
+		"inputs"
+		{
+			"dpad_north" { "activators" { "Full_Press" { "bindings" { "binding" "mouse_wheel SCROLL_UP" } } } }
+			"dpad_south" { "activators" { "Full_Press" { "bindings" { "binding" "mouse_wheel SCROLL_DOWN" } } } }
+			"dpad_west" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button DPAD_LEFT" } } } }
+			"dpad_east" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button DPAD_RIGHT" } } } }
+			"click" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button SELECT" } } } }
+		}
+		"settings" { "sensitivity" "100" }
+	}
+	"group"
+	{
+		"id"		"6"
+		"mode"		"mouse"
+		"inputs"
+		{
+			"click" { "activators" { "Full_Press" { "bindings" { "binding" "mouse_button LEFT" } } } }
+		}
+		"settings" { "sensitivity" "120" }
+	}
+	"group"
+	{
+		"id"		"7"
+		"mode"		"switches"
+		"inputs"
+		{
+			"left_bumper" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button SHOULDER_LEFT" } } } }
+			"right_bumper" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button SHOULDER_RIGHT" } } } }
+			"button_menu" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button START" } } } }
+			"button_escape" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button SELECT" } } } }
+			"button_back_left" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button A" } } } }
+			"button_back_right" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button B" } } } }
+			"button_back_left_upper" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button SHOULDER_LEFT" } } } }
+			"button_back_right_upper" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button SHOULDER_RIGHT" } } } }
+		}
+	}
+	"group"
+	{
+		"id"		"8"
+		"mode"		"gyro_to_joystick"
+		"inputs" {}
+		"settings" { "output_joystick" "2" }
+	}
+	"preset"
+	{
+		"id"		"0"
+		"name"		"Default"
+		"group_source_bindings"
+		{
+			"0"		"button_diamond active"
+			"1"		"joystick active"
+			"2"		"right_joystick active"
+			"3"		"left_trigger active"
+			"4"		"right_trigger active"
+			"5"		"left_trackpad active"
+			"6"		"right_trackpad active"
+			"7"		"switch active"
+			"8"		"gyro active"
+		}
+	}
+}

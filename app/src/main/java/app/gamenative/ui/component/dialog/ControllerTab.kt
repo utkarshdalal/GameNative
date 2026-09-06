@@ -16,6 +16,9 @@ import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.container.Container
 
+// Steam Controller (Triton) config is intentionally NOT here — it lives entirely in the in-game QuickMenu so it
+// never bleeds into the generic container/controller settings (it matters to almost no one there). See
+// XServerScreen's ScLiveEditorDialogs (Manage configs / Bindings / Labels / Tuning / Overlay / Keyboard).
 @Composable
 fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
     val config = state.config.value
