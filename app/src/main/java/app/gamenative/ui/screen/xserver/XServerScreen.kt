@@ -6145,7 +6145,7 @@ private fun extractSteamFiles(
         val cached = File(imageFs.getFilesDir(), name)
         cached.exists() && FileUtils.contentEquals(steamExe, cached)
     }
-    val steamhostArchive = File(imageFs.getFilesDir(), "steamhost-20260906.tzst")
+    val steamhostArchive = File(imageFs.getFilesDir(), app.gamenative.ui.REAL_STEAM_CLIENT_ARCHIVE)
     if (steamhostArchive.exists()) {
         // Current Valve client tree (build 2026-01-29) + headless host as steam.exe.
         // Clear any older client binaries first so nothing from another build is
