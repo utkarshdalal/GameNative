@@ -973,6 +973,11 @@ https://gamenative.app
     <string name="screen_effects_crt_description">Добавляет строки развёртки и лёгкую хроматическую аберрацию.</string>
     <string name="screen_effects_ntsc">NTSC</string>
     <string name="screen_effects_ntsc_description">Добавляет ретро-искажение композитного ТВ, цветовые подтёки и строки развёртки.</string>
+    <string name="screen_effects_barrel_distortion">Бочкообразный зум</string>
+    <string name="screen_effects_barrel_distortion_description">Включает бочкообразный зум. Нужно настроить под вертикальный угол обзора игры — может снизить зрительную усталость при большом угле обзора на маленьком экране.</string>
+    <string name="screen_effects_barrel_distortion_strength">Сила бочкообразного зума</string>
+    <string name="screen_effects_barrel_distortion_fov">Вертикальный угол обзора зума</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">Цилиндрический коэффициент зума</string>
     <string name="screen_effects_reset">Сбросить</string>
     <string name="screen_effects_close">Закрыть</string>
     <string name="quick_menu_tab_general">Общие</string>

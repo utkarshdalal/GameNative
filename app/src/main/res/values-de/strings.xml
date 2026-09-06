@@ -299,6 +299,11 @@
     <string name="screen_effects_crt_description">Fügt Scanlines und eine leichte chromatische Aberration hinzu.</string>
     <string name="screen_effects_ntsc">NTSC</string>
     <string name="screen_effects_ntsc_description">Fügt Retro-Composite-TV-Verzerrung, Farbausbluten und Scanlines hinzu.</string>
+    <string name="screen_effects_barrel_distortion">Barrel-Zoom</string>
+    <string name="screen_effects_barrel_distortion_description">Barrel-Zoom aktivieren. Muss auf das vertikale Sichtfeld des Spiels abgestimmt werden – kann die visuelle Ermüdung bei hohem Sichtfeld auf kleinen Bildschirmen verringern.</string>
+    <string name="screen_effects_barrel_distortion_strength">Barrel-Zoom-Stärke</string>
+    <string name="screen_effects_barrel_distortion_fov">Barrel-Zoom vertikales Sichtfeld</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">Barrel-Zoom Zylinderverhältnis</string>
     <string name="screen_effects_reset">Zurücksetzen</string>
     <string name="screen_effects_close">Schließen</string>
     <string name="quick_menu_tab_general">Allgemein</string>

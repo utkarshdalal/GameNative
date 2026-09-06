@@ -298,6 +298,11 @@
     <string name="screen_effects_crt_description">加入掃描線與細微的色差效果。</string>
     <string name="screen_effects_ntsc">NTSC</string>
     <string name="screen_effects_ntsc_description">加入復古複合電視扭曲、色彩滲色與掃描線。</string>
+    <string name="screen_effects_barrel_distortion">桶形縮放</string>
+    <string name="screen_effects_barrel_distortion_description">啟用桶形縮放。需要設定為與遊戲的垂直視野一致，可減輕在小螢幕上玩高視野遊戲時的視覺疲勞。</string>
+    <string name="screen_effects_barrel_distortion_strength">桶形縮放強度</string>
+    <string name="screen_effects_barrel_distortion_fov">桶形縮放垂直視野</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">桶形縮放圓柱比例</string>
     <string name="screen_effects_reset">重設</string>
     <string name="screen_effects_close">關閉</string>
     <string name="quick_menu_tab_general">一般</string>

@@ -317,6 +317,11 @@
     <string name="screen_effects_crt_description">Añade líneas de exploración y una sutil aberración cromática.</string>
     <string name="screen_effects_ntsc">NTSC</string>
     <string name="screen_effects_ntsc_description">Añade distorsión retro de TV compuesta, sangrado y líneas de exploración.</string>
+    <string name="screen_effects_barrel_distortion">Zoom de barril</string>
+    <string name="screen_effects_barrel_distortion_description">Activa el zoom de barril. Debe configurarse para coincidir con el FOV vertical del juego; puede reducir la fatiga visual en juegos con FOV alto en pantallas pequeñas.</string>
+    <string name="screen_effects_barrel_distortion_strength">Intensidad del zoom de barril</string>
+    <string name="screen_effects_barrel_distortion_fov">FOV vertical del zoom de barril</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">Relación cilíndrica del zoom de barril</string>
     <string name="screen_effects_reset">Restablecer</string>
     <string name="screen_effects_close">Cerrar</string>
     <string name="quick_menu_tab_general">General</string>

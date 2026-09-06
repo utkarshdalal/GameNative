@@ -3,6 +3,7 @@ package app.gamenative.ui.util
 import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.VulkanRenderer
+import com.winlator.renderer.effects.BarrelDistortionEffect
 import com.winlator.renderer.effects.ColorEffect
 import com.winlator.renderer.effects.CRTEffect
 import com.winlator.renderer.effects.Effect
@@ -14,6 +15,7 @@ import com.winlator.renderer.effects.ScalingModeEffect
 import com.winlator.renderer.effects.ToonEffect
 import com.winlator.renderer.effects.VividEffect
 import kotlin.math.abs
+import kotlin.math.tan
 
 data class ScreenEffectsConfig(
     val brightness: Float = 0f,
@@ -26,6 +28,10 @@ data class ScreenEffectsConfig(
     val enableVivid: Boolean = false,
     val enableCRT: Boolean = false,
     val enableNTSC: Boolean = false,
+    val enableBarrelDistortion: Boolean = false,
+    val barrelDistortionStrength: Float = 50f,
+    val barrelDistortionFov: Float = 90f,
+    val barrelDistortionCylindricalRatio: Float = 1f,
 ) {
     companion object {
         const val SCALING_MODE_NONE = 0
@@ -47,11 +53,17 @@ data class ScreenEffectsConfig(
         const val KEY_GAMMA = "screenEffectsGamma"
         const val KEY_SCALING_MODE = "screenEffectsScalingMode"
         const val KEY_FSR_SHARPNESS = "screenEffectsFsrSharpness"
+        const val KEY_BARREL_DISTORTION_STRENGTH = "screenEffectsBarrelDistortionStrength"
+        const val KEY_BARREL_DISTORTION_FOV = "screenEffectsBarrelDistortionFov"
+        const val KEY_BARREL_DISTORTION_CYLINDRICAL_RATIO = "screenEffectsBarrelDistortionCylindricalRatio"
         const val KEY_ENABLE_TOON = "screenEffectsEnableToon"
         const val KEY_ENABLE_FXAA = "screenEffectsEnableFXAA"
         const val KEY_ENABLE_VIVID = "screenEffectsEnableVivid"
         const val KEY_ENABLE_CRT = "screenEffectsEnableCRT"
         const val KEY_ENABLE_NTSC = "screenEffectsEnableNTSC"
+        const val KEY_ENABLE_BARREL_DISTORTION = "screenEffectsEnableBarrelDistortion"
+
+        const val DEGREES_TO_RADIANS: Float = 0.01745329251994329577f
     }
 }
 
@@ -64,11 +76,15 @@ fun loadScreenEffectsConfig(container: Container?): ScreenEffectsConfig {
         gamma = container.getExtra(ScreenEffectsConfig.KEY_GAMMA)?.toFloatOrNull() ?: 1f,
         scalingMode = container.getExtra(ScreenEffectsConfig.KEY_SCALING_MODE)?.toIntOrNull() ?: ScreenEffectsConfig.SCALING_MODE_NONE,
         fsrSharpnessLevel = container.getExtra(ScreenEffectsConfig.KEY_FSR_SHARPNESS)?.toIntOrNull() ?: ScreenEffectsConfig.FSR_DEFAULT_LEVEL,
+        barrelDistortionStrength = container.getExtra(ScreenEffectsConfig.KEY_BARREL_DISTORTION_STRENGTH)?.toFloatOrNull() ?: 50f,
+        barrelDistortionFov = container.getExtra(ScreenEffectsConfig.KEY_BARREL_DISTORTION_FOV)?.toFloatOrNull() ?: 90f,
+        barrelDistortionCylindricalRatio = container.getExtra(ScreenEffectsConfig.KEY_BARREL_DISTORTION_CYLINDRICAL_RATIO)?.toFloatOrNull() ?: 1f,
         enableToon = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_TOON)?.toBooleanStrictOrNull() ?: false,
         enableFXAA = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_FXAA)?.toBooleanStrictOrNull() ?: false,
         enableVivid = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_VIVID)?.toBooleanStrictOrNull() ?: false,
         enableCRT = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_CRT)?.toBooleanStrictOrNull() ?: false,
         enableNTSC = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_NTSC)?.toBooleanStrictOrNull() ?: false,
+        enableBarrelDistortion = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_BARREL_DISTORTION)?.toBooleanStrictOrNull() ?: false,
     )
 }
 
@@ -83,11 +99,15 @@ fun persistScreenEffectsConfig(container: Container?, config: ScreenEffectsConfi
     container.putExtra(ScreenEffectsConfig.KEY_GAMMA, config.gamma)
     container.putExtra(ScreenEffectsConfig.KEY_SCALING_MODE, config.scalingMode)
     container.putExtra(ScreenEffectsConfig.KEY_FSR_SHARPNESS, config.fsrSharpnessLevel)
+    container.putExtra(ScreenEffectsConfig.KEY_BARREL_DISTORTION_STRENGTH, config.barrelDistortionStrength)
+    container.putExtra(ScreenEffectsConfig.KEY_BARREL_DISTORTION_FOV, config.barrelDistortionFov)
+    container.putExtra(ScreenEffectsConfig.KEY_BARREL_DISTORTION_CYLINDRICAL_RATIO, config.barrelDistortionCylindricalRatio)
     container.putExtra(ScreenEffectsConfig.KEY_ENABLE_TOON, config.enableToon)
     container.putExtra(ScreenEffectsConfig.KEY_ENABLE_FXAA, config.enableFXAA)
     container.putExtra(ScreenEffectsConfig.KEY_ENABLE_VIVID, config.enableVivid)
     container.putExtra(ScreenEffectsConfig.KEY_ENABLE_CRT, config.enableCRT)
     container.putExtra(ScreenEffectsConfig.KEY_ENABLE_NTSC, config.enableNTSC)
+    container.putExtra(ScreenEffectsConfig.KEY_ENABLE_BARREL_DISTORTION, config.enableBarrelDistortion)
 }
 
 fun fsrQuickMenuLevelToStops(level: Int): Float {
@@ -153,6 +173,16 @@ fun applyScreenEffectsConfig(renderer: GLRenderer, config: ScreenEffectsConfig) 
         effects += composer.getEffect(NTSCCombinedEffect::class.java) ?: NTSCCombinedEffect()
     }
 
+
+    if (config.enableBarrelDistortion && abs(config.barrelDistortionStrength) > 0.001f) {
+        val barrelEffect = BarrelDistortionEffect().apply {
+            strength = config.barrelDistortionStrength / 100f
+            height = tan(config.barrelDistortionFov * ScreenEffectsConfig.DEGREES_TO_RADIANS / 2f)
+            cylindricalRatio = config.barrelDistortionCylindricalRatio
+        }
+        effects += barrelEffect
+    }
+
     composer.setEffects(effects)
 }
 
@@ -188,7 +218,14 @@ fun applyScreenEffectsConfig(renderer: VulkanRenderer, config: ScreenEffectsConf
             (if (config.enableFXAA) VulkanRenderer.EFFECT_MASK_FXAA else 0) or
             (if (config.enableVivid) VulkanRenderer.EFFECT_MASK_VIVID else 0) or
             (if (config.enableCRT) VulkanRenderer.EFFECT_MASK_CRT else 0) or
-            (if (config.enableNTSC) VulkanRenderer.EFFECT_MASK_NTSC else 0)
+            (if (config.enableNTSC) VulkanRenderer.EFFECT_MASK_NTSC else 0) or
+            (if (config.enableBarrelDistortion) VulkanRenderer.EFFECT_MASK_BARREL_DISTORTION else 0)
+    val barrelStrength = if (config.enableBarrelDistortion) config.barrelDistortionStrength / 100f else 0f
+    val barrelHeight = if (config.enableBarrelDistortion) {
+        tan(config.barrelDistortionFov * ScreenEffectsConfig.DEGREES_TO_RADIANS / 2f)
+    } else 0f
+    val barrelCylindricalRatio = if (config.enableBarrelDistortion) config.barrelDistortionCylindricalRatio else 0f
+
     renderer.setEffect(
         effectId,
         sharpness,
@@ -197,5 +234,8 @@ fun applyScreenEffectsConfig(renderer: VulkanRenderer, config: ScreenEffectsConf
         config.brightness / 100f,
         config.contrast / 100f,
         config.gamma,
+        barrelStrength,
+        barrelHeight,
+        barrelCylindricalRatio,
     )
 }

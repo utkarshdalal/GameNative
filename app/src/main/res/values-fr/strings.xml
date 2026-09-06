@@ -307,6 +307,11 @@
     <string name="screen_effects_crt_description">Ajoute des lignes de balayage et une subtile aberration chromatique.</string>
     <string name="screen_effects_ntsc">NTSC</string>
     <string name="screen_effects_ntsc_description">Ajoute une distorsion rétro de TV composite, du débordement des couleurs et des lignes de balayage.</string>
+    <string name="screen_effects_barrel_distortion">Zoom barillet</string>
+    <string name="screen_effects_barrel_distortion_description">Active le zoom barillet. Doit être réglé sur le champ de vision vertical du jeu ; peut réduire la fatigue visuelle avec un champ de vision élevé sur un petit écran.</string>
+    <string name="screen_effects_barrel_distortion_strength">Intensité du zoom barillet</string>
+    <string name="screen_effects_barrel_distortion_fov">Champ de vision vertical du zoom barillet</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">Ratio cylindrique du zoom barillet</string>
     <string name="screen_effects_reset">Réinitialiser</string>
     <string name="screen_effects_close">Fermer</string>
     <string name="quick_menu_tab_general">Général</string>

@@ -304,6 +304,11 @@
     <string name="screen_effects_crt_description">Adaugă linii de scanare și o ușoară aberație cromatică.</string>
     <string name="screen_effects_ntsc">NTSC</string>
     <string name="screen_effects_ntsc_description">Adaugă distorsiune retro de televizor compozit, scurgere de culoare și linii de scanare.</string>
+    <string name="screen_effects_barrel_distortion">Zoom butoi</string>
+    <string name="screen_effects_barrel_distortion_description">Activează zoomul butoi. Trebuie configurat să corespundă câmpului vizual vertical al jocului; poate reduce oboseala vizuală la câmpuri vizuale mari pe un ecran mic.</string>
+    <string name="screen_effects_barrel_distortion_strength">Intensitate zoom butoi</string>
+    <string name="screen_effects_barrel_distortion_fov">Câmp vizual vertical zoom butoi</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">Raport cilindric zoom butoi</string>
     <string name="screen_effects_reset">Resetează</string>
     <string name="screen_effects_close">Închide</string>
     <string name="quick_menu_tab_general">General</string>

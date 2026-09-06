@@ -301,6 +301,11 @@
     <string name="screen_effects_crt_description">Додає рядки розгортки та легку хроматичну аберацію.</string>
     <string name="screen_effects_ntsc">NTSC</string>
     <string name="screen_effects_ntsc_description">Додає ретро-спотворення композитного ТВ, розтікання кольорів і рядки розгортки.</string>
+    <string name="screen_effects_barrel_distortion">Бочкоподібний зум</string>
+    <string name="screen_effects_barrel_distortion_description">Вмикає бочкоподібний зум. Потрібно налаштувати під вертикальний кут огляду гри — може зменшити зорову втому при великому куті огляду на маленькому екрані.</string>
+    <string name="screen_effects_barrel_distortion_strength">Сила бочкоподібного зуму</string>
+    <string name="screen_effects_barrel_distortion_fov">Вертикальний кут огляду зуму</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">Циліндричний коефіцієнт зуму</string>
     <string name="screen_effects_reset">Скинути</string>
     <string name="screen_effects_close">Закрити</string>
     <string name="quick_menu_tab_general">Загальні</string>

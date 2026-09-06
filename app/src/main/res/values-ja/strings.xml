@@ -292,6 +292,11 @@
     <string name="screen_effects_crt_description">走査線と微妙な色収差を追加します。</string>
     <string name="screen_effects_ntsc">NTSC</string>
     <string name="screen_effects_ntsc_description">レトロなコンポジット TV のワーピング、ブリード、スキャンラインを追加します。</string>
+    <string name="screen_effects_barrel_distortion">バレルズーム</string>
+    <string name="screen_effects_barrel_distortion_description">バレルズームを有効にします。ゲームの垂直視野角に合わせて設定する必要があります。小さな画面で視野角の広いゲームを遊ぶ際の目の疲れを軽減できます。</string>
+    <string name="screen_effects_barrel_distortion_strength">バレルズームの強さ</string>
+    <string name="screen_effects_barrel_distortion_fov">バレルズームの垂直視野角</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">バレルズームの円筒比率</string>
     <string name="screen_effects_reset">リセット</string>
     <string name="screen_effects_close">近い</string>
     <string name="quick_menu_tab_general">一般的な</string>

@@ -16,9 +16,15 @@ layout(push_constant) uniform PC {
     float gamma;
     float outW;
     float outH;
+    float barrelStrength;
+    float barrelHeight;
+    float barrelCylindricalRatio;
 } pc;
 
-layout(location = 0) in  vec2 fragTexCoord;
+layout(location = 0) in vec2 fragTexCoord;
+layout(location = 1) in vec3 vUVBarrel;
+layout(location = 2) in vec2 vUVDotBarrel;
+
 layout(location = 0) out vec4 outColor;
 
 const int EFFECT_MASK_TOON  = 1;
@@ -26,6 +32,7 @@ const int EFFECT_MASK_FXAA  = 2;
 const int EFFECT_MASK_VIVID = 4;
 const int EFFECT_MASK_CRT   = 8;
 const int EFFECT_MASK_NTSC  = 16;
+const int EFFECT_MASK_BARREL_DISTORTION = 32;
 
 bool hasEffect(int mask) {
     return (pc.effectMask & mask) != 0;
@@ -264,6 +271,8 @@ vec3 applyNTSC(vec2 uv, vec3 color) {
     return clamp(mix(color, shifted + vec3(bleed), 0.65), 0.0, 1.0);
 }
 
+
+
 void main() {
     vec2 uv = fragTexCoord;
     vec4 src = texture(texSampler, uv);
@@ -284,7 +293,13 @@ void main() {
         if (hasEffect(EFFECT_MASK_VIVID)) rgb = applyVivid(rgb);
         if (hasEffect(EFFECT_MASK_CRT))   rgb = applyCRTOverlay(uv, rgb);
         if (hasEffect(EFFECT_MASK_NTSC))  rgb = applyNTSC(uv, rgb);
+        if (hasEffect(EFFECT_MASK_BARREL_DISTORTION)) {
+            vec3 puv = dot(vUVDotBarrel, vUVDotBarrel) * vec3(-0.5, -0.5, -1.0) + vUVBarrel;
+            rgb = texture(texSampler, puv.xy / puv.z).rgb;
+            rgb = applyColorAdjustments(rgb);
+        }
     }
+
 
     outColor = vec4(rgb, pc.useTexAlpha != 0 ? src.a : 1.0);
 }

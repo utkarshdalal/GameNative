@@ -313,6 +313,11 @@
     <string name="screen_effects_crt_description">주사선과 은은한 색수차를 추가합니다.</string>
     <string name="screen_effects_ntsc">NTSC</string>
     <string name="screen_effects_ntsc_description">복고풍 컴포지트 TV 왜곡, 색 번짐, 주사선을 추가합니다.</string>
+    <string name="screen_effects_barrel_distortion">배럴 줌</string>
+    <string name="screen_effects_barrel_distortion_description">배럴 줌을 활성화합니다. 게임의 수직 시야각에 맞게 설정해야 하며, 작은 화면에서 시야각이 넓은 게임의 시각적 피로를 줄일 수 있습니다.</string>
+    <string name="screen_effects_barrel_distortion_strength">배럴 줌 강도</string>
+    <string name="screen_effects_barrel_distortion_fov">배럴 줌 수직 시야각</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">배럴 줌 원통 비율</string>
     <string name="screen_effects_reset">재설정</string>
     <string name="screen_effects_close">닫기</string>
     <string name="quick_menu_tab_general">일반</string>

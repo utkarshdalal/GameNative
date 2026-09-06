@@ -235,6 +235,11 @@
     <string name="screen_effects_crt_description">Tilføjer scanlines og let kromatisk aberration.</string>
     <string name="screen_effects_ntsc">NTSC</string>
     <string name="screen_effects_ntsc_description">Tilføjer retro komposit-tv-forvrængning, blødning og scanlines.</string>
+    <string name="screen_effects_barrel_distortion">Tøndezoom</string>
+    <string name="screen_effects_barrel_distortion_description">Aktivér tøndezoom. Skal indstilles til at matche spillets lodrette synsfelt – kan mindske visuel træthed ved høje synsfelter på en lille skærm.</string>
+    <string name="screen_effects_barrel_distortion_strength">Tøndezoom-styrke</string>
+    <string name="screen_effects_barrel_distortion_fov">Tøndezoom lodret synsfelt</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">Tøndezoom cylinderforhold</string>
     <string name="screen_effects_reset">Nulstil</string>
     <string name="screen_effects_close">Luk</string>
     <string name="quick_menu_tab_general">Generelt</string>

@@ -235,6 +235,11 @@
     <string name="screen_effects_crt_description">Adiciona scanlines e uma sutil aberração cromática.</string>
     <string name="screen_effects_ntsc">NTSC</string>
     <string name="screen_effects_ntsc_description">Adiciona distorção retrô de TV composta, sangramento e scanlines.</string>
+    <string name="screen_effects_barrel_distortion">Zoom de barril</string>
+    <string name="screen_effects_barrel_distortion_description">Ativa o zoom de barril. Deve ser configurado para corresponder ao FOV vertical do jogo; pode reduzir a fadiga visual em jogos com FOV alto em telas pequenas.</string>
+    <string name="screen_effects_barrel_distortion_strength">Intensidade do zoom de barril</string>
+    <string name="screen_effects_barrel_distortion_fov">FOV vertical do zoom de barril</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">Proporção cilíndrica do zoom de barril</string>
     <string name="screen_effects_reset">Redefinir</string>
     <string name="screen_effects_close">Fechar</string>
     <string name="quick_menu_tab_general">Geral</string>

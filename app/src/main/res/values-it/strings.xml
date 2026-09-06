@@ -306,6 +306,11 @@
     <string name="screen_effects_crt_description">Aggiunge scanline e una sottile aberrazione cromatica.</string>
     <string name="screen_effects_ntsc">NTSC</string>
     <string name="screen_effects_ntsc_description">Aggiunge distorsione retrò da TV composita, sbavature e scanline.</string>
+    <string name="screen_effects_barrel_distortion">Zoom a barilotto</string>
+    <string name="screen_effects_barrel_distortion_description">Attiva lo zoom a barilotto. Va impostato in base al FOV verticale del gioco: può ridurre l\'affaticamento visivo con FOV elevati su schermi piccoli.</string>
+    <string name="screen_effects_barrel_distortion_strength">Intensità zoom a barilotto</string>
+    <string name="screen_effects_barrel_distortion_fov">FOV verticale zoom a barilotto</string>
+    <string name="screen_effects_barrel_distortion_cylindrical_ratio">Rapporto cilindrico zoom a barilotto</string>
     <string name="screen_effects_reset">Reimposta</string>
     <string name="screen_effects_close">Chiudi</string>
     <string name="quick_menu_tab_general">Generale</string>
