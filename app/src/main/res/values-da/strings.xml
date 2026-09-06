@@ -780,6 +780,8 @@
     <string name="settings_debug_wine_logs_subtitle">Skriv Wine debug-output til fil</string>
     <string name="settings_debug_box_logs_title">Aktivér Box86/64-logs</string>
     <string name="settings_debug_box_logs_subtitle">Skriv Box86 &amp; Box64 debug-output til fil</string>
+    <string name="settings_debug_verbose_boot_title">Detaljeret opstartsforløb</string>
+    <string name="settings_debug_verbose_boot_subtitle">Vis det aktuelle trin og en reel forløbslinje, mens en container starter</string>
     <string name="settings_debug_view_crash_title">Vis seneste crash</string>
     <string name="settings_debug_view_crash_subtitle">Viser den seneste crash-rapport</string>
     <string name="settings_debug_no_crash_logs">Ingen nylige crash-rapporter fundet</string>

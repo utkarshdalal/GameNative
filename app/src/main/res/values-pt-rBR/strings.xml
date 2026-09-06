@@ -780,6 +780,8 @@
     <string name="settings_debug_wine_logs_subtitle">Gravar saída de debug do Wine em arquivo</string>
     <string name="settings_debug_box_logs_title">Habilitar logs do Box86/64</string>
     <string name="settings_debug_box_logs_subtitle">Gravar saída de debug do Box86 &amp; Box64 em arquivo</string>
+    <string name="settings_debug_verbose_boot_title">Progresso detalhado da inicialização</string>
+    <string name="settings_debug_verbose_boot_subtitle">Mostrar a etapa atual e uma barra de progresso real enquanto um contêiner inicia</string>
     <string name="settings_debug_view_crash_title">Ver última falha</string>
     <string name="settings_debug_view_crash_subtitle">Mostra o log de falha mais recente</string>
     <string name="settings_debug_no_crash_logs">Nenhum log de falha recente encontrado</string>

@@ -965,6 +965,8 @@
 	<string name="settings_debug_wine_logs_subtitle">Scrie ieșirea de debug Wine în fișier</string>
 	<string name="settings_debug_box_logs_title">Activează logurile Box86/64</string>
 	<string name="settings_debug_box_logs_subtitle">Scrie ieșirea de debug Box86 &amp; Box64 în fișier</string>
+	<string name="settings_debug_verbose_boot_title">Progres detaliat la pornire</string>
+	<string name="settings_debug_verbose_boot_subtitle">Afișează pasul curent și o bară de progres reală în timpul pornirii unui container</string>
 	<string name="settings_debug_view_crash_title">Vezi ultimul crash</string>
 	<string name="settings_debug_view_crash_subtitle">Afișează cel mai recent raport de crash</string>
 	<string name="settings_debug_no_crash_logs">Nu s-au găsit rapoarte de crash recente</string>

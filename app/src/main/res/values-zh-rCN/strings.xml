@@ -949,6 +949,8 @@
     <string name="settings_debug_wine_logs_subtitle">将 Wine 调试输出写入文件</string>
     <string name="settings_debug_box_logs_title">启用 Box86/64 日志</string>
     <string name="settings_debug_box_logs_subtitle">将 Box86 与 Box64 的调试输出写入文件</string>
+    <string name="settings_debug_verbose_boot_title">详细启动进度</string>
+    <string name="settings_debug_verbose_boot_subtitle">在容器启动时显示当前步骤和真实进度条</string>
     <string name="settings_debug_view_crash_title">查看最新崩溃日志</string>
     <string name="settings_debug_view_crash_subtitle">显示最新的崩溃报告</string>
     <string name="settings_debug_no_crash_logs">未找到最近的崩溃报告</string>
