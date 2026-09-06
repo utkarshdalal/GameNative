@@ -4672,7 +4672,7 @@ private fun getWineStartCommand(
             envVars.put("STEAMHOST_GAME_CMD", gameCmd)
             envVars.put("STEAMHOST_GAME_DIR", gameDir)
             Timber.i("Real-Steam via steamhost: game=$gameCmd dir=$gameDir")
-            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamhost.exe\""
+            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\""
         } else {
             var executablePath = ""
             if (container.executablePath.isNotEmpty()) {
@@ -6125,29 +6125,39 @@ private fun extractSteamFiles(
         val cached = File(imageFs.getFilesDir(), name)
         cached.exists() && FileUtils.contentEquals(steamExe, cached)
     }
-    if (!(steamExe.exists() && !installedIsBionic)) {
-        val downloaded = File(imageFs.getFilesDir(), "steam.tzst")
-        Timber.i("Extracting steam.tzst")
-        TarCompressorUtils.extract(
-            TarCompressorUtils.Type.ZSTD,
-            downloaded,
-            imageFs.getRootDir(),
-            onExtractFileListener,
-        )
-    }
-
     val steamhostArchive = File(imageFs.getFilesDir(), "steamhost-20260906.tzst")
     if (steamhostArchive.exists()) {
-        Timber.i("Extracting steamhost-20260906.tzst (current Valve client DLLs + headless host)")
+        // Current Valve client tree (build 2026-01-29) + headless host as steam.exe.
+        // Clear any older client binaries first so nothing from another build is
+        // left beside the new engine; per-game data (steamapps, config, userdata,
+        // logs, appcache) is kept.
+        val steamDir = steamExe.parentFile
+        if (steamDir != null && steamDir.isDirectory) {
+            steamDir.listFiles()?.forEach { f ->
+                val n = f.name.lowercase()
+                if (f.isFile && (n.endsWith(".dll") || n.endsWith(".exe") || n.endsWith(".old") || n.endsWith(".crypt"))) f.delete()
+                if (f.isDirectory && (n == "bin" || n == "win64")) f.deleteRecursively()
+            }
+        }
+        Timber.i("Extracting steamhost-20260906.tzst (Valve client 2026-01-29 + headless steam.exe)")
         TarCompressorUtils.extract(
             TarCompressorUtils.Type.ZSTD,
             steamhostArchive,
             imageFs.getRootDir(),
             onExtractFileListener,
         )
-    } else {
-        Timber.e("steamhost-20260906.tzst missing at ${steamhostArchive.absolutePath}")
+        return
     }
+
+    if (steamExe.exists() && !installedIsBionic) return
+    val downloaded = File(imageFs.getFilesDir(), "steam.tzst")
+    Timber.i("Extracting steam.tzst")
+    TarCompressorUtils.extract(
+        TarCompressorUtils.Type.ZSTD,
+        downloaded,
+        imageFs.getRootDir(),
+        onExtractFileListener,
+    )
 }
 
 private fun cleanupBionicSteamAssets(imageFs: ImageFs) {
