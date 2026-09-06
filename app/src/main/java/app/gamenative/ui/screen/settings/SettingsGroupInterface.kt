@@ -584,7 +584,7 @@ fun SettingsGroupInterface(
         val ctx = LocalContext.current
         val sm = ctx.getSystemService(StorageManager::class.java)
 
-        // All writable non-primary volumes (SD / USB).
+        // All writable install target volumes (SD / USB / adopted primary storage).
         // getExternalFilesDirs misses USB OTG on most devices, so StorageUtils also
         // enumerates StorageManager.storageVolumes and synthesizes the per-app files dir.
         // Runs off the composition thread because synthesizing the USB candidate
@@ -594,7 +594,7 @@ fun SettingsGroupInterface(
             value = withContext(Dispatchers.IO) {
                 StorageUtils.getAllExternalFilesDirs(ctx)
                     .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
-                    .filter { sm?.getStorageVolume(it)?.isPrimary != true }
+                    .filter { StorageUtils.isExternalInstallTarget(sm, it) }
             }
         }
 
