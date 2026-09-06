@@ -2140,6 +2140,8 @@
     <string name="mouse_acceleration_strength_subtitle">빠른 드래그가 추가 마우스 속도를 더하는 정도</string>
     <string name="mouse_acceleration_max">최대 가속</string>
     <string name="mouse_acceleration_max_subtitle">빠른 마우스 시선 드래그 중 적용되는 최대 배율</string>
+    <string name="win32_relative_mouse_input">상대 마우스 입력</string>
+    <string name="win32_relative_mouse_input_subtitle">움직임을 상대 마우스 입력으로 Wine에 직접 전송합니다. 게임 내에서 마우스가 작동하지 않을 때 사용해 보세요.</string>
     <string name="joystick_opacity">조이스틱 불투명도</string>
     <string name="joystick_opacity_subtitle">동적 조이스틱 링과 손잡이의 불투명도</string>
     <string name="show_shooter_runtime_toggle">게임 중 버튼 표시</string>

@@ -2,12 +2,23 @@ package app.gamenative.data
 
 import com.winlator.inputcontrols.Binding
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ShooterModeConfigTest {
     @Test
     fun `invalid json falls back to default config`() {
         assertEquals(ShooterModeConfig(), ShooterModeConfig.fromJson("{not-json"))
+    }
+
+    @Test
+    fun `Win32 relative mouse input is opt in and survives serialization`() {
+        assertFalse(ShooterModeConfig.fromJson("").win32RelativeMouseInput)
+
+        val serialized = ShooterModeConfig(win32RelativeMouseInput = true).toJson()
+
+        assertTrue(ShooterModeConfig.fromJson(serialized).win32RelativeMouseInput)
     }
 
     @Test

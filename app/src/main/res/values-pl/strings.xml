@@ -2143,6 +2143,8 @@
     <string name="mouse_acceleration_strength_subtitle">Jak szybko szybsze przeciągnięcia dodają prędkość myszy</string>
     <string name="mouse_acceleration_max">Maks. przyspieszenie</string>
     <string name="mouse_acceleration_max_subtitle">Górny mnożnik podczas szybkich przeciągnięć rozglądania myszą</string>
+    <string name="win32_relative_mouse_input">Względne sterowanie myszą</string>
+    <string name="win32_relative_mouse_input_subtitle">Przesyła ruch bezpośrednio do Wine jako względne sterowanie myszą. Wypróbuj, gdy mysz nie działa w grze.</string>
     <string name="joystick_opacity">Nieprzezroczystość joysticka</string>
     <string name="joystick_opacity_subtitle">Nieprzezroczystość pierścieni i gałek joysticków dynamicznych</string>
     <string name="show_shooter_runtime_toggle">Pokaż przycisk w grze</string>
