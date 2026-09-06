@@ -5330,7 +5330,7 @@ private suspend fun applyGeneralPatches(
 
 private fun refreshComponentsFiles(context: Context) {
     val extractionPairs = listOf(
-        "pulseaudio-gamenative-20260612.tzst" to File(context.filesDir, "pulseaudio")
+        "pulseaudio-gamenative-20260810.tzst" to File(context.filesDir, "pulseaudio")
     )
 
     AssetUtils.extractComponentsWithVersionCheck(
