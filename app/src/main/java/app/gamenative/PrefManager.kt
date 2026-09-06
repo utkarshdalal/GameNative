@@ -108,6 +108,7 @@ object PrefManager {
                 pref.remove(STEAM_USER_NAME)
                 pref.remove(LAST_PICS_CHANGE_NUMBER)
                 pref.remove(STEAM_GAMES_COUNT)
+                pref.remove(PREFERRED_FAMILY_LENDERS_JSON)
             }
         }
     }
@@ -1605,6 +1606,53 @@ object PrefManager {
             }
         }
 
+    /**
+     * Preferred Steam Families lender per appId (appId string → lender steamId64).
+     * Empty / missing entry means use the account's own copy when available.
+     */
+    private val PREFERRED_FAMILY_LENDERS_JSON = stringPreferencesKey("preferred_family_lenders_json")
+
+    private fun decodePreferredFamilyLenders(value: String): Map<Int, Long> =
+        runCatching {
+            Json.decodeFromString<Map<String, Long>>(value)
+                .mapNotNull { (key, lenderSteamId) ->
+                    key.toIntOrNull()?.let { appId -> appId to lenderSteamId }
+                }
+                .toMap()
+        }.getOrDefault(emptyMap())
+
+    var preferredFamilyLenders: Map<Int, Long>
+        get() = decodePreferredFamilyLenders(getPref(PREFERRED_FAMILY_LENDERS_JSON, "{}"))
+        set(value) {
+            if (value.isEmpty()) {
+                removePref(PREFERRED_FAMILY_LENDERS_JSON)
+            } else {
+                setPref(
+                    PREFERRED_FAMILY_LENDERS_JSON,
+                    Json.encodeToString(value.mapKeys { it.key.toString() }),
+                )
+            }
+        }
+
+    fun setPreferredFamilyLender(appId: Int, lenderSteamId: Long?) {
+        scope.launch {
+            dataStore.edit { pref ->
+                val current = decodePreferredFamilyLenders(pref[PREFERRED_FAMILY_LENDERS_JSON] ?: "{}")
+                val updated = current.toMutableMap()
+                if (lenderSteamId == null || lenderSteamId == 0L) {
+                    updated.remove(appId)
+                } else {
+                    updated[appId] = lenderSteamId
+                }
+                if (updated.isEmpty()) {
+                    pref.remove(PREFERRED_FAMILY_LENDERS_JSON)
+                } else {
+                    pref[PREFERRED_FAMILY_LENDERS_JSON] =
+                        Json.encodeToString(updated.mapKeys { it.key.toString() })
+                }
+            }
+        }
+    }
     private val POWER_CONTROL_DEFAULT_ENABLED = booleanPreferencesKey("power_control_default_enabled")
     var powerControlDefaultEnabled: Boolean
         get() = getPref(POWER_CONTROL_DEFAULT_ENABLED, DeviceGate.isDeviceSupported())
