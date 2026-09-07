@@ -73,7 +73,7 @@ public class InputControlsView extends View {
     private float offsetX;
     private float offsetY;
     private ControlElement selectedElement;
-    private ControlsProfile profile;
+    private volatile ControlsProfile profile;
     // Retained while the overlay controls are hidden so gyro can keep targeting the active gamepad.
     private ControlsProfile gyroProfile;
     private float overlayOpacity = DEFAULT_OVERLAY_OPACITY;
@@ -82,6 +82,7 @@ public class InputControlsView extends View {
     private final Bitmap[] icons = new Bitmap[40];
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
+    private final Object mouseMoveStateLock = new Object();
     private boolean showTouchscreenControls = true;
 
     // Shooter mode state
@@ -577,14 +578,16 @@ public class InputControlsView extends View {
             mouseMoveTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    ControlsProfile currentProfile = getProfile();
-                    if (currentProfile == null) return;
+                    synchronized (mouseMoveStateLock) {
+                        ControlsProfile currentProfile = profile;
+                        if (currentProfile == null) return;
 
-                    float cursorSpeed = currentProfile.getCursorSpeed();
-                    int deltaX = (int)(mouseMoveOffset.x * 10 * cursorSpeed);
-                    int deltaY = (int)(mouseMoveOffset.y * 10 * cursorSpeed);
-                    if (deltaX != 0 || deltaY != 0) {
-                        xServer.injectPointerMoveDelta(deltaX, deltaY);
+                        float cursorSpeed = currentProfile.getCursorSpeed();
+                        int deltaX = (int)(mouseMoveOffset.x * 10 * cursorSpeed);
+                        int deltaY = (int)(mouseMoveOffset.y * 10 * cursorSpeed);
+                        if (deltaX != 0 || deltaY != 0) {
+                            xServer.injectPointerMoveDelta(deltaX, deltaY);
+                        }
                     }
                 }
             }, 0, 1000 / 60);
@@ -596,7 +599,9 @@ public class InputControlsView extends View {
             mouseMoveTimer.cancel();
             mouseMoveTimer = null;
         }
-        mouseMoveOffset.set(0, 0);
+        synchronized (mouseMoveStateLock) {
+            mouseMoveOffset.set(0, 0);
+        }
     }
 
     private void processJoystickInput(ExternalController controller) {
@@ -1764,11 +1769,15 @@ public class InputControlsView extends View {
                 return;
             }
             else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
-                mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
+                synchronized (mouseMoveStateLock) {
+                    mouseMoveOffset.x = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_LEFT ? -1 : 1)) : 0;
+                }
                 if (isActionDown) createMouseMoveTimer();
             }
             else if (binding == Binding.MOUSE_MOVE_DOWN || binding == Binding.MOUSE_MOVE_UP) {
-                mouseMoveOffset.y = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_UP ? -1 : 1)) : 0;
+                synchronized (mouseMoveStateLock) {
+                    mouseMoveOffset.y = isActionDown ? (offset != 0 ? offset : (binding == Binding.MOUSE_MOVE_UP ? -1 : 1)) : 0;
+                }
                 if (isActionDown) createMouseMoveTimer();
             }
             else {

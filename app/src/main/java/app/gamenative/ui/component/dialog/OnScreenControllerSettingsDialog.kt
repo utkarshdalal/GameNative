@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -44,6 +45,10 @@ internal fun mouseSpeedForSlider(value: Float): Float {
     return mouseSpeedOrDefault(value).coerceIn(MIN_MOUSE_SPEED, MAX_MOUSE_SPEED)
 }
 
+internal fun mouseSpeedForSave(initialValue: Float, editedValue: Float, wasEdited: Boolean): Float {
+    return if (wasEdited) mouseSpeedForSlider(editedValue) else mouseSpeedOrDefault(initialValue)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnScreenControllerSettingsDialog(
@@ -54,6 +59,7 @@ fun OnScreenControllerSettingsDialog(
     var cursorSpeed by remember(initialCursorSpeed) {
         mutableFloatStateOf(mouseSpeedForSlider(initialCursorSpeed))
     }
+    var cursorSpeedWasEdited by remember(initialCursorSpeed) { mutableStateOf(false) }
     val locale = Locale.getDefault()
 
     Dialog(
@@ -82,13 +88,22 @@ fun OnScreenControllerSettingsDialog(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { cursorSpeed = DEFAULT_MOUSE_SPEED }) {
+                        IconButton(
+                            onClick = {
+                                cursorSpeed = DEFAULT_MOUSE_SPEED
+                                cursorSpeedWasEdited = true
+                            },
+                        ) {
                             Icon(
                                 Icons.Default.Refresh,
                                 contentDescription = stringResource(R.string.reset_mouse_speed),
                             )
                         }
-                        IconButton(onClick = { onSave(cursorSpeed) }) {
+                        IconButton(
+                            onClick = {
+                                onSave(mouseSpeedForSave(initialCursorSpeed, cursorSpeed, cursorSpeedWasEdited))
+                            },
+                        ) {
                             Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                         }
                     },
@@ -109,8 +124,11 @@ fun OnScreenControllerSettingsDialog(
                     subtitle = stringResource(R.string.mouse_speed_subtitle),
                     value = cursorSpeed,
                     valueRange = MIN_MOUSE_SPEED..MAX_MOUSE_SPEED,
-                    valueText = String.format(locale, "%.1fx", cursorSpeed),
-                    onValueChange = { cursorSpeed = it },
+                    valueText = multiplierText(cursorSpeed, locale),
+                    onValueChange = {
+                        cursorSpeed = it
+                        cursorSpeedWasEdited = true
+                    },
                 )
             }
         }

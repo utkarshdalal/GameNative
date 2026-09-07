@@ -21,4 +21,14 @@ class OnScreenControllerSettingsDialogTest {
         assertEquals(MIN_MOUSE_SPEED, mouseSpeedForSlider(0.01f), 0f)
         assertEquals(MAX_MOUSE_SPEED, mouseSpeedForSlider(4f), 0f)
     }
+
+    @Test
+    fun `saving without editing preserves a valid value outside the slider range`() {
+        assertEquals(4f, mouseSpeedForSave(4f, MAX_MOUSE_SPEED, false), 0f)
+    }
+
+    @Test
+    fun `saving an edited value uses the slider range`() {
+        assertEquals(MAX_MOUSE_SPEED, mouseSpeedForSave(4f, 4f, true), 0f)
+    }
 }
