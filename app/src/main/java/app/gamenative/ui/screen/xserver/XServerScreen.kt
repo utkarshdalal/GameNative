@@ -393,6 +393,7 @@ private val REAL_STEAM_PROCESSES = setOf(
     "steamerrorreporter",
     "steamerrorreporter64",
     "gameoverlayui",
+    "eastub",
 )
 
 private var realSteamGameExecutable = ""
