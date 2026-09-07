@@ -9,6 +9,8 @@ object EaConstants {
     const val TOKEN_ENDPOINT = "https://accounts.ea.com/connect/token"
     const val IDENTITY_ENDPOINT = "https://gateway.ea.com/proxy/identity/pids/me/personas"
     const val LICENSE_ENDPOINT = "https://proxy.novafusion.ea.com/licenses"
+    const val ENTITLEMENT_REFRESH_ENDPOINT = "https://gateway.ea.com/proxy/commerce/pids/%s/refreshexternalentitlements?status=ACTIVE"
+    const val ACCOUNT_CONNECTIONS_URL = "https://myaccount.ea.com/cp-ui/connections/index"
 
     const val LSX_PORT = 3216
 

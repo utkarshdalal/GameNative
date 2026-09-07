@@ -274,11 +274,27 @@ object EaLsxServer {
                 val hash = m.second["MachineHash"].orEmpty()
                 val ooaState = m.second["OoaState"]?.toIntOrNull() ?: 0
                 if (hash.isNotEmpty()) machineHashStore[s] = hash
+                val creds = EaAuthManager.credentials(s.context) ?: error("not signed in to EA")
                 if (ooaState != 0 && s.contentId.isNotEmpty() && hash.isNotEmpty() && EaLicenseManager.needsUpdate(s.prefixDriveC, s.contentId)) {
-                    val lic = runBlocking { EaLicenseManager.request(s.context, s.contentId, hash) }
+                    val lic = runBlocking {
+                        EaLicenseManager.refreshExternalEntitlements(s.context, creds.userId)
+                        runCatching { EaLicenseManager.request(s.context, s.contentId, hash) }.getOrElse { first ->
+                            if (!EaLicenseManager.isNotEntitled(first)) throw first
+                            Timber.w("EA licence not entitled for ${s.contentId}; refreshing storefront entitlements and retrying")
+                            EaLicenseManager.refreshExternalEntitlements(s.context, creds.userId)
+                            runCatching { EaLicenseManager.request(s.context, s.contentId, hash) }.getOrElse { second ->
+                                if (EaLicenseManager.isNotEntitled(second)) {
+                                    error(
+                                        "EA account ${creds.displayName} has no entitlement for content ${s.contentId}. " +
+                                            "Link your Steam account to this EA account at ${EaConstants.ACCOUNT_CONNECTIONS_URL}, then launch again.",
+                                    )
+                                }
+                                throw second
+                            }
+                        }
+                    }
                     EaLicenseManager.save(s.prefixDriveC, lic, signatureEncoded = ooaState == 1)
                 }
-                val creds = EaAuthManager.credentials(s.context) ?: error("not signed in to EA")
                 val access = runBlocking { EaAuthManager.accessToken(s.context) }
                 val opaque = runCatching { runBlocking { EaAuthManager.opaqueLaunchToken(s.context) } }.onFailure { Timber.w(it, "opaque launch token unavailable") }.getOrDefault("")
                 val env = linkedMapOf(
