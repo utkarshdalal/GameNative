@@ -7,11 +7,13 @@ import android.view.Choreographer
 import android.view.WindowManager
 import java.util.concurrent.Executors
 import app.gamenative.BuildConfig
+import app.gamenative.PluviaApp
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import com.winlator.core.FileUtils
 import com.winlator.core.envvars.EnvVars
+import com.winlator.renderer.lsfg.LosslessScaling
 import java.io.File
 import java.util.Locale
 import timber.log.Timber
@@ -66,6 +68,8 @@ object LsfgVkManager {
     const val EXTRA_FLOW_SCALE = "lsfgFlowScale"
     const val EXTRA_PERFORMANCE_MODE = "lsfgPerformanceMode"
     const val EXTRA_PRESENT_MODE = "lsfgPresentMode"
+    const val EXTRA_TARGET_RATE = "lsfgTargetRate"
+    const val EXTRA_PRESET = "lsfgPreset"
 
     // FPS limiter extras (owned by XServerScreen)
     private const val EXTRA_FPS_LIMITER_ENABLED = "fpsLimiterEnabled"
@@ -94,16 +98,23 @@ object LsfgVkManager {
     fun isSupported(container: Container): Boolean =
         container.containerVariant.equals(Container.BIONIC, ignoreCase = true)
 
-    /** Whether LSFG is armed (enabled + Lossless.dll available in Steam dir) for this container. The DLL is copied into the container at launch time by ensureRuntimeInstalled(). */
+    /** Whether LSFG is armed (enabled + Lossless.dll available) for this container. The DLL is copied into the container at launch time by ensureRuntimeInstalled(). */
     @JvmStatic
     fun isArmed(container: Container): Boolean =
         isSupported(container) &&
-            parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
+            (parseBool(container.getExtra(EXTRA_ARMED, "false")) || parseBool(container.getExtra("frameGen", "0"))) &&
             isDllAvailable()
 
-    /** Whether Lossless Scaling is installed (Lossless.dll exists in Steam dir). */
+    /** Whether Lossless Scaling is installed (Lossless.dll exists in internal storage, container, or Steam dir). */
     @JvmStatic
-    fun isDllAvailable(): Boolean = findSteamDll() != null
+    @JvmOverloads
+    fun isDllAvailable(context: Context? = null): Boolean {
+        val ctx = context ?: PluviaApp.getAppContext()
+        if (ctx != null) {
+            if (LosslessScaling.getDllFile(ctx).isFile) return true
+        }
+        return findSteamDll() != null
+    }
 
     /** Whether the user owns Lossless Scaling in their Steam library. */
     @JvmStatic
@@ -119,26 +130,38 @@ object LsfgVkManager {
 
     /** Get the multiplier (0=Off, 2-4, default 2). */
     fun multiplier(container: Container): Int {
-        val raw = container.getExtra(EXTRA_MULTIPLIER, "2").toIntOrNull() ?: 2
+        val raw = container.getExtra(EXTRA_MULTIPLIER, "").toIntOrNull()
+            ?: container.getExtra("frameGenMultiplier", "2").toIntOrNull() ?: 2
         return if (raw == 0) 0 else raw.coerceIn(2, 4)
     }
 
-    /** Get the flow scale (0.25-1.0, default 0.80). */
-    fun flowScale(container: Container): Float =
-        container.getExtra(EXTRA_FLOW_SCALE, "0.80").toFloatOrNull()?.coerceIn(0.25f, 1.0f) ?: 0.80f
+    /** Get the flow scale (0.25-1.0, default 0.70). */
+    fun flowScale(container: Container): Float {
+        val raw = container.getExtra(EXTRA_FLOW_SCALE, "").toFloatOrNull()
+        if (raw != null) return raw.coerceIn(0.25f, 1.0f)
+        val fgFlow = container.getExtra("frameGenFlowScale", "").toIntOrNull()
+        if (fgFlow != null) return (fgFlow / 100.0f).coerceIn(0.25f, 1.0f)
+        return 0.70f
+    }
+
+    /** Get the target rate (0=Off, 60, 90, 120, 144). */
+    fun targetRate(container: Container): Int {
+        return container.getExtra(EXTRA_TARGET_RATE, "").toIntOrNull()
+            ?: container.getExtra("frameGenTargetRate", "0").toIntOrNull() ?: 0
+    }
 
     /** Get whether performance mode is enabled (default true). */
     fun performanceMode(container: Container): Boolean =
         parseBool(container.getExtra(EXTRA_PERFORMANCE_MODE, "true"))
 
     /**
-     * Swapchain present mode while frame generation runs ("mailbox" or
-     * "fifo"). Mailbox is the default: the layer already paces vsync-locked,
-     * and mesa's FIFO queue underneath it breaks the display cadence.
+     * Swapchain present mode while frame generation runs ("fifo" or
+     * "mailbox"). FIFO is the default: universally supported across all
+     * Vulkan implementations and Android surfaces without swapchain creation failures.
      */
     fun presentMode(container: Container): String =
-        container.getExtra(EXTRA_PRESENT_MODE, "mailbox")
-            .takeIf { it == "fifo" || it == "mailbox" } ?: "mailbox"
+        container.getExtra(EXTRA_PRESENT_MODE, "fifo")
+            .takeIf { it == "fifo" || it == "mailbox" } ?: "fifo"
 
     /**
      * Base fps cap for the layer's limiter (0 = uncapped). The layer
@@ -204,33 +227,31 @@ object LsfgVkManager {
      * in which case callers should fall back to their own estimate.
      */
     @JvmStatic
-    @Volatile private var cachedMeasuredFps: Float? = null
-    @Volatile private var lastStatsReadMs: Long = 0L
+    @Volatile private var lastPresentedFrames: Long = 0L
+    @Volatile private var lastFpsTimeNs: Long = 0L
+    @Volatile private var liveFps: Float? = null
 
-    /** Served from a cache refreshed off the main thread; callers poll ~1/s. */
+    /** Served from host VulkanRenderer presented frame counter; callers poll ~1/s. */
     fun readMeasuredFps(container: Container): Float? {
-        val now = System.currentTimeMillis()
-        if (now - lastStatsReadMs >= 500L) {
-            lastStatsReadMs = now
-            vsyncWriteExecutor.execute {
-                cachedMeasuredFps = try {
-                    val statsFile = File(container.rootDir, STATS_RELATIVE_PATH)
-                    if (statsFile.isFile &&
-                        System.currentTimeMillis() - statsFile.lastModified() <= STATS_FRESHNESS_MS
-                    ) {
-                        statsFile.readLines()
-                            .firstOrNull { it.startsWith("fps=") }
-                            ?.substringAfter("fps=")
-                            ?.toFloatOrNull()
-                    } else {
-                        null
-                    }
-                } catch (t: Throwable) {
-                    null
+        val vulkanRenderer = app.gamenative.PluviaApp.xServerView?.renderer as? com.winlator.renderer.VulkanRenderer
+        if (vulkanRenderer != null) {
+            val nowNs = System.nanoTime()
+            val presented = vulkanRenderer.presentedFrameCount
+            val dt = (nowNs - lastFpsTimeNs) / 1_000_000_000.0
+            if (lastFpsTimeNs != 0L && dt >= 0.5) {
+                val dFrames = presented - lastPresentedFrames
+                if (dFrames >= 0) {
+                    liveFps = (dFrames / dt).toFloat()
                 }
+                lastPresentedFrames = presented
+                lastFpsTimeNs = nowNs
+            } else if (lastFpsTimeNs == 0L) {
+                lastPresentedFrames = presented
+                lastFpsTimeNs = nowNs
             }
+            return liveFps
         }
-        return cachedMeasuredFps
+        return null
     }
 
     /**
@@ -315,14 +336,15 @@ object LsfgVkManager {
         // We now copy the DLL directly from Steam install dir instead of creating a container
         deleteLosslessScalingContainerIfExists(context)
 
-        // Copy Lossless.dll from Steam install dir into the container
+        // Copy Lossless.dll from staged storage, container drives, or Steam install dir into the container
         val dllFile = File(dllDir, LOSSLESS_DLL_NAME)
-        val steamDll = findSteamDll()
-        if (steamDll != null) {
+        val stagedDll = LosslessScaling.getDllFile(context)
+        val sourceDll = if (stagedDll.isFile) stagedDll else findSteamDll()
+        if (sourceDll != null) {
             try {
-                if (!dllFile.isFile || dllFile.length() != steamDll.length()) {
+                if (!dllFile.isFile || dllFile.length() != sourceDll.length() || dllFile.lastModified() < sourceDll.lastModified()) {
                     dllDir.mkdirs()
-                    steamDll.inputStream().use { input ->
+                    sourceDll.inputStream().use { input ->
                         dllFile.outputStream().use { output ->
                             input.copyTo(output)
                         }
@@ -334,10 +356,12 @@ object LsfgVkManager {
                 Timber.tag(TAG).e(t, "Failed to copy Lossless.dll into container")
                 success = false
             }
-        } else if (parseBool(container.getExtra(EXTRA_ARMED, "false"))) {
-            Timber.tag(TAG).w("LSFG enabled but Lossless.dll not found in Steam dir")
+        } else if (parseBool(container.getExtra(EXTRA_ARMED, "false")) || parseBool(container.getExtra("frameGen", "0"))) {
+            Timber.tag(TAG).w("LSFG enabled but Lossless.dll not found")
             success = false
         }
+
+        LosslessScaling.resolveOrBuildCache(context, container, true)
 
         return success
     }
@@ -355,8 +379,8 @@ object LsfgVkManager {
         return try {
             val dllPath = containerDllPath(container)
             val savedMultiplier = multiplier(container)
-            val frameGenActive = parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
-                dllPath != null && savedMultiplier >= 2
+            val isEnabled = parseBool(container.getExtra(EXTRA_ARMED, "false")) || parseBool(container.getExtra("frameGen", "0"))
+            val frameGenActive = isEnabled && dllPath != null && savedMultiplier >= 2
             val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
             val configText = buildConfigToml(
                 dllPath = dllPath,
@@ -366,6 +390,7 @@ object LsfgVkManager {
                 performanceMode = performanceMode(container) && frameGenActive,
                 fpsLimit = fpsLimit(container),
                 presentMode = presentMode(container),
+                targetRate = targetRate(container),
             )
             val ok = writeConfigAtomic(configFile, configText)
             ok
@@ -395,7 +420,8 @@ object LsfgVkManager {
         }
 
         val dllPath = containerDllPath(container)
-        val armed = parseBool(container.getExtra(EXTRA_ARMED, "false")) && dllPath != null
+        val isEnabled = parseBool(container.getExtra(EXTRA_ARMED, "false")) || parseBool(container.getExtra("frameGen", "0"))
+        val armed = isEnabled && dllPath != null
 
         if (!armed) {
             // Remove the manifest so the Vulkan loader can't find the layer
@@ -432,12 +458,17 @@ object LsfgVkManager {
      * Remove the layer manifest so the Vulkan loader can't discover it.
      * Called when LSFG is disabled to ensure no stale layer is loaded.
      */
-    private fun disableLayerInContainer(container: Container) {
+    @JvmStatic
+    fun disableLayerInContainer(container: Container) {
         val layerDir = File(container.rootDir, LAYER_RELATIVE_DIR)
         val manifest = File(layerDir, MANIFEST_FILENAME)
         if (manifest.exists()) {
             manifest.delete()
             Timber.tag(TAG).d("Removed LSFG manifest to disable layer")
+        }
+        val usrManifest = File(container.rootDir, "usr/share/vulkan/implicit_layer.d/$MANIFEST_FILENAME")
+        if (usrManifest.exists()) {
+            usrManifest.delete()
         }
     }
 
@@ -450,7 +481,8 @@ object LsfgVkManager {
      * This function searches all possible Steam install paths directly
      * without creating a container for the Lossless Scaling app.
      */
-    private fun findSteamDll(): File? {
+    @JvmStatic
+    fun findSteamDll(): File? {
         return findSteamDllDirect()
     }
 
@@ -528,6 +560,7 @@ object LsfgVkManager {
         performanceMode: Boolean,
         fpsLimit: Int,
         presentMode: String,
+        targetRate: Int = 0,
     ): String = buildString {
         appendLine("version = 1")
         appendLine()
@@ -539,14 +572,31 @@ object LsfgVkManager {
         appendLine()
 
         if (!dllPath.isNullOrBlank()) {
-            val effectiveMultiplier = if (enabled) multiplier.coerceIn(2, 4) else 1
+            val effectiveMultiplier = if (enabled) {
+                if (targetRate > 0) {
+                    when (targetRate) {
+                        60 -> 2
+                        90 -> 3
+                        120 -> 2
+                        144 -> 2
+                        else -> multiplier.coerceIn(2, 4)
+                    }
+                } else {
+                    multiplier.coerceIn(2, 4)
+                }
+            } else 1
+            val effectiveFpsLimit = when {
+                fpsLimit > 0 -> fpsLimit
+                targetRate > 0 -> (targetRate / effectiveMultiplier).coerceAtLeast(1)
+                else -> 0
+            }
             appendLine("[[game]]")
             appendLine("exe = ${tomlString(PROCESS_EXE_IDENTIFIER)}")
             appendLine("multiplier = $effectiveMultiplier")
             appendLine("flow_scale = ${formatFlowScale(flowScale)}")
             appendLine("performance_mode = ${if (enabled && performanceMode) "true" else "false"}")
             appendLine("hdr_mode = false")
-            appendLine("fps_limit = ${fpsLimit.coerceAtLeast(0)}")
+            appendLine("fps_limit = $effectiveFpsLimit")
             appendLine("experimental_present_mode = ${tomlString(if (enabled) presentMode else "fifo")}")
         }
     }
@@ -617,41 +667,49 @@ object LsfgVkManager {
         flowScale: Float,
         performanceMode: Boolean,
         fpsLimitOverride: Int? = null,
+        targetRate: Int = targetRate(container),
     ): Boolean {
-        if (!isSupported(container)) return false
-
-        val dllPath = containerDllPath(container)
-        val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
-
-        if (!configFile.exists()) {
-            Timber.tag(TAG).w("conf.toml not found, cannot hot-reload")
-            return false
-        }
-
-        return try {
-            val frameGenActive = enabled && dllPath != null
-            val configText = buildConfigToml(
-                dllPath = dllPath,
-                enabled = frameGenActive,
-                multiplier = if (frameGenActive) multiplier.coerceIn(2, 4) else 1,
-                flowScale = flowScale.coerceIn(0.25f, 1.0f),
-                performanceMode = performanceMode && frameGenActive,
-                fpsLimit = fpsLimitOverride ?: fpsLimit(container),
-                presentMode = presentMode(container),
-            )
-
-            val ok = writeConfigAtomic(configFile, configText)
-            if (ok) {
-                Timber.tag(TAG).i(
-                    "Hot-reloaded conf.toml: enabled=%s, multiplier=%d, flowScale=%.2f, perf=%s, fpsLimit=%d",
-                    frameGenActive, multiplier, flowScale, performanceMode, fpsLimit(container)
-                )
+        val vulkanRenderer = app.gamenative.PluviaApp.xServerView?.renderer as? com.winlator.renderer.VulkanRenderer
+        if (vulkanRenderer != null) {
+            val ctx = app.gamenative.PluviaApp.xServerView?.context
+            if (ctx != null) {
+                val cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, container, true)
+                if (cache != null && cache.isFile) {
+                    vulkanRenderer.setFrameGenerationShaders(cache.absolutePath)
+                }
             }
-            ok
-        } catch (t: Throwable) {
-            Timber.tag(TAG).e(t, "Failed to hot-reload conf.toml")
-            false
+            val flowScalePct = Math.round(flowScale * 100f)
+            vulkanRenderer.setFrameGenerationMode(
+                if (multiplier >= 2) multiplier else 2,
+                targetRate,
+                flowScalePct
+            )
+            val refreshRate = if (ctx != null) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    ctx.display?.refreshRate ?: 60f
+                } else {
+                    val wm = ctx.getSystemService(android.content.Context.WINDOW_SERVICE) as? android.view.WindowManager
+                    @Suppress("DEPRECATION")
+                    wm?.defaultDisplay?.refreshRate ?: 60f
+                }
+            } else 60f
+            val pm = presentMode(container).ifEmpty { container.rendererPresentMode.ifEmpty { "fifo" } }
+            val vkMode = when (pm.lowercase(java.util.Locale.ROOT)) {
+                "mailbox" -> 1
+                "immediate" -> 0
+                "relaxed" -> 3
+                else -> 2
+            }
+            vulkanRenderer.setVkPresentMode(vkMode)
+            vulkanRenderer.setFrameGenerationRefreshRate(refreshRate)
+            vulkanRenderer.setFrameGenerationEnabled(enabled)
+            Timber.tag(TAG).i(
+                "Configured host VulkanRenderer LSFG: enabled=%s, multiplier=%d, flowScale=%.2f, targetRate=%d",
+                enabled, multiplier, flowScale, targetRate
+            )
+            return true
         }
+        return false
     }
 
 }

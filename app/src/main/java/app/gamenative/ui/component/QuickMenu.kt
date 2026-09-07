@@ -1,6 +1,10 @@
 package app.gamenative.ui.component
 
+import android.content.Context
+import android.os.Build
 import android.view.KeyEvent
+import android.view.WindowManager
+import androidx.compose.ui.platform.LocalContext
 import timber.log.Timber
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -57,8 +61,12 @@ import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.ViewInAr
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -100,6 +108,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.GyroSettings
+import app.gamenative.model.FrameGenPreset
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.ui.component.dialog.GyroSettingsDialog
 import app.gamenative.ui.component.quickMenus.PowerControlQuickMenuTab
@@ -524,7 +533,10 @@ fun QuickMenu(
     var showGyroSettingsDialog by rememberSaveable(container?.id) { mutableStateOf(false) }
     // Owned here, not plumbed through XServerScreen (register limit; see inviteMenu).
     var lsfgPresentMode by remember(container?.id) {
-        mutableStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.presentMode(it) } ?: "mailbox")
+        mutableStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.presentMode(it) } ?: "fifo")
+    }
+    var lsfgTargetRate by remember(container?.id) {
+        mutableIntStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.targetRate(it) } ?: 0)
     }
 
     var selectedTab by rememberSaveable {
@@ -969,7 +981,13 @@ fun QuickMenu(
                                             multiplier = lsfgMultiplier,
                                             flowScale = lsfgFlowScale,
                                             performanceMode = lsfgPerformanceMode,
-                                            onMultiplierChanged = onLsfgMultiplierChanged,
+                                            onMultiplierChanged = { mult ->
+                                                lsfgTargetRate = 0
+                                                container?.let {
+                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyTargetRate(it, 0)
+                                                }
+                                                onLsfgMultiplierChanged(mult)
+                                            },
                                             onFlowScaleChanged = onLsfgFlowScaleChanged,
                                             onPerformanceModeChanged = onLsfgPerformanceModeChanged,
                                             presentMode = lsfgPresentMode,
@@ -977,6 +995,13 @@ fun QuickMenu(
                                                 lsfgPresentMode = mode
                                                 container?.let {
                                                     app.gamenative.utils.LsfgQuickMenuHelper.applyPresentMode(it, mode)
+                                                }
+                                            },
+                                            targetRate = lsfgTargetRate,
+                                            onTargetRateChanged = { rate ->
+                                                lsfgTargetRate = rate
+                                                container?.let {
+                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyTargetRate(it, rate)
                                                 }
                                             },
                                             scrollState = lsfgScrollState,
@@ -1667,12 +1692,56 @@ private fun LsfgQuickMenuTab(
     onPerformanceModeChanged: (Boolean) -> Unit,
     presentMode: String,
     onPresentModeChanged: (String) -> Unit,
+    targetRate: Int,
+    onTargetRateChanged: (Int) -> Unit,
     scrollState: ScrollState,
     focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
 ) {
     val accentColor = PluviaTheme.colors.accentPurple
-    val isEnabled = multiplier >= 2
+    val isEnabled = multiplier >= 2 || targetRate > 0
+    var lastActiveMultiplier by rememberSaveable {
+        mutableIntStateOf(if (multiplier >= 2) multiplier else 2)
+    }
+    if (multiplier >= 2 && multiplier != lastActiveMultiplier) {
+        lastActiveMultiplier = multiplier
+    }
+
+    val context = LocalContext.current
+    val supportedRefreshRates = remember(context) {
+        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                context.display
+            } catch (_: Throwable) {
+                null
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.defaultDisplay
+        } ?: @Suppress("DEPRECATION") ((context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.defaultDisplay)
+
+        val detectedRates = display?.supportedModes
+            ?.map { it.refreshRate.roundToInt() }
+            ?.filter { it > 0 }
+            ?.distinct()
+            ?.sorted()
+            .orEmpty()
+
+        val rates = if (detectedRates.isNotEmpty()) {
+            detectedRates
+        } else {
+            listOf(60, 90, 120, 144)
+        }
+        listOf(0) + rates
+    }
+
+    val dropdownRates = remember(supportedRefreshRates, targetRate) {
+        if (targetRate > 0 && !supportedRefreshRates.contains(targetRate)) {
+            (supportedRefreshRates + targetRate).sorted()
+        } else {
+            supportedRefreshRates
+        }
+    }
 
     Column(
         modifier = modifier
@@ -1680,29 +1749,21 @@ private fun LsfgQuickMenuTab(
             .focusGroup(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        // ── Multiplier (Off / 2x / 3x / 4x) ───────────────────────────────
-        QuickMenuSectionHeader(
-            title = stringResource(R.string.lsfg_multiplier),
+        // ── Master Toggle: Generate Frames ───────────────────────────────
+        QuickMenuToggleRow(
+            title = stringResource(R.string.session_drawer_frame_generation_enable),
+            enabled = isEnabled,
+            onToggle = {
+                if (isEnabled) {
+                    onMultiplierChanged(0)
+                    if (targetRate > 0) onTargetRateChanged(0)
+                } else {
+                    onMultiplierChanged(lastActiveMultiplier.coerceIn(2, 4))
+                }
+            },
+            accentColor = accentColor,
+            focusRequester = focusRequester,
         )
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 8.dp)
-                // Immersive only: groups the chips so directional focus enters the row as a
-                // unit. Flat mode keeps master's traversal.
-                .then(if (LocalImmersiveInputBypass.current.active) Modifier.focusGroup() else Modifier),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            listOf(0, 2, 3, 4).forEach { value ->
-                QuickMenuChoiceChip(
-                    text = if (value == 0) "Off" else "${value}x",
-                    selected = multiplier == value || (value == 0 && multiplier < 2),
-                    accentColor = accentColor,
-                    onClick = { onMultiplierChanged(value) },
-                    modifier = Modifier.width(56.dp),
-                    focusRequester = if (value == 0) focusRequester else null,
-                )
-            }
-        }
 
         AnimatedVisibility(
             visible = isEnabled,
@@ -1712,12 +1773,308 @@ private fun LsfgQuickMenuTab(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // ── Flow Scale ────────────────────────────────────────────
+                // ── Multiplier (at the top, hidden when target rate is active) ──
+                if (targetRate == 0) {
+                    QuickMenuSectionHeader(
+                        title = stringResource(R.string.session_drawer_frame_generation_multiplier),
+                    )
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+                            .then(if (LocalImmersiveInputBypass.current.active) Modifier.focusGroup() else Modifier),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf(2, 3, 4).forEach { value ->
+                            QuickMenuChoiceChip(
+                                text = "${value}x",
+                                selected = multiplier == value,
+                                accentColor = accentColor,
+                                onClick = { onMultiplierChanged(value) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
+                // ── Adaptive Target (Target FPS Dropdown) ──────────────────
+                QuickMenuSectionHeader(
+                    title = stringResource(R.string.session_drawer_frame_generation_target),
+                )
+                var targetRateDropdownExpanded by remember { mutableStateOf(false) }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                ) {
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isFocused by interactionSource.collectIsFocusedAsState()
+                    val inputBypass = LocalImmersiveInputBypass.current
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(
+                                if (isFocused) {
+                                    Brush.horizontalGradient(
+                                        listOf(
+                                            accentColor.copy(alpha = 0.16f),
+                                            accentColor.copy(alpha = 0.08f),
+                                        ),
+                                    )
+                                } else {
+                                    Brush.horizontalGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
+                                        ),
+                                    )
+                                },
+                            )
+                            .then(
+                                if (isFocused) {
+                                    Modifier.border(
+                                        width = 2.dp,
+                                        color = accentColor.copy(alpha = 0.7f),
+                                        shape = RoundedCornerShape(14.dp),
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .selectable(
+                                selected = isFocused,
+                                interactionSource = interactionSource,
+                                indication = null,
+                                onClick = { targetRateDropdownExpanded = true },
+                            )
+                            .onPreviewKeyEvent { keyEvent ->
+                                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && isFocused) {
+                                    when (keyEvent.nativeKeyEvent.keyCode) {
+                                        KeyEvent.KEYCODE_BUTTON_A,
+                                        KeyEvent.KEYCODE_DPAD_CENTER,
+                                        KeyEvent.KEYCODE_ENTER -> {
+                                            targetRateDropdownExpanded = true
+                                            true
+                                        }
+                                        else -> false
+                                    }
+                                } else {
+                                    false
+                                }
+                            }
+                            .then(if (!inputBypass.active) Modifier.focusable(interactionSource = interactionSource) else Modifier)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = if (targetRate == 0) {
+                                stringResource(R.string.session_drawer_frame_generation_target_off)
+                            } else {
+                                "$targetRate FPS"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            tint = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = targetRateDropdownExpanded,
+                        onDismissRequest = { targetRateDropdownExpanded = false },
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+                    ) {
+                        dropdownRates.forEach { rate ->
+                            val isSelected = targetRate == rate
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = if (rate == 0) {
+                                            stringResource(R.string.session_drawer_frame_generation_target_off)
+                                        } else {
+                                            "$rate FPS"
+                                        },
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) accentColor else MaterialTheme.colorScheme.onSurface,
+                                    )
+                                },
+                                onClick = {
+                                    onTargetRateChanged(rate)
+                                    if (rate == 0 && multiplier == 0) {
+                                        onMultiplierChanged(lastActiveMultiplier.coerceIn(2, 4))
+                                    }
+                                    targetRateDropdownExpanded = false
+                                },
+                                leadingIcon = if (isSelected) {
+                                    {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = accentColor,
+                                        )
+                                    }
+                                } else null,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // ── Quality Preset (Dropdown) ──────────────────────────────
+                QuickMenuSectionHeader(
+                    title = stringResource(R.string.frame_generation_preset),
+                )
+                val currentPreset = FrameGenPreset.fromFlowScale((flowScale * 100).roundToInt())
+                val currentFlowPct = (flowScale * 100).roundToInt()
+                val isExactPreset = currentFlowPct == currentPreset.flowScale
+
+                var presetDropdownExpanded by remember { mutableStateOf(false) }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                ) {
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isFocused by interactionSource.collectIsFocusedAsState()
+                    val inputBypass = LocalImmersiveInputBypass.current
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(
+                                if (isFocused) {
+                                    Brush.horizontalGradient(
+                                        listOf(
+                                            accentColor.copy(alpha = 0.16f),
+                                            accentColor.copy(alpha = 0.08f),
+                                        ),
+                                    )
+                                } else {
+                                    Brush.horizontalGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.10f),
+                                        ),
+                                    )
+                                },
+                            )
+                            .then(
+                                if (isFocused) {
+                                    Modifier.border(
+                                        width = 2.dp,
+                                        color = accentColor.copy(alpha = 0.7f),
+                                        shape = RoundedCornerShape(14.dp),
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .selectable(
+                                selected = isFocused,
+                                interactionSource = interactionSource,
+                                indication = null,
+                                onClick = { presetDropdownExpanded = true },
+                            )
+                            .onPreviewKeyEvent { keyEvent ->
+                                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN && isFocused) {
+                                    when (keyEvent.nativeKeyEvent.keyCode) {
+                                        KeyEvent.KEYCODE_BUTTON_A,
+                                        KeyEvent.KEYCODE_DPAD_CENTER,
+                                        KeyEvent.KEYCODE_ENTER -> {
+                                            presetDropdownExpanded = true
+                                            true
+                                        }
+                                        else -> false
+                                    }
+                                } else {
+                                    false
+                                }
+                            }
+                            .then(if (!inputBypass.active) Modifier.focusable(interactionSource = interactionSource) else Modifier)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = if (isExactPreset) {
+                                stringResource(currentPreset.labelRes) + " ($currentFlowPct%)"
+                            } else {
+                                stringResource(R.string.frame_generation_preset_custom) + " ($currentFlowPct%)"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            tint = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = presetDropdownExpanded,
+                        onDismissRequest = { presetDropdownExpanded = false },
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surface),
+                    ) {
+                        FrameGenPreset.values().forEach { preset ->
+                            val isSelected = isExactPreset && currentPreset == preset
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = stringResource(preset.labelRes),
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) accentColor else MaterialTheme.colorScheme.onSurface,
+                                        )
+                                        Text(
+                                            text = "${preset.flowScale}%",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(start = 16.dp),
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    onFlowScaleChanged(preset.flowScaleFloat)
+                                    presetDropdownExpanded = false
+                                },
+                                leadingIcon = if (isSelected) {
+                                    {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = accentColor,
+                                        )
+                                    }
+                                } else null,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // ── Flow Scale Fine-Tuning ────────────────────────────────
                 QuickMenuAdjustmentRow(
                     title = stringResource(R.string.lsfg_flow_scale),
-                    subtitle = stringResource(R.string.lsfg_flow_scale_desc),
                     valueText = String.format(java.util.Locale.US, "%.2f", flowScale),
-                    progress = (flowScale - 0.25f) / 0.75f, // 0.25..1.0 → 0..1
+                    progress = (flowScale - 0.25f) / 0.75f,
                     onDecrease = {
                         val next = (flowScale - 0.05f).coerceIn(0.25f, 1.0f)
                         onFlowScaleChanged(String.format(java.util.Locale.US, "%.2f", next).toFloat())
@@ -1734,7 +2091,6 @@ private fun LsfgQuickMenuTab(
                 // ── Performance Mode ──────────────────────────────────────
                 QuickMenuToggleRow(
                     title = stringResource(R.string.lsfg_performance_mode),
-                    subtitle = stringResource(R.string.lsfg_performance_mode_desc),
                     enabled = performanceMode,
                     onToggle = { onPerformanceModeChanged(!performanceMode) },
                     accentColor = accentColor,
@@ -1742,16 +2098,15 @@ private fun LsfgQuickMenuTab(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // ── Present Mode (Mailbox / FIFO) ─────────────────────────
+                // ── Present Mode (FIFO / Mailbox) ─────────────────────────
                 QuickMenuSectionHeader(
                     title = stringResource(R.string.lsfg_present_mode),
-                    subtitle = stringResource(R.string.lsfg_present_mode_desc),
                 )
                 Row(
                     modifier = Modifier.padding(horizontal = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    listOf("mailbox" to "Mailbox", "fifo" to "FIFO").forEach { (value, label) ->
+                    listOf("fifo" to "FIFO", "mailbox" to "Mailbox").forEach { (value, label) ->
                         QuickMenuChoiceChip(
                             text = label,
                             selected = presentMode == value,

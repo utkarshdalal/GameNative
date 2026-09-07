@@ -624,6 +624,7 @@ fun XServerScreen(
     var lsfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialLsfgSettings.multiplier) }
     var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
     var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
+    val lsfgFpsCounter = remember { app.gamenative.utils.RollingFpsCounter() }
 
     fun persistFpsLimiterState() {
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
@@ -729,7 +730,12 @@ fun XServerScreen(
     fun applyLsfgSettings() {
         LsfgQuickMenuHelper.applySettings(
             container,
-            LsfgQuickMenuHelper.Settings(lsfgMultiplier, lsfgFlowScale, lsfgPerformanceMode),
+            LsfgQuickMenuHelper.Settings(
+                multiplier = lsfgMultiplier,
+                flowScale = lsfgFlowScale,
+                performanceMode = lsfgPerformanceMode,
+                targetRate = LsfgQuickMenuHelper.targetRate(container),
+            ),
         )
     }
 
@@ -756,6 +762,8 @@ fun XServerScreen(
 
     fun applyLsfgMultiplier(mult: Int) {
         lsfgMultiplier = LsfgQuickMenuHelper.sanitizeMultiplier(mult)
+        container.putExtra(LsfgVkManager.EXTRA_TARGET_RATE, "0")
+        container.saveData()
         applyLsfgSettings()
         applyFpsLimiterToEngines(effectiveFpsLimit())
     }
@@ -860,15 +868,19 @@ fun XServerScreen(
         val hud = PerformanceHudView(
             context = context,
             fpsProvider = {
-                val raw = frameRating?.currentFPS ?: 0f
-                if (isLsfgAvailable && lsfgMultiplier >= 2) {
-                    // Only trust the layer's own measurement; multiplying raw
-                    // fabricates fps for games the layer never attaches to
-                    // (SHM-presenting games have no Vulkan swapchain).
-                    LsfgVkManager.readMeasuredFps(container) ?: raw
+                val vr = xServerView?.renderer as? com.winlator.renderer.VulkanRenderer
+                if (vr != null && vr.isFrameGenerationEnabled && lsfgFpsCounter.isGenerating) {
+                    lsfgFpsCounter.sourceFps
                 } else {
-                    raw
+                    frameRating?.currentFPS ?: lsfgFpsCounter.outputFps
                 }
+            },
+            outputFpsProvider = {
+                val vr = xServerView?.renderer as? com.winlator.renderer.VulkanRenderer
+                val out = lsfgFpsCounter.sample(vr)
+                if (vr != null && vr.isFrameGenerationEnabled && lsfgFpsCounter.isGenerating) {
+                    out
+                } else 0f
             },
             initialConfig = performanceHudConfig,
             initialCompactMode = PrefManager.performanceHudCompactMode,
@@ -2087,6 +2099,24 @@ fun XServerScreen(
                 win32AppWorkarounds = Win32AppWorkarounds(getxServer())
                 touchMouse = TouchMouse(getxServer())
                 keyboard = Keyboard(getxServer())
+                if (renderer is com.winlator.renderer.VulkanRenderer) {
+                    val isFrameGen = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean() || container.getExtra("frameGen", "0") == "1"
+                    val cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(context, container, true)
+                    if (cache != null && cache.isFile) {
+                        renderer.setFrameGenerationShaders(cache.absolutePath)
+                    }
+                    val multiplier = LsfgVkManager.multiplier(container)
+                    val flowScale = LsfgVkManager.flowScale(container)
+                    val targetRate = LsfgVkManager.targetRate(container)
+                    val refreshRate = context.display?.refreshRate ?: 60f
+                    renderer.setFrameGenerationRefreshRate(refreshRate)
+                    renderer.setFrameGenerationMode(
+                        if (multiplier >= 2) multiplier else 2,
+                        targetRate,
+                        Math.round(flowScale * 100f)
+                    )
+                    renderer.setFrameGenerationEnabled(isFrameGen && (multiplier >= 2 || targetRate > 0))
+                }
                 if (!bootToContainer) {
                     renderer.setUnviewableWMClasses("explorer.exe")
                     // TODO: make 'force fullscreen' be an option of the app being launched
@@ -2365,11 +2395,9 @@ fun XServerScreen(
                                     context,
                                     fpsProvider = {
                                         val raw = frameRating?.currentFPS ?: 0f
-                                        if (isLsfgAvailable && lsfgMultiplier >= 2) {
-                                            LsfgVkManager.readMeasuredFps(container) ?: raw
-                                        } else {
-                                            raw
-                                        }
+                                        val vr = xServerView?.renderer as? com.winlator.renderer.VulkanRenderer
+                                        val out = lsfgFpsCounter.sample(vr)
+                                        if (out > 0f) out else raw
                                     },
                                     drives = container.drives,
                                 )
@@ -4296,7 +4324,7 @@ private fun getWineStartCommand(
     val isSteamGame = gameSource == GameSource.STEAM
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
-    if (isSteamGame) {
+    if (isSteamGame && !testGraphics && !bootToContainer) {
         // Steam-specific setup
         if (container.executablePath.isEmpty()){
             container.executablePath = SteamService.getInstalledExe(gameId)
