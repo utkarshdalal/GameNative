@@ -29,15 +29,16 @@ data class EaLaunchSession(
     val arguments: String,
     val steamAppId: Int,
 ) {
-    @Volatile var contentId: String = readContentIdFromInstaller() ?: ""
-    @Volatile var title: String = gameDir.name
+    private val installerXml: String? = File(gameDir, "__Installer/installerdata.xml").takeIf { it.exists() }?.let { f -> runCatching { f.readText() }.getOrNull() }
 
-    private fun readContentIdFromInstaller(): String? {
-        val f = File(gameDir, "__Installer/installerdata.xml")
-        if (!f.exists()) return null
-        val xml = runCatching { f.readText() }.getOrNull() ?: return null
-        return Regex("<contentID>\\s*([^<\\s]+)\\s*</contentID>").find(xml)?.groupValues?.get(1)
-    }
+    /** Every content id the installer metadata lists (base game first, then packs). */
+    val contentIds: List<String> = installerXml?.let { xml ->
+        Regex("<contentID>\\s*([^<\\s]+)\\s*</contentID>").findAll(xml).map { it.groupValues[1] }.distinct().toList()
+    }.orEmpty()
+
+    @Volatile var contentId: String = contentIds.firstOrNull() ?: ""
+    @Volatile var title: String = installerXml?.let { Regex("<gameTitle[^>]*>([^<]+)</gameTitle>").find(it)?.groupValues?.get(1) } ?: gameDir.name
+    val version: String = installerXml?.let { Regex("<gameVersion>\\s*([^<\\s]+)\\s*</gameVersion>").find(it)?.groupValues?.get(1) } ?: "1.0.0.0"
 }
 
 /**
@@ -219,6 +220,13 @@ object EaLsxServer {
                 "FullGameReleaseDate=\"2014-09-02T00:00:00\" SystemTime=\"${systemTime()}\"/>"
 
             "GetInternetConnectedState" -> "<InternetConnectedState connected=\"1\"/>"
+
+            "GetSettings" -> "<GetSettingsResponse IsTelemetryEnabled=\"false\" IsAutomaticGameUpdatesEnabled=\"false\" Environment=\"production\" " +
+                "IsManualOffline=\"false\" Language=\"en_US\" IsIGOAvailable=\"false\" IsIGOEnabled=\"false\"/>"
+
+            "QueryContent" -> "<QueryContentResponse>" + s.contentIds.joinToString("") { id ->
+                "<Game progressValue=\"1\" contentID=\"${esc(id)}\" availableVersion=\"${esc(s.version)}\" displayName=\"${esc(s.title)}\" state=\"INSTALLED\" installedVersion=\"${esc(s.version)}\"/>"
+            } + "</QueryContentResponse>"
 
             "RequestLicense" -> {
                 val contentId = s.contentId

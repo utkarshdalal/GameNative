@@ -41,15 +41,20 @@ object EaLaunchSupport {
                     editor.setStringValue("Software\\Classes\\$proto", "URL Protocol", "")
                     editor.setStringValue("Software\\Classes\\$proto\\shell\\open\\command", null, command)
                 }
-                // Steam's client resolves link2ea through the EA Desktop registry, running the
-                // EaConnectLink2EAAppPath executable directly rather than the protocol handler.
+                // Steam's client resolves link2ea through the EA Desktop registry and runs the
+                // EaConnectLink2EAAppPath executable directly; the game and client also start
+                // ClientPath/DesktopAppPath when they think EA Desktop is not running. Point all of
+                // them at the stub so a leftover EA app install in the prefix never starts.
                 for (hive in listOf("Software\\Electronic Arts\\EA Desktop", "Software\\Wow6432Node\\Electronic Arts\\EA Desktop")) {
                     editor.setStringValue(hive, "EaConnectLink2EAAppPath", EaConstants.STUB_EXE)
+                    editor.setStringValue(hive, "EaConnectMsAppPath", EaConstants.STUB_EXE)
+                    editor.setStringValue(hive, "ClientPath", EaConstants.STUB_EXE)
+                    editor.setStringValue(hive, "DesktopAppPath", EaConstants.STUB_EXE)
                     editor.setStringValue(hive, "InstallSuccessful", "true")
-                    if (editor.getStringValue(hive, "ClientPath") == null) editor.setStringValue(hive, "ClientPath", EaConstants.STUB_EXE)
-                    if (editor.getStringValue(hive, "DesktopAppPath") == null) editor.setStringValue(hive, "DesktopAppPath", EaConstants.STUB_EXE)
                 }
-                if (editor.getStringValue("Software\\Wow6432Node\\Origin", "ClientPath") == null) editor.setStringValue("Software\\Wow6432Node\\Origin", "ClientPath", EaConstants.STUB_EXE)
+                for (hive in listOf("Software\\Electronic Arts\\EADM", "Software\\Wow6432Node\\Electronic Arts\\EADM", "Software\\Origin", "Software\\Wow6432Node\\Origin")) {
+                    editor.setStringValue(hive, "ClientPath", EaConstants.STUB_EXE)
+                }
             }
             Timber.i("EA: registered link2ea/steam2ea handlers and launcher keys in ${systemReg.name}")
         } catch (e: Exception) {
