@@ -9,6 +9,7 @@ import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import app.gamenative.service.ea.EaAuthManager
+import app.gamenative.service.ea.EaLoginGate
 import app.gamenative.ui.component.dialog.AuthWebViewDialog
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.redactUrlForLogging
@@ -20,6 +21,11 @@ import timber.log.Timber
  * can observe, so the WebView intercepts that navigation and hands the code back.
  */
 class EaOAuthActivity : ComponentActivity() {
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isFinishing && !finished) { finished = true; EaLoginGate.deliver(null) }
+    }
+
     companion object {
         const val EXTRA_AUTH_CODE = "auth_code"
         const val EXTRA_ERROR = "error"
@@ -43,6 +49,7 @@ class EaOAuthActivity : ComponentActivity() {
                     setResult(Activity.RESULT_OK, Intent().putExtra(EXTRA_AUTH_CODE, code))
                 }
                 finished = true
+                EaLoginGate.deliver(code)
                 finish()
                 return true
             }
@@ -61,7 +68,9 @@ class EaOAuthActivity : ComponentActivity() {
                     url = authUrl,
                     onDismissRequest = {
                         if (!finished) {
+                            finished = true
                             setResult(Activity.RESULT_CANCELED)
+                            EaLoginGate.deliver(null)
                             finish()
                         }
                     },

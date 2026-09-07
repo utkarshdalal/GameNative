@@ -69,6 +69,8 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
+import app.gamenative.service.ea.EaLaunchSupport
+import app.gamenative.service.ea.EaLoginGate
 import app.gamenative.service.amazon.AmazonService
 import com.posthog.PostHog
 import app.gamenative.ui.component.AchievementOverlay
@@ -2077,6 +2079,26 @@ fun preLaunchApp(
                     context = context,
                     REAL_STEAM_CLIENT_ARCHIVE,
                 ).await()
+            }
+            if (container.isLaunchRealSteam && gameSource == GameSource.STEAM &&
+                EaLaunchSupport.isEaLaunch(SteamService.getWindowsLaunchInfos(gameId).firstOrNull())
+            ) {
+                setLoadingMessage(context.getString(R.string.ea_login_required))
+                val signIn = EaLoginGate.ensureSignedIn(context)
+                if (signIn.isFailure) {
+                    Timber.tag("preLaunchApp").w(signIn.exceptionOrNull(), "EA sign-in did not complete")
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.ea_login_required_title),
+                            message = context.getString(R.string.ea_login_failed, signIn.exceptionOrNull()?.message ?: ""),
+                            dismissBtnText = context.getString(R.string.ok),
+                        ),
+                    )
+                    return@launch
+                }
             }
             if (container.isLaunchBionicSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {
                 setLoadingMessage(context.getString(R.string.main_downloading_steam))

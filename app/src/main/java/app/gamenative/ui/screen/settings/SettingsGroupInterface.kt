@@ -488,8 +488,6 @@ fun SettingsGroupInterface(
         }
     }
 
-    EaAccountSettings()
-
     // Custom Game Settings
     SettingsGroup(
         modifier = Modifier.background(Color.Transparent),
