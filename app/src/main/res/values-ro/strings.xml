@@ -273,6 +273,13 @@
     <string name="left_stick">Stick stânga</string>
     <string name="right_stick">Stick dreapta</string>
     <string name="dpad_category">D‑Pad</string>
+    <string name="stick_tuning_category">Zonă moartă și sensibilitate</string>
+    <string name="left_stick_deadzone">Zona moartă a stickului stâng</string>
+    <string name="right_stick_deadzone">Zona moartă a stickului drept</string>
+    <string name="left_stick_sensitivity">Sensibilitatea stickului stâng</string>
+    <string name="right_stick_sensitivity">Sensibilitatea stickului drept</string>
+    <string name="stick_deadzone_description">Cât de mult trebuie mișcat stickul înainte ca intrarea să fie înregistrată. Mărește valoarea pentru a opri devierea.</string>
+    <string name="stick_sensitivity_description">Scalează mișcarea stickului transmisă jocului. Peste 1,0, cursa maximă este atinsă mai repede.</string>
     <string name="dpad_up">D‑Pad Sus</string>
     <string name="dpad_down">D‑Pad Jos</string>
     <string name="dpad_left">D‑Pad Stânga</string>

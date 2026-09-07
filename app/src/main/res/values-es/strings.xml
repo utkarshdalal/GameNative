@@ -286,6 +286,13 @@
     <string name="left_stick">Stick izquierdo</string>
     <string name="right_stick">Stick derecho</string>
     <string name="dpad_category">Cruceta</string>
+    <string name="stick_tuning_category">Zona muerta y sensibilidad</string>
+    <string name="left_stick_deadzone">Zona muerta del stick izquierdo</string>
+    <string name="right_stick_deadzone">Zona muerta del stick derecho</string>
+    <string name="left_stick_sensitivity">Sensibilidad del stick izquierdo</string>
+    <string name="right_stick_sensitivity">Sensibilidad del stick derecho</string>
+    <string name="stick_deadzone_description">Distancia que debe recorrer el stick antes de registrar una entrada. Auméntala para evitar el drift.</string>
+    <string name="stick_sensitivity_description">Ajusta cuánto movimiento del stick recibe el juego. Por encima de 1,0 se alcanza antes el recorrido máximo.</string>
     <string name="dpad_up">Cruceta arriba</string>
     <string name="dpad_down">Cruceta abajo</string>
     <string name="dpad_left">Cruceta izquierda</string>

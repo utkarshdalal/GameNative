@@ -204,6 +204,13 @@
     <string name="left_stick">Analógico Esquerdo</string>
     <string name="right_stick">Analógico Direito</string>
     <string name="dpad_category">D-Pad</string>
+    <string name="stick_tuning_category">Zona morta e sensibilidade</string>
+    <string name="left_stick_deadzone">Zona morta do analógico esquerdo</string>
+    <string name="right_stick_deadzone">Zona morta do analógico direito</string>
+    <string name="left_stick_sensitivity">Sensibilidade do analógico esquerdo</string>
+    <string name="right_stick_sensitivity">Sensibilidade do analógico direito</string>
+    <string name="stick_deadzone_description">Define o quanto o analógico deve se mover antes de registrar uma entrada. Aumente para eliminar o drift.</string>
+    <string name="stick_sensitivity_description">Ajusta quanto movimento do analógico o jogo recebe. Acima de 1,0, o curso máximo é atingido mais cedo.</string>
     <string name="dpad_up">D-Pad Cima</string>
     <string name="dpad_down">D-Pad Baixo</string>
     <string name="dpad_left">D-Pad Esquerda</string>

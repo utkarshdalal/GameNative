@@ -268,6 +268,13 @@
     <string name="left_stick">Linker Stick</string>
     <string name="right_stick">Rechter Stick</string>
     <string name="dpad_category">D-Pad</string>
+    <string name="stick_tuning_category">Totzone und Empfindlichkeit</string>
+    <string name="left_stick_deadzone">Totzone des linken Sticks</string>
+    <string name="right_stick_deadzone">Totzone des rechten Sticks</string>
+    <string name="left_stick_sensitivity">Empfindlichkeit des linken Sticks</string>
+    <string name="right_stick_sensitivity">Empfindlichkeit des rechten Sticks</string>
+    <string name="stick_deadzone_description">Legt fest, wie weit der Stick bewegt werden muss, bevor eine Eingabe erkannt wird. Erhöhen, um Driften zu verhindern.</string>
+    <string name="stick_sensitivity_description">Skaliert die Stickbewegung, die das Spiel erkennt. Über 1,0 wird der volle Ausschlag früher erreicht.</string>
     <string name="dpad_up">D-Pad hoch</string>
     <string name="dpad_down">D-Pad runter</string>
     <string name="dpad_left">D-Pad links</string>

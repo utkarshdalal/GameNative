@@ -268,6 +268,13 @@
     <string name="left_stick">左搖桿</string>
     <string name="right_stick">右搖桿</string>
     <string name="dpad_category">方向鍵</string>
+    <string name="stick_tuning_category">死區與靈敏度</string>
+    <string name="left_stick_deadzone">左搖桿死區</string>
+    <string name="right_stick_deadzone">右搖桿死區</string>
+    <string name="left_stick_sensitivity">左搖桿靈敏度</string>
+    <string name="right_stick_sensitivity">右搖桿靈敏度</string>
+    <string name="stick_deadzone_description">搖桿移動多遠後才會偵測到輸入。調高可消除飄移。</string>
+    <string name="stick_sensitivity_description">調整遊戲接收到的搖桿移動幅度。高於 1.0 時會更快達到最大輸入。</string>
     <string name="dpad_up">方向鍵 上</string>
     <string name="dpad_down">方向鍵 下</string>
     <string name="dpad_left">方向鍵 左</string>

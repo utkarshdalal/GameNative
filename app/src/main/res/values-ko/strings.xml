@@ -283,6 +283,13 @@
     <string name="left_stick">왼쪽 스틱</string>
     <string name="right_stick">오른쪽 스틱</string>
     <string name="dpad_category">십자 버튼</string>
+    <string name="stick_tuning_category">데드존 및 감도</string>
+    <string name="left_stick_deadzone">왼쪽 스틱 데드존</string>
+    <string name="right_stick_deadzone">오른쪽 스틱 데드존</string>
+    <string name="left_stick_sensitivity">왼쪽 스틱 감도</string>
+    <string name="right_stick_sensitivity">오른쪽 스틱 감도</string>
+    <string name="stick_deadzone_description">입력이 감지되기 전에 스틱을 움직여야 하는 거리입니다. 드리프트를 멈추려면 값을 높이세요.</string>
+    <string name="stick_sensitivity_description">게임에 전달되는 스틱 움직임을 조절합니다. 1.0보다 높으면 최대 입력에 더 빨리 도달합니다.</string>
     <string name="dpad_up">십자 버튼 위</string>
     <string name="dpad_down">십자 버튼 아래</string>
     <string name="dpad_left">십자 버튼 왼쪽</string>

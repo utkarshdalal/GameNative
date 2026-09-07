@@ -283,6 +283,13 @@
     <string name="left_stick">Lewy drążek</string>
     <string name="right_stick">Prawy drążek</string>
     <string name="dpad_category">D-Pad</string>
+    <string name="stick_tuning_category">Martwa strefa i czułość</string>
+    <string name="left_stick_deadzone">Martwa strefa lewego drążka</string>
+    <string name="right_stick_deadzone">Martwa strefa prawego drążka</string>
+    <string name="left_stick_sensitivity">Czułość lewego drążka</string>
+    <string name="right_stick_sensitivity">Czułość prawego drążka</string>
+    <string name="stick_deadzone_description">Określa, jak daleko trzeba wychylić drążek, zanim zostanie wykryty ruch. Zwiększ wartość, aby usunąć dryf.</string>
+    <string name="stick_sensitivity_description">Skaluje ruch drążka odbierany przez grę. Wartość powyżej 1,0 pozwala szybciej osiągnąć pełne wychylenie.</string>
     <string name="dpad_up">D-Pad Góra</string>
     <string name="dpad_down">D-Pad Dół</string>
     <string name="dpad_left">D-Pad Lewo</string>

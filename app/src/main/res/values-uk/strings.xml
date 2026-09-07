@@ -270,6 +270,13 @@
     <string name="left_stick">Лівий стік</string>
     <string name="right_stick">Правий стік</string>
     <string name="dpad_category">D-Pad</string>
+    <string name="stick_tuning_category">Мертва зона та чутливість</string>
+    <string name="left_stick_deadzone">Мертва зона лівого стіка</string>
+    <string name="right_stick_deadzone">Мертва зона правого стіка</string>
+    <string name="left_stick_sensitivity">Чутливість лівого стіка</string>
+    <string name="right_stick_sensitivity">Чутливість правого стіка</string>
+    <string name="stick_deadzone_description">Визначає, наскільки потрібно відхилити стік, перш ніж введення буде зареєстровано. Збільште значення, щоб усунути дрейф.</string>
+    <string name="stick_sensitivity_description">Масштабує відхилення стіка, передане грі. За значення понад 1,0 максимальне відхилення досягається раніше.</string>
     <string name="dpad_up">D-Pad вгору</string>
     <string name="dpad_down">D-Pad вниз</string>
     <string name="dpad_left">D-Pad вліво</string>

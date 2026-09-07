@@ -674,6 +674,7 @@ private fun StickTuningSection(
             label = stringResource(R.string.left_stick_deadzone),
             description = deadzoneDescription,
             value = leftStickDeadzone,
+            displayValue = String.format(Locale.getDefault(), "%.0f%%", leftStickDeadzone * 100),
             valueRange = ControlsProfile.MIN_STICK_DEADZONE..ControlsProfile.MAX_STICK_DEADZONE,
             steps = DEADZONE_SLIDER_STEPS,
             onValueChange = onLeftStickDeadzoneChange
@@ -682,6 +683,7 @@ private fun StickTuningSection(
             label = stringResource(R.string.left_stick_sensitivity),
             description = sensitivityDescription,
             value = leftStickSensitivity,
+            displayValue = String.format(Locale.getDefault(), "%.2f×", leftStickSensitivity),
             valueRange = ControlsProfile.MIN_STICK_SENSITIVITY..ControlsProfile.MAX_STICK_SENSITIVITY,
             steps = SENSITIVITY_SLIDER_STEPS,
             onValueChange = onLeftStickSensitivityChange
@@ -690,6 +692,7 @@ private fun StickTuningSection(
             label = stringResource(R.string.right_stick_deadzone),
             description = deadzoneDescription,
             value = rightStickDeadzone,
+            displayValue = String.format(Locale.getDefault(), "%.0f%%", rightStickDeadzone * 100),
             valueRange = ControlsProfile.MIN_STICK_DEADZONE..ControlsProfile.MAX_STICK_DEADZONE,
             steps = DEADZONE_SLIDER_STEPS,
             onValueChange = onRightStickDeadzoneChange
@@ -698,6 +701,7 @@ private fun StickTuningSection(
             label = stringResource(R.string.right_stick_sensitivity),
             description = sensitivityDescription,
             value = rightStickSensitivity,
+            displayValue = String.format(Locale.getDefault(), "%.2f×", rightStickSensitivity),
             valueRange = ControlsProfile.MIN_STICK_SENSITIVITY..ControlsProfile.MAX_STICK_SENSITIVITY,
             steps = SENSITIVITY_SLIDER_STEPS,
             onValueChange = onRightStickSensitivityChange
@@ -710,6 +714,7 @@ private fun StickAdjustmentSlider(
     label: String,
     description: String,
     value: Float,
+    displayValue: String,
     valueRange: ClosedFloatingPointRange<Float>,
     steps: Int,
     onValueChange: (Float) -> Unit
@@ -731,7 +736,7 @@ private fun StickAdjustmentSlider(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = String.format(Locale.US, "%.2f", value),
+                    text = displayValue,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -751,8 +756,8 @@ private fun StickAdjustmentSlider(
     }
 }
 
-// 0.10 .. 1.0 in 0.05 increments leaves 17 stops between the two endpoints
-private const val DEADZONE_SLIDER_STEPS = 17
+// 0% .. 100% in 1% increments leaves 99 stops between the two endpoints
+private const val DEADZONE_SLIDER_STEPS = 99
 // 0.10 .. 3.0 in 0.10 increments leaves 28 stops between the two endpoints
 private const val SENSITIVITY_SLIDER_STEPS = 28
 

@@ -279,19 +279,15 @@ public class InputControlsManager {
                 else if (name.equals("rightStickSensitivity")) {
                     rightStickSensitivity = (float) reader.nextDouble();
                 }
-                else if (name.equals("elements") || name.equals("controllers")) {
-                    // Every scalar field is written before these two arrays, so there is nothing
-                    // left worth parsing - bail out rather than walking the whole element list.
-                    break;
-                }
                 else {
                     reader.skipValue();
                 }
             }
+            reader.endObject();
 
             ControlsProfile profile = new ControlsProfile(context, profileId);
             profile.setName(profileName);
-            profile.setCursorSpeed(cursorSpeed);
+            if (!Float.isNaN(cursorSpeed)) profile.setCursorSpeed(cursorSpeed);
             profile.setLeftStickDeadzone(leftStickDeadzone);
             profile.setRightStickDeadzone(rightStickDeadzone);
             profile.setLeftStickSensitivity(leftStickSensitivity);

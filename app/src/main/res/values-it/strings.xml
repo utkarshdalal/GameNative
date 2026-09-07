@@ -275,6 +275,13 @@
     <string name="left_stick">Levetta Sinistra</string>
     <string name="right_stick">Levetta Destra</string>
     <string name="dpad_category">D-Pad</string>
+    <string name="stick_tuning_category">Zona morta e sensibilità</string>
+    <string name="left_stick_deadzone">Zona morta levetta sinistra</string>
+    <string name="right_stick_deadzone">Zona morta levetta destra</string>
+    <string name="left_stick_sensitivity">Sensibilità levetta sinistra</string>
+    <string name="right_stick_sensitivity">Sensibilità levetta destra</string>
+    <string name="stick_deadzone_description">Distanza che la levetta deve percorrere prima che l’input venga rilevato. Aumentala per eliminare il drift.</string>
+    <string name="stick_sensitivity_description">Regola l’ampiezza del movimento trasmesso al gioco. Oltre 1,0, la corsa massima viene raggiunta prima.</string>
     <string name="dpad_up">D-Pad Su</string>
     <string name="dpad_down">D-Pad Giù</string>
     <string name="dpad_left">D-Pad Sinistra</string>

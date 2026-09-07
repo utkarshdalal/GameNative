@@ -229,6 +229,13 @@
     <string name="left_stick">左スティック</string>
     <string name="right_stick">右スティック</string>
     <string name="dpad_category">十字キー</string>
+    <string name="stick_tuning_category">デッドゾーンと感度</string>
+    <string name="left_stick_deadzone">左スティックのデッドゾーン</string>
+    <string name="right_stick_deadzone">右スティックのデッドゾーン</string>
+    <string name="left_stick_sensitivity">左スティックの感度</string>
+    <string name="right_stick_sensitivity">右スティックの感度</string>
+    <string name="stick_deadzone_description">入力が反応し始めるまでに必要なスティックの移動量です。ドリフトを抑えるには値を上げます。</string>
+    <string name="stick_sensitivity_description">ゲームに伝わるスティック移動量を調整します。1.0を超えると、より早く最大入力に達します。</string>
     <string name="dpad_up">十字キー上</string>
     <string name="dpad_down">十字キー下</string>
     <string name="dpad_left">十字キー左</string>

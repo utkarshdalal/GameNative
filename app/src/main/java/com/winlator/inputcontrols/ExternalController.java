@@ -202,9 +202,13 @@ public class ExternalController {
         return getDeviceId() + " | " + getName();
     }
 
-    private static float tuneStickAxis(float value, float deadzone, float sensitivity) {
+    static float tuneStickAxis(float value, float deadzone, float sensitivity) {
         float adjusted = ControlsProfile.applyStickDeadzone(value, deadzone);
         return Mathf.clamp(adjusted * sensitivity, -1, 1);
+    }
+
+    static float resolveStickAxis(boolean reported, float retained, float value, float deadzone, float sensitivity) {
+        return JoyConSupport.axisValue(reported, retained, tuneStickAxis(value, deadzone, sensitivity));
     }
 
     private void processJoystickInput(MotionEvent event, int historyPos) {
@@ -234,8 +238,13 @@ public class ExternalController {
     private static float updateAxis(MotionEvent event, int axis, int historyPos, float retained, float deadzone, float sensitivity) {
         InputDevice device = event.getDevice();
         boolean reported = device != null && device.getMotionRange(axis, event.getSource()) != null;
-        float tuned = tuneStickAxis(getCenteredAxis(event, axis, historyPos), deadzone, sensitivity);
-        return JoyConSupport.axisValue(reported, retained, tuned);
+        return resolveStickAxis(
+            reported,
+            retained,
+            getCenteredAxis(event, axis, historyPos),
+            deadzone,
+            sensitivity
+        );
     }
 
     private void processTriggerButton(MotionEvent event) {

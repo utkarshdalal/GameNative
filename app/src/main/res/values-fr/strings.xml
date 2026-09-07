@@ -276,6 +276,13 @@
     <string name="left_stick">Joystick gauche</string>
     <string name="right_stick">Joystick droit</string>
     <string name="dpad_category">Croix directionnelle</string>
+    <string name="stick_tuning_category">Zone morte et sensibilité</string>
+    <string name="left_stick_deadzone">Zone morte du joystick gauche</string>
+    <string name="right_stick_deadzone">Zone morte du joystick droit</string>
+    <string name="left_stick_sensitivity">Sensibilité du joystick gauche</string>
+    <string name="right_stick_sensitivity">Sensibilité du joystick droit</string>
+    <string name="stick_deadzone_description">Distance que le joystick doit parcourir avant qu’une entrée soit détectée. Augmentez-la pour supprimer la dérive.</string>
+    <string name="stick_sensitivity_description">Ajuste l’amplitude du mouvement transmis au jeu. Au-dessus de 1,0, la course maximale est atteinte plus tôt.</string>
     <string name="dpad_up">D-Pad Haut</string>
     <string name="dpad_down">D-Pad Bas</string>
     <string name="dpad_left">D-Pad Gauche</string>

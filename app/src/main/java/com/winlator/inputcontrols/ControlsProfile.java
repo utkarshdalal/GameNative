@@ -21,7 +21,7 @@ import java.util.Locale;
 
 public class ControlsProfile implements Comparable<ControlsProfile> {
     /** Bounds for the user-configurable physical stick deadzone and sensitivity. */
-    public static final float MIN_STICK_DEADZONE = 0.1f;
+    public static final float MIN_STICK_DEADZONE = 0.0f;
     public static final float MAX_STICK_DEADZONE = 1.0f;
     public static final float MIN_STICK_SENSITIVITY = 0.1f;
     public static final float MAX_STICK_SENSITIVITY = 3.0f;
@@ -114,6 +114,8 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
      * near zero instead of jumping straight to the deadzone magnitude.
      */
     public static float applyStickDeadzone(float value, float deadzone) {
+        if (!Float.isFinite(value)) return 0;
+        deadzone = clampDeadzone(deadzone);
         float magnitude = Math.abs(value);
         if (magnitude <= deadzone || deadzone >= 1.0f) return 0;
         return ((magnitude - deadzone) / (1.0f - deadzone)) * Mathf.sign(value);

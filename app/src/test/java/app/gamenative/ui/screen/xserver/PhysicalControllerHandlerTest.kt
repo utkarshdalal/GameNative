@@ -148,6 +148,37 @@ class PhysicalControllerHandlerTest {
     }
 
     @Test
+    fun `radial menu accepts tuned stick movement below the legacy deadzone`() {
+        val deviceId = 42
+        val controller = motionController(KeyEvent.KEYCODE_BUTTON_A, Binding.OPEN_RADIAL_MENU).apply {
+            state.thumbRX = 0.05f
+        }
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        val vectors = mutableListOf<Pair<Float, Float>>()
+        val handler = PhysicalControllerHandler(
+            profile = profile,
+            xServer = mock<XServer>(),
+            onRadialMenuVectorChanged = { x, y -> vectors.add(x to y) },
+        )
+        val openEvent = mock<KeyEvent>()
+        whenever(openEvent.repeatCount).thenReturn(0)
+        whenever(openEvent.deviceId).thenReturn(deviceId)
+        whenever(openEvent.keyCode).thenReturn(KeyEvent.KEYCODE_BUTTON_A)
+        whenever(openEvent.action).thenReturn(KeyEvent.ACTION_DOWN)
+
+        try {
+            assertTrue(handler.onKeyEvent(openEvent))
+            assertTrue(handler.onGenericMotionEvent(motionEvent(deviceId)))
+
+            assertEquals(0.05f, vectors.last().first, 0f)
+            assertEquals(0f, vectors.last().second, 0f)
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
     fun `removing a controller releases its held digital bindings`() {
         val deviceId = 42
         val keyCode = KeyEvent.KEYCODE_BUTTON_A

@@ -204,6 +204,13 @@
     <string name="left_stick">Venstre stick</string>
     <string name="right_stick">Højre stick</string>
     <string name="dpad_category">D-Pad</string>
+    <string name="stick_tuning_category">Dødzone og følsomhed</string>
+    <string name="left_stick_deadzone">Venstre sticks dødzone</string>
+    <string name="right_stick_deadzone">Højre sticks dødzone</string>
+    <string name="left_stick_sensitivity">Venstre sticks følsomhed</string>
+    <string name="right_stick_sensitivity">Højre sticks følsomhed</string>
+    <string name="stick_deadzone_description">Hvor langt styrepinden skal bevæges, før input registreres. Øg værdien for at stoppe drift.</string>
+    <string name="stick_sensitivity_description">Skalerer, hvor meget bevægelse spillet registrerer. Over 1,0 nås fuldt udslag tidligere.</string>
     <string name="dpad_up">D-Pad op</string>
     <string name="dpad_down">D-Pad ned</string>
     <string name="dpad_left">D-Pad venstre</string>

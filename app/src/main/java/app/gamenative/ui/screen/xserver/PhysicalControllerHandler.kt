@@ -52,8 +52,6 @@ class PhysicalControllerHandler(
         private const val SCROLL_REPEAT_INTERVAL_MS = 90L
         private const val UNKNOWN_DEVICE_ID = -1
         private const val SEQUENCE_PRESS_MS = 80L
-        // LX, LY, RX, RY - the leading entries of the axis array processed in processJoystickInput
-        private const val STICK_AXIS_COUNT = 4
         // Stick values reaching the mouse-move timer are already deadzone-gated, so this only skips
         // injection while the sticks are resting.
         private const val MOUSE_MOVE_IDLE_THRESHOLD = 0.01
@@ -164,6 +162,7 @@ class PhysicalControllerHandler(
         showKeyboardPressed = false
         closeRadialMenuIfOpen(commit = false)
         sendGamepadState()
+        ExternalController.setStickTuning(null)
     }
 
     fun onInputDeviceRemoved(deviceId: Int) {
@@ -505,15 +504,7 @@ class PhysicalControllerHandler(
             val positiveSource = PhysicalInputSource(deviceId, posKeyCode)
             val negativeSource = PhysicalInputSource(deviceId, negKeyCode)
 
-            // Indices 0..3 are the analog sticks, whose values already had the profile's deadzone
-            // and sensitivity applied by ExternalController, so anything non-zero is live input.
-            // 4..5 are the digital hat axes, which keep the fixed threshold.
-            val isStick = i < STICK_AXIS_COUNT
-            val isActive = if (isStick) {
-                values[i] != 0f
-            } else {
-                Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE
-            }
+            val isActive = isPhysicalAxisActive(values[i], axes[i])
 
             if (isActive) {
                 val activeKey = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
@@ -1089,9 +1080,7 @@ class PhysicalControllerHandler(
     ): Pair<Float, Float>? {
         val filteredX = radialSelectionComponent(x, xAxis)
         val filteredY = radialSelectionComponent(y, yAxis)
-        return if (Math.abs(filteredX) <= ControlElement.STICK_DEAD_ZONE &&
-            Math.abs(filteredY) <= ControlElement.STICK_DEAD_ZONE
-        ) {
+        return if (filteredX == 0f && filteredY == 0f) {
             null
         } else {
             filteredX to filteredY
@@ -1099,9 +1088,15 @@ class PhysicalControllerHandler(
     }
 
     private fun radialSelectionComponent(value: Float, axis: Int): Float {
-        if (Math.abs(value) <= ControlElement.STICK_DEAD_ZONE) return 0f
+        if (!isPhysicalAxisActive(value, axis)) return 0f
         val keyCode = ExternalControllerBinding.getKeyCodeForAxis(axis, Mathf.sign(value))
         return if (keyCode == radialMenuOpenerKeyCode) 0f else value
+    }
+
+    private fun isPhysicalAxisActive(value: Float, axis: Int): Boolean {
+        val isStick = axis == MotionEvent.AXIS_X || axis == MotionEvent.AXIS_Y ||
+            axis == MotionEvent.AXIS_Z || axis == MotionEvent.AXIS_RZ
+        return if (isStick) value != 0f else Math.abs(value) > ControlElement.STICK_DEAD_ZONE
     }
 
     private fun isRadialMenuMotionOpenerPressed(controller: ExternalController): Boolean {
@@ -1123,7 +1118,7 @@ class PhysicalControllerHandler(
         )
 
         for (i in axes.indices) {
-            if (Math.abs(values[i]) <= ControlElement.STICK_DEAD_ZONE) continue
+            if (!isPhysicalAxisActive(values[i], axes[i])) continue
             val keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
             if (keyCode == radialMenuOpenerKeyCode) {
                 return true

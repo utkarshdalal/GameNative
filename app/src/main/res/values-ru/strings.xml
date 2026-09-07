@@ -390,6 +390,13 @@
     <string name="download_prompt_title">Установить приложение</string>
     <string name="downloading">Загрузка...</string>
     <string name="dpad_category">D-Pad</string>
+    <string name="stick_tuning_category">Мёртвая зона и чувствительность</string>
+    <string name="left_stick_deadzone">Мёртвая зона левого джойстика</string>
+    <string name="right_stick_deadzone">Мёртвая зона правого джойстика</string>
+    <string name="left_stick_sensitivity">Чувствительность левого джойстика</string>
+    <string name="right_stick_sensitivity">Чувствительность правого джойстика</string>
+    <string name="stick_deadzone_description">Определяет, насколько нужно отклонить стик, прежде чем ввод будет зарегистрирован. Увеличьте значение, чтобы устранить дрейф.</string>
+    <string name="stick_sensitivity_description">Масштабирует отклонение стика, передаваемое игре. При значении выше 1,0 максимальное отклонение достигается раньше.</string>
     <string name="dpad_down">D-Pad вниз</string>
     <string name="dpad_left">D-Pad влево</string>
     <string name="dpad_right">D-Pad вправо</string>
