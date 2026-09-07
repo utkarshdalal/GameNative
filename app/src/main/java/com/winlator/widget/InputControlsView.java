@@ -421,6 +421,8 @@ public class InputControlsView extends View {
             }
         }
 
+        if (profile == null) stopMouseMoveTimer();
+
         onControlsProfileContentChanged(profileChanged);
         gyroController.setHasProfile(profile != null);
     }
@@ -431,6 +433,7 @@ public class InputControlsView extends View {
         synchronized (this) {
             this.profile = null;
         }
+        stopMouseMoveTimer();
     }
 
     /** Re-evaluates latched gyro activation after the active profile is edited in place. */
@@ -554,8 +557,7 @@ public class InputControlsView extends View {
     protected void onDetachedFromWindow() {
         cancelTouchRouting();
         gyroController.onDetachedFromWindow();
-        if (mouseMoveTimer != null)
-            mouseMoveTimer.cancel();
+        stopMouseMoveTimer();
         super.onDetachedFromWindow();
     }
 
@@ -569,17 +571,32 @@ public class InputControlsView extends View {
         return (int)Mathf.roundTo(getHeight(), snappingSize);
     }
 
-    private void createMouseMoveTimer() {
+    private synchronized void createMouseMoveTimer() {
         if (profile != null && mouseMoveTimer == null) {
-            final float cursorSpeed = profile.getCursorSpeed();
             mouseMoveTimer = new Timer();
             mouseMoveTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    xServer.injectPointerMoveDelta((int)(mouseMoveOffset.x * 10 * cursorSpeed), (int)(mouseMoveOffset.y * 10 * cursorSpeed));
+                    ControlsProfile currentProfile = getProfile();
+                    if (currentProfile == null) return;
+
+                    float cursorSpeed = currentProfile.getCursorSpeed();
+                    int deltaX = (int)(mouseMoveOffset.x * 10 * cursorSpeed);
+                    int deltaY = (int)(mouseMoveOffset.y * 10 * cursorSpeed);
+                    if (deltaX != 0 || deltaY != 0) {
+                        xServer.injectPointerMoveDelta(deltaX, deltaY);
+                    }
                 }
             }, 0, 1000 / 60);
         }
+    }
+
+    private synchronized void stopMouseMoveTimer() {
+        if (mouseMoveTimer != null) {
+            mouseMoveTimer.cancel();
+            mouseMoveTimer = null;
+        }
+        mouseMoveOffset.set(0, 0);
     }
 
     private void processJoystickInput(ExternalController controller) {

@@ -269,6 +269,10 @@
     <string name="dpad_right">D-Pad Right</string>
     <string name="input_controls">On-screen Controller</string>
     <string name="edit_controls">Edit On-screen Controller</string>
+    <string name="on_screen_controller_settings">On-screen Controller Settings</string>
+    <string name="mouse_speed">Mouse Speed</string>
+    <string name="mouse_speed_subtitle">Adjust pointer speed for touch movement and controls assigned to move the mouse. Shooter Mode uses its own look sensitivity.</string>
+    <string name="reset_mouse_speed">Reset mouse speed</string>
     <string name="edit_physical_controller">Edit Physical Controller</string>
     <string name="controller_disconnected">Disconnected</string>
     <string name="reset_onscreen_controls">Reset On-Screen Controls</string>

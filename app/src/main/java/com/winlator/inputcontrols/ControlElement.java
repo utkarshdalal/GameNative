@@ -1377,6 +1377,10 @@ public class ControlElement {
             else if (type == Type.TRACKPAD) {
                 final boolean[] states = {deltaY <= -TRACKPAD_MIN_SPEED, deltaX >= TRACKPAD_MIN_SPEED, deltaY >= TRACKPAD_MIN_SPEED, deltaX <= -TRACKPAD_MIN_SPEED};
                 if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
+                ControlsProfile activeProfile = inputControlsView.getProfile();
+                float cursorSpeed = activeProfile != null
+                        ? activeProfile.getCursorSpeed()
+                        : ControlsProfile.DEFAULT_CURSOR_SPEED;
                 int cursorDx = 0;
                 int cursorDy = 0;
 
@@ -1390,10 +1394,10 @@ public class ControlElement {
                             value *= TouchpadView.CURSOR_ACCELERATION;
                         }
                         if (mouseMoveBinding == Binding.MOUSE_MOVE_LEFT || mouseMoveBinding == Binding.MOUSE_MOVE_RIGHT) {
-                            cursorDx = Mathf.roundPoint(value);
+                            cursorDx = Mathf.roundPoint(value * cursorSpeed);
                         }
                         else {
-                            cursorDy = Mathf.roundPoint(value);
+                            cursorDy = Mathf.roundPoint(value * cursorSpeed);
                         }
                         boolean nextState = states[i];
                         if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
