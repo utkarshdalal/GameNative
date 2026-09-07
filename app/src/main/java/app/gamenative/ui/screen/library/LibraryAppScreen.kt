@@ -237,6 +237,7 @@ private fun PrimaryActionButton(
     val buttonColor = when {
         isDownloading -> PluviaTheme.colors.statusDownloading
         isInstalled -> PluviaTheme.colors.statusInstalled
+        !enabled -> PluviaTheme.colors.textMuted
         else -> PluviaTheme.colors.statusAvailable
     }
 
@@ -1028,18 +1029,24 @@ internal fun AppScreenContent(
                             }
                         }
                     }
-                    }
-
-                    // Compatibility status (if applicable)
-                    if (displayInfo.compatibilityMessage != null && displayInfo.compatibilityColor != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = displayInfo.compatibilityMessage,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(displayInfo.compatibilityColor),
-                        )
-                    }
                 }
+                // DisabledWarning or compatibility notice for game.
+                if(displayInfo.disabledWarning != null && buttonEnabled == false){ 
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = displayInfo.disabledWarning,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Red.copy(alpha = 0.8f),
+                    )
+                } else if (displayInfo.compatibilityMessage != null && displayInfo.compatibilityColor != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = displayInfo.compatibilityMessage,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(displayInfo.compatibilityColor),
+                    )
+                }
+            }
             }
 
             // Content section below hero with solid background
@@ -1870,6 +1877,7 @@ private fun Preview_AppScreen() {
         sizeFromStore = null,
         lastPlayedText = null,
         playtimeText = null,
+        disabledWarning = "3rd Party games not supported"
     )
     PluviaTheme {
         Surface {

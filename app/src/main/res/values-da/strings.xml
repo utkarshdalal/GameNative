@@ -1367,6 +1367,7 @@
     <string name="amazon_logout_in_progress">Logger ud fra Amazon Games…</string>
 
     <!-- Epic Install/Uninstall -->
+    <string name="epic_disabled_warning_third_party_client">Spil med tredjeparts-launcher understøttes ikke i øjeblikket på Epic Store</string>
     <string name="epic_uninstall_game_title">Afinstallér spil</string>
     <string name="epic_uninstall_game_message">Er du sikker på, at du vil afinstallere %1$s? Denne handling kan ikke fortrydes.</string>
     <string name="epic_install_game_title">Download spil</string>

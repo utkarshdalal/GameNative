@@ -56,6 +56,7 @@
     <string name="gog_uninstall_confirmation_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
     <string name="gog_install_game_title">Pobierz grę</string>
     <string name="gog_install_confirmation_message">Instalowana aplikacja ma następujące wymagania dotyczące miejsca. Czy chcesz kontynuować?\n\n\tRozmiar pobierania: %1$s\n\tDostępne miejsce: %2$s</string>
+    <string name="epic_disabled_warning_third_party_client">Gry wymagające zewnętrznego launchera nie są obecnie obsługiwane w Epic Store</string>
     <string name="epic_uninstall_game_title">Odinstaluj grę</string>
     <string name="epic_uninstall_game_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
     <string name="epic_install_game_title">Pobierz grę</string>

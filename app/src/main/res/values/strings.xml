@@ -56,6 +56,7 @@
     <string name="gog_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="gog_install_game_title">Download Game</string>
     <string name="gog_install_confirmation_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tAvailable Space: %2$s</string>
+    <string name="epic_disabled_warning_third_party_client">Third-party launcher games are currently not supported on Epic Store</string>
     <string name="epic_uninstall_game_title">Uninstall Game</string>
     <string name="epic_uninstall_game_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
     <string name="epic_install_game_title">Download Game</string>
