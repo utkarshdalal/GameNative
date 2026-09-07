@@ -2071,6 +2071,8 @@ https://gamenative.app
     <string name="mouse_acceleration_strength_subtitle">Как быстро быстрые перетаскивания добавляют скорость мыши</string>
     <string name="mouse_acceleration_max">Максимальное ускорение</string>
     <string name="mouse_acceleration_max_subtitle">Верхний множитель при быстрых перетаскиваниях обзора мышью</string>
+    <string name="win32_relative_mouse_input">Относительный ввод мыши</string>
+    <string name="win32_relative_mouse_input_subtitle">Передаёт движение напрямую в Wine как относительный ввод мыши. Попробуйте эту настройку, если мышь не работает в игре.</string>
     <string name="joystick_opacity">Непрозрачность джойстика</string>
     <string name="joystick_opacity_subtitle">Непрозрачность колец и ручек динамических джойстиков</string>
     <string name="show_shooter_runtime_toggle">Показывать кнопку в игре</string>

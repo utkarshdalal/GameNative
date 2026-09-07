@@ -6,6 +6,7 @@ import android.util.SparseArray;
 
 import com.winlator.math.Mathf;
 import com.winlator.renderer.XServerRenderer;
+import com.winlator.winhandler.MouseEventFlags;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.extensions.BigReqExtension;
 import com.winlator.xserver.extensions.DRI3Extension;
@@ -44,7 +45,7 @@ public class XServer {
     private XServerRenderer renderer;
     private WinHandler winHandler;
     private final EnumMap<Lockable, ReentrantLock> locks = new EnumMap<>(Lockable.class);
-    private boolean relativeMouseMovement = false;
+    private volatile boolean relativeMouseMovement = false;
     private final boolean mouseDragCompatibilityEnabled;
     private boolean simulateTouchScreen = false;
     private final boolean runningFromGlibc;
@@ -187,6 +188,14 @@ public class XServer {
     }
 
     public void injectPointerMoveDelta(int dx, int dy) {
+        if (dx == 0 && dy == 0) return;
+
+        WinHandler handler = winHandler;
+        if (relativeMouseMovement && handler != null) {
+            handler.mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
+            return;
+        }
+
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             int minX = 0, minY = 0;
             int maxX = screenInfo.width - 1, maxY = screenInfo.height - 1;

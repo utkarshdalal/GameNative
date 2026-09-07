@@ -2099,6 +2099,8 @@
     <string name="mouse_acceleration_strength_subtitle">速いドラッグで追加されるマウス速度の強さ</string>
     <string name="mouse_acceleration_max">最大加速</string>
     <string name="mouse_acceleration_max_subtitle">高速なマウス視点ドラッグ中に適用される上限倍率</string>
+    <string name="win32_relative_mouse_input">相対マウス入力</string>
+    <string name="win32_relative_mouse_input_subtitle">マウスの移動を相対入力として Wine に直接送信します。ゲーム内でマウスが動作しない場合にお試しください。</string>
     <string name="joystick_opacity">ジョイスティックの不透明度</string>
     <string name="joystick_opacity_subtitle">動的ジョイスティックのリングとつまみの不透明度</string>
     <string name="show_shooter_runtime_toggle">ゲーム中ボタンを表示</string>

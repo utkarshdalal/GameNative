@@ -2160,6 +2160,8 @@
     <string name="mouse_acceleration_strength_subtitle">更快拖动增加额外鼠标速度的速度</string>
     <string name="mouse_acceleration_max">最大加速</string>
     <string name="mouse_acceleration_max_subtitle">快速鼠标视角拖动时应用的最高倍率</string>
+    <string name="win32_relative_mouse_input">相对鼠标输入</string>
+    <string name="win32_relative_mouse_input_subtitle">将移动作为相对鼠标输入直接发送到 Wine。游戏内鼠标无法正常工作时可尝试启用此选项。</string>
     <string name="joystick_opacity">摇杆不透明度</string>
     <string name="joystick_opacity_subtitle">动态摇杆圆环和拇指点的不透明度</string>
     <string name="show_shooter_runtime_toggle">显示游戏内按钮</string>

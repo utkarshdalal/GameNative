@@ -531,6 +531,8 @@
     <string name="mouse_acceleration_strength_subtitle">How quickly faster drags add extra mouse speed</string>
     <string name="mouse_acceleration_max">Max Acceleration</string>
     <string name="mouse_acceleration_max_subtitle">Upper multiplier applied during fast mouse-look drags</string>
+    <string name="win32_relative_mouse_input">Relative Mouse Input</string>
+    <string name="win32_relative_mouse_input_subtitle">Send movement directly to Wine as relative mouse input. Try this when the mouse isn\'t working in-game.</string>
     <string name="joystick_size">Joystick Size</string>
     <string name="joystick_size_subtitle">Dynamic joystick size multiplier</string>
     <string name="joystick_opacity">Joystick Opacity</string>

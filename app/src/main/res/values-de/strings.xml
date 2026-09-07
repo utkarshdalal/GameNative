@@ -2083,6 +2083,8 @@
     <string name="mouse_acceleration_strength_subtitle">Wie schnell schnellere Ziehbewegungen zusätzliche Mausgeschwindigkeit hinzufügen</string>
     <string name="mouse_acceleration_max">Max. Beschleunigung</string>
     <string name="mouse_acceleration_max_subtitle">Oberer Multiplikator bei schnellen Mausblick-Ziehbewegungen</string>
+    <string name="win32_relative_mouse_input">Relative Mauseingabe</string>
+    <string name="win32_relative_mouse_input_subtitle">Sendet Bewegungen direkt als relative Mauseingabe an Wine. Probiere dies aus, wenn die Maus im Spiel nicht funktioniert.</string>
     <string name="joystick_opacity">Joystick-Deckkraft</string>
     <string name="joystick_opacity_subtitle">Deckkraft für dynamische Joystick-Ringe und Daumenpunkte</string>
     <string name="show_shooter_runtime_toggle">Schalter im Spiel anzeigen</string>

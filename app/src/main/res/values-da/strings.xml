@@ -2013,6 +2013,8 @@
     <string name="mouse_acceleration_strength_subtitle">Hvor hurtigt hurtigere træk giver ekstra musehastighed</string>
     <string name="mouse_acceleration_max">Maks. acceleration</string>
     <string name="mouse_acceleration_max_subtitle">Øvre multiplikator ved hurtige musekig-træk</string>
+    <string name="win32_relative_mouse_input">Relativt museinput</string>
+    <string name="win32_relative_mouse_input_subtitle">Send bevægelse direkte til Wine som relativt museinput. Prøv dette, når musen ikke virker i spillet.</string>
     <string name="joystick_opacity">Joystick-gennemsigtighed</string>
     <string name="joystick_opacity_subtitle">Gennemsigtighed for dynamiske joystick-ringe og knapper</string>
     <string name="show_shooter_runtime_toggle">Vis knap i spillet</string>
