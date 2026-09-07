@@ -2060,15 +2060,6 @@ fun preLaunchApp(
                 ).await()
             }
 
-            if (gameSource == GameSource.STEAM && !container.isLaunchRealSteam &&
-                EaLaunchSupport.isEaTitle(gameId, File(SteamService.getAppDirPath(gameId)))
-            ) {
-                container.setLaunchRealSteam(true)
-                container.setLaunchBionicSteam(false)
-                container.saveData()
-                Timber.i("EA title $gameId launches through link2ea; switched container to Real Steam")
-            }
-
             if (!container.isUseLegacyDRM && !container.isLaunchRealSteam &&
                 !SteamService.isFileInstallable(context, "experimental-drm-20260116.tzst")
             ) {
