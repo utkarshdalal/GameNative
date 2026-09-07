@@ -137,6 +137,7 @@ import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
 import app.gamenative.utils.downloader.DXWrapperDownloader
 import app.gamenative.utils.downloader.GraphicsDriverDownloader
 import app.gamenative.utils.PreInstallSteps
+import app.gamenative.utils.SteamHostAuth
 import app.gamenative.utils.BrightnessManager
 import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.utils.SteamUtils
@@ -4687,7 +4688,7 @@ private fun getWineStartCommand(
             envVars.put("PROTON_DISABLE_LSTEAMCLIENT", "1")
             if (offline || container.isSteamOfflineMode) envVars.put("STEAMHOST_OFFLINE", "1")
             envVars.put("STEAMHOST_ACCOUNT", PrefManager.username)
-            envVars.put("STEAMHOST_TOKEN", PrefManager.refreshToken)
+            envVars.put("STEAMHOST_TOKEN", SteamHostAuth.seal(context.packageName, PrefManager.refreshToken))
             envVars.put("STEAMHOST_STEAMID64", PrefManager.steamUserSteamId64.toString())
             envVars.put("STEAMHOST_APPID", gameId.toString())
             envVars.put("STEAMHOST_GAME_CMD", gameCmd)
