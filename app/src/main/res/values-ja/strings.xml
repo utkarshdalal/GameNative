@@ -235,6 +235,10 @@
     <string name="dpad_right">十字キー右</string>
     <string name="input_controls">オンスクリーンコントローラー</string>
     <string name="edit_controls">オンスクリーンコントローラーの編集</string>
+    <string name="on_screen_controller_settings">オンスクリーンコントローラー設定</string>
+    <string name="mouse_speed">マウス速度</string>
+    <string name="mouse_speed_subtitle">タッチ操作およびマウス移動に割り当てられたコントロールのポインター速度を調整します。シューターモードでは独自の視点感度が使用されます。</string>
+    <string name="reset_mouse_speed">マウス速度をリセット</string>
     <string name="edit_physical_controller">物理コントローラーの編集</string>
     <string name="controller_disconnected">切断されました</string>
     <string name="reset_onscreen_controls">オンスクリーンコントロールをリセットする</string>

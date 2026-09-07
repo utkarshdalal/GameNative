@@ -276,6 +276,10 @@
     <string name="dpad_right">D-Pad вправо</string>
     <string name="input_controls">Елементи керування введенням</string>
     <string name="edit_controls">Редагувати екранний контролер</string>
+    <string name="on_screen_controller_settings">Налаштування екранного контролера</string>
+    <string name="mouse_speed">Швидкість миші</string>
+    <string name="mouse_speed_subtitle">Налаштуйте швидкість вказівника для сенсорного переміщення й елементів керування, призначених для руху миші. Режим шутера використовує окрему чутливість огляду.</string>
+    <string name="reset_mouse_speed">Скинути швидкість миші</string>
     <string name="edit_physical_controller">Редагувати фізичний контролер</string>
     <string name="controller_disconnected">Від\'єднано</string>
     <string name="reset_onscreen_controls">Скинути екранні елементи керування</string>

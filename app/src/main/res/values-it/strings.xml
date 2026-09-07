@@ -281,6 +281,10 @@
     <string name="dpad_right">D-Pad Destra</string>
     <string name="input_controls">Controller a schermo</string>
     <string name="edit_controls">Modifica Controller a schermo</string>
+    <string name="on_screen_controller_settings">Impostazioni controller a schermo</string>
+    <string name="mouse_speed">Velocità del mouse</string>
+    <string name="mouse_speed_subtitle">Regola la velocità del puntatore per i movimenti touch e i controlli assegnati al movimento del mouse. La modalità sparatutto usa una sensibilità di visuale separata.</string>
+    <string name="reset_mouse_speed">Reimposta velocità del mouse</string>
     <string name="edit_physical_controller">Modifica Controller Fisico</string>
     <string name="controller_disconnected">Disconnesso</string>
     <string name="reset_onscreen_controls">Reimposta Controlli a Schermo</string>

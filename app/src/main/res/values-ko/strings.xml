@@ -289,6 +289,10 @@
     <string name="dpad_right">십자 버튼 오른쪽</string>
     <string name="input_controls">화면 컨트롤러</string>
     <string name="edit_controls">화면 컨트롤러 편집</string>
+    <string name="on_screen_controller_settings">화면 컨트롤러 설정</string>
+    <string name="mouse_speed">마우스 속도</string>
+    <string name="mouse_speed_subtitle">터치 이동 및 마우스 이동에 할당된 컨트롤의 포인터 속도를 조절합니다. 슈터 모드는 별도의 시점 감도를 사용합니다.</string>
+    <string name="reset_mouse_speed">마우스 속도 재설정</string>
     <string name="edit_physical_controller">물리 컨트롤러 편집</string>
     <string name="controller_disconnected">연결 끊김</string>
     <string name="reset_onscreen_controls">화면 컨트롤 초기화</string>

@@ -210,6 +210,10 @@
     <string name="dpad_right">D-Pad højre</string>
     <string name="input_controls">On-screen-controller</string>
     <string name="edit_controls">Redigér on-screen-controller</string>
+    <string name="on_screen_controller_settings">Indstillinger for on-screen-controller</string>
+    <string name="mouse_speed">Musehastighed</string>
+    <string name="mouse_speed_subtitle">Juster markørhastigheden for berøringsbevægelser og betjeningselementer, der er tildelt til at flytte musen. Shooter-tilstand bruger sin egen kigfølsomhed.</string>
+    <string name="reset_mouse_speed">Nulstil musehastighed</string>
     <string name="edit_physical_controller">Redigér fysisk controller</string>
     <string name="controller_disconnected">Afbrudt</string>
     <string name="reset_onscreen_controls">Nulstil on-screen-kontroller</string>

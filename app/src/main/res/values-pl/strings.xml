@@ -289,6 +289,10 @@
     <string name="dpad_right">D-Pad Prawo</string>
     <string name="input_controls">Kontroler ekranowy</string>
     <string name="edit_controls">Edytuj kontroler ekranowy</string>
+    <string name="on_screen_controller_settings">Ustawienia kontrolera ekranowego</string>
+    <string name="mouse_speed">Prędkość myszy</string>
+    <string name="mouse_speed_subtitle">Dostosuj prędkość wskaźnika dla ruchu dotykowego i elementów sterujących przypisanych do poruszania myszą. Tryb strzelanki używa własnej czułości rozglądania.</string>
+    <string name="reset_mouse_speed">Resetuj prędkość myszy</string>
     <string name="edit_physical_controller">Edytuj kontroler fizyczny</string>
     <string name="controller_disconnected">Rozłączono</string>
     <string name="reset_onscreen_controls">Zresetuj kontroler ekranowy</string>

@@ -279,6 +279,10 @@
     <string name="dpad_right">D‑Pad Dreapta</string>
     <string name="input_controls">Controller pe ecran</string>
     <string name="edit_controls">Editează controllerul pe ecran</string>
+    <string name="on_screen_controller_settings">Setări controller pe ecran</string>
+    <string name="mouse_speed">Viteza mouse-ului</string>
+    <string name="mouse_speed_subtitle">Reglează viteza indicatorului pentru mișcarea tactilă și comenzile atribuite deplasării mouse-ului. Modul shooter folosește propria sensibilitate a privirii.</string>
+    <string name="reset_mouse_speed">Resetează viteza mouse-ului</string>
     <string name="edit_physical_controller">Editează controllerul fizic</string>
     <string name="controller_disconnected">Deconectat</string>
     <string name="reset_onscreen_controls">Resetează controalele pe ecran</string>

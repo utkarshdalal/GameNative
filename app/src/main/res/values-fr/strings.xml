@@ -282,6 +282,10 @@
     <string name="dpad_right">D-Pad Droite</string>
     <string name="input_controls">Contrôleur à l\'écran</string>
     <string name="edit_controls">Modifier le contrôleur à l\'écran</string>
+    <string name="on_screen_controller_settings">Paramètres du contrôleur à l\'écran</string>
+    <string name="mouse_speed">Vitesse de la souris</string>
+    <string name="mouse_speed_subtitle">Règle la vitesse du pointeur pour les mouvements tactiles et les commandes assignées au déplacement de la souris. Le mode tireur utilise sa propre sensibilité du regard.</string>
+    <string name="reset_mouse_speed">Réinitialiser la vitesse de la souris</string>
     <string name="edit_physical_controller">Modifier le contrôleur physique</string>
     <string name="controller_disconnected">Déconnecté</string>
     <string name="reset_onscreen_controls">Réinitialiser les contrôles à l\'écran</string>

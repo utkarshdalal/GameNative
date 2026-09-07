@@ -292,6 +292,10 @@
     <string name="dpad_right">Cruceta derecha</string>
     <string name="input_controls">Controles en pantalla</string>
     <string name="edit_controls">Editar controles en pantalla</string>
+    <string name="on_screen_controller_settings">Ajustes de controles en pantalla</string>
+    <string name="mouse_speed">Velocidad del ratón</string>
+    <string name="mouse_speed_subtitle">Ajusta la velocidad del puntero para el movimiento táctil y los controles asignados a mover el ratón. El modo shooter usa su propia sensibilidad de vista.</string>
+    <string name="reset_mouse_speed">Restablecer velocidad del ratón</string>
     <string name="edit_physical_controller">Editar mando físico</string>
     <string name="controller_disconnected">Desconectado</string>
     <string name="reset_onscreen_controls">Restablecer controles en pantalla</string>

@@ -274,6 +274,10 @@
     <string name="dpad_right">D-Pad rechts</string>
     <string name="input_controls">On-Screen-Controller</string>
     <string name="edit_controls">On-Screen-Controller bearbeiten</string>
+    <string name="on_screen_controller_settings">Einstellungen für den On-Screen-Controller</string>
+    <string name="mouse_speed">Mausgeschwindigkeit</string>
+    <string name="mouse_speed_subtitle">Passe die Zeigergeschwindigkeit für Touch-Bewegungen und Steuerelemente an, die zum Bewegen der Maus zugewiesen sind. Der Shooter-Modus verwendet eine eigene Blickempfindlichkeit.</string>
+    <string name="reset_mouse_speed">Mausgeschwindigkeit zurücksetzen</string>
     <string name="edit_physical_controller">Physische Controller bearbeiten</string>
     <string name="controller_disconnected">Verbindung getrennt</string>
     <string name="reset_onscreen_controls">On-Screen-Steuerung zurücksetzen</string>
