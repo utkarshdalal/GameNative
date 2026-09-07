@@ -269,24 +269,24 @@ Full license text: https://creativecommons.org/publicdomain/zero/1.0/
 
 ---
 
-## lsfg-vk / lsfg-vk-android
+## Lossless Scaling Frame Generation (LSFG) Native Pipeline
 
-**Library:** lsfg-vk (Vulkan frame generation layer)
-**Authors:** PancakeTAS and contributors (upstream), FrankBarretta (Android port), xXJSONDeruloXx (Vortek/Adreno patches)
-**Source (upstream):** https://github.com/PancakeTAS/lsfg-vk
-**Source (Android port):** https://github.com/FrankBarretta/lsfg-vk-android
-**Source (GameNative fork):** https://github.com/GameNative/lsfg-vk-android
-**License:** MIT (upstream v1.0; relicensed GPL-3.0 post-v2.0.0-dev, commit 5bedd8d)
+**Component:** Native Vulkan LSFG pipeline (`libvulkan_renderer.so`, `libwinlator.so`)
+**Authors & Contributors:**
+- **Camille LaVey & the Eden Emulator Team**: Pioneer of direct `Lossless.dll` shader extraction and Vulkan compute pipeline implementation on Android / emulator architectures ([Eden PR #4263](https://git.eden-emu.dev/eden-emu/eden/pulls/4263))
+- **WinNative / WinNative-Emu Team**: Winlator adaptation and Turnip/DXVK integration of direct `Lossless.dll` frame generation ([WinNative PR #697](https://github.com/WinNative-Emu/WinNative/pull/697))
+- **PancakeTAS and contributors**: Foundational reverse engineering and Vulkan frame generation analysis ([lsfg-vk](https://lsfg-vk.dev/))
+- **FrankBarretta & xXJSONDeruloXx**: Prior Android port and Turnip compatibility research
 
-A prebuilt version of lsfg-vk with Android-specific patches (AHardwareBuffer
-image sharing, TMPDIR support, Vortek compatibility) is included as a Vulkan
-implicit layer at `app/src/main/assets/lsfg_vk/android_arm64_v8a/liblsfg-vk-layer.so`.
-The layer intercepts `vkQueuePresentKHR` to generate interpolated frames using
-Optical Flow, driven by the user's own `Lossless.dll` (not redistributed).
+GameNative implements a native Vulkan compute pipeline that intercepts `vkQueuePresentKHR`
+to interpolate and pace generated frames using Optical Flow. The compute shaders are
+extracted at runtime from the user's legally owned `Lossless.dll` (from Lossless Scaling on Steam)
+and compiled to SPIR-V bytecode. `Lossless.dll` is proprietary software owned by THPhlash
+and is **not** distributed or bundled with GameNative.
 
-### License Text: MIT
+### License: MIT
 
-Copyright (c) 2025 lsfg-vk
+Copyright (c) 2025-2026 lsfg-vk / Eden / WinNative contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -305,6 +305,44 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+## DXVK (DXBC to SPIR-V Translator)
+
+**Component:** `dxbc` static library
+**Location:** `app/src/main/cpp/thirdparty/dxbc/`
+**Authors:** Philip Rebohle (doitsujin), Joshua Ashton, Robin Kertels, Jeffrey Ellison, and DXVK contributors
+**Source:** https://github.com/doitsujin/dxvk
+**License:** zlib/libpng License
+
+Used for translating DirectX Bytecode (DXBC) compute shader blobs extracted from
+`Lossless.dll` into SPIR-V shader modules for Vulkan pipeline creation.
+
+### License Text: zlib/libpng
+
+Copyright (c) 2017 Philip Rebohle
+Copyright (c) 2019 Joshua Ashton
+Copyright (c) 2019 Robin Kertels
+Copyright (c) 2023 Jeffrey Ellison
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+
+2. Altered source versions must be plainly marked as such, and must not
+   be misrepresented as being the original software.
+
+3. This notice may not be removed or altered from any source distribution.
 
 ---
 
