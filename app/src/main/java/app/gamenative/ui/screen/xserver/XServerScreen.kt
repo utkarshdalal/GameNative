@@ -4685,6 +4685,7 @@ private fun getWineStartCommand(
             guestProgramLauncherComponent.workingDir = File(appDirPath + (if (relDir.isNotEmpty()) "/$relDir" else ""))
             realSteamGameExecutable = normalizedExe
             envVars.put("PROTON_DISABLE_LSTEAMCLIENT", "1")
+            if (offline || container.isSteamOfflineMode) envVars.put("STEAMHOST_OFFLINE", "1")
             envVars.put("STEAMHOST_ACCOUNT", PrefManager.username)
             envVars.put("STEAMHOST_TOKEN", PrefManager.refreshToken)
             envVars.put("STEAMHOST_STEAMID64", PrefManager.steamUserSteamId64.toString())

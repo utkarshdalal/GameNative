@@ -20,6 +20,7 @@ object SteamOverlayClient {
 
     private const val SOCKET_NAME = "gamenative-steam-overlay"
     private const val TIMEOUT_MS = 4000
+    private const val TCP_PORT = 57349
 
     data class Friend(
         val steamId: Long,
@@ -134,16 +135,36 @@ object SteamOverlayClient {
      * "."; single-record replies are one line. Returns null if the host is unreachable or
      * answered with an error.
      */
+    /** Bionic host: abstract Unix socket. Real Steam host (steam.exe under Wine): localhost TCP. */
+    private class HostConn(
+        val input: java.io.InputStream,
+        val output: java.io.OutputStream,
+        private val closer: () -> Unit,
+    ) : java.io.Closeable {
+        override fun close() = closer()
+    }
+
+    private fun openHost(): HostConn {
+        try {
+            val local = LocalSocket()
+            local.connect(LocalSocketAddress(SOCKET_NAME, LocalSocketAddress.Namespace.ABSTRACT))
+            local.soTimeout = TIMEOUT_MS
+            return HostConn(local.inputStream, local.outputStream) { local.close() }
+        } catch (e: Exception) {
+            val tcp = java.net.Socket()
+            tcp.connect(java.net.InetSocketAddress("127.0.0.1", TCP_PORT), TIMEOUT_MS)
+            tcp.soTimeout = TIMEOUT_MS
+            return HostConn(tcp.getInputStream(), tcp.getOutputStream()) { tcp.close() }
+        }
+    }
+
     private suspend fun request(command: String): List<String>? = withContext(Dispatchers.IO) {
         try {
-            LocalSocket().use { socket ->
-                socket.connect(LocalSocketAddress(SOCKET_NAME, LocalSocketAddress.Namespace.ABSTRACT))
-                socket.soTimeout = TIMEOUT_MS
+            openHost().use { conn ->
+                conn.output.write("$command\n".toByteArray())
+                conn.output.flush()
 
-                socket.outputStream.write("$command\n".toByteArray())
-                socket.outputStream.flush()
-
-                val reader = BufferedReader(InputStreamReader(socket.inputStream))
+                val reader = BufferedReader(InputStreamReader(conn.input))
                 val out = mutableListOf<String>()
                 while (true) {
                     val line = reader.readLine() ?: break
