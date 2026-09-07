@@ -124,7 +124,10 @@ fun OnScreenControllerSettingsDialog(
                     subtitle = stringResource(R.string.mouse_speed_subtitle),
                     value = cursorSpeed,
                     valueRange = MIN_MOUSE_SPEED..MAX_MOUSE_SPEED,
-                    valueText = multiplierText(cursorSpeed, locale),
+                    valueText = multiplierText(
+                        mouseSpeedForSave(initialCursorSpeed, cursorSpeed, cursorSpeedWasEdited),
+                        locale,
+                    ),
                     onValueChange = {
                         cursorSpeed = it
                         cursorSpeedWasEdited = true
