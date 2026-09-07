@@ -710,7 +710,7 @@ private fun StickTuningSection(
         )
         StickModeSelector(
             label = stringResource(R.string.left_stick_deadzone_shape),
-            description = stringResource(R.string.stick_deadzone_shape_description),
+            description = stickDeadzoneModeDescription(leftStickDeadzoneMode),
             selected = leftStickDeadzoneMode,
             options = listOf(
                 ControlsProfile.StickDeadzoneMode.AXIAL to stringResource(R.string.stick_deadzone_axial),
@@ -750,7 +750,7 @@ private fun StickTuningSection(
         )
         StickModeSelector(
             label = stringResource(R.string.right_stick_deadzone_shape),
-            description = stringResource(R.string.stick_deadzone_shape_description),
+            description = stickDeadzoneModeDescription(rightStickDeadzoneMode),
             selected = rightStickDeadzoneMode,
             options = listOf(
                 ControlsProfile.StickDeadzoneMode.AXIAL to stringResource(R.string.stick_deadzone_axial),
@@ -780,6 +780,16 @@ private fun StickTuningSection(
             onSelected = onRightStickDigitalModeChange,
         )
     }
+}
+
+@Composable
+private fun stickDeadzoneModeDescription(mode: ControlsProfile.StickDeadzoneMode): String {
+    val description = when (mode) {
+        ControlsProfile.StickDeadzoneMode.AXIAL -> R.string.stick_deadzone_axial_description
+        ControlsProfile.StickDeadzoneMode.CIRCULAR -> R.string.stick_deadzone_circular_description
+        ControlsProfile.StickDeadzoneMode.HYBRID -> R.string.stick_deadzone_hybrid_description
+    }
+    return stringResource(description)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -834,41 +844,15 @@ private fun StickAdjustmentSlider(
     steps: Int,
     onValueChange: (Float) -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = MaterialTheme.shapes.small
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = displayValue,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Slider(
-                value = value,
-                onValueChange = onValueChange,
-                valueRange = valueRange,
-                steps = steps
-            )
-        }
-    }
+    SettingsSliderBlock(
+        title = label,
+        subtitle = description,
+        value = value,
+        valueRange = valueRange,
+        valueText = displayValue,
+        onValueChange = onValueChange,
+        steps = steps,
+    )
 }
 
 // 0% .. 100% in 1% increments leaves 99 stops between the two endpoints

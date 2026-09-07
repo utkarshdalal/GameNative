@@ -281,10 +281,12 @@
     <string name="left_stick_sensitivity">Sensibilità levetta sinistra</string>
     <string name="right_stick_sensitivity">Sensibilità levetta destra</string>
     <string name="stick_deadzone_description">Distanza che la levetta deve percorrere prima che l’input venga rilevato. Aumentala per eliminare il drift.</string>
-    <string name="stick_sensitivity_description">Regola l’ampiezza del movimento trasmesso al gioco. Oltre 1,0, la corsa massima viene raggiunta prima.</string>
+    <string name="stick_sensitivity_description">Amplifica gli spostamenti parziali dello stick. Oltre 1,0 non può superare l’uscita massima del gamepad; la raggiunge con una corsa fisica minore.</string>
     <string name="left_stick_deadzone_shape">Forma zona morta levetta sinistra</string>
     <string name="right_stick_deadzone_shape">Forma zona morta levetta destra</string>
-    <string name="stick_deadzone_shape_description">Scegli come viene misurata la zona morta. Ibrida rafforza l’allineamento vicino agli assi cardinali.</string>
+    <string name="stick_deadzone_axial_description">Misura ogni asse separatamente. Favorisce movimenti orizzontali e verticali diritti, ma le diagonali possono sembrare meno uniformi.</string>
+    <string name="stick_deadzone_circular_description">Misura la distanza dal centro come un unico cerchio. Mantiene la direzione dello stick per movimenti fluidi e uniformi.</string>
+    <string name="stick_deadzone_hybrid_description">Usa una zona morta circolare, poi blocca il movimento vicino agli assi orizzontale e verticale. Unisce diagonali fluide e direzioni cardinali più dritte.</string>
     <string name="stick_deadzone_axial">Assiale</string>
     <string name="stick_deadzone_circular">Circolare</string>
     <string name="stick_deadzone_hybrid">Ibrida</string>

@@ -269,10 +269,12 @@
     <string name="left_stick_sensitivity">Left Stick Sensitivity</string>
     <string name="right_stick_sensitivity">Right Stick Sensitivity</string>
     <string name="stick_deadzone_description">How far the stick must move before input registers. Raise it to stop drift.</string>
-    <string name="stick_sensitivity_description">Scales how much stick movement the game sees. Above 1.0 reaches full travel sooner.</string>
+    <string name="stick_sensitivity_description">Scales partial stick movement. Above 1.0 cannot exceed full gamepad output; it reaches full output with less physical travel.</string>
     <string name="left_stick_deadzone_shape">Left Stick Deadzone Shape</string>
     <string name="right_stick_deadzone_shape">Right Stick Deadzone Shape</string>
-    <string name="stick_deadzone_shape_description">Choose how the deadzone is measured. Hybrid adds stronger alignment near the cardinal axes.</string>
+    <string name="stick_deadzone_axial_description">Measures each axis separately. Helps horizontal and vertical movement stay straight, but diagonals may feel less even.</string>
+    <string name="stick_deadzone_circular_description">Measures distance from the center as one circle. Preserves the stick’s direction for smooth, even movement.</string>
+    <string name="stick_deadzone_hybrid_description">Uses a circular deadzone, then locks movement near horizontal and vertical. Balances smooth diagonals with straighter cardinal movement.</string>
     <string name="stick_deadzone_axial">Axial</string>
     <string name="stick_deadzone_circular">Circular</string>
     <string name="stick_deadzone_hybrid">Hybrid</string>

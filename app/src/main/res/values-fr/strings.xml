@@ -282,10 +282,12 @@
     <string name="left_stick_sensitivity">Sensibilité du joystick gauche</string>
     <string name="right_stick_sensitivity">Sensibilité du joystick droit</string>
     <string name="stick_deadzone_description">Distance que le joystick doit parcourir avant qu’une entrée soit détectée. Augmentez-la pour supprimer la dérive.</string>
-    <string name="stick_sensitivity_description">Ajuste l’amplitude du mouvement transmis au jeu. Au-dessus de 1,0, la course maximale est atteinte plus tôt.</string>
+    <string name="stick_sensitivity_description">Amplifie les déplacements partiels du stick. Au-dessus de 1,0, la sortie maximale de la manette ne peut pas être dépassée ; elle est atteinte avec moins de course physique.</string>
     <string name="left_stick_deadzone_shape">Forme de la zone morte du joystick gauche</string>
     <string name="right_stick_deadzone_shape">Forme de la zone morte du joystick droit</string>
-    <string name="stick_deadzone_shape_description">Choisissez la méthode de mesure de la zone morte. Hybride renforce l’alignement près des axes cardinaux.</string>
+    <string name="stick_deadzone_axial_description">Mesure chaque axe séparément. Facilite les mouvements horizontaux et verticaux rectilignes, mais les diagonales peuvent sembler moins régulières.</string>
+    <string name="stick_deadzone_circular_description">Mesure la distance depuis le centre comme un cercle. Préserve la direction du stick pour des mouvements fluides et réguliers.</string>
+    <string name="stick_deadzone_hybrid_description">Utilise une zone morte circulaire, puis verrouille les mouvements proches de l’horizontale et de la verticale. Combine des diagonales fluides et des directions cardinales plus droites.</string>
     <string name="stick_deadzone_axial">Axiale</string>
     <string name="stick_deadzone_circular">Circulaire</string>
     <string name="stick_deadzone_hybrid">Hybride</string>

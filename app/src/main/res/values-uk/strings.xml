@@ -276,10 +276,12 @@
     <string name="left_stick_sensitivity">Чутливість лівого стіка</string>
     <string name="right_stick_sensitivity">Чутливість правого стіка</string>
     <string name="stick_deadzone_description">Визначає, наскільки потрібно відхилити стік, перш ніж введення буде зареєстровано. Збільште значення, щоб усунути дрейф.</string>
-    <string name="stick_sensitivity_description">Масштабує відхилення стіка, передане грі. За значення понад 1,0 максимальне відхилення досягається раніше.</string>
+    <string name="stick_sensitivity_description">Підсилює часткове відхилення стіка. Значення понад 1,0 не перевищує максимум геймпада, а досягає його за меншого фізичного відхилення.</string>
     <string name="left_stick_deadzone_shape">Форма мертвої зони лівого стіка</string>
     <string name="right_stick_deadzone_shape">Форма мертвої зони правого стіка</string>
-    <string name="stick_deadzone_shape_description">Виберіть спосіб вимірювання мертвої зони. Гібридний режим сильніше вирівнює рух біля основних осей.</string>
+    <string name="stick_deadzone_axial_description">Вимірює кожну вісь окремо. Полегшує прямий горизонтальний і вертикальний рух, але діагоналі можуть відчуватися менш рівномірними.</string>
+    <string name="stick_deadzone_circular_description">Вимірює відстань від центра як єдине коло. Зберігає напрямок стіка для плавного й рівномірного руху.</string>
+    <string name="stick_deadzone_hybrid_description">Використовує кругову мертву зону, а потім фіксує рух поблизу горизонталі й вертикалі. Поєднує плавні діагоналі з прямішими основними напрямками.</string>
     <string name="stick_deadzone_axial">Осьова</string>
     <string name="stick_deadzone_circular">Кругова</string>
     <string name="stick_deadzone_hybrid">Гібридна</string>

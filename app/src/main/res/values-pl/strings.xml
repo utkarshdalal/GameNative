@@ -289,10 +289,12 @@
     <string name="left_stick_sensitivity">Czułość lewego drążka</string>
     <string name="right_stick_sensitivity">Czułość prawego drążka</string>
     <string name="stick_deadzone_description">Określa, jak daleko trzeba wychylić drążek, zanim zostanie wykryty ruch. Zwiększ wartość, aby usunąć dryf.</string>
-    <string name="stick_sensitivity_description">Skaluje ruch drążka odbierany przez grę. Wartość powyżej 1,0 pozwala szybciej osiągnąć pełne wychylenie.</string>
+    <string name="stick_sensitivity_description">Skaluje częściowe wychylenie drążka. Wartości powyżej 1,0 nie przekroczą maksymalnego sygnału kontrolera; pełny sygnał jest osiągany przy mniejszym wychyleniu fizycznym.</string>
     <string name="left_stick_deadzone_shape">Kształt martwej strefy lewego drążka</string>
     <string name="right_stick_deadzone_shape">Kształt martwej strefy prawego drążka</string>
-    <string name="stick_deadzone_shape_description">Wybierz sposób pomiaru martwej strefy. Hybrydowa silniej wyrównuje ruch w pobliżu osi głównych.</string>
+    <string name="stick_deadzone_axial_description">Mierzy każdą oś osobno. Ułatwia proste ruchy poziome i pionowe, ale ruch po przekątnej może być mniej równomierny.</string>
+    <string name="stick_deadzone_circular_description">Mierzy odległość od środka jako jeden okrąg. Zachowuje kierunek drążka, zapewniając płynny i równomierny ruch.</string>
+    <string name="stick_deadzone_hybrid_description">Używa okrągłej martwej strefy, a następnie blokuje ruch w pobliżu osi poziomej i pionowej. Łączy płynne przekątne z prostszymi kierunkami głównymi.</string>
     <string name="stick_deadzone_axial">Osiowa</string>
     <string name="stick_deadzone_circular">Kołowa</string>
     <string name="stick_deadzone_hybrid">Hybrydowa</string>

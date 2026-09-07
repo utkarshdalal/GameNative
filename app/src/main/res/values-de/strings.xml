@@ -274,10 +274,12 @@
     <string name="left_stick_sensitivity">Empfindlichkeit des linken Sticks</string>
     <string name="right_stick_sensitivity">Empfindlichkeit des rechten Sticks</string>
     <string name="stick_deadzone_description">Legt fest, wie weit der Stick bewegt werden muss, bevor eine Eingabe erkannt wird. Erhöhen, um Driften zu verhindern.</string>
-    <string name="stick_sensitivity_description">Skaliert die Stickbewegung, die das Spiel erkennt. Über 1,0 wird der volle Ausschlag früher erreicht.</string>
+    <string name="stick_sensitivity_description">Skaliert teilweise Stickbewegungen. Werte über 1,0 können die maximale Gamepad-Ausgabe nicht überschreiten; der volle Ausschlag wird mit weniger physischem Weg erreicht.</string>
     <string name="left_stick_deadzone_shape">Totzonenform des linken Sticks</string>
     <string name="right_stick_deadzone_shape">Totzonenform des rechten Sticks</string>
-    <string name="stick_deadzone_shape_description">Wählt, wie die Totzone gemessen wird. Hybrid richtet Bewegungen nahe den Hauptrichtungen stärker aus.</string>
+    <string name="stick_deadzone_axial_description">Misst jede Achse getrennt. Hält horizontale und vertikale Bewegungen gerade, Diagonalen können sich jedoch weniger gleichmäßig anfühlen.</string>
+    <string name="stick_deadzone_circular_description">Misst den Abstand von der Mitte als Kreis. Bewahrt die Stickrichtung für gleichmäßige Bewegungen in alle Richtungen.</string>
+    <string name="stick_deadzone_hybrid_description">Verwendet eine kreisförmige Totzone und richtet Bewegungen nahe der Horizontalen und Vertikalen exakt aus. Verbindet gleichmäßige Diagonalen mit geraderen Hauptrichtungen.</string>
     <string name="stick_deadzone_axial">Axial</string>
     <string name="stick_deadzone_circular">Kreisförmig</string>
     <string name="stick_deadzone_hybrid">Hybrid</string>

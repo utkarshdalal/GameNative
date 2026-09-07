@@ -210,10 +210,12 @@
     <string name="left_stick_sensitivity">Venstre sticks følsomhed</string>
     <string name="right_stick_sensitivity">Højre sticks følsomhed</string>
     <string name="stick_deadzone_description">Hvor langt styrepinden skal bevæges, før input registreres. Øg værdien for at stoppe drift.</string>
-    <string name="stick_sensitivity_description">Skalerer, hvor meget bevægelse spillet registrerer. Over 1,0 nås fuldt udslag tidligere.</string>
+    <string name="stick_sensitivity_description">Skalerer delvist stickudslag. Over 1,0 kan ikke overstige gamepaddens maksimale output; fuldt output nås med mindre fysisk udslag.</string>
     <string name="left_stick_deadzone_shape">Venstre sticks dødzoneform</string>
     <string name="right_stick_deadzone_shape">Højre sticks dødzoneform</string>
-    <string name="stick_deadzone_shape_description">Vælg, hvordan dødzonen måles. Hybrid giver stærkere justering nær hovedretningerne.</string>
+    <string name="stick_deadzone_axial_description">Måler hver akse separat. Holder vandret og lodret bevægelse lige, men diagonaler kan føles mindre jævne.</string>
+    <string name="stick_deadzone_circular_description">Måler afstanden fra midten som én cirkel. Bevarer stickens retning for jævn bevægelse i alle retninger.</string>
+    <string name="stick_deadzone_hybrid_description">Bruger en cirkulær dødzone og låser derefter bevægelse nær vandret og lodret. Giver både jævne diagonaler og mere lige hovedretninger.</string>
     <string name="stick_deadzone_axial">Aksial</string>
     <string name="stick_deadzone_circular">Cirkulær</string>
     <string name="stick_deadzone_hybrid">Hybrid</string>

@@ -279,10 +279,12 @@
     <string name="left_stick_sensitivity">Sensibilitatea stickului stâng</string>
     <string name="right_stick_sensitivity">Sensibilitatea stickului drept</string>
     <string name="stick_deadzone_description">Cât de mult trebuie mișcat stickul înainte ca intrarea să fie înregistrată. Mărește valoarea pentru a opri devierea.</string>
-    <string name="stick_sensitivity_description">Scalează mișcarea stickului transmisă jocului. Peste 1,0, cursa maximă este atinsă mai repede.</string>
+    <string name="stick_sensitivity_description">Amplifică mișcarea parțială a stickului. Peste 1,0 nu poate depăși ieșirea maximă a controlerului; aceasta este atinsă cu o cursă fizică mai mică.</string>
     <string name="left_stick_deadzone_shape">Forma zonei moarte a stickului stâng</string>
     <string name="right_stick_deadzone_shape">Forma zonei moarte a stickului drept</string>
-    <string name="stick_deadzone_shape_description">Alegeți cum este măsurată zona moartă. Hibrid aliniază mai puternic mișcarea lângă axele cardinale.</string>
+    <string name="stick_deadzone_axial_description">Măsoară fiecare axă separat. Ajută mișcarea orizontală și verticală să rămână dreaptă, dar diagonalele pot părea mai puțin uniforme.</string>
+    <string name="stick_deadzone_circular_description">Măsoară distanța față de centru ca un singur cerc. Păstrează direcția stickului pentru o mișcare lină și uniformă.</string>
+    <string name="stick_deadzone_hybrid_description">Folosește o zonă moartă circulară, apoi blochează mișcarea aproape de orizontală și verticală. Echilibrează diagonalele line cu direcții cardinale mai drepte.</string>
     <string name="stick_deadzone_axial">Axială</string>
     <string name="stick_deadzone_circular">Circulară</string>
     <string name="stick_deadzone_hybrid">Hibridă</string>

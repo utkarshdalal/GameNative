@@ -116,6 +116,28 @@ class PhysicalControllerStickTuningTest {
     }
 
     @Test
+    fun `sensitivity above one amplifies partial travel in serialized gamepad output`() {
+        val normal = StickVectorProcessor.tune(
+            0.4f,
+            0f,
+            0f,
+            1f,
+            ControlsProfile.StickDeadzoneMode.CIRCULAR,
+        )
+        val amplified = StickVectorProcessor.tune(
+            0.4f,
+            0f,
+            0f,
+            2f,
+            ControlsProfile.StickDeadzoneMode.CIRCULAR,
+        )
+
+        assertEquals(0.4f, normal.x, 0.0001f)
+        assertEquals(0.8f, amplified.x, 0.0001f)
+        assertTrue(GamepadState.encodeThumbAxis(amplified.x) > GamepadState.encodeThumbAxis(normal.x))
+    }
+
+    @Test
     fun `hybrid deadzone creates axial corridors while retaining diagonals`() {
         val nearHorizontal = StickVectorProcessor.tune(
             0.8f,

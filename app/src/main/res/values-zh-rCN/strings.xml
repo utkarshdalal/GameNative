@@ -274,10 +274,12 @@
     <string name="left_stick_sensitivity">左摇杆灵敏度</string>
     <string name="right_stick_sensitivity">右摇杆灵敏度</string>
     <string name="stick_deadzone_description">摇杆移动多远后才会检测到输入。调高可消除漂移。</string>
-    <string name="stick_sensitivity_description">调整游戏接收到的摇杆移动幅度。高于 1.0 时会更快达到最大输入。</string>
+    <string name="stick_sensitivity_description">放大摇杆的部分行程。高于 1.0 也不会超过手柄最大输出，而是用更小的物理行程达到最大输出。</string>
     <string name="left_stick_deadzone_shape">左摇杆死区形状</string>
     <string name="right_stick_deadzone_shape">右摇杆死区形状</string>
-    <string name="stick_deadzone_shape_description">选择死区的测量方式。混合模式会在上下左右轴附近增强方向对齐。</string>
+    <string name="stick_deadzone_axial_description">分别测量每个轴。更容易保持水平和垂直直线移动，但斜向移动可能不够均匀。</string>
+    <string name="stick_deadzone_circular_description">将距中心的距离作为一个圆来测量。保留摇杆方向，使各方向移动平滑均匀。</string>
+    <string name="stick_deadzone_hybrid_description">先使用圆形死区，再将接近水平或垂直的移动锁定到轴向。兼顾平滑斜向移动和更直的上下左右移动。</string>
     <string name="stick_deadzone_axial">轴向</string>
     <string name="stick_deadzone_circular">圆形</string>
     <string name="stick_deadzone_hybrid">混合</string>

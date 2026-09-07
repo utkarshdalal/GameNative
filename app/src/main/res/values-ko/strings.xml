@@ -289,10 +289,12 @@
     <string name="left_stick_sensitivity">왼쪽 스틱 감도</string>
     <string name="right_stick_sensitivity">오른쪽 스틱 감도</string>
     <string name="stick_deadzone_description">입력이 감지되기 전에 스틱을 움직여야 하는 거리입니다. 드리프트를 멈추려면 값을 높이세요.</string>
-    <string name="stick_sensitivity_description">게임에 전달되는 스틱 움직임을 조절합니다. 1.0보다 높으면 최대 입력에 더 빨리 도달합니다.</string>
+    <string name="stick_sensitivity_description">스틱을 일부만 기울였을 때의 입력을 확대합니다. 1.0을 넘어도 게임패드 최대 출력을 초과하지 않으며, 더 적게 기울여도 최대 출력에 도달합니다.</string>
     <string name="left_stick_deadzone_shape">왼쪽 스틱 데드존 형태</string>
     <string name="right_stick_deadzone_shape">오른쪽 스틱 데드존 형태</string>
-    <string name="stick_deadzone_shape_description">데드존 측정 방식을 선택합니다. 하이브리드는 상하좌우 축 근처에서 방향을 더 강하게 맞춥니다.</string>
+    <string name="stick_deadzone_axial_description">각 축을 따로 측정합니다. 수평·수직 이동을 곧게 유지하기 쉽지만 대각선 이동은 덜 균일하게 느껴질 수 있습니다.</string>
+    <string name="stick_deadzone_circular_description">중심에서의 거리를 하나의 원으로 측정합니다. 스틱 방향을 유지해 모든 방향에서 부드럽고 균일하게 움직입니다.</string>
+    <string name="stick_deadzone_hybrid_description">원형 데드존을 사용한 뒤 수평·수직에 가까운 움직임을 축에 고정합니다. 부드러운 대각선과 곧은 상하좌우 이동을 함께 제공합니다.</string>
     <string name="stick_deadzone_axial">축별</string>
     <string name="stick_deadzone_circular">원형</string>
     <string name="stick_deadzone_hybrid">하이브리드</string>

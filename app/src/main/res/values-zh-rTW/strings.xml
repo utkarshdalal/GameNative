@@ -274,10 +274,12 @@
     <string name="left_stick_sensitivity">左搖桿靈敏度</string>
     <string name="right_stick_sensitivity">右搖桿靈敏度</string>
     <string name="stick_deadzone_description">搖桿移動多遠後才會偵測到輸入。調高可消除飄移。</string>
-    <string name="stick_sensitivity_description">調整遊戲接收到的搖桿移動幅度。高於 1.0 時會更快達到最大輸入。</string>
+    <string name="stick_sensitivity_description">放大搖桿的部分行程。高於 1.0 也不會超過控制器最大輸出，而是用較小的實際行程達到最大輸出。</string>
     <string name="left_stick_deadzone_shape">左搖桿死區形狀</string>
     <string name="right_stick_deadzone_shape">右搖桿死區形狀</string>
-    <string name="stick_deadzone_shape_description">選擇死區的測量方式。混合模式會在上下左右軸附近增強方向對齊。</string>
+    <string name="stick_deadzone_axial_description">分別測量每個軸。更容易維持水平和垂直直線移動，但斜向移動可能較不均勻。</string>
+    <string name="stick_deadzone_circular_description">將距中心的距離視為一個圓來測量。保留搖桿方向，使各方向移動平順均勻。</string>
+    <string name="stick_deadzone_hybrid_description">先使用圓形死區，再將接近水平或垂直的移動鎖定到軸向。兼顧平順斜向移動和更直的上下左右移動。</string>
     <string name="stick_deadzone_axial">軸向</string>
     <string name="stick_deadzone_circular">圓形</string>
     <string name="stick_deadzone_hybrid">混合</string>
