@@ -77,13 +77,27 @@ cp "$work/unixlib/gamenative_xr_unixbridge.so" "$output/"
 # The 32-bit Wine builtin stub ships prebuilt in the repo.
 cp "$source_dir/builtin/gamenative_xr_unixbridge32.dll" "$output/"
 
-# OpenComposite (pinned download, checksum-verified) for OpenVR titles.
-if [ ! -f "$output/opencomposite_x64.dll" ]; then
-    curl -sL "https://opencomposite.znix.xyz/builds/download_build?artefact_id=JjRFMXaxas695QK-&build_id=52366409&commit=a27e7e6a64bdcd1eff6b7fba1ea2ea34bcf1273d" \
-        -o "$output/opencomposite_x64.dll"
-    echo "827ad85f3606a4dc4a8f5561a8ca69e4c6c1b5d2b9cd3315a461b9270b08242c  $output/opencomposite_x64.dll" \
-        | shasum -a 256 -c - >/dev/null || { echo "OpenComposite checksum mismatch"; exit 1; }
+# Patches and builds live in https://github.com/GameNative/opencomposite.
+oc_url="https://github.com/GameNative/opencomposite/releases/download/v1/opencomposite_x64.dll"
+oc_sha256="b669d08a6fdb9461dd239c5f5de702001c8fbfff235f5560a0117485daa6b6c9"
+[ "${#oc_sha256}" -eq 64 ] || { echo "Pin the v1 release SHA-256 before staging OpenComposite"; exit 1; }
+oc_file="$output/opencomposite_x64.dll"
+if ! echo "$oc_sha256  $oc_file" | shasum -a 256 -c - >/dev/null 2>&1; then
+    oc_temporary="$oc_file.download"
+    trap 'rm -f "$oc_temporary"' EXIT
+    curl --fail --location --silent --show-error "$oc_url" -o "$oc_temporary"
+    echo "$oc_sha256  $oc_temporary" | shasum -a 256 -c - >/dev/null || {
+        echo "OpenComposite checksum mismatch"; exit 1;
+    }
+    LC_ALL=C grep -aFq "Ignoring VRApplication_Background: no shared OpenVR server is available" "$oc_temporary" || {
+        echo "OpenComposite payload does not contain the GameNative app-type fix"; exit 1;
+    }
+    mv -f "$oc_temporary" "$oc_file"
+    trap - EXIT
 fi
+LC_ALL=C grep -aFq "Ignoring VRApplication_Background: no shared OpenVR server is available" "$oc_file" || {
+    echo "OpenComposite payload does not contain the GameNative app-type fix"; exit 1;
+}
 
 # The arm64x Wine builtin needs Linux; run it in Docker on request.
 # The gn-arm64x volume caches the toolchains and Wine tree, so reruns take minutes.
