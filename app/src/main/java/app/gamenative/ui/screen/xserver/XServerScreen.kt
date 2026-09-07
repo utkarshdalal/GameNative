@@ -2100,7 +2100,7 @@ fun XServerScreen(
                 touchMouse = TouchMouse(getxServer())
                 keyboard = Keyboard(getxServer())
                 if (renderer is com.winlator.renderer.VulkanRenderer) {
-                    val isFrameGen = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean() || container.getExtra("frameGen", "0") == "1"
+                    val isFrameGen = LsfgVkManager.isArmed(container)
                     val cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(context, container, true)
                     if (cache != null && cache.isFile) {
                         renderer.setFrameGenerationShaders(cache.absolutePath)

@@ -98,12 +98,13 @@ object LsfgVkManager {
     fun isSupported(container: Container): Boolean =
         container.containerVariant.equals(Container.BIONIC, ignoreCase = true)
 
-    /** Whether LSFG is armed (enabled + Lossless.dll available) for this container. The DLL is copied into the container at launch time by ensureRuntimeInstalled(). */
+    /** Whether LSFG is armed (enabled + Lossless.dll available + Steam ownership) for this container. The DLL is copied into the container at launch time by ensureRuntimeInstalled(). */
     @JvmStatic
     fun isArmed(container: Container): Boolean =
         isSupported(container) &&
             (parseBool(container.getExtra(EXTRA_ARMED, "false")) || parseBool(container.getExtra("frameGen", "0"))) &&
-            isDllAvailable()
+            isDllAvailable() &&
+            ownsLosslessScaling()
 
     /** Whether Lossless Scaling is installed (Lossless.dll exists in internal storage, container, or Steam dir). */
     @JvmStatic
@@ -116,10 +117,10 @@ object LsfgVkManager {
         return findSteamDll() != null
     }
 
-    /** Whether the user owns Lossless Scaling in their Steam library. */
+    /** Whether the user is signed into Steam and owns Lossless Scaling in their Steam library. */
     @JvmStatic
     fun ownsLosslessScaling(): Boolean =
-        SteamService.getAppInfoOf(LOSSLESS_SCALING_APP_ID) != null
+        SteamService.isLoggedIn && SteamService.getAppInfoOf(LOSSLESS_SCALING_APP_ID) != null
 
     /** Get the DLL path inside the container, or null if the copy doesn't exist. */
     @JvmStatic

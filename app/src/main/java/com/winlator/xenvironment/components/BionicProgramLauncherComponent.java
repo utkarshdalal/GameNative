@@ -383,7 +383,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         if (LsfgVkManager.isSupported(container)) {
             LsfgVkManager.disableLayerInContainer(container);
-            com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(context, container, true);
+            if (LsfgVkManager.isArmed(container)) {
+                com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(context, container, true);
+            }
         }
 
         Log.d("BionicProgramLauncherComponent", "env vars are " + envVars.toString());

@@ -19,6 +19,7 @@ import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
+import app.gamenative.service.SteamService
 import app.gamenative.utils.LsfgVkManager
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsSwitch
@@ -160,16 +161,6 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     val cfg = KeyValueSet(config.graphicsDriverConfig)
                     cfg.put("adrenotoolsTurnip", if (checked) "1" else "0")
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
-                },
-            )
-            // Bionic: Frame Generation (LSFG)
-            SettingsSwitch(
-                colors = settingsTileColorsAlt(),
-                title = { Text(text = stringResource(R.string.lsfg_enable)) },
-                subtitle = { Text(text = stringResource(R.string.session_drawer_frame_generation_note)) },
-                state = config.lsfgEnabled,
-                onCheckedChange = { checked ->
-                    state.config.value = config.copy(lsfgEnabled = checked)
                 },
             )
             SettingsListDropdown(
@@ -415,21 +406,24 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
         // Frame Generation (LSFG) — simple on/off toggle for Bionic containers
         if (!default && config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             val context = LocalContext.current
-            val isInstalled = LosslessScaling.isInstalled(context) || LsfgVkManager.isDllAvailable(context)
+            val isDllImported = LosslessScaling.getDllFile(context).isFile
+            val isLoggedIn = SteamService.isLoggedIn
+            val ownsApp = LsfgVkManager.ownsLosslessScaling()
+            val canEnable = isLoggedIn && ownsApp && isDllImported
+
+            val subtitleText = when {
+                !isLoggedIn -> stringResource(R.string.lsfg_container_prompt_sign_in)
+                !ownsApp -> stringResource(R.string.lsfg_container_prompt_buy)
+                !isDllImported -> stringResource(R.string.lsfg_container_prompt_setup)
+                else -> stringResource(R.string.lsfg_container_toggle_desc)
+            }
+
             SettingsSwitch(
                 colors = settingsTileColorsAlt(),
                 title = { Text(text = stringResource(R.string.lsfg_enable)) },
-                subtitle = {
-                    Text(
-                        text = if (isInstalled) {
-                            stringResource(R.string.lsfg_container_toggle_desc)
-                        } else {
-                            stringResource(R.string.lsfg_requires_global_import)
-                        }
-                    )
-                },
-                state = config.lsfgEnabled && isInstalled,
-                enabled = isInstalled,
+                subtitle = { Text(text = subtitleText) },
+                state = config.lsfgEnabled && canEnable,
+                enabled = canEnable,
                 onCheckedChange = { checked ->
                     state.config.value = config.copy(lsfgEnabled = checked)
                 },
