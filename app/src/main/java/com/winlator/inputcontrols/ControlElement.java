@@ -123,12 +123,7 @@ public class ControlElement {
 
         int scale(float value, float multiplier) {
             if (value == 0.0f) return 0;
-            if (multiplier >= 1.0f) {
-                remainder = 0.0f;
-                return Mathf.roundPoint(value * multiplier);
-            }
-
-            float scaledValue = Mathf.roundPoint(value) * multiplier + remainder;
+            float scaledValue = value * multiplier + remainder;
             int wholePixels = (int)scaledValue;
             remainder = scaledValue - wholePixels;
             return wholePixels;
