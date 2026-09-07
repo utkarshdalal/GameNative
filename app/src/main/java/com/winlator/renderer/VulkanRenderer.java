@@ -69,6 +69,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private volatile VulkanXrFrameBridge xrFrameBridge = null;
     private volatile long xrTargetAhbPtr = 0;
     private volatile boolean flatPresentationEnabled = true;
+    private final java.util.concurrent.atomic.AtomicLong sourceFrames = new java.util.concurrent.atomic.AtomicLong();
 
     public void setFlatPresentationEnabled(boolean enabled) {
         if (flatPresentationEnabled == enabled) return;
@@ -180,6 +181,24 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeDisableXrTarget(long handle);
     private native long nativeGetXrTargetExtent(long handle);
 
+    private native void nativeSetFrameGenerationEnabled(long handle, boolean enabled);
+    private native boolean nativeIsFrameGenerationSupported(long handle);
+    private native void nativeSetFrameGenerationShaders(long handle, String cachePath);
+    private native void nativeSetSourceFrameCount(long handle, long count);
+    private native void nativeSetFrameGenerationRefreshRate(long handle, float hz);
+    private native void nativeSetFrameGenerationMode(long handle, int multiplier, int targetRate, int flowScalePct);
+    private native long nativeGetGeneratedFrameCount(long handle);
+    private native long nativeGetPresentedFrameCount(long handle);
+    private native long nativeGetRealFrameCount(long handle);
+    private native long nativeGetSourceFrameCount(long handle);
+
+    private boolean frameGenEnabled = false;
+    private int frameGenMultiplier = 2;
+    private int frameGenTargetRate = 0;
+    private int frameGenFlowScalePct = 70;
+    private float frameGenRefreshRate = 60.0f;
+    private String frameGenShadersCachePath = null;
+
     private static volatile boolean gpuImageChecked = false;
 
     private long did(Drawable d) {
@@ -214,6 +233,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                         xrTargetAhbPtr = 0;
                     } else {
                         enableXrTargetLocked();
+                        applyFrameGenerationSettingsLocked();
                         initComplete = true;
                         xServerView.queueEvent(this::updateScene);
                         return;
@@ -226,6 +246,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     nativeSetSwapRB(nativeHandle, pendingSwapRB);
                     nativeSetEffect(nativeHandle, pendingEffectId, pendingSharpness,
                         pendingEffectMask, pendingBrightness, pendingContrast, pendingGamma);
+                    applyFrameGenerationSettingsLocked();
                     updateTransform();
                     nativeSetCursorVisible(nativeHandle, cursorVisible);
                     if (nativeMode && !effectsRequireCompositor) {
@@ -494,6 +515,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     public void onUpdateWindowContentDirect(Window window, Drawable pixmap, short xOff, short yOff) {
         if (!flatPresentationEnabled) return;
+        setSourceFrameCount(sourceFrames.incrementAndGet());
         if (hudRef != null && !nativeMode) hudRef.update();
         if (nativeHandle == 0 || pixmap == null) return;
         Drawable targetDrawable = window.getContent();
@@ -544,6 +566,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     @Override
     public void onUpdateWindowContent(Window window) {
         if (!flatPresentationEnabled) return;
+        setSourceFrameCount(sourceFrames.incrementAndGet());
         if (hudRef != null) hudRef.update();
         final long handle;
         synchronized (lock) { handle = nativeHandle; }
@@ -822,12 +845,155 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     // compositor (window.frag). Scanout bypasses the shader, so these can only
     // take visible effect when content is routed through the textured-quad path.
     private boolean computeEffectsRequireCompositor() {
-        return pendingEffectId != EFFECT_NONE
+        return frameGenEnabled
+            || pendingEffectId != EFFECT_NONE
             || pendingEffectMask != 0
             || pendingBrightness != 0.0f
             || pendingContrast != 0.0f
             || Math.abs(pendingGamma - 1.0f) > 1e-3f
             || pendingFilterMode != 0;
+    }
+
+    private void applyFrameGenerationSettingsLocked() {
+        if (nativeHandle == 0) return;
+        if (frameGenShadersCachePath == null && xServerView != null) {
+            Context ctx = xServerView.getContext();
+            if (ctx != null) {
+                java.io.File cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, null, true);
+                if (cache != null && cache.isFile()) {
+                    frameGenShadersCachePath = cache.getAbsolutePath();
+                }
+            }
+        }
+        if (frameGenShadersCachePath != null) {
+            nativeSetFrameGenerationShaders(nativeHandle, frameGenShadersCachePath);
+        }
+        nativeSetFrameGenerationMode(nativeHandle, frameGenMultiplier, frameGenTargetRate, frameGenFlowScalePct);
+        nativeSetFrameGenerationRefreshRate(nativeHandle, frameGenRefreshRate);
+        nativeSetFrameGenerationEnabled(nativeHandle, frameGenEnabled);
+    }
+
+    public void setFrameGenerationEnabled(boolean enabled) {
+        synchronized (lock) {
+            this.frameGenEnabled = enabled;
+            boolean wasRequireCompositor = effectsRequireCompositor;
+            effectsRequireCompositor = computeEffectsRequireCompositor();
+            if (frameGenShadersCachePath == null && enabled && xServerView != null) {
+                Context ctx = xServerView.getContext();
+                if (ctx != null) {
+                    java.io.File cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, null, true);
+                    if (cache != null && cache.isFile()) {
+                        frameGenShadersCachePath = cache.getAbsolutePath();
+                        if (nativeHandle != 0) {
+                            nativeSetFrameGenerationShaders(nativeHandle, frameGenShadersCachePath);
+                        }
+                    }
+                }
+            }
+            if (nativeHandle != 0) {
+                nativeSetFrameGenerationEnabled(nativeHandle, enabled);
+            }
+            if (nativeMode && wasRequireCompositor != effectsRequireCompositor) {
+                if (effectsRequireCompositor) tearDownScanout();
+                else establishScanout();
+            }
+        }
+    }
+
+    public boolean isFrameGenerationSupported() {
+        synchronized (lock) {
+            if (nativeHandle != 0) {
+                return nativeIsFrameGenerationSupported(nativeHandle);
+            }
+            return false;
+        }
+    }
+
+    public boolean isFrameGenerationEnabled() {
+        synchronized (lock) {
+            return frameGenEnabled;
+        }
+    }
+
+    public void setFrameGenerationShaders(String cachePath) {
+        synchronized (lock) {
+            this.frameGenShadersCachePath = cachePath;
+            if (nativeHandle != 0) {
+                nativeSetFrameGenerationShaders(nativeHandle, cachePath);
+            }
+        }
+    }
+
+    public void setFrameGenerationMode(int multiplier, int targetRate, int flowScalePct) {
+        synchronized (lock) {
+            this.frameGenMultiplier = multiplier;
+            this.frameGenTargetRate = targetRate;
+            this.frameGenFlowScalePct = flowScalePct;
+            if (nativeHandle != 0) {
+                nativeSetFrameGenerationMode(nativeHandle, multiplier, targetRate, flowScalePct);
+            }
+        }
+    }
+
+    public void setFrameGenerationRefreshRate(float hz) {
+        synchronized (lock) {
+            this.frameGenRefreshRate = hz;
+            if (nativeHandle != 0) {
+                nativeSetFrameGenerationRefreshRate(nativeHandle, hz);
+            }
+        }
+    }
+
+    public void setSourceFrameCount(long count) {
+        synchronized (lock) {
+            if (nativeHandle != 0) {
+                nativeSetSourceFrameCount(nativeHandle, count);
+            }
+        }
+    }
+
+    public long getGeneratedFrameCount() {
+        synchronized (lock) {
+            if (nativeHandle != 0) {
+                return nativeGetGeneratedFrameCount(nativeHandle);
+            }
+            return 0;
+        }
+    }
+
+    public long getPresentedFrameCount() {
+        synchronized (lock) {
+            if (nativeHandle != 0) {
+                return nativeGetPresentedFrameCount(nativeHandle);
+            }
+            return 0;
+        }
+    }
+
+    public long getRealFrameCount() {
+        synchronized (lock) {
+            if (nativeHandle != 0) {
+                try {
+                    return nativeGetRealFrameCount(nativeHandle);
+                } catch (UnsatisfiedLinkError ignored) {
+                    return nativeGetPresentedFrameCount(nativeHandle);
+                }
+            }
+            return 0;
+        }
+    }
+
+    public long getSourceFrameCount() {
+        synchronized (lock) {
+            if (nativeHandle != 0) {
+                try {
+                    return nativeGetSourceFrameCount(nativeHandle);
+                } catch (UnsatisfiedLinkError ignored) {
+                    return nativeGetPresentedFrameCount(nativeHandle);
+                }
+            }
+            return 0;
+        }
     }
 
     /** Whether any active effect/filter/color adjustment is currently forcing the compositor
