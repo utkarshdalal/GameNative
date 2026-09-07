@@ -1678,6 +1678,14 @@
     <string name="gog_settings_login_title">Sign in to GOG</string>
     <string name="gog_settings_login_subtitle">Sign in to your GOG account</string>
     <string name="gog_login_success_title">Login Successful</string>
+    <string name="settings_ea_account">EA account</string>
+    <string name="ea_login">Sign in to EA</string>
+    <string name="ea_logout">Sign out of EA</string>
+    <string name="ea_login_subtitle">Needed for EA games launched through Steam (link2ea)</string>
+    <string name="ea_login_in_progress">Signing in…</string>
+    <string name="ea_signed_in_as">Signed in as %1$s</string>
+    <string name="ea_login_success">Signed in to EA as %1$s</string>
+    <string name="ea_login_failed">EA sign-in failed: %1$s</string>
     <string name="gog_login_cancel">Cancel</string>
     <string name="gog_settings_logout_title">Sign out of GOG</string>
     <string name="gog_settings_logout_subtitle">Sign out from your GOG account</string>

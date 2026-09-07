@@ -110,6 +110,7 @@ import app.gamenative.externaldisplay.SwapInputOverlayView
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
+import app.gamenative.service.ea.EaLaunchSupport
 import app.gamenative.service.epic.EpicOverlayManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
@@ -4672,7 +4673,8 @@ private fun getWineStartCommand(
             // Mirror Steam's LaunchApp: the app's launch config supplies executable,
             // arguments and working dir; a user-chosen exe in the container wins,
             // and keeps the config's arguments only when it is the same executable.
-            val launchExe = appLaunchInfo?.executable?.trim('/').orEmpty()
+            val isEaLaunch = EaLaunchSupport.isEaLaunch(appLaunchInfo)
+            val launchExe = if (isEaLaunch) "" else appLaunchInfo?.executable?.trim('/').orEmpty()
             val exePath = container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
             val launchArgs = if (appLaunchInfo != null && exePath.replace('\\', '/').trim('/').equals(launchExe, ignoreCase = true)) appLaunchInfo.arguments.trim() else ""
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
@@ -4685,6 +4687,17 @@ private fun getWineStartCommand(
             val gameDir = "$steamRoot\\steamapps\\common\\$gameFolderName" + (if (exeSubDir.isNotEmpty()) "\\$exeSubDir" else "")
             guestProgramLauncherComponent.workingDir = File(appDirPath + (if (relDir.isNotEmpty()) "/$relDir" else ""))
             realSteamGameExecutable = normalizedExe
+            if (isEaLaunch) {
+                EaLaunchSupport.start(
+                    context = context,
+                    container = container,
+                    steamAppId = gameId,
+                    gameDir = File(appDirPath),
+                    gameDirWindows = "$steamRoot\\steamapps\\common\\$gameFolderName",
+                    exeRelative = normalizedExe,
+                    arguments = launchArgs,
+                )
+            }
             envVars.put("PROTON_DISABLE_LSTEAMCLIENT", "1")
             if (offline || container.isSteamOfflineMode) envVars.put("STEAMHOST_OFFLINE", "1")
             envVars.put("STEAMHOST_ACCOUNT", PrefManager.username)
@@ -4800,6 +4813,7 @@ private fun exit(
         Timber.e(e, "winHandler.stop() failed during exit")
     }
     PluviaApp.shutdownEnvironment()
+    EaLaunchSupport.stop()
 
     // Bionic-Steam mode brought up libsteamclient.so inside this Android process
     // (see BionicProgramLauncherComponent.bootstrapNativeSteamClient). Tear it
@@ -6161,7 +6175,7 @@ private fun extractSteamFiles(
                 if (f.isDirectory && (n == "bin" || n == "win64")) f.deleteRecursively()
             }
         }
-        Timber.i("Extracting steamhost-20260907.tzst (Valve client 2026-01-29 + headless steam.exe)")
+        Timber.i("Extracting steamhost-20260908.tzst (Valve client 2026-01-29 + headless steam.exe)")
         TarCompressorUtils.extract(
             TarCompressorUtils.Type.ZSTD,
             steamhostArchive,

@@ -139,6 +139,12 @@
             android:exported="false"
             android:theme="@style/Theme.Pluvia" />
 
+        <!-- EA OAuth (in-app WebView; intercepts the qrc:// redirect for automatic code capture) -->
+        <activity
+            android:name=".ui.screen.auth.EaOAuthActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Pluvia" />
+
         <!-- Epic OAuth (in-app WebView; intercepts redirect for automatic code capture) -->
         <activity
             android:name=".ui.screen.auth.EpicOAuthActivity"
