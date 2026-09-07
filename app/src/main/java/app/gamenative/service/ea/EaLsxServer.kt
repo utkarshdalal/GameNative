@@ -282,18 +282,23 @@ object EaLsxServer {
                             if (!EaLicenseManager.isNotEntitled(first)) throw first
                             Timber.w("EA licence not entitled for ${s.contentId}; refreshing storefront entitlements and retrying")
                             EaLicenseManager.refreshExternalEntitlements(s.context, creds.userId)
-                            runCatching { EaLicenseManager.request(s.context, s.contentId, hash) }.getOrElse { second ->
-                                if (EaLicenseManager.isNotEntitled(second)) {
-                                    error(
-                                        "EA account ${creds.displayName} has no entitlement for content ${s.contentId}. " +
-                                            "Link your Steam account to this EA account at ${EaConstants.ACCOUNT_CONNECTIONS_URL}, then launch again.",
-                                    )
-                                }
-                                throw second
+                            var granted: EaLicenseManager.License? = null
+                            var lastError: Throwable = first
+                            for (id in listOf(s.contentId) + s.contentIds.filter { it != s.contentId }) {
+                                val r = runCatching { EaLicenseManager.request(s.context, id, hash) }
+                                if (r.isSuccess) { granted = r.getOrThrow(); Timber.i("EA licence granted under content id $id"); break }
+                                lastError = r.exceptionOrNull()!!
+                                Timber.w("EA licence for content id $id: ${lastError.message?.take(160)}")
+                                if (!EaLicenseManager.isNotEntitled(lastError)) throw lastError
                             }
+                            granted ?: error(
+                                "EA account ${creds.displayName} has no entitlement for content ${s.contentId} (tried ${s.contentIds.size} ids). " +
+                                    "Link your Steam account to this EA account at ${EaConstants.ACCOUNT_CONNECTIONS_URL}, then launch again.",
+                            )
                         }
                     }
                     EaLicenseManager.save(s.prefixDriveC, lic, signatureEncoded = ooaState == 1)
+                    if (lic.contentId != s.contentId) EaLicenseManager.save(s.prefixDriveC, lic.copy(contentId = s.contentId), signatureEncoded = ooaState == 1)
                 }
                 val access = runBlocking { EaAuthManager.accessToken(s.context) }
                 val opaque = runCatching { runBlocking { EaAuthManager.opaqueLaunchToken(s.context) } }.onFailure { Timber.w(it, "opaque launch token unavailable") }.getOrDefault("")

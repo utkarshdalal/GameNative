@@ -6175,7 +6175,7 @@ private fun extractSteamFiles(
                 if (f.isDirectory && (n == "bin" || n == "win64")) f.deleteRecursively()
             }
         }
-        Timber.i("Extracting steamhost-20260908.tzst (Valve client 2026-01-29 + headless steam.exe)")
+        Timber.i("Extracting steamhost-20260909.tzst (Valve client 2026-01-29 + headless steam.exe)")
         TarCompressorUtils.extract(
             TarCompressorUtils.Type.ZSTD,
             steamhostArchive,

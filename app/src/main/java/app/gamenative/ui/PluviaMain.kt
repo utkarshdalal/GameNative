@@ -153,7 +153,7 @@ private const val SNACKBAR_SHOW_TIMEOUT_MS = 15_000L
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
 
 /** Valve Windows client tree (build 2026-01-29) + headless steam.exe for Real Steam mode; see extractSteamFiles. */
-const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20260908.tzst"
+const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20260909.tzst"
 
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,

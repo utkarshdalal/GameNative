@@ -49,7 +49,7 @@ object EaLicenseManager {
     suspend fun refreshExternalEntitlements(context: Context, userId: String): Boolean = withContext(Dispatchers.IO) {
         val token = EaAuthManager.accessToken(context)
         val url = EaConstants.ENTITLEMENT_REFRESH_ENDPOINT.format(userId)
-        for (method in listOf("POST", "PUT", "GET")) {
+        for (method in listOf("PUT", "POST", "GET")) {
             val req = Request.Builder().url(url)
                 .method(method, if (method == "GET") null else ByteArray(0).toRequestBody(null))
                 .header("Authorization", "Bearer $token")
@@ -58,7 +58,7 @@ object EaLicenseManager {
             val ok = runCatching {
                 client.newCall(req).execute().use { resp ->
                     val body = resp.body?.string().orEmpty()
-                    Timber.i("EA refreshExternalEntitlements $method -> ${resp.code} ${body.take(200)}")
+                    Timber.i("EA refreshExternalEntitlements $method -> ${resp.code} ${body.replace(Regex("\\s+"), " ").take(4000)}")
                     if (resp.code == 405 || resp.code == 404) return@use null
                     resp.isSuccessful
                 }
@@ -95,7 +95,10 @@ object EaLicenseManager {
             .build()
         client.newCall(req).execute().use { resp ->
             val body = resp.body?.bytes() ?: ByteArray(0)
-            if (!resp.isSuccessful) error("EA licence HTTP ${resp.code}: ${String(body).take(300)}")
+            if (!resp.isSuccessful) {
+                Timber.w("EA licence request for $contentId failed ${resp.code}; token claims=${EaAuthManager.jwtClaims(token)}")
+                error("EA licence HTTP ${resp.code}: ${String(body).take(300)}")
+            }
             val signature = resp.header("x-signature") ?: error("EA licence: missing x-signature")
             val xml = String(EaCrypto.ooaDecrypt(body))
             fun field(name: String) = Regex("<$name>([^<]*)</$name>").find(xml)?.groupValues?.get(1)
