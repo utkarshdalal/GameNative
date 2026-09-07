@@ -4673,7 +4673,7 @@ private fun getWineStartCommand(
             // Mirror Steam's LaunchApp: the app's launch config supplies executable,
             // arguments and working dir; a user-chosen exe in the container wins,
             // and keeps the config's arguments only when it is the same executable.
-            val isEaLaunch = EaLaunchSupport.isEaLaunch(appLaunchInfo)
+            val isEaLaunch = EaLaunchSupport.isEaTitle(gameId, File(appDirPath))
             val launchExe = if (isEaLaunch) "" else appLaunchInfo?.executable?.trim('/').orEmpty()
             val exePath = container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
             val launchArgs = if (appLaunchInfo != null && exePath.replace('\\', '/').trim('/').equals(launchExe, ignoreCase = true)) appLaunchInfo.arguments.trim() else ""

@@ -2,6 +2,7 @@ package app.gamenative.service.ea
 
 import android.content.Context
 import app.gamenative.data.LaunchInfo
+import app.gamenative.service.SteamService
 import com.winlator.container.Container
 import com.winlator.core.WineRegistryEditor
 import java.io.File
@@ -18,6 +19,16 @@ object EaLaunchSupport {
         return exe.startsWith("link2ea://") || exe.startsWith("steam2ea://")
     }
 
+    /**
+     * EA-published Steam titles launch through link2ea:// (a URL entry the app's .exe-only
+     * launch-info filter drops), and ship EA's __Installer metadata next to the game.
+     */
+    fun isEaTitle(steamAppId: Int, gameDir: File?): Boolean {
+        val launch = SteamService.getAppInfoOf(steamAppId)?.config?.launch.orEmpty()
+        if (launch.any { isEaLaunch(it) }) return true
+        return gameDir != null && File(gameDir, "__Installer/installerdata.xml").exists()
+    }
+
     /** Registers the protocol handlers and launcher presence keys in the prefix's HKLM hive. */
     fun setupPrefix(container: Container) {
         val systemReg = File(container.rootDir, ".wine/system.reg")
@@ -30,8 +41,15 @@ object EaLaunchSupport {
                     editor.setStringValue("Software\\Classes\\$proto", "URL Protocol", "")
                     editor.setStringValue("Software\\Classes\\$proto\\shell\\open\\command", null, command)
                 }
-                editor.setStringValue("Software\\Electronic Arts\\EA Desktop", "InstallSuccessful", "true")
-                editor.setStringValue("Software\\Wow6432Node\\Origin", "ClientPath", EaConstants.STUB_EXE)
+                // Steam's client resolves link2ea through the EA Desktop registry, running the
+                // EaConnectLink2EAAppPath executable directly rather than the protocol handler.
+                for (hive in listOf("Software\\Electronic Arts\\EA Desktop", "Software\\Wow6432Node\\Electronic Arts\\EA Desktop")) {
+                    editor.setStringValue(hive, "EaConnectLink2EAAppPath", EaConstants.STUB_EXE)
+                    editor.setStringValue(hive, "InstallSuccessful", "true")
+                    if (editor.getStringValue(hive, "ClientPath") == null) editor.setStringValue(hive, "ClientPath", EaConstants.STUB_EXE)
+                    if (editor.getStringValue(hive, "DesktopAppPath") == null) editor.setStringValue(hive, "DesktopAppPath", EaConstants.STUB_EXE)
+                }
+                if (editor.getStringValue("Software\\Wow6432Node\\Origin", "ClientPath") == null) editor.setStringValue("Software\\Wow6432Node\\Origin", "ClientPath", EaConstants.STUB_EXE)
             }
             Timber.i("EA: registered link2ea/steam2ea handlers and launcher keys in ${systemReg.name}")
         } catch (e: Exception) {

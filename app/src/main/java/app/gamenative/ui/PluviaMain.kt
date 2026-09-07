@@ -2081,7 +2081,7 @@ fun preLaunchApp(
                 ).await()
             }
             if (container.isLaunchRealSteam && gameSource == GameSource.STEAM &&
-                EaLaunchSupport.isEaLaunch(SteamService.getWindowsLaunchInfos(gameId).firstOrNull())
+                EaLaunchSupport.isEaTitle(gameId, File(SteamService.getAppDirPath(gameId)))
             ) {
                 setLoadingMessage(context.getString(R.string.ea_login_required))
                 val signIn = EaLoginGate.ensureSignedIn(context)
