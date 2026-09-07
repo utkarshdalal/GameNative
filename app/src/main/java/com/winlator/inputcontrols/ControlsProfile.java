@@ -20,6 +20,52 @@ import java.util.List;
 import java.util.Locale;
 
 public class ControlsProfile implements Comparable<ControlsProfile> {
+    public enum StickDeadzoneMode {
+        AXIAL("axial"),
+        CIRCULAR("circular"),
+        HYBRID("hybrid");
+
+        private final String jsonName;
+
+        StickDeadzoneMode(String jsonName) {
+            this.jsonName = jsonName;
+        }
+
+        public String getJsonName() {
+            return jsonName;
+        }
+
+        public static StickDeadzoneMode fromJsonName(String value) {
+            for (StickDeadzoneMode mode : values()) {
+                if (mode.jsonName.equals(value)) return mode;
+            }
+            return DEFAULT_STICK_DEADZONE_MODE;
+        }
+    }
+
+    public enum StickDigitalMode {
+        UNRESTRICTED("unrestricted"),
+        FOUR_WAY("four_way"),
+        EIGHT_WAY("eight_way");
+
+        private final String jsonName;
+
+        StickDigitalMode(String jsonName) {
+            this.jsonName = jsonName;
+        }
+
+        public String getJsonName() {
+            return jsonName;
+        }
+
+        public static StickDigitalMode fromJsonName(String value) {
+            for (StickDigitalMode mode : values()) {
+                if (mode.jsonName.equals(value)) return mode;
+            }
+            return DEFAULT_STICK_DIGITAL_MODE;
+        }
+    }
+
     /** Bounds for the user-configurable physical stick deadzone and sensitivity. */
     public static final float MIN_STICK_DEADZONE = 0.0f;
     public static final float MAX_STICK_DEADZONE = 1.0f;
@@ -27,6 +73,8 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     public static final float MAX_STICK_SENSITIVITY = 3.0f;
     public static final float DEFAULT_STICK_DEADZONE = ControlElement.STICK_DEAD_ZONE;
     public static final float DEFAULT_STICK_SENSITIVITY = 1.0f;
+    public static final StickDeadzoneMode DEFAULT_STICK_DEADZONE_MODE = StickDeadzoneMode.AXIAL;
+    public static final StickDigitalMode DEFAULT_STICK_DIGITAL_MODE = StickDigitalMode.UNRESTRICTED;
 
     public final int id;
     private String name;
@@ -35,6 +83,10 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     private float rightStickDeadzone = DEFAULT_STICK_DEADZONE;
     private float leftStickSensitivity = DEFAULT_STICK_SENSITIVITY;
     private float rightStickSensitivity = DEFAULT_STICK_SENSITIVITY;
+    private StickDeadzoneMode leftStickDeadzoneMode = DEFAULT_STICK_DEADZONE_MODE;
+    private StickDeadzoneMode rightStickDeadzoneMode = DEFAULT_STICK_DEADZONE_MODE;
+    private StickDigitalMode leftStickDigitalMode = DEFAULT_STICK_DIGITAL_MODE;
+    private StickDigitalMode rightStickDigitalMode = DEFAULT_STICK_DIGITAL_MODE;
     private final ArrayList<ControlElement> elements = new ArrayList<>();
     private final ArrayList<ExternalController> controllers = new ArrayList<>();
     private final ArrayList<RadialMenu> radialMenus = new ArrayList<>();
@@ -107,6 +159,38 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setRightStickSensitivity(float sensitivity) {
         this.rightStickSensitivity = clampSensitivity(sensitivity);
+    }
+
+    public StickDeadzoneMode getLeftStickDeadzoneMode() {
+        return leftStickDeadzoneMode;
+    }
+
+    public void setLeftStickDeadzoneMode(StickDeadzoneMode mode) {
+        leftStickDeadzoneMode = mode != null ? mode : DEFAULT_STICK_DEADZONE_MODE;
+    }
+
+    public StickDeadzoneMode getRightStickDeadzoneMode() {
+        return rightStickDeadzoneMode;
+    }
+
+    public void setRightStickDeadzoneMode(StickDeadzoneMode mode) {
+        rightStickDeadzoneMode = mode != null ? mode : DEFAULT_STICK_DEADZONE_MODE;
+    }
+
+    public StickDigitalMode getLeftStickDigitalMode() {
+        return leftStickDigitalMode;
+    }
+
+    public void setLeftStickDigitalMode(StickDigitalMode mode) {
+        leftStickDigitalMode = mode != null ? mode : DEFAULT_STICK_DIGITAL_MODE;
+    }
+
+    public StickDigitalMode getRightStickDigitalMode() {
+        return rightStickDigitalMode;
+    }
+
+    public void setRightStickDigitalMode(StickDigitalMode mode) {
+        rightStickDigitalMode = mode != null ? mode : DEFAULT_STICK_DIGITAL_MODE;
     }
 
     /**
@@ -206,6 +290,10 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             data.put("rightStickDeadzone", (double) rightStickDeadzone);
             data.put("leftStickSensitivity", (double) leftStickSensitivity);
             data.put("rightStickSensitivity", (double) rightStickSensitivity);
+            data.put("leftStickDeadzoneMode", leftStickDeadzoneMode.getJsonName());
+            data.put("rightStickDeadzoneMode", rightStickDeadzoneMode.getJsonName());
+            data.put("leftStickDigitalMode", leftStickDigitalMode.getJsonName());
+            data.put("rightStickDigitalMode", rightStickDigitalMode.getJsonName());
 
             JSONArray elementsJSONArray = new JSONArray();
             if (!elementsLoaded && file.isFile()) {

@@ -253,6 +253,10 @@ public class InputControlsManager {
             float rightStickDeadzone = Float.NaN;
             float leftStickSensitivity = Float.NaN;
             float rightStickSensitivity = Float.NaN;
+            ControlsProfile.StickDeadzoneMode leftStickDeadzoneMode = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
+            ControlsProfile.StickDeadzoneMode rightStickDeadzoneMode = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
+            ControlsProfile.StickDigitalMode leftStickDigitalMode = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
+            ControlsProfile.StickDigitalMode rightStickDigitalMode = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
 
             reader.beginObject();
             while (reader.hasNext()) {
@@ -279,6 +283,18 @@ public class InputControlsManager {
                 else if (name.equals("rightStickSensitivity")) {
                     rightStickSensitivity = (float) reader.nextDouble();
                 }
+                else if (name.equals("leftStickDeadzoneMode")) {
+                    leftStickDeadzoneMode = ControlsProfile.StickDeadzoneMode.fromJsonName(reader.nextString());
+                }
+                else if (name.equals("rightStickDeadzoneMode")) {
+                    rightStickDeadzoneMode = ControlsProfile.StickDeadzoneMode.fromJsonName(reader.nextString());
+                }
+                else if (name.equals("leftStickDigitalMode")) {
+                    leftStickDigitalMode = ControlsProfile.StickDigitalMode.fromJsonName(reader.nextString());
+                }
+                else if (name.equals("rightStickDigitalMode")) {
+                    rightStickDigitalMode = ControlsProfile.StickDigitalMode.fromJsonName(reader.nextString());
+                }
                 else {
                     reader.skipValue();
                 }
@@ -292,6 +308,10 @@ public class InputControlsManager {
             profile.setRightStickDeadzone(rightStickDeadzone);
             profile.setLeftStickSensitivity(leftStickSensitivity);
             profile.setRightStickSensitivity(rightStickSensitivity);
+            profile.setLeftStickDeadzoneMode(leftStickDeadzoneMode);
+            profile.setRightStickDeadzoneMode(rightStickDeadzoneMode);
+            profile.setLeftStickDigitalMode(leftStickDigitalMode);
+            profile.setRightStickDigitalMode(rightStickDigitalMode);
             return profile;
         }
         catch (IOException e) {

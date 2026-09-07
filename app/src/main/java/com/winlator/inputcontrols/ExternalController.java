@@ -47,6 +47,8 @@ public class ExternalController {
     private static volatile float stickDeadzoneRight = ControlsProfile.DEFAULT_STICK_DEADZONE;
     private static volatile float stickSensitivityLeft = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
     private static volatile float stickSensitivityRight = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
+    private static volatile ControlsProfile.StickDeadzoneMode stickDeadzoneModeLeft = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
+    private static volatile ControlsProfile.StickDeadzoneMode stickDeadzoneModeRight = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
 
     private String id;
     private String name;
@@ -55,6 +57,10 @@ public class ExternalController {
     private final ArrayList<ExternalControllerBinding> controllerBindings = new ArrayList<>();
     public final GamepadState state = new GamepadState();
     private boolean processTriggerButtonOnMotionEvent = true;
+    private float rawThumbLX;
+    private float rawThumbLY;
+    private float rawThumbRX;
+    private float rawThumbRY;
 
     /** Applies {@code profile}'s stick deadzone/sensitivity to every physical controller. */
     public static void setStickTuning(ControlsProfile profile) {
@@ -63,12 +69,16 @@ public class ExternalController {
             stickDeadzoneRight = ControlsProfile.DEFAULT_STICK_DEADZONE;
             stickSensitivityLeft = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
             stickSensitivityRight = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
+            stickDeadzoneModeLeft = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
+            stickDeadzoneModeRight = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
             return;
         }
         stickDeadzoneLeft = profile.getLeftStickDeadzone();
         stickDeadzoneRight = profile.getRightStickDeadzone();
         stickSensitivityLeft = profile.getLeftStickSensitivity();
         stickSensitivityRight = profile.getRightStickSensitivity();
+        stickDeadzoneModeLeft = profile.getLeftStickDeadzoneMode();
+        stickDeadzoneModeRight = profile.getRightStickDeadzoneMode();
     }
 
     public String getName() {
@@ -202,21 +212,24 @@ public class ExternalController {
         return getDeviceId() + " | " + getName();
     }
 
-    static float tuneStickAxis(float value, float deadzone, float sensitivity) {
-        float adjusted = ControlsProfile.applyStickDeadzone(value, deadzone);
-        return Mathf.clamp(adjusted * sensitivity, -1, 1);
-    }
-
-    static float resolveStickAxis(boolean reported, float retained, float value, float deadzone, float sensitivity) {
-        return JoyConSupport.axisValue(reported, retained, tuneStickAxis(value, deadzone, sensitivity));
+    static float resolveRawAxis(boolean reported, float retained, float value) {
+        return JoyConSupport.axisValue(reported, retained, value);
     }
 
     private void processJoystickInput(MotionEvent event, int historyPos) {
         boolean z = false;
-        this.state.thumbLX = updateAxis(event, MotionEvent.AXIS_X, historyPos, this.state.thumbLX, stickDeadzoneLeft, stickSensitivityLeft);
-        this.state.thumbLY = updateAxis(event, MotionEvent.AXIS_Y, historyPos, this.state.thumbLY, stickDeadzoneLeft, stickSensitivityLeft);
-        this.state.thumbRX = updateAxis(event, MotionEvent.AXIS_Z, historyPos, this.state.thumbRX, stickDeadzoneRight, stickSensitivityRight);
-        this.state.thumbRY = updateAxis(event, MotionEvent.AXIS_RZ, historyPos, this.state.thumbRY, stickDeadzoneRight, stickSensitivityRight);
+        rawThumbLX = updateRawAxis(event, MotionEvent.AXIS_X, historyPos, rawThumbLX);
+        rawThumbLY = updateRawAxis(event, MotionEvent.AXIS_Y, historyPos, rawThumbLY);
+        rawThumbRX = updateRawAxis(event, MotionEvent.AXIS_Z, historyPos, rawThumbRX);
+        rawThumbRY = updateRawAxis(event, MotionEvent.AXIS_RZ, historyPos, rawThumbRY);
+        StickVectorProcessor.Vector left = StickVectorProcessor.tune(
+                rawThumbLX, rawThumbLY, stickDeadzoneLeft, stickSensitivityLeft, stickDeadzoneModeLeft);
+        StickVectorProcessor.Vector right = StickVectorProcessor.tune(
+                rawThumbRX, rawThumbRY, stickDeadzoneRight, stickSensitivityRight, stickDeadzoneModeRight);
+        this.state.thumbLX = left.x;
+        this.state.thumbLY = left.y;
+        this.state.thumbRX = right.x;
+        this.state.thumbRY = right.y;
         if (historyPos == -1 && !JoyConSupport.isJoyCon(event.getDevice())) {
             float axisX = getCenteredAxis(event, MotionEvent.AXIS_HAT_X, historyPos);
             float axisY = getCenteredAxis(event, MotionEvent.AXIS_HAT_Y, historyPos);
@@ -235,15 +248,13 @@ public class ExternalController {
         }
     }
 
-    private static float updateAxis(MotionEvent event, int axis, int historyPos, float retained, float deadzone, float sensitivity) {
+    private static float updateRawAxis(MotionEvent event, int axis, int historyPos, float retained) {
         InputDevice device = event.getDevice();
         boolean reported = device != null && device.getMotionRange(axis, event.getSource()) != null;
-        return resolveStickAxis(
+        return resolveRawAxis(
             reported,
             retained,
-            getCenteredAxis(event, axis, historyPos),
-            deadzone,
-            sensitivity
+            getCenteredAxis(event, axis, historyPos)
         );
     }
 

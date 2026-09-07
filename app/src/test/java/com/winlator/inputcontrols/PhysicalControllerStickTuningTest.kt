@@ -2,6 +2,8 @@ package com.winlator.inputcontrols
 
 import android.content.Context
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -39,27 +41,160 @@ class PhysicalControllerStickTuningTest {
     }
 
     @Test
-    fun `deadzone rescales both directions and sensitivity saturates output`() {
+    fun `axial deadzone retains existing behavior and sensitivity saturates output`() {
         assertEquals(0f, ControlsProfile.applyStickDeadzone(0.2f, 0.2f), 0f)
         assertEquals(0.5f, ControlsProfile.applyStickDeadzone(0.6f, 0.2f), 0.0001f)
         assertEquals(-0.5f, ControlsProfile.applyStickDeadzone(-0.6f, 0.2f), 0.0001f)
-        assertEquals(0.75f, ExternalController.tuneStickAxis(0.6f, 0.2f, 1.5f), 0.0001f)
-        assertEquals(1f, ExternalController.tuneStickAxis(0.6f, 0.2f, 3f), 0f)
-        assertEquals(0f, ExternalController.tuneStickAxis(Float.NaN, 0.2f, 1f), 0f)
-    }
-
-    @Test
-    fun `an unreported Joy-Con axis retains its already tuned value`() {
+        val tuned = StickVectorProcessor.tune(
+            0.6f,
+            -0.6f,
+            0.2f,
+            1.5f,
+            ControlsProfile.StickDeadzoneMode.AXIAL,
+        )
+        assertEquals(0.75f, tuned.x, 0.0001f)
+        assertEquals(-0.75f, tuned.y, 0.0001f)
         assertEquals(
-            0.65f,
-            ExternalController.resolveStickAxis(false, 0.65f, -0.6f, 0.2f, 1f),
+            1f,
+            StickVectorProcessor.tune(
+                0.6f,
+                0f,
+                0.2f,
+                3f,
+                ControlsProfile.StickDeadzoneMode.AXIAL,
+            ).x,
             0f,
         )
         assertEquals(
-            -0.5f,
-            ExternalController.resolveStickAxis(true, 0.65f, -0.6f, 0.2f, 1f),
-            0.0001f,
+            0f,
+            StickVectorProcessor.tune(
+                Float.NaN,
+                0f,
+                0.2f,
+                1f,
+                ControlsProfile.StickDeadzoneMode.AXIAL,
+            ).x,
+            0f,
         )
+    }
+
+    @Test
+    fun `circular deadzone rescales magnitude and preserves direction`() {
+        val tuned = StickVectorProcessor.tune(
+            0.3f,
+            0.4f,
+            0.2f,
+            1f,
+            ControlsProfile.StickDeadzoneMode.CIRCULAR,
+        )
+        assertEquals(0.225f, tuned.x, 0.0001f)
+        assertEquals(0.3f, tuned.y, 0.0001f)
+
+        val atBoundary = StickVectorProcessor.tune(
+            0.3f,
+            0.4f,
+            0.5f,
+            1f,
+            ControlsProfile.StickDeadzoneMode.CIRCULAR,
+        )
+        assertEquals(0f, atBoundary.x, 0f)
+        assertEquals(0f, atBoundary.y, 0f)
+    }
+
+    @Test
+    fun `circular sensitivity clamps to the unit circle`() {
+        val tuned = StickVectorProcessor.tune(
+            0.6f,
+            0.8f,
+            0f,
+            2f,
+            ControlsProfile.StickDeadzoneMode.CIRCULAR,
+        )
+        assertEquals(0.6f, tuned.x, 0.0001f)
+        assertEquals(0.8f, tuned.y, 0.0001f)
+        assertEquals(1.0, Math.hypot(tuned.x.toDouble(), tuned.y.toDouble()), 0.0001)
+    }
+
+    @Test
+    fun `hybrid deadzone creates axial corridors while retaining diagonals`() {
+        val nearHorizontal = StickVectorProcessor.tune(
+            0.8f,
+            0.05f,
+            0.2f,
+            1f,
+            ControlsProfile.StickDeadzoneMode.HYBRID,
+        )
+        assertTrue(nearHorizontal.x > 0f)
+        assertEquals(0f, nearHorizontal.y, 0f)
+
+        val diagonal = StickVectorProcessor.tune(
+            0.6f,
+            0.6f,
+            0.2f,
+            1f,
+            ControlsProfile.StickDeadzoneMode.HYBRID,
+        )
+        assertTrue(diagonal.x > 0f)
+        assertTrue(diagonal.y > 0f)
+        assertEquals(diagonal.x, diagonal.y, 0.0001f)
+    }
+
+    @Test
+    fun `four way snapping uses cardinal sectors with angular hysteresis`() {
+        val mode = ControlsProfile.StickDigitalMode.FOUR_WAY
+        val right = StickVectorProcessor.snapDirection(
+            vectorX(44.0),
+            vectorY(44.0),
+            mode,
+            StickVectorProcessor.DIRECTION_NONE,
+        )
+        assertEquals(0, right)
+        assertEquals(
+            right,
+            StickVectorProcessor.snapDirection(vectorX(48.0), vectorY(48.0), mode, right),
+        )
+        assertEquals(
+            2,
+            StickVectorProcessor.snapDirection(vectorX(52.0), vectorY(52.0), mode, right),
+        )
+    }
+
+    @Test
+    fun `eight way snapping emits diagonals and unrestricted mode does not snap`() {
+        val diagonal = StickVectorProcessor.snapDirection(
+            vectorX(30.0),
+            vectorY(30.0),
+            ControlsProfile.StickDigitalMode.EIGHT_WAY,
+            StickVectorProcessor.DIRECTION_NONE,
+        )
+        assertEquals(1, diagonal)
+        assertEquals(
+            StickVectorProcessor.MASK_RIGHT or StickVectorProcessor.MASK_DOWN,
+            StickVectorProcessor.directionMask(diagonal),
+        )
+        assertEquals(
+            StickVectorProcessor.DIRECTION_NONE,
+            StickVectorProcessor.snapDirection(
+                1f,
+                1f,
+                ControlsProfile.StickDigitalMode.UNRESTRICTED,
+                diagonal,
+            ),
+        )
+    }
+
+    @Test
+    fun `digital snapping leaves analog magnitude consumers unrestricted`() {
+        assertTrue(BindingCombo.of(Binding.GAMEPAD_LEFT_THUMB_RIGHT).usesAnalogOffset())
+        assertTrue(BindingCombo.of(Binding.MOUSE_MOVE_RIGHT).usesAnalogOffset())
+        assertFalse(BindingCombo.of(Binding.GAMEPAD_DPAD_RIGHT).usesAnalogOffset())
+        assertFalse(BindingCombo.of(Binding.KEY_D).usesAnalogOffset())
+    }
+
+    @Test
+    fun `an unreported Joy-Con axis retains its raw value`() {
+        assertEquals(0.65f, ExternalController.resolveRawAxis(false, 0.65f, -0.6f), 0f)
+        assertEquals(-0.6f, ExternalController.resolveRawAxis(true, 0.65f, -0.6f), 0f)
     }
 
     @Test
@@ -70,6 +205,10 @@ class PhysicalControllerStickTuningTest {
         assertEquals(ControlsProfile.DEFAULT_STICK_DEADZONE, legacy.rightStickDeadzone, 0f)
         assertEquals(ControlsProfile.DEFAULT_STICK_SENSITIVITY, legacy.leftStickSensitivity, 0f)
         assertEquals(ControlsProfile.DEFAULT_STICK_SENSITIVITY, legacy.rightStickSensitivity, 0f)
+        assertEquals(ControlsProfile.DEFAULT_STICK_DEADZONE_MODE, legacy.leftStickDeadzoneMode)
+        assertEquals(ControlsProfile.DEFAULT_STICK_DEADZONE_MODE, legacy.rightStickDeadzoneMode)
+        assertEquals(ControlsProfile.DEFAULT_STICK_DIGITAL_MODE, legacy.leftStickDigitalMode)
+        assertEquals(ControlsProfile.DEFAULT_STICK_DIGITAL_MODE, legacy.rightStickDigitalMode)
 
         val reordered = load(
             """{
@@ -81,6 +220,10 @@ class PhysicalControllerStickTuningTest {
                 "leftStickDeadzone":0.05,
                 "rightStickDeadzone":0.3,
                 "leftStickSensitivity":1.2,
+                "rightStickDeadzoneMode":"hybrid",
+                "leftStickDeadzoneMode":"circular",
+                "rightStickDigitalMode":"eight_way",
+                "leftStickDigitalMode":"four_way",
                 "cursorSpeed":1.4
             }""".trimIndent(),
         )
@@ -89,6 +232,10 @@ class PhysicalControllerStickTuningTest {
         assertEquals(0.3f, reordered.rightStickDeadzone, 0.0001f)
         assertEquals(1.2f, reordered.leftStickSensitivity, 0.0001f)
         assertEquals(1.8f, reordered.rightStickSensitivity, 0.0001f)
+        assertEquals(ControlsProfile.StickDeadzoneMode.CIRCULAR, reordered.leftStickDeadzoneMode)
+        assertEquals(ControlsProfile.StickDeadzoneMode.HYBRID, reordered.rightStickDeadzoneMode)
+        assertEquals(ControlsProfile.StickDigitalMode.FOUR_WAY, reordered.leftStickDigitalMode)
+        assertEquals(ControlsProfile.StickDigitalMode.EIGHT_WAY, reordered.rightStickDigitalMode)
     }
 
     @Test
@@ -99,6 +246,10 @@ class PhysicalControllerStickTuningTest {
             rightStickDeadzone = 0.35f
             leftStickSensitivity = 0.7f
             rightStickSensitivity = 2.4f
+            leftStickDeadzoneMode = ControlsProfile.StickDeadzoneMode.CIRCULAR
+            rightStickDeadzoneMode = ControlsProfile.StickDeadzoneMode.HYBRID
+            leftStickDigitalMode = ControlsProfile.StickDigitalMode.FOUR_WAY
+            rightStickDigitalMode = ControlsProfile.StickDigitalMode.EIGHT_WAY
             save()
         }
 
@@ -109,6 +260,10 @@ class PhysicalControllerStickTuningTest {
         assertEquals(0.35f, loaded.rightStickDeadzone, 0.0001f)
         assertEquals(0.7f, loaded.leftStickSensitivity, 0.0001f)
         assertEquals(2.4f, loaded.rightStickSensitivity, 0.0001f)
+        assertEquals(ControlsProfile.StickDeadzoneMode.CIRCULAR, loaded.leftStickDeadzoneMode)
+        assertEquals(ControlsProfile.StickDeadzoneMode.HYBRID, loaded.rightStickDeadzoneMode)
+        assertEquals(ControlsProfile.StickDigitalMode.FOUR_WAY, loaded.leftStickDigitalMode)
+        assertEquals(ControlsProfile.StickDigitalMode.EIGHT_WAY, loaded.rightStickDigitalMode)
     }
 
     private fun load(json: String): ControlsProfile {
@@ -119,4 +274,8 @@ class PhysicalControllerStickTuningTest {
             ),
         )
     }
+
+    private fun vectorX(degrees: Double): Float = Math.cos(Math.toRadians(degrees)).toFloat()
+
+    private fun vectorY(degrees: Double): Float = Math.sin(Math.toRadians(degrees)).toFloat()
 }

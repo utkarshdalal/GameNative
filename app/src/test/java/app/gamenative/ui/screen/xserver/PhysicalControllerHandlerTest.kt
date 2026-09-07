@@ -30,6 +30,45 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 @RunWith(RobolectricTestRunner::class)
 class PhysicalControllerHandlerTest {
     @Test
+    fun `four way snapping activates only the selected cardinal binding`() {
+        val deviceId = 42
+        val rightSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1)
+        val downSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Y, 1)
+        val controller = motionController(rightSource, Binding.GAMEPAD_DPAD_RIGHT).apply {
+            addControllerBinding(
+                ExternalControllerBinding().apply {
+                    setKeyCode(downSource)
+                    setBinding(Binding.GAMEPAD_DPAD_DOWN)
+                },
+            )
+        }
+        val gamepadState = GamepadState()
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        whenever(profile.gamepadState).thenReturn(gamepadState)
+        whenever(profile.leftStickDigitalMode).thenReturn(ControlsProfile.StickDigitalMode.FOUR_WAY)
+        whenever(profile.rightStickDigitalMode).thenReturn(ControlsProfile.StickDigitalMode.UNRESTRICTED)
+        val handler = PhysicalControllerHandler(profile, mock<XServer>(), gamepadStateSender = {})
+        val event = motionEvent(deviceId)
+
+        try {
+            controller.state.thumbLX = 0.8f
+            controller.state.thumbLY = 0.2f
+            assertTrue(handler.onGenericMotionEvent(event))
+            assertTrue(gamepadState.dpad[1])
+            assertFalse(gamepadState.dpad[2])
+
+            controller.state.thumbLX = 0.2f
+            controller.state.thumbLY = 0.8f
+            assertTrue(handler.onGenericMotionEvent(event))
+            assertFalse(gamepadState.dpad[1])
+            assertTrue(gamepadState.dpad[2])
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
     fun `vertical physical stick release clears gyro mixed gamepad state`() {
         val deviceId = 42
         val rawDownSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Y, 1)

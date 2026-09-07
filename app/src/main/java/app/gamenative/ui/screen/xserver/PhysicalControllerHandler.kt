@@ -15,6 +15,7 @@ import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.ExternalControllerBinding
 import com.winlator.inputcontrols.GamepadState
 import com.winlator.inputcontrols.JoyConSupport
+import com.winlator.inputcontrols.StickVectorProcessor
 import com.winlator.math.Mathf
 import com.winlator.xserver.XServer
 import java.util.Timer
@@ -42,6 +43,8 @@ class PhysicalControllerHandler(
 ) {
     private data class PhysicalInputSource(val deviceId: Int, val keyCode: Int)
 
+    private data class PhysicalStickSource(val deviceId: Int, val rightStick: Boolean)
+
     private data class MouseMoveSource(
         val deviceId: Int,
         val keyCode: Int,
@@ -68,6 +71,7 @@ class PhysicalControllerHandler(
     // track which axis keycodes are currently "pressed" so we only release on actual transitions.
     // accessed only from main thread (MotionEvent dispatch + Compose lifecycle), no sync needed.
     private val activeAxisBindings = mutableSetOf<PhysicalInputSource>()
+    private val snappedStickDirections = mutableMapOf<PhysicalStickSource, Int>()
     private val activeButtonBindings = mutableMapOf<PhysicalInputSource, BindingCombo>()
     private val activeTriggerBindings = mutableMapOf<PhysicalInputSource, BindingCombo>()
     private val activeSequenceTriggerBindings = mutableSetOf<PhysicalInputSource>()
@@ -141,6 +145,7 @@ class PhysicalControllerHandler(
         clearScrollRepeats()
         closeRadialMenuIfOpen(commit = false)
         activeSequenceTriggerBindings.clear()
+        snappedStickDirections.clear()
         sendGamepadState()
         this.profile = profile
         ExternalController.setStickTuning(profile)
@@ -159,6 +164,7 @@ class PhysicalControllerHandler(
         clearMouseMoveContributions()
         clearScrollRepeats()
         activeSequenceTriggerBindings.clear()
+        snappedStickDirections.clear()
         showKeyboardPressed = false
         closeRadialMenuIfOpen(commit = false)
         sendGamepadState()
@@ -171,6 +177,7 @@ class PhysicalControllerHandler(
         releaseActiveBindings(activeTriggerBindings, deviceId, fromMotion = true)
         releaseActiveAxes(deviceId = deviceId)
         releaseGyroModifierSources(deviceId)
+        snappedStickDirections.keys.removeAll { it.deviceId == deviceId }
         mouseMoveContributions.keys.removeAll { it.deviceId == deviceId }
         recalculateMouseMoveOffset()
         sendGamepadState()
@@ -497,6 +504,35 @@ class PhysicalControllerHandler(
             controller.state.dPadX.toFloat(),
             controller.state.dPadY.toFloat()
         )
+        val leftDigitalMode = profile?.leftStickDigitalMode
+            ?: ControlsProfile.DEFAULT_STICK_DIGITAL_MODE
+        val rightDigitalMode = profile?.rightStickDigitalMode
+            ?: ControlsProfile.DEFAULT_STICK_DIGITAL_MODE
+        val leftDirectionMask = resolveStickDirectionMask(
+            deviceId,
+            rightStick = false,
+            values[0],
+            values[1],
+            leftDigitalMode,
+        )
+        val rightDirectionMask = resolveStickDirectionMask(
+            deviceId,
+            rightStick = true,
+            values[2],
+            values[3],
+            rightDigitalMode,
+        )
+
+        for (i in 0..3) {
+            val mode = if (i < 2) leftDigitalMode else rightDigitalMode
+            if (mode == ControlsProfile.StickDigitalMode.UNRESTRICTED || values[i] == 0f) continue
+            val keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
+            val binding = controller.getControllerBinding(keyCode) ?: continue
+            if (binding.bindingCombo.usesAnalogOffset()) continue
+            val directionMask = if (i < 2) leftDirectionMask else rightDirectionMask
+            val horizontal = i == 0 || i == 2
+            if (!StickVectorProcessor.allowsAxis(directionMask, horizontal, values[i])) values[i] = 0f
+        }
 
         for (i in axes.indices) {
             val posKeyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], 1.toByte())
@@ -571,6 +607,32 @@ class PhysicalControllerHandler(
                 }
             }
         }
+    }
+
+    private fun resolveStickDirectionMask(
+        deviceId: Int,
+        rightStick: Boolean,
+        x: Float,
+        y: Float,
+        mode: ControlsProfile.StickDigitalMode,
+    ): Int {
+        val source = PhysicalStickSource(deviceId, rightStick)
+        if (mode == ControlsProfile.StickDigitalMode.UNRESTRICTED) {
+            snappedStickDirections.remove(source)
+            return StickVectorProcessor.MASK_ALL
+        }
+        val direction = StickVectorProcessor.snapDirection(
+            x,
+            y,
+            mode,
+            snappedStickDirections[source] ?: StickVectorProcessor.DIRECTION_NONE,
+        )
+        if (direction == StickVectorProcessor.DIRECTION_NONE) {
+            snappedStickDirections.remove(source)
+        } else {
+            snappedStickDirections[source] = direction
+        }
+        return StickVectorProcessor.directionMask(direction)
     }
 
     private fun handleTriggerBinding(
