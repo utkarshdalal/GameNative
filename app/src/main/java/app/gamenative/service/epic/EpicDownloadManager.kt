@@ -10,6 +10,8 @@ import app.gamenative.utils.CdnRankingUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.data.EpicGame
 import app.gamenative.service.StreamingAssembly
+import app.gamenative.service.download.GameDownloadService
+import app.gamenative.service.download.NativeEpicDownload
 import app.gamenative.service.epic.manifest.ChunkPart
 import app.gamenative.service.epic.manifest.EpicManifest
 import app.gamenative.service.epic.manifest.ManifestUtils
@@ -33,10 +35,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.channels.Channel
@@ -46,6 +50,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.isActive
+import kotlin.coroutines.cancellation.CancellationException
 import okhttp3.Request
 import org.json.JSONObject
 import timber.log.Timber
@@ -53,6 +59,7 @@ import java.io.IOException
 import java.io.RandomAccessFile
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentHashMap.newKeySet
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -282,7 +289,15 @@ class EpicDownloadManager @Inject constructor(
             val fileChunkIds = pendingFiles.map { f -> f.chunkParts.map { it.guidStr } }
             val chunkQueue = buildFileOrderedChunkQueue(manifest, fileChunkIds)
 
-            val downloadResult = downloadAndAssembleEpicChunks(
+            // Native (Rust) chunk engine first; falls back to the Kotlin streaming pipeline.
+            val downloadResult = downloadAndAssembleEpicChunksNative(
+                manifestBytes = manifestData.manifestBytes,
+                cdnUrls = cdnUrls,
+                installDir = installDir,
+                allFiles = files,
+                pendingFiles = pendingFiles,
+                downloadInfo = downloadInfo,
+            ) ?: downloadAndAssembleEpicChunks(
                 manifest = manifest,
                 cdnUrls = cdnUrls,
                 chunkCacheDir = chunkCacheDir,
@@ -443,7 +458,15 @@ class EpicDownloadManager @Inject constructor(
             val fileChunkIds = pendingFiles.map { f -> f.chunkParts.map { it.guidStr } }
             val chunkQueue = buildFileOrderedChunkQueue(manifest, fileChunkIds)
 
-            val dlcDownloadResult = downloadAndAssembleEpicChunks(
+            // Native (Rust) chunk engine first; falls back to the Kotlin streaming pipeline.
+            val dlcDownloadResult = downloadAndAssembleEpicChunksNative(
+                manifestBytes = manifestData.manifestBytes,
+                cdnUrls = cdnUrls,
+                installDir = installDir,
+                allFiles = files,
+                pendingFiles = pendingFiles,
+                downloadInfo = downloadInfo,
+            ) ?: downloadAndAssembleEpicChunks(
                 manifest = manifest,
                 cdnUrls = cdnUrls,
                 chunkCacheDir = chunkCacheDir,
@@ -922,6 +945,123 @@ class EpicDownloadManager @Inject constructor(
         return orderedIds.map { id ->
             manifest.chunkDataList?.getChunkByGuid(id)
                 ?: throw IllegalStateException("Chunk $id referenced by file but not found in manifest")
+        }
+    }
+
+    /**
+     * Native (Rust) Epic chunk pipeline via GameDownloadService: fills `<installDir>/.chunks`
+     * with verified, decompressed chunks for [pendingFiles] (a subset of [allFiles], the
+     * manifest's full file list), then assembles the files with the same
+     * [assembleFileSequential] step the overlay path uses.
+     *
+     * Returns null when the native engine is unavailable or declines the plan — the caller
+     * then falls back to the Kotlin streaming pipeline ([downloadAndAssembleEpicChunks]).
+     */
+    @OptIn(InternalCoroutinesApi::class) // invokeOnCompletion(onCancelling = true)
+    private suspend fun downloadAndAssembleEpicChunksNative(
+        manifestBytes: ByteArray,
+        cdnUrls: List<EpicManager.CdnUrl>,
+        installDir: File,
+        allFiles: List<app.gamenative.service.epic.manifest.FileManifest>,
+        pendingFiles: List<app.gamenative.service.epic.manifest.FileManifest>,
+        downloadInfo: DownloadInfo,
+    ): Result<Unit>? = withContext(Dispatchers.IO) {
+        val pendingFileIdx = pendingFiles.map { pending ->
+            allFiles.indexOfFirst { it === pending }
+        }
+        if (pendingFileIdx.any { it < 0 }) return@withContext null
+
+        val speedConfig = DownloadSpeedConfig()
+        val cdnPrefixes = cdnUrls.map { it.baseUrl + it.cloudDir }.toTypedArray()
+        val cancelFlag = AtomicBoolean(false)
+        // Pause cancels the download JOB, but the native run below is a blocking call on an
+        // IO thread — coroutine cancellation alone doesn't reach it (and kills the watcher
+        // child before it can poll). Set the engine's cancel flag directly when the job
+        // STARTS cancelling: onCancelling=true fires immediately on cancel(), whereas the
+        // default (false) only fires once the job reaches its terminal state — i.e. after
+        // the blocked native call returns, which is too late.
+        val cancelHook = coroutineContext.job.invokeOnCompletion(onCancelling = true) { cause ->
+            if (cause is CancellationException) cancelFlag.set(true)
+        }
+
+        var creditedBytes = 0L
+        val listener = object : NativeEpicDownload.Listener {
+            override fun onPlan(chunksTotal: Int, bytesTotal: Long, chunkDir: String) = Unit
+
+            override fun onProgress(bytesDone: Long, bytesTotal: Long, chunksDone: Int, chunksTotal: Int) {
+                val delta = bytesDone - creditedBytes
+                if (delta > 0L) {
+                    creditedBytes = bytesDone
+                    downloadInfo.updateBytesDownloaded(delta)
+                }
+                if (chunksTotal > 0) {
+                    downloadInfo.setProgress(chunksDone.toFloat() / chunksTotal.toFloat())
+                }
+                downloadInfo.updateStatusMessage("Downloading ($chunksDone/$chunksTotal chunks)")
+            }
+
+            override fun onLog(line: String) {
+                Timber.tag("Epic").d(line)
+            }
+
+            override fun onComplete(success: Boolean, error: String, bytesCredited: Long) = Unit
+        }
+
+        val watcher = launch {
+            while (isActive) {
+                if (!downloadInfo.isActive()) {
+                    cancelFlag.set(true)
+                    return@launch
+                }
+                kotlinx.coroutines.delay(250)
+            }
+        }
+        val result = try {
+            GameDownloadService.downloadEpicChunks(
+                manifest = manifestBytes,
+                installDir = installDir.absolutePath,
+                cdnPrefixes = cdnPrefixes,
+                pendingFileIdx = pendingFileIdx.toIntArray(),
+                expectedChunks = -1,
+                expectedBytes = -1L,
+                maxWorkers = speedConfig.maxDownloads,
+                processWorkers = speedConfig.maxDecompress,
+                cancel = cancelFlag,
+                listener = listener,
+            )
+        } finally {
+            cancelHook.dispose()
+            watcher.cancel()
+        }
+
+        if (!result.started) return@withContext null // engine unavailable → Kotlin pipeline
+        if (result.cancelled) return@withContext Result.failure(Exception("Download cancelled"))
+        if (!result.success) {
+            return@withContext Result.failure(
+                Exception(result.error.ifEmpty { "Chunk download failed" }),
+            )
+        }
+
+        // Assemble the pending files out of the native chunk cache (`<installDir>/.chunks`).
+        val nativeChunkCacheDir = File(installDir, ".chunks")
+        try {
+            pendingFiles.chunked(4).forEach { batch ->
+                if (!downloadInfo.isActive()) {
+                    return@withContext Result.failure(Exception("Download cancelled"))
+                }
+                val results = batch.map { fileManifest ->
+                    async { assembleFileSequential(fileManifest, nativeChunkCacheDir, installDir) }
+                }.awaitAll()
+
+                results.firstOrNull { it.isFailure }?.let { failure ->
+                    return@withContext Result.failure(
+                        failure.exceptionOrNull() ?: Exception("File assembly failed"),
+                    )
+                }
+            }
+            Result.success(Unit)
+        } finally {
+            nativeChunkCacheDir.deleteRecursively()
         }
     }
 

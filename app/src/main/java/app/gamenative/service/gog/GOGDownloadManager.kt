@@ -12,6 +12,9 @@ import app.gamenative.service.gog.api.GOGManifestMeta
 import app.gamenative.service.gog.api.GOGManifestParser
 import app.gamenative.service.gog.api.V1DepotFile
 import app.gamenative.enums.Marker
+import app.gamenative.service.download.GameDownloadService
+import app.gamenative.service.download.NativeGogDownload
+import app.gamenative.service.download.NativeGogDownloadListener
 import app.gamenative.utils.CdnRankingUtils
 import app.gamenative.utils.ContainerStorageManager
 import app.gamenative.utils.DownloadSpeedConfig
@@ -34,6 +37,9 @@ import java.security.DigestOutputStream
 import java.security.MessageDigest
 import java.util.zip.Inflater
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -254,18 +260,21 @@ class GOGDownloadManager @Inject constructor(
             // so they bypass the chunk download/assemble path and must be created explicitly.
             val allLinks = mutableListOf<Pair<DepotLink, String>>()
             val allDirectories = mutableListOf<Pair<DepotDirectory, String>>()
+            // Raw inflated depot-manifest JSON per depot productId — feeds the native GOG engine.
+            val rawDepotJsonByProduct = mutableMapOf<String, MutableList<String>>()
 
             for ((index, depot) in depots.withIndex()) {
                 downloadInfo.updateStatusMessage("Fetching depot ${index + 1}/${depots.size}...")
 
-                val depotResult = apiClient.fetchDepotManifest(depot.manifest)
+                val depotResult = apiClient.fetchDepotManifestWithRaw(depot.manifest)
                 if (depotResult.isFailure) {
                     return@withContext Result.failure(
                         depotResult.exceptionOrNull() ?: Exception("Failed to fetch depot manifest"),
                     )
                 }
 
-                val depotManifest = depotResult.getOrThrow()
+                val (depotManifest, depotRawJson) = depotResult.getOrThrow()
+                rawDepotJsonByProduct.getOrPut(depot.productId) { mutableListOf() }.add(depotRawJson)
                 depotManifest.files.forEach { file ->
                     allFilesWithDepots.add(FileWithDepot(file, depot.productId))
                 }
@@ -436,9 +445,9 @@ class GOGDownloadManager @Inject constructor(
                 chunkToProductMap = chunkToProductMap,
             )
 
-            // Step 8+9: Download chunks and assemble files in a unified streaming loop.
-            // Chunks are ordered by file so files complete front-to-back, allowing
-            // early assembly and cache cleanup to reduce peak disk usage.
+            // Step 8+9: Download chunks and assemble files. The byte-moving engine is Rust
+            // (GameDownloadService → libgndownload store_dl/gog); the Kotlin streaming loop is
+            // the fallback when the native library is unavailable.
             Timber.tag("GOG").i("Downloading and assembling game $gameId")
 
             // Mark download as in-progress so UI and install checks can detect partial installs
@@ -454,7 +463,39 @@ class GOGDownloadManager @Inject constructor(
             chunkCacheDir.mkdirs()
             gameInstallDir.mkdirs()
 
-            val downloadAndAssembleResult = downloadAndAssembleChunks(
+            // Resolve each pending file's productId (same rules as the chunk→product map) for
+            // the per-product native runs.
+            val pendingPathsToProduct = mutableMapOf<String, String>()
+            run {
+                val pendingPaths = (gameFiles + supportFilesForGameDirAssemble).map { it.path }.toSet()
+                allFilesWithDepots.forEach { (file, depotProductId) ->
+                    if (file.path !in pendingPaths) return@forEach
+                    val productId = when {
+                        file.productId == null -> depotProductId
+                        file.productId == "2147483047" -> depotProductId
+                        else -> file.productId!!
+                    }
+                    if (productId in ownedGameIds) {
+                        pendingPathsToProduct[file.path] = productId
+                        // Support files are path-remapped (getSupportInstallPath) for assembly.
+                        val remapped = getSupportInstallPath(file.path)
+                        if (remapped != file.path) pendingPathsToProduct[remapped] = productId
+                    }
+                }
+            }
+
+            val nativeResult = downloadGameGen2Native(
+                rawDepotJsonByProduct = rawDepotJsonByProduct,
+                productUrlMap = productUrlMap,
+                pendingPathsToProduct = pendingPathsToProduct,
+                pendingPathsInOrder = (gameFiles + supportFilesForGameDirAssemble).map { it.path },
+                installDir = gameInstallDir,
+                downloadInfo = downloadInfo,
+                baseProductId = gameManifest.baseProductId,
+                generation = selectedBuild.generation,
+            )
+
+            val downloadAndAssembleResult = nativeResult ?: downloadAndAssembleChunks(
                 chunkUrlCandidates = chunkUrlCandidates,
                 chunkCacheDir = chunkCacheDir,
                 installDir = gameInstallDir,
@@ -824,6 +865,188 @@ class GOGDownloadManager @Inject constructor(
 
         return "$normalizedPathBase/main.bin$querySuffix"
     }
+
+    /**
+     * Native (Rust) GOG gen2 pipeline via GameDownloadService, one run-set per product: the
+     * engine re-parses the raw depot manifests, fetches + inflates + MD5-verifies chunks and
+     * assembles files with the same `.part` + rename protocol as the Kotlin loop, skipping
+     * files that already pass size+MD5 on disk ("verified" events, no byte credit).
+     *
+     * Secure-link expiry is handled exactly like the Kotlin path: refresh the link for the
+     * product and re-run with the already-completed files in `skipPaths`.
+     *
+     * Returns null when the native engine is unavailable (caller falls back to
+     * [downloadAndAssembleChunks]); otherwise the terminal result.
+     */
+    private suspend fun downloadGameGen2Native(
+        rawDepotJsonByProduct: Map<String, List<String>>,
+        productUrlMap: MutableMap<String, List<String>>,
+        pendingPathsToProduct: Map<String, String>,
+        pendingPathsInOrder: List<String>,
+        installDir: File,
+        downloadInfo: DownloadInfo,
+        baseProductId: String,
+        generation: Int,
+    ): Result<Unit>? = withContext(Dispatchers.IO) {
+        if (!NativeGogDownload.isAvailable()) return@withContext null
+
+        // Group pending files per product; base product first (LPT order), DLCs after.
+        val pathsByProduct = pendingPathsInOrder
+            .groupBy { pendingPathsToProduct[it] }
+            .filterKeys { it != null }
+            .mapKeys { it.key!! }
+        if (pathsByProduct.isEmpty()) return@withContext null
+        val orderedProducts = pathsByProduct.keys.sortedBy { if (it == baseProductId) 0 else 1 }
+        if (orderedProducts.any { rawDepotJsonByProduct[it].isNullOrEmpty() }) return@withContext null
+        if (orderedProducts.any { productUrlMap[it].isNullOrEmpty() }) return@withContext null
+
+        val speedConfig = DownloadSpeedConfig()
+        val totalFiles = pendingPathsInOrder.size.coerceAtLeast(1)
+        val donePaths = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+        for (product in orderedProducts) {
+            val manifests = rawDepotJsonByProduct.getValue(product).toTypedArray()
+            var cdnBase = productUrlMap.getValue(product).first()
+            var refreshesLeft = 3
+
+            while (true) {
+                if (!downloadInfo.isActive()) {
+                    return@withContext Result.failure(Exception("Download cancelled"))
+                }
+
+                val latch = CountDownLatch(1)
+                val completed = java.util.concurrent.atomic.AtomicReference<NativeGogRunCompletion?>()
+                // Per-run high-water mark for the compressed-byte stream reported via onBytes.
+                var fetchedBytes = 0L
+                val listener = object : NativeGogDownloadListener {
+                    override fun onProgress(
+                        bytesDone: Long,
+                        bytesTotal: Long,
+                        filesDone: Int,
+                        filesTotal: Int,
+                        file: String,
+                        fileBytes: Long,
+                        verified: Boolean,
+                    ) {
+                        donePaths.add(file)
+                        if (verified) {
+                            // Resume-skipped files are never fetched, so onBytes never covers
+                            // them; credit their size here (downloaded files are already covered
+                            // by the compressed-byte stream and must not be double-counted).
+                            downloadInfo.updateBytesDownloaded(fileBytes)
+                        }
+                        // Aggregate across products: donePaths tracks every completed file.
+                        val globalDone = donePaths.size
+                        downloadInfo.setProgress((globalDone.toFloat() / totalFiles).coerceIn(0f, 1f))
+                        downloadInfo.updateStatusMessage("Downloading ($globalDone/$totalFiles files)…")
+                        downloadInfo.emitProgressChange()
+                        downloadInfo.persistProgressSnapshot()
+                    }
+
+                    override fun onBytes(bytesFetched: Long) {
+                        val delta = bytesFetched - fetchedBytes
+                        if (delta > 0L) {
+                            fetchedBytes = bytesFetched
+                            downloadInfo.updateBytesDownloaded(delta)
+                            // updateBytesDownloaded doesn't emit on its own (Steam relies on
+                            // setProgress for that); without this the app screen's progress
+                            // listener never fires and the UI only refreshes on re-entry.
+                            // Native already throttles these callbacks to ~5/sec.
+                            downloadInfo.emitProgressChange()
+                        }
+                    }
+
+                    override fun onLog(line: String) {
+                        Timber.tag("GOG").d(line)
+                    }
+
+                    override fun onComplete(
+                        success: Boolean,
+                        cancelled: Boolean,
+                        linkExpiry: Boolean,
+                        error: String,
+                        bytesWritten: Long,
+                        filesDone: Int,
+                    ) {
+                        completed.set(NativeGogRunCompletion(success, cancelled, linkExpiry, error))
+                        latch.countDown()
+                    }
+                }
+
+                val handle = GameDownloadService.downloadGogChunks(
+                    kind = NativeGogDownload.KIND_GEN2_CHUNKS,
+                    depotManifests = manifests,
+                    cdnBase = cdnBase,
+                    installDir = installDir.absolutePath,
+                    skipPaths = donePaths.toTypedArray(),
+                    maxWorkers = speedConfig.maxDownloads,
+                    processWorkers = speedConfig.maxDecompress,
+                    sortLargestFirst = product == baseProductId,
+                    label = "gog/$product",
+                    listener = listener,
+                )
+                if (handle == 0L) {
+                    Timber.tag("GOG").w("native GOG engine failed to start for product $product")
+                    return@withContext null
+                }
+
+                try {
+                    while (!latch.await(250, TimeUnit.MILLISECONDS)) {
+                        if (!downloadInfo.isActive()) {
+                            GameDownloadService.cancelGogDownload(handle)
+                        }
+                    }
+                } finally {
+                    GameDownloadService.releaseGogDownload(handle)
+                }
+
+                val c = completed.get()
+                if (c == null) return@withContext null
+                if (c.cancelled || !downloadInfo.isActive()) {
+                    return@withContext Result.failure(Exception("Download cancelled"))
+                }
+                if (c.success) break
+
+                if (c.linkExpiry && refreshesLeft > 0) {
+                    refreshesLeft--
+                    Timber.tag("GOG").w("secure link for product $product expired (${c.error}), refreshing")
+                    val linksResult = apiClient.getSecureLink(productId = product, path = "/", generation = generation)
+                    val urls = linksResult.getOrNull()?.urls
+                    if (urls.isNullOrEmpty()) {
+                        return@withContext Result.failure(
+                            linksResult.exceptionOrNull() ?: Exception("Failed to refresh secure link"),
+                        )
+                    }
+                    cdnBase = CdnRankingUtils.rankBaseUrlsByHeadProbe(urls, Net.http, "GOG Galaxy").first()
+                    productUrlMap[product] = listOf(cdnBase)
+                    continue
+                }
+                return@withContext Result.failure(
+                    Exception(c.error.ifEmpty { "GOG download failed for product $product" }),
+                )
+            }
+        }
+
+        // The engine writes depot paths verbatim; GameNative strips the leading "app/" from
+        // support-file paths (getSupportInstallPath), so move them up after the run.
+        val appDir = File(installDir, "app")
+        if (appDir.isDirectory) {
+            appDir.listFiles()?.forEach { child ->
+                val target = File(installDir, child.name)
+                if (!target.exists()) child.renameTo(target)
+            }
+            appDir.deleteRecursively()
+        }
+
+        Result.success(Unit)
+    }
+
+    private class NativeGogRunCompletion(
+        val success: Boolean,
+        val cancelled: Boolean,
+        val linkExpiry: Boolean,
+        val error: String,
+    )
 
     // assembles files as chunks arrive, deletes chunks once their last consumer is assembled
     @OptIn(ExperimentalCoroutinesApi::class)
