@@ -209,11 +209,6 @@ public enum Binding {
                 ordinal() <= GAMEPAD_RIGHT_THUMB_LEFT.ordinal();
     }
 
-    public boolean usesAnalogOffset() {
-        return isGamepadAxis() || this == MOUSE_MOVE_LEFT || this == MOUSE_MOVE_RIGHT ||
-                this == MOUSE_MOVE_UP || this == MOUSE_MOVE_DOWN;
-    }
-
     public boolean isExtra() {
         return this == OPEN_NAVIGATION_MENU || this == SHOW_KEYBOARD || this == ALT_ENTER ||
                 this == OPEN_RADIAL_MENU || this == GYRO_MODIFIER;

@@ -49,6 +49,8 @@ public class ExternalController {
     private static volatile float stickSensitivityRight = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
     private static volatile ControlsProfile.StickDeadzoneMode stickDeadzoneModeLeft = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
     private static volatile ControlsProfile.StickDeadzoneMode stickDeadzoneModeRight = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
+    private static volatile ControlsProfile.StickDigitalMode stickDirectionModeLeft = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
+    private static volatile ControlsProfile.StickDigitalMode stickDirectionModeRight = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
 
     private String id;
     private String name;
@@ -61,8 +63,10 @@ public class ExternalController {
     private float rawThumbLY;
     private float rawThumbRX;
     private float rawThumbRY;
+    private int snappedLeftDirection = StickVectorProcessor.DIRECTION_NONE;
+    private int snappedRightDirection = StickVectorProcessor.DIRECTION_NONE;
 
-    /** Applies {@code profile}'s stick deadzone/sensitivity to every physical controller. */
+    /** Applies {@code profile}'s stick tuning to every physical controller. */
     public static void setStickTuning(ControlsProfile profile) {
         if (profile == null) {
             stickDeadzoneLeft = ControlsProfile.DEFAULT_STICK_DEADZONE;
@@ -71,6 +75,8 @@ public class ExternalController {
             stickSensitivityRight = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
             stickDeadzoneModeLeft = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
             stickDeadzoneModeRight = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
+            stickDirectionModeLeft = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
+            stickDirectionModeRight = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
             return;
         }
         stickDeadzoneLeft = profile.getLeftStickDeadzone();
@@ -79,6 +85,8 @@ public class ExternalController {
         stickSensitivityRight = profile.getRightStickSensitivity();
         stickDeadzoneModeLeft = profile.getLeftStickDeadzoneMode();
         stickDeadzoneModeRight = profile.getRightStickDeadzoneMode();
+        stickDirectionModeLeft = profile.getLeftStickDigitalMode();
+        stickDirectionModeRight = profile.getRightStickDigitalMode();
     }
 
     public String getName() {
@@ -226,6 +234,8 @@ public class ExternalController {
                 rawThumbLX, rawThumbLY, stickDeadzoneLeft, stickSensitivityLeft, stickDeadzoneModeLeft);
         StickVectorProcessor.Vector right = StickVectorProcessor.tune(
                 rawThumbRX, rawThumbRY, stickDeadzoneRight, stickSensitivityRight, stickDeadzoneModeRight);
+        left = applyDirectionSnapping(left, stickDirectionModeLeft, false);
+        right = applyDirectionSnapping(right, stickDirectionModeRight, true);
         this.state.thumbLX = left.x;
         this.state.thumbLY = left.y;
         this.state.thumbRX = right.x;
@@ -246,6 +256,26 @@ public class ExternalController {
             }
             zArr[3] = z;
         }
+    }
+
+    StickVectorProcessor.Vector applyDirectionSnapping(
+            StickVectorProcessor.Vector vector,
+            ControlsProfile.StickDigitalMode mode,
+            boolean rightStick) {
+        ControlsProfile.StickDigitalMode resolvedMode = mode != null
+                ? mode
+                : ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
+        if (resolvedMode == ControlsProfile.StickDigitalMode.UNRESTRICTED) {
+            if (rightStick) snappedRightDirection = StickVectorProcessor.DIRECTION_NONE;
+            else snappedLeftDirection = StickVectorProcessor.DIRECTION_NONE;
+            return vector;
+        }
+        int previousDirection = rightStick ? snappedRightDirection : snappedLeftDirection;
+        int direction = StickVectorProcessor.snapDirection(
+                vector.x, vector.y, resolvedMode, previousDirection);
+        if (rightStick) snappedRightDirection = direction;
+        else snappedLeftDirection = direction;
+        return StickVectorProcessor.snapToDirection(vector.x, vector.y, direction);
     }
 
     private static float updateRawAxis(MotionEvent event, int axis, int historyPos, float retained) {

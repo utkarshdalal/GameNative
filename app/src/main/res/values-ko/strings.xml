@@ -300,7 +300,7 @@
     <string name="stick_deadzone_hybrid">하이브리드</string>
     <string name="left_stick_direction_mode">왼쪽 스틱 방향 스냅</string>
     <string name="right_stick_direction_mode">오른쪽 스틱 방향 스냅</string>
-    <string name="stick_direction_mode_description">매핑된 디지털 방향만 제한하며 아날로그 스틱과 마우스 이동 매핑은 연속 입력을 유지합니다.</string>
+    <string name="stick_direction_mode_description">전체 스틱 출력을 고정된 방향으로 맞춥니다. 4방향은 대각선을 제거하고, 8방향은 상하좌우와 대각선 각도만 허용합니다.</string>
     <string name="stick_direction_unrestricted">제한 없음</string>
     <string name="stick_direction_four_way">4방향</string>
     <string name="stick_direction_eight_way">8방향</string>

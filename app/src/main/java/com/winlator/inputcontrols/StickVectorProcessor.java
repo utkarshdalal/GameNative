@@ -5,14 +5,10 @@ import com.winlator.math.Mathf;
 /** Pure two-dimensional transforms shared by physical-stick passthrough and digital bindings. */
 public final class StickVectorProcessor {
     public static final int DIRECTION_NONE = -1;
-    public static final int MASK_RIGHT = 1;
-    public static final int MASK_DOWN = 1 << 1;
-    public static final int MASK_LEFT = 1 << 2;
-    public static final int MASK_UP = 1 << 3;
-    public static final int MASK_ALL = MASK_RIGHT | MASK_DOWN | MASK_LEFT | MASK_UP;
     private static final double MAGNITUDE_EPSILON = 1.0e-6;
     private static final double HYSTERESIS_RADIANS = Math.toRadians(5.0);
     private static final double TWO_PI = Math.PI * 2.0;
+    private static final float INVERSE_SQRT_TWO = (float)(1.0 / Math.sqrt(2.0));
 
     private StickVectorProcessor() {}
 
@@ -141,26 +137,23 @@ public final class StickVectorProcessor {
         return sectorCount == 4 ? sector * 2 : sector;
     }
 
-    public static int directionMask(int direction) {
-        switch (direction) {
-            case 0: return MASK_RIGHT;
-            case 1: return MASK_RIGHT | MASK_DOWN;
-            case 2: return MASK_DOWN;
-            case 3: return MASK_DOWN | MASK_LEFT;
-            case 4: return MASK_LEFT;
-            case 5: return MASK_LEFT | MASK_UP;
-            case 6: return MASK_UP;
-            case 7: return MASK_UP | MASK_RIGHT;
-            default: return 0;
+    static Vector snapToDirection(float x, float y, int direction) {
+        if (!Float.isFinite(x) || !Float.isFinite(y) || direction < 0 || direction > 7) {
+            return Vector.ZERO;
         }
-    }
-
-    public static boolean allowsAxis(int directionMask, boolean horizontal, float value) {
-        if (value == 0) return false;
-        int requiredMask = horizontal
-                ? (value > 0 ? MASK_RIGHT : MASK_LEFT)
-                : (value > 0 ? MASK_DOWN : MASK_UP);
-        return (directionMask & requiredMask) != 0;
+        float strength = Mathf.clamp((float)Math.hypot(x, y), 0, 1);
+        float diagonalComponent = strength * INVERSE_SQRT_TWO;
+        switch (direction) {
+            case 0: return new Vector(strength, 0);
+            case 1: return new Vector(diagonalComponent, diagonalComponent);
+            case 2: return new Vector(0, strength);
+            case 3: return new Vector(-diagonalComponent, diagonalComponent);
+            case 4: return new Vector(-strength, 0);
+            case 5: return new Vector(-diagonalComponent, -diagonalComponent);
+            case 6: return new Vector(0, -strength);
+            case 7: return new Vector(diagonalComponent, -diagonalComponent);
+            default: return Vector.ZERO;
+        }
     }
 
     private static boolean isDirectionValid(int direction, int sectorCount) {

@@ -37,7 +37,6 @@ import com.winlator.inputcontrols.ControlsProfile;
 import com.winlator.inputcontrols.ExternalController;
 import com.winlator.inputcontrols.ExternalControllerBinding;
 import com.winlator.inputcontrols.GamepadState;
-import com.winlator.inputcontrols.StickVectorProcessor;
 import com.winlator.math.Mathf;
 import com.winlator.winhandler.MouseEventFlags;
 import com.winlator.winhandler.WinHandler;
@@ -71,7 +70,6 @@ public class InputControlsView extends View {
     private final Set<BindingCombo> activeSequenceCombos = Collections.newSetFromMap(new IdentityHashMap<>());
     private final Map<Binding, Integer> activeSequenceBindings = new EnumMap<>(Binding.class);
     private final Map<Object, Binding> activeSequenceSources = new IdentityHashMap<>();
-    private final Map<ExternalController, int[]> snappedStickDirections = new IdentityHashMap<>();
     private int sequenceGeneration = 0;
     private int snappingSize;
     private float offsetX;
@@ -393,7 +391,6 @@ public class InputControlsView extends View {
 
     private void setProfileInternal(ControlsProfile profile, boolean preserveOverlayVisibility) {
         cancelTouchRouting();
-        snappedStickDirections.clear();
 
         final boolean profileChanged;
         final boolean overlayProfileVisible;
@@ -433,7 +430,6 @@ public class InputControlsView extends View {
     /** Hides the controls profile from drawing without disabling per-game gyro input. */
     public void hideProfileForOverlay() {
         cancelTouchRouting();
-        snappedStickDirections.clear();
         synchronized (this) {
             this.profile = null;
         }
@@ -594,34 +590,9 @@ public class InputControlsView extends View {
         final int[] axes = {MotionEvent.AXIS_X, MotionEvent.AXIS_Y, MotionEvent.AXIS_Z, MotionEvent.AXIS_RZ, MotionEvent.AXIS_HAT_X, MotionEvent.AXIS_HAT_Y};
         final float[] values = {controller.state.thumbLX, controller.state.thumbLY, controller.state.thumbRX, controller.state.thumbRY, controller.state.getDPadX(), controller.state.getDPadY()};
 
-        ControlsProfile.StickDigitalMode leftMode = profile.getLeftStickDigitalMode();
-        ControlsProfile.StickDigitalMode rightMode = profile.getRightStickDigitalMode();
-        int[] previousDirections = snappedStickDirections.computeIfAbsent(
-                controller,
-                ignored -> new int[]{StickVectorProcessor.DIRECTION_NONE, StickVectorProcessor.DIRECTION_NONE});
-        int leftDirection = StickVectorProcessor.snapDirection(
-                values[0], values[1], leftMode, previousDirections[0]);
-        int rightDirection = StickVectorProcessor.snapDirection(
-                values[2], values[3], rightMode, previousDirections[1]);
-        previousDirections[0] = leftDirection;
-        previousDirections[1] = rightDirection;
-        int leftDirectionMask = StickVectorProcessor.directionMask(leftDirection);
-        int rightDirectionMask = StickVectorProcessor.directionMask(rightDirection);
-
-        for (byte i = 0; i < PHYSICAL_STICK_AXIS_COUNT; i++) {
-            ControlsProfile.StickDigitalMode mode = i < 2 ? leftMode : rightMode;
-            if (mode == ControlsProfile.StickDigitalMode.UNRESTRICTED || values[i] == 0) continue;
-            int keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]));
-            ExternalControllerBinding binding = controller.getControllerBinding(keyCode);
-            if (binding == null || binding.getBindingCombo().usesAnalogOffset()) continue;
-            int directionMask = i < 2 ? leftDirectionMask : rightDirectionMask;
-            boolean horizontal = i == 0 || i == 2;
-            if (!StickVectorProcessor.allowsAxis(directionMask, horizontal, values[i])) values[i] = 0;
-        }
-
         for (byte i = 0; i < axes.length; i++) {
-            // Indices 0..3 are the analog sticks, whose values already had the profile's deadzone
-            // and sensitivity applied by ExternalController, so anything non-zero is live input.
+            // Indices 0..3 are the analog sticks, whose values already had the profile's complete
+            // stick tuning applied by ExternalController, so anything non-zero is live input.
             // 4..5 are the digital hat axes, which keep the fixed threshold.
             boolean isStick = i < PHYSICAL_STICK_AXIS_COUNT;
             boolean isActive = isStick ? values[i] != 0 : Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE;

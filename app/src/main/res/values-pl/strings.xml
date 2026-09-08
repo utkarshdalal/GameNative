@@ -300,7 +300,7 @@
     <string name="stick_deadzone_hybrid">Hybrydowa</string>
     <string name="left_stick_direction_mode">Przyciąganie kierunkowe lewego drążka</string>
     <string name="right_stick_direction_mode">Przyciąganie kierunkowe prawego drążka</string>
-    <string name="stick_direction_mode_description">Ogranicza tylko przypisane kierunki cyfrowe; przypisania analogowego drążka i ruchu myszy pozostają płynne.</string>
+    <string name="stick_direction_mode_description">Przyciąga cały sygnał drążka do stałych kierunków. Tryb 4-kierunkowy usuwa przekątne; 8-kierunkowy pozwala tylko na kierunki główne i przekątne.</string>
     <string name="stick_direction_unrestricted">Bez ograniczeń</string>
     <string name="stick_direction_four_way">4 kierunki</string>
     <string name="stick_direction_eight_way">8 kierunków</string>

@@ -285,7 +285,7 @@
     <string name="stick_deadzone_hybrid">Hybrid</string>
     <string name="left_stick_direction_mode">Richtungseinrastung des linken Sticks</string>
     <string name="right_stick_direction_mode">Richtungseinrastung des rechten Sticks</string>
-    <string name="stick_direction_mode_description">Beschränkt nur zugewiesene digitale Richtungen; analoge Stick- und Mausbewegungsbelegungen bleiben stufenlos.</string>
+    <string name="stick_direction_mode_description">Rastet die gesamte Stick-Ausgabe auf feste Richtungen ein. 4-Wege entfernt Diagonalen; 8-Wege erlaubt nur Haupt- und Diagonalrichtungen.</string>
     <string name="stick_direction_unrestricted">Uneingeschränkt</string>
     <string name="stick_direction_four_way">4-Wege</string>
     <string name="stick_direction_eight_way">8-Wege</string>

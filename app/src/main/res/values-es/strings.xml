@@ -303,7 +303,7 @@
     <string name="stick_deadzone_hybrid">Híbrida</string>
     <string name="left_stick_direction_mode">Ajuste direccional del stick izquierdo</string>
     <string name="right_stick_direction_mode">Ajuste direccional del stick derecho</string>
-    <string name="stick_direction_mode_description">Solo restringe las direcciones digitales asignadas; las asignaciones analógicas y de movimiento del ratón continúan siendo graduales.</string>
+    <string name="stick_direction_mode_description">Ajusta toda la salida del stick a direcciones fijas. 4 direcciones elimina las diagonales; 8 direcciones solo permite ángulos cardinales y diagonales.</string>
     <string name="stick_direction_unrestricted">Sin restricción</string>
     <string name="stick_direction_four_way">4 direcciones</string>
     <string name="stick_direction_eight_way">8 direcciones</string>

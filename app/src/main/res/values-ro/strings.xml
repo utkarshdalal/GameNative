@@ -290,7 +290,7 @@
     <string name="stick_deadzone_hybrid">Hibridă</string>
     <string name="left_stick_direction_mode">Fixare direcțională stick stâng</string>
     <string name="right_stick_direction_mode">Fixare direcțională stick drept</string>
-    <string name="stick_direction_mode_description">Limitează doar direcțiile digitale asociate; comenzile analogice și de mișcare a mouse-ului rămân continue.</string>
+    <string name="stick_direction_mode_description">Fixează întreaga ieșire a stickului pe direcții prestabilite. Modul cu 4 direcții elimină diagonalele; cel cu 8 permite doar direcții cardinale și diagonale.</string>
     <string name="stick_direction_unrestricted">Nerestricționat</string>
     <string name="stick_direction_four_way">4 direcții</string>
     <string name="stick_direction_eight_way">8 direcții</string>

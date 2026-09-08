@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 @RunWith(RobolectricTestRunner::class)
 class PhysicalControllerHandlerTest {
     @Test
-    fun `four way snapping activates only the selected cardinal binding`() {
+    fun `snapped cardinal output activates only the selected digital binding`() {
         val deviceId = 42
         val rightSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1)
         val downSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Y, 1)
@@ -53,12 +53,12 @@ class PhysicalControllerHandlerTest {
 
         try {
             controller.state.thumbLX = 0.8f
-            controller.state.thumbLY = 0.2f
+            controller.state.thumbLY = 0f
             assertTrue(handler.onGenericMotionEvent(event))
             assertTrue(gamepadState.dpad[1])
             assertFalse(gamepadState.dpad[2])
 
-            controller.state.thumbLX = 0.2f
+            controller.state.thumbLX = 0f
             controller.state.thumbLY = 0.8f
             assertTrue(handler.onGenericMotionEvent(event))
             assertFalse(gamepadState.dpad[1])

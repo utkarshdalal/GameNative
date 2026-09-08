@@ -407,7 +407,7 @@
     <string name="stick_deadzone_hybrid">Гибридная</string>
     <string name="left_stick_direction_mode">Фиксация направлений левого джойстика</string>
     <string name="right_stick_direction_mode">Фиксация направлений правого джойстика</string>
-    <string name="stick_direction_mode_description">Ограничивает только назначенные цифровые направления; аналоговые привязки стика и движения мыши остаются плавными.</string>
+    <string name="stick_direction_mode_description">Привязывает весь сигнал стика к фиксированным направлениям. 4 направления исключают диагонали; 8 направлений допускают только основные и диагональные углы.</string>
     <string name="stick_direction_unrestricted">Без ограничений</string>
     <string name="stick_direction_four_way">4 направления</string>
     <string name="stick_direction_eight_way">8 направлений</string>

@@ -246,7 +246,7 @@
     <string name="stick_deadzone_hybrid">ハイブリッド</string>
     <string name="left_stick_direction_mode">左スティックの方向スナップ</string>
     <string name="right_stick_direction_mode">右スティックの方向スナップ</string>
-    <string name="stick_direction_mode_description">割り当てられたデジタル方向のみを制限します。アナログスティックとマウス移動の割り当ては連続入力のままです。</string>
+    <string name="stick_direction_mode_description">スティック出力全体を固定方向に揃えます。4方向では斜めを除外し、8方向では上下左右と斜めの角度だけを使用します。</string>
     <string name="stick_direction_unrestricted">制限なし</string>
     <string name="stick_direction_four_way">4方向</string>
     <string name="stick_direction_eight_way">8方向</string>

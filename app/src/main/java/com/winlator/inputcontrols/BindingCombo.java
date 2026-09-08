@@ -197,12 +197,6 @@ public final class BindingCombo {
         return true;
     }
 
-    /** True when any binding consumes the analog magnitude rather than just press/release state. */
-    public boolean usesAnalogOffset() {
-        for (Binding binding : bindings) if (binding.usesAnalogOffset()) return true;
-        return false;
-    }
-
     public void writeToJsonObject(JSONObject object) throws JSONException {
         object.put("bindings", toJsonArray());
         if (mode == Mode.SEQUENCE) {

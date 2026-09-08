@@ -280,7 +280,7 @@
     <string name="stick_deadzone_hybrid">Hybrid</string>
     <string name="left_stick_direction_mode">Left Stick Directional Snapping</string>
     <string name="right_stick_direction_mode">Right Stick Directional Snapping</string>
-    <string name="stick_direction_mode_description">Restricts mapped digital directions only; analog stick and mouse movement bindings remain continuous.</string>
+    <string name="stick_direction_mode_description">Snaps the complete stick output to fixed directions. 4-way removes diagonals; 8-way allows only cardinal and diagonal angles.</string>
     <string name="stick_direction_unrestricted">Unrestricted</string>
     <string name="stick_direction_four_way">4-way</string>
     <string name="stick_direction_eight_way">8-way</string>

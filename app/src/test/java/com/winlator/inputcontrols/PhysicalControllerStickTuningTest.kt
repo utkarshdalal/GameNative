@@ -171,6 +171,9 @@ class PhysicalControllerStickTuningTest {
             StickVectorProcessor.DIRECTION_NONE,
         )
         assertEquals(0, right)
+        val snapped = StickVectorProcessor.snapToDirection(0.48f, 0.36f, right)
+        assertEquals(0.6f, snapped.x, 0.0001f)
+        assertEquals(0f, snapped.y, 0f)
         assertEquals(
             right,
             StickVectorProcessor.snapDirection(vectorX(48.0), vectorY(48.0), mode, right),
@@ -190,10 +193,9 @@ class PhysicalControllerStickTuningTest {
             StickVectorProcessor.DIRECTION_NONE,
         )
         assertEquals(1, diagonal)
-        assertEquals(
-            StickVectorProcessor.MASK_RIGHT or StickVectorProcessor.MASK_DOWN,
-            StickVectorProcessor.directionMask(diagonal),
-        )
+        val snapped = StickVectorProcessor.snapToDirection(0.48f, 0.36f, diagonal)
+        assertEquals(0.4243f, snapped.x, 0.0001f)
+        assertEquals(0.4243f, snapped.y, 0.0001f)
         assertEquals(
             StickVectorProcessor.DIRECTION_NONE,
             StickVectorProcessor.snapDirection(
@@ -206,11 +208,33 @@ class PhysicalControllerStickTuningTest {
     }
 
     @Test
-    fun `digital snapping leaves analog magnitude consumers unrestricted`() {
-        assertTrue(BindingCombo.of(Binding.GAMEPAD_LEFT_THUMB_RIGHT).usesAnalogOffset())
-        assertTrue(BindingCombo.of(Binding.MOUSE_MOVE_RIGHT).usesAnalogOffset())
-        assertFalse(BindingCombo.of(Binding.GAMEPAD_DPAD_RIGHT).usesAnalogOffset())
-        assertFalse(BindingCombo.of(Binding.KEY_D).usesAnalogOffset())
+    fun `external controller snaps complete stick output and preserves strength`() {
+        val controller = ExternalController()
+        val input = StickVectorProcessor.Vector(0.48f, 0.36f)
+
+        val fourWay = controller.applyDirectionSnapping(
+            input,
+            ControlsProfile.StickDigitalMode.FOUR_WAY,
+            false,
+        )
+        assertEquals(0.6f, fourWay.x, 0.0001f)
+        assertEquals(0f, fourWay.y, 0f)
+
+        val eightWay = controller.applyDirectionSnapping(
+            input,
+            ControlsProfile.StickDigitalMode.EIGHT_WAY,
+            false,
+        )
+        assertEquals(0.4243f, eightWay.x, 0.0001f)
+        assertEquals(0.4243f, eightWay.y, 0.0001f)
+
+        val unrestricted = controller.applyDirectionSnapping(
+            input,
+            ControlsProfile.StickDigitalMode.UNRESTRICTED,
+            false,
+        )
+        assertEquals(input.x, unrestricted.x, 0f)
+        assertEquals(input.y, unrestricted.y, 0f)
     }
 
     @Test
