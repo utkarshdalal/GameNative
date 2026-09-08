@@ -198,8 +198,15 @@ object EaLsxServer {
             }
 
             "GetAuthToken" -> {
+                val token = runCatching { runBlocking { EaAuthManager.opaqueLaunchToken(ctx) } }
+                    .onFailure { Timber.e(it, "LSX GetAuthToken: opaque token failed, falling back to access token") }
+                    .getOrElse { runCatching { runBlocking { EaAuthManager.accessToken(ctx) } }.getOrDefault("") }
+                return response(m.id, "Utility", "<AuthToken value=\"${esc(token)}\"/>")
+            }
+
+            "GetAccessToken" -> {
                 val token = runCatching { runBlocking { EaAuthManager.accessToken(ctx) } }
-                    .onFailure { Timber.e(it, "LSX GetAuthToken failed") }.getOrDefault("")
+                    .onFailure { Timber.e(it, "LSX GetAccessToken failed") }.getOrDefault("")
                 return response(m.id, "Utility", "<AuthToken value=\"${esc(token)}\"/>")
             }
 
