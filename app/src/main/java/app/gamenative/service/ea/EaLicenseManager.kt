@@ -58,7 +58,7 @@ object EaLicenseManager {
             val ok = runCatching {
                 client.newCall(req).execute().use { resp ->
                     val body = resp.body?.string().orEmpty()
-                    Timber.i("EA refreshExternalEntitlements $method -> ${resp.code} ${body.replace(Regex("\\s+"), " ").take(4000)}")
+                    Timber.i("EA refreshExternalEntitlements $method -> ${resp.code}")
                     if (resp.code == 405 || resp.code == 404) return@use null
                     resp.isSuccessful
                 }
@@ -95,10 +95,7 @@ object EaLicenseManager {
             .build()
         client.newCall(req).execute().use { resp ->
             val body = resp.body?.bytes() ?: ByteArray(0)
-            if (!resp.isSuccessful) {
-                Timber.w("EA licence request for $contentId failed ${resp.code}; token claims=${EaAuthManager.jwtClaims(token)}")
-                error("EA licence HTTP ${resp.code}: ${String(body).take(300)}")
-            }
+            if (!resp.isSuccessful) error("EA licence HTTP ${resp.code}: ${String(body).replace(Regex("value=\"[^\"]*\""), "value=\"…\"").take(300)}")
             val signature = resp.header("x-signature") ?: error("EA licence: missing x-signature")
             val xml = String(EaCrypto.ooaDecrypt(body))
             fun field(name: String) = Regex("<$name>([^<]*)</$name>").find(xml)?.groupValues?.get(1)

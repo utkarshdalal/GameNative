@@ -3,7 +3,6 @@ package app.gamenative.service.ea
 import android.content.Context
 import android.net.Uri
 import android.provider.Settings
-import android.util.Base64
 import app.gamenative.Crypto
 import java.io.File
 import java.security.SecureRandom
@@ -116,11 +115,7 @@ object EaAuthManager {
     /** Valid access token, refreshed when within a minute of expiry. */
     suspend fun accessToken(context: Context): String = lock.withLock {
         val creds = load(context) ?: error("Not signed in to EA")
-        if (System.currentTimeMillis() < creds.expiresAt - 60_000) {
-            Timber.i("EA access token reused (${(creds.expiresAt - System.currentTimeMillis()) / 1000}s left) claims=${jwtClaims(creds.accessToken)}")
-            return@withLock creds.accessToken
-        }
-        Timber.i("EA access token expired; refreshing")
+        if (System.currentTimeMillis() < creds.expiresAt - 60_000) return@withLock creds.accessToken
         withContext(Dispatchers.IO) {
             val form = FormBody.Builder()
                 .add("grant_type", "refresh_token")
@@ -135,17 +130,9 @@ object EaAuthManager {
                 expiresAt = System.currentTimeMillis() + token.optLong("expires_in", 3600) * 1000,
             )
             save(context, refreshed)
-            Timber.i("EA access token refreshed; expires_in=${token.optLong("expires_in", -1)} claims=${jwtClaims(refreshed.accessToken)}")
             refreshed.accessToken
         }
     }
-
-    /** Selected JWT payload claims for logging (no signature, no token material). */
-    fun jwtClaims(token: String): String = runCatching {
-        val payload = token.split(".")[1]
-        val json = JSONObject(String(Base64.decode(payload, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)))
-        listOf("cid", "iat", "exp", "scp", "pl", "typ", "pit").filter { json.has(it) }.joinToString(" ") { "$it=${json.opt(it)}" }
-    }.getOrDefault("(opaque)")
 
     fun credentials(context: Context): EaCredentials? = load(context)
 
