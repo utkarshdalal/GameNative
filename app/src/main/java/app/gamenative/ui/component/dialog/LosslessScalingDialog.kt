@@ -224,7 +224,7 @@ fun LosslessScalingDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f))
+                            .background(MaterialTheme.colorScheme.errorContainer)
                             .padding(12.dp),
                     ) {
                         Row(
@@ -239,8 +239,8 @@ fun LosslessScalingDialog(
                             )
                             Text(
                                 text = ownershipError,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onErrorContainer,
                             )
                         }
                     }
