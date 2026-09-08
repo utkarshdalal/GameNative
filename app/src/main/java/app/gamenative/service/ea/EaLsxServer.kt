@@ -126,6 +126,9 @@ object EaLsxServer {
 
     private fun esc(s: String) = s.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
+    private val secretAttrs = Regex("""(<(?:AuthToken|AuthCode)\s+value=")[^"]*""")
+    private fun redact(xml: String) = secretAttrs.replace(xml) { "${it.groupValues[1]}…" }
+
     private fun response(id: String, sender: String, body: String) = "<LSX><Response id=\"${esc(id)}\" sender=\"${esc(sender)}\">$body</Response></LSX>"
 
     private fun systemTime(): String = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date())
@@ -162,7 +165,7 @@ object EaLsxServer {
                         continue
                     }
                     val reply = dispatch(msg) ?: continue
-                    Timber.d("LSX -> ${reply.take(600)}")
+                    Timber.d("LSX -> ${redact(reply).take(600)}")
                     writeFrame(out, if (key != null) EaCrypto.lsxEncrypt(key, reply) else reply)
                 }
             } catch (e: Exception) {
@@ -192,6 +195,12 @@ object EaLsxServer {
                 val code = runCatching { runBlocking { EaAuthManager.authCodeFor(ctx, clientId, m.attrs["Scope"]) } }
                     .onFailure { Timber.e(it, "LSX GetAuthCode for $clientId failed") }.getOrDefault("invalid")
                 "<AuthCode value=\"${esc(code)}\"/>"
+            }
+
+            "GetAuthToken" -> {
+                val token = runCatching { runBlocking { EaAuthManager.accessToken(ctx) } }
+                    .onFailure { Timber.e(it, "LSX GetAuthToken failed") }.getOrDefault("")
+                return response(m.id, "Utility", "<AuthToken value=\"${esc(token)}\"/>")
             }
 
             "GetProfile" -> "<GetProfileResponse Persona=\"${esc(creds?.displayName.orEmpty())}\" SubscriberLevel=\"0\" CommerceCurrency=\"USD\" " +
