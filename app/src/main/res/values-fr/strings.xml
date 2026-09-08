@@ -277,6 +277,7 @@
     <string name="right_stick">Joystick droit</string>
     <string name="dpad_category">Croix directionnelle</string>
     <string name="stick_tuning_category">Zone morte et sensibilité</string>
+    <string name="physical_controller_settings_title">Paramètres du contrôleur physique</string>
     <string name="left_stick_deadzone">Zone morte du joystick gauche</string>
     <string name="right_stick_deadzone">Zone morte du joystick droit</string>
     <string name="left_stick_sensitivity">Sensibilité du joystick gauche</string>

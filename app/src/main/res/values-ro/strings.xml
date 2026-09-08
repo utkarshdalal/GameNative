@@ -274,6 +274,7 @@
     <string name="right_stick">Stick dreapta</string>
     <string name="dpad_category">D‑Pad</string>
     <string name="stick_tuning_category">Zonă moartă și sensibilitate</string>
+    <string name="physical_controller_settings_title">Setări controller fizic</string>
     <string name="left_stick_deadzone">Zona moartă a stickului stâng</string>
     <string name="right_stick_deadzone">Zona moartă a stickului drept</string>
     <string name="left_stick_sensitivity">Sensibilitatea stickului stâng</string>

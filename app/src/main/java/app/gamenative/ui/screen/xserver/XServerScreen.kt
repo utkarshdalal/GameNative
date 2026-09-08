@@ -251,6 +251,9 @@ private const val DEFAULT_FPS_LIMITER_MAX_HZ = 60
 private const val DEFAULT_FPS_LIMITER_TARGET_HZ = 60
 private const val FPS_LIMITER_ENABLED_EXTRA = "fpsLimiterEnabled"
 private const val FPS_LIMITER_TARGET_EXTRA = "fpsLimiterTarget"
+private const val PHYSICAL_CONTROLLER_DIALOG_NONE = 0
+private const val PHYSICAL_CONTROLLER_DIALOG_BINDINGS = 1
+private const val PHYSICAL_CONTROLLER_DIALOG_SETTINGS = 2
 
 private fun initialFpsLimiterEnabled(container: Container): Boolean =
     parseBooleanExtra(container.getExtra(FPS_LIMITER_ENABLED_EXTRA)) ?: true
@@ -567,7 +570,7 @@ fun XServerScreen(
     var elementPositionsSnapshot by remember { mutableStateOf<Map<com.winlator.inputcontrols.ControlElement, Pair<Int, Int>>>(emptyMap()) }
     var showElementEditor by remember { mutableStateOf(false) }
     var elementToEdit by remember { mutableStateOf<com.winlator.inputcontrols.ControlElement?>(null) }
-    var showPhysicalControllerDialog by remember { mutableStateOf(false) }
+    var physicalControllerDialogMode by remember { mutableIntStateOf(PHYSICAL_CONTROLLER_DIALOG_NONE) }
     var showPlayingBlockedDialog by rememberSaveable { mutableStateOf(false) }
     var playingBlockedRemoteName by rememberSaveable { mutableStateOf<String?>(null) }
     var showTouchGestureDialog by remember { mutableStateOf(false) }
@@ -611,7 +614,8 @@ fun XServerScreen(
     var fpsLimiterTarget by rememberSaveable(container.id) { mutableIntStateOf(initialFpsLimiterTarget(container)) }
 
     val gyroOverlaySuppressed = showQuickMenu || keepPausedForEditor || showElementEditor ||
-        showPhysicalControllerDialog || showTouchGestureDialog || showShooterModeDialog ||
+        physicalControllerDialogMode != PHYSICAL_CONTROLLER_DIALOG_NONE ||
+        showTouchGestureDialog || showShooterModeDialog ||
         showPlayingBlockedDialog || isEditMode
     SyncGyroOverlaySuppression(
         suppressed = gyroOverlaySuppressed,
@@ -1386,8 +1390,13 @@ fun XServerScreen(
             QuickMenuAction.EDIT_PHYSICAL_CONTROLLER -> {
                 if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "edit_physical_controller_from_menu")
                 keepPausedForEditor = true
-                showPhysicalControllerDialog = true
+                physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_BINDINGS
                 true
+            }
+
+            QuickMenuAction.PHYSICAL_CONTROLLER_SETTINGS -> {
+                physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_SETTINGS
+                false
             }
 
             QuickMenuAction.RADIAL_MENU -> {
@@ -3023,8 +3032,8 @@ fun XServerScreen(
         )
     }
 
-    // Physical Controller Config Dialog
-    if (showPhysicalControllerDialog) {
+    // Physical Controller bindings editor or stick settings page
+    if (physicalControllerDialogMode != PHYSICAL_CONTROLLER_DIALOG_NONE) {
         // Get profile from container settings, not from InputControlsView
         // (InputControlsView.profile is null when on-screen controls are hidden)
         val manager = PluviaApp.inputControlsManager ?: InputControlsManager(context)
@@ -3066,47 +3075,67 @@ fun XServerScreen(
         }
 
         if (profile != null) {
-            androidx.compose.ui.window.Dialog(
-                onDismissRequest = {
-                    showPhysicalControllerDialog = false
-                    keepPausedForEditor = false
-                    resumeIfAllowedAfterOverlay()
-                }
-            ) {
-                androidx.compose.foundation.layout.Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.95f))
-                ) {
-                    app.gamenative.ui.component.dialog.PhysicalControllerConfigSection(
-                        profile = profile,
-                        onDismiss = {
-                            showPhysicalControllerDialog = false
-                            keepPausedForEditor = false
-                            resumeIfAllowedAfterOverlay()
-                        },
-                        onSave = {
-                            // Ensure controllersLoaded is true before saving
-                            // (addController sets the flag even if controller already exists)
-                            profile.addController("*")
-
-                            // Save profileId to container so it persists across launches
-                            container.putExtra("profileId", profile.id.toString())
-                            container.saveData()
-
-                            // Save profile (will now write controllers since controllersLoaded = true)
-                            profile.save()
-                            profile.loadControllers()
-
-                            // Keep gyro and binding inspection on the reloaded profile without
-                            // unintentionally showing controls that were hidden for a controller.
-                            PluviaApp.inputControlsView?.setProfilePreservingOverlayVisibility(profile)
-                            physicalControllerHandler?.setProfile(profile)
-                            PluviaApp.radialMenuCoordinator?.setProfile(profile)
-                            showPhysicalControllerDialog = false
+            when (physicalControllerDialogMode) {
+                PHYSICAL_CONTROLLER_DIALOG_BINDINGS -> {
+                    androidx.compose.ui.window.Dialog(
+                        onDismissRequest = {
+                            physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
                             keepPausedForEditor = false
                             resumeIfAllowedAfterOverlay()
                         }
+                    ) {
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.95f))
+                        ) {
+                            app.gamenative.ui.component.dialog.PhysicalControllerConfigSection(
+                                profile = profile,
+                                onDismiss = {
+                                    physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
+                                    keepPausedForEditor = false
+                                    resumeIfAllowedAfterOverlay()
+                                },
+                                onSave = {
+                                    // Ensure controllersLoaded is true before saving
+                                    // (addController sets the flag even if controller already exists)
+                                    profile.addController("*")
+
+                                    // Save profileId to container so it persists across launches
+                                    container.putExtra("profileId", profile.id.toString())
+                                    container.saveData()
+
+                                    // Save profile (will now write controllers since controllersLoaded = true)
+                                    profile.save()
+                                    profile.loadControllers()
+
+                                    // Keep gyro and binding inspection on the reloaded profile without
+                                    // unintentionally showing controls that were hidden for a controller.
+                                    PluviaApp.inputControlsView?.setProfilePreservingOverlayVisibility(profile)
+                                    physicalControllerHandler?.setProfile(profile)
+                                    PluviaApp.radialMenuCoordinator?.setProfile(profile)
+                                    physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
+                                    keepPausedForEditor = false
+                                    resumeIfAllowedAfterOverlay()
+                                }
+                            )
+                        }
+                    }
+                }
+
+                PHYSICAL_CONTROLLER_DIALOG_SETTINGS -> {
+                    app.gamenative.ui.component.dialog.PhysicalControllerSettingsDialog(
+                        profile = profile,
+                        onDismiss = {
+                            physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
+                        },
+                        onSave = {
+                            profile.save()
+                            PluviaApp.inputControlsView?.setProfilePreservingOverlayVisibility(profile)
+                            physicalControllerHandler?.setProfile(profile)
+                            PluviaApp.radialMenuCoordinator?.setProfile(profile)
+                            physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
+                        },
                     )
                 }
             }
