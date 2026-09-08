@@ -2,6 +2,7 @@ package app.gamenative.service.ea
 
 import android.content.Context
 import android.net.Uri
+import android.util.Base64
 import android.provider.Settings
 import app.gamenative.Crypto
 import java.io.File
