@@ -1241,12 +1241,14 @@ object PowerManager {
                         Timber.tag("PowerManager").d(
                             "$processName has not started yet, pin attempt $attempt of $maxRetries ($reason)"
                         )
-                    } else if (applied && verifyGameAffinity(pid, gameCores, "PowerManager")) {
+                    } else {
+                        if (!applied) applyAffinity(processName, pid, gameCores)
+                        val verified = verifyGameAffinity(pid, gameCores, "PowerManager")
                         pinnedGameProcessName = processName
                         pinnedGamePid = pid
                         pinnedGameCores = gameCores
                         Timber.tag("PowerManager").i(
-                            "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} after $attempt attempts ($reason)"
+                            "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} after $attempt attempts, verified=$verified ($reason)"
                         )
                         return@Thread
                     }
@@ -1312,12 +1314,9 @@ object PowerManager {
         if (!processName.endsWith(".exe", ignoreCase = true)) {
             return pserver.getProcessId(processName)
         }
+        val exe = Regex("""(^|[\\/ "])""" + Regex.escape(processName) + """("|\s|$)""", RegexOption.IGNORE_CASE)
         return pserver.findRunningProcesses(processName).find {
-            !it.second.contains("winhandler.exe") &&
-                (
-                    it.second.endsWith(processName, ignoreCase = true) ||
-                        it.second.startsWith("A:\\$processName", ignoreCase = true)
-                    )
+            !it.second.contains("winhandler.exe") && exe.containsMatchIn(it.second)
         }?.first
     }
 
