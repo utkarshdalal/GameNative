@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import app.gamenative.data.SteamLicense
+import app.gamenative.data.SteamLicenseForPics
 import kotlin.math.min
 
 val SQLITE_MAX_VARS = 999
@@ -28,6 +29,9 @@ interface SteamLicenseDao {
 
     @Query("SELECT * FROM steam_license")
     suspend fun getAllLicenses(): List<SteamLicense>
+
+    @Query("SELECT packageId, access_token FROM steam_license")
+    suspend fun getLicensesForPics(): List<SteamLicenseForPics>
 
     @Query("SELECT * FROM steam_license WHERE packageId = :packageId")
     suspend fun findLicense(packageId: Int): SteamLicense?
