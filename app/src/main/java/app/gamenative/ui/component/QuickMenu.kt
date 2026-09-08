@@ -983,9 +983,6 @@ fun QuickMenu(
                                             performanceMode = lsfgPerformanceMode,
                                             onMultiplierChanged = { mult ->
                                                 lsfgTargetRate = 0
-                                                container?.let {
-                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyTargetRate(it, 0)
-                                                }
                                                 onLsfgMultiplierChanged(mult)
                                             },
                                             onFlowScaleChanged = onLsfgFlowScaleChanged,
@@ -1756,7 +1753,6 @@ private fun LsfgQuickMenuTab(
             onToggle = {
                 if (isEnabled) {
                     onMultiplierChanged(0)
-                    if (targetRate > 0) onTargetRateChanged(0)
                 } else {
                     onMultiplierChanged(lastActiveMultiplier.coerceIn(2, 4))
                 }
