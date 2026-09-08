@@ -116,7 +116,7 @@ object EaLsxServer {
                 when (depth) {
                     2 -> { kind = parser.name; for (i in 0 until parser.attributeCount) { when (parser.getAttributeName(i)) { "id" -> id = parser.getAttributeValue(i); "recipient" -> recipient = parser.getAttributeValue(i) } } }
                     3 -> { name = parser.name; for (i in 0 until parser.attributeCount) attrs[parser.getAttributeName(i)] = parser.getAttributeValue(i) }
-                    4 -> { val n = parser.name; val text = runCatching { parser.nextText() }.getOrDefault(""); children[n] = text; depth-- }
+                    4 -> { val n = parser.name; val text = runCatching { parser.nextText() }.getOrDefault(""); children[n] = children[n]?.let { "$it\u0001$text" } ?: text; depth-- }
                 }
             } else if (ev == XmlPullParser.END_TAG) depth--
             ev = parser.next()
@@ -252,7 +252,20 @@ object EaLsxServer {
             "SetPresence" -> "<ErrorSuccess Code=\"0\" Description=\"\"/>"
             "QueryFriends" -> "<QueryFriendsResponse/>"
             "QueryPresence" -> "<QueryPresenceResponse/>"
-            "QueryEntitlements" -> "<QueryEntitlementsResponse/>"
+            "QueryEntitlements" -> {
+                fun list(key: String) = m.children[key]?.split('\u0001')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+                val groups = (listOfNotNull(m.attrs["Group"]?.takeIf { it.isNotBlank() }) + list("FilterGroups")).distinct()
+                val items = (listOfNotNull(m.attrs["ItemId"]?.takeIf { it.isNotBlank() }, m.attrs["OfferId"]?.takeIf { it.isNotBlank() }) + list("FilterItems") + list("FilterOffers")).distinct()
+                val includeChildren = m.attrs["includeChildGroups"].equals("true", ignoreCase = true)
+                val entitlements = runCatching { runBlocking { EaEntitlements.query(ctx, groups, items, includeChildren) } }
+                    .onFailure { Timber.e(it, "LSX QueryEntitlements failed") }.getOrDefault(emptyList())
+                "<QueryEntitlementsResponse>" + entitlements.joinToString("") { e ->
+                    "<Entitlement EntitlementTag=\"${esc(e.tag)}\" Expiration=\"${esc(e.terminationDate ?: "0000-00-00T00:00:00")}\" " +
+                        "LastModifiedDate=\"0000-00-00T00:00:00\" GrantDate=\"${esc(e.grantDate)}\" ResourceId=\"\" EntitlementId=\"${esc(e.id)}\" " +
+                        "ItemId=\"${esc(e.productId)}\" Source=\"STEAM\" Type=\"${esc(e.type)}\" Version=\"${e.version}\" UseCount=\"${e.useCount}\" " +
+                        "Group=\"${esc(e.group.ifEmpty { groups.firstOrNull().orEmpty() })}\"/>"
+                } + "</QueryEntitlementsResponse>"
+            }
             "QueryOffers" -> "<QueryOffersResponse/>"
             "QueryImage" -> "<QueryImageResponse Result=\"0\"/>"
             "IsProgressiveInstallationAvailable" -> "<IsProgressiveInstallationAvailableResponse ItemId=\"${esc(m.attrs["ItemId"].orEmpty())}\" Available=\"false\"/>"
