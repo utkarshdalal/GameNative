@@ -268,7 +268,6 @@
     <string name="left_stick">Linker Stick</string>
     <string name="right_stick">Rechter Stick</string>
     <string name="dpad_category">D-Pad</string>
-    <string name="stick_tuning_category">Totzone und Empfindlichkeit</string>
     <string name="physical_controller_settings_title">Einstellungen für physischen Controller</string>
     <string name="left_stick_deadzone">Totzone des linken Sticks</string>
     <string name="right_stick_deadzone">Totzone des rechten Sticks</string>

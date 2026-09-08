@@ -204,7 +204,6 @@
     <string name="left_stick">Analógico Esquerdo</string>
     <string name="right_stick">Analógico Direito</string>
     <string name="dpad_category">D-Pad</string>
-    <string name="stick_tuning_category">Zona morta e sensibilidade</string>
     <string name="physical_controller_settings_title">Configurações do controle físico</string>
     <string name="left_stick_deadzone">Zona morta do analógico esquerdo</string>
     <string name="right_stick_deadzone">Zona morta do analógico direito</string>

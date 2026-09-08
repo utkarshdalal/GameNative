@@ -283,7 +283,6 @@
     <string name="left_stick">Lewy drążek</string>
     <string name="right_stick">Prawy drążek</string>
     <string name="dpad_category">D-Pad</string>
-    <string name="stick_tuning_category">Martwa strefa i czułość</string>
     <string name="physical_controller_settings_title">Ustawienia kontrolera fizycznego</string>
     <string name="left_stick_deadzone">Martwa strefa lewego drążka</string>
     <string name="right_stick_deadzone">Martwa strefa prawego drążka</string>

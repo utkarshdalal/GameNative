@@ -40,17 +40,48 @@ public class ExternalController {
     public static final byte TRIGGER_IS_AXIS = 1;
     public static final byte TRIGGER_IS_BOTH = 2;
 
-    // Stick tuning is intentionally global: controllers for players 2-4 are created on demand by
-    // WinHandler and never belong to a ControlsProfile, but they must honour the same tuning as
-    // player 1. setStickTuning() is called whenever the active profile changes.
-    private static volatile float stickDeadzoneLeft = ControlsProfile.DEFAULT_STICK_DEADZONE;
-    private static volatile float stickDeadzoneRight = ControlsProfile.DEFAULT_STICK_DEADZONE;
-    private static volatile float stickSensitivityLeft = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
-    private static volatile float stickSensitivityRight = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
-    private static volatile ControlsProfile.StickDeadzoneMode stickDeadzoneModeLeft = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
-    private static volatile ControlsProfile.StickDeadzoneMode stickDeadzoneModeRight = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
-    private static volatile ControlsProfile.StickDigitalMode stickDirectionModeLeft = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
-    private static volatile ControlsProfile.StickDigitalMode stickDirectionModeRight = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
+    // Controllers for players 2-4 are created on demand by WinHandler and do not belong to a
+    // ControlsProfile, so the active profile's tuning is shared. Publishing one immutable object
+    // prevents an input event from observing a mixture of old and new values while settings save.
+    private static final class StickTuningConfig {
+        final float deadzoneLeft;
+        final float deadzoneRight;
+        final float sensitivityLeft;
+        final float sensitivityRight;
+        final ControlsProfile.StickDeadzoneMode deadzoneModeLeft;
+        final ControlsProfile.StickDeadzoneMode deadzoneModeRight;
+        final ControlsProfile.StickDigitalMode directionModeLeft;
+        final ControlsProfile.StickDigitalMode directionModeRight;
+
+        StickTuningConfig(@Nullable ControlsProfile profile) {
+            deadzoneLeft = profile != null
+                    ? profile.getLeftStickDeadzone()
+                    : ControlsProfile.DEFAULT_STICK_DEADZONE;
+            deadzoneRight = profile != null
+                    ? profile.getRightStickDeadzone()
+                    : ControlsProfile.DEFAULT_STICK_DEADZONE;
+            sensitivityLeft = profile != null
+                    ? profile.getLeftStickSensitivity()
+                    : ControlsProfile.DEFAULT_STICK_SENSITIVITY;
+            sensitivityRight = profile != null
+                    ? profile.getRightStickSensitivity()
+                    : ControlsProfile.DEFAULT_STICK_SENSITIVITY;
+            deadzoneModeLeft = profile != null
+                    ? profile.getLeftStickDeadzoneMode()
+                    : ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
+            deadzoneModeRight = profile != null
+                    ? profile.getRightStickDeadzoneMode()
+                    : ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
+            directionModeLeft = profile != null
+                    ? profile.getLeftStickDigitalMode()
+                    : ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
+            directionModeRight = profile != null
+                    ? profile.getRightStickDigitalMode()
+                    : ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
+        }
+    }
+
+    private static volatile StickTuningConfig stickTuning = new StickTuningConfig(null);
 
     private String id;
     private String name;
@@ -68,25 +99,7 @@ public class ExternalController {
 
     /** Applies {@code profile}'s stick tuning to every physical controller. */
     public static void setStickTuning(ControlsProfile profile) {
-        if (profile == null) {
-            stickDeadzoneLeft = ControlsProfile.DEFAULT_STICK_DEADZONE;
-            stickDeadzoneRight = ControlsProfile.DEFAULT_STICK_DEADZONE;
-            stickSensitivityLeft = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
-            stickSensitivityRight = ControlsProfile.DEFAULT_STICK_SENSITIVITY;
-            stickDeadzoneModeLeft = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
-            stickDeadzoneModeRight = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
-            stickDirectionModeLeft = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
-            stickDirectionModeRight = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
-            return;
-        }
-        stickDeadzoneLeft = profile.getLeftStickDeadzone();
-        stickDeadzoneRight = profile.getRightStickDeadzone();
-        stickSensitivityLeft = profile.getLeftStickSensitivity();
-        stickSensitivityRight = profile.getRightStickSensitivity();
-        stickDeadzoneModeLeft = profile.getLeftStickDeadzoneMode();
-        stickDeadzoneModeRight = profile.getRightStickDeadzoneMode();
-        stickDirectionModeLeft = profile.getLeftStickDigitalMode();
-        stickDirectionModeRight = profile.getRightStickDigitalMode();
+        stickTuning = new StickTuningConfig(profile);
     }
 
     public String getName() {
@@ -230,12 +243,15 @@ public class ExternalController {
         rawThumbLY = updateRawAxis(event, MotionEvent.AXIS_Y, historyPos, rawThumbLY);
         rawThumbRX = updateRawAxis(event, MotionEvent.AXIS_Z, historyPos, rawThumbRX);
         rawThumbRY = updateRawAxis(event, MotionEvent.AXIS_RZ, historyPos, rawThumbRY);
+        StickTuningConfig tuning = stickTuning;
         StickVectorProcessor.Vector left = StickVectorProcessor.tune(
-                rawThumbLX, rawThumbLY, stickDeadzoneLeft, stickSensitivityLeft, stickDeadzoneModeLeft);
+                rawThumbLX, rawThumbLY,
+                tuning.deadzoneLeft, tuning.sensitivityLeft, tuning.deadzoneModeLeft);
         StickVectorProcessor.Vector right = StickVectorProcessor.tune(
-                rawThumbRX, rawThumbRY, stickDeadzoneRight, stickSensitivityRight, stickDeadzoneModeRight);
-        left = applyDirectionSnapping(left, stickDirectionModeLeft, false);
-        right = applyDirectionSnapping(right, stickDirectionModeRight, true);
+                rawThumbRX, rawThumbRY,
+                tuning.deadzoneRight, tuning.sensitivityRight, tuning.deadzoneModeRight);
+        left = applyDirectionSnapping(left, tuning.directionModeLeft, false);
+        right = applyDirectionSnapping(right, tuning.directionModeRight, true);
         this.state.thumbLX = left.x;
         this.state.thumbLY = left.y;
         this.state.thumbRX = right.x;

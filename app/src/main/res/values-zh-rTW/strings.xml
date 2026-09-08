@@ -268,7 +268,6 @@
     <string name="left_stick">左搖桿</string>
     <string name="right_stick">右搖桿</string>
     <string name="dpad_category">方向鍵</string>
-    <string name="stick_tuning_category">死區與靈敏度</string>
     <string name="physical_controller_settings_title">實體控制器設定</string>
     <string name="left_stick_deadzone">左搖桿死區</string>
     <string name="right_stick_deadzone">右搖桿死區</string>

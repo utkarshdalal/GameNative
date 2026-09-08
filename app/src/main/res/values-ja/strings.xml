@@ -229,7 +229,6 @@
     <string name="left_stick">左スティック</string>
     <string name="right_stick">右スティック</string>
     <string name="dpad_category">十字キー</string>
-    <string name="stick_tuning_category">デッドゾーンと感度</string>
     <string name="physical_controller_settings_title">物理コントローラー設定</string>
     <string name="left_stick_deadzone">左スティックのデッドゾーン</string>
     <string name="right_stick_deadzone">右スティックのデッドゾーン</string>

@@ -263,7 +263,6 @@
     <string name="left_stick">Left Stick</string>
     <string name="right_stick">Right Stick</string>
     <string name="dpad_category">D-Pad</string>
-    <string name="stick_tuning_category">Deadzone &amp; Sensitivity</string>
     <string name="physical_controller_settings_title">Physical Controller Settings</string>
     <string name="left_stick_deadzone">Left Stick Deadzone</string>
     <string name="right_stick_deadzone">Right Stick Deadzone</string>

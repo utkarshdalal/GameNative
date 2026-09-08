@@ -617,6 +617,56 @@ private fun ControllerBindingItem(
     }
 }
 
+private data class StickTuningState(
+    val deadzone: Float,
+    val sensitivity: Float,
+    val deadzoneMode: ControlsProfile.StickDeadzoneMode,
+    val directionMode: ControlsProfile.StickDigitalMode,
+)
+
+private data class PhysicalStickTuningState(
+    val left: StickTuningState,
+    val right: StickTuningState,
+) {
+    fun applyTo(profile: ControlsProfile) {
+        profile.leftStickDeadzone = left.deadzone
+        profile.leftStickSensitivity = left.sensitivity
+        profile.leftStickDeadzoneMode = left.deadzoneMode
+        profile.leftStickDigitalMode = left.directionMode
+        profile.rightStickDeadzone = right.deadzone
+        profile.rightStickSensitivity = right.sensitivity
+        profile.rightStickDeadzoneMode = right.deadzoneMode
+        profile.rightStickDigitalMode = right.directionMode
+    }
+
+    companion object {
+        fun from(profile: ControlsProfile) = PhysicalStickTuningState(
+            left = StickTuningState(
+                deadzone = profile.leftStickDeadzone,
+                sensitivity = profile.leftStickSensitivity,
+                deadzoneMode = profile.leftStickDeadzoneMode,
+                directionMode = profile.leftStickDigitalMode,
+            ),
+            right = StickTuningState(
+                deadzone = profile.rightStickDeadzone,
+                sensitivity = profile.rightStickSensitivity,
+                deadzoneMode = profile.rightStickDeadzoneMode,
+                directionMode = profile.rightStickDigitalMode,
+            ),
+        )
+
+        fun defaults(): PhysicalStickTuningState {
+            val defaults = StickTuningState(
+                deadzone = ControlsProfile.DEFAULT_STICK_DEADZONE,
+                sensitivity = ControlsProfile.DEFAULT_STICK_SENSITIVITY,
+                deadzoneMode = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE,
+                directionMode = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE,
+            )
+            return PhysicalStickTuningState(left = defaults, right = defaults)
+        }
+    }
+}
+
 /** Full-screen stick tuning page opened from the Physical Controller quick-menu gear. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -625,14 +675,7 @@ internal fun PhysicalControllerSettingsDialog(
     onDismiss: () -> Unit,
     onSave: () -> Unit,
 ) {
-    var leftStickDeadzone by remember(profile) { mutableFloatStateOf(profile.leftStickDeadzone) }
-    var rightStickDeadzone by remember(profile) { mutableFloatStateOf(profile.rightStickDeadzone) }
-    var leftStickSensitivity by remember(profile) { mutableFloatStateOf(profile.leftStickSensitivity) }
-    var rightStickSensitivity by remember(profile) { mutableFloatStateOf(profile.rightStickSensitivity) }
-    var leftStickDeadzoneMode by remember(profile) { mutableStateOf(profile.leftStickDeadzoneMode) }
-    var rightStickDeadzoneMode by remember(profile) { mutableStateOf(profile.rightStickDeadzoneMode) }
-    var leftStickDigitalMode by remember(profile) { mutableStateOf(profile.leftStickDigitalMode) }
-    var rightStickDigitalMode by remember(profile) { mutableStateOf(profile.rightStickDigitalMode) }
+    var tuning by remember(profile) { mutableStateOf(PhysicalStickTuningState.from(profile)) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -660,27 +703,11 @@ internal fun PhysicalControllerSettingsDialog(
                         }
                     },
                     actions = {
-                        IconButton(onClick = {
-                            leftStickDeadzone = ControlsProfile.DEFAULT_STICK_DEADZONE
-                            rightStickDeadzone = ControlsProfile.DEFAULT_STICK_DEADZONE
-                            leftStickSensitivity = ControlsProfile.DEFAULT_STICK_SENSITIVITY
-                            rightStickSensitivity = ControlsProfile.DEFAULT_STICK_SENSITIVITY
-                            leftStickDeadzoneMode = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE
-                            rightStickDeadzoneMode = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE
-                            leftStickDigitalMode = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE
-                            rightStickDigitalMode = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE
-                        }) {
+                        IconButton(onClick = { tuning = PhysicalStickTuningState.defaults() }) {
                             Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.reset))
                         }
                         IconButton(onClick = {
-                            profile.leftStickDeadzone = leftStickDeadzone
-                            profile.rightStickDeadzone = rightStickDeadzone
-                            profile.leftStickSensitivity = leftStickSensitivity
-                            profile.rightStickSensitivity = rightStickSensitivity
-                            profile.leftStickDeadzoneMode = leftStickDeadzoneMode
-                            profile.rightStickDeadzoneMode = rightStickDeadzoneMode
-                            profile.leftStickDigitalMode = leftStickDigitalMode
-                            profile.rightStickDigitalMode = rightStickDigitalMode
+                            tuning.applyTo(profile)
                             onSave()
                         }) {
                             Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
@@ -697,22 +724,8 @@ internal fun PhysicalControllerSettingsDialog(
                     .padding(bottom = 16.dp),
             ) {
                 StickTuningSection(
-                    leftStickDeadzone = leftStickDeadzone,
-                    leftStickSensitivity = leftStickSensitivity,
-                    rightStickDeadzone = rightStickDeadzone,
-                    rightStickSensitivity = rightStickSensitivity,
-                    leftStickDeadzoneMode = leftStickDeadzoneMode,
-                    rightStickDeadzoneMode = rightStickDeadzoneMode,
-                    leftStickDigitalMode = leftStickDigitalMode,
-                    rightStickDigitalMode = rightStickDigitalMode,
-                    onLeftStickDeadzoneChange = { leftStickDeadzone = it },
-                    onLeftStickSensitivityChange = { leftStickSensitivity = it },
-                    onRightStickDeadzoneChange = { rightStickDeadzone = it },
-                    onRightStickSensitivityChange = { rightStickSensitivity = it },
-                    onLeftStickDeadzoneModeChange = { leftStickDeadzoneMode = it },
-                    onRightStickDeadzoneModeChange = { rightStickDeadzoneMode = it },
-                    onLeftStickDigitalModeChange = { leftStickDigitalMode = it },
-                    onRightStickDigitalModeChange = { rightStickDigitalMode = it },
+                    tuning = tuning,
+                    onTuningChange = { tuning = it },
                 )
             }
         }
@@ -725,25 +738,10 @@ internal fun PhysicalControllerSettingsDialog(
  * These values are applied to the raw stick axes before they reach the virtual gamepad state, so
  * they carry through to the guest game (including while shooter mode is active).
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun StickTuningSection(
-    leftStickDeadzone: Float,
-    leftStickSensitivity: Float,
-    rightStickDeadzone: Float,
-    rightStickSensitivity: Float,
-    leftStickDeadzoneMode: ControlsProfile.StickDeadzoneMode,
-    rightStickDeadzoneMode: ControlsProfile.StickDeadzoneMode,
-    leftStickDigitalMode: ControlsProfile.StickDigitalMode,
-    rightStickDigitalMode: ControlsProfile.StickDigitalMode,
-    onLeftStickDeadzoneChange: (Float) -> Unit,
-    onLeftStickSensitivityChange: (Float) -> Unit,
-    onRightStickDeadzoneChange: (Float) -> Unit,
-    onRightStickSensitivityChange: (Float) -> Unit,
-    onLeftStickDeadzoneModeChange: (ControlsProfile.StickDeadzoneMode) -> Unit,
-    onRightStickDeadzoneModeChange: (ControlsProfile.StickDeadzoneMode) -> Unit,
-    onLeftStickDigitalModeChange: (ControlsProfile.StickDigitalMode) -> Unit,
-    onRightStickDigitalModeChange: (ControlsProfile.StickDigitalMode) -> Unit,
+    tuning: PhysicalStickTuningState,
+    onTuningChange: (PhysicalStickTuningState) -> Unit,
 ) {
     val deadzoneDescription = stringResource(R.string.stick_deadzone_description)
     val sensitivityDescription = stringResource(R.string.stick_sensitivity_description)
@@ -753,83 +751,83 @@ private fun StickTuningSection(
         StickAdjustmentSlider(
             label = stringResource(R.string.left_stick_deadzone),
             description = deadzoneDescription,
-            value = leftStickDeadzone,
-            displayValue = String.format(Locale.getDefault(), "%.0f%%", leftStickDeadzone * 100),
+            value = tuning.left.deadzone,
+            displayValue = String.format(Locale.getDefault(), "%.0f%%", tuning.left.deadzone * 100),
             valueRange = ControlsProfile.MIN_STICK_DEADZONE..ControlsProfile.MAX_STICK_DEADZONE,
             steps = DEADZONE_SLIDER_STEPS,
-            onValueChange = onLeftStickDeadzoneChange
+            onValueChange = { onTuningChange(tuning.copy(left = tuning.left.copy(deadzone = it))) }
         )
         StickModeSelector(
             label = stringResource(R.string.left_stick_deadzone_shape),
-            description = stickDeadzoneModeDescription(leftStickDeadzoneMode),
-            selected = leftStickDeadzoneMode,
+            description = stickDeadzoneModeDescription(tuning.left.deadzoneMode),
+            selected = tuning.left.deadzoneMode,
             options = listOf(
                 ControlsProfile.StickDeadzoneMode.AXIAL to stringResource(R.string.stick_deadzone_axial),
                 ControlsProfile.StickDeadzoneMode.CIRCULAR to stringResource(R.string.stick_deadzone_circular),
                 ControlsProfile.StickDeadzoneMode.HYBRID to stringResource(R.string.stick_deadzone_hybrid),
             ),
-            onSelected = onLeftStickDeadzoneModeChange,
+            onSelected = { onTuningChange(tuning.copy(left = tuning.left.copy(deadzoneMode = it))) },
         )
         StickAdjustmentSlider(
             label = stringResource(R.string.left_stick_sensitivity),
             description = sensitivityDescription,
-            value = leftStickSensitivity,
-            displayValue = String.format(Locale.getDefault(), "%.2f×", leftStickSensitivity),
+            value = tuning.left.sensitivity,
+            displayValue = String.format(Locale.getDefault(), "%.2f×", tuning.left.sensitivity),
             valueRange = ControlsProfile.MIN_STICK_SENSITIVITY..ControlsProfile.MAX_STICK_SENSITIVITY,
             steps = SENSITIVITY_SLIDER_STEPS,
-            onValueChange = onLeftStickSensitivityChange
+            onValueChange = { onTuningChange(tuning.copy(left = tuning.left.copy(sensitivity = it))) }
         )
         StickModeSelector(
             label = stringResource(R.string.left_stick_direction_mode),
             description = stringResource(R.string.stick_direction_mode_description),
-            selected = leftStickDigitalMode,
+            selected = tuning.left.directionMode,
             options = listOf(
                 ControlsProfile.StickDigitalMode.UNRESTRICTED to stringResource(R.string.stick_direction_unrestricted),
                 ControlsProfile.StickDigitalMode.FOUR_WAY to stringResource(R.string.stick_direction_four_way),
                 ControlsProfile.StickDigitalMode.EIGHT_WAY to stringResource(R.string.stick_direction_eight_way),
             ),
-            onSelected = onLeftStickDigitalModeChange,
+            onSelected = { onTuningChange(tuning.copy(left = tuning.left.copy(directionMode = it))) },
         )
         SettingsDialogSectionHeader(stringResource(R.string.right_stick))
         StickAdjustmentSlider(
             label = stringResource(R.string.right_stick_deadzone),
             description = deadzoneDescription,
-            value = rightStickDeadzone,
-            displayValue = String.format(Locale.getDefault(), "%.0f%%", rightStickDeadzone * 100),
+            value = tuning.right.deadzone,
+            displayValue = String.format(Locale.getDefault(), "%.0f%%", tuning.right.deadzone * 100),
             valueRange = ControlsProfile.MIN_STICK_DEADZONE..ControlsProfile.MAX_STICK_DEADZONE,
             steps = DEADZONE_SLIDER_STEPS,
-            onValueChange = onRightStickDeadzoneChange
+            onValueChange = { onTuningChange(tuning.copy(right = tuning.right.copy(deadzone = it))) }
         )
         StickModeSelector(
             label = stringResource(R.string.right_stick_deadzone_shape),
-            description = stickDeadzoneModeDescription(rightStickDeadzoneMode),
-            selected = rightStickDeadzoneMode,
+            description = stickDeadzoneModeDescription(tuning.right.deadzoneMode),
+            selected = tuning.right.deadzoneMode,
             options = listOf(
                 ControlsProfile.StickDeadzoneMode.AXIAL to stringResource(R.string.stick_deadzone_axial),
                 ControlsProfile.StickDeadzoneMode.CIRCULAR to stringResource(R.string.stick_deadzone_circular),
                 ControlsProfile.StickDeadzoneMode.HYBRID to stringResource(R.string.stick_deadzone_hybrid),
             ),
-            onSelected = onRightStickDeadzoneModeChange,
+            onSelected = { onTuningChange(tuning.copy(right = tuning.right.copy(deadzoneMode = it))) },
         )
         StickAdjustmentSlider(
             label = stringResource(R.string.right_stick_sensitivity),
             description = sensitivityDescription,
-            value = rightStickSensitivity,
-            displayValue = String.format(Locale.getDefault(), "%.2f×", rightStickSensitivity),
+            value = tuning.right.sensitivity,
+            displayValue = String.format(Locale.getDefault(), "%.2f×", tuning.right.sensitivity),
             valueRange = ControlsProfile.MIN_STICK_SENSITIVITY..ControlsProfile.MAX_STICK_SENSITIVITY,
             steps = SENSITIVITY_SLIDER_STEPS,
-            onValueChange = onRightStickSensitivityChange
+            onValueChange = { onTuningChange(tuning.copy(right = tuning.right.copy(sensitivity = it))) }
         )
         StickModeSelector(
             label = stringResource(R.string.right_stick_direction_mode),
             description = stringResource(R.string.stick_direction_mode_description),
-            selected = rightStickDigitalMode,
+            selected = tuning.right.directionMode,
             options = listOf(
                 ControlsProfile.StickDigitalMode.UNRESTRICTED to stringResource(R.string.stick_direction_unrestricted),
                 ControlsProfile.StickDigitalMode.FOUR_WAY to stringResource(R.string.stick_direction_four_way),
                 ControlsProfile.StickDigitalMode.EIGHT_WAY to stringResource(R.string.stick_direction_eight_way),
             ),
-            onSelected = onRightStickDigitalModeChange,
+            onSelected = { onTuningChange(tuning.copy(right = tuning.right.copy(directionMode = it))) },
         )
     }
 }
@@ -844,7 +842,6 @@ private fun stickDeadzoneModeDescription(mode: ControlsProfile.StickDeadzoneMode
     return stringResource(description)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun <T> StickModeSelector(
     label: String,

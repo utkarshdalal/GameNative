@@ -286,7 +286,6 @@
     <string name="left_stick">Stick izquierdo</string>
     <string name="right_stick">Stick derecho</string>
     <string name="dpad_category">Cruceta</string>
-    <string name="stick_tuning_category">Zona muerta y sensibilidad</string>
     <string name="physical_controller_settings_title">Ajustes del mando físico</string>
     <string name="left_stick_deadzone">Zona muerta del stick izquierdo</string>
     <string name="right_stick_deadzone">Zona muerta del stick derecho</string>

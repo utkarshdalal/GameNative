@@ -275,7 +275,6 @@
     <string name="left_stick">Levetta Sinistra</string>
     <string name="right_stick">Levetta Destra</string>
     <string name="dpad_category">D-Pad</string>
-    <string name="stick_tuning_category">Zona morta e sensibilità</string>
     <string name="physical_controller_settings_title">Impostazioni controller fisico</string>
     <string name="left_stick_deadzone">Zona morta levetta sinistra</string>
     <string name="right_stick_deadzone">Zona morta levetta destra</string>
