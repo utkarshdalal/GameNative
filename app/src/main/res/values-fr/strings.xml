@@ -293,7 +293,7 @@
     <string name="stick_deadzone_hybrid">Hybride</string>
     <string name="left_stick_direction_mode">Verrouillage directionnel du joystick gauche</string>
     <string name="right_stick_direction_mode">Verrouillage directionnel du joystick droit</string>
-    <string name="stick_direction_mode_description">Aligne toute la sortie du stick sur des directions fixes. 4 directions supprime les diagonales ; 8 directions autorise uniquement les angles cardinaux et diagonaux.</string>
+    <string name="stick_direction_mode_description">Aligne toute la sortie du stick sur des directions fixes. Le mode à 4 directions supprime les diagonales ; le mode à 8 directions autorise uniquement les angles cardinaux et diagonaux.</string>
     <string name="stick_direction_unrestricted">Libre</string>
     <string name="stick_direction_four_way">4 directions</string>
     <string name="stick_direction_eight_way">8 directions</string>

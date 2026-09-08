@@ -235,7 +235,7 @@
     <string name="left_stick_sensitivity">左スティックの感度</string>
     <string name="right_stick_sensitivity">右スティックの感度</string>
     <string name="stick_deadzone_description">入力が反応し始めるまでに必要なスティックの移動量です。ドリフトを抑えるには値を上げます。</string>
-    <string name="stick_sensitivity_description">スティックの途中までの倒し量を拡大します。1.0を超えてもゲームパッドの最大出力は超えず、より少ない物理的な倒し量で最大に達します。</string>
+    <string name="stick_sensitivity_description">スティックを途中まで倒したときの入力を増幅します。1.0を超えてもゲームパッドの最大出力は超えず、より少ない物理的な倒し量で最大に達します。</string>
     <string name="left_stick_deadzone_shape">左スティックのデッドゾーン形状</string>
     <string name="right_stick_deadzone_shape">右スティックのデッドゾーン形状</string>
     <string name="stick_deadzone_axial_description">各軸を別々に測定します。水平・垂直移動を直線に保ちやすい一方、斜め移動はやや不均一に感じる場合があります。</string>

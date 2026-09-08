@@ -221,7 +221,7 @@
     <string name="stick_deadzone_hybrid">Híbrido</string>
     <string name="left_stick_direction_mode">Encaixe direcional do analógico esquerdo</string>
     <string name="right_stick_direction_mode">Encaixe direcional do analógico direito</string>
-    <string name="stick_direction_mode_description">Ajusta toda a saída do analógico para direções fixas. 4 direções remove diagonais; 8 direções permite apenas ângulos cardeais e diagonais.</string>
+    <string name="stick_direction_mode_description">Ajusta toda a saída do analógico para direções fixas. 4 direções removem diagonais; 8 direções permitem apenas ângulos cardeais e diagonais.</string>
     <string name="stick_direction_unrestricted">Livre</string>
     <string name="stick_direction_four_way">4 direções</string>
     <string name="stick_direction_eight_way">8 direções</string>

@@ -292,7 +292,7 @@
     <string name="stick_deadzone_hybrid">Ibrida</string>
     <string name="left_stick_direction_mode">Aggancio direzionale levetta sinistra</string>
     <string name="right_stick_direction_mode">Aggancio direzionale levetta destra</string>
-    <string name="stick_direction_mode_description">Allinea l’intero output dello stick a direzioni fisse. 4 direzioni elimina le diagonali; 8 direzioni consente solo angoli cardinali e diagonali.</string>
+    <string name="stick_direction_mode_description">Allinea l’intero output dello stick a direzioni fisse. 4 direzioni eliminano le diagonali; 8 direzioni consentono solo angoli cardinali e diagonali.</string>
     <string name="stick_direction_unrestricted">Senza limiti</string>
     <string name="stick_direction_four_way">4 direzioni</string>
     <string name="stick_direction_eight_way">8 direzioni</string>
