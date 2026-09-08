@@ -7,7 +7,9 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -403,31 +405,55 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             }
         }
 
-        // Frame Generation (LSFG) — simple on/off toggle for Bionic containers
-        if (!default && config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
-            val context = LocalContext.current
-            val isDllImported = LosslessScaling.getDllFile(context).isFile
-            val isLoggedIn = SteamService.isLoggedIn
-            val ownsApp = LsfgVkManager.ownsLosslessScaling()
-            val canEnable = isLoggedIn && ownsApp && isDllImported
+        // Frame Generation (LSFG) — only available for Bionic containers when Display Renderer is Vulkan
+        val currentDisplayRenderer = StringUtils.parseIdentifier(
+            state.displayRenderers.getOrNull(state.displayRendererIndex.value).orEmpty()
+        ).ifEmpty {
+            StringUtils.parseIdentifier(config.displayRenderer)
+        }.ifEmpty {
+            Container.DEFAULT_DISPLAY_RENDERER
+        }
+        val isVulkanRenderer = currentDisplayRenderer.equals("vulkan", ignoreCase = true)
 
-            val subtitleText = when {
-                !isLoggedIn -> stringResource(R.string.lsfg_container_prompt_sign_in)
-                !ownsApp -> stringResource(R.string.lsfg_container_prompt_buy)
-                !isDllImported -> stringResource(R.string.lsfg_container_prompt_setup)
-                else -> stringResource(R.string.lsfg_container_toggle_desc)
+        if (!default && config.containerVariant.equals(Container.BIONIC, ignoreCase = true) && isVulkanRenderer) {
+            val context = LocalContext.current
+            var refreshKey by remember { mutableIntStateOf(0) }
+            val isDllImported = remember(refreshKey) { LosslessScaling.getDllFile(context).isFile }
+            var showLsfgDialog by rememberSaveable { mutableStateOf(false) }
+
+            val subtitleText = if (isDllImported) {
+                stringResource(R.string.lsfg_container_toggle_desc)
+            } else {
+                stringResource(R.string.lsfg_container_prompt_setup)
             }
 
             SettingsSwitch(
                 colors = settingsTileColorsAlt(),
                 title = { Text(text = stringResource(R.string.lsfg_enable)) },
                 subtitle = { Text(text = subtitleText) },
-                state = config.lsfgEnabled && canEnable,
-                enabled = canEnable,
+                state = config.lsfgEnabled && isDllImported,
                 onCheckedChange = { checked ->
-                    state.config.value = config.copy(lsfgEnabled = checked)
+                    if (!isDllImported) {
+                        showLsfgDialog = true
+                    } else {
+                        state.config.value = config.copy(lsfgEnabled = checked)
+                    }
                 },
             )
+
+            if (showLsfgDialog) {
+                LosslessScalingDialog(
+                    openDialog = showLsfgDialog,
+                    onDismiss = {
+                        showLsfgDialog = false
+                        refreshKey++
+                    },
+                    onInstallSuccess = {
+                        refreshKey++
+                        state.config.value = state.config.value.copy(lsfgEnabled = true)
+                    },
+                )
+            }
         }
 
         SettingsSwitch(

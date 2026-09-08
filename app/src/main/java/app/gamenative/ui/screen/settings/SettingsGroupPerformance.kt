@@ -3,7 +3,9 @@ package app.gamenative.ui.screen.settings
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -35,10 +37,11 @@ fun SettingsGroupPerformance() {
             },
         )
 
+        var refreshKey by remember { mutableIntStateOf(0) }
         var showLsfgDialog by rememberSaveable { mutableStateOf(false) }
         val isLoggedIn = SteamService.isLoggedIn
         val ownsApp = LsfgVkManager.ownsLosslessScaling()
-        val isDllImported = LosslessScaling.getDllFile(context).isFile
+        val isDllImported = remember(refreshKey) { LosslessScaling.getDllFile(context).isFile }
 
         val subtitleText = when {
             !isLoggedIn -> stringResource(R.string.library_source_not_logged_in_steam)
@@ -56,7 +59,13 @@ fun SettingsGroupPerformance() {
 
         LosslessScalingDialog(
             openDialog = showLsfgDialog,
-            onDismiss = { showLsfgDialog = false },
+            onDismiss = {
+                showLsfgDialog = false
+                refreshKey++
+            },
+            onInstallSuccess = {
+                refreshKey++
+            },
         )
     }
 }
