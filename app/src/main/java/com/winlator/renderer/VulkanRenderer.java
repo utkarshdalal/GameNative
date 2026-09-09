@@ -467,6 +467,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     private void pushRenderList(ArrayList<RenderableWindow> list) {
         if (nativeHandle == 0) return;
+        setSourceFrameCount(sourceFrames.incrementAndGet());
         int screenW = xServer.screenInfo.width, screenH = xServer.screenInfo.height;
 
         int start = 0;
@@ -535,7 +536,6 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     public void onUpdateWindowContentDirect(Window window, Drawable pixmap, short xOff, short yOff) {
         if (!flatPresentationEnabled) return;
-        setSourceFrameCount(sourceFrames.incrementAndGet());
         if (hudRef != null && !nativeMode) hudRef.update();
         if (nativeHandle == 0 || pixmap == null) return;
         Drawable targetDrawable = window.getContent();
@@ -586,7 +586,6 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     @Override
     public void onUpdateWindowContent(Window window) {
         if (!flatPresentationEnabled) return;
-        setSourceFrameCount(sourceFrames.incrementAndGet());
         if (hudRef != null) hudRef.update();
         final long handle;
         synchronized (lock) { handle = nativeHandle; }

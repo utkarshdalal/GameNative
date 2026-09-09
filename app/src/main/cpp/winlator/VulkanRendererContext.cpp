@@ -1788,7 +1788,6 @@ void VulkanRendererContext::updateWindowContent(int64_t id, void* px, short w, s
         auto it=texMap.find(id);
         if (it!=texMap.end()) it->second.dirty=true;
     }
-    framegenSourceFrames.fetch_add(1, std::memory_order_relaxed);
     needsRender.store(true); dirtyCV.notify_one();
 }
 
@@ -1831,7 +1830,6 @@ void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* 
         wt.needsTransition  = true;
         src.needsTransition = false;
     }
-    framegenSourceFrames.fetch_add(1, std::memory_order_relaxed);
     needsRender.store(true); dirtyCV.notify_one();
 }
 
