@@ -7,6 +7,7 @@
 #include "lsfg_beta.hpp"
 #include "lsfg_shaders.hpp"
 
+#include <algorithm>
 #include <vector>
 
 namespace lsfg {
@@ -52,8 +53,8 @@ LsfgBeta::LsfgBeta(const Device& device, const LsfgShaders& shaders, LsfgResourc
     }
     for (size_t i = 0; i < LSFG_BETA_OUTPUTS; ++i) {
         const VkExtent2D level_extent{
-            extent.width >> i,
-            extent.height >> i,
+            std::max(1u, extent.width >> i),
+            std::max(1u, extent.height >> i),
         };
         out_images[i] = LsfgImage(device, level_extent, LSFG_FLOW_FORMAT);
         if (!out_images[i].Valid()) return;
