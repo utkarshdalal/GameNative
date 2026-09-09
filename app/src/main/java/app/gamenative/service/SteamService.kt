@@ -1988,6 +1988,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 isUpdateOrVerify = isUpdateOrVerify,
                                 depotIdToIndex = depotIdToIndex,
                                 downloadInfo = di,
+                                // Adaptive-window ceiling (ramps up only while the link delivers);
+                                // process pool stays core-scaled.
                                 maxWorkers = speedConfig.maxDownloads,
                                 processWorkers = speedConfig.maxDecompress,
                                 parentScope = this,

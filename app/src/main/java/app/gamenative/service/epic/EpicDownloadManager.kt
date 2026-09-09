@@ -1028,6 +1028,7 @@ class EpicDownloadManager @Inject constructor(
                 pendingFileIdx = pendingFileIdx.toIntArray(),
                 expectedChunks = -1,
                 expectedBytes = -1L,
+                // Adaptive-window ceiling (ramps up only while the link delivers).
                 maxWorkers = speedConfig.maxDownloads,
                 processWorkers = speedConfig.maxDecompress,
                 cancel = cancelFlag,

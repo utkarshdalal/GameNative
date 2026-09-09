@@ -983,6 +983,7 @@ class GOGDownloadManager @Inject constructor(
                     cdnBase = cdnBase,
                     installDir = installDir.absolutePath,
                     skipPaths = donePaths.toTypedArray(),
+                    // Adaptive-window ceiling (ramps up only while the link delivers).
                     maxWorkers = speedConfig.maxDownloads,
                     processWorkers = speedConfig.maxDecompress,
                     sortLargestFirst = product == baseProductId,

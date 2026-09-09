@@ -8,6 +8,7 @@ import app.gamenative.service.download.GameDownloadService
 import app.gamenative.service.download.NativeAmazonCancelCheck
 import app.gamenative.service.download.NativeAmazonDownload
 import app.gamenative.service.download.NativeAmazonDownloadListener
+import app.gamenative.utils.DownloadSpeedConfig
 import app.gamenative.utils.MarkerUtils
 import java.io.File
 import java.security.MessageDigest
@@ -156,11 +157,14 @@ class AmazonDownloadManager @Inject constructor(
                     override fun onComplete(success: Boolean, error: String, bytesWritten: Long) = Unit
                 }
 
+                // Adaptive-window ceiling from the user's speed tier (was a hardcoded 6);
+                // process pool stays core-scaled.
+                val speedConfig = DownloadSpeedConfig()
                 val result = GameDownloadService.downloadAmazonFiles(
                     planJson = planJson,
                     installDir = installPath,
-                    maxWorkers = MAX_PARALLEL_DOWNLOADS,
-                    processWorkers = MAX_PARALLEL_DOWNLOADS,
+                    maxWorkers = speedConfig.maxDownloads,
+                    processWorkers = speedConfig.maxDecompress,
                     isCancelled = NativeAmazonCancelCheck { !downloadInfo.isActive() },
                     listener = listener,
                 )
