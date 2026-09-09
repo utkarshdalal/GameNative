@@ -58,6 +58,7 @@ class PhysicalControllerHandler(
     private val mouseMoveOffset = PointF(0f, 0f)
     private val mouseMoveRemainder = PointF(0f, 0f)
     private val mouseMoveContributions = mutableMapOf<MouseMoveSource, Float>()
+    private val mouseMoveLock = Any()
     private val sequenceHandler = Handler(Looper.getMainLooper())
     private var mouseMoveTimer: Timer? = null
     private var scrollRepeatTimer: Timer? = null
@@ -356,21 +357,23 @@ class PhysicalControllerHandler(
             mouseMoveTimer = Timer()
             mouseMoveTimer?.schedule(object : TimerTask() {
                 override fun run() {
-                    // Tuning already applies the user's chosen deadzone. Preserve sub-pixel input
-                    // across ticks instead of silently discarding low-sensitivity movement.
-                    if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f
-                    if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f
-                    if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return
+                    synchronized(mouseMoveLock) {
+                        // Tuning already applies the user's chosen deadzone. Preserve sub-pixel input
+                        // across ticks instead of silently discarding low-sensitivity movement.
+                        if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f
+                        if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f
+                        if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return@synchronized
 
-                    // Look up cursor speed dynamically so it updates when profile changes
-                    val cursorSpeed = profile?.cursorSpeed ?: 1f
-                    val scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x
-                    val scaledY = mouseMoveOffset.y * 10 * cursorSpeed + mouseMoveRemainder.y
-                    val deltaX = scaledX.toInt()
-                    val deltaY = scaledY.toInt()
-                    mouseMoveRemainder.set(scaledX - deltaX, scaledY - deltaY)
-                    if (deltaX != 0 || deltaY != 0) {
-                        xServer?.injectPointerMoveDelta(deltaX, deltaY)
+                        // Look up cursor speed dynamically so it updates when profile changes
+                        val cursorSpeed = profile?.cursorSpeed ?: 1f
+                        val scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x
+                        val scaledY = mouseMoveOffset.y * 10 * cursorSpeed + mouseMoveRemainder.y
+                        val deltaX = scaledX.toInt()
+                        val deltaY = scaledY.toInt()
+                        mouseMoveRemainder.set(scaledX - deltaX, scaledY - deltaY)
+                        if (deltaX != 0 || deltaY != 0) {
+                            xServer?.injectPointerMoveDelta(deltaX, deltaY)
+                        }
                     }
                 }
             }, 0, 1000 / 60)
@@ -405,27 +408,31 @@ class PhysicalControllerHandler(
     }
 
     private fun recalculateMouseMoveOffset() {
-        mouseMoveOffset.set(0f, 0f)
-        mouseMoveContributions.forEach { (source, contribution) ->
-            if (source.binding == Binding.MOUSE_MOVE_LEFT || source.binding == Binding.MOUSE_MOVE_RIGHT) {
-                mouseMoveOffset.x += contribution
-            } else {
-                mouseMoveOffset.y += contribution
+        synchronized(mouseMoveLock) {
+            mouseMoveOffset.set(0f, 0f)
+            mouseMoveContributions.forEach { (source, contribution) ->
+                if (source.binding == Binding.MOUSE_MOVE_LEFT || source.binding == Binding.MOUSE_MOVE_RIGHT) {
+                    mouseMoveOffset.x += contribution
+                } else {
+                    mouseMoveOffset.y += contribution
+                }
             }
-        }
-        if (mouseMoveContributions.isEmpty()) {
-            mouseMoveRemainder.set(0f, 0f)
-            mouseMoveTimer?.cancel()
-            mouseMoveTimer = null
+            if (mouseMoveContributions.isEmpty()) {
+                mouseMoveRemainder.set(0f, 0f)
+                mouseMoveTimer?.cancel()
+                mouseMoveTimer = null
+            }
         }
     }
 
     private fun clearMouseMoveContributions() {
-        mouseMoveContributions.clear()
-        mouseMoveOffset.set(0f, 0f)
-        mouseMoveRemainder.set(0f, 0f)
-        mouseMoveTimer?.cancel()
-        mouseMoveTimer = null
+        synchronized(mouseMoveLock) {
+            mouseMoveContributions.clear()
+            mouseMoveOffset.set(0f, 0f)
+            mouseMoveRemainder.set(0f, 0f)
+            mouseMoveTimer?.cancel()
+            mouseMoveTimer = null
+        }
     }
 
     private fun handleScrollBinding(binding: Binding, isActionDown: Boolean): Boolean {
