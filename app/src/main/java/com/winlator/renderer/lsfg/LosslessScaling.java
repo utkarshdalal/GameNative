@@ -86,9 +86,11 @@ public final class LosslessScaling {
     }
 
     public static File findAnyDll(Context context, Container container) {
-        if (context != null) {
-            File stored = getDllFile(context);
-            if (stored != null && stored.isFile()) return stored;
+        try {
+            File steamDll = app.gamenative.utils.LsfgVkManager.findSteamDll();
+            if (steamDll != null && steamDll.isFile()) return steamDll;
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed searching Steam for DLL: " + t.getMessage());
         }
 
         if (container != null) {
@@ -99,17 +101,16 @@ public final class LosslessScaling {
             }
         }
 
-        try {
-            File steamDll = app.gamenative.utils.LsfgVkManager.findSteamDll();
-            if (steamDll != null && steamDll.isFile()) return steamDll;
-        } catch (Throwable t) {
-            Log.w(TAG, "Failed searching Steam for DLL: " + t.getMessage());
-        }
-
         if (container != null) {
             List<File> list = findInContainers(java.util.Collections.singletonList(container));
             if (!list.isEmpty()) return list.get(0);
         }
+
+        if (context != null) {
+            File stored = getDllFile(context);
+            if (stored != null && stored.isFile()) return stored;
+        }
+
         return null;
     }
 
