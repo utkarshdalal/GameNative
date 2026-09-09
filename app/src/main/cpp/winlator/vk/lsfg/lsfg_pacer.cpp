@@ -127,12 +127,11 @@ LsfgPlan LsfgPacer::Plan(size_t capacity, uint64_t source_frames) {
         return {};
     }
 
-    output_credit += desired_outputs;
-    const size_t outputs =
-        std::max<size_t>(1, static_cast<size_t>(std::floor(output_credit + CREDIT_EPSILON)));
-    const size_t generations = std::min(outputs - 1, allowed);
+    output_credit += (desired_outputs - 1.0f);
+    const size_t available = static_cast<size_t>(std::floor(output_credit + CREDIT_EPSILON));
+    const size_t generations = std::min(available, allowed);
 
-    output_credit -= static_cast<float>(generations + 1);
+    output_credit -= static_cast<float>(generations);
     if (output_credit < 0.0f) {
         output_credit = 0.0f;
     } else if (generations == allowed && output_credit >= 1.0f) {
