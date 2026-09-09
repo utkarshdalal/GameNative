@@ -101,6 +101,7 @@
     <string name="downloads_status_complete">Завершено</string>
     <string name="downloads_status_failed">Помилка</string>
     <string name="downloads_status_paused">Призупинено</string>
+    <string name="downloads_status_queued">У черзі</string>
     <string name="downloads_summary">Керуйте активними завантаженнями та сховищем в одному місці</string>
     <string name="storage_internal">Внутрішня</string>
     <string name="storage_external">Зовнішня</string>

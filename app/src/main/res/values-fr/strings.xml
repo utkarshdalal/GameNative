@@ -105,6 +105,7 @@
     <string name="downloads_status_complete">Terminé</string>
     <string name="downloads_status_failed">Échec</string>
     <string name="downloads_status_paused">En pause</string>
+    <string name="downloads_status_queued">En file d\'attente</string>
     <string name="downloads_summary">Gérez les téléchargements actifs et le stockage au même endroit</string>
     <string name="storage_internal">Interne</string>
     <string name="storage_external">Externe</string>

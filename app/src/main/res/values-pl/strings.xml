@@ -113,6 +113,7 @@
     <string name="downloads_status_complete">Ukończono</string>
     <string name="downloads_status_failed">Nieudane</string>
     <string name="downloads_status_paused">Wstrzymano</string>
+    <string name="downloads_status_queued">W kolejce</string>
     <string name="downloads_summary">Zarządzaj aktywnymi pobraniami i pamięcią w jednym miejscu</string>
     <string name="storage_internal">Wewnętrzny</string>
     <string name="storage_external">Zewnętrzny</string>

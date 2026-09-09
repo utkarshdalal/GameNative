@@ -15,6 +15,8 @@ import app.gamenative.utils.MarkerUtils
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.data.GameSource
+import app.gamenative.service.GameDownloadQueue
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.NotificationHelper
 import com.winlator.container.Container
@@ -437,6 +439,13 @@ class EpicService : Service() {
             downloadInfo.setActive(true)
             instance.notifierOrNull?.trackDownload(downloadInfo, game.title ?: "", NotificationHelper.NOTIFICATION_ID_EPIC)
 
+            // Register with centralized queue and auto-pause other downloads
+            GameDownloadQueue.registerDownload(
+                gameSource = GameSource.EPIC,
+                gameId = appId.toString(),
+                downloadInfo = downloadInfo
+            )
+
             // Start download in background
             val job = instance.scope.launch {
                 try {
@@ -485,6 +494,9 @@ class EpicService : Service() {
                         SnackbarManager.show("Download completed successfully!")
                         downloadInfo.setProgress(1.0f)
                         downloadInfo.setActive(false)
+
+                        // Unregister from queue (will auto-resume next paused download)
+                        GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
@@ -492,6 +504,9 @@ class EpicService : Service() {
                         downloadInfo.setActive(false)
 
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
+
+                        // Unregister from queue so a paused download can resume
+                        GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
                     }
                 } catch (e: CancellationException) {
                     downloadInfo.setPostInstallSyncing(false)
@@ -507,6 +522,9 @@ class EpicService : Service() {
                     downloadInfo.setActive(false)
 
                     SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
+
+                    // Unregister from queue so a paused download can resume
+                    GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
                 } finally {
                     instance.activeDownloads.remove(appId)
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
@@ -642,6 +660,26 @@ class EpicService : Service() {
         // Initialize notification helper for foreground service
         notificationHelper = NotificationHelper(applicationContext)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
+
+        // Register resume listener with GameDownloadQueue
+        GameDownloadQueue.registerResumeListener(GameSource.EPIC, object : GameDownloadQueue.ResumeListener {
+            override fun onResumeRequested(gameSource: GameSource, gameId: String) {
+                val appId = gameId.toIntOrNull() ?: return
+                Timber.tag("Epic").i("[EpicService] Resume requested for app $appId")
+                scope.launch {
+                    val game = epicManager.getGameById(appId)
+                    if (game != null) {
+                        val installPath = game.installPath.ifBlank {
+                            EpicConstants.getGameInstallPath(applicationContext, game.appName)
+                        }
+                        val container = ContainerUtils.getOrCreateContainer(applicationContext, "EPIC_$appId")
+                        val language = ContainerUtils.toContainerData(container).language
+                        downloadGame(applicationContext, appId, emptyList(), installPath, language)
+                    }
+                }
+            }
+        })
+
         PluviaApp.events.emit(AndroidEvent.ServiceReady)
     }
 
@@ -742,6 +780,10 @@ class EpicService : Service() {
         scope.cancel() // Cancel any ongoing operations
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_EPIC)
+
+        // Unregister resume listener from GameDownloadQueue
+        GameDownloadQueue.unregisterResumeListener(GameSource.EPIC)
+
         instance = null
     }
 

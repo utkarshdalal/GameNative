@@ -14,6 +14,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
+import app.gamenative.service.GameDownloadQueue
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -468,6 +469,13 @@ class AmazonService : Service() {
                 AndroidEvent.DownloadStatusChanged(game.appId, true)
             )
 
+            // Register with centralized queue and auto-pause other downloads
+            GameDownloadQueue.registerDownload(
+                gameSource = GameSource.AMAZON,
+                gameId = productId,
+                downloadInfo = downloadInfo
+            )
+
             val job = instance.serviceScope.launch {
                 try {
                     val result = instance.amazonDownloadManager.downloadGame(
@@ -485,12 +493,18 @@ class AmazonService : Service() {
                         PluviaApp.events.emitJava(
                             AndroidEvent.LibraryInstallStatusChanged(game.appId, GameSource.AMAZON)
                         )
+
+                        // Unregister from queue (will auto-resume next paused download)
+                        GameDownloadQueue.unregisterDownload(GameSource.AMAZON, productId)
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.tag("Amazon").e(error, "Download failed for $productId")
                         downloadInfo.setActive(false)
                         instance.cleanupFailedInstall(context, game, installPath)
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
+
+                        // Unregister from queue so a paused download can resume
+                        GameDownloadQueue.unregisterDownload(GameSource.AMAZON, productId)
                     }
                 } catch (e: Exception) {
                     if (e is java.util.concurrent.CancellationException) {
@@ -498,6 +512,9 @@ class AmazonService : Service() {
                     } else {
                         Timber.tag("Amazon").e(e, "Download exception for $productId")
                         instance.cleanupFailedInstall(context, game, installPath)
+
+                        // Unregister from queue so a paused download can resume
+                        GameDownloadQueue.unregisterDownload(GameSource.AMAZON, productId)
                     }
                     downloadInfo.setActive(false)
                 } finally {
@@ -793,6 +810,23 @@ class AmazonService : Service() {
         super.onCreate()
         instance = this
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
+
+        // Register resume listener with GameDownloadQueue
+        GameDownloadQueue.registerResumeListener(GameSource.AMAZON, object : GameDownloadQueue.ResumeListener {
+            override fun onResumeRequested(gameSource: GameSource, gameId: String) {
+                Timber.tag("Amazon").i("[AmazonService] Resume requested for product $gameId")
+                serviceScope.launch {
+                    val game = amazonManager.getGameById(gameId)
+                    if (game != null) {
+                        val installPath = game.installPath.ifBlank {
+                            AmazonConstants.getGameInstallPath(applicationContext, game.title)
+                        }
+                        downloadGame(applicationContext, gameId, installPath)
+                    }
+                }
+            }
+        })
+
         PluviaApp.events.emit(AndroidEvent.ServiceReady)
         Timber.i("[Amazon] Service created")
     }
@@ -856,6 +890,10 @@ class AmazonService : Service() {
         serviceScope.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_AMAZON)
+
+        // Unregister resume listener from GameDownloadQueue
+        GameDownloadQueue.unregisterResumeListener(GameSource.AMAZON)
+
         instance = null
         super.onDestroy()
         Timber.i("[Amazon] Service destroyed")

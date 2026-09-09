@@ -289,6 +289,7 @@ class DownloadsViewModel @Inject constructor(
         val status = when {
             rawProgress < 0f || statusMessage?.startsWith("Failed", ignoreCase = true) == true -> DownloadItemStatus.FAILED
             isRunning -> DownloadItemStatus.DOWNLOADING
+            info.wasAutoPaused() -> DownloadItemStatus.QUEUED
             else -> DownloadItemStatus.PAUSED
         }
 
@@ -365,10 +366,11 @@ class DownloadsViewModel @Inject constructor(
             compareBy<DownloadItemState> { item ->
                 when {
                     item.status == DownloadItemStatus.DOWNLOADING -> 0
-                    item.isPartial -> 1
-                    item.status == DownloadItemStatus.COMPLETED -> 2
-                    item.status == DownloadItemStatus.CANCELLED -> 3
-                    else -> 4
+                    item.status == DownloadItemStatus.QUEUED -> 1
+                    item.isPartial -> 2
+                    item.status == DownloadItemStatus.COMPLETED -> 3
+                    item.status == DownloadItemStatus.CANCELLED -> 4
+                    else -> 5
                 }
             }
                 .thenByDescending { item -> if (item.isFinished) item.updatedAtMs else 0L }

@@ -99,6 +99,7 @@
     <string name="downloads_status_complete">Abgeschlossen</string>
     <string name="downloads_status_failed">Fehlgeschlagen</string>
     <string name="downloads_status_paused">Pausiert</string>
+    <string name="downloads_status_queued">In Warteschlange</string>
     <string name="downloads_summary">Aktive Downloads und Speicher an einem Ort verwalten</string>
     <string name="storage_internal">Intern</string>
     <string name="storage_external">Extern</string>

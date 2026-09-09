@@ -1281,6 +1281,7 @@ https://gamenative.app
     <string name="downloads_status_complete">Завершено</string>
     <string name="downloads_status_failed">Ошибка</string>
     <string name="downloads_status_paused">Приостановлено</string>
+    <string name="downloads_status_queued">В очереди</string>
     <string name="downloads_summary">Управляйте активными загрузками и хранилищем в одном месте</string>
     <string name="storage_internal">Внутренняя</string>
     <string name="storage_external">Внешняя</string>

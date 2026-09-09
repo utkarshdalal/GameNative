@@ -4,6 +4,7 @@ import app.gamenative.data.GameSource
 
 enum class DownloadItemStatus {
     DOWNLOADING,
+    QUEUED,
     PAUSED,
     RESUMABLE,
     COMPLETED,

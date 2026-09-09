@@ -113,6 +113,7 @@
     <string name="downloads_status_complete">완료됨</string>
     <string name="downloads_status_failed">실패</string>
     <string name="downloads_status_paused">일시중지됨</string>
+    <string name="downloads_status_queued">대기 중</string>
     <string name="downloads_summary">진행 중 %1$d개 • 재개 가능 %2$d개 • 완료 %3$d개</string>
     <string name="storage_internal">내부</string>
     <string name="storage_external">외부</string>

@@ -995,6 +995,7 @@
     <string name="downloads_clear_finished">クリア</string>
     <string name="downloads_resume_available">再開の準備完了</string>
     <string name="downloads_status_paused">一時停止中</string>
+    <string name="downloads_status_queued">キュー待ち</string>
     <string name="downloads_status_complete">完了</string>
     <string name="downloads_status_cancelled">キャンセル</string>
     <string name="downloads_status_failed">失敗した</string>

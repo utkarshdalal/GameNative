@@ -60,6 +60,7 @@
     <string name="downloads_status_complete">Fuldført</string>
     <string name="downloads_status_failed">Mislykket</string>
     <string name="downloads_status_paused">Sat på pause</string>
+    <string name="downloads_status_queued">I kø</string>
     <string name="downloads_summary">Administrer aktive downloads og lager ét sted</string>
     <string name="storage_internal">Intern</string>
     <string name="storage_external">Ekstern</string>

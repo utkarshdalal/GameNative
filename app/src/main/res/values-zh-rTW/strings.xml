@@ -104,6 +104,7 @@
     <string name="downloads_status_complete">已完成</string>
     <string name="downloads_status_failed">失敗</string>
     <string name="downloads_status_paused">已暫停</string>
+    <string name="downloads_status_queued">佇列中</string>
     <string name="downloads_summary">在同一處管理進行中的下載與儲存</string>
     <string name="storage_internal">內部</string>
     <string name="storage_external">外部</string>
