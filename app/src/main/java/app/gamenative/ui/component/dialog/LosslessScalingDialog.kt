@@ -134,8 +134,7 @@ fun LosslessScalingDialog(
 
     fun startInstall() {
         scope.launch {
-            var steamDll = withContext(Dispatchers.IO) { LsfgVkManager.findSteamDll() }
-            if (steamDll == null && !SteamService.isAppInstalled(LsfgVkManager.LOSSLESS_SCALING_APP_ID)) {
+            if (!SteamService.isAppInstalled(LsfgVkManager.LOSSLESS_SCALING_APP_ID)) {
                 val downloadInfo = SteamService.downloadApp(LsfgVkManager.LOSSLESS_SCALING_APP_ID)
                 if (downloadInfo != null) {
                     isDownloading = true
@@ -153,16 +152,21 @@ fun LosslessScalingDialog(
                         isDownloading = false
                     }
                 } else {
-                    if (!SteamService.isAppInstalled(LsfgVkManager.LOSSLESS_SCALING_APP_ID) && LsfgVkManager.findSteamDll() == null) {
+                    if (!SteamService.isAppInstalled(LsfgVkManager.LOSSLESS_SCALING_APP_ID)) {
                         SnackbarManager.show(context.getString(R.string.download_failed_try_again))
                         return@launch
                     }
                 }
             }
 
+            if (!SteamService.isAppInstalled(LsfgVkManager.LOSSLESS_SCALING_APP_ID)) {
+                SnackbarManager.show(context.getString(R.string.download_failed_try_again))
+                return@launch
+            }
+
             isLocating = true
             try {
-                steamDll = withContext(Dispatchers.IO) { LsfgVkManager.findSteamDll() }
+                var steamDll = withContext(Dispatchers.IO) { LsfgVkManager.findSteamDll() }
                 if (steamDll != null) {
                     val res = withContext(Dispatchers.IO) {
                         LosslessScaling.installFrom(context, steamDll)
