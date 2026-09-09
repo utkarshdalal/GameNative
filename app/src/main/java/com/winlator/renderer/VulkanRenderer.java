@@ -224,7 +224,26 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         }
         initExecutor = java.util.concurrent.Executors.newSingleThreadExecutor();
         initExecutor.execute(() -> {
+            String resolvedCachePath = null;
+            if (xServerView != null) {
+                boolean needCache;
+                synchronized (lock) {
+                    needCache = frameGenEnabled && frameGenShadersCachePath == null;
+                }
+                if (needCache) {
+                    Context ctx = xServerView.getContext();
+                    if (ctx != null) {
+                        java.io.File cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, null, true);
+                        if (cache != null && cache.isFile()) {
+                            resolvedCachePath = cache.getAbsolutePath();
+                        }
+                    }
+                }
+            }
             synchronized (lock) {
+                if (resolvedCachePath != null && frameGenShadersCachePath == null) {
+                    frameGenShadersCachePath = resolvedCachePath;
+                }
                 if (nativeHandle != 0) {
                     boolean ok = nativeReattachSurface(nativeHandle, surface);
                     if (!ok) {
@@ -856,15 +875,6 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     private void applyFrameGenerationSettingsLocked() {
         if (nativeHandle == 0) return;
-        if (frameGenShadersCachePath == null && xServerView != null) {
-            Context ctx = xServerView.getContext();
-            if (ctx != null) {
-                java.io.File cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, null, true);
-                if (cache != null && cache.isFile()) {
-                    frameGenShadersCachePath = cache.getAbsolutePath();
-                }
-            }
-        }
         if (frameGenShadersCachePath != null) {
             nativeSetFrameGenerationShaders(nativeHandle, frameGenShadersCachePath);
         }
@@ -874,20 +884,30 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     }
 
     public void setFrameGenerationEnabled(boolean enabled) {
+        String resolvedCachePath = null;
+        if (enabled) {
+            Context ctx = null;
+            synchronized (lock) {
+                if (frameGenShadersCachePath == null && xServerView != null) {
+                    ctx = xServerView.getContext();
+                }
+            }
+            if (ctx != null) {
+                java.io.File cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, null, true);
+                if (cache != null && cache.isFile()) {
+                    resolvedCachePath = cache.getAbsolutePath();
+                }
+            }
+        }
+
         synchronized (lock) {
             this.frameGenEnabled = enabled;
             boolean wasRequireCompositor = effectsRequireCompositor;
             effectsRequireCompositor = computeEffectsRequireCompositor();
-            if (frameGenShadersCachePath == null && enabled && xServerView != null) {
-                Context ctx = xServerView.getContext();
-                if (ctx != null) {
-                    java.io.File cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, null, true);
-                    if (cache != null && cache.isFile()) {
-                        frameGenShadersCachePath = cache.getAbsolutePath();
-                        if (nativeHandle != 0) {
-                            nativeSetFrameGenerationShaders(nativeHandle, frameGenShadersCachePath);
-                        }
-                    }
+            if (resolvedCachePath != null && frameGenShadersCachePath == null) {
+                frameGenShadersCachePath = resolvedCachePath;
+                if (nativeHandle != 0) {
+                    nativeSetFrameGenerationShaders(nativeHandle, frameGenShadersCachePath);
                 }
             }
             if (nativeHandle != 0) {
