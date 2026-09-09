@@ -38,7 +38,7 @@ class RollingFpsCounter(private val windowNs: Long = 1_000_000_000L) {
 
         val index: Int
         if (samplesCount == maxSamples) {
-            index = (samplesStart + samplesCount - 1) % maxSamples
+            index = samplesStart
             samplesStart = (samplesStart + 1) % maxSamples
         } else {
             index = (samplesStart + samplesCount) % maxSamples
