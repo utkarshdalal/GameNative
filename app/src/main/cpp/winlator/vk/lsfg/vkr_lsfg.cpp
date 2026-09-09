@@ -16,8 +16,8 @@
 
 namespace {
 
-constexpr uint64_t LSFG_REQUIRED_FRAMES = 2;
-constexpr uint32_t LSFG_RECURRENCE_FRAMES = 2;
+constexpr uint64_t LSFG_REQUIRED_FRAMES = 3;
+constexpr uint64_t LSFG_RECURRENCE_FRAMES = 1;
 constexpr uint64_t LSFG_TELEMETRY_INTERVAL = 120;
 
 constexpr float LSFG_FLOW_SCALE_MIN = 0.25f;
