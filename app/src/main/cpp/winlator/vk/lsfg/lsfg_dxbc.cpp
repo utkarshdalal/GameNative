@@ -63,7 +63,16 @@ bool lsfg_translate_dxbc(const uint8_t* bytecode, uint32_t size, uint32_t** out_
         }
 
         for (size_t i = 0; i < validBindings.size(); i++) {
-            code.data()[validBindings.at(i).bindingOffset] = static_cast<uint32_t>(i);
+            for (const auto& slot : validBindings) {
+                uint32_t binding = 0;
+                for (const auto& other : validBindings) {
+                    if (other.setIndex < slot.setIndex ||
+                        (other.setIndex == slot.setIndex && other.bindingIndex < slot.bindingIndex)) {
+                        binding++;
+                    }
+                }
+                code.data()[slot.bindingOffset] = binding;
+            }
         }
 
         const size_t byte_size = code.size();

@@ -1628,6 +1628,16 @@ ok=true;}catch(...){}
         vk_.DestroyFence(device, inFlightFences[currentFrame], nullptr);
         VkFenceCreateInfo fi{}; fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         vk_.CreateFence(device, &fi, nullptr, &inFlightFences[currentFrame]);
+        if (!toXr) {
+            VkSemaphoreCreateInfo sci{};
+            sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            vk_.DestroySemaphore(device, imgAvailSems[currentFrame], nullptr);
+            vk_.CreateSemaphore(device, &sci, nullptr, &imgAvailSems[currentFrame]);
+            for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
+                vk_.DestroySemaphore(device, imgAvailGenSems[currentFrame][g], nullptr);
+                vk_.CreateSemaphore(device, &sci, nullptr, &imgAvailGenSems[currentFrame][g]);
+            }
+        }
         fbResized.store(true);
         return;
     }

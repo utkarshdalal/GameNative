@@ -736,7 +736,7 @@ fun XServerScreen(
         ShmFramePacer.setFrameRateLimit(limit)
         PowerManager.targetFps = limit
         // keeps frame stats in base units while generated frames tick the ring
-        PowerManager.frameSampleStride = if (lsfgActive) mult else 1
+        PowerManager.frameSampleStride = if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
     }
 
     fun effectiveFpsLimit(): Int =
@@ -791,6 +791,10 @@ fun XServerScreen(
     fun applyLsfgPerformanceMode(enabled: Boolean) {
         lsfgPerformanceMode = enabled
         applyLsfgSettings()
+    }
+
+    fun applyLsfgTargetRate(target: Int) {
+        applyFpsLimiterToEngines(effectiveFpsLimit())
     }
 
     LaunchedEffect(xServerView) {
@@ -2117,7 +2121,11 @@ fun XServerScreen(
                 keyboard = Keyboard(getxServer())
                 if (renderer is com.winlator.renderer.VulkanRenderer) {
                     val isFrameGen = LsfgVkManager.isArmed(container)
-                    val cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(context, container, true)
+                    val cache = if (isFrameGen) {
+                        com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(context, container, true)
+                    } else {
+                        null
+                    }
                     if (cache != null && cache.isFile) {
                         renderer.setFrameGenerationShaders(cache.absolutePath)
                     }
@@ -2950,6 +2958,7 @@ fun XServerScreen(
                 onMultiplierChanged = ::applyLsfgMultiplier,
                 onFlowScaleChanged = ::applyLsfgFlowScale,
                 onPerformanceModeChanged = ::applyLsfgPerformanceMode,
+                onTargetRateChanged = ::applyLsfgTargetRate,
             ),
             onRequestOpen = { showQuickMenu = true },
             // Immersive tab (tab only visible when hosted by ImmersiveXrActivity)

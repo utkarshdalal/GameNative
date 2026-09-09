@@ -361,7 +361,9 @@ object LsfgVkManager {
                     wm?.defaultDisplay?.refreshRate ?: 60f
                 }
             } else 60f
-            val pm = presentMode(container).ifEmpty { container.rendererPresentMode.ifEmpty { "fifo" } }
+            val stored = container.getExtra(EXTRA_PRESENT_MODE, "")
+            val pm = if (stored.isNotEmpty()) presentMode(container)
+                     else container.rendererPresentMode.ifEmpty { "fifo" }
             val vkMode = when (pm.lowercase(java.util.Locale.ROOT)) {
                 "mailbox" -> 1
                 "immediate" -> 0

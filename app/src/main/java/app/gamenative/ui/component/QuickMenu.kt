@@ -374,6 +374,7 @@ class LsfgQuickMenuState(
     val onMultiplierChanged: (Int) -> Unit = {},
     val onFlowScaleChanged: (Float) -> Unit = {},
     val onPerformanceModeChanged: (Boolean) -> Unit = {},
+    val onTargetRateChanged: (Int) -> Unit = {},
 )
 
 @Composable
@@ -984,6 +985,7 @@ fun QuickMenu(
                                                 container?.let {
                                                     app.gamenative.utils.LsfgQuickMenuHelper.applyTargetRate(it, rate)
                                                 }
+                                                lsfg.onTargetRateChanged(rate)
                                             },
                                             scrollState = lsfgScrollState,
                                             focusRequester = lsfgItemFocusRequester,

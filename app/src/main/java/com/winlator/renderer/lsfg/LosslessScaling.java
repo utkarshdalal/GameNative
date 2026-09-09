@@ -241,7 +241,7 @@ public final class LosslessScaling {
             int status = nativeBuildCache(source, fp32.getAbsolutePath(), false);
             if (status != STATUS_OK) {
                 deleteQuietly(fp32);
-                return STATUS_OK;
+                return status;
             }
 
             if (nativeCacheVariant(fp32.getAbsolutePath()) == VARIANT_FP16) {

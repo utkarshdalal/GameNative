@@ -48,7 +48,8 @@ void CopyPresentedFrame(VkCommandBuffer cmd, VkImage source, lsfg::LsfgImage& de
         MakeTransitionBarrier(source, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                               VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
-        MakeTransitionBarrier(destination.Handle(), VK_ACCESS_SHADER_READ_BIT,
+        MakeTransitionBarrier(destination.Handle(),
+                              destination.Layout() == VK_IMAGE_LAYOUT_UNDEFINED ? 0 : VK_ACCESS_SHADER_READ_BIT,
                               VK_ACCESS_TRANSFER_WRITE_BIT, destination.Layout(),
                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
     };
