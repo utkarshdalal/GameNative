@@ -198,6 +198,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private int frameGenFlowScalePct = 70;
     private float frameGenRefreshRate = 60.0f;
     private String frameGenShadersCachePath = null;
+    private int frameGenStateGeneration = 0;
 
     private static volatile boolean gpuImageChecked = false;
 
@@ -885,38 +886,51 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     public void setFrameGenerationEnabled(boolean enabled) {
         String resolvedCachePath = null;
-        if (enabled) {
-            Context ctx = null;
-            synchronized (lock) {
-                if (frameGenShadersCachePath == null && xServerView != null) {
-                    ctx = xServerView.getContext();
-                }
+        int generation;
+        Context ctx = null;
+
+        synchronized (lock) {
+            generation = ++frameGenStateGeneration;
+            if (!enabled) {
+                applyFrameGenerationEnabledLocked(false);
+                return;
             }
-            if (ctx != null) {
-                java.io.File cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, null, true);
-                if (cache != null && cache.isFile()) {
-                    resolvedCachePath = cache.getAbsolutePath();
-                }
+            if (frameGenShadersCachePath == null && xServerView != null) {
+                ctx = xServerView.getContext();
+            }
+        }
+
+        if (ctx != null) {
+            java.io.File cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, null, true);
+            if (cache != null && cache.isFile()) {
+                resolvedCachePath = cache.getAbsolutePath();
             }
         }
 
         synchronized (lock) {
-            this.frameGenEnabled = enabled;
-            boolean wasRequireCompositor = effectsRequireCompositor;
-            effectsRequireCompositor = computeEffectsRequireCompositor();
             if (resolvedCachePath != null && frameGenShadersCachePath == null) {
                 frameGenShadersCachePath = resolvedCachePath;
                 if (nativeHandle != 0) {
                     nativeSetFrameGenerationShaders(nativeHandle, frameGenShadersCachePath);
                 }
             }
-            if (nativeHandle != 0) {
-                nativeSetFrameGenerationEnabled(nativeHandle, enabled);
+            if (generation != frameGenStateGeneration) {
+                return;
             }
-            if (nativeMode && wasRequireCompositor != effectsRequireCompositor) {
-                if (effectsRequireCompositor) tearDownScanout();
-                else establishScanout();
-            }
+            applyFrameGenerationEnabledLocked(true);
+        }
+    }
+
+    private void applyFrameGenerationEnabledLocked(boolean enabled) {
+        this.frameGenEnabled = enabled;
+        boolean wasRequireCompositor = effectsRequireCompositor;
+        effectsRequireCompositor = computeEffectsRequireCompositor();
+        if (nativeHandle != 0) {
+            nativeSetFrameGenerationEnabled(nativeHandle, enabled);
+        }
+        if (nativeMode && wasRequireCompositor != effectsRequireCompositor) {
+            if (effectsRequireCompositor) tearDownScanout();
+            else establishScanout();
         }
     }
 
