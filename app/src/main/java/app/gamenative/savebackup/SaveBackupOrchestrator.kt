@@ -365,13 +365,12 @@ class SaveBackupOrchestrator(
      *    — source-agnostic (Requirement 6.4). Unresolvable → [ImportOutcome.Aborted], no changes
      *    (Requirement 6.5). Container resolution is a shared precondition; it never mutates the
      *    container.
-     * 2. **SAF FIRST — obtain the source external location** (Requirement 5.1): reuse a still-valid
-     *    remembered grant if present ([SafLocationManager.rememberedLocation], Requirement 10.2),
-     *    else launch the SAF source picker ([ImportPickers.pickImportSource]). Picker open failure →
-     *    [ImportOutcome.Aborted] (Requirement 5.1a); cancel → [ImportOutcome.Cancelled]
-     *    (Requirement 5.8). On a fresh selection, attempt [SafLocationManager.tryPersist] so the
-     *    source is remembered next time; if it fails, warn "folder could not be remembered" but
-     *    continue this operation with the selected URI (Requirement 10.3).
+     * 2. **SAF FIRST — obtain the source external location** (Requirement 5.1): always launch the
+     *    SAF source picker ([ImportPickers.pickImportSource]). Unlike export, import never reuses or
+     *    persists a remembered grant — the source is chosen fresh each time and the remembered-grant
+     *    store models the *export destination*, not the import source (see [obtainImportSource]).
+     *    Picker open failure → [ImportOutcome.Aborted] (Requirement 5.1a); cancel →
+     *    [ImportOutcome.Cancelled] (Requirement 5.8).
      * 3. **Determine the destination [SaveLocation]** via [SaveLocationResolutionService.resolve]:
      *    - [ResolveOutcome.Resolved] → known location; **import directly, skip the browser**
      *      (Requirement 5.3).
@@ -390,8 +389,7 @@ class SaveBackupOrchestrator(
      * [SaveLocation] (step 3) have been obtained (step 4). Every earlier exit — container
      * unresolvable (step 1), SAF open failure or cancel (step 2), unresolvable persisted location or
      * browser open failure/cancel (step 3) — returns *before* `engine.import` is ever called, so no
-     * container change can have occurred (Requirements 5.7, 5.8, 5.1a, 6.5). The `tryPersist`
-     * warning path (step 2) touches only the persistable-permission store, never the container.
+     * container change can have occurred (Requirements 5.7, 5.8, 5.1a, 6.5).
      *
      * @param context Android context used to resolve the container and SAF grants.
      * @param item the game to import into; supplies the source-prefixed [LibraryItem.appId]
@@ -418,7 +416,7 @@ class SaveBackupOrchestrator(
         }
 
         // --- Step 2: SAF FIRST — obtain the source external location (Req 5.1) -------------------
-        val source: Uri = when (val obtained = obtainImportSource(context, item.appId, pickers)) {
+        val source: Uri = when (val obtained = obtainImportSource(item.appId, pickers)) {
             is ExternalLocation.Selected -> obtained.uri
             ExternalLocation.Cancelled -> return ImportOutcome.Cancelled
             is ExternalLocation.OpenFailed -> return ImportOutcome.Aborted(obtained.reason)
@@ -464,23 +462,23 @@ class SaveBackupOrchestrator(
     }
 
     /**
-     * Obtain the source tree/document URI for an import: reuse a still-valid remembered grant
-     * without re-prompting (Requirement 10.2), otherwise launch the SAF source picker and, on a
-     * fresh selection, try to persist the grant so it is remembered next time (Requirements 10.1,
-     * 10.3, 10.4). Mirrors [obtainExternalLocation] but drives the import source picker.
+     * Obtain the source tree/document URI for an import by **always launching the source picker** —
+     * import never reuses or persists a remembered grant.
+     *
+     * ## Why import does not reuse/persist grants (unlike [obtainExternalLocation])
+     *
+     * The remembered-grant machinery ([SafLocationManager], Req 10.2) is keyed by `appId` and models
+     * the *export destination* a user backs up to repeatedly. Import is different: the source is
+     * chosen fresh each time (a specific archive, a friend's backup, a different folder), so silently
+     * reusing a previously remembered location would import the wrong source without asking — and
+     * persisting the import source under the same `appId` key would clobber the export destination
+     * memory (source and destination are not the same place). Import therefore always prompts and
+     * leaves the remembered-grant store untouched; the destination-side reuse stays on export only.
      */
     private suspend fun obtainImportSource(
-        context: Context,
         appId: String,
         pickers: ImportPickers,
     ): ExternalLocation {
-        // Reuse a valid remembered grant without re-prompting (Req 10.2). A revoked/expired/
-        // unresolvable grant returns null here and is forgotten, so we fall through to the picker
-        // (Req 10.4).
-        safLocationManager.rememberedLocation(context, appId)?.let { remembered ->
-            return ExternalLocation.Selected(remembered)
-        }
-
         val picked = try {
             pickers.pickImportSource()
         } catch (e: PickerOpenException) {
@@ -491,12 +489,6 @@ class SaveBackupOrchestrator(
             // Picker cancelled → abort, no container changes (Req 5.8).
             ?: return ExternalLocation.Cancelled
 
-        // Fresh selection: request a durable grant so it is remembered next time. If it cannot be
-        // remembered, warn but continue for this operation only (Req 10.3).
-        val remembered = safLocationManager.tryPersist(appId, picked)
-        if (!remembered) {
-            pickers.onFolderNotRemembered()
-        }
         return ExternalLocation.Selected(picked)
     }
 
