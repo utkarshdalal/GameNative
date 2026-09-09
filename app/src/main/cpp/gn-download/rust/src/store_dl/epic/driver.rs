@@ -208,8 +208,9 @@ pub fn run_plan(
     };
     let host_cap = per_host_cap(req.max_workers, plan.hosts.len());
     log(&format!(
-        "plan chunk_dir={} files_pending={} chunks={} bytes={} hosts={} workers={} per_host_cap={host_cap} process_workers={}",
+        "plan chunk_dir={} version={} files_pending={} chunks={} bytes={} hosts={} workers={} per_host_cap={host_cap} process_workers={}",
         plan.manifest.chunk_dir,
+        plan.manifest.version,
         req.pending_file_indices.len(),
         chunks_total,
         plan.total_bytes,

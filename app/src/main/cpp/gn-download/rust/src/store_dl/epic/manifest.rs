@@ -32,9 +32,20 @@ pub struct ChunkInfo {
 }
 
 impl ChunkInfo {
-    /// `String.format("%08X%08X%08X%08X", guid[0..4])`.
+    /// `String.format("%08X%08X%08X%08X", guid[0..4])` — used in CDN URLs and dedup keys.
     pub fn guid_str(&self) -> String {
         guid_to_string(&self.guid)
+    }
+
+    /// Java/Kotlin `guidStr`: `guid.joinToString("-") { "%08x".format(it) }` — DASHED and
+    /// LOWERCASE. This is the on-disk cache filename the Kotlin assembly stage looks for
+    /// (`File(chunkCacheDir, chunkPart.guidStr)`); using the URL form (uppercase, no dashes)
+    /// makes every chunk "missing" at assembly time.
+    pub fn cache_file_name(&self) -> String {
+        format!(
+            "{:08x}-{:08x}-{:08x}-{:08x}",
+            self.guid[0], self.guid[1], self.guid[2], self.guid[3]
+        )
     }
 
     /// `ChunkInfo.getPath`: `"<chunkDir>/<%02d groupNum>/<%016X hash>_<GUID>.chunk"`.
@@ -105,6 +116,8 @@ impl FileInfo {
 /// the Java side still owns).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Manifest {
+    /// Binary header version / JSON blobToNum(ManifestFileVersion); logged for diagnostics.
+    pub version: i32,
     pub chunk_dir: String,
     pub unique_chunks: Vec<ChunkInfo>,
     pub files: Vec<FileInfo>,
@@ -409,6 +422,7 @@ fn parse_binary_after_magic(cur: &mut Cursor<'_>) -> Result<Manifest, String> {
     b.set_position(fml_start as i64 + fml_size as i64)?;
 
     Ok(Manifest {
+        version,
         chunk_dir: chunk_dir.to_string(),
         unique_chunks: dedup_last_wins_first_position(chunks),
         files,
@@ -453,6 +467,45 @@ fn opt_string(obj: &serde_json::Map<String, serde_json::Value>, key: &str, fallb
     }
 }
 
+/// Java `blobToNum`: Epic's BLOB number strings encode each byte as a 3-char decimal group,
+/// little-endian ("013000000000" = 13 | 0<<8 | ... = 13).
+fn blob_to_num(s: &str) -> i32 {
+    blob_to_u64(s) as i32
+}
+
+/// Java `blobToULong` / `blobToLong` — same 3-char-group little-endian encoding, 64-bit.
+/// Groups parse as SIGNED (Java toLongOrNull accepts "-5"), then wrap into the accumulator.
+fn blob_to_u64(s: &str) -> u64 {
+    let bytes = s.as_bytes();
+    let mut num: u64 = 0;
+    let mut shift = 0u32;
+    let mut i = 0;
+    while i < bytes.len() {
+        let end = (i + 3).min(bytes.len());
+        let group = std::str::from_utf8(&bytes[i..end]).unwrap_or("");
+        let val = group.parse::<i64>().unwrap_or(0) as u64;
+        num |= val.wrapping_shl(shift);
+        shift += 8;
+        i += 3;
+    }
+    num
+}
+
+/// Java `hexStringToByteArray` for a 20-byte SHA-1: exact 40 hex chars, else None (the Java
+/// version throws on bad hex, which kills the parse — a missing/short SHA simply yields an
+/// empty array, i.e. no verification).
+fn parse_hex_20(s: &str) -> Option<[u8; 20]> {
+    let clean: String = s.chars().filter(|c| !c.is_whitespace() && *c != '-').collect();
+    if clean.len() != 40 {
+        return None;
+    }
+    let mut out = [0u8; 20];
+    for i in 0..20 {
+        out[i] = u8::from_str_radix(&clean[i * 2..i * 2 + 2], 16).ok()?;
+    }
+    Some(out)
+}
+
 /// `(int) Long.parseLong(hex8, 16)` — the Java GUID quarter parse; invalid hex throws out of the
 /// whole parse.
 fn parse_guid_quarter(s: &str) -> Result<u32, String> {
@@ -483,9 +536,14 @@ pub fn parse_json_manifest(bytes: &[u8]) -> Result<Manifest, String> {
         .as_object()
         .ok_or_else(|| "JSON manifest: root is not an object".to_string())?;
 
-    let manifest_version: i32 = opt_string(root, "ManifestFileVersion", "0")
-        .parse::<i32>()
-        .unwrap_or(0);
+    // ManifestFileVersion is a BLOB string ("013000000000" = 13), NOT a decimal integer —
+    // parse it with the same 3-char-group little-endian scheme as Java's blobToNum. A plain
+    // integer parse overflows i32 (13_000_000_000) and silently yields 0, which then picks
+    // the wrong chunk dir (ChunksV4) and 404s every chunk.
+    // The fallback must match Java's optString default "013000000000" (= 13 → ChunksV3):
+    // manifests that lack the field entirely would otherwise parse as 0 → ChunksV4.
+    let manifest_version: i32 =
+        blob_to_num(&opt_string(root, "ManifestFileVersion", "013000000000"));
     let chunk_dir = chunk_dir_for_json_version(manifest_version);
 
     let chunk_hash_list = root
@@ -494,6 +552,7 @@ pub fn parse_json_manifest(bytes: &[u8]) -> Result<Manifest, String> {
         .ok_or_else(|| "JSON manifest: no ChunkHashList".to_string())?;
     let data_group_list = root.get("DataGroupList").and_then(|v| v.as_object());
     let chunk_filesize_list = root.get("ChunkFilesizeList").and_then(|v| v.as_object());
+    let chunk_sha_list = root.get("ChunkShaList").and_then(|v| v.as_object());
 
     // `LinkedHashMap<String, ChunkInfo>` keyed by the RAW key string (not the normalized GUID).
     let mut chunk_order: Vec<ChunkInfo> = Vec::new();
@@ -502,25 +561,28 @@ pub fn parse_json_manifest(bytes: &[u8]) -> Result<Manifest, String> {
         if guid_hex.len() < 32 || !guid_hex.is_char_boundary(32) {
             continue;
         }
-        let hash_hex = json_to_string(hash_value);
         let guid = parse_guid_from_hex(guid_hex)?;
-        let hash = if hash_hex.len() >= 16 && hash_hex.is_char_boundary(16) {
-            u64::from_str_radix(&hash_hex[0..16], 16).unwrap_or(0)
-        } else {
-            0
-        };
+        // Like ManifestFileVersion, ALL of these are BLOB number strings in the Java parser
+        // (blobToULong / blobToNum / blobToLong), not hex and not plain decimals. Reading
+        // the hash as hex produces a garbage filename and every chunk URL 404s.
+        let hash = blob_to_u64(&json_to_string(hash_value));
         let group_num = match data_group_list {
-            Some(dgl) => opt_string(dgl, guid_hex, "0").parse::<i32>().unwrap_or(0),
+            Some(dgl) => blob_to_num(&opt_string(dgl, guid_hex, "0")),
             None => 0,
         };
         let file_size = match chunk_filesize_list {
-            Some(cfl) => i64::from_str_radix(&opt_string(cfl, guid_hex, "0"), 16).unwrap_or(0),
+            Some(cfl) => blob_to_u64(&opt_string(cfl, guid_hex, "0")) as i64,
             None => 0,
         };
+        // ChunkShaList is plain hex (Java hexStringToByteArray), 20 bytes when present.
+        let sha1 = chunk_sha_list
+            .and_then(|csl| csl.get(guid_hex))
+            .map(json_to_string)
+            .and_then(|s| parse_hex_20(&s));
         let c = ChunkInfo {
             guid,
             hash,
-            sha1: None,
+            sha1,
             group_num,
             window_size: 0,
             file_size,
@@ -570,8 +632,9 @@ pub fn parse_json_manifest(bytes: &[u8]) -> Result<Manifest, String> {
                 if part_guid.len() >= 32 && part_guid.is_char_boundary(32) {
                     part.guid = parse_guid_from_hex(&part_guid)?;
                 }
-                part.offset = opt_string(part_obj, "Offset", "0").parse::<i32>().unwrap_or(0);
-                part.size = opt_string(part_obj, "Size", "0").parse::<i32>().unwrap_or(0);
+                // BLOB number strings, like the chunk lists (Java blobToNum).
+                part.offset = blob_to_num(&opt_string(part_obj, "Offset", "0"));
+                part.size = blob_to_num(&opt_string(part_obj, "Size", "0"));
                 fi.parts.push(part);
             }
         }
@@ -579,6 +642,7 @@ pub fn parse_json_manifest(bytes: &[u8]) -> Result<Manifest, String> {
     }
 
     Ok(Manifest {
+        version: manifest_version,
         chunk_dir: chunk_dir.to_string(),
         unique_chunks: chunk_order,
         files,
@@ -864,6 +928,34 @@ mod tests {
     }
 
     #[test]
+    fn json_manifest_missing_version_defaults_to_java_fallback() {
+        // Java's optString default is "013000000000" (= 13 → ChunksV3): real manifests that
+        // omit ManifestFileVersion must land on ChunksV3, not 0 → ChunksV4.
+        let json = r#"{
+          "ChunkHashList": { "0000000100000002000000030000000ff": "0123456789ABCDEF00" },
+          "FileManifestList": [ { "Filename": "a.bin" } ]
+        }"#;
+        let m = parse_manifest(json.as_bytes()).expect("json parse");
+        assert_eq!(m.version, 13);
+        assert_eq!(m.chunk_dir, "ChunksV3");
+    }
+
+    #[test]
+    fn blob_to_num_matches_java() {
+        assert_eq!(blob_to_num(""), 0);
+        assert_eq!(blob_to_num("013"), 13);
+        // Real-world 12-char form: a plain integer parse overflows i32 and yields 0 — the
+        // bug that picked ChunksV4 and 404'd every chunk.
+        assert_eq!(blob_to_num("013000000000"), 13);
+        assert_eq!(blob_to_num("015000000000"), 15);
+        assert_eq!(blob_to_num("006000000000"), 6);
+        // Multi-byte groups (little-endian): 1 | 2<<8 = 513
+        assert_eq!(blob_to_num("001002"), 513);
+        assert_eq!(blob_to_num("xyz"), 0, "Java toIntOrNull ?: 0");
+        assert_eq!(blob_to_num("-5"), -5, "Java parses negative groups");
+    }
+
+    #[test]
     fn chunk_dir_follows_version_thresholds() {
         for (v, dir) in [(2, "Chunks"), (3, "ChunksV2"), (6, "ChunksV3"), (15, "ChunksV4")] {
             let bytes = build_manifest(&sample_chunks(), &sample_files(), v, false);
@@ -930,18 +1022,21 @@ mod tests {
 
     #[test]
     fn json_manifest_parses_like_java() {
+        // All numeric fields use Epic's BLOB encoding (%03d per byte, little-endian):
+        // hash 0x0123456789ABCDEF → bytes LE [EF CD AB 89 67 45 23 01] → "239205171137103069035001"
         let json = r#"{
-          "ManifestFileVersion": "013",
+          "ManifestFileVersion": "013000000000",
           "ChunkHashList": {
-            "0000000100000002000000030000000ff": "0123456789ABCDEF00",
+            "0000000100000002000000030000000ff": "239205171137103069035001",
             "short": "00",
             "DEADBEEFFFFFFFFF0000000080000000": "zz"
           },
-          "DataGroupList": { "0000000100000002000000030000000ff": "7", "DEADBEEFFFFFFFFF0000000080000000": "x" },
-          "ChunkFilesizeList": { "0000000100000002000000030000000ff": "FF" },
+          "DataGroupList": { "0000000100000002000000030000000ff": "007", "DEADBEEFFFFFFFFF0000000080000000": "x" },
+          "ChunkFilesizeList": { "0000000100000002000000030000000ff": "255" },
+          "ChunkShaList": { "0000000100000002000000030000000ff": "0123456789abcdef0123456789ABCDEF01234567" },
           "FileManifestList": [
             { "Filename": "a.bin", "InstallTags": ["German", ""],
-              "FileChunkParts": [ { "Guid": "0000000100000002000000030000000ff", "Offset": "12", "Size": "34" },
+              "FileChunkParts": [ { "Guid": "0000000100000002000000030000000ff", "Offset": "012", "Size": "034" },
                                   { "Guid": "tooshort", "Offset": "x", "Size": "-5" } ] },
             { "Filename": "b.bin" }
           ]
@@ -953,13 +1048,20 @@ mod tests {
         assert_eq!(c0.guid, [1, 2, 3, 0x0000_000F]);
         assert_eq!(c0.hash, 0x0123_4567_89AB_CDEF);
         assert_eq!(c0.group_num, 7);
-        assert_eq!(c0.file_size, 0xFF);
+        assert_eq!(c0.file_size, 255);
         assert_eq!(c0.window_size, 0);
-        assert!(c0.sha1.is_none());
+        assert_eq!(
+            c0.sha1,
+            Some([
+                0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89,
+                0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67
+            ])
+        );
         let c1 = &m.unique_chunks[1];
         assert_eq!(c1.hash, 0, "unparseable hash → 0");
         assert_eq!(c1.group_num, 0, "unparseable group → 0");
         assert_eq!(c1.file_size, 0, "missing size → 0");
+        assert!(c1.sha1.is_none(), "missing SHA → None");
 
         assert_eq!(m.files.len(), 2);
         assert_eq!(m.files[0].install_tags, vec!["German".to_string()]);
