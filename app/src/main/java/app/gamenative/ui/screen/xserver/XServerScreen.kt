@@ -2911,12 +2911,7 @@ fun XServerScreen(
             performance = PerformanceQuickMenuState(
                 hudEnabled = isPerformanceHudEnabled,
                 hudConfig = performanceHudConfig,
-                fpsLimiterEnabled = fpsLimiterEnabled,
-                fpsLimiterTarget = fpsLimiterTarget,
-                fpsLimiterMax = detectedMaxRefreshRateHz,
                 onHudConfigChanged = ::applyPerformanceHudConfig,
-                onFpsLimiterEnabledChanged = ::applyFpsLimiterEnabled,
-                onFpsLimiterChanged = ::applyFpsLimiterTarget,
             ),
             hasPhysicalController = hasPhysicalController,
             isTouchscreenModeActive = isTouchscreenModeActive,
@@ -2929,9 +2924,14 @@ fun XServerScreen(
                 if (isShooterModeActive) add(QuickMenuAction.SHOOTER_MODE)
                 if (isDisableMouseInput) add(QuickMenuAction.DISABLE_MOUSE)
             },
-            // LSFG hot-reload (tab only visible when enabled in container settings)
+            // Frame pacing (FPS limiter + LSFG)
             lsfg = LsfgQuickMenuState(
                 isAvailable = isLsfgAvailable,
+                fpsLimiterEnabled = fpsLimiterEnabled,
+                fpsLimiterTarget = fpsLimiterTarget,
+                fpsLimiterMax = detectedMaxRefreshRateHz,
+                onFpsLimiterEnabledChanged = ::applyFpsLimiterEnabled,
+                onFpsLimiterChanged = ::applyFpsLimiterTarget,
                 multiplier = lsfgMultiplier,
                 flowScale = lsfgFlowScale,
                 performanceMode = lsfgPerformanceMode,

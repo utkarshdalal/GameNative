@@ -140,14 +140,14 @@ object QuickMenuAction {
 }
 
 private object QuickMenuTab {
-    const val HUD = 0
-    const val LSFG = 1
-    const val EFFECTS = 2
-    const val CONTROLLER = 3
-    const val TOOLS = 4
-    const val IMMERSIVE = 5
-    const val INVITE = 6
-    const val POWER = 7
+    const val LSFG = 0
+    const val HUD = 1
+    const val POWER = 2
+    const val EFFECTS = 3
+    const val CONTROLLER = 4
+    const val TOOLS = 5
+    const val IMMERSIVE = 6
+    const val INVITE = 7
 }
 
 private class GyroQuickMenuState(private val container: Container) {
@@ -348,25 +348,25 @@ class ImmersiveInputBypass(
 }
 val LocalImmersiveInputBypass = staticCompositionLocalOf { ImmersiveInputBypass() }
 
-/** Performance HUD + FPS limiter state/callbacks as one QuickMenu parameter instead of eight —
+/** Performance HUD state/callbacks as one QuickMenu parameter instead of three —
  * XServerScreen's call site sits at the dex verifier's 255-register limit, and every argument
  * of that call costs a register there (a runtime VerifyError from exactly that was reproduced
  * on device). */
 class PerformanceQuickMenuState(
     val hudEnabled: Boolean = false,
     val hudConfig: PerformanceHudConfig = PerformanceHudConfig(),
-    val fpsLimiterEnabled: Boolean = true,
-    val fpsLimiterTarget: Int = 60,
-    val fpsLimiterMax: Int = 60,
     val onHudConfigChanged: (PerformanceHudConfig) -> Unit = {},
-    val onFpsLimiterEnabledChanged: (Boolean) -> Unit = {},
-    val onFpsLimiterChanged: (Int) -> Unit = {},
 )
 
-/** LSFG hot-reload state/callbacks as one QuickMenu parameter instead of seven — same
- * register-limit reason as [PerformanceQuickMenuState]. Tab only visible when [isAvailable]. */
+/** Frame pacing (FPS limiter + LSFG) state/callbacks as one QuickMenu parameter — same
+ * register-limit reason as [PerformanceQuickMenuState]. */
 class LsfgQuickMenuState(
     val isAvailable: Boolean = false,
+    val fpsLimiterEnabled: Boolean = false,
+    val fpsLimiterTarget: Int = 30,
+    val fpsLimiterMax: Int = 60,
+    val onFpsLimiterEnabledChanged: (Boolean) -> Unit = {},
+    val onFpsLimiterChanged: (Int) -> Unit = {},
     val multiplier: Int = 2,
     val flowScale: Float = 0.80f,
     val performanceMode: Boolean = true,
@@ -404,13 +404,13 @@ fun QuickMenu(
     val immersiveControls = immersiveHooks?.controls
     val isPerformanceHudEnabled = performance.hudEnabled
     val performanceHudConfig = performance.hudConfig
-    val fpsLimiterEnabled = performance.fpsLimiterEnabled
-    val fpsLimiterTarget = performance.fpsLimiterTarget
-    val fpsLimiterMax = performance.fpsLimiterMax
     val onPerformanceHudConfigChanged = performance.onHudConfigChanged
-    val onFpsLimiterEnabledChanged = performance.onFpsLimiterEnabledChanged
-    val onFpsLimiterChanged = performance.onFpsLimiterChanged
     val isLsfgAvailable = lsfg.isAvailable
+    val fpsLimiterEnabled = lsfg.fpsLimiterEnabled
+    val fpsLimiterTarget = lsfg.fpsLimiterTarget
+    val fpsLimiterMax = lsfg.fpsLimiterMax
+    val onFpsLimiterEnabledChanged = lsfg.onFpsLimiterEnabledChanged
+    val onFpsLimiterChanged = lsfg.onFpsLimiterChanged
     val lsfgMultiplier = lsfg.multiplier
     val lsfgFlowScale = lsfg.flowScale
     val lsfgPerformanceMode = lsfg.performanceMode
@@ -542,17 +542,16 @@ fun QuickMenu(
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
             when {
-                PrefManager.quickMenuLastTab == QuickMenuTab.LSFG && !isLsfgAvailable -> QuickMenuTab.HUD
-                PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.HUD
-                PrefManager.quickMenuLastTab == QuickMenuTab.POWER -> QuickMenuTab.HUD
-                PrefManager.quickMenuLastTab == QuickMenuTab.IMMERSIVE && immersiveControls == null -> QuickMenuTab.HUD
+                PrefManager.quickMenuLastTab == QuickMenuTab.INVITE && inviteMenu == null -> QuickMenuTab.LSFG
+                PrefManager.quickMenuLastTab == QuickMenuTab.POWER -> QuickMenuTab.LSFG
+                PrefManager.quickMenuLastTab == QuickMenuTab.IMMERSIVE && immersiveControls == null -> QuickMenuTab.LSFG
                 else -> PrefManager.quickMenuLastTab
             }
         )
     }
     val selectedTabLabelResId = when (selectedTab) {
+        QuickMenuTab.LSFG -> R.string.session_drawer_frame_generation
         QuickMenuTab.HUD -> R.string.performance_hud
-        QuickMenuTab.LSFG -> R.string.lsfg_tab_title
         QuickMenuTab.EFFECTS -> R.string.screen_effects
         QuickMenuTab.TOOLS -> R.string.task_manager
         QuickMenuTab.INVITE -> R.string.steam_invite_tab_title
@@ -616,11 +615,11 @@ fun QuickMenu(
 
     // Only the tabs actually shown in the rail, in on-screen order — mirrors the conditions each
     // QuickMenuTabButton below is gated on (isLsfgAvailable, a renderer being available, etc).
-    val availableTabs = remember(isLsfgAvailable, renderer, glRenderer, immersiveControls, inviteMenu)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           {
+    val availableTabs = remember(isLsfgAvailable, renderer, glRenderer, immersiveControls, inviteMenu) {
         buildList {
+            add(QuickMenuTab.LSFG)
             add(QuickMenuTab.HUD)
             add(QuickMenuTab.POWER)
-            if (isLsfgAvailable) add(QuickMenuTab.LSFG)
             if (inviteMenu != null) add(QuickMenuTab.INVITE)
             if (renderer != null || glRenderer != null) add(QuickMenuTab.EFFECTS)
             add(QuickMenuTab.CONTROLLER)
@@ -635,8 +634,8 @@ fun QuickMenu(
         }
         immersiveHooks?.registerFocusTabRail?.invoke {
             val requester = when (selectedTab) {
-                QuickMenuTab.HUD -> hudTabFocusRequester
                 QuickMenuTab.LSFG -> lsfgTabFocusRequester
+                QuickMenuTab.HUD -> hudTabFocusRequester
                 QuickMenuTab.EFFECTS -> effectsTabFocusRequester
                 QuickMenuTab.CONTROLLER -> controllerTabFocusRequester
                 QuickMenuTab.TOOLS -> toolsTabFocusRequester
@@ -806,6 +805,18 @@ fun QuickMenu(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 QuickMenuTabButton(
+                                    icon = Icons.Default.Speed,
+                                    contentDescriptionResId = R.string.session_drawer_frame_generation,
+                                    selected = selectedTab == QuickMenuTab.LSFG,
+                                    accentColor = PluviaTheme.colors.accentPurple,
+                                    onSelected = {
+                                        selectedTab = QuickMenuTab.LSFG
+                                        PrefManager.quickMenuLastTab = selectedTab
+                                    },
+                                    modifier = Modifier.width(56.dp),
+                                    focusRequester = lsfgTabFocusRequester,
+                                )
+                                QuickMenuTabButton(
                                     icon = Icons.Default.QueryStats,
                                     contentDescriptionResId = R.string.performance_hud,
                                     selected = selectedTab == QuickMenuTab.HUD,
@@ -829,20 +840,6 @@ fun QuickMenu(
                                     modifier = Modifier.width(56.dp),
                                     focusRequester = powerTabFocusRequester,
                                 )
-                                if (isLsfgAvailable) {
-                                    QuickMenuTabButton(
-                                        icon = Icons.Default.Speed,
-                                        contentDescriptionResId = R.string.lsfg_tab_title,
-                                        selected = selectedTab == QuickMenuTab.LSFG,
-                                        accentColor = PluviaTheme.colors.accentPurple,
-                                        onSelected = {
-                                            selectedTab = QuickMenuTab.LSFG
-                                            PrefManager.quickMenuLastTab = selectedTab
-                                        },
-                                        modifier = Modifier.width(56.dp),
-                                        focusRequester = lsfgTabFocusRequester,
-                                    )
-                                }
                                 if (inviteMenu != null) {
                                     QuickMenuTabButton(
                                         icon = Icons.Default.PersonAdd,
@@ -956,28 +953,14 @@ fun QuickMenu(
                                 modifier = Modifier.weight(1f),
                             ) {
                                 when (selectedTab) {
-                                    QuickMenuTab.HUD -> {
-                                        PerformanceHudQuickMenuTab(
-                                            isPerformanceHudEnabled = isPerformanceHudEnabled,
-                                            performanceHudConfig = performanceHudConfig,
+                                    QuickMenuTab.LSFG -> {
+                                        LsfgQuickMenuTab(
                                             fpsLimiterEnabled = fpsLimiterEnabled,
                                             fpsLimiterTarget = fpsLimiterTarget,
                                             fpsLimiterMax = fpsLimiterMax,
-                                            lsfgMultiplier = if (isLsfgAvailable) lsfgMultiplier else 0,
-                                            onTogglePerformanceHud = {
-                                                onItemSelected(QuickMenuAction.PERFORMANCE_HUD)
-                                            },
-                                            onPerformanceHudConfigChanged = onPerformanceHudConfigChanged,
                                             onFpsLimiterEnabledChanged = onFpsLimiterEnabledChanged,
                                             onFpsLimiterChanged = onFpsLimiterChanged,
-                                            scrollState = hudScrollState,
-                                            focusRequester = hudItemFocusRequester,
-                                            modifier = Modifier.fillMaxSize(),
-                                        )
-                                    }
-
-                                    QuickMenuTab.LSFG -> {
-                                        LsfgQuickMenuTab(
+                                            isLsfgAvailable = isLsfgAvailable,
                                             multiplier = lsfgMultiplier,
                                             flowScale = lsfgFlowScale,
                                             performanceMode = lsfgPerformanceMode,
@@ -1003,6 +986,20 @@ fun QuickMenu(
                                             },
                                             scrollState = lsfgScrollState,
                                             focusRequester = lsfgItemFocusRequester,
+                                            modifier = Modifier.fillMaxSize(),
+                                        )
+                                    }
+
+                                    QuickMenuTab.HUD -> {
+                                        PerformanceHudQuickMenuTab(
+                                            isPerformanceHudEnabled = isPerformanceHudEnabled,
+                                            performanceHudConfig = performanceHudConfig,
+                                            onTogglePerformanceHud = {
+                                                onItemSelected(QuickMenuAction.PERFORMANCE_HUD)
+                                            },
+                                            onPerformanceHudConfigChanged = onPerformanceHudConfigChanged,
+                                            scrollState = hudScrollState,
+                                            focusRequester = hudItemFocusRequester,
                                             modifier = Modifier.fillMaxSize(),
                                         )
                                     }
@@ -1307,14 +1304,8 @@ private fun ToolsQuickMenuTab(
 private fun PerformanceHudQuickMenuTab(
     isPerformanceHudEnabled: Boolean,
     performanceHudConfig: PerformanceHudConfig,
-    fpsLimiterEnabled: Boolean,
-    fpsLimiterTarget: Int,
-    fpsLimiterMax: Int,
-    lsfgMultiplier: Int,
     onTogglePerformanceHud: () -> Unit,
     onPerformanceHudConfigChanged: (PerformanceHudConfig) -> Unit,
-    onFpsLimiterEnabledChanged: (Boolean) -> Unit,
-    onFpsLimiterChanged: (Int) -> Unit,
     scrollState: ScrollState,
     focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
@@ -1327,46 +1318,6 @@ private fun PerformanceHudQuickMenuTab(
             .focusGroup(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        // ── FPS Limiter (topmost) ────────────────────────────────────────
-        val lsfgActive = lsfgMultiplier >= 2
-        QuickMenuToggleRow(
-            title = stringResource(R.string.performance_hud_fps_limiter),
-            subtitle = if (lsfgActive) {
-                stringResource(R.string.performance_hud_fps_limiter_lsfg_base)
-            } else null,
-            enabled = fpsLimiterEnabled,
-            onToggle = { onFpsLimiterEnabledChanged(!fpsLimiterEnabled) },
-            accentColor = accentColor,
-            focusRequester = focusRequester,
-        )
-
-        AnimatedVisibility(
-            visible = fpsLimiterEnabled,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut(),
-        ) {
-            Column {
-                Spacer(modifier = Modifier.height(4.dp))
-                QuickMenuAdjustmentRow(
-                    title = stringResource(R.string.performance_hud_fps_limiter_target),
-                    valueText = stringResource(
-                        R.string.performance_hud_fps_limiter_value,
-                        fpsLimiterTarget,
-                    ),
-                    progress = fpsLimiterProgress(fpsLimiterTarget, fpsLimiterMax),
-                    onDecrease = {
-                        onFpsLimiterChanged(previousFpsLimiterValue(fpsLimiterTarget, fpsLimiterMax))
-                    },
-                    onIncrease = {
-                        onFpsLimiterChanged(nextFpsLimiterValue(fpsLimiterTarget, fpsLimiterMax))
-                    },
-                    accentColor = accentColor,
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
         // ── Performance HUD ──────────────────────────────────────────────
         QuickMenuToggleRow(
             title = stringResource(R.string.performance_hud),
@@ -1374,6 +1325,7 @@ private fun PerformanceHudQuickMenuTab(
             enabled = isPerformanceHudEnabled,
             onToggle = onTogglePerformanceHud,
             accentColor = accentColor,
+            focusRequester = focusRequester,
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -1681,6 +1633,12 @@ private fun PerformanceHudQuickMenuTab(
 
 @Composable
 private fun LsfgQuickMenuTab(
+    fpsLimiterEnabled: Boolean,
+    fpsLimiterTarget: Int,
+    fpsLimiterMax: Int,
+    onFpsLimiterEnabledChanged: (Boolean) -> Unit,
+    onFpsLimiterChanged: (Int) -> Unit,
+    isLsfgAvailable: Boolean,
     multiplier: Int,
     flowScale: Float,
     performanceMode: Boolean,
@@ -1696,6 +1654,7 @@ private fun LsfgQuickMenuTab(
     modifier: Modifier = Modifier,
 ) {
     val accentColor = PluviaTheme.colors.accentPurple
+    val lsfgActive = isLsfgAvailable && (multiplier >= 2 || targetRate > 0)
     val isEnabled = multiplier >= 2 || targetRate > 0
     var lastActiveMultiplier by rememberSaveable {
         mutableIntStateOf(if (multiplier >= 2) multiplier else 2)
@@ -1746,26 +1705,65 @@ private fun LsfgQuickMenuTab(
             .focusGroup(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        // ── Master Toggle: Generate Frames ───────────────────────────────
+        // ── FPS Limiter (topmost entry) ───────────────────────────────────
         QuickMenuToggleRow(
-            title = stringResource(R.string.session_drawer_frame_generation_enable),
-            enabled = isEnabled,
-            onToggle = {
-                if (isEnabled) {
-                    onMultiplierChanged(0)
-                } else {
-                    onMultiplierChanged(lastActiveMultiplier.coerceIn(2, 4))
-                }
-            },
+            title = stringResource(R.string.performance_hud_fps_limiter),
+            subtitle = if (lsfgActive) {
+                stringResource(R.string.performance_hud_fps_limiter_lsfg_base)
+            } else null,
+            enabled = fpsLimiterEnabled,
+            onToggle = { onFpsLimiterEnabledChanged(!fpsLimiterEnabled) },
             accentColor = accentColor,
             focusRequester = focusRequester,
         )
 
         AnimatedVisibility(
-            visible = isEnabled,
+            visible = fpsLimiterEnabled,
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut(),
         ) {
+            Column {
+                Spacer(modifier = Modifier.height(4.dp))
+                QuickMenuAdjustmentRow(
+                    title = stringResource(R.string.performance_hud_fps_limiter_target),
+                    valueText = stringResource(
+                        R.string.performance_hud_fps_limiter_value,
+                        fpsLimiterTarget,
+                    ),
+                    progress = fpsLimiterProgress(fpsLimiterTarget, fpsLimiterMax),
+                    onDecrease = {
+                        onFpsLimiterChanged(previousFpsLimiterValue(fpsLimiterTarget, fpsLimiterMax))
+                    },
+                    onIncrease = {
+                        onFpsLimiterChanged(nextFpsLimiterValue(fpsLimiterTarget, fpsLimiterMax))
+                    },
+                    accentColor = accentColor,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // ── Frame Generation Section ─────────────────────────────────────
+        if (isLsfgAvailable) {
+            QuickMenuToggleRow(
+                title = stringResource(R.string.session_drawer_frame_generation_enable),
+                enabled = isEnabled,
+                onToggle = {
+                    if (isEnabled) {
+                        onMultiplierChanged(0)
+                    } else {
+                        onMultiplierChanged(lastActiveMultiplier.coerceIn(2, 4))
+                    }
+                },
+                accentColor = accentColor,
+            )
+
+            AnimatedVisibility(
+                visible = isEnabled,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Spacer(modifier = Modifier.height(4.dp))
 
@@ -2113,6 +2111,17 @@ private fun LsfgQuickMenuTab(
                     }
                 }
             }
+        }
+    } else {
+            QuickMenuSectionHeader(
+                title = stringResource(R.string.session_drawer_frame_generation),
+            )
+            Text(
+                text = stringResource(R.string.session_drawer_frame_generation_missing),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
