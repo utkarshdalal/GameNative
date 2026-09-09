@@ -25,25 +25,26 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.api.isValidCommunityConfig
 import app.gamenative.api.prepareCommunityConfigForApply
-import app.gamenative.data.GameSource
 import app.gamenative.data.FavoritesManager
+import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
+import app.gamenative.savebackup.rememberSafPicker
 import app.gamenative.ui.component.dialog.CommunityConfigsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
-import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.Achievement
+import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.screen.library.components.toggleFavorite
@@ -56,17 +57,17 @@ import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.channels.Channel
 import com.winlator.container.ContainerData
 import com.winlator.core.GPUInformation
 import java.io.File
 import kotlin.text.Charsets
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -82,6 +83,25 @@ data class KnownConfigInstallState(
     val visible: Boolean,
     val progress: Float,
     val label: String,
+)
+
+/**
+ * A pending in-app [app.gamenative.savebackup.ContainerBrowser] request bridged to the
+ * [app.gamenative.savebackup.SaveBackupOrchestrator]'s suspend `openContainerBrowser` callback.
+ *
+ * When non-null in [BaseAppScreen.Content], the [app.gamenative.ui.screen.savebackup.ContainerBrowserScreen]
+ * is rendered full-screen. [deferred] is completed with the confirmed-and-persisted
+ * [app.gamenative.savebackup.SaveLocation] (on confirm) or `null` (on cancel), unblocking the
+ * awaiting orchestrator flow.
+ *
+ * @param storeAppId the source-prefixed appId the confirmed location is persisted under (Req 3.10),
+ *   the same key the resolver reads so it resolves as Resolved next time.
+ */
+data class BrowserRequest(
+    val openResult: app.gamenative.savebackup.OpenResult,
+    val driveCPath: java.nio.file.Path,
+    val storeAppId: String,
+    val deferred: kotlinx.coroutines.CompletableDeferred<app.gamenative.savebackup.SaveLocation?>,
 )
 
 internal suspend fun installMissingComponentsForConfig(
@@ -162,6 +182,19 @@ internal suspend fun installMissingComponentsForConfig(
 abstract class BaseAppScreen {
     companion object {
         private const val WINDOWS_VR_ENABLED_EXTRA = "windowsVrEnabled"
+
+        /**
+         * Source-agnostic save-location resolution injected into the [SaveBackupOrchestrator] that
+         * drives the Export/Import saves flows in [Content]. Lazily constructed so it is only
+         * touched after `PrefManager.init` (its DataStore-backed store requires it). The default
+         * strategy auto-resolves Steam and defers other sources to the container browser, so one
+         * instance serves all supported sources.
+         */
+        private val saveLocationResolution: app.gamenative.savebackup.SaveLocationResolutionService by lazy {
+            app.gamenative.savebackup.SaveLocationResolutionService(
+                app.gamenative.savebackup.DataStoreSaveLocationStore.default(),
+            )
+        }
         private val installDialogStates = mutableStateMapOf<String, app.gamenative.ui.component.dialog.state.MessageDialogState>()
         private val exportConfigRequests = mutableStateMapOf<String, Boolean>()
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
@@ -591,7 +624,7 @@ abstract class BaseAppScreen {
             onClick = {
                 scope.launch {
                     clipboardManager.setClipEntry(
-                        ClipEntry(ClipData.newPlainText(labelText, uri))
+                        ClipEntry(ClipData.newPlainText(labelText, uri)),
                     )
                 }
             },
@@ -687,7 +720,18 @@ abstract class BaseAppScreen {
         )
     }
 
-    protected open fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean = false
+    /**
+     * Save backup (Export/Import saves) is available for the Steam, GOG, Epic, and Amazon sources.
+     * The engine is source-agnostic (Req 6.1); custom games are excluded. Sources may override to
+     * further restrict it.
+     */
+    protected open fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean =
+        libraryItem.gameSource in setOf(
+            GameSource.STEAM,
+            GameSource.GOG,
+            GameSource.EPIC,
+            GameSource.AMAZON,
+        )
 
     protected open val supportsAchievements: Boolean = false
 
@@ -698,17 +742,14 @@ abstract class BaseAppScreen {
     @Composable
     protected open fun achievementsReadyKey(): Any = Unit
 
-    protected open suspend fun exportSaves(
-        context: Context,
-        libraryItem: LibraryItem,
-        uri: android.net.Uri,
-    ): Boolean = false
-
-    protected open suspend fun importSaves(
-        context: Context,
-        libraryItem: LibraryItem,
-        uri: android.net.Uri,
-    ): Boolean = false
+    // NOTE: The former direct-wiring helpers `exportSaves`, `exportSavesRawTree`,
+    // `resolveExportSaveLocation`, `importSaves`, and `regularSaveFilesUnder` were removed. The
+    // export/import UI flows now go entirely through [SaveBackupOrchestrator] (built in [Content]),
+    // which owns container resolution, save-location resolution (opening the [ContainerBrowser] when
+    // unset), SAF selection + remembered persistable grants ([SafLocationManager]), the
+    // interoperability hint's PathType lookup, and the transfer via [DefaultSaveBackupEngine]. Those
+    // helpers duplicated the engine/resolver and left the browser/orchestrator/SAF-manager unused,
+    // so they became dead code once the orchestrator was wired in.
 
     /**
      * Get config-related menu options (e.g. Export config, Import config).
@@ -1155,6 +1196,74 @@ abstract class BaseAppScreen {
     }
 
     /**
+     * Export-layout choice shown before the external location is picked (Req 12): the user selects
+     * Archive (single `.zip`) or Raw folder tree. Reuses the same [AlertDialog] pattern as
+     * [ResetConfirmDialog]. [onArchive] launches the existing `.zip` `CreateDocument` flow;
+     * [onRawTree] proceeds to the interoperability hint before the tree picker.
+     */
+    @Composable
+    protected fun ExportLayoutChoiceDialog(
+        onArchive: () -> Unit,
+        onRawTree: () -> Unit,
+        onDismiss: () -> Unit,
+    ) {
+        val context = LocalContext.current
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(context.getString(R.string.save_layout_choice_title)) },
+            text = { Text(context.getString(R.string.save_layout_choice_message)) },
+            confirmButton = {
+                TextButton(onClick = onArchive) {
+                    Text(context.getString(R.string.save_layout_archive))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onRawTree) {
+                    Text(context.getString(R.string.save_layout_raw_tree))
+                }
+            },
+        )
+    }
+
+    /**
+     * Interoperability hint shown for a Raw-tree export before the external location is selected
+     * (Req 12.1/12.2/12.3). The [hint] is derived purely from the resolved save location's
+     * `PathType` via [app.gamenative.savebackup.InteroperabilityHintClassifier.classify], and this
+     * dialog maps it to the matching localized message. Continue proceeds to the tree picker.
+     */
+    @Composable
+    protected fun InteropHintDialog(
+        hint: app.gamenative.savebackup.InteroperabilityHint,
+        onContinue: () -> Unit,
+        onDismiss: () -> Unit,
+    ) {
+        val context = LocalContext.current
+        val messageRes = when (hint) {
+            app.gamenative.savebackup.InteroperabilityHint.INTEROPERABLE ->
+                R.string.save_interop_hint_interoperable
+            app.gamenative.savebackup.InteroperabilityHint.NOT_EXPECTED_TO_LINE_UP ->
+                R.string.save_interop_hint_steam_userdata
+            app.gamenative.savebackup.InteroperabilityHint.NOT_GUARANTEED ->
+                R.string.save_interop_hint_not_guaranteed
+        }
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(context.getString(R.string.save_interop_hint_title)) },
+            text = { Text(context.getString(messageRes)) },
+            confirmButton = {
+                TextButton(onClick = onContinue) {
+                    Text(context.getString(R.string.save_interop_hint_continue))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(context.getString(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    /**
      * Get the options menu items specific to this game source
      */
     @Composable
@@ -1244,12 +1353,15 @@ abstract class BaseAppScreen {
             mutableStateOf<app.gamenative.utils.HltbService.Stats?>(null)
         }
         LaunchedEffect(displayInfoBase.name) {
-            if (displayInfoBase.name.isNotBlank())
+            if (displayInfoBase.name.isNotBlank()) {
                 hltbStats = try {
                     app.gamenative.utils.HltbService.getStats(displayInfoBase.name)
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
-                } catch (_: Exception) { null }
+                } catch (_: Exception) {
+                    null
+                }
+            }
         }
         val displayInfo = displayInfoBase.copy(hltbStats = hltbStats)
 
@@ -1511,6 +1623,227 @@ abstract class BaseAppScreen {
             }
         }
 
+        // ---------------------------------------------------------------------------------------
+        // Save backup (Export/Import) — driven end-to-end by [SaveBackupOrchestrator] (tasks 11/12).
+        //
+        // The orchestrator sequences the two-picker flows and enforces atomicity; the UI's only job
+        // is to faithfully implement its suspend picker callbacks and render the container browser.
+        // The two pickers are asynchronous UI (an ActivityResult launcher for SAF and a full-screen
+        // Compose browser), so each callback is bridged to a suspend value with a
+        // [kotlinx.coroutines.CompletableDeferred] held in Compose state: the callback awaits the
+        // deferred, and the launcher `onResult` / browser confirm-cancel completes it. A launch
+        // that throws (no activity to handle the intent) is mapped to [PickerOpenException] so the
+        // orchestrator aborts-and-reports instead of treating it as a cancel (Req 4.2a/5.1a).
+        // ---------------------------------------------------------------------------------------
+
+        // The orchestrator is built with the real Context (DefaultSafLocationManager.default needs
+        // one); remember(context) keeps a single instance for this screen. It reuses the shared
+        // source-agnostic resolution service and the default engine.
+        val saveBackupOrchestrator = remember(context) {
+            app.gamenative.savebackup.SaveBackupOrchestrator(
+                engine = app.gamenative.savebackup.DefaultSaveBackupEngine(),
+                resolutionService = saveLocationResolution,
+                safLocationManager = app.gamenative.savebackup.DefaultSafLocationManager.default(context),
+            )
+        }
+
+        // The store the orchestrator's resolver reads from, so a browser-confirmed location persists
+        // and is picked up as Resolved next time (Req 3.10, 1.2).
+        val saveLocationStore = remember { app.gamenative.savebackup.DataStoreSaveLocationStore.default() }
+
+        // Bridge state for the SAF picker: a pending deferred completed by whichever launcher fires.
+        var pendingSafDeferred by remember(appId) {
+            mutableStateOf<kotlinx.coroutines.CompletableDeferred<android.net.Uri?>?>(null)
+        }
+        // The export layout chosen before export() runs; pickExternalTree() reads it to select the
+        // archive (.zip CreateDocument) vs raw-tree (OpenDocumentTree) launcher.
+        var pendingExportLayout by remember(appId) {
+            mutableStateOf<app.gamenative.savebackup.ExportLayout?>(null)
+        }
+        // Suggested archive filename captured for the CreateDocument launcher.
+        var pendingArchiveName by remember(appId) { mutableStateOf("saves.zip") }
+
+        // Pending container-browser request: the opened view + drive_c path + the deferred the
+        // openContainerBrowser callback awaits. When non-null, the browser is shown full-screen.
+        var pendingBrowserRequest by remember(appId) {
+            mutableStateOf<BrowserRequest?>(null)
+        }
+
+        fun completeSaf(uri: android.net.Uri?) {
+            val deferred = pendingSafDeferred
+            pendingSafDeferred = null
+            deferred?.complete(uri)
+        }
+
+        // Archive destination picker: a single .zip document (CreateDocument).
+        val exportArchiveLauncher =
+            rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.CreateDocument("application/zip"),
+            ) { uri -> completeSaf(uri) }
+
+        // Raw-tree destination picker: a SAF tree (OpenDocumentTree). The engine writes a fresh
+        // timestamped subdir under it (Req 13.2).
+        val exportRawTreeLauncher = rememberSafPicker(onResult = { uri -> completeSaf(uri) })
+
+        // Import source picker: a SAF tree (OpenDocumentTree) per the ImportPickers contract. The
+        // engine sniffs archive-vs-raw from the selected tree (a tree with exactly one top-level
+        // .zip is treated as an archive), so pointing the picker at the folder CONTAINING an
+        // exported .zip imports the archive, and any other tree imports as raw.
+        val importSourceLauncher = rememberSafPicker(onResult = { uri -> completeSaf(uri) })
+
+        // A single suspend helper shared by both flows' SAF callbacks: hold a fresh deferred, launch
+        // the chosen launcher, await the result; a launch that throws becomes PickerOpenException.
+        suspend fun awaitSafSelection(
+            picker: app.gamenative.savebackup.PickerOpenException.Picker,
+            launch: () -> Unit,
+        ): android.net.Uri? {
+            val deferred = kotlinx.coroutines.CompletableDeferred<android.net.Uri?>()
+            pendingSafDeferred = deferred
+            try {
+                launch()
+            } catch (e: CancellationException) {
+                pendingSafDeferred = null
+                throw e
+            } catch (e: Exception) {
+                pendingSafDeferred = null
+                throw app.gamenative.savebackup.PickerOpenException(picker, e)
+            }
+            return deferred.await()
+        }
+
+        // Open the container browser for a confirmed-and-persisted SaveLocation. Unavailable drive_c
+        // is a failure (PickerOpenException), not a cancel. On confirm we persist to the same store
+        // the resolver reads (Req 3.10) BEFORE completing so the location is remembered next time.
+        suspend fun awaitBrowserSelection(
+            container: com.winlator.container.Container,
+            browserAppId: String,
+            gameId: Int,
+        ): app.gamenative.savebackup.SaveLocation? {
+            val openResult = try {
+                app.gamenative.savebackup.ContainerBrowser.open(container, gameId, 0L)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                throw app.gamenative.savebackup.PickerOpenException(
+                    app.gamenative.savebackup.PickerOpenException.Picker.CONTAINER_BROWSER, e,
+                )
+            }
+            if (openResult is app.gamenative.savebackup.OpenResult.Unavailable) {
+                throw app.gamenative.savebackup.PickerOpenException(
+                    app.gamenative.savebackup.PickerOpenException.Picker.CONTAINER_BROWSER,
+                    message = openResult.reason,
+                )
+            }
+            val deferred = kotlinx.coroutines.CompletableDeferred<app.gamenative.savebackup.SaveLocation?>()
+            pendingBrowserRequest = BrowserRequest(
+                openResult = openResult,
+                driveCPath = app.gamenative.savebackup.ContainerBrowser.driveCOf(container),
+                storeAppId = browserAppId,
+                deferred = deferred,
+            )
+            return deferred.await()
+        }
+
+        val exportPickers = remember(saveBackupOrchestrator) {
+            object : app.gamenative.savebackup.SaveBackupOrchestrator.ExportPickers {
+                override suspend fun openContainerBrowser(
+                    container: com.winlator.container.Container,
+                    appId: String,
+                    gameId: Int,
+                ): app.gamenative.savebackup.SaveLocation? =
+                    awaitBrowserSelection(container, appId, gameId)
+
+                override suspend fun pickExternalTree(): android.net.Uri? =
+                    when (pendingExportLayout) {
+                        app.gamenative.savebackup.ExportLayout.RAW_TREE ->
+                            awaitSafSelection(
+                                app.gamenative.savebackup.PickerOpenException.Picker.SAF_PICKER,
+                            ) { exportRawTreeLauncher.launchPicker() }
+                        else ->
+                            awaitSafSelection(
+                                app.gamenative.savebackup.PickerOpenException.Picker.SAF_PICKER,
+                            ) { exportArchiveLauncher.launch(pendingArchiveName) }
+                    }
+
+                override suspend fun onFolderNotRemembered() {
+                    SnackbarManager.show(context.getString(R.string.save_folder_not_remembered))
+                }
+            }
+        }
+
+        val importPickers = remember(saveBackupOrchestrator) {
+            object : app.gamenative.savebackup.SaveBackupOrchestrator.ImportPickers {
+                override suspend fun pickImportSource(): android.net.Uri? =
+                    awaitSafSelection(
+                        app.gamenative.savebackup.PickerOpenException.Picker.SAF_PICKER,
+                    ) { importSourceLauncher.launchPicker() }
+
+                override suspend fun openContainerBrowser(
+                    container: com.winlator.container.Container,
+                    appId: String,
+                    gameId: Int,
+                ): app.gamenative.savebackup.SaveLocation? =
+                    awaitBrowserSelection(container, appId, gameId)
+
+                override suspend fun onFolderNotRemembered() {
+                    SnackbarManager.show(context.getString(R.string.save_folder_not_remembered))
+                }
+            }
+        }
+
+        fun reportExportOutcome(outcome: app.gamenative.savebackup.ExportOutcome) {
+            when (outcome) {
+                app.gamenative.savebackup.ExportOutcome.Success ->
+                    SnackbarManager.show(context.getString(R.string.save_export_success))
+                app.gamenative.savebackup.ExportOutcome.NoSavesFound ->
+                    SnackbarManager.show(context.getString(R.string.save_export_no_saves_found))
+                // Cancel is a normal outcome: no snackbar (Req 13.4 — never success/failure).
+                app.gamenative.savebackup.ExportOutcome.Cancelled -> Unit
+                is app.gamenative.savebackup.ExportOutcome.Aborted ->
+                    SnackbarManager.show(context.getString(R.string.save_export_failed, outcome.reason))
+                is app.gamenative.savebackup.ExportOutcome.Failed ->
+                    SnackbarManager.show(context.getString(R.string.save_export_failed, outcome.reason))
+            }
+        }
+
+        fun reportImportOutcome(outcome: app.gamenative.savebackup.ImportOutcome) {
+            when (outcome) {
+                app.gamenative.savebackup.ImportOutcome.Success ->
+                    SnackbarManager.show(context.getString(R.string.save_import_success))
+                app.gamenative.savebackup.ImportOutcome.NoSavesFound ->
+                    SnackbarManager.show(
+                        context.getString(R.string.save_import_failed, context.getString(R.string.save_export_no_saves_found)),
+                    )
+                app.gamenative.savebackup.ImportOutcome.Cancelled -> Unit
+                is app.gamenative.savebackup.ImportOutcome.Aborted ->
+                    SnackbarManager.show(context.getString(R.string.save_import_failed, outcome.reason))
+                is app.gamenative.savebackup.ImportOutcome.Failed ->
+                    SnackbarManager.show(context.getString(R.string.save_import_failed, outcome.reason))
+            }
+        }
+
+        // Run an export through the orchestrator with the chosen layout, then clear the request.
+        fun runExport(layout: app.gamenative.savebackup.ExportLayout) {
+            pendingExportLayout = layout
+            uiScope.launch {
+                try {
+                    reportExportOutcome(
+                        saveBackupOrchestrator.export(context, libraryItem, layout, exportPickers),
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Save export failed for appId=$appId")
+                    SnackbarManager.show(
+                        context.getString(R.string.save_export_failed, e.message ?: "Unknown error"),
+                    )
+                } finally {
+                    pendingExportLayout = null
+                    clearExportSavesRequest(appId)
+                }
+            }
+        }
+
         var exportSavesRequested by remember(appId) {
             mutableStateOf(shouldExportSaves(appId))
         }
@@ -1522,29 +1855,76 @@ abstract class BaseAppScreen {
                 }
         }
 
-        val exportSavesLauncher =
-            rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.CreateDocument("application/zip"),
-            ) { uri ->
-                if (uri == null) {
-                    clearExportSavesRequest(appId)
-                    return@rememberLauncherForActivityResult
-                }
-
-                uiScope.launch {
-                    try {
-                        exportSaves(context, libraryItem, uri)
-                    } finally {
-                        clearExportSavesRequest(appId)
-                    }
-                }
-            }
+        // Export-layout choice + interop-hint dialog state (Req 12). Kept as the pre-orchestrator UX
+        // so the user picks Archive vs Raw tree and, for Raw tree, sees the interoperability hint
+        // derived from the resolved PathType before any external selection.
+        var showExportLayoutChoice by remember(appId) { mutableStateOf(false) }
+        var pendingInteropHint by remember(appId) {
+            mutableStateOf<app.gamenative.savebackup.InteroperabilityHint?>(null)
+        }
 
         LaunchedEffect(exportSavesRequested) {
             if (exportSavesRequested) {
-                val gameName = displayInfo.name.ifBlank { "game" }
-                exportSavesLauncher.launch("${gameName}_saves.zip")
+                pendingArchiveName = "${displayInfo.name.ifBlank { "game" }}_saves.zip"
+                showExportLayoutChoice = true
             }
+        }
+
+        if (showExportLayoutChoice) {
+            ExportLayoutChoiceDialog(
+                onArchive = {
+                    showExportLayoutChoice = false
+                    runExport(app.gamenative.savebackup.ExportLayout.ARCHIVE)
+                },
+                onRawTree = {
+                    showExportLayoutChoice = false
+                    // Show the interoperability hint (Req 12.1/12.2/12.3) derived from the resolved
+                    // PathType before external selection. If the location is unset/unresolved the
+                    // hint is skipped and the orchestrator opens the browser (Req 4.1) on runExport.
+                    uiScope.launch {
+                        val hint = try {
+                            val container = ContainerUtils.getOrCreateContainer(context, appId)
+                            val resolved = saveLocationResolution.resolve(context, container, libraryItem)
+                                as? app.gamenative.savebackup.ResolveOutcome.Resolved
+                            resolved?.let {
+                                app.gamenative.savebackup.InteroperabilityHintClassifier.classify(
+                                    it.saveLocation.pathType,
+                                )
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.w(e, "Could not resolve PathType for interop hint, appId=$appId")
+                            null
+                        }
+                        if (hint != null) {
+                            pendingInteropHint = hint
+                        } else {
+                            // Unset/unresolved: no hint to show; go straight to the orchestrator,
+                            // which opens the container browser when the location is unset.
+                            runExport(app.gamenative.savebackup.ExportLayout.RAW_TREE)
+                        }
+                    }
+                },
+                onDismiss = {
+                    showExportLayoutChoice = false
+                    clearExportSavesRequest(appId)
+                },
+            )
+        }
+
+        pendingInteropHint?.let { hint ->
+            InteropHintDialog(
+                hint = hint,
+                onContinue = {
+                    pendingInteropHint = null
+                    runExport(app.gamenative.savebackup.ExportLayout.RAW_TREE)
+                },
+                onDismiss = {
+                    pendingInteropHint = null
+                    clearExportSavesRequest(appId)
+                },
+            )
         }
 
         var importSavesRequested by remember(appId) {
@@ -1558,34 +1938,64 @@ abstract class BaseAppScreen {
                 }
         }
 
-        val importSavesLauncher =
-            rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.OpenDocument(),
-            ) { uri ->
-                if (uri == null) {
-                    clearImportSavesRequest(appId)
-                    return@rememberLauncherForActivityResult
-                }
-
-                uiScope.launch {
-                    try {
-                        importSaves(context, libraryItem, uri)
-                    } finally {
-                        clearImportSavesRequest(appId)
-                    }
-                }
-            }
-
         LaunchedEffect(importSavesRequested) {
             if (importSavesRequested) {
-                importSavesLauncher.launch(
-                    arrayOf(
-                        "application/zip",
-                        "application/x-zip-compressed",
-                        "application/octet-stream",
-                    ),
-                )
+                try {
+                    reportImportOutcome(
+                        saveBackupOrchestrator.import(context, libraryItem, importPickers),
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Save import failed for appId=$appId")
+                    SnackbarManager.show(
+                        context.getString(R.string.save_import_failed, e.message ?: "Unknown error"),
+                    )
+                } finally {
+                    clearImportSavesRequest(appId)
+                }
             }
+        }
+
+        // Cancel any still-pending picker bridges if this screen leaves composition, so awaiting
+        // orchestrator flows unblock (as a cancel) rather than hang. Registered before the browser
+        // early-return so it stays active while the browser is shown.
+        DisposableEffect(Unit) {
+            onDispose {
+                pendingSafDeferred?.complete(null)
+                pendingBrowserRequest?.deferred?.complete(null)
+            }
+        }
+
+        // Render the in-app container browser full-screen when a browser request is pending. On
+        // confirm we persist the mapped SaveLocation (so it resolves as Resolved next time — Req
+        // 3.10) then complete the deferred; cancel completes with null (orchestrator → Cancelled).
+        pendingBrowserRequest?.let { request ->
+            app.gamenative.ui.screen.savebackup.ContainerBrowserScreen(
+                openResult = request.openResult,
+                driveCPath = request.driveCPath,
+                onConfirmed = { saveLocation ->
+                    pendingBrowserRequest = null
+                    uiScope.launch {
+                        try {
+                            saveLocationStore.put(request.storeAppId, saveLocation)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.w(e, "Failed to persist confirmed SaveLocation for ${request.storeAppId}")
+                        } finally {
+                            request.deferred.complete(saveLocation)
+                        }
+                    }
+                },
+                onCancel = {
+                    pendingBrowserRequest = null
+                    request.deferred.complete(null)
+                },
+                onError = { message -> SnackbarManager.show(message) },
+            )
+            // While the browser is up, don't render the rest of the screen underneath it.
+            return
         }
 
         var manageModsRequested by remember(appId) {
@@ -1610,7 +2020,8 @@ abstract class BaseAppScreen {
                 }
         }
 
-        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, onPlayWithDiagnostics, onAiDebugRun, exportFrontendLauncher)
+        val optionsMenu =
+            getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, onPlayWithDiagnostics, onAiDebugRun, exportFrontendLauncher)
 
         // Get download info based on game source for progress tracking
         val downloadInfo = when (libraryItem.gameSource) {

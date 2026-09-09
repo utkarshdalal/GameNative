@@ -1505,6 +1505,30 @@
     <string name="steam_save_export_failed">Failed to export saves: %s</string>
     <string name="steam_save_import_success">Saves imported</string>
     <string name="steam_save_import_failed">Failed to import saves: %s</string>
+    <!-- Source-neutral save backup strings (shared across Steam/GOG/Epic/Amazon in BaseAppScreen). -->
+    <string name="save_export_success">Saves exported</string>
+    <string name="save_export_no_saves_found">No save files found</string>
+    <string name="save_export_failed">Failed to export saves: %s</string>
+    <string name="save_import_success">Saves imported</string>
+    <string name="save_import_failed">Failed to import saves: %s</string>
+
+    <!-- Export-layout choice (Archive vs Raw tree) shown before the external location is picked. -->
+    <string name="save_layout_choice_title">Export layout</string>
+    <string name="save_layout_choice_message">Choose how to write the saves.</string>
+    <string name="save_layout_archive">Archive (.zip)</string>
+    <string name="save_layout_archive_description">A single .zip for GameNative-to-GameNative restore.</string>
+    <string name="save_layout_raw_tree">Raw folder tree</string>
+    <string name="save_layout_raw_tree_description">A plain folder tree for other tools or manual copy.</string>
+
+    <!-- Interoperability hint for Raw-tree exports, shown before external selection (Req 12). -->
+    <string name="save_interop_hint_title">Interoperability</string>
+    <string name="save_interop_hint_interoperable">This save layout is expected to be interoperable with desktop launcher prefixes.</string>
+    <string name="save_interop_hint_steam_userdata">This save layout is not expected to line up with a desktop launcher prefix layout.</string>
+    <string name="save_interop_hint_not_guaranteed">Interoperability with a desktop launcher prefix is not guaranteed for this save layout.</string>
+    <string name="save_interop_hint_continue">Continue</string>
+
+    <!-- Shown when a picked external folder could not be remembered as a durable grant (Req 10.3). -->
+    <string name="save_folder_not_remembered">The selected folder could not be remembered; it will be used for this operation only.</string>
     <string name="library_app_type">App Type</string>
     <string name="library_app_status">App Status</string>
     <string name="library_layout">Layout</string>
@@ -2511,4 +2535,12 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Reset gyro settings</string>
+    <!-- Container browser (game save backup) -->
+    <string name="container_browser_title">Select save folder</string>
+    <string name="container_browser_up">Go up</string>
+    <string name="container_browser_select_folder">Select this folder</string>
+    <string name="container_browser_not_selectable">This folder is not a supported save root. Open one of the save folders above to select it.</string>
+    <string name="container_browser_save_roots">Save folders</string>
+    <string name="container_browser_unavailable">Container filesystem unavailable</string>
+    <string name="container_browser_empty">This folder is empty</string>
 </resources>
