@@ -79,9 +79,11 @@ public final class LosslessScaling {
     }
 
     public static File resolveCacheFile(Context context, boolean preferFp16) {
-        File preferred = getCacheFile(context, preferFp16);
-        if (preferred.isFile()) return preferred;
-        File fallback = getCacheFile(context, !preferFp16);
+        if (preferFp16) {
+            File preferred = getCacheFile(context, true);
+            if (preferred.isFile()) return preferred;
+        }
+        File fallback = getCacheFile(context, false);
         return fallback.isFile() ? fallback : null;
     }
 
