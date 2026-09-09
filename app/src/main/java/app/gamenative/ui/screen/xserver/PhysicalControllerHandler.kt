@@ -358,10 +358,9 @@ class PhysicalControllerHandler(
                 override fun run() {
                     // Tuning already applies the user's chosen deadzone. Preserve sub-pixel input
                     // across ticks instead of silently discarding low-sensitivity movement.
-                    if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) {
-                        mouseMoveRemainder.set(0f, 0f)
-                        return
-                    }
+                    if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f
+                    if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f
+                    if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return
 
                     // Look up cursor speed dynamically so it updates when profile changes
                     val cursorSpeed = profile?.cursorSpeed ?: 1f

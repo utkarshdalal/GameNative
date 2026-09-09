@@ -84,6 +84,7 @@ public class InputControlsView extends View {
     private final Bitmap[] icons = new Bitmap[40];
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
+    private final PointF mouseMoveRemainder = new PointF();
     private boolean showTouchscreenControls = true;
 
     // Shooter mode state
@@ -579,7 +580,18 @@ public class InputControlsView extends View {
             mouseMoveTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    xServer.injectPointerMoveDelta((int)(mouseMoveOffset.x * 10 * cursorSpeed), (int)(mouseMoveOffset.y * 10 * cursorSpeed));
+                    if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f;
+                    if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f;
+                    if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return;
+
+                    float scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x;
+                    float scaledY = mouseMoveOffset.y * 10 * cursorSpeed + mouseMoveRemainder.y;
+                    int deltaX = (int)scaledX;
+                    int deltaY = (int)scaledY;
+                    mouseMoveRemainder.set(scaledX - deltaX, scaledY - deltaY);
+                    if (deltaX != 0 || deltaY != 0) {
+                        xServer.injectPointerMoveDelta(deltaX, deltaY);
+                    }
                 }
             }, 0, 1000 / 60);
         }
