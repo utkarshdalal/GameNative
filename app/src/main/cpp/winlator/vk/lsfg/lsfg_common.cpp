@@ -286,6 +286,10 @@ const LsfgImage& LsfgResources::GetDummy(VkFormat format) {
     if (it != dummies.end()) return it->second;
 
     LsfgImage image{*device, VkExtent2D{1, 1}, format};
+    if (!image.Valid()) {
+        static const LsfgImage invalid_image{};
+        return invalid_image;
+    }
     const auto [entry, inserted] = dummies.emplace(key, std::move(image));
     dummies_ready = false;
     return entry->second;
