@@ -238,6 +238,61 @@ class SafLocationManagerPermissionTest {
         assertNull("the entry for an unreadable tree must be forgotten", store.get(appId))
     }
 
+    // ---- forget: reset save backup settings ------------------------------
+
+    /**
+     * `forget` releases the OS-level persistable grant for the remembered tree and clears the
+     * stored entry, so a subsequent `rememberedLocation` returns null and the next operation
+     * reopens the picker.
+     */
+    @Test
+    fun forgetReleasesGrantAndClearsStoredEntry() = runBlocking {
+        val appId = "STEAM_440"
+        val uri = uri("content://tree/primary%3ABackups")
+        val store = FakeRememberedSafLocationStore().apply { seed(appId, uri.toString()) }
+        val manager = DefaultSafLocationManager(context, store) { _, _ -> readableDoc() }
+
+        every { contentResolver.releasePersistableUriPermission(uri, readWriteFlags) } returns Unit
+
+        manager.forget(appId)
+
+        verify(exactly = 1) { contentResolver.releasePersistableUriPermission(uri, readWriteFlags) }
+        assertNull("forget must clear the stored entry", store.get(appId))
+    }
+
+    /** `forget` is a no-op when nothing is remembered: it neither reads nor releases any grant. */
+    @Test
+    fun forgetIsNoOpWhenNothingRemembered() = runBlocking {
+        val appId = "GOG_1207658924"
+        val store = FakeRememberedSafLocationStore()
+        val manager = DefaultSafLocationManager(context, store) { _, _ -> readableDoc() }
+
+        manager.forget(appId)
+
+        verify(exactly = 0) { contentResolver.releasePersistableUriPermission(any(), any()) }
+        assertNull(store.get(appId))
+    }
+
+    /**
+     * If releasing the OS grant throws (e.g. it was already revoked), `forget` still clears the
+     * stored entry so the app's own state is reset regardless.
+     */
+    @Test
+    fun forgetClearsStoredEntryEvenWhenReleaseThrows() = runBlocking {
+        val appId = "EPIC_777"
+        val uri = uri("content://tree/epic%3ASaves")
+        val store = FakeRememberedSafLocationStore().apply { seed(appId, uri.toString()) }
+        val manager = DefaultSafLocationManager(context, store) { _, _ -> readableDoc() }
+
+        every {
+            contentResolver.releasePersistableUriPermission(uri, readWriteFlags)
+        } throws SecurityException("already revoked")
+
+        manager.forget(appId)
+
+        assertNull("forget must clear the stored entry even if the OS release fails", store.get(appId))
+    }
+
     // ---- helpers ---------------------------------------------------------
 
     /** Build a mocked [Uri] that returns [value] from `toString()` and is returned by `Uri.parse`. */

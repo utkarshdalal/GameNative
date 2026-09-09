@@ -54,6 +54,14 @@ interface SafLocationManager {
      * caller reuses it without re-prompting (Requirement 10.2).
      */
     suspend fun rememberedLocation(context: Context, appId: String): Uri?
+
+    /**
+     * Forget the remembered external location for [appId]: release the app's persistable URI
+     * permission for that tree (so it no longer counts against the per-app grant limit) and clear
+     * the stored entry. A no-op when nothing is remembered. Failing to release the OS-level grant
+     * (e.g. it was already revoked) is not fatal — the stored entry is cleared regardless.
+     */
+    suspend fun forget(appId: String)
 }
 
 /**
@@ -144,6 +152,26 @@ class DefaultSafLocationManager(
         return context.contentResolver.persistedUriPermissions.any { perm ->
             perm.uri.toString() == target && perm.isReadPermission
         }
+    }
+
+    override suspend fun forget(appId: String) {
+        val remembered = store.get(appId) ?: return
+        val uri = try {
+            Uri.parse(remembered)
+        } catch (_: Exception) {
+            // Unparseable — just clear the store entry.
+            store.remove(appId)
+            return
+        }
+
+        // Release the OS-level persistable grant so it no longer counts against the per-app limit.
+        // Failing here (e.g. already revoked) is not fatal; we clear the store entry regardless.
+        try {
+            context.contentResolver.releasePersistableUriPermission(uri, flags)
+        } catch (e: Exception) {
+            Timber.w(e, "Could not release persistable permission for %s; clearing stored entry anyway", uri)
+        }
+        store.remove(appId)
     }
 
     companion object {

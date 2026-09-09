@@ -200,6 +200,7 @@ abstract class BaseAppScreen {
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
         private val exportSavesRequests = mutableStateMapOf<String, Boolean>()
         private val importSavesRequests = mutableStateMapOf<String, Boolean>()
+        private val resetSaveBackupRequests = mutableStateMapOf<String, Boolean>()
         private val manageModsRequests = mutableStateMapOf<String, Boolean>()
         private val communityConfigRequests = mutableStateMapOf<String, Boolean>()
         private val knownConfigInstallStates = mutableStateMapOf<Int, KnownConfigInstallState>()
@@ -262,6 +263,18 @@ abstract class BaseAppScreen {
 
         fun shouldImportSaves(appId: String): Boolean {
             return importSavesRequests[appId] == true
+        }
+
+        fun requestResetSaveBackup(appId: String) {
+            resetSaveBackupRequests[appId] = true
+        }
+
+        fun clearResetSaveBackupRequest(appId: String) {
+            resetSaveBackupRequests.remove(appId)
+        }
+
+        fun shouldResetSaveBackup(appId: String): Boolean {
+            return resetSaveBackupRequests[appId] == true
         }
 
         fun requestManageMods(appId: String) {
@@ -720,6 +733,20 @@ abstract class BaseAppScreen {
         )
     }
 
+    @Composable
+    protected open fun getResetSaveBackupOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        if (!supportsSaveTransfer(libraryItem)) return null
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ResetSaveBackup,
+            onClick = {
+                requestResetSaveBackup(libraryItem.appId)
+            },
+        )
+    }
+
     /**
      * Save backup (Export/Import saves) is available for the Steam, GOG, Epic, and Amazon sources.
      * The engine is source-agnostic (Req 6.1); custom games are excluded. Sources may override to
@@ -775,6 +802,7 @@ abstract class BaseAppScreen {
         return configOptions + listOfNotNull(
             getExportSavesOption(context, libraryItem),
             getImportSavesOption(context, libraryItem),
+            getResetSaveBackupOption(context, libraryItem),
         )
     }
 
@@ -1264,6 +1292,35 @@ abstract class BaseAppScreen {
     }
 
     /**
+     * Confirm dialog for resetting a game's save-backup settings. Reuses the [AlertDialog] pattern
+     * as the other save-backup dialogs. The message names both cleared items (in-game save folder
+     * and external backup folder) and makes clear no save files or backups are deleted. [onConfirm]
+     * clears both persisted endpoints; [onDismiss] cancels without change.
+     */
+    @Composable
+    protected fun ResetSaveBackupDialog(
+        onConfirm: () -> Unit,
+        onDismiss: () -> Unit,
+    ) {
+        val context = LocalContext.current
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(context.getString(R.string.save_reset_confirm_title)) },
+            text = { Text(context.getString(R.string.save_reset_confirm_message)) },
+            confirmButton = {
+                TextButton(onClick = onConfirm) {
+                    Text(context.getString(R.string.save_reset_confirm_button))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(context.getString(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    /**
      * Get the options menu items specific to this game source
      */
     @Composable
@@ -1639,11 +1696,16 @@ abstract class BaseAppScreen {
         // The orchestrator is built with the real Context (DefaultSafLocationManager.default needs
         // one); remember(context) keeps a single instance for this screen. It reuses the shared
         // source-agnostic resolution service and the default engine.
-        val saveBackupOrchestrator = remember(context) {
+        // Hoisted so the "Reset save backup settings" action can call forget() on the same
+        // instance the orchestrator uses for remembered-grant reuse.
+        val safLocationManager = remember(context) {
+            app.gamenative.savebackup.DefaultSafLocationManager.default(context)
+        }
+        val saveBackupOrchestrator = remember(context, safLocationManager) {
             app.gamenative.savebackup.SaveBackupOrchestrator(
                 engine = app.gamenative.savebackup.DefaultSaveBackupEngine(),
                 resolutionService = saveLocationResolution,
-                safLocationManager = app.gamenative.savebackup.DefaultSafLocationManager.default(context),
+                safLocationManager = safLocationManager,
             )
         }
 
@@ -1955,6 +2017,52 @@ abstract class BaseAppScreen {
                     clearImportSavesRequest(appId)
                 }
             }
+        }
+
+        // Reset save backup settings: forget BOTH persisted endpoints (the in-container
+        // SaveLocation and the remembered external SAF grant) so the next export/import re-runs
+        // auto-resolution/browser + picker. Only pointers are cleared; no save files or backups are
+        // touched. The confirm dialog names both cleared items.
+        var showResetSaveBackup by remember(appId) { mutableStateOf(shouldResetSaveBackup(appId)) }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldResetSaveBackup(appId) }
+                .collect { shouldRequest -> showResetSaveBackup = shouldRequest }
+        }
+
+        if (showResetSaveBackup) {
+            ResetSaveBackupDialog(
+                onConfirm = {
+                    clearResetSaveBackupRequest(appId)
+                    uiScope.launch {
+                        try {
+                            val hadLocation = saveLocationStore.get(appId) != null
+                            val hadGrant = safLocationManager.rememberedLocation(context, appId) != null
+                            saveLocationStore.remove(appId)
+                            safLocationManager.forget(appId)
+                            SnackbarManager.show(
+                                context.getString(
+                                    if (hadLocation || hadGrant) {
+                                        R.string.save_reset_done
+                                    } else {
+                                        R.string.save_reset_nothing
+                                    },
+                                ),
+                            )
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.e(e, "Save backup reset failed for appId=$appId")
+                            SnackbarManager.show(
+                                context.getString(R.string.save_reset_failed, e.message ?: "Unknown error"),
+                            )
+                        }
+                    }
+                },
+                onDismiss = {
+                    clearResetSaveBackupRequest(appId)
+                },
+            )
         }
 
         // Cancel any still-pending picker bridges if this screen leaves composition, so awaiting

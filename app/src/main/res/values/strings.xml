@@ -1529,6 +1529,15 @@
 
     <!-- Shown when a picked external folder could not be remembered as a durable grant (Req 10.3). -->
     <string name="save_folder_not_remembered">The selected folder could not be remembered; it will be used for this operation only.</string>
+
+    <!-- Reset save backup settings: forgets the remembered in-container save folder and external backup folder. -->
+    <string name="option_reset_save_backup">Reset save backup settings</string>
+    <string name="save_reset_confirm_title">Reset save backup settings?</string>
+    <string name="save_reset_confirm_message">This forgets the detected in-game save folder and the external backup folder for this game. Your saves and existing backups are not deleted. The next export or import will ask you to choose again.</string>
+    <string name="save_reset_confirm_button">Reset</string>
+    <string name="save_reset_done">Save backup settings reset</string>
+    <string name="save_reset_nothing">No save backup settings to reset</string>
+    <string name="save_reset_failed">Failed to reset save backup settings: %s</string>
     <string name="library_app_type">App Type</string>
     <string name="library_app_status">App Status</string>
     <string name="library_layout">Layout</string>

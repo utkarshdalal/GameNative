@@ -30,6 +30,14 @@ interface SaveLocationStore {
      * persisted value is left intact (Requirement 3.11).
      */
     suspend fun put(appId: String, location: SaveLocation)
+
+    /**
+     * Forget any persisted [SaveLocation] for [appId] so the next resolution runs the source
+     * strategy / container browser from scratch. A no-op when nothing is persisted.
+     *
+     * Awaits durable persistence and throws if the write fails, mirroring [put].
+     */
+    suspend fun remove(appId: String)
 }
 
 /**
@@ -69,6 +77,11 @@ class DataStoreSaveLocationStore(
         val serialized = json.encodeToString(SaveLocationDto.from(location))
         // Awaits durable persistence; throws on failure and leaves the prior value intact.
         dataStore.edit { prefs -> prefs[keyFor(appId)] = serialized }
+    }
+
+    override suspend fun remove(appId: String) {
+        // Awaits durable persistence; throws on failure. A no-op when the key is absent.
+        dataStore.edit { prefs -> prefs.remove(keyFor(appId)) }
     }
 
     companion object {
