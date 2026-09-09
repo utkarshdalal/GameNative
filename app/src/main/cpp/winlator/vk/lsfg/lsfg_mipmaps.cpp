@@ -56,6 +56,7 @@ LsfgMipmaps::LsfgMipmaps(const Device& device, const LsfgShaders& shaders,
 
     const VkSampler sampler = resources.GetSampler();
     const VkBuffer buffer = resources.GetBuffer();
+    if (sampler == VK_NULL_HANDLE || buffer == VK_NULL_HANDLE) return;
 
     for (size_t i = 0; i < descriptor_sets.size(); ++i) {
         descriptor_sets[i] = sets[i];

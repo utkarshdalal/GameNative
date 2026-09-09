@@ -250,7 +250,7 @@ public final class LosslessScaling {
             if (nativeCacheVariant(fp32.getAbsolutePath()) == VARIANT_FP16) {
                 if (!fp32.renameTo(fp16)) {
                     deleteQuietly(fp32);
-                    return STATUS_OK;
+                    return STATUS_CACHE_UNUSABLE;
                 }
                 logInstalled(dll, VARIANT_FP16, false);
                 return STATUS_OK;

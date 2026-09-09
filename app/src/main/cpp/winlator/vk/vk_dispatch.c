@@ -67,6 +67,22 @@ bool vkd_load(VkInstance instance, VkDevice device, PFN_vkGetInstanceProcAddr gi
     LOAD_D(QueueWaitIdle);
 #undef LOAD_D
 
+    if (!vkd.AllocateMemory || !vkd.FreeMemory ||
+        !vkd.CreateBuffer || !vkd.DestroyBuffer ||
+        !vkd.CreateImage || !vkd.DestroyImage ||
+        !vkd.CreateImageView || !vkd.DestroyImageView ||
+        !vkd.CreateSampler || !vkd.DestroySampler ||
+        !vkd.CreateDescriptorSetLayout || !vkd.CreateDescriptorPool ||
+        !vkd.AllocateDescriptorSets || !vkd.UpdateDescriptorSets ||
+        !vkd.CreatePipelineLayout || !vkd.CreateComputePipelines ||
+        !vkd.DestroyPipeline || !vkd.CreateShaderModule ||
+        !vkd.CmdBindPipeline || !vkd.CmdBindDescriptorSets ||
+        !vkd.CmdPipelineBarrier || !vkd.CmdDispatch ||
+        !vkd.QueueSubmit) {
+        memset(&vkd, 0, sizeof(vkd));
+        return false;
+    }
+
     return true;
 }
 

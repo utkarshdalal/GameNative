@@ -54,6 +54,7 @@ LsfgGenerate::LsfgGenerate(const Device& device, const LsfgShaders& shaders,
     sampler = resources.GetSampler();
     edge_sampler =
         resources.GetSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_COMPARE_OP_ALWAYS, false);
+    if (sampler == VK_NULL_HANDLE || edge_sampler == VK_NULL_HANDLE) return;
 
     const uint32_t total =
         static_cast<uint32_t>(LSFG_GENERATION_SLOTS * LSFG_MAX_TARGETS * 2);

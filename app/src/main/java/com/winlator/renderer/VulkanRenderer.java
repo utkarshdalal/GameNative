@@ -535,9 +535,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     public void onUpdateWindowContentDirect(Window window, Drawable pixmap, short xOff, short yOff) {
         if (!flatPresentationEnabled) return;
-        setSourceFrameCount(sourceFrames.incrementAndGet());
         if (hudRef != null && !nativeMode) hudRef.update();
         if (nativeHandle == 0 || pixmap == null) return;
+        setSourceFrameCount(sourceFrames.incrementAndGet());
         Drawable targetDrawable = window.getContent();
         long targetId = did(targetDrawable);
         int rx = window.getRootX() + xOff;

@@ -247,10 +247,43 @@ void VulkanRendererContext::createLogicalDevice() {
     VkDeviceCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     ci.pQueueCreateInfos=&qi; ci.queueCreateInfoCount=1;
     ci.enabledExtensionCount=(uint32_t)extList.size(); ci.ppEnabledExtensionNames=extList.data();
+
+    VkPhysicalDeviceVulkanMemoryModelFeatures memModel{};
+    memModel.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES;
+
+    VkPhysicalDeviceFeatures2 supportedFeatures{};
+    supportedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    supportedFeatures.pNext = &memModel;
+
+    VkPhysicalDeviceVulkanMemoryModelFeatures enableMemModel{};
+    enableMemModel.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES;
+
+    VkPhysicalDeviceFeatures2 enableFeatures2{};
+    enableFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
+    PFN_vkGetPhysicalDeviceFeatures2 getFeatures2 =
+        (PFN_vkGetPhysicalDeviceFeatures2)gipa(instance, "vkGetPhysicalDeviceFeatures2");
+    if (getFeatures2) {
+        getFeatures2(physicalDevice, &supportedFeatures);
+        if (memModel.vulkanMemoryModel) {
+            enableMemModel.vulkanMemoryModel = VK_TRUE;
+            enableFeatures2.pNext = &enableMemModel;
+        }
+        if (supportedFeatures.features.shaderStorageImageWriteWithoutFormat) {
+            enableFeatures2.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
+        }
+        if (supportedFeatures.features.shaderStorageImageExtendedFormats) {
+            enableFeatures2.features.shaderStorageImageExtendedFormats = VK_TRUE;
+        }
+        ci.pNext = &enableFeatures2;
+    }
+
     if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS) throw std::runtime_error("device");
     vk_.GetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)gipa(instance, "vkGetDeviceProcAddr");
     loadDeviceDispatch();
-    vkd_load(instance, device, gipa);
+    if (!vkd_load(instance, device, gipa)) {
+        RLOG_E("Failed to load required Vulkan dispatch functions for LSFG");
+    }
     vk_.GetDeviceQueue(device,graphicsQueueFamilyIndex,0,&graphicsQueue);
 
     vk_.GetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
@@ -881,7 +914,7 @@ void VulkanRendererContext::destroyLsfg() {
 }
 
 void VulkanRendererContext::createLsfg() {
-    if (lsfg || lsfgCachePath.empty() || !device || !physicalDevice) return;
+    if (lsfg || lsfgCachePath.empty() || !device || !physicalDevice || !vkd.CreateComputePipelines) return;
 
     lsfg = vkr_lsfg_create(device, physicalDevice, lsfgCachePath.c_str());
     if (!lsfg) {

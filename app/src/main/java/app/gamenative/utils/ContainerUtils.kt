@@ -374,7 +374,7 @@ object ContainerUtils {
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
             // LSFG Vulkan frame generation
             lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean() || container.getExtra("frameGen", "0") == "1",
-lsfgMultiplier = container.getExtra(LsfgVkManager.EXTRA_MULTIPLIER, container.getExtra("frameGenMultiplier", "2")).toIntOrNull()?.let { if (it == 0) 0 else it.coerceIn(2, 4) } ?: 2,
+            lsfgMultiplier = container.getExtra(LsfgVkManager.EXTRA_MULTIPLIER, container.getExtra("frameGenMultiplier", "2")).toIntOrNull()?.let { if (it == 0) 0 else it.coerceIn(2, 4) } ?: 2,
             lsfgFlowScale = container.getExtra("frameGenFlowScale", null)?.toIntOrNull()?.let { it / 100f }
                 ?: (container.getExtra(LsfgVkManager.EXTRA_FLOW_SCALE, "0.70").toFloatOrNull()?.coerceIn(0.25f, 1.0f) ?: 0.70f),
             lsfgPreset = container.getExtra("frameGenPreset", "BALANCED"),

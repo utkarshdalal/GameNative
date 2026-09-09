@@ -10,6 +10,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #define LOG_TAG "LsfgDll"
 #define LSFG_LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -91,18 +92,17 @@ typedef struct BindingSlot {
     size_t   literal_offset;
 } BindingSlot;
 
+static const uint32_t kShaderIds[LSFG_SHADER_COUNT] = {
+    LSFG_SHADER_MIPMAPS,
+    LSFG_SHADER_GENERATE,
+    280u, 281u, 282u, 283u, 284u, 285u, 286u, 287u, 288u, 289u,
+    290u, 291u, 292u, 293u, 294u, 295u, 296u, 297u, 298u, 299u,
+    300u, 301u, 302u
+};
+
 static const uint32_t* build_shader_ids(size_t* out_count) {
-    static uint32_t ids[LSFG_SHADER_COUNT];
-    static size_t count = 0;
-    if (count == 0) {
-        ids[count++] = LSFG_SHADER_MIPMAPS;
-        ids[count++] = LSFG_SHADER_GENERATE;
-        for (uint32_t id = LSFG_SHADER_PERF_FIRST; id <= LSFG_SHADER_PERF_LAST; id++) {
-            ids[count++] = id;
-        }
-    }
-    if (out_count) *out_count = count;
-    return ids;
+    if (out_count) *out_count = LSFG_SHADER_COUNT;
+    return kShaderIds;
 }
 
 const uint32_t* lsfg_shader_ids(size_t* out_count) {
@@ -524,7 +524,8 @@ static uint32_t variant_offset(LsfgVariant variant) {
 static bool write_cache(const char* cache_path, const CacheHeader* header,
                         const LsfgModuleSet* set) {
     char temp_path[PATH_MAX];
-    const int written = snprintf(temp_path, sizeof(temp_path), "%s.tmp", cache_path);
+    const int written = snprintf(temp_path, sizeof(temp_path), "%s.%d.%ld.tmp",
+                                 cache_path, (int)getpid(), (long)pthread_self());
     if (written <= 0 || (size_t)written >= sizeof(temp_path)) return false;
 
     FILE* file = fopen(temp_path, "wb");
