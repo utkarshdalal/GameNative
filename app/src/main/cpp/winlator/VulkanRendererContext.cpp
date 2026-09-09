@@ -1621,9 +1621,14 @@ ok=true;}catch(...){}
 
     vk_.ResetFences(device, 1, &inFlightFences[currentFrame]);
     if (vk_.QueueSubmit(graphicsQueue, 1, &si, inFlightFences[currentFrame]) != VK_SUCCESS) {
+        VkFence stale = inFlightFences[currentFrame];
+        for (auto& f : imgInFlight) {
+            if (f == stale) f = VK_NULL_HANDLE;
+        }
         vk_.DestroyFence(device, inFlightFences[currentFrame], nullptr);
         VkFenceCreateInfo fi{}; fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         vk_.CreateFence(device, &fi, nullptr, &inFlightFences[currentFrame]);
+        fbResized.store(true);
         return;
     }
 
