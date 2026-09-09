@@ -198,6 +198,9 @@ class EpicDownloadManager @Inject constructor(
             // Calculate total download size including DLCs
             var totalDownloadSize = chunks.sumOf { it.fileSize }
             var totalInstalledSize = chunks.sumOf { it.windowSize.toLong() }
+            // Progress total = UNCOMPRESSED installed bytes (the native engine credits
+            // decompressed chunk bytes; assembly tops up shared-chunk copies).
+            var totalProgressSize = files.sumOf { it.fileSize }
             val baseGameSize = totalDownloadSize
 
             // Fetch DLC manifests to get their sizes for accurate progress tracking
@@ -219,6 +222,7 @@ class EpicDownloadManager @Inject constructor(
                             val dlcInstalledSize = dlcParsed.chunkDataList?.elements?.sumOf { it.windowSize.toLong() } ?: 0L
                             totalDownloadSize += dlcDownloadSize
                             totalInstalledSize += dlcInstalledSize
+                            totalProgressSize += ManifestUtils.getFilesForSelectedInstallTags(dlcParsed, selectedTags).sumOf { it.fileSize }
                             dlcManifestData.add(dlc to dlcManifest)
                             Timber.tag("Epic").i("DLC ${dlc.title} size: ${dlcDownloadSize / 1_000_000} MB")
                         } else {
@@ -246,7 +250,7 @@ class EpicDownloadManager @Inject constructor(
                 """.trimMargin(),
             )
 
-            downloadInfo.setTotalExpectedBytes(totalDownloadSize)
+            downloadInfo.setTotalExpectedBytes(totalProgressSize)
             downloadInfo.updateStatusMessage("Downloading base game...")
 
             // Download chunks in parallel.
@@ -1043,14 +1047,36 @@ class EpicDownloadManager @Inject constructor(
         }
 
         // Assemble the pending files out of the native chunk cache (`<installDir>/.chunks`).
+        // Progress: the engine credited each unique chunk's DECOMPRESSED bytes once (D below).
+        // Assembly writes Σ file sizes (U ≥ D — shared chunks are written once per consumer),
+        // so credit only the part of the written stream beyond D; the bar then climbs to
+        // exactly 100% when the last file is assembled.
         val nativeChunkCacheDir = File(installDir, ".chunks")
+        val downloadedCredit = creditedBytes
+        val assembledBytes = java.util.concurrent.atomic.AtomicLong(0L)
+        val extraCredited = java.util.concurrent.atomic.AtomicLong(0L)
+        var lastAssemblyEmitAt = 0L
+        val onPartWritten: (Long) -> Unit = { partSize ->
+            val written = assembledBytes.addAndGet(partSize)
+            val extra = (written - downloadedCredit).coerceAtLeast(0L)
+            val delta = extra - extraCredited.get()
+            if (delta > 0L && extraCredited.compareAndSet(extra - delta, extra)) {
+                downloadInfo.updateBytesDownloaded(delta)
+                val now = System.currentTimeMillis()
+                if (now - lastAssemblyEmitAt >= 250L) {
+                    lastAssemblyEmitAt = now
+                    downloadInfo.updateStatusMessage("Assembling files...")
+                    downloadInfo.emitProgressChange()
+                }
+            }
+        }
         try {
             pendingFiles.chunked(4).forEach { batch ->
                 if (!downloadInfo.isActive()) {
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
                 val results = batch.map { fileManifest ->
-                    async { assembleFileSequential(fileManifest, nativeChunkCacheDir, installDir) }
+                    async { assembleFileSequential(fileManifest, nativeChunkCacheDir, installDir, onPartWritten) }
                 }.awaitAll()
 
                 results.firstOrNull { it.isFailure }?.let { failure ->
@@ -1374,6 +1400,7 @@ class EpicDownloadManager @Inject constructor(
         fileManifest: app.gamenative.service.epic.manifest.FileManifest,
         chunkCacheDir: File,
         installDir: File,
+        onPartWritten: ((Long) -> Unit)? = null,
     ): Result<File> = withContext(Dispatchers.IO) {
         try {
             val outputFile = File(installDir, fileManifest.filename)
@@ -1404,6 +1431,7 @@ class EpicDownloadManager @Inject constructor(
                             remaining -= bytesRead
                         }
                     }
+                    onPartWritten?.invoke(chunkPart.size.toLong())
                 }
             }
 

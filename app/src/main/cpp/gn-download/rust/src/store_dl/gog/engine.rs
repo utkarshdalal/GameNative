@@ -108,9 +108,11 @@ pub trait GogEvents: Sync {
         bytes_done: u64,
         bytes_total: u64,
     );
-    /// Cumulative compressed bytes fetched so far in this run (monotonic high-water, may be
-    /// called from any fetch-pool thread). Drives the caller's live size/ETA display; the
-    /// default no-op keeps tests and non-UI consumers unchanged.
+    /// Cumulative UNCOMPRESSED bytes written so far in this run (monotonic high-water, may be
+    /// called from any fetch-pool thread): gen2 credits compressed piece lengths as they stream
+    /// and tops each chunk up to its inflated size at finish; gen1 pieces are raw file bytes.
+    /// Drives the caller's live size/ETA display; the default no-op keeps tests and non-UI
+    /// consumers unchanged.
     fn on_bytes(&self, _bytes_fetched: u64) {}
     fn on_log(&self, line: &str);
 }
@@ -623,7 +625,7 @@ impl<'a> FetchSink for GogSink<'a> {
     }
 
     /// Stream mode: the body ended — run Java's checks in order and count the chunk.
-    fn on_finish(&self, item: &FetchItem, _total_len: u64) -> Result<u64, SinkError> {
+    fn on_finish(&self, item: &FetchItem, total_len: u64) -> Result<u64, SinkError> {
         let id = item.id as usize;
         let Some(&(file_idx, chunk_idx)) = self.table.get(id) else {
             return Err(SinkError::Fatal(format!("unknown item id {}", item.id)));
@@ -699,7 +701,9 @@ impl<'a> FetchSink for GogSink<'a> {
         }
         drop(writer.file);
         self.chunk_done(file_idx)?;
-        Ok(0)
+        // Pieces credited their COMPRESSED length as they streamed in; convert to the
+        // uncompressed contract by crediting the inflation delta here (stored chunks: 0).
+        Ok(writer.written.saturating_sub(total_len))
     }
 }
 
@@ -1546,7 +1550,11 @@ mod tests {
         sink.on_chunk(&item(0), 0, &ca[..cut1]).unwrap();
         sink.on_chunk(&item(0), cut1 as u64, &ca[cut1..cut2]).unwrap();
         sink.on_chunk(&item(0), cut2 as u64, &ca[cut2..]).unwrap();
-        assert_eq!(sink.on_finish(&item(0), ca.len() as u64).unwrap(), 0);
+        // zlib chunk: pieces credited compressed, on_finish tops up to the inflated size.
+        assert_eq!(
+            sink.on_finish(&item(0), ca.len() as u64).unwrap(),
+            part_a.len() as u64 - ca.len() as u64
+        );
         assert!(tmp_path.exists() && !out_path.exists());
         // Stored chunk, one piece; wrong length first (→ Retry), then the real one.
         sink.on_chunk(&item(1), 0, &part_b[..3]).unwrap();

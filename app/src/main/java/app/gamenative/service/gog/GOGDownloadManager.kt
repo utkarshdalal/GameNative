@@ -353,19 +353,23 @@ class GOGDownloadManager @Inject constructor(
             // Step 6: Calculate sizes and extract chunk hashes
             val allDownloadFiles = gameFiles + supportFiles
             val totalSize = parser.calculateTotalSize(allDownloadFiles)
+            // Progress total = UNCOMPRESSED bytes: the native engine credits inflated chunk
+            // bytes (piece streams topped up to the inflated size at chunk finish).
+            val totalUncompressedSize = parser.calculateUncompressedSize(allDownloadFiles)
             val chunkHashes = parser.extractChunkHashes(allDownloadFiles)
 
             Timber.tag("GOG").d(
                 """
                 |Download stats:
                 |  Total compressed size: ${totalSize / 1_000_000.0} MB (${if (withDlcs) "including DLC" else "base game only"})
+                |  Total uncompressed size: ${totalUncompressedSize / 1_000_000.0} MB
                 |  Unique chunks: ${chunkHashes.size}
                 |  Files: ${allDownloadFiles.size}
                 """.trimMargin(),
             )
 
             val resumedBytes = downloadInfo.getBytesDownloaded()
-            downloadInfo.setTotalExpectedBytes(totalSize + resumedBytes)
+            downloadInfo.setTotalExpectedBytes(totalUncompressedSize + resumedBytes)
 
             // Step 7: Get secure CDN links for chunks
             downloadInfo.updateStatusMessage("Getting secure download links...")
@@ -1144,6 +1148,16 @@ class GOGDownloadManager @Inject constructor(
                     )
                 }
 
+                // Fully assembled: credit the chunk's INFLATED size once per position (shared
+                // chunks are written — and counted — once per consumer, matching the
+                // uncompressed progress total). Only the fully-successful attempt reaches
+                // here, so a re-fetched chunk can never double-credit.
+                val inflatedSize = matchedFiles
+                    .firstNotNullOf { f -> f.chunks.firstOrNull { it.compressedMd5 == chunkMd5 } }
+                    .size
+                downloadInfo.updateBytesDownloaded(inflatedSize * expectedCount)
+                downloadInfo.emitProgressChange()
+
                 assembledPerFile.forEach { (file, count) ->
                     val remaining = filePendingPositions[file.path]?.addAndGet(-count)
                     if (remaining == 0) {
@@ -1753,8 +1767,8 @@ class GOGDownloadManager @Inject constructor(
                                 }
                                 md.update(buffer, 0, bytesRead)
                                 output.write(buffer, 0, bytesRead)
-                                downloadInfo.updateBytesDownloaded(bytesRead.toLong())
-
+                                // No byte credit here: progress is UNCOMPRESSED — each chunk
+                                // credits its inflated size once fully assembled (assembleReady).
                                 val now = System.currentTimeMillis()
                                 if (now - lastProgressEmitAt >= STREAM_PROGRESS_TIME_INTERVAL_MS) {
                                     downloadInfo.emitProgressChange()

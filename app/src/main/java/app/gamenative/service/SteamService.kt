@@ -1898,12 +1898,15 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             val info = DownloadInfo(selectedDepots.size, appId, downloadingAppIds).also { di ->
                 di.setPersistencePath(appDirPath)
-                // Set weights for each depot based on manifest sizes
+                // Weights + total = UNCOMPRESSED depot size (manifest.size): the native engine
+                // credits decompressed chunk bytes written, so the progress bar and ETA must be
+                // in the same unit (previously getDownloadBytes = compressed → the bar could
+                // clamp at 100% before the depot was actually done).
                 val sizes = selectedDepots.map { (_, depot) ->
                     val mInfo = depot.manifests[branch]
                         ?: depot.encryptedManifests[branch]
                         ?: return@map 1L
-                    SteamUtils.getDownloadBytes(mInfo).coerceAtLeast(1L)
+                    mInfo.size.coerceAtLeast(1L)
                 }
                 sizes.forEachIndexed { i, bytes -> di.setWeight(i, bytes) }
 

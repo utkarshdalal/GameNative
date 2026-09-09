@@ -144,8 +144,8 @@ object GameDownloadService {
         parentScope: CoroutineScope,
     ) {
         // Track cumulative per-depot bytes to calculate deltas (same unit the engine reports:
-        // decompressed chunk bytes written; totalExpectedBytes stays the manifest download size,
-        // matching the old listener's approximation).
+        // decompressed chunk bytes written; totalExpectedBytes is the uncompressed depot size
+        // set in SteamService — same unit, so the bar reaches 100% exactly at completion).
         val depotCumulativeBytes = ConcurrentHashMap<Int, Long>()
         // First progress callback ends the "Preparing depots" key-prep phase (owner-pinned, so a
         // late callback from an unwound run cannot wipe a newer attempt's message).

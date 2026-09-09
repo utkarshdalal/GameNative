@@ -49,7 +49,11 @@ pub struct EpicPlan {
     pub cache_dir: PathBuf,
     /// Chunk indices (into `manifest.unique_chunks`) in Java's submission order.
     pub needed: Vec<usize>,
-    /// `Σ max(fileSize, 1)` over `needed`.
+    /// `Σ max(fileSize, 1)` over `needed` (compressed) — kept for the plan log and the Java
+    /// `expected_bytes` cross-check.
+    pub total_compressed: u64,
+    /// `Σ FileInfo.file_size()` over `pending_file_indices` — the progress TOTAL (uncompressed
+    /// installed bytes; assembly afterwards tops up shared-chunk copies to reach it).
     pub total_bytes: u64,
     /// Distinct CDN prefixes = fetch-core host keys.
     pub hosts: Vec<String>,
@@ -62,7 +66,7 @@ pub struct EpicOutcome {
     pub success: bool,
     pub cancelled: bool,
     pub error: String,
-    /// Credited (manifest `max(fileSize,1)`) bytes: skipped-cached + fetched.
+    /// Credited DECOMPRESSED bytes: skipped-cached (cache-file length) + fetched (inflated size).
     pub bytes_credited: u64,
     /// Chunks accounted for (skipped-cached + fetched), Java's `completedCount`.
     pub chunks_done: u64,
@@ -85,7 +89,12 @@ pub fn build_plan(req: &EpicRequest) -> Result<EpicPlan, String> {
         }
     }
     let needed = unique_chunks_for_files(&manifest, &req.pending_file_indices);
-    let total_bytes = total_credit_bytes(&manifest, &needed);
+    let total_compressed = total_credit_bytes(&manifest, &needed);
+    let total_bytes: u64 = req
+        .pending_file_indices
+        .iter()
+        .map(|&i| manifest.files[i].file_size())
+        .sum();
     if let Some(expected) = req.expected_chunks {
         if expected != needed.len() as u64 {
             return Err(format!(
@@ -95,9 +104,9 @@ pub fn build_plan(req: &EpicRequest) -> Result<EpicPlan, String> {
         }
     }
     if let Some(expected) = req.expected_bytes {
-        if expected != total_bytes {
+        if expected != total_compressed {
             return Err(format!(
-                "plan: byte total mismatch java={expected} rust={total_bytes}"
+                "plan: byte total mismatch java={expected} rust={total_compressed}"
             ));
         }
     }
@@ -112,6 +121,7 @@ pub fn build_plan(req: &EpicRequest) -> Result<EpicPlan, String> {
         manifest,
         cache_dir,
         needed,
+        total_compressed,
         total_bytes,
         hosts,
     })
@@ -133,9 +143,12 @@ impl<'a> FetchSink for ChunkCacheSink<'a> {
         let chunk = &self.plan.manifest.unique_chunks[ci];
         let final_path = cached_chunk_path(&self.plan.cache_dir, chunk);
         match super::chunk::write_verified_chunk(&body, chunk.verifiable_sha1(), &final_path) {
+            // Credit the DECOMPRESSED bytes: the progress contract is "uncompressed installed
+            // bytes" (Steam-style), so the app screen's total = installed size and assembly
+            // afterwards only tops up shared-chunk copies.
             Ok(written) => {
                 self.decompressed.fetch_add(written, Ordering::Relaxed);
-                Ok(chunk.credit_bytes())
+                Ok(written)
             }
             // Every per-attempt failure in Java is "try the next CDN"; the core's Retry rotates
             // hosts and backs off the same way (bounded at its attempt cap).
@@ -208,12 +221,13 @@ pub fn run_plan(
     };
     let host_cap = per_host_cap(req.max_workers, plan.hosts.len());
     log(&format!(
-        "plan chunk_dir={} version={} files_pending={} chunks={} bytes={} hosts={} workers={} per_host_cap={host_cap} process_workers={}",
+        "plan chunk_dir={} version={} files_pending={} chunks={} bytes_uncompressed={} bytes_compressed={} hosts={} workers={} per_host_cap={host_cap} process_workers={}",
         plan.manifest.chunk_dir,
         plan.manifest.version,
         req.pending_file_indices.len(),
         chunks_total,
         plan.total_bytes,
+        plan.total_compressed,
         plan.hosts.len(),
         req.max_workers,
         req.process_workers
@@ -236,8 +250,11 @@ pub fn run_plan(
             return outcome;
         }
         let chunk = &plan.manifest.unique_chunks[ci];
-        if cached_chunk_path(&plan.cache_dir, chunk).exists() {
-            pre_bytes += chunk.credit_bytes();
+        let cached = cached_chunk_path(&plan.cache_dir, chunk);
+        if cached.exists() {
+            // Credit the DECOMPRESSED size: the cache file holds the inflated chunk, so its
+            // length is exactly that (Java credited the compressed `max(fileSize,1)`).
+            pre_bytes += std::fs::metadata(&cached).map(|m| m.len()).unwrap_or(0);
             pre_chunks += 1;
             progress(pre_bytes, pre_chunks);
         } else {
@@ -390,7 +407,10 @@ mod tests {
         let req = request(dir.to_str().unwrap(), vec![0, 1]);
         let plan = build_plan(&req).unwrap();
         assert_eq!(plan.needed, vec![0, 1]);
-        assert_eq!(plan.total_bytes, 700_000 + 1);
+        // Progress total = uncompressed installed bytes of the pending files:
+        // file0 = 1_048_576 + 4000, file1 = 4096.
+        assert_eq!(plan.total_bytes, 1_056_672);
+        assert_eq!(plan.total_compressed, 700_000 + 1, "Java credit total kept for cross-check");
         assert_eq!(plan.hosts.len(), 2, "duplicate CDN prefix collapsed");
         assert!(plan.cache_dir.ends_with(".chunks"));
         assert!(plan.cache_dir.is_dir());
@@ -435,8 +455,9 @@ mod tests {
         let out = run_plan(&plan, &req, &cancel, &progress, &log);
         assert!(out.success);
         assert_eq!(out.chunks_done, 2);
-        assert_eq!(out.bytes_credited, 700_001);
-        assert_eq!(*calls.lock().unwrap(), vec![(700_000, 1), (700_001, 2)]);
+        // Cached credit = cache-file length (decompressed bytes), 6 per b"cached" file.
+        assert_eq!(out.bytes_credited, 12);
+        assert_eq!(*calls.lock().unwrap(), vec![(6, 1), (12, 2)]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
