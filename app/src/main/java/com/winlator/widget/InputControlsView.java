@@ -591,11 +591,13 @@ public class InputControlsView extends View {
         final float[] values = {controller.state.thumbLX, controller.state.thumbLY, controller.state.thumbRX, controller.state.thumbRY, controller.state.getDPadX(), controller.state.getDPadY()};
 
         for (byte i = 0; i < axes.length; i++) {
-            // Indices 0..3 are the analog sticks, whose values already had the profile's complete
-            // stick tuning applied by ExternalController, so anything non-zero is live input.
-            // 4..5 are the digital hat axes, which keep the fixed threshold.
+            // Tuned analog-stick values already include the user's chosen deadzone, so anything
+            // non-zero is live input. Untuned legacy profiles and digital hat axes retain the
+            // original fixed activation threshold.
             boolean isStick = i < PHYSICAL_STICK_AXIS_COUNT;
-            boolean isActive = isStick ? values[i] != 0 : Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE;
+            boolean isActive = isStick && profile.isStickTuningConfigured()
+                    ? values[i] != 0
+                    : Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE;
 
             if (isActive) {
                 controllerBinding = controller.getControllerBinding(ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i])));

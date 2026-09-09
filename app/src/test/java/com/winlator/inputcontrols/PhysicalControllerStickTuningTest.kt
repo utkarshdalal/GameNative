@@ -255,6 +255,12 @@ class PhysicalControllerStickTuningTest {
         assertEquals(ControlsProfile.DEFAULT_STICK_DEADZONE_MODE, legacy.rightStickDeadzoneMode)
         assertEquals(ControlsProfile.DEFAULT_STICK_DIGITAL_MODE, legacy.leftStickDigitalMode)
         assertEquals(ControlsProfile.DEFAULT_STICK_DIGITAL_MODE, legacy.rightStickDigitalMode)
+        assertFalse(legacy.isStickTuningConfigured)
+
+        legacy.save()
+        assertFalse(
+            ControlsProfile.getProfileFile(context, legacy.id).readText().contains("leftStickDeadzone"),
+        )
 
         val reordered = load(
             """{
@@ -282,6 +288,7 @@ class PhysicalControllerStickTuningTest {
         assertEquals(ControlsProfile.StickDeadzoneMode.HYBRID, reordered.rightStickDeadzoneMode)
         assertEquals(ControlsProfile.StickDigitalMode.FOUR_WAY, reordered.leftStickDigitalMode)
         assertEquals(ControlsProfile.StickDigitalMode.EIGHT_WAY, reordered.rightStickDigitalMode)
+        assertTrue(reordered.isStickTuningConfigured)
     }
 
     @Test
@@ -310,6 +317,7 @@ class PhysicalControllerStickTuningTest {
         assertEquals(ControlsProfile.StickDeadzoneMode.HYBRID, loaded.rightStickDeadzoneMode)
         assertEquals(ControlsProfile.StickDigitalMode.FOUR_WAY, loaded.leftStickDigitalMode)
         assertEquals(ControlsProfile.StickDigitalMode.EIGHT_WAY, loaded.rightStickDigitalMode)
+        assertTrue(loaded.isStickTuningConfigured)
     }
 
     private fun load(json: String): ControlsProfile {

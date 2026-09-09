@@ -52,36 +52,39 @@ public class ExternalController {
         final ControlsProfile.StickDeadzoneMode deadzoneModeRight;
         final ControlsProfile.StickDigitalMode directionModeLeft;
         final ControlsProfile.StickDigitalMode directionModeRight;
+        final Object owner;
 
-        StickTuningConfig(@Nullable ControlsProfile profile) {
-            deadzoneLeft = profile != null
+        StickTuningConfig(@Nullable ControlsProfile profile, @Nullable Object owner) {
+            boolean tuningEnabled = profile != null && profile.isStickTuningConfigured();
+            deadzoneLeft = tuningEnabled
                     ? profile.getLeftStickDeadzone()
-                    : ControlsProfile.DEFAULT_STICK_DEADZONE;
-            deadzoneRight = profile != null
+                    : ControlsProfile.MIN_STICK_DEADZONE;
+            deadzoneRight = tuningEnabled
                     ? profile.getRightStickDeadzone()
-                    : ControlsProfile.DEFAULT_STICK_DEADZONE;
-            sensitivityLeft = profile != null
+                    : ControlsProfile.MIN_STICK_DEADZONE;
+            sensitivityLeft = tuningEnabled
                     ? profile.getLeftStickSensitivity()
                     : ControlsProfile.DEFAULT_STICK_SENSITIVITY;
-            sensitivityRight = profile != null
+            sensitivityRight = tuningEnabled
                     ? profile.getRightStickSensitivity()
                     : ControlsProfile.DEFAULT_STICK_SENSITIVITY;
-            deadzoneModeLeft = profile != null
+            deadzoneModeLeft = tuningEnabled
                     ? profile.getLeftStickDeadzoneMode()
                     : ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
-            deadzoneModeRight = profile != null
+            deadzoneModeRight = tuningEnabled
                     ? profile.getRightStickDeadzoneMode()
                     : ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
-            directionModeLeft = profile != null
+            directionModeLeft = tuningEnabled
                     ? profile.getLeftStickDigitalMode()
                     : ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
-            directionModeRight = profile != null
+            directionModeRight = tuningEnabled
                     ? profile.getRightStickDigitalMode()
                     : ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
+            this.owner = owner;
         }
     }
 
-    private static volatile StickTuningConfig stickTuning = new StickTuningConfig(null);
+    private static volatile StickTuningConfig stickTuning = new StickTuningConfig(null, null);
 
     private String id;
     private String name;
@@ -97,9 +100,14 @@ public class ExternalController {
     private int snappedLeftDirection = StickVectorProcessor.DIRECTION_NONE;
     private int snappedRightDirection = StickVectorProcessor.DIRECTION_NONE;
 
-    /** Applies {@code profile}'s stick tuning to every physical controller. */
-    public static void setStickTuning(ControlsProfile profile) {
-        stickTuning = new StickTuningConfig(profile);
+    /** Applies {@code profile}'s stick tuning until its owner releases the shared configuration. */
+    public static synchronized void setStickTuning(ControlsProfile profile, @NonNull Object owner) {
+        stickTuning = new StickTuningConfig(profile, owner);
+    }
+
+    /** Clears tuning only when {@code owner} still owns the active configuration. */
+    public static synchronized void clearStickTuning(@NonNull Object owner) {
+        if (stickTuning.owner == owner) stickTuning = new StickTuningConfig(null, null);
     }
 
     public String getName() {

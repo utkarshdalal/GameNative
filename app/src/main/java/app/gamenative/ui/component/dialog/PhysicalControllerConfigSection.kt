@@ -745,91 +745,98 @@ private fun StickTuningSection(
 ) {
     val deadzoneDescription = stringResource(R.string.stick_deadzone_description)
     val sensitivityDescription = stringResource(R.string.stick_sensitivity_description)
+    val directionDescription = stringResource(R.string.stick_direction_mode_description)
+    val deadzoneOptions = listOf(
+        ControlsProfile.StickDeadzoneMode.AXIAL to stringResource(R.string.stick_deadzone_axial),
+        ControlsProfile.StickDeadzoneMode.CIRCULAR to stringResource(R.string.stick_deadzone_circular),
+        ControlsProfile.StickDeadzoneMode.HYBRID to stringResource(R.string.stick_deadzone_hybrid),
+    )
+    val directionOptions = listOf(
+        ControlsProfile.StickDigitalMode.UNRESTRICTED to stringResource(R.string.stick_direction_unrestricted),
+        ControlsProfile.StickDigitalMode.FOUR_WAY to stringResource(R.string.stick_direction_four_way),
+        ControlsProfile.StickDigitalMode.EIGHT_WAY to stringResource(R.string.stick_direction_eight_way),
+    )
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        SettingsDialogSectionHeader(stringResource(R.string.left_stick))
-        StickAdjustmentSlider(
-            label = stringResource(R.string.left_stick_deadzone),
-            description = deadzoneDescription,
-            value = tuning.left.deadzone,
-            displayValue = String.format(Locale.getDefault(), "%.0f%%", tuning.left.deadzone * 100),
-            valueRange = ControlsProfile.MIN_STICK_DEADZONE..ControlsProfile.MAX_STICK_DEADZONE,
-            steps = DEADZONE_SLIDER_STEPS,
-            onValueChange = { onTuningChange(tuning.copy(left = tuning.left.copy(deadzone = it))) }
+        StickTuningControls(
+            title = stringResource(R.string.left_stick),
+            deadzoneLabel = stringResource(R.string.left_stick_deadzone),
+            deadzoneShapeLabel = stringResource(R.string.left_stick_deadzone_shape),
+            sensitivityLabel = stringResource(R.string.left_stick_sensitivity),
+            directionLabel = stringResource(R.string.left_stick_direction_mode),
+            tuning = tuning.left,
+            deadzoneDescription = deadzoneDescription,
+            sensitivityDescription = sensitivityDescription,
+            directionDescription = directionDescription,
+            deadzoneOptions = deadzoneOptions,
+            directionOptions = directionOptions,
+            onTuningChange = { onTuningChange(tuning.copy(left = it)) },
         )
-        StickModeSelector(
-            label = stringResource(R.string.left_stick_deadzone_shape),
-            description = stickDeadzoneModeDescription(tuning.left.deadzoneMode),
-            selected = tuning.left.deadzoneMode,
-            options = listOf(
-                ControlsProfile.StickDeadzoneMode.AXIAL to stringResource(R.string.stick_deadzone_axial),
-                ControlsProfile.StickDeadzoneMode.CIRCULAR to stringResource(R.string.stick_deadzone_circular),
-                ControlsProfile.StickDeadzoneMode.HYBRID to stringResource(R.string.stick_deadzone_hybrid),
-            ),
-            onSelected = { onTuningChange(tuning.copy(left = tuning.left.copy(deadzoneMode = it))) },
-        )
-        StickAdjustmentSlider(
-            label = stringResource(R.string.left_stick_sensitivity),
-            description = sensitivityDescription,
-            value = tuning.left.sensitivity,
-            displayValue = String.format(Locale.getDefault(), "%.2f×", tuning.left.sensitivity),
-            valueRange = ControlsProfile.MIN_STICK_SENSITIVITY..ControlsProfile.MAX_STICK_SENSITIVITY,
-            steps = SENSITIVITY_SLIDER_STEPS,
-            onValueChange = { onTuningChange(tuning.copy(left = tuning.left.copy(sensitivity = it))) }
-        )
-        StickModeSelector(
-            label = stringResource(R.string.left_stick_direction_mode),
-            description = stringResource(R.string.stick_direction_mode_description),
-            selected = tuning.left.directionMode,
-            options = listOf(
-                ControlsProfile.StickDigitalMode.UNRESTRICTED to stringResource(R.string.stick_direction_unrestricted),
-                ControlsProfile.StickDigitalMode.FOUR_WAY to stringResource(R.string.stick_direction_four_way),
-                ControlsProfile.StickDigitalMode.EIGHT_WAY to stringResource(R.string.stick_direction_eight_way),
-            ),
-            onSelected = { onTuningChange(tuning.copy(left = tuning.left.copy(directionMode = it))) },
-        )
-        SettingsDialogSectionHeader(stringResource(R.string.right_stick))
-        StickAdjustmentSlider(
-            label = stringResource(R.string.right_stick_deadzone),
-            description = deadzoneDescription,
-            value = tuning.right.deadzone,
-            displayValue = String.format(Locale.getDefault(), "%.0f%%", tuning.right.deadzone * 100),
-            valueRange = ControlsProfile.MIN_STICK_DEADZONE..ControlsProfile.MAX_STICK_DEADZONE,
-            steps = DEADZONE_SLIDER_STEPS,
-            onValueChange = { onTuningChange(tuning.copy(right = tuning.right.copy(deadzone = it))) }
-        )
-        StickModeSelector(
-            label = stringResource(R.string.right_stick_deadzone_shape),
-            description = stickDeadzoneModeDescription(tuning.right.deadzoneMode),
-            selected = tuning.right.deadzoneMode,
-            options = listOf(
-                ControlsProfile.StickDeadzoneMode.AXIAL to stringResource(R.string.stick_deadzone_axial),
-                ControlsProfile.StickDeadzoneMode.CIRCULAR to stringResource(R.string.stick_deadzone_circular),
-                ControlsProfile.StickDeadzoneMode.HYBRID to stringResource(R.string.stick_deadzone_hybrid),
-            ),
-            onSelected = { onTuningChange(tuning.copy(right = tuning.right.copy(deadzoneMode = it))) },
-        )
-        StickAdjustmentSlider(
-            label = stringResource(R.string.right_stick_sensitivity),
-            description = sensitivityDescription,
-            value = tuning.right.sensitivity,
-            displayValue = String.format(Locale.getDefault(), "%.2f×", tuning.right.sensitivity),
-            valueRange = ControlsProfile.MIN_STICK_SENSITIVITY..ControlsProfile.MAX_STICK_SENSITIVITY,
-            steps = SENSITIVITY_SLIDER_STEPS,
-            onValueChange = { onTuningChange(tuning.copy(right = tuning.right.copy(sensitivity = it))) }
-        )
-        StickModeSelector(
-            label = stringResource(R.string.right_stick_direction_mode),
-            description = stringResource(R.string.stick_direction_mode_description),
-            selected = tuning.right.directionMode,
-            options = listOf(
-                ControlsProfile.StickDigitalMode.UNRESTRICTED to stringResource(R.string.stick_direction_unrestricted),
-                ControlsProfile.StickDigitalMode.FOUR_WAY to stringResource(R.string.stick_direction_four_way),
-                ControlsProfile.StickDigitalMode.EIGHT_WAY to stringResource(R.string.stick_direction_eight_way),
-            ),
-            onSelected = { onTuningChange(tuning.copy(right = tuning.right.copy(directionMode = it))) },
+        StickTuningControls(
+            title = stringResource(R.string.right_stick),
+            deadzoneLabel = stringResource(R.string.right_stick_deadzone),
+            deadzoneShapeLabel = stringResource(R.string.right_stick_deadzone_shape),
+            sensitivityLabel = stringResource(R.string.right_stick_sensitivity),
+            directionLabel = stringResource(R.string.right_stick_direction_mode),
+            tuning = tuning.right,
+            deadzoneDescription = deadzoneDescription,
+            sensitivityDescription = sensitivityDescription,
+            directionDescription = directionDescription,
+            deadzoneOptions = deadzoneOptions,
+            directionOptions = directionOptions,
+            onTuningChange = { onTuningChange(tuning.copy(right = it)) },
         )
     }
+}
+
+@Composable
+private fun StickTuningControls(
+    title: String,
+    deadzoneLabel: String,
+    deadzoneShapeLabel: String,
+    sensitivityLabel: String,
+    directionLabel: String,
+    tuning: StickTuningState,
+    deadzoneDescription: String,
+    sensitivityDescription: String,
+    directionDescription: String,
+    deadzoneOptions: List<Pair<ControlsProfile.StickDeadzoneMode, String>>,
+    directionOptions: List<Pair<ControlsProfile.StickDigitalMode, String>>,
+    onTuningChange: (StickTuningState) -> Unit,
+) {
+    SettingsDialogSectionHeader(title)
+    StickAdjustmentSlider(
+        label = deadzoneLabel,
+        description = deadzoneDescription,
+        value = tuning.deadzone,
+        displayValue = String.format(Locale.getDefault(), "%.0f%%", tuning.deadzone * 100),
+        valueRange = ControlsProfile.MIN_STICK_DEADZONE..ControlsProfile.MAX_STICK_DEADZONE,
+        steps = DEADZONE_SLIDER_STEPS,
+        onValueChange = { onTuningChange(tuning.copy(deadzone = it)) },
+    )
+    StickModeSelector(
+        label = deadzoneShapeLabel,
+        description = stickDeadzoneModeDescription(tuning.deadzoneMode),
+        selected = tuning.deadzoneMode,
+        options = deadzoneOptions,
+        onSelected = { onTuningChange(tuning.copy(deadzoneMode = it)) },
+    )
+    StickAdjustmentSlider(
+        label = sensitivityLabel,
+        description = sensitivityDescription,
+        value = tuning.sensitivity,
+        displayValue = String.format(Locale.getDefault(), "%.2f×", tuning.sensitivity),
+        valueRange = ControlsProfile.MIN_STICK_SENSITIVITY..ControlsProfile.MAX_STICK_SENSITIVITY,
+        steps = SENSITIVITY_SLIDER_STEPS,
+        onValueChange = { onTuningChange(tuning.copy(sensitivity = it)) },
+    )
+    StickModeSelector(
+        label = directionLabel,
+        description = directionDescription,
+        selected = tuning.directionMode,
+        options = directionOptions,
+        onSelected = { onTuningChange(tuning.copy(directionMode = it)) },
+    )
 }
 
 @Composable

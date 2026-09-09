@@ -87,6 +87,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     private StickDeadzoneMode rightStickDeadzoneMode = DEFAULT_STICK_DEADZONE_MODE;
     private StickDigitalMode leftStickDigitalMode = DEFAULT_STICK_DIGITAL_MODE;
     private StickDigitalMode rightStickDigitalMode = DEFAULT_STICK_DIGITAL_MODE;
+    private boolean stickTuningConfigured = false;
     private final ArrayList<ControlElement> elements = new ArrayList<>();
     private final ArrayList<ExternalController> controllers = new ArrayList<>();
     private final ArrayList<RadialMenu> radialMenus = new ArrayList<>();
@@ -135,6 +136,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setLeftStickDeadzone(float deadzone) {
         this.leftStickDeadzone = clampDeadzone(deadzone);
+        stickTuningConfigured = true;
     }
 
     public float getRightStickDeadzone() {
@@ -143,6 +145,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setRightStickDeadzone(float deadzone) {
         this.rightStickDeadzone = clampDeadzone(deadzone);
+        stickTuningConfigured = true;
     }
 
     public float getLeftStickSensitivity() {
@@ -151,6 +154,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setLeftStickSensitivity(float sensitivity) {
         this.leftStickSensitivity = clampSensitivity(sensitivity);
+        stickTuningConfigured = true;
     }
 
     public float getRightStickSensitivity() {
@@ -159,6 +163,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setRightStickSensitivity(float sensitivity) {
         this.rightStickSensitivity = clampSensitivity(sensitivity);
+        stickTuningConfigured = true;
     }
 
     public StickDeadzoneMode getLeftStickDeadzoneMode() {
@@ -167,6 +172,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setLeftStickDeadzoneMode(StickDeadzoneMode mode) {
         leftStickDeadzoneMode = mode != null ? mode : DEFAULT_STICK_DEADZONE_MODE;
+        stickTuningConfigured = true;
     }
 
     public StickDeadzoneMode getRightStickDeadzoneMode() {
@@ -175,6 +181,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setRightStickDeadzoneMode(StickDeadzoneMode mode) {
         rightStickDeadzoneMode = mode != null ? mode : DEFAULT_STICK_DEADZONE_MODE;
+        stickTuningConfigured = true;
     }
 
     public StickDigitalMode getLeftStickDigitalMode() {
@@ -183,6 +190,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setLeftStickDigitalMode(StickDigitalMode mode) {
         leftStickDigitalMode = mode != null ? mode : DEFAULT_STICK_DIGITAL_MODE;
+        stickTuningConfigured = true;
     }
 
     public StickDigitalMode getRightStickDigitalMode() {
@@ -191,6 +199,12 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setRightStickDigitalMode(StickDigitalMode mode) {
         rightStickDigitalMode = mode != null ? mode : DEFAULT_STICK_DIGITAL_MODE;
+        stickTuningConfigured = true;
+    }
+
+    /** Whether this profile explicitly opted into physical-stick tuning. */
+    public boolean isStickTuningConfigured() {
+        return stickTuningConfigured;
     }
 
     /**
@@ -286,14 +300,18 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             data.put("id", id);
             data.put("name", name);
             data.put("cursorSpeed", Float.valueOf(cursorSpeed));
-            data.put("leftStickDeadzone", (double) leftStickDeadzone);
-            data.put("rightStickDeadzone", (double) rightStickDeadzone);
-            data.put("leftStickSensitivity", (double) leftStickSensitivity);
-            data.put("rightStickSensitivity", (double) rightStickSensitivity);
-            data.put("leftStickDeadzoneMode", leftStickDeadzoneMode.getJsonName());
-            data.put("rightStickDeadzoneMode", rightStickDeadzoneMode.getJsonName());
-            data.put("leftStickDigitalMode", leftStickDigitalMode.getJsonName());
-            data.put("rightStickDigitalMode", rightStickDigitalMode.getJsonName());
+            // Profiles created before stick tuning existed retain their original input behavior.
+            // Opening this feature and saving any values opts the profile in from then on.
+            if (stickTuningConfigured) {
+                data.put("leftStickDeadzone", (double) leftStickDeadzone);
+                data.put("rightStickDeadzone", (double) rightStickDeadzone);
+                data.put("leftStickSensitivity", (double) leftStickSensitivity);
+                data.put("rightStickSensitivity", (double) rightStickSensitivity);
+                data.put("leftStickDeadzoneMode", leftStickDeadzoneMode.getJsonName());
+                data.put("rightStickDeadzoneMode", rightStickDeadzoneMode.getJsonName());
+                data.put("leftStickDigitalMode", leftStickDigitalMode.getJsonName());
+                data.put("rightStickDigitalMode", rightStickDigitalMode.getJsonName());
+            }
 
             JSONArray elementsJSONArray = new JSONArray();
             if (!elementsLoaded && file.isFile()) {

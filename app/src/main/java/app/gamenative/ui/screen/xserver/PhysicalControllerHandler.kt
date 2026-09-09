@@ -56,6 +56,7 @@ class PhysicalControllerHandler(
 
     private val TAG = "gncontrol"
     private val mouseMoveOffset = PointF(0f, 0f)
+    private val mouseMoveRemainder = PointF(0f, 0f)
     private val mouseMoveContributions = mutableMapOf<MouseMoveSource, Float>()
     private val sequenceHandler = Handler(Looper.getMainLooper())
     private var mouseMoveTimer: Timer? = null
@@ -125,7 +126,7 @@ class PhysicalControllerHandler(
     }
 
     init {
-        ExternalController.setStickTuning(profile)
+        ExternalController.setStickTuning(profile, this)
     }
 
     fun setProfile(profile: ControlsProfile?) {
@@ -140,7 +141,7 @@ class PhysicalControllerHandler(
         activeSequenceTriggerBindings.clear()
         sendGamepadState()
         this.profile = profile
-        ExternalController.setStickTuning(profile)
+        ExternalController.setStickTuning(profile, this)
         Log.d(TAG, "PhysicalControllerHandler: Profile set to ${profile?.name}")
     }
 
@@ -159,6 +160,7 @@ class PhysicalControllerHandler(
         showKeyboardPressed = false
         closeRadialMenuIfOpen(commit = false)
         sendGamepadState()
+        ExternalController.clearStickTuning(this)
     }
 
     fun onInputDeviceRemoved(deviceId: Int) {
@@ -354,15 +356,23 @@ class PhysicalControllerHandler(
             mouseMoveTimer = Timer()
             mouseMoveTimer?.schedule(object : TimerTask() {
                 override fun run() {
-                    // Tuning already applies the user's chosen deadzone. Only exact rest is idle;
-                    // another threshold here would silently discard low-sensitivity movement.
-                    if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return
+                    // Tuning already applies the user's chosen deadzone. Preserve sub-pixel input
+                    // across ticks instead of silently discarding low-sensitivity movement.
+                    if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) {
+                        mouseMoveRemainder.set(0f, 0f)
+                        return
+                    }
 
                     // Look up cursor speed dynamically so it updates when profile changes
                     val cursorSpeed = profile?.cursorSpeed ?: 1f
-                    val deltaX = (mouseMoveOffset.x * 10 * cursorSpeed).toInt()
-                    val deltaY = (mouseMoveOffset.y * 10 * cursorSpeed).toInt()
-                    xServer?.injectPointerMoveDelta(deltaX, deltaY)
+                    val scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x
+                    val scaledY = mouseMoveOffset.y * 10 * cursorSpeed + mouseMoveRemainder.y
+                    val deltaX = scaledX.toInt()
+                    val deltaY = scaledY.toInt()
+                    mouseMoveRemainder.set(scaledX - deltaX, scaledY - deltaY)
+                    if (deltaX != 0 || deltaY != 0) {
+                        xServer?.injectPointerMoveDelta(deltaX, deltaY)
+                    }
                 }
             }, 0, 1000 / 60)
         }
@@ -405,6 +415,7 @@ class PhysicalControllerHandler(
             }
         }
         if (mouseMoveContributions.isEmpty()) {
+            mouseMoveRemainder.set(0f, 0f)
             mouseMoveTimer?.cancel()
             mouseMoveTimer = null
         }
@@ -413,6 +424,7 @@ class PhysicalControllerHandler(
     private fun clearMouseMoveContributions() {
         mouseMoveContributions.clear()
         mouseMoveOffset.set(0f, 0f)
+        mouseMoveRemainder.set(0f, 0f)
         mouseMoveTimer?.cancel()
         mouseMoveTimer = null
     }
@@ -1091,7 +1103,11 @@ class PhysicalControllerHandler(
     private fun isPhysicalAxisActive(value: Float, axis: Int): Boolean {
         val isStick = axis == MotionEvent.AXIS_X || axis == MotionEvent.AXIS_Y ||
             axis == MotionEvent.AXIS_Z || axis == MotionEvent.AXIS_RZ
-        return if (isStick) value != 0f else Math.abs(value) > ControlElement.STICK_DEAD_ZONE
+        return if (isStick && profile?.isStickTuningConfigured == true) {
+            value != 0f
+        } else {
+            Math.abs(value) > ControlElement.STICK_DEAD_ZONE
+        }
     }
 
     private fun isRadialMenuMotionOpenerPressed(controller: ExternalController): Boolean {

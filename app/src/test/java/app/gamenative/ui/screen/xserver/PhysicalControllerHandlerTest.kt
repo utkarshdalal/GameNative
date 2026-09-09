@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 @RunWith(RobolectricTestRunner::class)
 class PhysicalControllerHandlerTest {
     @Test
-    fun `snapped cardinal output activates only the selected digital binding`() {
+    fun `cardinal stick output activates only the selected digital binding`() {
         val deviceId = 42
         val rightSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1)
         val downSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Y, 1)
@@ -46,8 +46,6 @@ class PhysicalControllerHandlerTest {
         val profile = mock<ControlsProfile>()
         whenever(profile.getController(deviceId)).thenReturn(controller)
         whenever(profile.gamepadState).thenReturn(gamepadState)
-        whenever(profile.leftStickDigitalMode).thenReturn(ControlsProfile.StickDigitalMode.FOUR_WAY)
-        whenever(profile.rightStickDigitalMode).thenReturn(ControlsProfile.StickDigitalMode.UNRESTRICTED)
         val handler = PhysicalControllerHandler(profile, mock<XServer>(), gamepadStateSender = {})
         val event = motionEvent(deviceId)
 
@@ -63,6 +61,50 @@ class PhysicalControllerHandlerTest {
             assertTrue(handler.onGenericMotionEvent(event))
             assertFalse(gamepadState.dpad[1])
             assertTrue(gamepadState.dpad[2])
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `sub-pixel stick mouse movement accumulates into pointer output`() {
+        val deviceId = 42
+        val rightSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1)
+        val controller = motionController(rightSource, Binding.MOUSE_MOVE_RIGHT).apply {
+            state.thumbLX = 0.05f
+        }
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        whenever(profile.isStickTuningConfigured).thenReturn(true)
+        whenever(profile.cursorSpeed).thenReturn(1f)
+        val xServer = mock<XServer>()
+        val handler = PhysicalControllerHandler(profile, xServer, gamepadStateSender = {})
+
+        try {
+            assertTrue(handler.onGenericMotionEvent(motionEvent(deviceId)))
+            verify(xServer, org.mockito.Mockito.timeout(500).atLeastOnce())
+                .injectPointerMoveDelta(1, 0)
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `untuned legacy profile retains the original stick binding threshold`() {
+        val deviceId = 42
+        val rightSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1)
+        val controller = motionController(rightSource, Binding.GAMEPAD_DPAD_RIGHT).apply {
+            state.thumbLX = 0.05f
+        }
+        val gamepadState = GamepadState()
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        whenever(profile.gamepadState).thenReturn(gamepadState)
+        val handler = PhysicalControllerHandler(profile, mock<XServer>(), gamepadStateSender = {})
+
+        try {
+            assertTrue(handler.onGenericMotionEvent(motionEvent(deviceId)))
+            assertFalse(gamepadState.dpad[1])
         } finally {
             handler.cleanup()
         }
@@ -194,6 +236,7 @@ class PhysicalControllerHandlerTest {
         }
         val profile = mock<ControlsProfile>()
         whenever(profile.getController(deviceId)).thenReturn(controller)
+        whenever(profile.isStickTuningConfigured).thenReturn(true)
         val vectors = mutableListOf<Pair<Float, Float>>()
         val handler = PhysicalControllerHandler(
             profile = profile,
