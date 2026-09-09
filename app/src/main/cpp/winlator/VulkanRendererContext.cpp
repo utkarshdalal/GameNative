@@ -944,9 +944,11 @@ void VulkanRendererContext::blitCompositeToSwapchain(VkCommandBuffer cmd, const 
 
 void VulkanRendererContext::setFrameGenerationEnabled(bool enabled) {
     if (framegenRequested == enabled) return;
+    std::unique_lock<std::shared_mutex> fl(frameMutex);
     std::lock_guard<std::mutex> lk(renderMutex);
     framegenRequested = enabled;
     if (!enabled) {
+        if (device) vk_.DeviceWaitIdle(device);
         destroyLsfg();
     } else if (device && !lsfgCachePath.empty()) {
         createLsfg();
@@ -962,7 +964,9 @@ bool VulkanRendererContext::isFrameGenerationSupported() const {
 }
 
 void VulkanRendererContext::setFrameGenerationShaders(const std::string& cachePath) {
+    std::unique_lock<std::shared_mutex> fl(frameMutex);
     std::lock_guard<std::mutex> lk(renderMutex);
+    if (device) vk_.DeviceWaitIdle(device);
     destroyLsfg();
     lsfgCachePath = cachePath;
     if (framegenRequested && device && !lsfgCachePath.empty()) {
@@ -982,6 +986,7 @@ void VulkanRendererContext::setFrameGenerationRefreshRate(float hz) {
 }
 
 void VulkanRendererContext::setFrameGenerationMode(int multiplier, int targetRate, int flowScalePct) {
+    std::unique_lock<std::shared_mutex> fl(frameMutex);
     std::lock_guard<std::mutex> lk(renderMutex);
     const uint32_t previous_images = framegenExtraImages();
     framegenMultiplier = multiplier < 2 ? 2u : (uint32_t)multiplier;
