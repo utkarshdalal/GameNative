@@ -802,7 +802,6 @@ abstract class BaseAppScreen {
         return configOptions + listOfNotNull(
             getExportSavesOption(context, libraryItem),
             getImportSavesOption(context, libraryItem),
-            getResetSaveBackupOption(context, libraryItem),
         )
     }
 
@@ -1254,6 +1253,37 @@ abstract class BaseAppScreen {
     }
 
     /**
+     * Import-source choice shown before the source is picked: Archive (a single `.zip` file, opened
+     * via `OpenDocument`) or Folder (a SAF tree, opened via `OpenDocumentTree`). Reuses the same
+     * [AlertDialog] pattern as [ExportLayoutChoiceDialog]. Picking a `.zip` file avoids the tree
+     * picker's "Use this folder" button being hidden on non-grantable locations, so it is the
+     * robust default for restoring an exported archive; Folder is offered for raw-tree imports.
+     */
+    @Composable
+    protected fun ImportSourceChoiceDialog(
+        onArchive: () -> Unit,
+        onFolder: () -> Unit,
+        onDismiss: () -> Unit,
+    ) {
+        val context = LocalContext.current
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(context.getString(R.string.save_import_choice_title)) },
+            text = { Text(context.getString(R.string.save_import_choice_message)) },
+            confirmButton = {
+                TextButton(onClick = onArchive) {
+                    Text(context.getString(R.string.save_import_choice_archive))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onFolder) {
+                    Text(context.getString(R.string.save_import_choice_folder))
+                }
+            },
+        )
+    }
+
+    /**
      * Interoperability hint shown for a Raw-tree export before the external location is selected
      * (Req 12.1/12.2/12.3). The [hint] is derived purely from the resolved save location's
      * `PathType` via [app.gamenative.savebackup.InteroperabilityHintClassifier.classify], and this
@@ -1374,6 +1404,11 @@ abstract class BaseAppScreen {
         if (isInstalled) {
             menuOptions.addAll(getConfigMenuOptions(context, libraryItem))
         }
+
+        // Reset save backup settings is available regardless of install state so stale persisted
+        // routes (in-container SaveLocation + remembered SAF grant) can always be cleared — even
+        // when the game is momentarily reported as not installed.
+        getResetSaveBackupOption(context, libraryItem)?.let { menuOptions.add(it) }
 
         return menuOptions
     }
@@ -1724,6 +1759,10 @@ abstract class BaseAppScreen {
         }
         // Suggested archive filename captured for the CreateDocument launcher.
         var pendingArchiveName by remember(appId) { mutableStateOf("saves.zip") }
+        // The import source kind chosen before import() runs; pickImportSource() reads it to select
+        // the archive (.zip OpenDocument — no tree-grant "Use this folder" gating) vs folder
+        // (OpenDocumentTree) launcher. See the import-source chooser dialog below.
+        var pendingImportSourceIsArchive by remember(appId) { mutableStateOf(true) }
 
         // Pending container-browser request: the opened view + drive_c path + the deferred the
         // openContainerBrowser callback awaits. When non-null, the browser is shown full-screen.
@@ -1747,11 +1786,19 @@ abstract class BaseAppScreen {
         // timestamped subdir under it (Req 13.2).
         val exportRawTreeLauncher = rememberSafPicker(onResult = { uri -> completeSaf(uri) })
 
-        // Import source picker: a SAF tree (OpenDocumentTree) per the ImportPickers contract. The
-        // engine sniffs archive-vs-raw from the selected tree (a tree with exactly one top-level
-        // .zip is treated as an archive), so pointing the picker at the folder CONTAINING an
-        // exported .zip imports the archive, and any other tree imports as raw.
-        val importSourceLauncher = rememberSafPicker(onResult = { uri -> completeSaf(uri) })
+        // Import source picker (FOLDER): a SAF tree (OpenDocumentTree). Used for raw-tree imports;
+        // the engine sniffs archive-vs-raw from the selected tree. A tree picker can hide the "Use
+        // this folder" button on non-grantable locations, so archive imports use OpenDocument below.
+        val importFolderLauncher = rememberSafPicker(onResult = { uri -> completeSaf(uri) })
+
+        // Import source picker (ARCHIVE): a single .zip document (OpenDocument). Picking a file has
+        // no tree-grant restriction, so it sidesteps the missing "Use this folder" button entirely
+        // — the robust path for restoring an exported archive. The engine imports a directly-picked
+        // .zip via detectImportSource(fromSingleUri).
+        val importArchiveLauncher =
+            rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument(),
+            ) { uri -> completeSaf(uri) }
 
         // A single suspend helper shared by both flows' SAF callbacks: hold a fresh deferred, launch
         // the chosen launcher, await the result; a launch that throws becomes PickerOpenException.
@@ -1836,9 +1883,23 @@ abstract class BaseAppScreen {
         val importPickers = remember(saveBackupOrchestrator) {
             object : app.gamenative.savebackup.SaveBackupOrchestrator.ImportPickers {
                 override suspend fun pickImportSource(): android.net.Uri? =
-                    awaitSafSelection(
-                        app.gamenative.savebackup.PickerOpenException.Picker.SAF_PICKER,
-                    ) { importSourceLauncher.launchPicker() }
+                    if (pendingImportSourceIsArchive) {
+                        awaitSafSelection(
+                            app.gamenative.savebackup.PickerOpenException.Picker.SAF_PICKER,
+                        ) {
+                            importArchiveLauncher.launch(
+                                arrayOf(
+                                    "application/zip",
+                                    "application/x-zip-compressed",
+                                    "application/octet-stream",
+                                ),
+                            )
+                        }
+                    } else {
+                        awaitSafSelection(
+                            app.gamenative.savebackup.PickerOpenException.Picker.SAF_PICKER,
+                        ) { importFolderLauncher.launchPicker() }
+                    }
 
                 override suspend fun openContainerBrowser(
                     container: com.winlator.container.Container,
@@ -1989,19 +2050,10 @@ abstract class BaseAppScreen {
             )
         }
 
-        var importSavesRequested by remember(appId) {
-            mutableStateOf(shouldImportSaves(appId))
-        }
-
-        LaunchedEffect(appId) {
-            snapshotFlow { shouldImportSaves(appId) }
-                .collect { shouldRequest ->
-                    importSavesRequested = shouldRequest
-                }
-        }
-
-        LaunchedEffect(importSavesRequested) {
-            if (importSavesRequested) {
+        // Run an import through the orchestrator with the chosen source kind, then clear the request.
+        fun runImport(isArchive: Boolean) {
+            pendingImportSourceIsArchive = isArchive
+            uiScope.launch {
                 try {
                     reportImportOutcome(
                         saveBackupOrchestrator.import(context, libraryItem, importPickers),
@@ -2017,6 +2069,45 @@ abstract class BaseAppScreen {
                     clearImportSavesRequest(appId)
                 }
             }
+        }
+
+        var importSavesRequested by remember(appId) {
+            mutableStateOf(shouldImportSaves(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldImportSaves(appId) }
+                .collect { shouldRequest ->
+                    importSavesRequested = shouldRequest
+                }
+        }
+
+        // Import-source choice dialog: archive (.zip file via OpenDocument) vs folder (SAF tree via
+        // OpenDocumentTree). Shown before the source is picked so restoring an exported archive
+        // never depends on the tree picker's "Use this folder" button.
+        var showImportSourceChoice by remember(appId) { mutableStateOf(false) }
+
+        LaunchedEffect(importSavesRequested) {
+            if (importSavesRequested) {
+                showImportSourceChoice = true
+            }
+        }
+
+        if (showImportSourceChoice) {
+            ImportSourceChoiceDialog(
+                onArchive = {
+                    showImportSourceChoice = false
+                    runImport(isArchive = true)
+                },
+                onFolder = {
+                    showImportSourceChoice = false
+                    runImport(isArchive = false)
+                },
+                onDismiss = {
+                    showImportSourceChoice = false
+                    clearImportSavesRequest(appId)
+                },
+            )
         }
 
         // Reset save backup settings: forget BOTH persisted endpoints (the in-container
