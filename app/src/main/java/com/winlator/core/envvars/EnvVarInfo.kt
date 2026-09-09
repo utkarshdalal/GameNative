@@ -132,7 +132,12 @@ data class EnvVarInfo(
             ),
             "FEX_HOSTFEATURES" to EnvVarInfo(
                 identifier = "FEX_HOSTFEATURES",
-                possibleValues = listOf("enablesve", "disablesve", "enableavx", "disableavx", "off"),
+                possibleValues = listOf(
+                    "enablecrypto", "disablecrypto",
+                    "enablesve", "disablesve",
+                    "enableavx", "disableavx",
+                    "off",
+                ),
             ),
             "FEX_SMALLTSCSCALE" to EnvVarInfo(
                 identifier = "FEX_SMALLTSCSCALE",
