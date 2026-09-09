@@ -736,7 +736,7 @@ fun XServerScreen(
         ShmFramePacer.setFrameRateLimit(limit)
         PowerManager.targetFps = limit
         // keeps frame stats in base units while generated frames tick the ring
-        PowerManager.frameSampleStride = if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
+        PowerManager.frameSampleStride = if (lsfgActive) mult else 1
     }
 
     fun effectiveFpsLimit(): Int =
