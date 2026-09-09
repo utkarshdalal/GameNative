@@ -702,18 +702,21 @@ fun XServerScreen(
     }
 
     fun applyFpsLimiterToEngines(limit: Int) {
-        // With LSFG active the layer owns ALL pacing (vsync-locked via
-        // vsync.txt) and presents at limit * multiplier. Both the renderer's
-        // SurfaceControl frame-rate hint and the PresentExtension's scheduled
-        // idle-release pacing must stay off: the hint would clamp the display
-        // to the base rate, and the extension's Choreographer-scheduled pixmap
-        // releases mix stale pixmaps under multiplied present traffic
-        // (measured as constant multi-exposure ghosting on the X11/turnip
-        // present path).
-        xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+        val lsfgActive = isLsfgAvailable && lsfgMultiplier >= 2
+        // SurfaceControl frame-rate hint: when LSFG is active, the display output
+        // presents at base * multiplier. Setting the hint to the multiplied rate
+        // (or 0 for panel default) avoids clamping the panel to the base rate.
+        val displayRate = if (lsfgActive && limit > 0) {
+            (limit * lsfgMultiplier).coerceAtMost(detectedMaxRefreshRateHz)
+        } else {
+            if (lsfgActive) 0 else limit
+        }
+        xServerView?.setFrameRateLimit(displayRate)
+        // Throttle the X Present extension so the game's own render loop receives
+        // back-pressure and actually limits its rendering rate (matches WinNative).
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
-            ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+            ?.setFrameRateLimit(limit)
         // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
         // presents, so SHM-presenting games never pass through it and would
         // otherwise run uncapped whenever LSFG is armed.
@@ -721,7 +724,7 @@ fun XServerScreen(
         PowerManager.targetFps = limit
         // keeps frame stats in base units while generated frames tick the ring
         PowerManager.frameSampleStride =
-            if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
+            if (lsfgActive) lsfgMultiplier else 1
     }
 
     fun effectiveFpsLimit(): Int =
@@ -779,12 +782,13 @@ fun XServerScreen(
     }
 
     LaunchedEffect(xServerView) {
-        // Adaptive-cap steps route through the LSFG limiter; the X-server
-        // limiters must stay at 0 under LSFG.
+        // Adaptive-cap steps route through the X Present pacer to throttle the game.
         PowerManager.fpsCapApplier = applier@{ capFps: Int ->
             if (!isLsfgAvailable || lsfgMultiplier < 2) return@applier false
             PowerManager.targetFps = capFps
-            LsfgQuickMenuHelper.applyLiveFpsCap(container, capFps)
+            xServerView?.getxServer()
+                ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
+                ?.setFrameRateLimit(capFps)
             ShmFramePacer.setFrameRateLimit(capFps)
             true
         }
