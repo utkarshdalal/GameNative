@@ -2274,8 +2274,8 @@
     <string name="frame_generation_preset_quality_note">Motion estimated at full resolution. Highest cost; use it only when the game has GPU headroom to spare.</string>
     <string name="frame_generation_flow_scale">Flow Scale (%1$d%%)</string>
     <string name="session_drawer_frame_generation_note">Interpolates between rendered frames with Lossless Scaling. Smoother motion, but one extra frame of input latency.</string>
-    <string name="session_drawer_frame_generation_target_note">Climbs toward the target only while it measurably helps, instead of holding a fixed multiplier.</string>
-    <string name="session_drawer_frame_generation_missing">Install Lossless Scaling in container settings to use frame generation.</string>
+    <string name="session_drawer_frame_generation_disabled_hint">Lossless Scaling is installed, but Frame Generation is disabled for this container. Enable it in container settings to use it in this session.</string>
+    <string name="session_drawer_frame_generation_missing">Lossless Scaling is not installed. Set it up in Performance settings (Global) to use frame generation.</string>
     <string name="settings_frame_generation_title">Frame Generation</string>
     <string name="settings_frame_generation_importing">Looking for Lossless Scaling…</string>
     <string name="settings_frame_generation_ready">Lossless Scaling shaders ready (%1$s).</string>

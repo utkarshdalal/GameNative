@@ -5,6 +5,7 @@ import android.os.Build
 import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.compose.ui.platform.LocalContext
+import com.winlator.renderer.lsfg.LosslessScaling
 import timber.log.Timber
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -550,7 +551,7 @@ fun QuickMenu(
         )
     }
     val selectedTabLabelResId = when (selectedTab) {
-        QuickMenuTab.LSFG -> R.string.session_drawer_frame_generation
+        QuickMenuTab.LSFG -> R.string.performance
         QuickMenuTab.HUD -> R.string.performance_hud
         QuickMenuTab.EFFECTS -> R.string.screen_effects
         QuickMenuTab.TOOLS -> R.string.task_manager
@@ -806,7 +807,7 @@ fun QuickMenu(
                             ) {
                                 QuickMenuTabButton(
                                     icon = Icons.Default.Speed,
-                                    contentDescriptionResId = R.string.session_drawer_frame_generation,
+                                    contentDescriptionResId = R.string.performance,
                                     selected = selectedTab == QuickMenuTab.LSFG,
                                     accentColor = PluviaTheme.colors.accentPurple,
                                     onSelected = {
@@ -1664,6 +1665,7 @@ private fun LsfgQuickMenuTab(
     }
 
     val context = LocalContext.current
+    val isInstalled = remember(context) { LosslessScaling.isInstalled(context) }
     val supportedRefreshRates = remember(context) {
         val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
@@ -2116,8 +2118,13 @@ private fun LsfgQuickMenuTab(
             QuickMenuSectionHeader(
                 title = stringResource(R.string.session_drawer_frame_generation),
             )
+            val hintText = if (isInstalled) {
+                stringResource(R.string.session_drawer_frame_generation_disabled_hint)
+            } else {
+                stringResource(R.string.session_drawer_frame_generation_missing)
+            }
             Text(
-                text = stringResource(R.string.session_drawer_frame_generation_missing),
+                text = hintText,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
