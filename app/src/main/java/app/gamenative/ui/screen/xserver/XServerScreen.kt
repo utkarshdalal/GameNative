@@ -701,13 +701,26 @@ fun XServerScreen(
         }
     }
 
+    fun isLsfgActive(): Boolean =
+        isLsfgAvailable && (lsfgMultiplier >= 2 || LsfgQuickMenuHelper.targetRate(container) > 0)
+
+    fun effectiveLsfgMultiplier(): Int {
+        val target = LsfgQuickMenuHelper.targetRate(container)
+        return when {
+            lsfgMultiplier >= 2 -> lsfgMultiplier
+            target > 0 -> 2
+            else -> 1
+        }
+    }
+
     fun applyFpsLimiterToEngines(limit: Int) {
-        val lsfgActive = isLsfgAvailable && lsfgMultiplier >= 2
+        val lsfgActive = isLsfgActive()
+        val mult = effectiveLsfgMultiplier()
         // SurfaceControl frame-rate hint: when LSFG is active, the display output
         // presents at base * multiplier. Setting the hint to the multiplied rate
         // (or 0 for panel default) avoids clamping the panel to the base rate.
         val displayRate = if (lsfgActive && limit > 0) {
-            (limit * lsfgMultiplier).coerceAtMost(detectedMaxRefreshRateHz)
+            (limit * mult).coerceAtMost(detectedMaxRefreshRateHz)
         } else {
             if (lsfgActive) 0 else limit
         }
@@ -723,8 +736,7 @@ fun XServerScreen(
         ShmFramePacer.setFrameRateLimit(limit)
         PowerManager.targetFps = limit
         // keeps frame stats in base units while generated frames tick the ring
-        PowerManager.frameSampleStride =
-            if (lsfgActive) lsfgMultiplier else 1
+        PowerManager.frameSampleStride = if (lsfgActive) mult else 1
     }
 
     fun effectiveFpsLimit(): Int =
@@ -746,7 +758,7 @@ fun XServerScreen(
         fpsLimiterEnabled = enabled
         applyFpsLimiterToEngines(effectiveFpsLimit())
         persistFpsLimiterState()
-        if (isLsfgAvailable && lsfgMultiplier >= 2) {
+        if (isLsfgActive()) {
             applyLsfgSettings()
         }
     }
@@ -758,7 +770,7 @@ fun XServerScreen(
             applyFpsLimiterToEngines(effectiveFpsLimit())
         }
         persistFpsLimiterState()
-        if (isLsfgAvailable && lsfgMultiplier >= 2) {
+        if (isLsfgActive()) {
             applyLsfgSettings()
         }
     }
@@ -784,7 +796,7 @@ fun XServerScreen(
     LaunchedEffect(xServerView) {
         // Adaptive-cap steps route through the X Present pacer to throttle the game.
         PowerManager.fpsCapApplier = applier@{ capFps: Int ->
-            if (!isLsfgAvailable || lsfgMultiplier < 2) return@applier false
+            if (!isLsfgActive()) return@applier false
             PowerManager.targetFps = capFps
             xServerView?.getxServer()
                 ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
