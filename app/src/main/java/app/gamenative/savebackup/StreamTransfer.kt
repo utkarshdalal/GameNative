@@ -119,6 +119,10 @@ object StreamTransfer {
                         onBytes(n.toLong())
                     }
                     out.flush()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    // ensureActive() throws this on cancellation; propagate it rather than
+                    // masking it as a StreamError so the caller can distinguish cancel from I/O.
+                    throw e
                 } catch (e: Exception) {
                     Timber.tag(TAG).w(e, "I/O error during copy")
                     return FileTransferResult.StreamError("I/O error during copy: ${e.message}")

@@ -167,6 +167,9 @@ object ContainerBrowserConfirm {
                 try {
                     store.put(appId, result.saveLocation)
                     ConfirmPersistResult.Persisted(result.saveLocation)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    // Don't swallow coroutine cancellation as a persist failure.
+                    throw e
                 } catch (e: Exception) {
                     Timber.w(e, "Failed to persist confirmed SaveLocation for appId=$appId")
                     ConfirmPersistResult.PersistFailed(

@@ -205,7 +205,7 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
             val staging = stagingDir(container)
 
             when (val detected = detectImportSource(ctx, source)) {
-                is ImportSource.Archive -> importArchive(ctx, detected.zipUri, loc, savePath, staging)
+                is ImportSource.Archive -> importArchive(ctx, item, detected.zipUri, loc, savePath, staging)
                 is ImportSource.RawTree -> importRawTree(ctx, detected.tree, savePath, staging)
                 ImportSource.Empty -> BackupResult.NoSavesFound
             }
@@ -289,18 +289,31 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
 
     private suspend fun importArchive(
         ctx: Context,
+        item: LibraryItem,
         zipUri: Uri,
         loc: SaveLocation,
         savePath: Path,
         staging: Path,
     ): BackupResult {
-        val rootId = rootIdFor(loc)
+        val openSource = {
+            ctx.contentResolver.openInputStream(zipUri)
+                ?: throw java.io.IOException("Could not open source stream")
+        }
         return try {
+            // Reject an archive exported for a DIFFERENT game before touching the container: it
+            // would otherwise overwrite this game's saves with another game's data. Only reject a
+            // clear mismatch (both ids known and different) so back-compat archives with an unknown
+            // id still import.
+            val manifest = ArchiveCodec.readManifest(openSource)
+            if (manifest.gameId != 0 && item.gameId != 0 && manifest.gameId != item.gameId) {
+                return BackupResult.Failed(
+                    "This archive is for game ${manifest.gameId} (${manifest.gameName}), " +
+                        "not ${item.name.ifBlank { item.appId }}.",
+                )
+            }
+
             ArchiveCodec.import(
-                openSource = {
-                    ctx.contentResolver.openInputStream(zipUri)
-                        ?: throw java.io.IOException("Could not open source stream")
-                },
+                openSource = openSource,
                 // Single-root export: any manifest rootId resolves to this save location. Falling
                 // back for the exact rootId keeps back-compat with archives whose recorded rootId
                 // differs from the current PathType-derived one.

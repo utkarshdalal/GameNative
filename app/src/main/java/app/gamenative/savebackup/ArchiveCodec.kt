@@ -72,6 +72,10 @@ object ArchiveCodec {
     private const val MANIFEST_ENTRY = "manifest.json"
     private const val FILES_PREFIX = "files/"
 
+    /** Upper bound on the manifest entry size (bytes). A real manifest is small JSON; this guards
+     * against a malicious archive declaring an enormous manifest that would OOM on read. */
+    private const val MAX_MANIFEST_BYTES = 1 shl 20 // 1 MiB
+
     /** Reader/writer `Json`: tolerant of unknown keys and honoring `@JsonNames` aliases. */
     @OptIn(ExperimentalSerializationApi::class)
     private val json = Json {
@@ -180,7 +184,12 @@ object ArchiveCodec {
                     val entry = zip.nextEntry ?: break
                     try {
                         if (!entry.isDirectory && entry.name == MANIFEST_ENTRY) {
-                            val bytes = zip.readBytes()
+                            // Bound the read: a manifest is small JSON. A user-selected archive
+                            // could declare a huge manifest entry; reading it unbounded risks OOM.
+                            val bytes = readBounded(zip, MAX_MANIFEST_BYTES)
+                                ?: throw ImportException.InvalidManifest(
+                                    "Save archive manifest exceeds the maximum allowed size",
+                                )
                             return try {
                                 json.decodeFromString(
                                     SaveArchiveManifest.serializer(),
@@ -361,6 +370,24 @@ object ArchiveCodec {
     }
 
     // -- Helpers ---------------------------------------------------------------
+
+    /**
+     * Read up to [limit] bytes from [input]. Returns the bytes if the stream ended at or before the
+     * limit, or `null` if the stream still has data at [limit] (i.e. it exceeds the bound).
+     */
+    private fun readBounded(input: java.io.InputStream, limit: Int): ByteArray? {
+        val buffer = java.io.ByteArrayOutputStream()
+        val chunk = ByteArray(8 * 1024)
+        var total = 0
+        while (true) {
+            val n = input.read(chunk)
+            if (n < 0) break
+            total += n
+            if (total > limit) return null
+            buffer.write(chunk, 0, n)
+        }
+        return buffer.toByteArray()
+    }
 
     private fun normalizeRelativePath(value: String): String =
         value.replace('\\', '/').trimStart('/').trim()

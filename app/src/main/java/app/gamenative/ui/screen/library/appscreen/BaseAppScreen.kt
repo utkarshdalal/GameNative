@@ -1933,10 +1933,9 @@ abstract class BaseAppScreen {
             when (outcome) {
                 app.gamenative.savebackup.ImportOutcome.Success ->
                     SnackbarManager.show(context.getString(R.string.save_import_success))
+                // NoSavesFound is a normal outcome, not an error (Req 5.6): show a neutral message.
                 app.gamenative.savebackup.ImportOutcome.NoSavesFound ->
-                    SnackbarManager.show(
-                        context.getString(R.string.save_import_failed, context.getString(R.string.save_export_no_saves_found)),
-                    )
+                    SnackbarManager.show(context.getString(R.string.save_import_no_saves_found))
                 app.gamenative.savebackup.ImportOutcome.Cancelled -> Unit
                 is app.gamenative.savebackup.ImportOutcome.Aborted ->
                     SnackbarManager.show(context.getString(R.string.save_import_failed, outcome.reason))

@@ -1511,6 +1511,7 @@
     <string name="save_export_failed">Failed to export saves: %s</string>
     <string name="save_import_success">Saves imported</string>
     <string name="save_import_failed">Failed to import saves: %s</string>
+    <string name="save_import_no_saves_found">No saves found in the selected source</string>
 
     <!-- Import-source choice (Archive .zip file vs Folder tree) shown before the source is picked. -->
     <string name="save_import_choice_title">Import from</string>

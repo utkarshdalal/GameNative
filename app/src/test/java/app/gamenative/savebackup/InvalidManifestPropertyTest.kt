@@ -98,6 +98,19 @@ class InvalidManifestPropertyTest {
         assertUnchanged(container, preExisting)
     }
 
+    // An oversized manifest entry is rejected as InvalidManifest (bounded read) rather than being
+    // loaded whole into memory, guarding against OOM from a malicious archive.
+    @org.junit.Test
+    fun oversizedManifestIsRejected() {
+        // > 1 MiB of JSON-ish bytes under the manifest entry name.
+        val huge = ByteArray((1 shl 20) + 1024) { '{'.code.toByte() }
+        val zip = buildZip(huge, emptyList())
+
+        assertThrows(ArchiveCodec.ImportException.InvalidManifest::class.java) {
+            ArchiveCodec.readManifest { ByteArrayInputStream(zip) }
+        }
+    }
+
     // ---- garbage generation -----------------------------------------------
 
     /** Produce arbitrary non-parseable manifest bytes, varied by [seed] across several shapes. */

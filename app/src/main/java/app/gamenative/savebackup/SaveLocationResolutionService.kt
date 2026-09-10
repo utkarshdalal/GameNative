@@ -3,6 +3,8 @@ package app.gamenative.savebackup
 import android.content.Context
 import app.gamenative.data.GameSource
 import com.winlator.container.Container
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
@@ -106,16 +108,19 @@ class SaveLocationResolutionService(
         gameSource: GameSource,
         appId: String,
         gameId: Int,
-    ): ResolveOutcome {
+    ): ResolveOutcome = withContext(Dispatchers.IO) {
+        // Runs on Dispatchers.IO: store reads and the strategy's directory listings / recursive
+        // searches are blocking filesystem work, and this is called from a UI-scoped coroutine.
+
         // 1. Store hit → delegate to the pure resolver (Requirement 1.7).
         val persisted = store.get(appId)
         if (persisted != null) {
-            return mapPureResult(SaveLocationResolver.resolve(container, gameId, persisted))
+            return@withContext mapPureResult(SaveLocationResolver.resolve(container, gameId, persisted))
         }
 
         // 2. Store miss → run the source strategy for this GameSource (Requirement 6.6).
         val strategy = strategySelector(gameSource)
-        return when (val auto = strategy.resolveAutomatic(context, container, gameId)) {
+        when (val auto = strategy.resolveAutomatic(context, container, gameId)) {
             is AutoResolveResult.Found -> {
                 // Persist first (Requirement 2.3), then delegate to the pure resolver and use it
                 // (Requirement 2.2).
