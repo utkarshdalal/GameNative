@@ -4091,10 +4091,6 @@ private fun setupXEnvironment(
     guestProgramLauncherComponent.envVars = envVars
 
     val gameTerminationCallback = Callback<Int> { status ->
-        if (!isExiting.get() && status != 0) {
-            container.putSessionMetadata("guest_self_exited", "true")
-            container.saveData()
-        }
         if (status != 0) {
             Timber.e("Guest program terminated with status: $status")
             onGameLaunchError?.invoke("Game terminated with error status: $status")

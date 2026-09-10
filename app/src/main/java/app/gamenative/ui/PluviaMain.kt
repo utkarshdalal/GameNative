@@ -283,6 +283,19 @@ private fun trackMembershipPrompt(event: String, trigger: String) {
     }
 }
 
+private fun trackAiDebugOffer(event: String, appId: String, trigger: String) {
+    if (PrefManager.usageAnalyticsEnabled) {
+        PostHog.capture(
+            event = event,
+            properties = mapOf(
+                "game_name" to ContainerUtils.resolveGameName(appId),
+                "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
+                "trigger" to trigger,
+            ),
+        )
+    }
+}
+
 private fun trackGameLaunched(appId: String) {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val gameName = ContainerUtils.resolveGameName(appId)
@@ -325,6 +338,7 @@ fun PluviaMain(
     }
     var debugPaywallReason by rememberSaveable { mutableStateOf<String?>(null) }
     var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
+    var aiDebugOfferTrigger by rememberSaveable { mutableStateOf("") }
     var debugPreRunVisible by rememberSaveable { mutableStateOf(false) }
     var debugPreRunAppId by rememberSaveable { mutableStateOf("") }
     var debugPreRunOffline by rememberSaveable { mutableStateOf(false) }
@@ -709,7 +723,9 @@ fun PluviaMain(
 
                 is MainViewModel.MainUiEvent.ShowAiDebugOffer -> {
                     aiDebugOfferAppId = event.appId
+                    aiDebugOfferTrigger = event.trigger
                     PrefManager.lastWarmPitchTime = System.currentTimeMillis()
+                    trackAiDebugOffer("ai_debug_offer_shown", event.appId, event.trigger)
                     msgDialogState = MessageDialogState(
                         visible = true,
                         type = DialogType.AI_DEBUG_OFFER,
@@ -1202,6 +1218,7 @@ fun PluviaMain(
             onConfirmClick = {
                 setMessageDialogState(MessageDialogState(false))
                 if (aiDebugOfferAppId.isNotEmpty()) {
+                    trackAiDebugOffer("ai_debug_offer_accepted", aiDebugOfferAppId, aiDebugOfferTrigger)
                     debugPreRunAppId = aiDebugOfferAppId
                     debugPreRunOffline = viewModel.isOffline.value
                     debugPreRunVisible = true
@@ -1209,9 +1226,15 @@ fun PluviaMain(
             }
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
+                if (aiDebugOfferAppId.isNotEmpty()) {
+                    trackAiDebugOffer("ai_debug_offer_dismissed", aiDebugOfferAppId, aiDebugOfferTrigger)
+                }
             }
             onDismissRequest = {
                 setMessageDialogState(MessageDialogState(false))
+                if (aiDebugOfferAppId.isNotEmpty()) {
+                    trackAiDebugOffer("ai_debug_offer_dismissed", aiDebugOfferAppId, aiDebugOfferTrigger)
+                }
             }
         }
 
@@ -1368,12 +1391,12 @@ fun PluviaMain(
                         // Close the dialog regardless of success
                         Timber.d("GameFeedback: Closing dialog")
                         gameFeedbackState = GameFeedbackDialogState(visible = false)
-                        viewModel.onGameFeedbackResolved(feedbackState.rating)
+                        viewModel.onGameFeedbackResolved(context, feedbackState.rating, feedbackState.selectedTags)
                     }
                 },
                 onDismiss = {
                     gameFeedbackState = GameFeedbackDialogState(visible = false)
-                    viewModel.onGameFeedbackResolved(null)
+                    viewModel.onGameFeedbackResolved(context, null)
                 },
                 onDiscordSupport = {
                     uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
