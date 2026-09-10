@@ -412,6 +412,7 @@ object CustomGameScanner {
     fun getLaunchExecutable(container: Container): String {
         val gameFolderPath = ContainerUtils.getADrivePath(container.drives) ?: return ""
         val exe = container.executablePath
+        if (ContainerUtils.isAbsoluteWindowsPath(exe)) return exe
         if (exe.isNotEmpty()) {
             val fullPath = File(gameFolderPath, exe.replace('\\', File.separatorChar))
             if (fullPath.exists() && fullPath.isFile) return exe
