@@ -1387,7 +1387,9 @@ void VulkanRendererContext::renderFrame() {
     if (surfaceWidth==0||surfaceHeight==0) return;
 
     if (fbResized.load()) {
-        for (auto& f:inFlightFences) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
+        for (auto& f:inFlightFences) {
+            if (f != VK_NULL_HANDLE) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
+        }
         cleanupSwapchain();
         bool ok=false;
         try{createSwapchain();createFramebuffers();createCmdBufs();currentFrame=0;imgInFlight.assign(swapchainImages.size(),VK_NULL_HANDLE);
@@ -1400,9 +1402,12 @@ ok=true;}catch(...){}
     bool toXr = xrTargetActive.load() && xrFb!=VK_NULL_HANDLE;
     bool currentFenceWaited = false;
     if (toXr) {
-        for (auto& f:inFlightFences) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
+        for (auto& f:inFlightFences) {
+            if (f != VK_NULL_HANDLE) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
+        }
         currentFenceWaited = true;
-    } else if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, inFlightFences[currentFrame]) == VK_NOT_READY) {
+    } else if (inFlightFences[currentFrame] != VK_NULL_HANDLE &&
+               (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, inFlightFences[currentFrame]) == VK_NOT_READY)) {
         vk_.WaitForFences(device,1,&inFlightFences[currentFrame],VK_TRUE,UINT64_MAX);
         currentFenceWaited = true;
     }
@@ -1442,7 +1447,9 @@ ok=true;}catch(...){}
         bool chain_stale = lsfg
             && vkr_lsfg_needs_rebuild(lsfg, swapchainExt.width, swapchainExt.height, swapchainFmt);
         if (composite_stale || chain_stale) {
-            for (auto& f : inFlightFences) vk_.WaitForFences(device, 1, &f, VK_TRUE, UINT64_MAX);
+            for (auto& f : inFlightFences) {
+                if (f != VK_NULL_HANDLE) vk_.WaitForFences(device, 1, &f, VK_TRUE, UINT64_MAX);
+            }
             if (!createCompositeTargets(swapchainExt.width, swapchainExt.height, composite_needed)) {
                 RLOG_E("Composite targets unavailable; frame generation path disabled");
                 framegenSupported = false;
@@ -1456,7 +1463,9 @@ ok=true;}catch(...){}
             }
         }
     } else if (compositeBuilt) {
-        for (auto& f : inFlightFences) vk_.WaitForFences(device, 1, &f, VK_TRUE, UINT64_MAX);
+        for (auto& f : inFlightFences) {
+            if (f != VK_NULL_HANDLE) vk_.WaitForFences(device, 1, &f, VK_TRUE, UINT64_MAX);
+        }
         destroyCompositeTargets();
     }
 
@@ -1620,25 +1629,46 @@ ok=true;}catch(...){}
         blitCompositeToSwapchain(cmdBufs[currentFrame], *compositeTarget, swapchainImages[imgIdx]);
     }
 
-    auto recoverAcquiredFrame = [&]() {
+    auto recoverAcquiredFrame = [&]() -> bool {
         VkFence stale = inFlightFences[currentFrame];
         for (auto& f : imgInFlight) {
             if (f == stale) f = VK_NULL_HANDLE;
         }
-        vk_.DestroyFence(device, inFlightFences[currentFrame], nullptr);
+        if (inFlightFences[currentFrame] != VK_NULL_HANDLE) {
+            vk_.DestroyFence(device, inFlightFences[currentFrame], nullptr);
+            inFlightFences[currentFrame] = VK_NULL_HANDLE;
+        }
         VkFenceCreateInfo fi{}; fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        vk_.CreateFence(device, &fi, nullptr, &inFlightFences[currentFrame]);
+        bool ok = (vk_.CreateFence(device, &fi, nullptr, &inFlightFences[currentFrame]) == VK_SUCCESS);
         if (!toXr) {
             VkSemaphoreCreateInfo sci{};
             sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-            vk_.DestroySemaphore(device, imgAvailSems[currentFrame], nullptr);
-            vk_.CreateSemaphore(device, &sci, nullptr, &imgAvailSems[currentFrame]);
+            if (imgAvailSems[currentFrame] != VK_NULL_HANDLE) {
+                vk_.DestroySemaphore(device, imgAvailSems[currentFrame], nullptr);
+                imgAvailSems[currentFrame] = VK_NULL_HANDLE;
+            }
+            if (vk_.CreateSemaphore(device, &sci, nullptr, &imgAvailSems[currentFrame]) != VK_SUCCESS) {
+                ok = false;
+            }
             for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
-                vk_.DestroySemaphore(device, imgAvailGenSems[currentFrame][g], nullptr);
-                vk_.CreateSemaphore(device, &sci, nullptr, &imgAvailGenSems[currentFrame][g]);
+                if (imgAvailGenSems[currentFrame][g] != VK_NULL_HANDLE) {
+                    vk_.DestroySemaphore(device, imgAvailGenSems[currentFrame][g], nullptr);
+                    imgAvailGenSems[currentFrame][g] = VK_NULL_HANDLE;
+                }
+                if (vk_.CreateSemaphore(device, &sci, nullptr, &imgAvailGenSems[currentFrame][g]) != VK_SUCCESS) {
+                    ok = false;
+                }
             }
         }
+        if (!ok) {
+            RLOG_E("renderFrame: failed to recreate frame synchronization objects; stopping renderer");
+            isRunning = false;
+            fbResized.store(false);
+            dirtyCV.notify_all();
+            return false;
+        }
         fbResized.store(true);
+        return true;
     };
 
     VkResult endStatus = vk_.EndCommandBuffer(cmdBufs[currentFrame]);
