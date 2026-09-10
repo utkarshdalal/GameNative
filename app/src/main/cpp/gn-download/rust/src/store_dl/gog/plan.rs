@@ -74,13 +74,11 @@ pub fn parse_depot_manifest(json: &str, out: &mut Vec<PlannedFile>) {
     let Ok(root) = serde_json::from_str::<Value>(json) else {
         return;
     };
-    let Some(items) = root
-        .get("depot")
-        .and_then(|d| d.get("items"))
-        // Java: `json.optJSONObject("depot") ?: json` — items may live at the root.
-        .or_else(|| root.get("items"))
-        .and_then(Value::as_array)
-    else {
+    // Java: `val depotObj = json.optJSONObject("depot") ?: json` — the container is
+    // selected ONCE; when a `depot` object exists but has no `items`, Java reads
+    // nothing (it does NOT fall back to root-level items).
+    let container = root.get("depot").unwrap_or(&root);
+    let Some(items) = container.get("items").and_then(Value::as_array) else {
         return;
     };
     for entry in items {

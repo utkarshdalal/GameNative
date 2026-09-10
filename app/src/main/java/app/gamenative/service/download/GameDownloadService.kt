@@ -170,8 +170,15 @@ object GameDownloadService {
                     // Only track the high-water so later real downloads delta from it.
                     depotCumulativeBytes.merge(depotId, depotDone, ::maxOf)
                 } else {
-                    val previous = depotCumulativeBytes.put(depotId, depotDone) ?: 0L
-                    val delta = depotDone - previous
+                    // Parallel callbacks can arrive out of order; read-check-set must be
+                    // atomic or two threads credit overlapping deltas. Clamp to the
+                    // high-water so a late, smaller depotDone credits nothing.
+                    val delta = synchronized(depotCumulativeBytes) {
+                        val previous = depotCumulativeBytes[depotId] ?: 0L
+                        val newHigh = maxOf(previous, depotDone)
+                        depotCumulativeBytes[depotId] = newHigh
+                        newHigh - previous
+                    }
                     if (delta > 0L) {
                         downloadInfo.updateBytesDownloaded(delta, System.currentTimeMillis())
                     }

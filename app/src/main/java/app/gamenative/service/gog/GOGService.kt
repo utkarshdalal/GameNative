@@ -363,19 +363,21 @@ class GOGService : Service() {
                 downloadInfo.initializeBytesDownloaded(persistedBytes)
             }
 
-            // Replace a stale inactive entry (e.g. a queued download being resumed);
-            // an ACTIVE download for the same game keeps its existing DownloadInfo.
-            val existing = instance.activeDownloads[gameId]
-            if (existing != null) {
-                if (existing.isActive()) {
-                    Timber.w("[Download] Already in progress for game $gameId")
-                    return Result.success(existing)
+            // Atomically claim gameId: check, stale-entry replacement, and publication
+            // under one lock so concurrent downloadGame calls cannot both start a job.
+            synchronized(instance.activeDownloads) {
+                val existing = instance.activeDownloads[gameId]
+                if (existing != null) {
+                    if (existing.isActive()) {
+                        Timber.w("[Download] Already in progress for game $gameId")
+                        return Result.success(existing)
+                    }
+                    // Stale inactive entry (e.g. a queued download being resumed).
+                    instance.activeDownloads.remove(gameId, existing)
                 }
-                instance.activeDownloads.remove(gameId, existing)
+                // Track in activeDownloads first
+                instance.activeDownloads[gameId] = downloadInfo
             }
-
-            // Track in activeDownloads first
-            instance.activeDownloads[gameId] = downloadInfo
             instance.notifierOrNull?.trackDownload(downloadInfo, "", NotificationHelper.NOTIFICATION_ID_GOG)
 
             // Register with centralized queue and auto-pause other downloads

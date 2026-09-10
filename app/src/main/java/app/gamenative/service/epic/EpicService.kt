@@ -416,18 +416,7 @@ class EpicService : Service() {
                 ?: return Result.failure(Exception("Game not found for appId: $appId"))
             val gameId = game.id ?: return Result.failure(Exception("Game ID not found for appId: $appId"))
 
-            // Check if already downloading; replace a stale inactive entry (e.g. a queued
-            // download being resumed) with a fresh DownloadInfo below.
-            val existing = instance.activeDownloads[appId]
-            if (existing != null) {
-                if (existing.isActive()) {
-                    Timber.tag("Epic").w("Download already in progress for $appId")
-                    return Result.success(existing)
-                }
-                instance.activeDownloads.remove(appId, existing)
-            }
-
-            // Create DownloadInfo before launching coroutine to avoid race condition
+            // Create DownloadInfo before claiming (avoids holding the lock during I/O)
             val downloadInfo = DownloadInfo(
                 jobCount = 1,
                 gameId = appId,
@@ -440,7 +429,20 @@ class EpicService : Service() {
                 downloadInfo.initializeBytesDownloaded(persistedBytes)
             }
 
-            instance.activeDownloads[appId] = downloadInfo
+            // Atomically claim appId: check, stale-entry replacement, and publication
+            // under one lock so concurrent downloadGame calls cannot both start a job.
+            synchronized(instance.activeDownloads) {
+                val existing = instance.activeDownloads[appId]
+                if (existing != null) {
+                    if (existing.isActive()) {
+                        Timber.tag("Epic").w("Download already in progress for $appId")
+                        return Result.success(existing)
+                    }
+                    // Stale inactive entry (e.g. a queued download being resumed).
+                    instance.activeDownloads.remove(appId, existing)
+                }
+                instance.activeDownloads[appId] = downloadInfo
+            }
             instance.activeDlcSelections[appId] = dlcGameIds
             downloadInfo.setActive(true)
             instance.notifierOrNull?.trackDownload(downloadInfo, game.title ?: "", NotificationHelper.NOTIFICATION_ID_EPIC)
@@ -542,7 +544,9 @@ class EpicService : Service() {
                     // the fresh entry of an already-resumed download.
                     if (!downloadInfo.wasAutoPaused()) {
                         instance.activeDownloads.remove(appId, downloadInfo)
-                        instance.activeDlcSelections.remove(appId)
+                        // remove(key, value): a stale finally must not wipe the DLC
+                        // selection a resumed download already stored for this app.
+                        instance.activeDlcSelections.remove(appId, dlcGameIds)
                     }
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
@@ -685,6 +689,10 @@ class EpicService : Service() {
             override fun onResumeRequested(gameSource: GameSource, gameId: String) {
                 val appId = gameId.toIntOrNull() ?: return
                 Timber.tag("Epic").i("[EpicService] Resume requested for app $appId")
+                // Capture synchronously, before launch: the queue clears the queued
+                // state before invoking this, and the cancelled download's late
+                // finally could otherwise run before the coroutine reads the map.
+                val dlcGameIds = instance?.activeDlcSelections?.get(appId).orEmpty()
                 scope.launch {
                     val game = epicManager.getGameById(appId)
                     if (game != null) {
@@ -693,9 +701,6 @@ class EpicService : Service() {
                         }
                         val container = ContainerUtils.getOrCreateContainer(applicationContext, "EPIC_$appId")
                         val language = ContainerUtils.toContainerData(container).language
-                        // Reuse the DLC selection captured when the download was first
-                        // queued (emptyList() would silently drop selected DLC on resume).
-                        val dlcGameIds = instance?.activeDlcSelections[appId].orEmpty()
                         downloadGame(applicationContext, appId, dlcGameIds, installPath, language)
                     }
                 }

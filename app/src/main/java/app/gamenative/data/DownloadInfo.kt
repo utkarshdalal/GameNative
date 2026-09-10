@@ -22,6 +22,7 @@ data class DownloadInfo(
     val gameId: Int,
     var downloadingAppIds: CopyOnWriteArrayList<Int>,
 ) {
+    @Volatile
     private var downloadJob: Job? = null
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val downloadProgressListeners = CopyOnWriteArrayList<(Float) -> Unit>()
@@ -45,6 +46,7 @@ data class DownloadInfo(
     private val speedSamples = CopyOnWriteArrayList<SpeedSample>()
     private var emaSpeedBytesPerSec: Double = 0.0
     private var hasEmaSpeed: Boolean = false
+    @Volatile
     private var isActive: Boolean = true
     @Volatile
     private var currentStatusMessage: String = ""
@@ -63,14 +65,18 @@ data class DownloadInfo(
 
     fun pause(message: String = "Paused", autoPaused: Boolean = false) {
         persistProgressSnapshot()
-        setActive(false)
         setPostInstallSyncing(false)
         resetSpeedTracking()
         wasAutoPaused = autoPaused
         if (autoPaused) {
             updateStatusMessage("Queued")
         }
-        downloadJob?.cancel(CancellationException(message))
+        // Synchronized with setDownloadJob so deactivate+job-cancel is atomic
+        // against a job assignment happening on another dispatcher.
+        synchronized(this) {
+            setActive(false)
+            downloadJob?.cancel(CancellationException(message))
+        }
 
         // If user manually paused (not auto-paused), unregister from queue to resume next download
         if (!autoPaused && queueGameSource != null && queueGameId != null) {
@@ -110,13 +116,18 @@ data class DownloadInfo(
     }
 
     fun setDownloadJob(job: Job) {
-        downloadJob = job
         // Race guard: the queue may have auto-paused (or the user paused/cancelled) this
         // download AFTER the coroutine launched but BEFORE the job was assigned here.
         // pause()/cancel() then found a null job and cancelled nothing — cancel it now
-        // on assignment so the two-downloads-at-once window can't happen.
-        if (!isActive) {
-            job.cancel(CancellationException(if (wasAutoPaused) "Paused for new download" else "Paused"))
+        // on assignment so the two-downloads-at-once window can't happen. Synchronized
+        // with pause()'s deactivate-and-cancel so the two can never interleave: either
+        // pause wins and this cancels on assignment, or assignment wins and pause
+        // cancels the live job.
+        synchronized(this) {
+            downloadJob = job
+            if (!isActive) {
+                job.cancel(CancellationException(if (wasAutoPaused) "Paused for new download" else "Paused"))
+            }
         }
     }
 

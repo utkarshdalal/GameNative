@@ -84,8 +84,14 @@ pub fn chunk_payload<'a>(body: &'a [u8], hdr: &ChunkHeader) -> Result<&'a [u8], 
         hdr.compressed_size as usize
     };
     let avail = body.len() - start;
-    let take = want.min(avail);
-    Ok(&body[start..start + take])
+    // A short body can only produce partial output: zlib streams may END cleanly
+    // mid-data, and sha1-less/size-less JSON chunks have no later gate to catch it.
+    if want > 0 && avail < want {
+        return Err(format!(
+            "truncated chunk body: have {avail} of {want} declared bytes"
+        ));
+    }
+    Ok(&body[start..start + want.min(avail)])
 }
 
 /// `Writer` that mirrors `fos.write(...)` + `sha.update(...)` on every block.
@@ -132,17 +138,7 @@ pub fn write_verified_chunk(
     // `tmp.delete()` — clear any stale partial from a prior interrupted attempt.
     let _ = fs::remove_file(&tmp);
 
-    let result = write_part(body, expected_sha1, &tmp, final_path);
-    let result = result.and_then(|written| {
-        if let Some(expected) = expected_size {
-            if written != expected {
-                return Err(format!(
-                    "Chunk size mismatch: wrote {written} bytes, expected {expected}"
-                ));
-            }
-        }
-        Ok(written)
-    });
+    let result = write_part(body, expected_sha1, expected_size, &tmp, final_path);
     if result.is_err() {
         let _ = fs::remove_file(&tmp);
     }
@@ -152,6 +148,7 @@ pub fn write_verified_chunk(
 fn write_part(
     body: &[u8],
     expected_sha1: Option<&[u8; 20]>,
+    expected_size: Option<u64>,
     tmp: &Path,
     final_path: &Path,
 ) -> Result<u64, String> {
@@ -182,6 +179,15 @@ fn write_part(
     if let (Some(expected), Some(actual)) = (expected_sha1, digest) {
         if actual.as_slice() != &expected[..] {
             return Err("Chunk SHA-1 mismatch (streaming)".to_string());
+        }
+    }
+    // Size gate BEFORE the rename: a mismatch must leave neither the .part nor a
+    // published final file behind.
+    if let Some(expected) = expected_size {
+        if written != expected {
+            return Err(format!(
+                "Chunk size mismatch: wrote {written} bytes, expected {expected}"
+            ));
         }
     }
 
@@ -286,10 +292,13 @@ mod tests {
     }
 
     #[test]
-    fn payload_is_truncated_to_the_body_not_an_error() {
+    fn short_body_is_rejected_against_the_declared_size() {
+        // Declared 100 bytes but only 6 present → hard error (a short body can only
+        // produce partial output, and sha1-less/size-less chunks have no later gate).
         let body = build_chunk_body(b"abcdef", false, 0, Some(100));
         let h = parse_chunk_header(&body).unwrap();
-        assert_eq!(chunk_payload(&body, &h).unwrap(), b"abcdef");
+        assert!(chunk_payload(&body, &h).unwrap_err().contains("truncated chunk body"));
+        // Non-positive declared size → no declared length to enforce.
         let neg = build_chunk_body(b"abcdef", false, 0, Some(-1));
         let h = parse_chunk_header(&neg).unwrap();
         assert_eq!(chunk_payload(&neg, &h).unwrap(), b"");
@@ -358,10 +367,13 @@ mod tests {
         let data = sample_data();
         let mut body = build_chunk_body(&data, true, 0, None);
         let final_path = dir.join("chunk");
-        // Truncate the body: inflate ends early → partial output → SHA-1 mismatch.
+        // Truncate the body: rejected up front by the declared-size gate.
         let cut = body.len() - 1000;
         let err = write_verified_chunk(&body[..cut], Some(&sha1_of(&data)), None, &final_path).unwrap_err();
-        assert!(err.contains("SHA-1 mismatch") || err.contains("inflate"), "{err}");
+        assert!(
+            err.contains("truncated chunk body") || err.contains("SHA-1 mismatch") || err.contains("inflate"),
+            "{err}"
+        );
         assert!(!final_path.exists());
         // Corrupt the deflate stream itself.
         for b in body.iter_mut().skip(60).take(64) {

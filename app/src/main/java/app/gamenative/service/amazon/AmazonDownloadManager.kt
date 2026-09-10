@@ -128,12 +128,16 @@ class AmazonDownloadManager @Inject constructor(
                     for (file in files) {
                         // Path-traversal guard (defense in depth; the native engine also
                         // rejects these): a manifest path must never escape installDir.
+                        // FAIL rather than skip — silently dropping the file would let a
+                        // partial install be reported as complete.
                         val rel = file.unixPath
                         if (rel.isEmpty() || rel.startsWith("/") || rel.contains('\\') ||
                             rel.split('/').any { it == ".." }
                         ) {
-                            Timber.tag(TAG).e("Skipping unsafe manifest path: $rel")
-                            continue
+                            Timber.tag(TAG).e("Unsafe manifest path: $rel")
+                            return@withContext Result.failure(
+                                Exception("Manifest contains unsafe path: $rel"),
+                            )
                         }
                         val hashHex = file.hashBytes.joinToString("") { "%02x".format(it) }
                         put(

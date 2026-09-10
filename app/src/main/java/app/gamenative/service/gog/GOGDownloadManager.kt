@@ -493,7 +493,9 @@ class GOGDownloadManager @Inject constructor(
                 productUrlMap = productUrlMap,
                 pendingPathsToProduct = pendingPathsToProduct,
                 pendingPathsInOrder = (gameFiles + supportFilesForGameDirAssemble).map { it.path },
-                supportDepotPaths = supportFilesForGameDirAssemble.map { it.path }.toSet(),
+                // Original depot paths (BEFORE getSupportInstallPath strips "app/"):
+                // the relocation pass matches its app/ roots against these.
+                supportDepotPaths = supportFiles.map { it.path }.toSet(),
                 installDir = gameInstallDir,
                 downloadInfo = downloadInfo,
                 baseProductId = gameManifest.baseProductId,
@@ -1048,21 +1050,28 @@ class GOGDownloadManager @Inject constructor(
                 .filter { it.startsWith("app/") }
                 .map { it.removePrefix("app/").substringBefore('/') }
                 .toSet()
-            fun moveIntoPlace(src: File, dstDir: File) {
+            // Returns false when any mkdir/delete/rename fails — the source tree is
+            // then kept so support files are never lost silently.
+            fun moveIntoPlace(src: File, dstDir: File): Boolean {
                 if (src.isDirectory) {
                     val targetDir = File(dstDir, src.name)
-                    targetDir.mkdirs()
-                    src.listFiles()?.forEach { moveIntoPlace(it, targetDir) }
-                } else {
-                    val target = File(dstDir, src.name)
-                    if (target.exists()) target.delete()
-                    src.renameTo(target)
+                    if (!targetDir.isDirectory && !targetDir.mkdirs()) return false
+                    return src.listFiles()?.all { moveIntoPlace(it, targetDir) } ?: true
                 }
+                val target = File(dstDir, src.name)
+                if (target.exists() && !target.delete()) return false
+                return src.renameTo(target)
             }
             appDir.listFiles()?.forEach { child ->
                 if (child.name in supportRoots) {
-                    moveIntoPlace(child, installDir)
-                    child.deleteRecursively()
+                    if (moveIntoPlace(child, installDir)) {
+                        child.deleteRecursively()
+                    } else {
+                        Timber.tag("GOG").e("Failed to relocate support path ${child.absolutePath}")
+                        return@withContext Result.failure(
+                            Exception("Failed to relocate support files from ${child.absolutePath}"),
+                        )
+                    }
                 }
             }
             if (appDir.listFiles()?.isEmpty() == true) {

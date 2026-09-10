@@ -76,10 +76,8 @@ pub fn parse_plan(json: &str) -> Result<Vec<PlanEntry>, String> {
         }
         // Path-traversal guard: the plan is server/manifest-influenced, and dest_path
         // concatenates textually. Reject anything that could escape install_dir.
-        if rel_path.starts_with('/')
-            || rel_path.split('/').any(|seg| seg == ".." || seg == "\\")
-            || rel_path.contains('\\')
-        {
+        // (Backslash checks are unnecessary: unix_path() already mapped '\\' to '/'.)
+        if rel_path.starts_with('/') || rel_path.split('/').any(|seg| seg == "..") {
             return Err(format!(
                 "plan json: entry {index} unsafe relPath: {rel_path}"
             ));
@@ -468,7 +466,9 @@ impl FetchSink for AmazonSink {
         }
         // A response without Content-Length can end early with total_len == written;
         // the manifest size is the authoritative completeness check.
-        if entry.size > 0 && written != entry.size {
+        // Unconditional: a zero-sized manifest entry must not commit unexpected bytes
+        // either (written 0 == size 0 is the only acceptable zero case).
+        if written != entry.size {
             let _ = fs::remove_file(&tmp);
             return Err(SinkError::Retry(format!(
                 "truncated body {written} != manifest size {} for: {}",

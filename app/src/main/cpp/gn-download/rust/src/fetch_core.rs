@@ -1018,6 +1018,9 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                 }
             };
             outstanding = outstanding.saturating_sub(1);
+            // A verdict just arrived — the pool is alive, so the stall watchdog must
+            // measure from THIS verdict, not from when the last item was dispatched.
+            stall_since = None;
             match fb.verdict {
                 SinkVerdict::Ok => {}
                 SinkVerdict::Fatal => break 'outer,

@@ -436,16 +436,6 @@ class AmazonService : Service() {
             val instance = getInstance()
                 ?: return Result.failure(Exception("Amazon service is not running"))
 
-            // Already downloading?
-            instance.activeDownloads[productId]?.let { existing ->
-                if (existing.isActive()) {
-                    Timber.tag("Amazon").w("Download already in progress for $productId")
-                    return Result.success(existing)
-                }
-                // Stale inactive entry (e.g. a queued download being resumed) — replace it.
-                instance.activeDownloads.remove(productId, existing)
-            }
-
             val game = withContext(Dispatchers.IO) {
                 instance.amazonManager.getGameById(productId)
             } ?: return Result.failure(Exception("Game not found: $productId"))
@@ -462,8 +452,21 @@ class AmazonService : Service() {
                 downloadInfo.initializeBytesDownloaded(persistedBytes)
             }
 
+            // Atomically claim productId: check, stale-entry replacement, and
+            // publication under one lock so concurrent downloadGame calls cannot
+            // both start a job.
+            synchronized(instance.activeDownloads) {
+                instance.activeDownloads[productId]?.let { existing ->
+                    if (existing.isActive()) {
+                        Timber.tag("Amazon").w("Download already in progress for $productId")
+                        return Result.success(existing)
+                    }
+                    // Stale inactive entry (e.g. a queued download being resumed).
+                    instance.activeDownloads.remove(productId, existing)
+                }
+                instance.activeDownloads[productId] = downloadInfo
+            }
             downloadInfo.setActive(true)
-            instance.activeDownloads[productId] = downloadInfo
             instance.activeDownloadPaths[productId] = installPath
 
             // Fresh install/update run should clear stale completion marker before starting

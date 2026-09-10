@@ -1151,7 +1151,10 @@ class EpicDownloadManager @Inject constructor(
             var assemblyFailure: Throwable? = null
 
             // Assemble every file whose chunks are all present, as soon as it becomes ready.
-            suspend fun assembleReady(finishChunk: app.gamenative.service.epic.manifest.ChunkInfo): Result<Unit> {
+            // Returns success(true) when the chunk was assembled, success(false) when it
+            // was REQUEUED for re-download (still pending — caller must NOT count it as
+            // done or decrement pendingChunks), failure on a real assembly error.
+            suspend fun assembleReady(finishChunk: app.gamenative.service.epic.manifest.ChunkInfo): Result<Boolean> {
                 val guidStr = finishChunk.guidStr
                 if (!downloadInfo.isActive()) {
                     return Result.failure(Exception("Download cancelled"))
@@ -1167,12 +1170,14 @@ class EpicDownloadManager @Inject constructor(
 
                 // Cache vanished after the download phase (e.g. .chunks deleted between
                 // resume and assembly): re-download the chunk instead of failing the
-                // whole install with "Chunk file missing".
+                // whole install with "Chunk file missing". The remove-guard ensures a
+                // duplicate event for the same chunk cannot requeue it twice.
                 if (!File(chunkCacheDir, guidStr).exists()) {
                     Timber.tag("EPIC").w("Chunk $guidStr missing from cache at assembly; re-downloading")
-                    downloadedChunkIds.remove(guidStr)
-                    networkChunkFlow.tryEmit(finishChunk)
-                    return Result.success(Unit)
+                    if (downloadedChunkIds.remove(guidStr)) {
+                        networkChunkFlow.tryEmit(finishChunk)
+                    }
+                    return Result.success(false)
                 }
 
                 matchedFiles.forEach { file ->
@@ -1198,7 +1203,7 @@ class EpicDownloadManager @Inject constructor(
                     }
                 }
 
-                return Result.success(Unit)
+                return Result.success(true)
             }
 
             val networkChunkJob: Job = scope.launch {
@@ -1248,6 +1253,11 @@ class EpicDownloadManager @Inject constructor(
                                     // Requeue the chunk for retry
                                     downloadedChunkIds.remove(chunk.guidStr)
                                     networkChunkFlow.tryEmit(chunk)
+                                    return@flow
+                                }
+                                if (assembleResult.getOrThrow() == false) {
+                                    // Requeued for re-download (cache vanished): still
+                                    // pending — do not count progress or decrement.
                                     return@flow
                                 }
 

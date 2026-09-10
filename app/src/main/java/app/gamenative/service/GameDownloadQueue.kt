@@ -135,9 +135,11 @@ object GameDownloadQueue {
     }
 
     /**
-     * Remove every entry belonging to a service being torn down. Does NOT resume the
-     * next download — a mid-destroy callback would race service shutdown; surviving
-     * entries' own listeners can resume them on the next normal unregister.
+     * Remove every entry belonging to a service being torn down. If the removed set
+     * included the only ACTIVE download, advance the queue: removed entries can no
+     * longer be selected, so the resume can only land on another (live) source —
+     * without it, a queued download would wait forever for an unregister that
+     * already happened.
      */
     fun unregisterAllForSource(gameSource: GameSource) {
         synchronized(queueLock) {
@@ -145,6 +147,9 @@ object GameDownloadQueue {
             keys.forEach { activeDownloads.remove(it) }
             if (keys.isNotEmpty()) {
                 Timber.i("[GameDownloadQueue] Removed ${keys.size} $gameSource queue entr(ies) on service teardown")
+            }
+            if (activeDownloads.values.none { it.downloadInfo.isActive() }) {
+                resumeNextLocked()
             }
         }
     }
