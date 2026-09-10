@@ -1126,6 +1126,8 @@
     <string name="container_config_vkd3d_version">VKD3D-Version</string>
     <string name="container_config_executable_path">Pfad zur Ausführbaren Datei</string>
     <string name="container_config_executable_path_placeholder">z.B. pfad\\zu\\exe</string>
+    <string name="container_config_executable_path_custom">Benutzerdefinierter Pfad…</string>
+    <string name="container_config_executable_path_custom_placeholder">z.B. C:\\Spiele\\spiel.exe</string>
     <!-- Libraries Dialog -->
     <string name="libraries_title">Verwendete Bibliotheken</string>
     <string name="libraries_message">Pluvia - github.com/oxters168/Pluvia\nJavaSteam - github.com/Longi94/JavaSteam\nWinlator &amp; Vortek - github.com/brunodev85/winlator\nWinlator Cmod - github.com/coffincolors/winlator\nWrapper - https://github.com/leegao/bionic-vulkan-wrapper &amp; https://github.com/pipetto-crypto/\nUbuntu RootFs - releases.ubuntu.com/focal</string>

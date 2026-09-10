@@ -996,6 +996,8 @@
     <string name="container_config_vkd3d_version">VKD3D-version</string>
     <string name="container_config_executable_path">Sti til eksekverbar fil</string>
     <string name="container_config_executable_path_placeholder">f.eks. sti\\til\\exe</string>
+    <string name="container_config_executable_path_custom">Brugerdefineret sti…</string>
+    <string name="container_config_executable_path_custom_placeholder">f.eks. C:\\Spil\\spil.exe</string>
 
     <!-- TODO: Manual review - Libraries Dialog -->
     <string name="libraries_title">Anvendte biblioteker</string>

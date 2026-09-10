@@ -293,6 +293,8 @@
     <string name="container_config_drive_letter_missing">Буква диска отсутствует</string>
     <string name="container_config_executable_path">Путь исполняемого файла</string>
     <string name="container_config_executable_path_placeholder">например, path\\to\\exe</string>
+    <string name="container_config_executable_path_custom">Свой путь…</string>
+    <string name="container_config_executable_path_custom_placeholder">например, C:\\Games\\game.exe</string>
     <string name="container_config_invalid_drive_path">Неверный путь диска</string>
     <string name="container_config_tab_advanced">Дополнительно</string>
     <string name="container_config_tab_controller">Контроллер</string>

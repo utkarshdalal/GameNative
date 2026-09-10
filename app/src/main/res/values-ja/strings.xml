@@ -1210,6 +1210,8 @@
     <string name="container_config_vkd3d_version">VKD3Dバージョン</string>
     <string name="container_config_executable_path">実行可能パス</string>
     <string name="container_config_executable_path_placeholder">例: path\\to\\exe</string>
+    <string name="container_config_executable_path_custom">カスタムパス…</string>
+    <string name="container_config_executable_path_custom_placeholder">例: C:\\Games\\game.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">使用するライブラリ</string>

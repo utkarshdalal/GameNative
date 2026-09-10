@@ -1178,6 +1178,8 @@
 	<string name="container_config_vkd3d_version">Versiune VKD3D</string>
 	<string name="container_config_executable_path">Cale executabil</string>
 	<string name="container_config_executable_path_placeholder">ex.: path\\to\\exe</string>
+	<string name="container_config_executable_path_custom">Cale personalizată…</string>
+	<string name="container_config_executable_path_custom_placeholder">ex.: C:\\Jocuri\\joc.exe</string>
 
 	<!-- Libraries Dialog -->
 	<string name="libraries_title">Biblioteci utilizate</string>

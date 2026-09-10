@@ -1186,6 +1186,8 @@
     <string name="container_config_vkd3d_version">Wersja VKD3D</string>
     <string name="container_config_executable_path">Ścieżka pliku wykonywalnego</string>
     <string name="container_config_executable_path_placeholder">np. ścieżka\\do\\exe</string>
+    <string name="container_config_executable_path_custom">Własna ścieżka…</string>
+    <string name="container_config_executable_path_custom_placeholder">np. C:\\Gry\\gra.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">Użyte biblioteki</string>

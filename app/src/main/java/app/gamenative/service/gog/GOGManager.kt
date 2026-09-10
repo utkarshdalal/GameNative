@@ -824,6 +824,10 @@ class GOGManager @Inject constructor(
             return "\"explorer.exe\""
         }
 
+        if (ContainerUtils.isAbsoluteWindowsPath(executablePath)) {
+            return "\"$executablePath\""
+        }
+
         // Find the drive letter that's mapped to this game's install path
         var gogDriveLetter: String? = null
         for (drive in com.winlator.container.Container.drivesIterator(container.drives)) {

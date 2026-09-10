@@ -4302,7 +4302,7 @@ private fun getWineStartCommand(
             container.executablePath = SteamService.getInstalledExe(gameId)
             container.saveData()
         }
-        if (!container.isUseLegacyDRM){
+        if (!container.isUseLegacyDRM && !ContainerUtils.isAbsoluteWindowsPath(container.executablePath)){
             // Create ColdClientLoader.ini file
             SteamUtils.writeColdClientIni(gameId, container, appLaunchInfo)
         }
@@ -4377,7 +4377,8 @@ private fun getWineStartCommand(
 
         // Use A: drive (or the mapped drive letter) instead of Z:
         // The container setup in ContainerUtils maps the game install path to A: drive
-        val epicCommand = "A:\\$relativePath".replace("/", "\\")
+        val isAbsoluteExe = ContainerUtils.isAbsoluteWindowsPath(exePath)
+        val epicCommand = if (isAbsoluteExe) exePath else "A:\\$relativePath".replace("/", "\\")
 
         // Get Epic launch parameters
         Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
@@ -4391,8 +4392,10 @@ private fun getWineStartCommand(
             params
         }
         // Set working directory to the folder containing the executable
-        val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
-        guestProgramLauncherComponent.workingDir = File(executableDir)
+        if (!isAbsoluteExe) {
+            val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
+            guestProgramLauncherComponent.workingDir = File(executableDir)
+        }
 
         Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
 
@@ -4504,16 +4507,19 @@ private fun getWineStartCommand(
             Timber.tag("XServerScreen").i("Using cached Amazon executablePath: $resolvedRelativePath")
         }
 
+        val isAbsoluteExe = ContainerUtils.isAbsoluteWindowsPath(resolvedRelativePath)
         val winPath = resolvedRelativePath.replace("/", "\\")
-        val amazonCommand = "A:\\$winPath"
+        val amazonCommand = if (isAbsoluteExe) resolvedRelativePath else "A:\\$winPath"
 
-        val workDir = if (fuelCommand != null && fuelWorkingDir != null && resolvedRelativePath.replace("\\", "/") == fuelCommand.replace("\\", "/")) {
-            installPath + "/" + fuelWorkingDir.replace("\\", "/")
-        } else {
-            val exeDir = resolvedRelativePath.substringBeforeLast("/", "")
-            if (exeDir.isNotEmpty()) installPath + "/" + exeDir else installPath
+        if (!isAbsoluteExe) {
+            val workDir = if (fuelCommand != null && fuelWorkingDir != null && resolvedRelativePath.replace("\\", "/") == fuelCommand.replace("\\", "/")) {
+                installPath + "/" + fuelWorkingDir.replace("\\", "/")
+            } else {
+                val exeDir = resolvedRelativePath.substringBeforeLast("/", "")
+                if (exeDir.isNotEmpty()) installPath + "/" + exeDir else installPath
+            }
+            guestProgramLauncherComponent.workingDir = File(workDir)
         }
-        guestProgramLauncherComponent.workingDir = File(workDir)
 
         // ── Set FuelPump environment variables (P3-2) ────────────────
         // Nile reference: nile/utils/launch.py — sets these for Amazon Games SDK / FuelPump DRM.
@@ -4621,6 +4627,10 @@ private fun getWineStartCommand(
             }
         }
 
+        if (ContainerUtils.isAbsoluteWindowsPath(executablePath)) {
+            return "winhandler.exe \"$executablePath\""
+        }
+
         if (gameFolderPath == null) {
             Timber.tag("XServerScreen").e("Could not find A: drive for Custom Game: $appId")
             return "winhandler.exe \"wfm.exe\""
@@ -4639,7 +4649,9 @@ private fun getWineStartCommand(
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
         "\"wfm.exe\""
     } else {
-        if (container.isLaunchBionicSteam) {
+        if (ContainerUtils.isAbsoluteWindowsPath(container.executablePath)) {
+            "\"${container.executablePath}\""
+        } else if (container.isLaunchBionicSteam) {
             // Bionic-Steam mode: launch the game executable directly.
             // The native libsteamclient.so is already running in the Android process
             // and will monitor the game via nativeWaitAppExit.
