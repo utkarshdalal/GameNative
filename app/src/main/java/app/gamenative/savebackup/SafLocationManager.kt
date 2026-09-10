@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
@@ -84,15 +86,18 @@ class DefaultSafLocationManager(
     private val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
 
-    override suspend fun tryPersist(appId: String, treeUri: Uri): Boolean {
-        return try {
+    // All three methods touch ContentResolver / DocumentFile (provider IPC that can block), so they
+    // run on Dispatchers.IO: BaseAppScreen invokes them from a UI-scoped coroutine.
+
+    override suspend fun tryPersist(appId: String, treeUri: Uri): Boolean = withContext(Dispatchers.IO) {
+        try {
             context.contentResolver.takePersistableUriPermission(treeUri, flags)
             // Confirm the grant was actually retained rather than trusting the call alone: a
             // provider may silently drop it. Only remember the URI when a matching persisted grant
             // is present.
             if (!hasPersistedGrant(treeUri)) {
                 Timber.w("Persistable grant for %s was not retained; not remembering", treeUri)
-                return false
+                return@withContext false
             }
             store.put(appId, treeUri.toString())
             true
@@ -107,40 +112,44 @@ class DefaultSafLocationManager(
         }
     }
 
-    override suspend fun rememberedLocation(context: Context, appId: String): Uri? {
-        val remembered = store.get(appId) ?: return null
-        val uri = try {
-            Uri.parse(remembered)
-        } catch (e: Exception) {
-            Timber.w(e, "Remembered SAF URI for %s is unparseable; forgetting", appId)
-            store.remove(appId)
-            return null
-        }
+    override suspend fun rememberedLocation(context: Context, appId: String): Uri? =
+        withContext(Dispatchers.IO) {
+            val remembered = store.get(appId) ?: return@withContext null
+            val uri = try {
+                Uri.parse(remembered)
+            } catch (e: Exception) {
+                Timber.w(e, "Remembered SAF URI for %s is unparseable; forgetting", appId)
+                store.remove(appId)
+                return@withContext null
+            }
 
-        // (a) The persistable grant must still be present in the resolver's persisted permissions
-        // (revoked/expired grants disappear from this list) — Requirement 10.4.
-        if (!hasPersistedGrant(uri)) {
-            Timber.i("Remembered SAF grant for %s is no longer persisted; forgetting", appId)
-            store.remove(appId)
-            return null
-        }
+            // (a) The persistable grant must still be present in the resolver's persisted
+            // permissions (revoked/expired grants disappear from this list) — Requirement 10.4.
+            if (!hasPersistedGrant(uri)) {
+                Timber.i("Remembered SAF grant for %s is no longer persisted; forgetting", appId)
+                store.remove(appId)
+                return@withContext null
+            }
 
-        // (b) The tree must still be resolvable and readable — a provider may be uninstalled or the
-        // folder removed even while a stale grant lingers (Requirement 10.4).
-        val doc = try {
-            treeResolver(context, uri)
-        } catch (e: Exception) {
-            Timber.w(e, "Remembered SAF tree for %s could not be resolved; forgetting", appId)
-            null
-        }
-        if (doc == null || !doc.exists() || !doc.canRead()) {
-            Timber.i("Remembered SAF tree for %s is unresolvable/unreadable; forgetting", appId)
-            store.remove(appId)
-            return null
-        }
+            // (b) The tree must still be resolvable and readable — a provider may be uninstalled or
+            // the folder removed even while a stale grant lingers (Requirement 10.4).
+            val doc = try {
+                treeResolver(context, uri)
+            } catch (e: Exception) {
+                Timber.w(e, "Remembered SAF tree for %s could not be resolved; forgetting", appId)
+                null
+            }
+            if (doc == null || !doc.exists() || !doc.canRead()) {
+                Timber.i("Remembered SAF tree for %s is unresolvable/unreadable; forgetting", appId)
+                // Release the still-held OS grant before forgetting so it does not leak against the
+                // per-app grant limit; releasing a grant referenced only by this stale entry is safe.
+                releaseGrantQuietly(uri)
+                store.remove(appId)
+                return@withContext null
+            }
 
-        return uri
-    }
+            uri
+        }
 
     /**
      * True when [treeUri] appears in `contentResolver.persistedUriPermissions` with read access
@@ -154,24 +163,29 @@ class DefaultSafLocationManager(
         }
     }
 
-    override suspend fun forget(appId: String) {
-        val remembered = store.get(appId) ?: return
+    override suspend fun forget(appId: String) = withContext(Dispatchers.IO) {
+        val remembered = store.get(appId) ?: return@withContext
         val uri = try {
             Uri.parse(remembered)
         } catch (_: Exception) {
             // Unparseable — just clear the store entry.
             store.remove(appId)
-            return
+            return@withContext
         }
 
-        // Release the OS-level persistable grant so it no longer counts against the per-app limit.
-        // Failing here (e.g. already revoked) is not fatal; we clear the store entry regardless.
+        // Release the OS-level persistable grant so it no longer counts against the per-app limit,
+        // then clear the store entry regardless of whether the release succeeded.
+        releaseGrantQuietly(uri)
+        store.remove(appId)
+    }
+
+    /** Release the persistable grant for [uri], logging (not throwing) if it cannot be released. */
+    private fun releaseGrantQuietly(uri: Uri) {
         try {
             context.contentResolver.releasePersistableUriPermission(uri, flags)
         } catch (e: Exception) {
-            Timber.w(e, "Could not release persistable permission for %s; clearing stored entry anyway", uri)
+            Timber.w(e, "Could not release persistable permission for %s", uri)
         }
-        store.remove(appId)
     }
 
     companion object {

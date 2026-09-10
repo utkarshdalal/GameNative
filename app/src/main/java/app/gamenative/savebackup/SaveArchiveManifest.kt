@@ -1,5 +1,6 @@
 package app.gamenative.savebackup
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonNames
@@ -22,7 +23,9 @@ import kotlinx.serialization.json.JsonNames
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class SaveArchiveManifest(
-    val version: Int = 5,
+    // Always encoded (even though it equals its default) so the schema-version marker is present
+    // in every written manifest, despite the codec's Json using encodeDefaults = false.
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS) val version: Int = 5,
     @JsonNames("steamAppId") val gameId: Int,
     val gameName: String,
     val exportedAt: Long,
