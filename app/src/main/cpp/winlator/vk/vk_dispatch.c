@@ -67,18 +67,24 @@ bool vkd_load(VkInstance instance, VkDevice device, PFN_vkGetInstanceProcAddr gi
     LOAD_D(QueueWaitIdle);
 #undef LOAD_D
 
-    if (!vkd.AllocateMemory || !vkd.FreeMemory ||
+    if (!vkd.GetPhysicalDeviceMemoryProperties ||
+        !vkd.AllocateMemory || !vkd.FreeMemory ||
+        !vkd.MapMemory || !vkd.UnmapMemory ||
         !vkd.CreateBuffer || !vkd.DestroyBuffer ||
+        !vkd.GetBufferMemoryRequirements || !vkd.BindBufferMemory ||
         !vkd.CreateImage || !vkd.DestroyImage ||
+        !vkd.GetImageMemoryRequirements || !vkd.BindImageMemory ||
         !vkd.CreateImageView || !vkd.DestroyImageView ||
         !vkd.CreateSampler || !vkd.DestroySampler ||
-        !vkd.CreateDescriptorSetLayout || !vkd.CreateDescriptorPool ||
+        !vkd.CreateDescriptorSetLayout || !vkd.DestroyDescriptorSetLayout ||
+        !vkd.CreateDescriptorPool || !vkd.DestroyDescriptorPool ||
         !vkd.AllocateDescriptorSets || !vkd.UpdateDescriptorSets ||
-        !vkd.CreatePipelineLayout || !vkd.CreateComputePipelines ||
-        !vkd.DestroyPipeline || !vkd.CreateShaderModule ||
+        !vkd.CreatePipelineLayout || !vkd.DestroyPipelineLayout ||
+        !vkd.CreateComputePipelines || !vkd.DestroyPipeline ||
+        !vkd.CreateShaderModule || !vkd.DestroyShaderModule ||
         !vkd.CmdBindPipeline || !vkd.CmdBindDescriptorSets ||
-        !vkd.CmdPipelineBarrier || !vkd.CmdDispatch ||
-        !vkd.QueueSubmit) {
+        !vkd.CmdPipelineBarrier || !vkd.CmdCopyImage ||
+        !vkd.CmdDispatch || !vkd.QueueSubmit) {
         memset(&vkd, 0, sizeof(vkd));
         return false;
     }
