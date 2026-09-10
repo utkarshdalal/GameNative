@@ -38,6 +38,7 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     ManageWorkshop(R.string.option_manage_workshop),
     ManageMods(R.string.option_manage_mods),
     ChangeBranch(R.string.change_branch),
+    ChangePreferredCopy(R.string.change_preferred_copy),
     AddToFavorites(R.string.option_add_to_favorites),
     RemoveFromFavorites(R.string.option_remove_from_favorites),
 }

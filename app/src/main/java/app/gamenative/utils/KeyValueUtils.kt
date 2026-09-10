@@ -110,8 +110,7 @@ fun KeyValue.generateSteamApp(): SteamApp {
         homepageUrl = this["extended"]["homepage"].value.orEmpty(),
         gameManualUrl = this["common"]["extended"]["gamemanualurl"].value.orEmpty(),
         loadAllBeforeLaunch = this["common"]["extended"]["loadallbeforelaunch"].asBoolean(),
-        // dlcAppIds = (this["common"]["extended"]["listofdlc"].value).Split(",").Select(uint.Parse).ToArray(),
-        dlcAppIds = emptyList(),
+        dlcAppIds = parseListOfDlcAppIds(),
         isFreeApp = this["common"]["extended"]["isfreeapp"].asBoolean(),
         dlcForAppId = this["extended"]["dlcforappid"].asInteger(this["common"]["extended"]["dlcforappid"].asInteger()),
         mustOwnAppToPurchase = this["common"]["extended"]["mustownapptopurchase"].asInteger(),
@@ -255,6 +254,16 @@ fun List<KeyValue>.generateManifest(): Map<String, ManifestInfo> = associate { m
         size = manifest["size"].asLong(),
         download = manifest["download"].asLong(),
     )
+}
+
+/** Parses Steam's comma-separated `listofdlc` extended field into app IDs. */
+private fun KeyValue.parseListOfDlcAppIds(): List<Int> {
+    val raw = this["extended"]["listofdlc"].value
+        ?: this["common"]["extended"]["listofdlc"].value
+        ?: return emptyList()
+    return raw.split(',')
+        .mapNotNull { it.trim().toIntOrNull() }
+        .filter { it > 0 && it != INVALID_APP_ID }
 }
 
 fun List<KeyValue>.toLangImgMap(): Map<Language, String> = mapNotNull { kv ->
