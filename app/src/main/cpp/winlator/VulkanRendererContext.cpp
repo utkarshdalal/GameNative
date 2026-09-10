@@ -230,6 +230,11 @@ void VulkanRendererContext::createLogicalDevice() {
     VkDeviceQueueCreateInfo qi{}; qi.sType=VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     qi.queueFamilyIndex=graphicsQueueFamilyIndex; qi.queueCount=1; qi.pQueuePriorities=&p;
 
+    VkPhysicalDeviceProperties props{};
+    vk_.GetPhysicalDeviceProperties(physicalDevice, &props);
+    maxAnisotropy = props.limits.maxSamplerAnisotropy;
+
+    bool memoryModelExtSupported = false;
     PFN_vkEnumerateDeviceExtensionProperties enumDevExts =
         (PFN_vkEnumerateDeviceExtensionProperties)gipa(instance, "vkEnumerateDeviceExtensionProperties");
     { uint32_t n=0; if(enumDevExts) enumDevExts(physicalDevice,nullptr,&n,nullptr);
@@ -238,15 +243,18 @@ void VulkanRendererContext::createLogicalDevice() {
       for (auto& e:av) {
           if (strcmp(e.extensionName,"VK_EXT_filter_cubic")==0
            || strcmp(e.extensionName,"VK_IMG_filter_cubic")==0) cubicSupported=true;
+          if (strcmp(e.extensionName, VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME)==0) memoryModelExtSupported=true;
       } }
     std::vector<const char*> extList = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME
     };
     if (cubicSupported) extList.push_back("VK_EXT_filter_cubic");
+    if (props.apiVersion < VK_API_VERSION_1_2 && memoryModelExtSupported) {
+        extList.push_back(VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME);
+    }
     VkDeviceCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     ci.pQueueCreateInfos=&qi; ci.queueCreateInfoCount=1;
-    ci.enabledExtensionCount=(uint32_t)extList.size(); ci.ppEnabledExtensionNames=extList.data();
 
     VkPhysicalDeviceVulkanMemoryModelFeatures memModel{};
     memModel.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES;
@@ -265,7 +273,10 @@ void VulkanRendererContext::createLogicalDevice() {
         (PFN_vkGetPhysicalDeviceFeatures2)gipa(instance, "vkGetPhysicalDeviceFeatures2");
     if (getFeatures2) {
         getFeatures2(physicalDevice, &supportedFeatures);
-        if (memModel.vulkanMemoryModel) {
+        const bool canEnableMemoryModel =
+            memModel.vulkanMemoryModel &&
+            (props.apiVersion >= VK_API_VERSION_1_2 || memoryModelExtSupported);
+        if (canEnableMemoryModel) {
             enableMemModel.vulkanMemoryModel = VK_TRUE;
             enableFeatures2.pNext = &enableMemModel;
         }
@@ -278,6 +289,8 @@ void VulkanRendererContext::createLogicalDevice() {
         ci.pNext = &enableFeatures2;
     }
 
+    ci.enabledExtensionCount=(uint32_t)extList.size(); ci.ppEnabledExtensionNames=extList.data();
+
     if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS) throw std::runtime_error("device");
     vk_.GetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)gipa(instance, "vkGetDeviceProcAddr");
     loadDeviceDispatch();
@@ -287,10 +300,6 @@ void VulkanRendererContext::createLogicalDevice() {
     vk_.GetDeviceQueue(device,graphicsQueueFamilyIndex,0,&graphicsQueue);
 
     vk_.GetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-    VkPhysicalDeviceProperties props{};
-    vk_.GetPhysicalDeviceProperties(physicalDevice, &props);
-    maxAnisotropy = props.limits.maxSamplerAnisotropy;
 }
 
 void VulkanRendererContext::createSwapchain() {
