@@ -5,7 +5,6 @@ import app.gamenative.enums.PathType
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.stream.Collectors
 import timber.log.Timber
@@ -62,17 +61,23 @@ object SaveLocationResolver {
 
         // toAbsPath returns a trailing-slash path (Req 1.3). Join with the relative subpath.
         val rootAbs = saveLocation.pathType.toAbsPath(container, appId, accountId)
-        val absolutePath = joinRoot(rootAbs, saveLocation.relativeSubpath)
-        return SaveLocationResult.Resolved(absolutePath, saveLocation)
-    }
+        val root = Paths.get(rootAbs).normalize()
+        val absolutePath = if (saveLocation.relativeSubpath.isEmpty()) {
+            root
+        } else {
+            root.resolve(saveLocation.relativeSubpath).normalize()
+        }
 
-    /**
-     * Join a `toAbsPath` root (always trailing-slash) with a normalized relative subpath.
-     * An empty subpath yields the unmodified root (Requirement 1.8).
-     */
-    private fun joinRoot(rootAbs: String, relativeSubpath: String): Path {
-        val root = Paths.get(rootAbs)
-        return if (relativeSubpath.isEmpty()) root else root.resolve(relativeSubpath)
+        // Defense-in-depth containment check (Req 1.7). SaveLocation.normalizeSubpath already
+        // rejects '..' at construction, so a resolved path should never escape its root; if it
+        // somehow does, refuse to resolve rather than read/write outside the save root.
+        if (!absolutePath.startsWith(root)) {
+            return SaveLocationResult.Unresolved(
+                "Resolved save path escapes its ${saveLocation.pathType} root",
+            )
+        }
+
+        return SaveLocationResult.Resolved(absolutePath, saveLocation)
     }
 
     /**

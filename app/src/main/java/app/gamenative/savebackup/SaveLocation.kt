@@ -55,6 +55,14 @@ class SaveLocation(
          * - convert `\` to `/`
          * - strip a Windows drive-letter prefix (e.g. `C:/foo` or `C:foo`)
          * - drop empty and `.` segments (removes leading/trailing/collapsed separators)
+         * - resolve `..` segments within the subpath (e.g. `a/b/../c` → `a/c`)
+         *
+         * **Path-traversal safety.** A `..` that would escape above the subpath root (e.g. `../x`
+         * or `a/../../x`) is invalid — the subpath must stay within its [PathType] root. Rather than
+         * silently clamp such input (which could still map to an unintended location), this throws
+         * [IllegalArgumentException]. Callers that build a [SaveLocation] from untrusted persisted
+         * or discovered data must treat the failure as an unresolvable location. This closes the
+         * traversal hole where a preserved `..` reached `Path.resolve` in the resolver.
          */
         fun normalizeSubpath(raw: String): String {
             // Convert Windows separators to '/'.
@@ -65,11 +73,24 @@ class SaveLocation(
                 s = s.substring(2)
             }
 
-            // Split on '/', dropping empty and '.' segments. This removes leading separators,
-            // trailing separators, and any collapsed "//".
-            return s.split('/')
-                .filter { it.isNotEmpty() && it != "." }
-                .joinToString("/")
+            // Resolve segments with a stack: drop empty and '.'; pop on '..'; reject if '..' would
+            // escape above the root.
+            val stack = ArrayDeque<String>()
+            for (segment in s.split('/')) {
+                when {
+                    segment.isEmpty() || segment == "." -> Unit
+                    segment == ".." -> {
+                        if (stack.isEmpty()) {
+                            throw IllegalArgumentException(
+                                "Save subpath escapes its root via '..': '$raw'",
+                            )
+                        }
+                        stack.removeLast()
+                    }
+                    else -> stack.addLast(segment)
+                }
+            }
+            return stack.joinToString("/")
         }
     }
 }

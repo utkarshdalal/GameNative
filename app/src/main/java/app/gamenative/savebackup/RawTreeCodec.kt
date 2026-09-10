@@ -311,8 +311,10 @@ object RawTreeCodec {
         }
 
         // Symlink guard: reject a source entry reported as a symlink, and reject when the REAL
-        // destination is already a symbolic link (Req 9.6) — before staging any bytes.
-        if (entry.isSymlink || Files.isSymbolicLink(destination)) {
+        // destination OR any ancestor under the root is a symbolic link (Req 9.6, CWE-59): a
+        // symlinked parent directory would let Files.move write outside the save root, which a
+        // leaf-only isSymbolicLink check misses. Reject before staging any bytes.
+        if (entry.isSymlink || SymlinkGuard.hasSymlinkAncestor(normalizedRoot, destination)) {
             throw ImportException.Symlink(entry.relativePath)
         }
 
