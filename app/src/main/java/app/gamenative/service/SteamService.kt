@@ -2793,14 +2793,22 @@ class SteamService : Service(), IChallengeUrlChanged {
                     } catch (e: Exception) {
                         Timber.e(e, "Download failed for app $appId")
                         di.persistProgressSnapshot()
-                        // Mark all depots as failed
-                        selectedDepots.keys.sorted().forEachIndexed { idx, _ ->
-                            di.setWeight(idx, 0)
-                            di.setProgress(1f, idx)
+                        if (GameDownloadQueue.reportFailure(GameSource.STEAM, appId.toString(), e.message)) {
+                            // Transient failure: the queue holds the slot and
+                            // auto-retries with backoff. The retry marker set
+                            // wasAutoPaused, so removeDownloadJob keeps the entry
+                            // and the UI shows the download as Queued.
+                            removeDownloadJob(appId)
+                        } else {
+                            // Mark all depots as failed
+                            selectedDepots.keys.sorted().forEachIndexed { idx, _ ->
+                                di.setWeight(idx, 0)
+                                di.setProgress(1f, idx)
+                            }
+                            removeDownloadJob(appId)
+                            // Unregister from queue so a paused download can resume
+                            GameDownloadQueue.unregisterDownload(GameSource.STEAM, appId.toString())
                         }
-                        removeDownloadJob(appId)
-                        // Unregister from queue so a paused download can resume
-                        GameDownloadQueue.unregisterDownload(GameSource.STEAM, appId.toString())
                     }
                 }
                 downloadJob.invokeOnCompletion { throwable ->

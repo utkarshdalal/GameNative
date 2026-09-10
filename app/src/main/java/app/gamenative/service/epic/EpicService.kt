@@ -530,13 +530,21 @@ class EpicService : Service() {
                     downloadInfo.setPostInstallSyncing(false)
                     downloadInfo.updateStatusMessage(null)
                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, false))
-                    downloadInfo.setProgress(-1.0f)
                     downloadInfo.setActive(false)
 
-                    SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
+                    if (GameDownloadQueue.reportFailure(GameSource.EPIC, appId.toString(), e.message)) {
+                        // Transient failure: the queue holds the slot and
+                        // auto-retries with backoff. The retry marker set
+                        // wasAutoPaused, so the finally below keeps the
+                        // active-map entry (UI shows Queued) and the DLC
+                        // selection for the resumed run.
+                    } else {
+                        downloadInfo.setProgress(-1.0f)
+                        SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
 
-                    // Unregister from queue so a paused download can resume
-                    GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
+                        // Unregister from queue so a paused download can resume
+                        GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
+                    }
                 } finally {
                     // Keep an auto-paused (queued) entry in the map so the downloads UI
                     // keeps showing it as Queued and the resume listener can recover its

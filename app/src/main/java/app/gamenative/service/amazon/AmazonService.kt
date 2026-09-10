@@ -507,21 +507,35 @@ class AmazonService : Service() {
                         val error = result.exceptionOrNull()
                         Timber.tag("Amazon").e(error, "Download failed for $productId")
                         downloadInfo.setActive(false)
-                        instance.cleanupFailedInstall(context, game, installPath)
-                        SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
 
-                        // Unregister from queue so a paused download can resume
-                        GameDownloadQueue.unregisterDownload(GameSource.AMAZON, productId)
+                        if (GameDownloadQueue.reportFailure(GameSource.AMAZON, productId, error?.message)) {
+                            // Transient failure: the queue holds the slot and
+                            // auto-retries with backoff. Keep the partial install
+                            // (no cleanup) so the retry resumes from it; the retry
+                            // marker set wasAutoPaused, so the finally below keeps
+                            // the active-map entry (UI shows Queued).
+                        } else {
+                            instance.cleanupFailedInstall(context, game, installPath)
+                            SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
+
+                            // Unregister from queue so a paused download can resume
+                            GameDownloadQueue.unregisterDownload(GameSource.AMAZON, productId)
+                        }
                     }
                 } catch (e: Exception) {
                     if (e is java.util.concurrent.CancellationException) {
                         Timber.tag("Amazon").d("Download cancelled for $productId")
                     } else {
                         Timber.tag("Amazon").e(e, "Download exception for $productId")
-                        instance.cleanupFailedInstall(context, game, installPath)
+                        if (GameDownloadQueue.reportFailure(GameSource.AMAZON, productId, e.message)) {
+                            // Transient failure: queue-managed auto-retry; keep
+                            // the partial install and the active-map entry.
+                        } else {
+                            instance.cleanupFailedInstall(context, game, installPath)
 
-                        // Unregister from queue so a paused download can resume
-                        GameDownloadQueue.unregisterDownload(GameSource.AMAZON, productId)
+                            // Unregister from queue so a paused download can resume
+                            GameDownloadQueue.unregisterDownload(GameSource.AMAZON, productId)
+                        }
                     }
                     downloadInfo.setActive(false)
                 } finally {

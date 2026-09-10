@@ -251,6 +251,20 @@ data class DownloadInfo(
 
     fun wasAutoPaused(): Boolean = wasAutoPaused
 
+    /**
+     * Queue-managed retry marker: like an auto-pause, but WITHOUT touching the
+     * download job. Called from the queue's failure-retry path, which runs inside
+     * the failing job's own catch block — cancelling the job there would cancel
+     * the very coroutine that is still handling the failure. The job is already
+     * finishing; only the queued-state and the UI status need to change.
+     */
+    fun markQueuedForRetry(statusMessage: String) {
+        setActive(false)
+        setPostInstallSyncing(false)
+        wasAutoPaused = true
+        updateStatusMessage(statusMessage)
+    }
+
     fun setAutoResumeCallback(callback: () -> Unit) {
         autoResumeCallback = callback
     }
