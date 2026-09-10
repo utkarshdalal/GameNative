@@ -4508,16 +4508,19 @@ private fun getWineStartCommand(
             Timber.tag("XServerScreen").i("Using cached Amazon executablePath: $resolvedRelativePath")
         }
 
+        val isAbsoluteExe = ContainerUtils.isAbsoluteWindowsPath(resolvedRelativePath)
         val winPath = resolvedRelativePath.replace("/", "\\")
-        val amazonCommand = "A:\\$winPath"
+        val amazonCommand = if (isAbsoluteExe) resolvedRelativePath else "A:\\$winPath"
 
-        val workDir = if (fuelCommand != null && fuelWorkingDir != null && resolvedRelativePath.replace("\\", "/") == fuelCommand.replace("\\", "/")) {
-            installPath + "/" + fuelWorkingDir.replace("\\", "/")
-        } else {
-            val exeDir = resolvedRelativePath.substringBeforeLast("/", "")
-            if (exeDir.isNotEmpty()) installPath + "/" + exeDir else installPath
+        if (!isAbsoluteExe) {
+            val workDir = if (fuelCommand != null && fuelWorkingDir != null && resolvedRelativePath.replace("\\", "/") == fuelCommand.replace("\\", "/")) {
+                installPath + "/" + fuelWorkingDir.replace("\\", "/")
+            } else {
+                val exeDir = resolvedRelativePath.substringBeforeLast("/", "")
+                if (exeDir.isNotEmpty()) installPath + "/" + exeDir else installPath
+            }
+            guestProgramLauncherComponent.workingDir = File(workDir)
         }
-        guestProgramLauncherComponent.workingDir = File(workDir)
 
         // ── Set FuelPump environment variables (P3-2) ────────────────
         // Nile reference: nile/utils/launch.py — sets these for Amazon Games SDK / FuelPump DRM.
