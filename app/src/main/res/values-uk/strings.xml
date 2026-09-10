@@ -1172,6 +1172,8 @@
     <string name="container_config_vkd3d_version">Версія VKD3D</string>
     <string name="container_config_executable_path">Шлях до виконуваного файлу</string>
     <string name="container_config_executable_path_placeholder">напр., path\\to\\exe</string>
+    <string name="container_config_executable_path_custom">Власний шлях…</string>
+    <string name="container_config_executable_path_custom_placeholder">напр., C:\\Games\\game.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">Використані бібліотеки</string>

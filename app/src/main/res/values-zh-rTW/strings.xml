@@ -1158,6 +1158,8 @@
     <string name="container_config_vkd3d_version">VKD3D 版本</string>
     <string name="container_config_executable_path">可執行檔路徑</string>
     <string name="container_config_executable_path_placeholder">e.g., path\\to\\exe</string>
+    <string name="container_config_executable_path_custom">自訂路徑…</string>
+    <string name="container_config_executable_path_custom_placeholder">e.g., C:\\Games\\game.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">使用的函式庫</string>

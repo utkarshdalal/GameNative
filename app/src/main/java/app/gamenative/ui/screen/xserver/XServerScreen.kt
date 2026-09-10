@@ -4306,7 +4306,7 @@ private fun getWineStartCommand(
             container.executablePath = SteamService.getInstalledExe(gameId)
             container.saveData()
         }
-        if (!container.isUseLegacyDRM){
+        if (!container.isUseLegacyDRM && !ContainerUtils.isAbsoluteWindowsPath(container.executablePath)){
             // Create ColdClientLoader.ini file
             SteamUtils.writeColdClientIni(gameId, container, appLaunchInfo)
         }
@@ -4381,7 +4381,7 @@ private fun getWineStartCommand(
 
         // Use A: drive (or the mapped drive letter) instead of Z:
         // The container setup in ContainerUtils maps the game install path to A: drive
-        val epicCommand = "A:\\$relativePath".replace("/", "\\")
+        val epicCommand = if (ContainerUtils.isAbsoluteWindowsPath(exePath)) exePath else "A:\\$relativePath".replace("/", "\\")
 
         // Get Epic launch parameters
         Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
@@ -4630,6 +4630,10 @@ private fun getWineStartCommand(
             return "winhandler.exe \"wfm.exe\""
         }
 
+        if (ContainerUtils.isAbsoluteWindowsPath(executablePath)) {
+            return "winhandler.exe \"$executablePath\""
+        }
+
         // Set working directory to the game folder
         val executableDir = gameFolderPath + "/" + executablePath.substringBeforeLast("/", "")
         guestProgramLauncherComponent.workingDir = File(executableDir)
@@ -4643,7 +4647,9 @@ private fun getWineStartCommand(
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
         "\"wfm.exe\""
     } else {
-        if (container.isLaunchBionicSteam) {
+        if (ContainerUtils.isAbsoluteWindowsPath(container.executablePath)) {
+            "\"${container.executablePath}\""
+        } else if (container.isLaunchBionicSteam) {
             // Bionic-Steam mode: launch the game executable directly.
             // The native libsteamclient.so is already running in the Android process
             // and will monitor the game via nativeWaitAppExit.

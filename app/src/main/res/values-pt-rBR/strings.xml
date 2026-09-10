@@ -996,6 +996,8 @@
     <string name="container_config_vkd3d_version">Versão do VKD3D</string>
     <string name="container_config_executable_path">Caminho do executável</string>
     <string name="container_config_executable_path_placeholder">ex.: caminho\\para\\exe</string>
+    <string name="container_config_executable_path_custom">Caminho personalizado…</string>
+    <string name="container_config_executable_path_custom_placeholder">ex.: C:\\Jogos\\jogo.exe</string>
 
     <!-- TODO: Revisão manual - Diálogo de bibliotecas -->
     <string name="libraries_title">Bibliotecas utilizadas</string>

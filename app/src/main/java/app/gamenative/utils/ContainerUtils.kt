@@ -1280,6 +1280,9 @@ object ContainerUtils {
         return null
     }
 
+    fun isAbsoluteWindowsPath(path: String): Boolean =
+        Regex("^[A-Za-z]:[\\\\/]").containsMatchIn(path)
+
     /**
      * Scans the container's A: drive for all .exe and .bat files
      */
