@@ -200,7 +200,14 @@ impl<'a> Reader<'a> {
         if self.eof() {
             return None;
         }
-        let raw = self.varint()? as u32;
+        let raw = self.varint()?;
+        // Reject tags that don't fit u32 — the truncate-cast below could otherwise
+        // turn an invalid/unknown tag into a known field.
+        if raw > u32::MAX as u64 {
+            self.ok = false;
+            return None;
+        }
+        let raw = raw as u32;
         let wire_type = match WireType::try_from((raw & 0x07) as u8) {
             Ok(wire_type) => wire_type,
             Err(_) => {
@@ -228,6 +235,12 @@ impl<'a> Reader<'a> {
             }
             let b = self.buf[self.pos];
             self.pos += 1;
+            // The 10th byte may only carry bit 0 (value <= 1); anything larger
+            // would silently truncate into a plausible-looking length/id.
+            if i == MAX_VARINT_BYTES - 1 && b > 1 {
+                self.ok = false;
+                return None;
+            }
             result |= ((b & 0x7f) as u64) << (i * 7);
             if (b & 0x80) == 0 {
                 return Some(result);

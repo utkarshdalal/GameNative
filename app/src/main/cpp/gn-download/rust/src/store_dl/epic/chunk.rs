@@ -120,9 +120,12 @@ pub fn part_path(final_path: &Path) -> PathBuf {
 /// Process one downloaded body into `final_path`. Returns the number of DECOMPRESSED bytes
 /// written. `Err(reason)` = Java's "try the next CDN" outcome; the `.part` never survives an
 /// error and `final_path` is only ever created by the rename after verification.
+/// `expected_size` (manifest `window_size` when known) guards sha1-less chunks against a
+/// truncated zlib stream ending cleanly with partial output.
 pub fn write_verified_chunk(
     body: &[u8],
     expected_sha1: Option<&[u8; 20]>,
+    expected_size: Option<u64>,
     final_path: &Path,
 ) -> Result<u64, String> {
     let tmp = part_path(final_path);
@@ -130,6 +133,16 @@ pub fn write_verified_chunk(
     let _ = fs::remove_file(&tmp);
 
     let result = write_part(body, expected_sha1, &tmp, final_path);
+    let result = result.and_then(|written| {
+        if let Some(expected) = expected_size {
+            if written != expected {
+                return Err(format!(
+                    "Chunk size mismatch: wrote {written} bytes, expected {expected}"
+                ));
+            }
+        }
+        Ok(written)
+    });
     if result.is_err() {
         let _ = fs::remove_file(&tmp);
     }
@@ -293,7 +306,7 @@ mod tests {
         let data = sample_data();
         let body = build_chunk_body(&data, true, 3, None);
         let final_path = dir.join("00000001000000020000000300000004");
-        let n = write_verified_chunk(&body, Some(&sha1_of(&data)), &final_path).unwrap();
+        let n = write_verified_chunk(&body, Some(&sha1_of(&data)), None, &final_path).unwrap();
         assert_eq!(n, data.len() as u64);
         assert_eq!(fs::read(&final_path).unwrap(), data);
         assert!(!part_path(&final_path).exists(), ".part renamed away");
@@ -306,7 +319,7 @@ mod tests {
         let data = b"stored-as-is payload".to_vec();
         let body = build_chunk_body(&data, false, 0, None);
         let final_path = dir.join("chunk");
-        let n = write_verified_chunk(&body, Some(&sha1_of(&data)), &final_path).unwrap();
+        let n = write_verified_chunk(&body, Some(&sha1_of(&data)), None, &final_path).unwrap();
         assert_eq!(n, data.len() as u64);
         assert_eq!(fs::read(&final_path).unwrap(), data);
         let _ = fs::remove_dir_all(&dir);
@@ -318,7 +331,7 @@ mod tests {
         let data = sample_data();
         let body = build_chunk_body(&data, true, 0, None);
         let final_path = dir.join("chunk");
-        let err = write_verified_chunk(&body, Some(&[0x42; 20]), &final_path).unwrap_err();
+        let err = write_verified_chunk(&body, Some(&[0x42; 20]), None, &final_path).unwrap_err();
         assert!(err.contains("SHA-1 mismatch"), "{err}");
         assert!(!final_path.exists());
         assert!(!part_path(&final_path).exists());
@@ -332,7 +345,7 @@ mod tests {
         let body = build_chunk_body(&data, true, 0, None);
         let final_path = dir.join("chunk");
         assert_eq!(
-            write_verified_chunk(&body, None, &final_path).unwrap(),
+            write_verified_chunk(&body, None, None, &final_path).unwrap(),
             data.len() as u64
         );
         assert_eq!(fs::read(&final_path).unwrap(), data);
@@ -347,14 +360,14 @@ mod tests {
         let final_path = dir.join("chunk");
         // Truncate the body: inflate ends early → partial output → SHA-1 mismatch.
         let cut = body.len() - 1000;
-        let err = write_verified_chunk(&body[..cut], Some(&sha1_of(&data)), &final_path).unwrap_err();
+        let err = write_verified_chunk(&body[..cut], Some(&sha1_of(&data)), None, &final_path).unwrap_err();
         assert!(err.contains("SHA-1 mismatch") || err.contains("inflate"), "{err}");
         assert!(!final_path.exists());
         // Corrupt the deflate stream itself.
         for b in body.iter_mut().skip(60).take(64) {
             *b ^= 0x55;
         }
-        let err = write_verified_chunk(&body, Some(&sha1_of(&data)), &final_path).unwrap_err();
+        let err = write_verified_chunk(&body, Some(&sha1_of(&data)), None, &final_path).unwrap_err();
         assert!(err.contains("SHA-1 mismatch") || err.contains("inflate"), "{err}");
         assert!(!final_path.exists());
         assert!(!part_path(&final_path).exists());
@@ -367,7 +380,7 @@ mod tests {
         let final_path = dir.join("chunk");
         fs::write(part_path(&final_path), b"stale").unwrap();
         let body = [0u8; 10]; // too short → header failure
-        assert!(write_verified_chunk(&body, None, &final_path).is_err());
+        assert!(write_verified_chunk(&body, None, None, &final_path).is_err());
         assert!(!part_path(&final_path).exists());
         assert!(!final_path.exists());
         let _ = fs::remove_dir_all(&dir);

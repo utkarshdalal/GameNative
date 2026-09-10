@@ -12,6 +12,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+use sha1::{Digest, Sha1};
+
 use crate::fetch_core::{run_fetch, FetchItem, FetchOptions, FetchSink, SinkError};
 
 use super::manifest::{parse_manifest, Manifest};
@@ -135,6 +137,32 @@ struct ChunkCacheSink<'a> {
     decompressed: AtomicU64,
 }
 
+/// Resume-skip gate: a cached chunk is only trusted when it passes every check the
+/// manifest offers — decompressed size (`window_size`, when known) and SHA-1 (when
+/// verifiable). Anything else is re-downloaded from the CDN instead of poisoning
+/// assembly with truncated/corrupt bytes or failing with "Chunk file missing".
+fn cached_chunk_valid(path: &PathBuf, chunk: &super::manifest::ChunkInfo) -> bool {
+    let Ok(meta) = std::fs::metadata(path) else {
+        return false;
+    };
+    if chunk.window_size > 0 && meta.len() != chunk.window_size as u64 {
+        return false;
+    }
+    if let Some(expected) = chunk.verifiable_sha1() {
+        let Ok(mut file) = std::fs::File::open(path) else {
+            return false;
+        };
+        let mut sha = Sha1::new();
+        if std::io::copy(&mut file, &mut sha).is_err() {
+            return false;
+        }
+        return sha.finalize().as_slice() == &expected[..];
+    }
+    // JSON manifests: no size reference and no hash — accept any non-empty file,
+    // matching the Java pool's `cachedFile.exists()` behaviour.
+    meta.len() > 0
+}
+
 impl<'a> FetchSink for ChunkCacheSink<'a> {
     fn process(&self, item: &FetchItem, body: Vec<u8>) -> Result<u64, SinkError> {
         let Some(&ci) = self.fetch_chunks.get(item.id as usize) else {
@@ -142,7 +170,16 @@ impl<'a> FetchSink for ChunkCacheSink<'a> {
         };
         let chunk = &self.plan.manifest.unique_chunks[ci];
         let final_path = cached_chunk_path(&self.plan.cache_dir, chunk);
-        match super::chunk::write_verified_chunk(&body, chunk.verifiable_sha1(), &final_path) {
+        match super::chunk::write_verified_chunk(
+            &body,
+            chunk.verifiable_sha1(),
+            if chunk.window_size > 0 {
+                Some(chunk.window_size as u64)
+            } else {
+                None
+            },
+            &final_path,
+        ) {
             // Credit the DECOMPRESSED bytes: the progress contract is "uncompressed installed
             // bytes" (Steam-style), so the app screen's total = installed size and assembly
             // afterwards only tops up shared-chunk copies.
@@ -251,13 +288,22 @@ pub fn run_plan(
         }
         let chunk = &plan.manifest.unique_chunks[ci];
         let cached = cached_chunk_path(&plan.cache_dir, chunk);
-        if cached.exists() {
+        if cached.exists() && cached_chunk_valid(&cached, chunk) {
             // Credit the DECOMPRESSED size: the cache file holds the inflated chunk, so its
             // length is exactly that (Java credited the compressed `max(fileSize,1)`).
             pre_bytes += std::fs::metadata(&cached).map(|m| m.len()).unwrap_or(0);
             pre_chunks += 1;
             progress(pre_bytes, pre_chunks);
         } else {
+            // Missing OR stale/corrupt cache: drop it and re-fetch from the CDN
+            // instead of failing assembly later with "Chunk file missing" / bad bytes.
+            if cached.exists() {
+                log(&format!(
+                    "cached chunk {} failed validation — re-downloading",
+                    chunk.guid_str()
+                ));
+                let _ = std::fs::remove_file(&cached);
+            }
             fetch_chunks.push(ci);
         }
     }
@@ -438,26 +484,94 @@ mod tests {
 
     #[test]
     fn fully_cached_plan_completes_without_fetching() {
+        // Manifest whose chunk carries the REAL sha1/window of our test data, so the
+        // cache validation gate can be exercised both ways.
+        let data = vec![7u8; 6000];
+        let body = super::super::chunk::test_support::build_chunk_body(&data, true, 0, None);
+        let sha1 = super::super::chunk::test_support::sha1_of(&data);
+        let chunks = vec![TestChunk {
+            guid: [0xAAAA_0001, 0xAAAA_0002, 0xAAAA_0003, 0xAAAA_0004],
+            hash: 0x0123_4567,
+            sha1,
+            group: 5,
+            window: data.len() as i32,
+            file_size: body.len() as u64,
+        }];
+        let files = vec![TestFile {
+            name: "Game/f.bin".to_string(),
+            sha1: [0x51; 20],
+            tags: vec![],
+            parts: vec![(chunks[0].guid, 0, data.len() as i32)],
+        }];
+        let manifest_bytes = build_manifest(&chunks, &files, 21, true);
+
         let dir = super::super::chunk::test_support::temp_dir("cached");
-        let req = request(dir.to_str().unwrap(), vec![0]);
+        let mut req = request(dir.to_str().unwrap(), vec![0]);
+        req.manifest_bytes = manifest_bytes;
         let plan = build_plan(&req).unwrap();
-        for &ci in &plan.needed {
-            std::fs::write(
-                cached_chunk_path(&plan.cache_dir, &plan.manifest.unique_chunks[ci]),
-                b"cached",
-            )
-            .unwrap();
-        }
+        // Populate the cache with a genuinely valid chunk (size + SHA-1 verified).
+        let cache_path = cached_chunk_path(&plan.cache_dir, &plan.manifest.unique_chunks[0]);
+        let n = super::super::chunk::write_verified_chunk(
+            &body,
+            Some(&sha1),
+            Some(data.len() as u64),
+            &cache_path,
+        )
+        .unwrap();
+        assert_eq!(n, data.len() as u64);
+
         let cancel = AtomicBool::new(false);
         let calls = Mutex::new(Vec::new());
         let progress = |b: u64, c: u64| calls.lock().unwrap().push((b, c));
         let log = |_: &str| {};
         let out = run_plan(&plan, &req, &cancel, &progress, &log);
         assert!(out.success);
-        assert_eq!(out.chunks_done, 2);
-        // Cached credit = cache-file length (decompressed bytes), 6 per b"cached" file.
-        assert_eq!(out.bytes_credited, 12);
-        assert_eq!(*calls.lock().unwrap(), vec![(6, 1), (12, 2)]);
+        assert_eq!(out.chunks_done, 1);
+        // Cached credit = cache-file length (decompressed bytes).
+        assert_eq!(out.bytes_credited, data.len() as u64);
+        assert_eq!(*calls.lock().unwrap(), vec![(data.len() as u64, 1)]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn corrupt_cached_chunk_is_dropped_and_refetched() {
+        // Same manifest as above, but the cache file is garbage: the resume path must
+        // delete it and re-download (which then fails without a reachable CDN) instead
+        // of crediting corrupt bytes and poisoning assembly.
+        let data = vec![7u8; 6000];
+        let sha1 = super::super::chunk::test_support::sha1_of(&data);
+        let chunks = vec![TestChunk {
+            guid: [0xBBBB_0001, 0xBBBB_0002, 0xBBBB_0003, 0xBBBB_0004],
+            hash: 0x0123_4567,
+            sha1,
+            group: 5,
+            window: data.len() as i32,
+            file_size: 1234,
+        }];
+        let files = vec![TestFile {
+            name: "Game/f.bin".to_string(),
+            sha1: [0x51; 20],
+            tags: vec![],
+            parts: vec![(chunks[0].guid, 0, data.len() as i32)],
+        }];
+        let manifest_bytes = build_manifest(&chunks, &files, 21, true);
+
+        let dir = super::super::chunk::test_support::temp_dir("corrupt");
+        let mut req = request(dir.to_str().unwrap(), vec![0]);
+        req.manifest_bytes = manifest_bytes;
+        req.max_workers = 1;
+        let plan = build_plan(&req).unwrap();
+        let cache_path = cached_chunk_path(&plan.cache_dir, &plan.manifest.unique_chunks[0]);
+        std::fs::write(&cache_path, b"garbage").unwrap();
+
+        let cancel = AtomicBool::new(false);
+        let calls = Mutex::new(Vec::new());
+        let progress = |b: u64, c: u64| calls.lock().unwrap().push((b, c));
+        let log = |_: &str| {};
+        let out = run_plan(&plan, &req, &cancel, &progress, &log);
+        assert!(!out.success, "refetch must fail without a reachable CDN");
+        assert!(calls.lock().unwrap().is_empty(), "no credit for corrupt cache");
+        assert!(!cache_path.exists(), "corrupt cache was removed before refetch");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

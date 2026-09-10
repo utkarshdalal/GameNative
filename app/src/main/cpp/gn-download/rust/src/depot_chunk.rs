@@ -85,13 +85,18 @@ fn decompress_vzstd(dec: &[u8], expected_size: u32) -> DepotChunkResult {
         return fail("vzstd: chunk too small");
     }
     let payload = &dec[8..];
-    let mut reader = match ruzstd::StreamingDecoder::new(Cursor::new(payload)) {
+    let reader = match ruzstd::StreamingDecoder::new(Cursor::new(payload)) {
         Ok(reader) => reader,
         Err(_) => return fail("vzstd: bad zstd frame"),
     };
     let mut data = Vec::with_capacity(expected_size as usize);
-    if reader.read_to_end(&mut data).is_err() {
+    // Decode at most expected_size + 1 bytes: a hostile/malformed frame must be
+    // rejected by size, not allowed to expand unboundedly before the check.
+    if reader.take(expected_size as u64 + 1).read_to_end(&mut data).is_err() {
         return fail("vzstd: decode failed");
+    }
+    if data.len() > expected_size as usize {
+        return fail("vzstd: decoded size exceeds expected chunk size");
     }
     DepotChunkResult {
         data,

@@ -293,10 +293,20 @@ enum ChunkMode {
 struct ChunkStream {
     comp_md5: crate::md5_small::Md5,
     comp_len: u64,
-    /// Decided on the first non-empty piece (`0x78` → zlib, else stored — Java's `inflateZlib`).
+    /// Decided on the first non-empty piece: `0x78` AND a successful in-memory inflate
+    /// probe → zlib, else stored. The probe keeps a STORED chunk that happens to begin
+    /// with 0x78 (a valid zlib CMF) from being mis-fed to the decoder until it fails.
     mode: Option<ChunkMode>,
     /// The writer until the mode is decided (an empty body never decides).
     writer: Option<RangeWriter>,
+}
+
+/// One-shot probe: does this piece inflate as a zlib stream? The write decoder only
+/// errors on genuinely bad data — a truncated-but-valid first piece writes cleanly
+/// (matches Java's Inflater being fed piecewise).
+fn looks_like_zlib(data: &[u8]) -> bool {
+    let mut dec = flate2::write::ZlibDecoder::new(Vec::new());
+    std::io::Write::write_all(&mut dec, data).is_ok()
 }
 
 impl ChunkStream {
@@ -586,7 +596,7 @@ impl<'a> FetchSink for GogSink<'a> {
                 .writer
                 .take()
                 .ok_or_else(|| SinkError::Fatal("chunk writer missing".to_string()))?;
-            stream.mode = Some(if data[0] == 0x78 {
+            stream.mode = Some(if data[0] == 0x78 && looks_like_zlib(data) {
                 ChunkMode::Zlib(flate2::write::ZlibDecoder::new(writer))
             } else {
                 ChunkMode::Stored(writer) // stored (non-zlib) chunk — Java's `inflated = raw`

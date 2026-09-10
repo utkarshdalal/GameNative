@@ -310,6 +310,14 @@ fn parse_binary_after_magic(cur: &mut Cursor<'_>) -> Result<Manifest, String> {
         if size_uncompressed < 0 {
             return Err("negative sizeUncompressed".to_string());
         }
+        // Bound the manifest-declared allocation: the field is attacker/CDN-controlled and
+        // `with_capacity` trusts it fully. Real Epic manifests are tens of MiB at most.
+        const MAX_MANIFEST_INFLATE: i32 = 256 * 1024 * 1024;
+        if size_uncompressed > MAX_MANIFEST_INFLATE {
+            return Err(format!(
+                "sizeUncompressed {size_uncompressed} exceeds sane bound"
+            ));
+        }
         // Java: `inflater.inflate(new byte[sizeUncompressed])` — a single call that fills at most
         // `sizeUncompressed` bytes; anything else (short, corrupt) is a size mismatch → null.
         let mut out = Vec::with_capacity(size_uncompressed as usize);

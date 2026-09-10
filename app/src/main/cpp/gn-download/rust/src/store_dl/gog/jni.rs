@@ -78,6 +78,14 @@ impl JniEvents {
         }
     }
 
+    /// Final byte emit that bypasses the 200 ms throttle (used right before onComplete).
+    fn emit_final_bytes(&self, bytes: u64) {
+        if let Ok(mut last) = self.last_bytes_emit.lock() {
+            *last = (std::time::Instant::now() - std::time::Duration::from_secs(1), bytes);
+        }
+        self.on_bytes(bytes);
+    }
+
     fn complete(&self, result: &GogRunResult) {
         self.with_env(|env| {
             let Ok(error) = env.new_string(&result.error) else {
@@ -295,6 +303,9 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeGogDownload_na
                 )),
             };
             let result = engine::run(&request, &worker.cancel, &events);
+            // Terminal byte update, unthrottled: the 200 ms throttle in on_bytes can
+            // swallow the last increment and leave the UI short of the real total.
+            events.emit_final_bytes(result.bytes_written);
             events.complete(&result);
         });
     if spawned.is_err() {

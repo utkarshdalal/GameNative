@@ -63,11 +63,14 @@ impl ContentManifest {
                 break;
             }
             let len = read_u32_le(raw, &mut pos)? as usize;
-            if pos + len > raw.len() {
+            // checked_add: on 32-bit (armv7) a near-u32::MAX section length would
+            // otherwise wrap pos + len and pass the bound check, then panic on slicing.
+            let end = pos.checked_add(len)?;
+            if end > raw.len() {
                 return None;
             }
-            let section = &raw[pos..pos + len];
-            pos += len;
+            let section = &raw[pos..end];
+            pos = end;
 
             match magic {
                 PAYLOAD_MAGIC => {

@@ -25,7 +25,7 @@
 //!
 //! `MB/s` here means MiB/s (1024²), matching the Steam engine's lines.
 
-use crate::cdn_client::{AsyncFetchError, CdnClient, FetchFailKind, USER_AGENT};
+use crate::cdn_client::{read_body_capped, AsyncFetchError, CdnClient, FetchFailKind, MAX_WHOLE_BODY_BYTES, USER_AGENT};
 use crate::depot_writer::{
     budget_admits, inflight_budget_bytes, retry_backoff_millis, BOOTSTRAP_WINDOW,
     MAX_CHUNK_ATTEMPTS, NOMINAL_CHUNK_RESERVE_BYTES, RATE_LIMIT_COOLDOWN_MS, SERVER_EXPLORE_EVERY,
@@ -725,8 +725,10 @@ async fn send_checked(
         Ok(response) => response,
         Err(err) => {
             return Err(AsyncFetchError {
-                message: format!("http get: {err}"),
+                // without_url(): reqwest embeds the request URL in Display; signed
+                // CDN query credentials must not reach logs or error_slot.
                 kind: classify_reqwest_error(&err),
+                message: format!("http get: {}", err.without_url()),
             });
         }
     };
@@ -747,22 +749,22 @@ async fn fetch_once(
     range: Option<(u64, u64)>,
     timeout: Duration,
 ) -> Result<Vec<u8>, AsyncFetchError> {
-    let response = send_checked(http, url, range, Some(timeout)).await?;
-    let content_length = response.content_length();
-    let body = match response.bytes().await {
-        Ok(body) => body.to_vec(),
-        Err(err) => {
-            let kind = if err.is_timeout() {
-                FetchFailKind::Timeout
-            } else {
-                FetchFailKind::Other
-            };
+    // `timeout` bounds connect+headers and each body read (idle), not the whole body:
+    // a slow CDN moving bytes steadily must not hit a total-transfer deadline.
+    let response = match tokio::time::timeout(timeout, send_checked(http, url, range, None)).await
+    {
+        Ok(res) => res?,
+        Err(_) => {
             return Err(AsyncFetchError {
-                message: format!("http body: {err}"),
-                kind,
+                message: "http get: headers timeout".to_string(),
+                kind: FetchFailKind::Timeout,
             });
         }
     };
+    let content_length = response.content_length();
+    // Bounded incremental read: a response bigger than its reservation (or with
+    // no Content-Length) must not be buffered unboundedly (OOM).
+    let body = read_body_capped(response, MAX_WHOLE_BODY_BYTES, Some(timeout)).await?;
     validate_body_len(body.len() as u64, content_length, range)?;
     Ok(body)
 }
@@ -819,8 +821,8 @@ async fn fetch_stream(
             Ok(Ok(None)) => break,
             Ok(Err(err)) => {
                 return Err(AsyncFetchError {
-                    message: format!("http body: {err}"),
                     kind: classify_reqwest_error(&err),
+                    message: format!("http body: {}", err.without_url()),
                 });
             }
             Err(_) => {
@@ -983,6 +985,9 @@ async fn run_driver(ctx: DriverCtx<'_>) {
     let mut errors_logged: u32 = 0;
     // Bodies / finishes handed to the pool whose verdict has not come back yet.
     let mut outstanding = 0usize;
+    // Watchdog for a silently-dead pool worker in stream mode (its own channel sender
+    // stays connected via other workers, so Disconnected alone can't catch it).
+    let mut stall_since: Option<Instant> = None;
     // Declared AFTER `txs`/`http` so it is dropped BEFORE them (its futures borrow both).
     let mut inflight: FuturesUnordered<_> = FuturesUnordered::new();
 
@@ -995,7 +1000,23 @@ async fn run_driver(ctx: DriverCtx<'_>) {
 
         // ── Sink verdicts: Retry = counts as a failed attempt (cool + demote host, back-off,
         // rotate); Fatal was already recorded in the error slot by the pool. ──
-        while let Ok(fb) = fb_rx.try_recv() {
+        // A Disconnected channel with work still outstanding means a pool thread died
+        // without reporting — fail the run instead of sleeping forever.
+        loop {
+            let fb = match fb_rx.try_recv() {
+                Ok(fb) => fb,
+                Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    if outstanding > 0 {
+                        record_first_error(
+                            error_slot,
+                            format!("{label}: process pool exited with {outstanding} item(s) outstanding"),
+                        );
+                        break 'outer;
+                    }
+                    break;
+                }
+            };
             outstanding = outstanding.saturating_sub(1);
             match fb.verdict {
                 SinkVerdict::Ok => {}
@@ -1130,6 +1151,20 @@ async fn run_driver(ctx: DriverCtx<'_>) {
         if inflight.is_empty() {
             if next_item >= items.len() && retry.is_empty() && outstanding == 0 {
                 break; // every item fetched and processed
+            }
+            if outstanding > 0 && next_item >= items.len() && retry.is_empty() {
+                // Everything is dispatched; we are only waiting on pool verdicts.
+                // A worker that died without reporting would hang us here forever.
+                let since = stall_since.get_or_insert_with(Instant::now);
+                if since.elapsed() > Duration::from_secs(60) {
+                    record_first_error(
+                        error_slot,
+                        format!("{label}: no process-pool verdict for 60s with {outstanding} item(s) outstanding"),
+                    );
+                    break;
+                }
+            } else {
+                stall_since = None;
             }
             tokio::time::sleep(Duration::from_millis(5)).await;
             continue;

@@ -388,12 +388,12 @@ impl CdnClient {
             .get(url)
             .timeout(timeout)
             .send()
-            .map_err(|err| format!("http get: {err}"))?;
+            .map_err(|err| format!("http get: {}", err.without_url()))?;
         let http_status = response.status().as_u16() as i32;
         let content_length = response.content_length();
         let body = response
             .bytes()
-            .map_err(|err| format!("http body: {err}"))?
+            .map_err(|err| format!("http body: {}", err.without_url()))?
             .to_vec();
         Ok(HttpResponse {
             http_status,
@@ -469,6 +469,71 @@ pub struct AsyncFetchError {
     pub kind: FetchFailKind,
 }
 
+/// Hard cap for one whole-body response: a CDN that omits or lies about
+/// Content-Length must not make us buffer an unbounded body (OOM). Real chunks
+/// and whole-body items are far below this.
+pub(crate) const MAX_WHOLE_BODY_BYTES: u64 = 128 * 1024 * 1024;
+
+/// Read a response body incrementally, rejecting it as soon as it exceeds `cap`.
+/// Prefer this over `response.bytes()` for any server-supplied body.
+/// `idle` bounds the wait between pieces, NOT the whole body — a slow link moving
+/// bytes steadily must never hit a total-transfer deadline.
+pub(crate) async fn read_body_capped(
+    mut response: reqwest::Response,
+    cap: u64,
+    idle: Option<Duration>,
+) -> Result<Vec<u8>, AsyncFetchError> {
+    if let Some(len) = response.content_length() {
+        if len > cap {
+            return Err(AsyncFetchError {
+                message: format!("response too large ({len} bytes exceeds cap)"),
+                kind: FetchFailKind::ServerFault,
+            });
+        }
+    }
+    let mut body = Vec::new();
+    let mut offset: u64 = 0;
+    loop {
+        let piece = match idle {
+            Some(limit) => match tokio::time::timeout(limit, response.chunk()).await {
+                Ok(res) => res,
+                Err(_) => {
+                    return Err(AsyncFetchError {
+                        message: format!("http body: idle timeout at offset {offset}"),
+                        kind: FetchFailKind::Timeout,
+                    });
+                }
+            },
+            None => response.chunk().await,
+        };
+        match piece {
+            Ok(Some(piece)) => {
+                offset += piece.len() as u64;
+                body.extend_from_slice(&piece);
+                if body.len() as u64 > cap {
+                    return Err(AsyncFetchError {
+                        message: "response too large (body exceeds cap)".to_string(),
+                        kind: FetchFailKind::ServerFault,
+                    });
+                }
+            }
+            Ok(None) => break,
+            Err(err) => {
+                let kind = if err.is_timeout() {
+                    FetchFailKind::Timeout
+                } else {
+                    FetchFailKind::Other
+                };
+                return Err(AsyncFetchError {
+                    message: format!("http body: {}", err.without_url()),
+                    kind,
+                });
+            }
+        }
+    }
+    Ok(body)
+}
+
 /// One pooled async client shared by all in-flight chunk fetches for a depot.
 pub struct AsyncCdnClient {
     client: reqwest::Client,
@@ -517,7 +582,9 @@ impl AsyncCdnClient {
                     FetchFailKind::Other
                 };
                 return Err(AsyncFetchError {
-                    message: format!("http get: {err}"),
+                    // without_url(): reqwest embeds the request URL in Display; signed
+                    // CDN query credentials must not reach logs or error_slot.
+                    message: format!("http get: {}", err.without_url()),
                     kind,
                 });
             }
@@ -537,19 +604,9 @@ impl AsyncCdnClient {
             });
         }
         let content_length = response.content_length();
-        let body = match response.bytes().await {
-            Ok(body) => body.to_vec(),
-            Err(err) => {
-                let kind = if err.is_timeout() {
-                    FetchFailKind::Timeout
-                } else {
-                    FetchFailKind::Other
-                };
-                return Err(AsyncFetchError {
-                    message: format!("http body: {err}"),
-                    kind,
-                });
-            }
+        let body = match read_body_capped(response, MAX_WHOLE_BODY_BYTES, None).await {
+            Ok(body) => body,
+            Err(err) => return Err(err),
         };
         if let Some(expected) = content_length {
             if body.len() as u64 != expected {

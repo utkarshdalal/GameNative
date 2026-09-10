@@ -1157,6 +1157,16 @@ class EpicDownloadManager @Inject constructor(
                 // 2. For each file found, try to assemble if all chunks are ready
                 var assemblySuccessCount = 0
 
+                // Cache vanished after the download phase (e.g. .chunks deleted between
+                // resume and assembly): re-download the chunk instead of failing the
+                // whole install with "Chunk file missing".
+                if (!File(chunkCacheDir, guidStr).exists()) {
+                    Timber.tag("EPIC").w("Chunk $guidStr missing from cache at assembly; re-downloading")
+                    downloadedChunkIds.remove(guidStr)
+                    networkChunkFlow.tryEmit(finishChunk)
+                    return Result.success(Unit)
+                }
+
                 matchedFiles.forEach { file ->
                     file.chunkParts.withIndex()
                         .filter { (_, chunk) -> chunk.guidStr == guidStr }

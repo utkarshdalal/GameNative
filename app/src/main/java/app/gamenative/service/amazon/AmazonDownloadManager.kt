@@ -126,10 +126,19 @@ class AmazonDownloadManager @Inject constructor(
             if (NativeAmazonDownload.isAvailable()) {
                 val planJson = org.json.JSONArray().apply {
                     for (file in files) {
+                        // Path-traversal guard (defense in depth; the native engine also
+                        // rejects these): a manifest path must never escape installDir.
+                        val rel = file.unixPath
+                        if (rel.isEmpty() || rel.startsWith("/") || rel.contains('\\') ||
+                            rel.split('/').any { it == ".." }
+                        ) {
+                            Timber.tag(TAG).e("Skipping unsafe manifest path: $rel")
+                            continue
+                        }
                         val hashHex = file.hashBytes.joinToString("") { "%02x".format(it) }
                         put(
                             org.json.JSONObject()
-                                .put("relPath", file.unixPath)
+                                .put("relPath", rel)
                                 .put("url", appendPath(baseUrl, "files/$hashHex"))
                                 .put("size", file.size)
                                 .put("sha256hex", if (file.hashAlgorithm == 0) hashHex else ""),

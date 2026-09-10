@@ -74,6 +74,16 @@ pub fn parse_plan(json: &str) -> Result<Vec<PlanEntry>, String> {
         if rel_path.is_empty() {
             return Err(format!("plan json: entry {index} has no relPath"));
         }
+        // Path-traversal guard: the plan is server/manifest-influenced, and dest_path
+        // concatenates textually. Reject anything that could escape install_dir.
+        if rel_path.starts_with('/')
+            || rel_path.split('/').any(|seg| seg == ".." || seg == "\\")
+            || rel_path.contains('\\')
+        {
+            return Err(format!(
+                "plan json: entry {index} unsafe relPath: {rel_path}"
+            ));
+        }
         let url = item
             .get("url")
             .and_then(|v| v.as_str())
@@ -454,6 +464,15 @@ impl FetchSink for AmazonSink {
             return Err(SinkError::Retry(format!(
                 "stream length {written} != {total_len} for: {}",
                 entry.rel_path
+            )));
+        }
+        // A response without Content-Length can end early with total_len == written;
+        // the manifest size is the authoritative completeness check.
+        if entry.size > 0 && written != entry.size {
+            let _ = fs::remove_file(&tmp);
+            return Err(SinkError::Retry(format!(
+                "truncated body {written} != manifest size {} for: {}",
+                entry.size, entry.rel_path
             )));
         }
         self.verify(entry, digest.as_slice())?;
