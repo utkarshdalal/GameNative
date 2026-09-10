@@ -41,7 +41,11 @@ data class DownloadItemState(
             )
 
     val canCancel: Boolean
-        get() = status == DownloadItemStatus.DOWNLOADING || isPartial
+        // Queued rows get a delete button (dequeue/cancel) but no resume button —
+        // the queue resumes them automatically when the active download finishes.
+        get() = status == DownloadItemStatus.DOWNLOADING ||
+            status == DownloadItemStatus.QUEUED ||
+            isPartial
 
     val isFinished: Boolean
         get() = !isPartial && (

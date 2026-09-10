@@ -470,6 +470,11 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun removeDownloadJob(appId: Int) {
             clearDepotKeyPrep(appId)
+            // Keep an auto-paused (queued) entry so the downloads UI keeps showing it
+            // as Queued (same as Epic/GOG/Amazon) instead of falling back to a partial
+            // "Ready to Resume" row with a manual resume button. downloadApp replaces
+            // the stale entry when the queue resumes it.
+            downloadJobs[appId]?.let { if (it.wasAutoPaused()) return }
             val removed = downloadJobs.remove(appId)
             if (removed != null) {
                 notifyDownloadStopped(appId)
@@ -2394,7 +2399,13 @@ class SteamService : Service(), IChallengeUrlChanged {
             val appDirPath = getAppDirPath(appId)
 
             if (!checkWifiOrNotify()) return null
-            if (downloadJobs.contains(appId)) return getAppDownloadInfo(appId)
+            // An ACTIVE download keeps its existing DownloadInfo; a stale inactive entry
+            // (e.g. an auto-paused/queued download kept for UI visibility) is replaced.
+            val existingInfo = downloadJobs[appId]
+            if (existingInfo != null) {
+                if (existingInfo.isActive()) return existingInfo
+                downloadJobs.remove(appId, existingInfo)
+            }
             Timber.d("depots is empty? " + downloadableDepots.isEmpty())
             if (downloadableDepots.isEmpty()) return null
 

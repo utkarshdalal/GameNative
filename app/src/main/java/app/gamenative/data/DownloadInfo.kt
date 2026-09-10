@@ -88,6 +88,9 @@ data class DownloadInfo(
         setActive(false)
         setPostInstallSyncing(false)
         resetSpeedTracking()
+        // A cancelled download is no longer queue-managed: clear the auto-paused
+        // flag so nothing (UI keep-logic, queue scans) treats it as queued.
+        wasAutoPaused = false
 
         // Unregister from queue to resume next download
         if (queueGameSource != null && queueGameId != null) {

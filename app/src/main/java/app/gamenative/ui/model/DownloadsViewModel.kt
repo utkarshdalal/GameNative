@@ -708,6 +708,9 @@ class DownloadsViewModel @Inject constructor(
                 GameSource.STEAM -> {
                     val id = appId.toIntOrNull() ?: return@launch
                     SteamService.getAppDownloadInfo(id)?.cancel()
+                    // A queued (auto-paused) entry has no live job left to remove it —
+                    // drop it explicitly (no-op when the job's completion already did).
+                    SteamService.removeDownloadJob(id)
                     SteamService.deleteApp(id)
                     PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(id, GameSource.STEAM))
                     scheduleRefreshDownloads()
