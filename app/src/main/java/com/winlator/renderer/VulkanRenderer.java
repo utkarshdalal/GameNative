@@ -234,7 +234,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                 if (needCache) {
                     Context ctx = xServerView.getContext();
                     if (ctx != null) {
-                        java.io.File cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, null, true);
+                        String driver = driverPath != null ? driverPath : driverLibraryName;
+                        java.io.File cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, null, driver, true);
                         if (cache != null && cache.isFile()) {
                             resolvedCachePath = cache.getAbsolutePath();
                         }
@@ -907,7 +908,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         }
 
         if (ctx != null) {
-            java.io.File cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, null, true);
+            String driver = driverPath != null ? driverPath : driverLibraryName;
+            java.io.File cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, null, driver, true);
             if (cache != null && cache.isFile()) {
                 resolvedCachePath = cache.getAbsolutePath();
             }

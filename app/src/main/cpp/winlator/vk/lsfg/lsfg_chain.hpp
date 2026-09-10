@@ -47,6 +47,12 @@ public:
         generate.ForgetTargets();
     }
 
+    void ResetHistory() {
+        for (auto& a : alpha) {
+            a.ResetHistory();
+        }
+    }
+
     [[nodiscard]] LsfgImage& Input(uint64_t frame_count) {
         return frames[frame_count % frames.size()];
     }

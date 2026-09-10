@@ -1,15 +1,155 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
+
 #include "lsfg_probe.h"
 
 #include <android/log.h>
 #include <dlfcn.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <vulkan/vulkan.h>
 
+#if defined(__aarch64__)
+#include <adrenotools/driver.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+static char* get_native_library_dir(JNIEnv* env, jobject context) {
+    if (!env || !context) return NULL;
+    jclass cls = (*env)->FindClass(env, "com/winlator/core/AppUtils");
+    if (!cls) { (*env)->ExceptionClear(env); return NULL; }
+    jmethodID mid = (*env)->GetStaticMethodID(env, cls, "getNativeLibDir",
+                                              "(Landroid/content/Context;)Ljava/lang/String;");
+    if (!mid) { (*env)->ExceptionClear(env); return NULL; }
+    jstring jstr = (jstring)(*env)->CallStaticObjectMethod(env, cls, mid, context);
+    if (!jstr) { (*env)->ExceptionClear(env); return NULL; }
+    const char* utf = (*env)->GetStringUTFChars(env, jstr, NULL);
+    char* res = utf ? strdup(utf) : NULL;
+    if (utf) (*env)->ReleaseStringUTFChars(env, jstr, utf);
+    return res;
+}
+
+static char* get_driver_path(JNIEnv* env, jobject context, const char* driver_name) {
+    if (!env || !context || !driver_name) return NULL;
+    if (driver_name[0] == '/') {
+        return strdup(driver_name);
+    }
+    jclass contextWrapperClass = (*env)->FindClass(env, "android/content/ContextWrapper");
+    if (!contextWrapperClass) { (*env)->ExceptionClear(env); return NULL; }
+    jmethodID getFilesDir = (*env)->GetMethodID(env, contextWrapperClass, "getFilesDir", "()Ljava/io/File;");
+    if (!getFilesDir) { (*env)->ExceptionClear(env); return NULL; }
+    jobject filesDirObj = (*env)->CallObjectMethod(env, context, getFilesDir);
+    if (!filesDirObj) { (*env)->ExceptionClear(env); return NULL; }
+    jclass fileClass = (*env)->GetObjectClass(env, filesDirObj);
+    jmethodID getAbsolutePath = (*env)->GetMethodID(env, fileClass, "getAbsolutePath", "()Ljava/lang/String;");
+    if (!getAbsolutePath) { (*env)->ExceptionClear(env); return NULL; }
+    jstring absolutePath = (jstring)(*env)->CallObjectMethod(env, filesDirObj, getAbsolutePath);
+    if (!absolutePath) { (*env)->ExceptionClear(env); return NULL; }
+    const char* absolute_path_chars = (*env)->GetStringUTFChars(env, absolutePath, NULL);
+    char* driver_path = NULL;
+    if (absolute_path_chars) {
+        if (asprintf(&driver_path, "%s/contents/adrenotools/%s/", absolute_path_chars, driver_name) == -1) {
+            driver_path = NULL;
+        }
+        (*env)->ReleaseStringUTFChars(env, absolutePath, absolute_path_chars);
+    }
+    return driver_path;
+}
+
+static char* get_library_name(JNIEnv* env, jobject context, const char* driver_name) {
+    if (!env || !context || !driver_name) return NULL;
+    jclass adrenotoolsManager = (*env)->FindClass(env, "com/winlator/contents/AdrenotoolsManager");
+    if (!adrenotoolsManager) { (*env)->ExceptionClear(env); return NULL; }
+    jmethodID constructor = (*env)->GetMethodID(env, adrenotoolsManager, "<init>", "(Landroid/content/Context;)V");
+    if (!constructor) { (*env)->ExceptionClear(env); return NULL; }
+    jobject adrenotoolsManagerObj = (*env)->NewObject(env, adrenotoolsManager, constructor, context);
+    if (!adrenotoolsManagerObj) { (*env)->ExceptionClear(env); return NULL; }
+    jmethodID getLibraryName = (*env)->GetMethodID(env, adrenotoolsManager, "getLibraryName", "(Ljava/lang/String;)Ljava/lang/String;");
+    if (!getLibraryName) { (*env)->ExceptionClear(env); return NULL; }
+    jstring jDriverName = (*env)->NewStringUTF(env, driver_name);
+    if (!jDriverName) { (*env)->ExceptionClear(env); return NULL; }
+    jstring libraryName = (jstring)(*env)->CallObjectMethod(env, adrenotoolsManagerObj, getLibraryName, jDriverName);
+    char* res = NULL;
+    if (libraryName) {
+        const char* utf = (*env)->GetStringUTFChars(env, libraryName, NULL);
+        if (utf) {
+            if (utf[0] != '\0') res = strdup(utf);
+            (*env)->ReleaseStringUTFChars(env, libraryName, utf);
+        }
+    }
+    return res;
+}
+
+static void* open_adrenotools_vulkan(JNIEnv* env, jobject context, const char* driver_name) {
+    if (!driver_name || !driver_name[0] || strcmp(driver_name, "System") == 0 || !env || !context) {
+        return NULL;
+    }
+
+    char* driver_path = get_driver_path(env, context, driver_name);
+    if (!driver_path) return NULL;
+
+    if (access(driver_path, F_OK) != 0) {
+        free(driver_path);
+        return NULL;
+    }
+
+    char* library_name = get_library_name(env, context, driver_name);
+    if (!library_name) {
+        library_name = strdup("vulkan.adreno.so");
+    }
+
+    char* native_lib_dir = get_native_library_dir(env, context);
+    if (!native_lib_dir) {
+        free(driver_path);
+        free(library_name);
+        return NULL;
+    }
+
+    char tmpdir[512];
+    snprintf(tmpdir, sizeof(tmpdir), "%stemp", driver_path);
+    mkdir(tmpdir, S_IRWXU | S_IRWXG);
+
+    setenv("ADRENOTOOLS_DRIVER_PATH", driver_path, 1);
+    setenv("ADRENOTOOLS_DRIVER_NAME", library_name, 1);
+    setenv("ADRENOTOOLS_HOOKS_PATH", native_lib_dir, 1);
+
+    const char* redirectDir = getenv("ADRENOTOOLS_REDIRECT_DIR");
+    int featureFlags = ADRENOTOOLS_DRIVER_CUSTOM;
+    if (redirectDir && redirectDir[0] != '\0') {
+        featureFlags |= ADRENOTOOLS_DRIVER_FILE_REDIRECT;
+    }
+
+    void* handle = adrenotools_open_libvulkan(
+        RTLD_LOCAL | RTLD_NOW,
+        featureFlags,
+        tmpdir,
+        native_lib_dir,
+        driver_path,
+        library_name,
+        (redirectDir && redirectDir[0] != '\0') ? redirectDir : NULL,
+        NULL);
+
+    free(driver_path);
+    free(library_name);
+    free(native_lib_dir);
+    return handle;
+}
+#endif
+
 static void* winlator_open_vulkan(JNIEnv* env, jobject context, const char* driver_name) {
+#if defined(__aarch64__)
+    if (driver_name && driver_name[0] != '\0' && strcmp(driver_name, "System") != 0 && env && context) {
+        void* adreno_handle = open_adrenotools_vulkan(env, context, driver_name);
+        if (adreno_handle) return adreno_handle;
+    }
+#else
     (void)env;
     (void)context;
     (void)driver_name;
+#endif
+
     void* handle = dlopen("libvulkan.so", RTLD_LOCAL | RTLD_NOW);
     if (!handle) {
         handle = dlopen("libvulkan.so", RTLD_NOW);
@@ -138,40 +278,66 @@ static bool has_required_features(const ProbeApi* api, VkPhysicalDevice device) 
     return true;
 }
 
-static bool probe_instance(ProbeApi* api, VkInstance instance) {
+static bool has_graphics_queue(const ProbeApi* api, VkPhysicalDevice device) {
+    uint32_t count = 0;
+    api->GetPhysicalDeviceQueueFamilyProperties(device, &count, NULL);
+    if (count == 0) return false;
+    if (count > MAX_PROBE_QUEUE_FAMILIES) count = MAX_PROBE_QUEUE_FAMILIES;
+
+    VkQueueFamilyProperties families[MAX_PROBE_QUEUE_FAMILIES];
+    api->GetPhysicalDeviceQueueFamilyProperties(device, &count, families);
+
+    for (uint32_t i = 0; i < count; i++) {
+        if (families[i].queueCount > 0 && (families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static VkPhysicalDevice select_probe_device(const ProbeApi* api, VkInstance instance) {
     uint32_t device_count = 0;
     if (api->EnumeratePhysicalDevices(instance, &device_count, NULL) != VK_SUCCESS ||
         device_count == 0) {
-        return false;
+        return VK_NULL_HANDLE;
     }
     if (device_count > MAX_PROBE_DEVICES) device_count = MAX_PROBE_DEVICES;
 
     VkPhysicalDevice devices[MAX_PROBE_DEVICES];
     if (api->EnumeratePhysicalDevices(instance, &device_count, devices) != VK_SUCCESS) {
-        return false;
+        return VK_NULL_HANDLE;
     }
 
     for (uint32_t i = 0; i < device_count; i++) {
-        VkPhysicalDeviceProperties properties;
-        memset(&properties, 0, sizeof(properties));
-        api->GetPhysicalDeviceProperties(devices[i], &properties);
-
-        if (properties.apiVersion < VK_API_VERSION_1_3) {
-            PROBE_LOGW("%s reports Vulkan %u.%u; SPIR-V 1.6 modules need 1.3",
-                       properties.deviceName, VK_API_VERSION_MAJOR(properties.apiVersion),
-                       VK_API_VERSION_MINOR(properties.apiVersion));
-            continue;
+        if (has_graphics_queue(api, devices[i])) {
+            return devices[i];
         }
-        if (!has_compute_queue(api, devices[i])) continue;
-        if (!has_required_formats(api, devices[i])) continue;
-        if (!has_required_features(api, devices[i])) continue;
-
-        PROBE_LOGI("Frame generation supported on %s (Vulkan %u.%u)", properties.deviceName,
-                   VK_API_VERSION_MAJOR(properties.apiVersion),
-                   VK_API_VERSION_MINOR(properties.apiVersion));
-        return true;
     }
-    return false;
+    return devices[0];
+}
+
+static bool probe_instance(ProbeApi* api, VkInstance instance) {
+    VkPhysicalDevice device = select_probe_device(api, instance);
+    if (device == VK_NULL_HANDLE) return false;
+
+    VkPhysicalDeviceProperties properties;
+    memset(&properties, 0, sizeof(properties));
+    api->GetPhysicalDeviceProperties(device, &properties);
+
+    if (properties.apiVersion < VK_API_VERSION_1_3) {
+        PROBE_LOGW("%s reports Vulkan %u.%u; SPIR-V 1.6 modules need 1.3",
+                   properties.deviceName, VK_API_VERSION_MAJOR(properties.apiVersion),
+                   VK_API_VERSION_MINOR(properties.apiVersion));
+        return false;
+    }
+    if (!has_compute_queue(api, device)) return false;
+    if (!has_required_formats(api, device)) return false;
+    if (!has_required_features(api, device)) return false;
+
+    PROBE_LOGI("Frame generation supported on %s (Vulkan %u.%u)", properties.deviceName,
+               VK_API_VERSION_MAJOR(properties.apiVersion),
+               VK_API_VERSION_MINOR(properties.apiVersion));
+    return true;
 }
 
 bool lsfg_probe_support(JNIEnv* env, jobject context, const char* driver_name) {
@@ -260,22 +426,9 @@ static bool has_fp16_features(const ProbeApi* api, VkPhysicalDevice device) {
 }
 
 static bool probe_instance_fp16(ProbeApi* api, VkInstance instance) {
-    uint32_t device_count = 0;
-    if (api->EnumeratePhysicalDevices(instance, &device_count, NULL) != VK_SUCCESS ||
-        device_count == 0) {
-        return false;
-    }
-    if (device_count > MAX_PROBE_DEVICES) device_count = MAX_PROBE_DEVICES;
-
-    VkPhysicalDevice devices[MAX_PROBE_DEVICES];
-    if (api->EnumeratePhysicalDevices(instance, &device_count, devices) != VK_SUCCESS) {
-        return false;
-    }
-
-    for (uint32_t i = 0; i < device_count; i++) {
-        if (has_fp16_features(api, devices[i])) return true;
-    }
-    return false;
+    VkPhysicalDevice device = select_probe_device(api, instance);
+    if (device == VK_NULL_HANDLE) return false;
+    return has_fp16_features(api, device);
 }
 
 bool lsfg_probe_fp16_support(JNIEnv* env, jobject context, const char* driver_name) {

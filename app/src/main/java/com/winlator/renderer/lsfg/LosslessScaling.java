@@ -6,6 +6,8 @@ import android.util.Log;
 
 import com.winlator.container.Container;
 
+import com.winlator.core.KeyValueSet;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -16,6 +18,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class LosslessScaling {
     public static final int STATUS_OK = 0;
@@ -37,6 +41,9 @@ public final class LosslessScaling {
     private static final String CACHE_FP32 = "shaders-fp32.cache";
     private static final String CACHE_FP16 = "shaders-fp16.cache";
     private static final String STAGED_DLL = "Lossless.staged";
+
+    private static final Map<String, Boolean> gpuSupportedByDriver = new ConcurrentHashMap<>();
+    private static final Map<String, Boolean> fp16SupportedByDriver = new ConcurrentHashMap<>();
 
     private static final String[] DRIVE_C_CANDIDATES = {
         "Program Files (x86)/Steam/steamapps/common/Lossless Scaling/" + DLL_NAME,
@@ -80,8 +87,28 @@ public final class LosslessScaling {
         return new File(getStoreDir(context), fp16 ? CACHE_FP16 : CACHE_FP32);
     }
 
+    public static String getDriverName(Container container) {
+        if (container == null) return null;
+        try {
+            KeyValueSet config = new KeyValueSet(container.getGraphicsDriverConfig());
+            String version = config.get("version");
+            if (version != null && !version.isEmpty() && !version.equalsIgnoreCase("System")) {
+                return version;
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
     public static File resolveCacheFile(Context context, boolean preferFp16) {
-        if (preferFp16 && supportsFp16(context)) {
+        return resolveCacheFile(context, (String) null, preferFp16);
+    }
+
+    public static File resolveCacheFile(Context context, Container container, boolean preferFp16) {
+        return resolveCacheFile(context, getDriverName(container), preferFp16);
+    }
+
+    public static File resolveCacheFile(Context context, String driverName, boolean preferFp16) {
+        if (preferFp16 && supportsFp16(context, driverName)) {
             File preferred = getCacheFile(context, true);
             if (preferred.isFile()) return preferred;
         }
@@ -119,14 +146,19 @@ public final class LosslessScaling {
     }
 
     public static File resolveOrBuildCache(Context context, Container container, boolean preferFp16) {
+        return resolveOrBuildCache(context, container, getDriverName(container), preferFp16);
+    }
+
+    public static File resolveOrBuildCache(Context context, Container container, String driverName, boolean preferFp16) {
         if (context == null) return null;
-        File cache = resolveCacheFile(context, preferFp16);
+        final String driver = driverName != null ? driverName : getDriverName(container);
+        File cache = resolveCacheFile(context, driver, preferFp16);
         File dll = findAnyDll(context, container);
         if (cache != null && cache.isFile()) {
             if (dll != null && dll.isFile() && isCacheStale(context, dll)) {
                 Log.i(TAG, "Lossless Scaling cache is stale, rebuilding from " + dll.getAbsolutePath());
                 installFrom(context, dll);
-                File rebuilt = resolveCacheFile(context, preferFp16);
+                File rebuilt = resolveCacheFile(context, driver, preferFp16);
                 if (rebuilt != null && rebuilt.isFile()) return rebuilt;
             }
             return cache;
@@ -136,7 +168,7 @@ public final class LosslessScaling {
             Log.i(TAG, "Building Lossless Scaling shader cache from " + dll.getAbsolutePath());
             int res = installFrom(context, dll);
             if (res == STATUS_OK) {
-                return resolveCacheFile(context, preferFp16);
+                return resolveCacheFile(context, driver, preferFp16);
             }
         }
         return null;
@@ -337,16 +369,15 @@ public final class LosslessScaling {
 
     public static boolean isSupportedByGpu(Context context, String driverName) {
         final String key = driverName == null ? "" : driverName;
-        if (gpuSupported != null && key.equals(gpuSupportedDriver)) return gpuSupported;
+        Boolean cached = gpuSupportedByDriver.get(key);
+        if (cached != null) return cached;
 
         try {
             boolean supported = nativeSupportsFrameGeneration(driverName, context);
-            gpuSupported = supported;
-            gpuSupportedDriver = key;
+            gpuSupportedByDriver.put(key, supported);
             return supported;
         } catch (LinkageError e) {
-            gpuSupported = true;
-            gpuSupportedDriver = key;
+            gpuSupportedByDriver.put(key, true);
             return true;
         }
     }
@@ -357,25 +388,22 @@ public final class LosslessScaling {
 
     public static boolean supportsFp16(Context context, String driverName) {
         final String key = driverName == null ? "" : driverName;
-        if (fp16Supported != null && key.equals(fp16SupportedDriver)) return fp16Supported;
+        Boolean cached = fp16SupportedByDriver.get(key);
+        if (cached != null) return cached;
 
         try {
             boolean supported = nativeSupportsFp16(driverName, context);
-            fp16Supported = supported;
-            fp16SupportedDriver = key;
+            fp16SupportedByDriver.put(key, supported);
             return supported;
         } catch (Throwable t) {
-            fp16Supported = false;
-            fp16SupportedDriver = key;
+            fp16SupportedByDriver.put(key, false);
             return false;
         }
     }
 
     public static void invalidateGpuSupport() {
-        gpuSupported = null;
-        gpuSupportedDriver = null;
-        fp16Supported = null;
-        fp16SupportedDriver = null;
+        gpuSupportedByDriver.clear();
+        fp16SupportedByDriver.clear();
     }
 
     private static void logInstalled(File source, int variant, boolean bothVariants) {

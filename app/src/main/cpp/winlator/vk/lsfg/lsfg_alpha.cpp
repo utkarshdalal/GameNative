@@ -135,7 +135,7 @@ void LsfgAlpha::PushBarriers(LsfgBarriers& barriers, uint64_t frame_count, size_
         break;
     default:
         barriers.WriteToReadAll(temp3);
-        if (frame_count == 0) {
+        if (!history_primed) {
             for (size_t slot = 0; slot < LSFG_HISTORY_SLOTS; ++slot) {
                 barriers.ReadToWriteAll(out_images[slot]);
             }
@@ -148,11 +148,12 @@ void LsfgAlpha::PushBarriers(LsfgBarriers& barriers, uint64_t frame_count, size_
 
 void LsfgAlpha::DispatchStage(VkCommandBuffer cmdbuf, uint64_t frame_count, size_t stage) {
     const VkExtent2D extent = stage < 2 ? temp1.Extent() : temp3[0].Extent();
-    if (stage == LSFG_ALPHA_STAGES - 1 && frame_count == 0) {
+    if (stage == LSFG_ALPHA_STAGES - 1 && !history_primed) {
         for (size_t slot = 0; slot < LSFG_HISTORY_SLOTS; ++slot) {
             passes->Get(stage).BindSet(cmdbuf, last_descriptor_sets[slot]);
             vkd.CmdDispatch(cmdbuf, GroupCount(extent.width), GroupCount(extent.height), 1);
         }
+        history_primed = true;
         return;
     }
 

@@ -42,6 +42,11 @@ target_link_libraries(winlator
 
 target_link_options(winlator PRIVATE -Wl,-z,max-page-size=16384)
 
+if (ANDROID_ABI STREQUAL "arm64-v8a")
+    target_link_libraries(winlator adrenotools)
+    target_include_directories(winlator PRIVATE extras/adrenotools/include)
+endif()
+
 
 if (ANDROID_ABI STREQUAL "arm64-v8a")
     find_program(GLSLANG_VALIDATOR glslangValidator

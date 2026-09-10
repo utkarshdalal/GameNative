@@ -285,4 +285,7 @@ void vkr_lsfg_reset(VkrLsfg* lsfg) {
     lsfg->warm = false;
     lsfg->generated = false;
     lsfg->plan = {};
+    if (lsfg->chain) {
+        lsfg->chain->ResetHistory();
+    }
 }
