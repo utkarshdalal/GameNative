@@ -584,6 +584,20 @@ object PrefManager {
             setPref(UNPACK_FILES, value)
         }
 
+    private val FASTER_EXTERNAL_LOADING = booleanPreferencesKey("faster_external_loading")
+    var fasterExternalLoading: Boolean
+        get() = getPref(FASTER_EXTERNAL_LOADING, false)
+        set(value) {
+            setPref(FASTER_EXTERNAL_LOADING, value)
+        }
+
+    private val DISABLE_LIBREDIRECT = booleanPreferencesKey("disable_libredirect")
+    var disableLibredirect: Boolean
+        get() = getPref(DISABLE_LIBREDIRECT, false)
+        set(value) {
+            setPref(DISABLE_LIBREDIRECT, value)
+        }
+
     private val SUSPEND_POLICY = stringPreferencesKey("suspend_policy")
     var suspendPolicy: String
         get() = Container.normalizeSuspendPolicy(getPref(SUSPEND_POLICY, Container.SUSPEND_POLICY_MANUAL))
