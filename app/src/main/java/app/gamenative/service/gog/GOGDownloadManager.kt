@@ -493,6 +493,7 @@ class GOGDownloadManager @Inject constructor(
                 productUrlMap = productUrlMap,
                 pendingPathsToProduct = pendingPathsToProduct,
                 pendingPathsInOrder = (gameFiles + supportFilesForGameDirAssemble).map { it.path },
+                supportDepotPaths = supportFilesForGameDirAssemble.map { it.path }.toSet(),
                 installDir = gameInstallDir,
                 downloadInfo = downloadInfo,
                 baseProductId = gameManifest.baseProductId,
@@ -887,6 +888,7 @@ class GOGDownloadManager @Inject constructor(
         productUrlMap: MutableMap<String, List<String>>,
         pendingPathsToProduct: Map<String, String>,
         pendingPathsInOrder: List<String>,
+        supportDepotPaths: Set<String>,
         installDir: File,
         downloadInfo: DownloadInfo,
         baseProductId: String,
@@ -933,11 +935,13 @@ class GOGDownloadManager @Inject constructor(
                         verified: Boolean,
                     ) {
                         donePaths.add(file)
+                        // Note: verified (resume-skipped) files credit NOTHING here. Their
+                        // bytes were already counted in the persisted snapshot this run
+                        // resumed from — re-crediting double-counts past the expected total
+                        // (same fix as the Steam listener). Completion snaps the bar to
+                        // 100% via the success path.
                         if (verified) {
-                            // Resume-skipped files are never fetched, so onBytes never covers
-                            // them; credit their size here (downloaded files are already covered
-                            // by the compressed-byte stream and must not be double-counted).
-                            downloadInfo.updateBytesDownloaded(fileBytes)
+                            Timber.tag("GOG").v("Verified existing file (no credit): $file")
                         }
                         // Aggregate across products: donePaths tracks every completed file.
                         val globalDone = donePaths.size
@@ -1034,13 +1038,36 @@ class GOGDownloadManager @Inject constructor(
 
         // The engine writes depot paths verbatim; GameNative strips the leading "app/" from
         // support-file paths (getSupportInstallPath), so move them up after the run.
+        // Merge recursively: when the destination directory already exists, a skipped
+        // renameTo followed by deleteRecursively would silently lose pending support files.
+        // Only first-level entries that actually belong to support files are moved — a game
+        // that legitimately ships its own top-level "app/" content keeps it untouched.
         val appDir = File(installDir, "app")
         if (appDir.isDirectory) {
-            appDir.listFiles()?.forEach { child ->
-                val target = File(installDir, child.name)
-                if (!target.exists()) child.renameTo(target)
+            val supportRoots = supportDepotPaths
+                .filter { it.startsWith("app/") }
+                .map { it.removePrefix("app/").substringBefore('/') }
+                .toSet()
+            fun moveIntoPlace(src: File, dstDir: File) {
+                if (src.isDirectory) {
+                    val targetDir = File(dstDir, src.name)
+                    targetDir.mkdirs()
+                    src.listFiles()?.forEach { moveIntoPlace(it, targetDir) }
+                } else {
+                    val target = File(dstDir, src.name)
+                    if (target.exists()) target.delete()
+                    src.renameTo(target)
+                }
             }
-            appDir.deleteRecursively()
+            appDir.listFiles()?.forEach { child ->
+                if (child.name in supportRoots) {
+                    moveIntoPlace(child, installDir)
+                    child.deleteRecursively()
+                }
+            }
+            if (appDir.listFiles()?.isEmpty() == true) {
+                appDir.delete()
+            }
         }
 
         Result.success(Unit)

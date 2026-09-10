@@ -298,7 +298,10 @@ class EpicDownloadManager @Inject constructor(
                 manifestBytes = manifestData.manifestBytes,
                 cdnUrls = cdnUrls,
                 installDir = installDir,
-                allFiles = files,
+                // The native engine re-parses the FULL manifest and applies the pending
+                // indices to it, so allFiles must be the unfiltered list — passing the
+                // install-tag-filtered `files` would shift indices onto the wrong files.
+                allFiles = manifest.fileManifestList?.elements ?: files,
                 pendingFiles = pendingFiles,
                 downloadInfo = downloadInfo,
             ) ?: downloadAndAssembleEpicChunks(
