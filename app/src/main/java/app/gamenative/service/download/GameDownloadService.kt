@@ -163,10 +163,18 @@ object GameDownloadService {
                 if (keyPrepCleared.compareAndSet(false, true)) {
                     SteamService.clearDepotKeyPrep(downloadInfo.gameId, owner = downloadInfo)
                 }
-                val previous = depotCumulativeBytes.put(depotId, depotDone) ?: 0L
-                val delta = depotDone - previous
-                if (delta > 0L) {
-                    downloadInfo.updateBytesDownloaded(delta, System.currentTimeMillis())
+                if (verifying) {
+                    // Verified-existing bytes: these were already counted in the persisted
+                    // snapshot this run resumed from. Crediting them again double-counts and
+                    // the bar races to 100% while remaining chunks are still downloading.
+                    // Only track the high-water so later real downloads delta from it.
+                    depotCumulativeBytes.merge(depotId, depotDone, ::maxOf)
+                } else {
+                    val previous = depotCumulativeBytes.put(depotId, depotDone) ?: 0L
+                    val delta = depotDone - previous
+                    if (delta > 0L) {
+                        downloadInfo.updateBytesDownloaded(delta, System.currentTimeMillis())
+                    }
                 }
                 if (depotTotal > 0L) {
                     depotIdToIndex[depotId]?.let { index ->
@@ -201,40 +209,49 @@ object GameDownloadService {
             ) = Unit // handled by the suspension below
         }
 
-        suspendCancellableCoroutine { cont ->
-            val completionListener = object : NativeSteamDownloadListener by listener {
-                override fun onComplete(
-                    success: Boolean,
-                    error: String,
-                    bytesWritten: Long,
-                    depotsCompleted: Int,
-                    depotsSkipped: Int,
-                ) {
-                    if (success) {
-                        Timber.tag(TAG).i(
-                            "Steam download for app $appId complete: $bytesWritten bytes, " +
-                                "$depotsCompleted depots completed, $depotsSkipped skipped",
-                        )
-                        if (cont.isActive) cont.resume(Unit)
-                    } else {
-                        if (cont.isActive) {
-                            cont.resumeWithException(DownloadFailedException(error.ifEmpty { "download failed" }))
+        // The handle owns a registry slot in native; release it exactly once no matter
+        // how the run ends (success, failure, or cancellation).
+        var handle = 0L
+        try {
+            suspendCancellableCoroutine { cont ->
+                val completionListener = object : NativeSteamDownloadListener by listener {
+                    override fun onComplete(
+                        success: Boolean,
+                        error: String,
+                        bytesWritten: Long,
+                        depotsCompleted: Int,
+                        depotsSkipped: Int,
+                    ) {
+                        if (success) {
+                            Timber.tag(TAG).i(
+                                "Steam download for app $appId complete: $bytesWritten bytes, " +
+                                    "$depotsCompleted depots completed, $depotsSkipped skipped",
+                            )
+                            if (cont.isActive) cont.resume(Unit)
+                        } else {
+                            if (cont.isActive) {
+                                cont.resumeWithException(DownloadFailedException(error.ifEmpty { "download failed" }))
+                            }
                         }
                     }
                 }
-            }
 
-            val handle = NativeSteamDownload.start(plan, completionListener)
-            if (handle == 0L) {
-                if (cont.isActive) {
-                    cont.resumeWithException(
-                        DownloadFailedException("native Steam engine failed to start"),
-                    )
+                handle = NativeSteamDownload.start(plan, completionListener)
+                if (handle == 0L) {
+                    if (cont.isActive) {
+                        cont.resumeWithException(
+                            DownloadFailedException("native Steam engine failed to start"),
+                        )
+                    }
+                    return@suspendCancellableCoroutine
                 }
-                return@suspendCancellableCoroutine
+                cont.invokeOnCancellation {
+                    NativeSteamDownload.cancel(handle)
+                }
             }
-            cont.invokeOnCancellation {
-                NativeSteamDownload.cancel(handle)
+        } finally {
+            if (handle != 0L) {
+                NativeSteamDownload.release(handle)
             }
         }
     }

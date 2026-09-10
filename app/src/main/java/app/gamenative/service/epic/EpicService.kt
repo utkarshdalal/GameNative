@@ -416,10 +416,15 @@ class EpicService : Service() {
                 ?: return Result.failure(Exception("Game not found for appId: $appId"))
             val gameId = game.id ?: return Result.failure(Exception("Game ID not found for appId: $appId"))
 
-            // Check if already downloading
-            if (instance.activeDownloads.containsKey(appId)) {
-                Timber.tag("Epic").w("Download already in progress for $appId")
-                return Result.success(instance.activeDownloads[appId]!!)
+            // Check if already downloading; replace a stale inactive entry (e.g. a queued
+            // download being resumed) with a fresh DownloadInfo below.
+            val existing = instance.activeDownloads[appId]
+            if (existing != null) {
+                if (existing.isActive()) {
+                    Timber.tag("Epic").w("Download already in progress for $appId")
+                    return Result.success(existing)
+                }
+                instance.activeDownloads.remove(appId, existing)
             }
 
             // Create DownloadInfo before launching coroutine to avoid race condition
@@ -436,6 +441,7 @@ class EpicService : Service() {
             }
 
             instance.activeDownloads[appId] = downloadInfo
+            instance.activeDlcSelections[appId] = dlcGameIds
             downloadInfo.setActive(true)
             instance.notifierOrNull?.trackDownload(downloadInfo, game.title ?: "", NotificationHelper.NOTIFICATION_ID_EPIC)
 
@@ -526,7 +532,14 @@ class EpicService : Service() {
                     // Unregister from queue so a paused download can resume
                     GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
                 } finally {
-                    instance.activeDownloads.remove(appId)
+                    // Keep an auto-paused (queued) entry in the map so the downloads UI
+                    // keeps showing it as Queued and the resume listener can recover its
+                    // DLC selection. remove(key, value) so a late finally never removes
+                    // the fresh entry of an already-resumed download.
+                    if (!downloadInfo.wasAutoPaused()) {
+                        instance.activeDownloads.remove(appId, downloadInfo)
+                        instance.activeDlcSelections.remove(appId)
+                    }
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
             }
@@ -649,6 +662,8 @@ class EpicService : Service() {
 
     // Track active downloads by GameNative Int ID
     private val activeDownloads = ConcurrentHashMap<Int, DownloadInfo>()
+    /** DLC selection per active download, so a queue-resumed download keeps its DLC. */
+    private val activeDlcSelections = ConcurrentHashMap<Int, List<Int>>()
 
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = { stop() }
 
@@ -674,7 +689,10 @@ class EpicService : Service() {
                         }
                         val container = ContainerUtils.getOrCreateContainer(applicationContext, "EPIC_$appId")
                         val language = ContainerUtils.toContainerData(container).language
-                        downloadGame(applicationContext, appId, emptyList(), installPath, language)
+                        // Reuse the DLC selection captured when the download was first
+                        // queued (emptyList() would silently drop selected DLC on resume).
+                        val dlcGameIds = instance?.activeDlcSelections[appId].orEmpty()
+                        downloadGame(applicationContext, appId, dlcGameIds, installPath, language)
                     }
                 }
             }
@@ -781,6 +799,8 @@ class EpicService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_EPIC)
 
+        // Drop this source's queue entries before removing the listener that resumes them
+        GameDownloadQueue.unregisterAllForSource(GameSource.EPIC)
         // Unregister resume listener from GameDownloadQueue
         GameDownloadQueue.unregisterResumeListener(GameSource.EPIC)
 

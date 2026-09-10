@@ -993,10 +993,15 @@ class EpicDownloadManager @Inject constructor(
             override fun onPlan(chunksTotal: Int, bytesTotal: Long, chunkDir: String) = Unit
 
             override fun onProgress(bytesDone: Long, bytesTotal: Long, chunksDone: Int, chunksTotal: Int) {
-                val delta = bytesDone - creditedBytes
-                if (delta > 0L) {
-                    creditedBytes = bytesDone
-                    downloadInfo.updateBytesDownloaded(delta)
+                // Native progress callbacks fire from multiple fetch-pool threads; the
+                // read-check-set on creditedBytes must be atomic or the same cumulative
+                // bytes get credited twice and progress runs ahead of reality.
+                synchronized(this) {
+                    val delta = bytesDone - creditedBytes
+                    if (delta > 0L) {
+                        creditedBytes = bytesDone
+                        downloadInfo.updateBytesDownloaded(delta)
+                    }
                 }
                 if (chunksTotal > 0) {
                     downloadInfo.setProgress(chunksDone.toFloat() / chunksTotal.toFloat())

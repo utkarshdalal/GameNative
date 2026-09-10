@@ -1626,10 +1626,10 @@ mod tests {
         let dir = temp_dir("gen1run");
         fs::write(dir.join("ok.bin"), b"12345").unwrap();
         fs::write(dir.join("short.bin"), b"12").unwrap();
-        let manifest = r#"{"depot":[{"files":[
+        let manifest = r#"{"depot":{"files":[
             {"path":"ok.bin","url":"https://example.invalid/b","offset":0,"size":5},
             {"path":"short.bin","url":"https://example.invalid/b","offset":5,"size":5},
-            {"path":"skipped.bin","url":"https://example.invalid/b","offset":10,"size":5}]}]}"#;
+            {"path":"skipped.bin","url":"https://example.invalid/b","offset":10,"size":5}]}}"#;
         let req = GogRequest {
             kind: PlanKind::Gen1Ranges,
             depot_manifests: vec![manifest.to_string()],

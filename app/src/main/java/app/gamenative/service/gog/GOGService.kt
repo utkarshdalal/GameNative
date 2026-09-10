@@ -363,6 +363,17 @@ class GOGService : Service() {
                 downloadInfo.initializeBytesDownloaded(persistedBytes)
             }
 
+            // Replace a stale inactive entry (e.g. a queued download being resumed);
+            // an ACTIVE download for the same game keeps its existing DownloadInfo.
+            val existing = instance.activeDownloads[gameId]
+            if (existing != null) {
+                if (existing.isActive()) {
+                    Timber.w("[Download] Already in progress for game $gameId")
+                    return Result.success(existing)
+                }
+                instance.activeDownloads.remove(gameId, existing)
+            }
+
             // Track in activeDownloads first
             instance.activeDownloads[gameId] = downloadInfo
             instance.notifierOrNull?.trackDownload(downloadInfo, "", NotificationHelper.NOTIFICATION_ID_GOG)
@@ -451,8 +462,13 @@ class GOGService : Service() {
                     GameDownloadQueue.unregisterDownload(GameSource.GOG, gameId)
                 } finally {
                     // Remove from activeDownloads for both success and failure
-                    // so UI knows download is complete and to prevent stale entries
-                    instance.activeDownloads.remove(gameId)
+                    // so UI knows download is complete and to prevent stale entries.
+                    // Keep an auto-paused (queued) entry so the UI keeps showing it as
+                    // Queued; remove(key, value) so a late finally never removes the
+                    // fresh entry of an already-resumed download.
+                    if (!downloadInfo.wasAutoPaused()) {
+                        instance.activeDownloads.remove(gameId, downloadInfo)
+                    }
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
             }
@@ -868,6 +884,8 @@ class GOGService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_GOG)
 
+        // Drop this source's queue entries before removing the listener that resumes them
+        GameDownloadQueue.unregisterAllForSource(GameSource.GOG)
         // Unregister resume listener from GameDownloadQueue
         GameDownloadQueue.unregisterResumeListener(GameSource.GOG)
 

@@ -438,8 +438,12 @@ class AmazonService : Service() {
 
             // Already downloading?
             instance.activeDownloads[productId]?.let { existing ->
-                Timber.tag("Amazon").w("Download already in progress for $productId")
-                return Result.success(existing)
+                if (existing.isActive()) {
+                    Timber.tag("Amazon").w("Download already in progress for $productId")
+                    return Result.success(existing)
+                }
+                // Stale inactive entry (e.g. a queued download being resumed) — replace it.
+                instance.activeDownloads.remove(productId, existing)
             }
 
             val game = withContext(Dispatchers.IO) {
@@ -518,8 +522,13 @@ class AmazonService : Service() {
                     }
                     downloadInfo.setActive(false)
                 } finally {
-                    instance.activeDownloads.remove(productId)
-                    instance.activeDownloadPaths.remove(productId)
+                    // Keep an auto-paused (queued) entry so the UI keeps showing it as
+                    // Queued; remove(key, value) so a late finally never removes the
+                    // fresh entry of an already-resumed download.
+                    if (!downloadInfo.wasAutoPaused()) {
+                        instance.activeDownloads.remove(productId, downloadInfo)
+                        instance.activeDownloadPaths.remove(productId)
+                    }
                     PluviaApp.events.emitJava(
                         AndroidEvent.DownloadStatusChanged(game.appId, false)
                     )
@@ -891,6 +900,8 @@ class AmazonService : Service() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_AMAZON)
 
+        // Drop this source's queue entries before removing the listener that resumes them
+        GameDownloadQueue.unregisterAllForSource(GameSource.AMAZON)
         // Unregister resume listener from GameDownloadQueue
         GameDownloadQueue.unregisterResumeListener(GameSource.AMAZON)
 

@@ -149,10 +149,14 @@ class AmazonDownloadManager @Inject constructor(
                 var creditedBytes = 0L
                 val listener = object : NativeAmazonDownloadListener {
                     override fun onProgress(bytesDone: Long, bytesTotal: Long, filesDone: Long, filesTotal: Long) {
-                        val delta = bytesDone - creditedBytes
-                        if (delta > 0L) {
-                            creditedBytes = bytesDone
-                            downloadInfo.updateBytesDownloaded(delta)
+                        // Native callbacks fire from multiple fetch-pool threads; keep the
+                        // delta read-check-set atomic (same fix as Epic's listener).
+                        synchronized(this) {
+                            val delta = bytesDone - creditedBytes
+                            if (delta > 0L) {
+                                creditedBytes = bytesDone
+                                downloadInfo.updateBytesDownloaded(delta)
+                            }
                         }
                         downloadInfo.updateStatusMessage("Downloading ($filesDone/$filesTotal files)…")
                         downloadInfo.emitProgressChange()

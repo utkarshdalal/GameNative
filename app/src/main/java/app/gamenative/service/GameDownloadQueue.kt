@@ -28,6 +28,13 @@ object GameDownloadQueue {
     private val activeDownloads = ConcurrentHashMap<String, DownloadEntry>()
     private val resumeListeners = ConcurrentHashMap<GameSource, ResumeListener>()
 
+    /**
+     * Serializes every queue state transition (pause-all + register, remove + resume).
+     * Without it, two concurrent registrations can each scan before either inserts and
+     * BOTH stay active, breaking the one-at-a-time contract.
+     */
+    private val queueLock = Any()
+
     private fun makeKey(gameSource: GameSource, gameId: String): String {
         return "${gameSource.name}_$gameId"
     }
@@ -39,6 +46,14 @@ object GameDownloadQueue {
     fun registerResumeListener(gameSource: GameSource, listener: ResumeListener) {
         resumeListeners[gameSource] = listener
         Timber.i("[GameDownloadQueue] Registered resume listener for $gameSource")
+        synchronized(queueLock) {
+            // A queued entry of this source may have been waiting for this listener
+            // (service was restarted while queued). Only resume when nothing else is
+            // active, or the one-at-a-time contract breaks.
+            if (activeDownloads.values.none { it.downloadInfo.isActive() }) {
+                resumeNextLocked()
+            }
+        }
     }
 
     /**
@@ -59,20 +74,22 @@ object GameDownloadQueue {
     ) {
         val key = makeKey(gameSource, gameId)
 
-        // Set queue identifiers on the DownloadInfo so it can unregister itself
-        downloadInfo.setQueueIdentifiers(gameSource, gameId)
+        synchronized(queueLock) {
+            // Set queue identifiers on the DownloadInfo so it can unregister itself
+            downloadInfo.setQueueIdentifiers(gameSource, gameId)
 
-        // Auto-pause all other active downloads
-        activeDownloads.forEach { (existingKey, entry) ->
-            if (existingKey != key && entry.downloadInfo.isActive()) {
-                Timber.i("[GameDownloadQueue] Auto-pausing ${entry.gameSource} download for ${entry.gameId}")
-                entry.downloadInfo.pause(message = "Paused for new download", autoPaused = true)
+            // Auto-pause all other active downloads
+            activeDownloads.forEach { (existingKey, entry) ->
+                if (existingKey != key && entry.downloadInfo.isActive()) {
+                    Timber.i("[GameDownloadQueue] Auto-pausing ${entry.gameSource} download for ${entry.gameId}")
+                    entry.downloadInfo.pause(message = "Paused for new download", autoPaused = true)
+                }
             }
-        }
 
-        // Register the new download
-        activeDownloads[key] = DownloadEntry(gameSource, gameId, downloadInfo)
-        Timber.i("[GameDownloadQueue] Registered ${gameSource} download for $gameId")
+            // Register the new download
+            activeDownloads[key] = DownloadEntry(gameSource, gameId, downloadInfo)
+            Timber.i("[GameDownloadQueue] Registered ${gameSource} download for $gameId")
+        }
     }
 
     /**
@@ -81,29 +98,49 @@ object GameDownloadQueue {
      */
     fun unregisterDownload(gameSource: GameSource, gameId: String) {
         val key = makeKey(gameSource, gameId)
-        // Idempotent: both the success path and the failure/cancel paths may call this for
-        // the same download. Without the guard the second call would resume ANOTHER paused
-        // download and break the one-at-a-time invariant.
-        if (activeDownloads.remove(key) == null) {
-            return
-        }
-        Timber.i("[GameDownloadQueue] Unregistered ${gameSource} download for $gameId")
+        synchronized(queueLock) {
+            // Idempotent: both the success path and the failure/cancel paths may call this for
+            // the same download. Without the guard the second call would resume ANOTHER paused
+            // download and break the one-at-a-time invariant.
+            if (activeDownloads.remove(key) == null) {
+                return
+            }
+            Timber.i("[GameDownloadQueue] Unregistered ${gameSource} download for $gameId")
 
-        // Auto-resume the first paused download (if any)
+            // Auto-resume the first paused download (if any)
+            resumeNextLocked()
+        }
+    }
+
+    /**
+     * Resume the first auto-paused entry whose service has a resume listener installed.
+     * Caller must hold [queueLock]. Entries without a listener stay queued — they are
+     * retried when that service registers its listener (service restart path).
+     */
+    private fun resumeNextLocked() {
         val nextDownload = activeDownloads.values.firstOrNull { entry ->
-            entry.downloadInfo.wasAutoPaused()
-        }
+            entry.downloadInfo.wasAutoPaused() && resumeListeners.containsKey(entry.gameSource)
+        } ?: return
 
-        if (nextDownload != null) {
-            Timber.i("[GameDownloadQueue] Auto-resuming ${nextDownload.gameSource} download for ${nextDownload.gameId}")
-            val listener = resumeListeners[nextDownload.gameSource]
-            if (listener != null) {
-                nextDownload.downloadInfo.setAutoResumeCallback {
-                    listener.onResumeRequested(nextDownload.gameSource, nextDownload.gameId)
-                }
-                nextDownload.downloadInfo.triggerAutoResume()
-            } else {
-                Timber.w("[GameDownloadQueue] No resume listener registered for ${nextDownload.gameSource}")
+        Timber.i("[GameDownloadQueue] Auto-resuming ${nextDownload.gameSource} download for ${nextDownload.gameId}")
+        val listener = resumeListeners[nextDownload.gameSource] ?: return
+        nextDownload.downloadInfo.setAutoResumeCallback {
+            listener.onResumeRequested(nextDownload.gameSource, nextDownload.gameId)
+        }
+        nextDownload.downloadInfo.triggerAutoResume()
+    }
+
+    /**
+     * Remove every entry belonging to a service being torn down. Does NOT resume the
+     * next download — a mid-destroy callback would race service shutdown; surviving
+     * entries' own listeners can resume them on the next normal unregister.
+     */
+    fun unregisterAllForSource(gameSource: GameSource) {
+        synchronized(queueLock) {
+            val keys = activeDownloads.filterValues { it.gameSource == gameSource }.keys
+            keys.forEach { activeDownloads.remove(it) }
+            if (keys.isNotEmpty()) {
+                Timber.i("[GameDownloadQueue] Removed ${keys.size} $gameSource queue entr(ies) on service teardown")
             }
         }
     }

@@ -108,6 +108,13 @@ data class DownloadInfo(
 
     fun setDownloadJob(job: Job) {
         downloadJob = job
+        // Race guard: the queue may have auto-paused (or the user paused/cancelled) this
+        // download AFTER the coroutine launched but BEFORE the job was assigned here.
+        // pause()/cancel() then found a null job and cancelled nothing — cancel it now
+        // on assignment so the two-downloads-at-once window can't happen.
+        if (!isActive) {
+            job.cancel(CancellationException(if (wasAutoPaused) "Paused for new download" else "Paused"))
+        }
     }
 
     suspend fun awaitCompletion(timeoutMs: Long = 5000L) {

@@ -33,8 +33,9 @@ use jni::objects::{GlobalRef, JClass, JObject, JString, JValue};
 use jni::sys::{jint, jlong, JNI_FALSE, JNI_TRUE, JNI_VERSION_1_6};
 use jni::{JNIEnv, JavaVM};
 use serde_json::Value;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 
 static JVM: OnceLock<JavaVM> = OnceLock::new();
@@ -57,20 +58,34 @@ fn jstring_to_string(env: &mut JNIEnv, value: &JString) -> Option<String> {
         .map(|s| s.to_string_lossy().into_owned())
 }
 
-/// One live run; boxed and handed to Kotlin as an opaque `jlong`.
-struct SteamRun {
-    cancel: Arc<AtomicBool>,
+/// Live-run registry: opaque `jlong` ids → cancel flags. A registry (instead of raw
+/// boxed pointers) makes a LATE `nativeCancel(handle)` after `nativeRelease(handle)`
+/// resolve to a harmless None instead of dereferencing freed memory.
+static RUNS: OnceLock<Mutex<HashMap<jlong, Arc<AtomicBool>>>> = OnceLock::new();
+static NEXT_HANDLE: AtomicI64 = AtomicI64::new(1);
+
+fn runs() -> &'static Mutex<HashMap<jlong, Arc<AtomicBool>>> {
+    RUNS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-fn to_handle(run: Box<SteamRun>) -> jlong {
-    Box::into_raw(run) as jlong
+fn register_run(cancel: Arc<AtomicBool>) -> jlong {
+    let handle = NEXT_HANDLE.fetch_add(1, Ordering::Relaxed);
+    if let Ok(mut map) = runs().lock() {
+        map.insert(handle, cancel);
+    }
+    handle
 }
 
-unsafe fn from_handle<'a>(handle: jlong) -> Option<&'a SteamRun> {
-    if handle == 0 {
-        None
-    } else {
-        Some(&*(handle as *const SteamRun))
+fn cancel_run(handle: jlong) {
+    let flag = runs().lock().ok().and_then(|map| map.get(&handle).cloned());
+    if let Some(flag) = flag {
+        flag.store(true, Ordering::Relaxed);
+    }
+}
+
+fn unregister_run(handle: jlong) {
+    if let Ok(mut map) = runs().lock() {
+        map.remove(&handle);
     }
 }
 
@@ -338,11 +353,8 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
     let Ok(listener) = env.new_global_ref(&listener) else {
         return 0;
     };
-    let run = Box::new(SteamRun {
-        cancel: Arc::new(AtomicBool::new(false)),
-    });
-    let cancel = Arc::clone(&run.cancel);
-    let handle = to_handle(run);
+    let cancel = Arc::new(AtomicBool::new(false));
+    let handle = register_run(Arc::clone(&cancel));
     thread::spawn(move || {
         if cancel.load(Ordering::Relaxed) {
             dispatch_complete(listener, DepotDownloadResult::fail("cancelled"));
@@ -385,9 +397,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
     _class: JClass,
     handle: jlong,
 ) {
-    if let Some(run) = unsafe { from_handle(handle) } {
-        run.cancel.store(true, Ordering::Relaxed);
-    }
+    cancel_run(handle);
 }
 
 /// `NativeSteamDownload.nativeRelease(handle)` — frees the handle. Call only after
@@ -399,7 +409,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
     handle: jlong,
 ) {
     if handle != 0 {
-        drop(unsafe { Box::from_raw(handle as *mut SteamRun) });
+        unregister_run(handle);
     }
 }
 

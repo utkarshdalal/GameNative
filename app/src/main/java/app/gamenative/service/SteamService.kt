@@ -2539,6 +2539,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                         val licenses = getLicensesFromDb()
                         if (licenses.isEmpty()) {
                             Timber.w("No licenses available for download")
+                            // Free the queue slot so a queued download isn't stranded
+                            GameDownloadQueue.unregisterDownload(GameSource.STEAM, appId.toString())
                             return@launch
                         }
 
@@ -4052,6 +4054,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val appId = gameId.toIntOrNull() ?: return
                 Timber.i("[SteamService] Resume requested for app $appId")
                 scope.launch {
+                    // The auto-paused job may still be unwinding (snapshot write, finally
+                    // blocks); downloadApp() early-returns while downloadJobs still holds
+                    // it, so wait for it to finish and clear itself first.
+                    val old = downloadJobs[appId]
+                    if (old != null && !old.isActive()) {
+                        old.awaitCompletion(10_000)
+                    }
                     downloadApp(appId)
                 }
             }
@@ -4232,6 +4241,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         connectivityManager.unregisterNetworkCallback(networkCallback)
 
+        // Drop this source's queue entries before removing the listener that resumes them
+        GameDownloadQueue.unregisterAllForSource(GameSource.STEAM)
         // Unregister resume listener from GameDownloadQueue
         GameDownloadQueue.unregisterResumeListener(GameSource.STEAM)
 

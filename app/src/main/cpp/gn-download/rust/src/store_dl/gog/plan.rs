@@ -77,6 +77,8 @@ pub fn parse_depot_manifest(json: &str, out: &mut Vec<PlannedFile>) {
     let Some(items) = root
         .get("depot")
         .and_then(|d| d.get("items"))
+        // Java: `json.optJSONObject("depot") ?: json` — items may live at the root.
+        .or_else(|| root.get("items"))
         .and_then(Value::as_array)
     else {
         return;
@@ -147,40 +149,39 @@ pub struct Gen1File {
     pub size: u64,
 }
 
-/// Parses a gen1 build manifest (`runGen1`): every `depot[]` entry that is not `support: true`,
-/// its `files[]` → (`path`, `url`, `offset` default 0, `size` default 0); an entry with
-/// `size == 0` is dropped (Java's `path == null || url == null` checks never fire — `optString`
-/// returns "" — so `size == 0` is the only effective filter, mirrored here).
+/// Parses a gen1 build manifest (`runGen1`): Java does `obj.optJSONObject("depot") ?: obj`
+/// then reads `files[]` from it — so `depot` is an OBJECT (or the files live at the root),
+/// NOT a `depot[]` array. Every file entry that is not `support: true` → (`path`, `url`,
+/// `offset` default 0, `size` default 0); an entry with `size == 0` is dropped (Java's
+/// `path == null || url == null` checks never fire — `optString` returns "" — so
+/// `size == 0` is the only effective filter, mirrored here).
 pub fn parse_gen1_manifest(json: &str, out: &mut Vec<Gen1File>) {
     let Ok(root) = serde_json::from_str::<Value>(json) else {
         return;
     };
-    let Some(depots) = root.get("depot").and_then(Value::as_array) else {
+    let depot = root.get("depot").filter(|d| d.is_object()).unwrap_or(&root);
+    // `support: true` on the depot object excludes the whole payload.
+    if depot.get("support").and_then(Value::as_bool).unwrap_or(false) {
+        return;
+    }
+    let Some(files) = depot.get("files").and_then(Value::as_array) else {
         return;
     };
-    for depot in depots {
-        if !depot.is_object() {
+    for f in files {
+        if !f.is_object() {
             continue;
         }
-        if depot.get("support").and_then(Value::as_bool).unwrap_or(false) {
+        if f.get("support").and_then(Value::as_bool).unwrap_or(false) {
             continue;
         }
-        let Some(files) = depot.get("files").and_then(Value::as_array) else {
+        let path = opt_string(f, "path");
+        let offset = opt_u64(f, "offset");
+        let size = opt_u64(f, "size");
+        let url = opt_string(f, "url");
+        if size == 0 {
             continue;
-        };
-        for f in files {
-            if !f.is_object() {
-                continue;
-            }
-            let path = opt_string(f, "path");
-            let offset = opt_u64(f, "offset");
-            let size = opt_u64(f, "size");
-            let url = opt_string(f, "url");
-            if size == 0 {
-                continue;
-            }
-            out.push(Gen1File { path, url, offset, size });
         }
+        out.push(Gen1File { path, url, offset, size });
     }
 }
 
@@ -307,16 +308,14 @@ mod tests {
 
     #[test]
     fn gen1_parse_mirrors_run_gen1() {
-        let json = r#"{"installDirectory":"Game","depot":[
-            {"support":true,"files":[{"path":"support.bin","url":"u","offset":0,"size":5}]},
-            {"files":[
+        // Real gen1 shape: depot is an OBJECT with files[] (Java: optJSONObject("depot") ?: obj).
+        let json = r#"{"installDirectory":"Game","depot":{"files":[
                 {"path":"a.bin","url":"https://cdn.gog.com/blob?t=1","offset":10,"size":20},
                 {"path":"zero.bin","url":"u","offset":0,"size":0},
+                {"support":true,"path":"support.bin","url":"u","offset":0,"size":5},
                 {"path":"b.bin","url":"https://cdn.gog.com/blob?t=1","size":"7"},
                 "junk"
-            ]},
-            {"nofiles":true}
-        ]}"#;
+            ]}}"#;
         let mut files = Vec::new();
         parse_gen1_manifest(json, &mut files);
         assert_eq!(
@@ -326,6 +325,14 @@ mod tests {
                 Gen1File { path: "b.bin".into(), url: "https://cdn.gog.com/blob?t=1".into(), offset: 0, size: 7 },
             ]
         );
+        // Root-level files[] fallback (no depot object).
+        let mut rooted = Vec::new();
+        parse_gen1_manifest(r#"{"files":[{"path":"r.bin","url":"u","size":3}]}"#, &mut rooted);
+        assert_eq!(rooted.len(), 1);
+        // support:true depot object yields nothing.
+        let mut support = Vec::new();
+        parse_gen1_manifest(r#"{"depot":{"support":true,"files":[{"path":"s.bin","url":"u","size":3}]}}"#, &mut support);
+        assert!(support.is_empty());
         let mut none = Vec::new();
         parse_gen1_manifest(r#"{"depots":[]}"#, &mut none);
         assert!(none.is_empty());
