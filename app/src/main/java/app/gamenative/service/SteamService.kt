@@ -2597,6 +2597,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                             return@launch
                         }
 
+                        // Transfer is complete — free the queue slot BEFORE post-install
+                        // work (controller config, markers, save sync) so the next queued
+                        // download can start. Holding the slot through post-install also
+                        // lets a newly registered download auto-pause this finished one;
+                        // its later auto-resume re-verifies every file (progress shows
+                        // the game restarting after reaching 100%).
+                        GameDownloadQueue.unregisterDownload(GameSource.STEAM, appId.toString())
+
                         val appConfig = getAppInfoOf(appId)?.config
                         if (appConfig?.steamControllerTemplateIndex == 1) {
                             val controllerConfig = appConfig.steamControllerConfigDetails
@@ -2768,9 +2776,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         // Remove the downloading app info
                         instance?.downloadingAppInfoDao?.deleteApp(appId)
-
-                        // Unregister from queue (will auto-resume next paused download)
-                        GameDownloadQueue.unregisterDownload(GameSource.STEAM, appId.toString())
                     } catch (e: CancellationException) {
                         Timber.d(e, "Download canceled for app $appId")
                         throw e

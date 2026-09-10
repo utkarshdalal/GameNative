@@ -78,9 +78,13 @@ object GameDownloadQueue {
             // Set queue identifiers on the DownloadInfo so it can unregister itself
             downloadInfo.setQueueIdentifiers(gameSource, gameId)
 
-            // Auto-pause all other active downloads
+            // Auto-pause all other active downloads. Skip entries whose transfer is
+            // already done and which are only syncing saves (post-install): pausing
+            // one kills its finishing job while the entry stays queued, and the later
+            // auto-resume re-runs the whole download (verify 1/N back to 100%) even
+            // though the game was complete.
             activeDownloads.forEach { (existingKey, entry) ->
-                if (existingKey != key && entry.downloadInfo.isActive()) {
+                if (existingKey != key && entry.downloadInfo.isActive() && !entry.downloadInfo.isPostInstallSyncing()) {
                     Timber.i("[GameDownloadQueue] Auto-pausing ${entry.gameSource} download for ${entry.gameId}")
                     entry.downloadInfo.pause(message = "Paused for new download", autoPaused = true)
                 }

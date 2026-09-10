@@ -473,6 +473,13 @@ class EpicService : Service() {
                     if (result.isSuccess) {
                         Timber.i("[Download] Completed successfully for game $gameId")
 
+                        // Transfer is complete — free the queue slot BEFORE post-install
+                        // sync so the next queued download can start. Holding the slot
+                        // through sync also lets a newly registered download auto-pause
+                        // this finished one; its later auto-resume re-verifies every
+                        // file ("1/N again" after reaching 100%).
+                        GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
+
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
                         val epicAppId = "EPIC_$gameId"
@@ -500,9 +507,6 @@ class EpicService : Service() {
                         SnackbarManager.show("Download completed successfully!")
                         downloadInfo.setProgress(1.0f)
                         downloadInfo.setActive(false)
-
-                        // Unregister from queue (will auto-resume next paused download)
-                        GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")

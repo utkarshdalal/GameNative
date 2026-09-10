@@ -407,6 +407,13 @@ class GOGService : Service() {
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
 
+                        // Transfer is complete — free the queue slot BEFORE post-install
+                        // sync so the next queued download can start. Holding the slot
+                        // through sync also lets a newly registered download auto-pause
+                        // this finished one; its later auto-resume re-verifies every
+                        // file ("1/N again" after reaching 100%).
+                        GameDownloadQueue.unregisterDownload(GameSource.GOG, gameId)
+
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
                         val appId = "GOG_$gameId"
@@ -439,9 +446,6 @@ class GOGService : Service() {
                         SnackbarManager.show("Download completed successfully!")
                         downloadInfo.setProgress(1.0f)
                         downloadInfo.setActive(false)
-
-                        // Unregister from queue (will auto-resume next paused download)
-                        GameDownloadQueue.unregisterDownload(GameSource.GOG, gameId)
                     }
                 } catch (e: CancellationException) {
                     downloadInfo.setPostInstallSyncing(false)
