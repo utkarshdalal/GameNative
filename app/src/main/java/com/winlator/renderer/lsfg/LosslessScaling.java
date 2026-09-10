@@ -55,6 +55,8 @@ public final class LosslessScaling {
 
     private static Boolean gpuSupported = null;
     private static String gpuSupportedDriver = null;
+    private static Boolean fp16Supported = null;
+    private static String fp16SupportedDriver = null;
 
     static {
         try {
@@ -79,7 +81,7 @@ public final class LosslessScaling {
     }
 
     public static File resolveCacheFile(Context context, boolean preferFp16) {
-        if (preferFp16) {
+        if (preferFp16 && supportsFp16(context)) {
             File preferred = getCacheFile(context, true);
             if (preferred.isFile()) return preferred;
         }
@@ -349,9 +351,31 @@ public final class LosslessScaling {
         }
     }
 
+    public static boolean supportsFp16(Context context) {
+        return supportsFp16(context, null);
+    }
+
+    public static boolean supportsFp16(Context context, String driverName) {
+        final String key = driverName == null ? "" : driverName;
+        if (fp16Supported != null && key.equals(fp16SupportedDriver)) return fp16Supported;
+
+        try {
+            boolean supported = nativeSupportsFp16(driverName, context);
+            fp16Supported = supported;
+            fp16SupportedDriver = key;
+            return supported;
+        } catch (Throwable t) {
+            fp16Supported = false;
+            fp16SupportedDriver = key;
+            return false;
+        }
+    }
+
     public static void invalidateGpuSupport() {
         gpuSupported = null;
         gpuSupportedDriver = null;
+        fp16Supported = null;
+        fp16SupportedDriver = null;
     }
 
     private static void logInstalled(File source, int variant, boolean bothVariants) {
@@ -404,4 +428,5 @@ public final class LosslessScaling {
     private static native boolean nativeCacheMatchesSource(String cachePath, String dllPath);
 
     private static native boolean nativeSupportsFrameGeneration(String driverName, Context context);
+    private static native boolean nativeSupportsFp16(String driverName, Context context);
 }

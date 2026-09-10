@@ -36,6 +36,7 @@ typedef struct ProbeApi {
     PFN_vkGetPhysicalDeviceFormatProperties GetPhysicalDeviceFormatProperties;
     PFN_vkGetPhysicalDeviceQueueFamilyProperties GetPhysicalDeviceQueueFamilyProperties;
     PFN_vkGetPhysicalDeviceFeatures2 GetPhysicalDeviceFeatures2;
+    PFN_vkEnumerateDeviceExtensionProperties EnumerateDeviceExtensionProperties;
 } ProbeApi;
 
 static const VkFormat kRequiredFormats[] = {
@@ -70,6 +71,9 @@ static bool load_instance_api(ProbeApi* api, VkInstance instance) {
             instance, "vkGetPhysicalDeviceQueueFamilyProperties");
     api->GetPhysicalDeviceFeatures2 = (PFN_vkGetPhysicalDeviceFeatures2)api->GetInstanceProcAddr(
         instance, "vkGetPhysicalDeviceFeatures2");
+    api->EnumerateDeviceExtensionProperties =
+        (PFN_vkEnumerateDeviceExtensionProperties)api->GetInstanceProcAddr(
+            instance, "vkEnumerateDeviceExtensionProperties");
 
     return api->DestroyInstance && api->EnumeratePhysicalDevices &&
            api->GetPhysicalDeviceProperties && api->GetPhysicalDeviceFormatProperties &&
@@ -216,3 +220,100 @@ bool lsfg_probe_support(JNIEnv* env, jobject context, const char* driver_name) {
     if (!supported) PROBE_LOGI("Frame generation unsupported on this device");
     return supported;
 }
+
+static bool has_fp16_features(const ProbeApi* api, VkPhysicalDevice device) {
+    VkPhysicalDeviceShaderFloat16Int8Features fp16;
+    memset(&fp16, 0, sizeof(fp16));
+    fp16.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
+
+    VkPhysicalDeviceFeatures2 features;
+    memset(&features, 0, sizeof(features));
+    features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    features.pNext = &fp16;
+
+    api->GetPhysicalDeviceFeatures2(device, &features);
+    if (fp16.shaderFloat16 != VK_TRUE) return false;
+
+    VkPhysicalDeviceProperties props;
+    memset(&props, 0, sizeof(props));
+    api->GetPhysicalDeviceProperties(device, &props);
+    if (props.apiVersion >= VK_API_VERSION_1_2) return true;
+
+    if (!api->EnumerateDeviceExtensionProperties) return false;
+    uint32_t count = 0;
+    if (api->EnumerateDeviceExtensionProperties(device, NULL, &count, NULL) != VK_SUCCESS || count == 0) {
+        return false;
+    }
+    VkExtensionProperties* exts = (VkExtensionProperties*)malloc(sizeof(VkExtensionProperties) * count);
+    if (!exts) return false;
+    bool has_ext = false;
+    if (api->EnumerateDeviceExtensionProperties(device, NULL, &count, exts) == VK_SUCCESS) {
+        for (uint32_t i = 0; i < count; i++) {
+            if (strcmp(exts[i].extensionName, "VK_KHR_shader_float16_int8") == 0) {
+                has_ext = true;
+                break;
+            }
+        }
+    }
+    free(exts);
+    return has_ext;
+}
+
+static bool probe_instance_fp16(ProbeApi* api, VkInstance instance) {
+    uint32_t device_count = 0;
+    if (api->EnumeratePhysicalDevices(instance, &device_count, NULL) != VK_SUCCESS ||
+        device_count == 0) {
+        return false;
+    }
+    if (device_count > MAX_PROBE_DEVICES) device_count = MAX_PROBE_DEVICES;
+
+    VkPhysicalDevice devices[MAX_PROBE_DEVICES];
+    if (api->EnumeratePhysicalDevices(instance, &device_count, devices) != VK_SUCCESS) {
+        return false;
+    }
+
+    for (uint32_t i = 0; i < device_count; i++) {
+        if (has_fp16_features(api, devices[i])) return true;
+    }
+    return false;
+}
+
+bool lsfg_probe_fp16_support(JNIEnv* env, jobject context, const char* driver_name) {
+    void* library = winlator_open_vulkan(env, context, driver_name);
+    if (!library) return false;
+
+    ProbeApi api;
+    if (!load_probe_api(library, &api)) {
+        dlclose(library);
+        return false;
+    }
+
+    VkApplicationInfo app_info;
+    memset(&app_info, 0, sizeof(app_info));
+    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app_info.pApplicationName = "GameNative";
+    app_info.apiVersion = VK_API_VERSION_1_3;
+
+    VkInstanceCreateInfo create_info;
+    memset(&create_info, 0, sizeof(create_info));
+    create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    create_info.pApplicationInfo = &app_info;
+
+    VkInstance instance = VK_NULL_HANDLE;
+    if (api.CreateInstance(&create_info, NULL, &instance) != VK_SUCCESS) {
+        app_info.apiVersion = VK_API_VERSION_1_1;
+        if (api.CreateInstance(&create_info, NULL, &instance) != VK_SUCCESS) {
+            dlclose(library);
+            return false;
+        }
+    }
+
+    bool supported = false;
+    if (load_instance_api(&api, instance)) {
+        supported = probe_instance_fp16(&api, instance);
+    }
+
+    if (api.DestroyInstance) api.DestroyInstance(instance, NULL);
+    dlclose(library);
+    return supported;
+}

@@ -374,7 +374,7 @@
     <string name="performance_hud_fps_limiter_target">Target FPS</string>
     <string name="performance_hud_fps_limiter_off">Unlimited</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
-    <string name="performance_hud_fps_limiter_lsfg_base">Caps the base rate. On-screen rate is the cap times the LSFG multiplier.</string>
+    <string name="performance_hud_fps_limiter_lsfg_base">Caps the base frame rate of the game independently of frame generation.</string>
     <string name="performance_hud_presets">Presets</string>
     <string name="performance_hud_presets_description">Quickly switch between common HUD layouts.</string>
     <string name="performance_hud_preset_fps_only">1</string>

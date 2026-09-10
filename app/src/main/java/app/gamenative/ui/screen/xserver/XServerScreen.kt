@@ -113,7 +113,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicOverlayManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
-import app.gamenative.ui.component.LsfgQuickMenuState
+import app.gamenative.ui.component.PerformanceHudQuickMenuState
 import app.gamenative.ui.component.PerformanceQuickMenuState
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
@@ -618,12 +618,11 @@ fun XServerScreen(
         viewKey = xServerView,
     )
 
-    // LSFG tab in QuickMenu only visible when enabled in container settings
+    // LSFG controls in Performance tab only visible when enabled in container settings
     val isLsfgAvailable = LsfgQuickMenuHelper.isAvailable(container)
     val initialLsfgSettings = remember(container.id) { LsfgQuickMenuHelper.readSettings(container) }
     var lsfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialLsfgSettings.multiplier) }
     var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
-    var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
     val lsfgFpsCounter = remember { app.gamenative.utils.RollingFpsCounter() }
 
     fun persistFpsLimiterState() {
@@ -748,7 +747,6 @@ fun XServerScreen(
             LsfgQuickMenuHelper.Settings(
                 multiplier = lsfgMultiplier,
                 flowScale = lsfgFlowScale,
-                performanceMode = lsfgPerformanceMode,
                 targetRate = LsfgQuickMenuHelper.targetRate(container),
             ),
         )
@@ -785,11 +783,6 @@ fun XServerScreen(
 
     fun applyLsfgFlowScale(scale: Float) {
         lsfgFlowScale = LsfgQuickMenuHelper.sanitizeFlowScale(scale)
-        applyLsfgSettings()
-    }
-
-    fun applyLsfgPerformanceMode(enabled: Boolean) {
-        lsfgPerformanceMode = enabled
         applyLsfgSettings()
     }
 
@@ -2928,7 +2921,7 @@ fun XServerScreen(
                     quickMenuWineProcesses = quickMenuWineProcesses.filterNot { it.pid == process.pid }
                 }
             },
-            performance = PerformanceQuickMenuState(
+            performanceHud = PerformanceHudQuickMenuState(
                 hudEnabled = isPerformanceHudEnabled,
                 hudConfig = performanceHudConfig,
                 onHudConfigChanged = ::applyPerformanceHudConfig,
@@ -2944,8 +2937,8 @@ fun XServerScreen(
                 if (isShooterModeActive) add(QuickMenuAction.SHOOTER_MODE)
                 if (isDisableMouseInput) add(QuickMenuAction.DISABLE_MOUSE)
             },
-            // Frame pacing (FPS limiter + LSFG)
-            lsfg = LsfgQuickMenuState(
+            // Performance tab (FPS limiter + LSFG)
+            performance = PerformanceQuickMenuState(
                 isAvailable = isLsfgAvailable,
                 fpsLimiterEnabled = fpsLimiterEnabled,
                 fpsLimiterTarget = fpsLimiterTarget,
@@ -2954,10 +2947,8 @@ fun XServerScreen(
                 onFpsLimiterChanged = ::applyFpsLimiterTarget,
                 multiplier = lsfgMultiplier,
                 flowScale = lsfgFlowScale,
-                performanceMode = lsfgPerformanceMode,
                 onMultiplierChanged = ::applyLsfgMultiplier,
                 onFlowScaleChanged = ::applyLsfgFlowScale,
-                onPerformanceModeChanged = ::applyLsfgPerformanceMode,
                 onTargetRateChanged = ::applyLsfgTargetRate,
             ),
             onRequestOpen = { showQuickMenu = true },

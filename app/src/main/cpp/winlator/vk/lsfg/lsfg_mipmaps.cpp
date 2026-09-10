@@ -67,6 +67,7 @@ LsfgMipmaps::LsfgMipmaps(const Device& device, const LsfgShaders& shaders,
             .AddStorageImages(out_images)
             .Build(device);
     }
+    allocated = true;
 }
 
 void LsfgMipmaps::Dispatch(VkCommandBuffer cmdbuf, uint64_t frame_count) {

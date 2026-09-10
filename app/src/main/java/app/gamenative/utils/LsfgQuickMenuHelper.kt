@@ -78,7 +78,6 @@ object LsfgQuickMenuHelper {
     data class Settings(
         val multiplier: Int,
         val flowScale: Float,
-        val performanceMode: Boolean,
         val targetRate: Int = 0,
     )
 
@@ -88,7 +87,6 @@ object LsfgQuickMenuHelper {
     fun readSettings(container: Container): Settings = Settings(
         multiplier = LsfgVkManager.multiplier(container),
         flowScale = LsfgVkManager.flowScale(container),
-        performanceMode = LsfgVkManager.performanceMode(container),
         targetRate = LsfgVkManager.targetRate(container),
     )
 
@@ -110,7 +108,6 @@ object LsfgQuickMenuHelper {
                 effectiveEnabled,
                 if (settings.multiplier >= 2) settings.multiplier else 2,
                 settings.flowScale,
-                settings.performanceMode,
                 fpsLimitOverride = capFps.coerceAtLeast(0),
                 targetRate = settings.targetRate,
             )
@@ -139,7 +136,6 @@ object LsfgQuickMenuHelper {
                 enabled = effectiveEnabled,
                 multiplier = if (settings.multiplier >= 2) settings.multiplier else 2,
                 flowScale = settings.flowScale,
-                performanceMode = settings.performanceMode,
                 targetRate = targetRate,
             )
         }
@@ -162,7 +158,6 @@ object LsfgQuickMenuHelper {
 
         container.putExtra(LsfgVkManager.EXTRA_MULTIPLIER, multiplier.toString())
         container.putExtra(LsfgVkManager.EXTRA_FLOW_SCALE, String.format(Locale.US, "%.2f", flowScale))
-        container.putExtra(LsfgVkManager.EXTRA_PERFORMANCE_MODE, settings.performanceMode.toString())
         container.putExtra(LsfgVkManager.EXTRA_TARGET_RATE, targetRate.toString())
         container.putExtra(LsfgVkManager.EXTRA_PRESET, presetName)
         container.saveData()
@@ -174,7 +169,6 @@ object LsfgQuickMenuHelper {
             effectiveEnabled,
             effectiveMultiplier,
             flowScale,
-            settings.performanceMode,
             targetRate = targetRate,
         )
     }

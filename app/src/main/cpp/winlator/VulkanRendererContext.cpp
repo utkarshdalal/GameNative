@@ -244,6 +244,7 @@ void VulkanRendererContext::createLogicalDevice() {
     maxAnisotropy = props.limits.maxSamplerAnisotropy;
 
     bool memoryModelExtSupported = false;
+    bool float16ExtSupported = false;
     PFN_vkEnumerateDeviceExtensionProperties enumDevExts =
         (PFN_vkEnumerateDeviceExtensionProperties)gipa(instance, "vkEnumerateDeviceExtensionProperties");
     { uint32_t n=0; if(enumDevExts) enumDevExts(physicalDevice,nullptr,&n,nullptr);
@@ -253,6 +254,7 @@ void VulkanRendererContext::createLogicalDevice() {
           if (strcmp(e.extensionName,"VK_EXT_filter_cubic")==0
            || strcmp(e.extensionName,"VK_IMG_filter_cubic")==0) cubicSupported=true;
           if (strcmp(e.extensionName, VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME)==0) memoryModelExtSupported=true;
+          if (strcmp(e.extensionName, VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME)==0) float16ExtSupported=true;
       } }
     std::vector<const char*> extList = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -262,18 +264,28 @@ void VulkanRendererContext::createLogicalDevice() {
     if (props.apiVersion < VK_API_VERSION_1_2 && memoryModelExtSupported) {
         extList.push_back(VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME);
     }
+    if (props.apiVersion < VK_API_VERSION_1_2 && float16ExtSupported) {
+        extList.push_back(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
+    }
     VkDeviceCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     ci.pQueueCreateInfos=&qi; ci.queueCreateInfoCount=1;
 
     VkPhysicalDeviceVulkanMemoryModelFeatures memModel{};
     memModel.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES;
 
+    VkPhysicalDeviceShaderFloat16Int8Features fp16Features{};
+    fp16Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
+    fp16Features.pNext = &memModel;
+
     VkPhysicalDeviceFeatures2 supportedFeatures{};
     supportedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    supportedFeatures.pNext = &memModel;
+    supportedFeatures.pNext = &fp16Features;
 
     VkPhysicalDeviceVulkanMemoryModelFeatures enableMemModel{};
     enableMemModel.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES;
+
+    VkPhysicalDeviceShaderFloat16Int8Features enableFp16{};
+    enableFp16.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
 
     VkPhysicalDeviceFeatures2 enableFeatures2{};
     enableFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -285,9 +297,19 @@ void VulkanRendererContext::createLogicalDevice() {
         const bool canEnableMemoryModel =
             memModel.vulkanMemoryModel &&
             (props.apiVersion >= VK_API_VERSION_1_2 || memoryModelExtSupported);
+        void** nextChain = &enableFeatures2.pNext;
         if (canEnableMemoryModel) {
             enableMemModel.vulkanMemoryModel = VK_TRUE;
-            enableFeatures2.pNext = &enableMemModel;
+            *nextChain = &enableMemModel;
+            nextChain = &enableMemModel.pNext;
+        }
+        const bool canEnableFp16 =
+            fp16Features.shaderFloat16 &&
+            (props.apiVersion >= VK_API_VERSION_1_2 || float16ExtSupported);
+        if (canEnableFp16) {
+            enableFp16.shaderFloat16 = VK_TRUE;
+            *nextChain = &enableFp16;
+            nextChain = &enableFp16.pNext;
         }
         if (supportedFeatures.features.shaderStorageImageWriteWithoutFormat) {
             enableFeatures2.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
@@ -1484,7 +1506,7 @@ ok=true;}catch(...){}
         framegenRefreshRate = pending_mhz > 0 ? (float)pending_mhz / 1000.0f : 0.0f;
         vkr_lsfg_set_refresh_rate(lsfg, framegenRefreshRate);
         framegen_planned = vkr_lsfg_plan(lsfg, framegen_capacity,
-                                         framegenSourceFrames.load(std::memory_order_relaxed));
+                                         framegenRealFrames);
     }
 
     VkCompositeTarget* compositeTarget = via_composite ? &composite[currentFrame] : nullptr;

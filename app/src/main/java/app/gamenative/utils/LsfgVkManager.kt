@@ -54,7 +54,6 @@ object LsfgVkManager {
     const val EXTRA_ARMED = "lsfgEnabled"
     const val EXTRA_MULTIPLIER = "lsfgMultiplier"
     const val EXTRA_FLOW_SCALE = "lsfgFlowScale"
-    const val EXTRA_PERFORMANCE_MODE = "lsfgPerformanceMode"
     const val EXTRA_PRESENT_MODE = "lsfgPresentMode"
     const val EXTRA_TARGET_RATE = "lsfgTargetRate"
     const val EXTRA_PRESET = "lsfgPreset"
@@ -123,9 +122,6 @@ object LsfgVkManager {
             ?: container.getExtra("frameGenTargetRate", "0").toIntOrNull() ?: 0
     }
 
-    /** Get whether performance mode is enabled (default true). */
-    fun performanceMode(container: Container): Boolean =
-        parseBool(container.getExtra(EXTRA_PERFORMANCE_MODE, "true"))
 
     /**
      * Swapchain present mode while frame generation runs ("fifo" or
@@ -324,7 +320,6 @@ object LsfgVkManager {
      * @param enabled Whether frame generation is active (sets multiplier to 1 if false)
      * @param multiplier Frame generation multiplier (2-4)
      * @param flowScale Flow scale factor (0.25-1.0)
-     * @param performanceMode Whether performance mode is enabled
      * @return true if the config was updated successfully
      */
     @JvmStatic
@@ -333,7 +328,6 @@ object LsfgVkManager {
         enabled: Boolean,
         multiplier: Int,
         flowScale: Float,
-        performanceMode: Boolean,
         fpsLimitOverride: Int? = null,
         targetRate: Int = targetRate(container),
     ): Boolean {

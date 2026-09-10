@@ -31,7 +31,8 @@ public:
     }
 
     [[nodiscard]] bool Valid() const {
-        return pass.Valid() && descriptor_sets[0] != VK_NULL_HANDLE;
+        return pass.Valid() && allocated && descriptor_sets[0] != VK_NULL_HANDLE &&
+               descriptor_sets[1] != VK_NULL_HANDLE;
     }
 
 private:
@@ -39,6 +40,7 @@ private:
 
     LsfgPass pass;
     std::array<VkDescriptorSet, 2> descriptor_sets{};
+    bool allocated{false};
 
     VkExtent2D flow_extent{};
     std::array<LsfgImage, LSFG_MIP_LEVELS> out_images;
