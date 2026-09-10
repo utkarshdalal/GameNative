@@ -56,15 +56,24 @@ VulkanRendererContext::~VulkanRendererContext() {
     vk_.DestroyPipelineLayout(device, pipeLayout, nullptr);
     vk_.DestroyDescriptorSetLayout(device, dsLayout, nullptr);
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vk_.DestroySemaphore(device, renderDoneSems[i], nullptr);
-        vk_.DestroySemaphore(device, imgAvailSems[i], nullptr);
+        if (i < renderDoneSems.size() && renderDoneSems[i] != VK_NULL_HANDLE) {
+            vk_.DestroySemaphore(device, renderDoneSems[i], nullptr);
+            renderDoneSems[i] = VK_NULL_HANDLE;
+        }
+        if (i < imgAvailSems.size() && imgAvailSems[i] != VK_NULL_HANDLE) {
+            vk_.DestroySemaphore(device, imgAvailSems[i], nullptr);
+            imgAvailSems[i] = VK_NULL_HANDLE;
+        }
         for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
             if (imgAvailGenSems[i][g] != VK_NULL_HANDLE) {
                 vk_.DestroySemaphore(device, imgAvailGenSems[i][g], nullptr);
                 imgAvailGenSems[i][g] = VK_NULL_HANDLE;
             }
         }
-        vk_.DestroyFence(device, inFlightFences[i], nullptr);
+        if (i < inFlightFences.size() && inFlightFences[i] != VK_NULL_HANDLE) {
+            vk_.DestroyFence(device, inFlightFences[i], nullptr);
+            inFlightFences[i] = VK_NULL_HANDLE;
+        }
     }
     vkd_unload();
     vk_.DestroyCommandPool(device, cmdPool, nullptr);
