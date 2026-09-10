@@ -196,6 +196,43 @@ class SteamAutoResolutionPropertyTest {
         }
     }
 
+    /**
+     * A UFS pattern whose substituted path escapes its root via '..' must NOT crash resolution and
+     * must NOT be returned as a candidate: SaveLocation's constructor rejects the escaping subpath,
+     * and the strategy skips such a pattern. Even with a (regular) file physically present under
+     * the escaping path, resolution reports NoSavesFound rather than throwing or resolving outside
+     * the root.
+     */
+    @org.junit.Test
+    fun unsafeParentTraversalPatternIsSkipped() {
+        val gameId = 4242
+        val containerRootDir = newTempDir("steam-auto-unsafe")
+        val container = containerWithRoot(containerRootDir)
+
+        // A single pattern whose path escapes the root. Its substitutedPath ("../escape") makes
+        // SaveLocation(root, "../escape") throw; the strategy must catch that and skip the pattern.
+        val patterns = listOf(
+            SaveFilePattern(root = PathType.WinSavedGames, path = "../escape", pattern = "*", recursive = 5),
+        )
+        stubAppInfo(gameId, patterns)
+
+        // Place a regular file where the (unsafe) pattern would look, so the only reason for
+        // NoSavesFound is the skip — not the absence of files.
+        val base = Paths.get(
+            PathType.WinSavedGames.toAbsPath(container, gameId, 0L),
+            "../escape",
+        ).normalize()
+        Files.createDirectories(base)
+        Files.write(base.resolve("save.dat"), byteArrayOf(1, 2, 3))
+
+        val result = strategy.resolveAutomatic(mockk<Context>(relaxed = true), container, gameId)
+
+        assertTrue(
+            "an escaping UFS pattern must be skipped, yielding NoSavesFound, got $result",
+            result is AutoResolveResult.NoSavesFound,
+        )
+    }
+
     // ---- helpers -----------------------------------------------------------
 
     /** A mocked container whose only exercised behavior is [Container.getRootDir]. */
