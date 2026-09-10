@@ -76,9 +76,18 @@ class SteamSaveSourceStrategy : SaveSourceStrategy {
                 // WinMyDocuments/WinAppData*/WinSavedGames/WinProgramData/Root — all in
                 // SaveLocation.SUPPORTED_PATH_TYPES). The relative subpath is the pattern's
                 // substituted path under that root; SaveLocation normalizes it.
-                return AutoResolveResult.Found(
-                    SaveLocation(pattern.root, pattern.substitutedPath),
-                )
+                //
+                // Build defensively: UFS `path` comes from Steam server metadata, so a pattern
+                // whose substituted path escapes its root via '..' makes SaveLocation's constructor
+                // throw. Such a pattern is not a usable candidate — skip it rather than aborting all
+                // resolution (and rather than resolving to a location outside the save root).
+                val candidate = try {
+                    SaveLocation(pattern.root, pattern.substitutedPath)
+                } catch (e: IllegalArgumentException) {
+                    Timber.w(e, "Skipping Steam UFS pattern with unsafe subpath: %s", pattern.substitutedPath)
+                    return@forEach
+                }
+                return AutoResolveResult.Found(candidate)
             }
         }
 
