@@ -1620,10 +1620,32 @@ ok=true;}catch(...){}
         blitCompositeToSwapchain(cmdBufs[currentFrame], *compositeTarget, swapchainImages[imgIdx]);
     }
 
+    auto recoverAcquiredFrame = [&]() {
+        VkFence stale = inFlightFences[currentFrame];
+        for (auto& f : imgInFlight) {
+            if (f == stale) f = VK_NULL_HANDLE;
+        }
+        vk_.DestroyFence(device, inFlightFences[currentFrame], nullptr);
+        VkFenceCreateInfo fi{}; fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        vk_.CreateFence(device, &fi, nullptr, &inFlightFences[currentFrame]);
+        if (!toXr) {
+            VkSemaphoreCreateInfo sci{};
+            sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            vk_.DestroySemaphore(device, imgAvailSems[currentFrame], nullptr);
+            vk_.CreateSemaphore(device, &sci, nullptr, &imgAvailSems[currentFrame]);
+            for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
+                vk_.DestroySemaphore(device, imgAvailGenSems[currentFrame][g], nullptr);
+                vk_.CreateSemaphore(device, &sci, nullptr, &imgAvailGenSems[currentFrame][g]);
+            }
+        }
+        fbResized.store(true);
+    };
+
     VkResult endStatus = vk_.EndCommandBuffer(cmdBufs[currentFrame]);
     if (endStatus != VK_SUCCESS) {
         RLOG_E("renderFrame: EndCommandBuffer failed status=%d", (int)endStatus);
-        throw std::runtime_error("end cb");
+        recoverAcquiredFrame();
+        return;
     }
 
     constexpr uint32_t MAX_FRAME_SEMAPHORES = 2 + VKR_LSFG_MAX_GENERATIONS;
@@ -1663,24 +1685,7 @@ ok=true;}catch(...){}
 
     vk_.ResetFences(device, 1, &inFlightFences[currentFrame]);
     if (vk_.QueueSubmit(graphicsQueue, 1, &si, inFlightFences[currentFrame]) != VK_SUCCESS) {
-        VkFence stale = inFlightFences[currentFrame];
-        for (auto& f : imgInFlight) {
-            if (f == stale) f = VK_NULL_HANDLE;
-        }
-        vk_.DestroyFence(device, inFlightFences[currentFrame], nullptr);
-        VkFenceCreateInfo fi{}; fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        vk_.CreateFence(device, &fi, nullptr, &inFlightFences[currentFrame]);
-        if (!toXr) {
-            VkSemaphoreCreateInfo sci{};
-            sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-            vk_.DestroySemaphore(device, imgAvailSems[currentFrame], nullptr);
-            vk_.CreateSemaphore(device, &sci, nullptr, &imgAvailSems[currentFrame]);
-            for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
-                vk_.DestroySemaphore(device, imgAvailGenSems[currentFrame][g], nullptr);
-                vk_.CreateSemaphore(device, &sci, nullptr, &imgAvailGenSems[currentFrame][g]);
-            }
-        }
-        fbResized.store(true);
+        recoverAcquiredFrame();
         return;
     }
 
