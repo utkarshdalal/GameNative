@@ -249,8 +249,15 @@ class SaveLocationResolutionPropertyTest {
      * generated input to filesystem-legal characters is faithful to the property's intent while
      * keeping it deterministic across seeds.
      */
-    private fun safeSubpath(raw: String): String =
-        raw.filter { it.code >= 0x20 && it != '\u007F' && it !in "\u0000<>:\"|?*\\" && !it.isSurrogate() }
+    private fun safeSubpath(raw: String): String {
+        val filtered =
+            raw.filter { it.code >= 0x20 && it != '\u007F' && it !in "\u0000<>:\"|?*\\" && !it.isSurrogate() }
+        // These properties test path arithmetic on a RELATIVE, non-escaping subpath. Parent-
+        // traversal ('..') is a separate security concern with its own dedicated tests below and is
+        // rejected by SaveLocation.normalizeSubpath, so drop '..' segments from generated input to
+        // keep this property focused on the join arithmetic.
+        return filtered.split('/').filter { it != ".." }.joinToString("/")
+    }
 
     private fun assertSubpathIsRelative(subpath: String) {
         assertFalse("subpath must not start with '/': '$subpath'", subpath.startsWith("/"))

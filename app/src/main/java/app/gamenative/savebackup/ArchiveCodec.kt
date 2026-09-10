@@ -330,8 +330,10 @@ object ArchiveCodec {
             throw ImportException.PathEscape(entryName)
         }
 
-        // Symlink guard against the REAL destination (Req 8.6) — reject before staging any bytes.
-        if (Files.isSymbolicLink(destination)) {
+        // Symlink guard against the REAL destination AND every ancestor under the root (Req 8.6,
+        // CWE-59): a symlinked parent directory would let Files.move write outside the save root,
+        // which a leaf-only isSymbolicLink check misses. Reject before staging any bytes.
+        if (SymlinkGuard.hasSymlinkAncestor(normalizedRoot, destination)) {
             throw ImportException.Symlink(entryName)
         }
 
