@@ -227,15 +227,10 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
         savePath: Path,
         gameName: String,
     ): BackupResult {
-        val tree = DocumentFile.fromTreeUri(ctx, dest)
-            ?: return BackupResult.Failed("Could not open destination folder")
-
+        // [dest] is a DOCUMENT URI from CreateDocument (the .zip the user named), not a tree URI.
+        // Write to it directly via ContentResolver — never DocumentFile.fromTreeUri, which is only
+        // valid for OpenDocumentTree results and misbehaves on a document URI.
         val rootId = rootIdFor(loc)
-        val fileName = "${sanitizeFileName(gameName)}_saves_${System.currentTimeMillis()}.zip"
-        // Create a NEW .zip so a failed run never overwrites a previously completed export (Req 13.2).
-        val zipFile = tree.createFile("application/zip", fileName)
-            ?: return BackupResult.Failed("Could not create archive in destination folder")
-
         val manifest = SaveArchiveManifest(
             version = 5,
             gameId = item.gameId,
@@ -249,7 +244,7 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
                 manifest = manifest,
                 roots = listOf(ArchiveCodec.ExportRoot(rootId, savePath)),
                 openDest = {
-                    ctx.contentResolver.openOutputStream(zipFile.uri, "wt")
+                    ctx.contentResolver.openOutputStream(dest, "wt")
                         ?: throw java.io.IOException("Could not open destination stream")
                 },
             )
@@ -258,6 +253,9 @@ class DefaultSaveBackupEngine : SaveBackupEngine {
             throw e
         } catch (e: Exception) {
             Timber.w(e, "Archive export failed")
+            // Delete the partially written .zip so a truncated archive is not left behind (a later
+            // import could otherwise sniff it as a valid single-archive source).
+            runCatching { DocumentFile.fromSingleUri(ctx, dest)?.takeIf { it.isFile }?.delete() }
             BackupResult.Failed(e.message ?: "Archive export failed")
         }
     }

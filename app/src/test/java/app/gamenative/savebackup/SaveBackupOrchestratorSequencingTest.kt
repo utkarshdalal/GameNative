@@ -308,11 +308,12 @@ class SaveBackupOrchestratorSequencingTest {
     }
 
     /**
-     * Req 10.2 (remembered grant reuse): a still-valid remembered grant is reused WITHOUT opening
-     * the SAF picker; the engine exports with that remembered Uri → Success.
+     * Req 10.2 (remembered grant reuse): for a RAW_TREE export (an OpenDocumentTree grant), a
+     * still-valid remembered grant is reused WITHOUT opening the SAF picker; the engine exports
+     * with that remembered Uri → Success.
      */
     @Test
-    fun exportReusesRememberedGrantWithoutSafPicker() = runBlocking {
+    fun exportRawTreeReusesRememberedGrantWithoutSafPicker() = runBlocking {
         coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns resolvedOutcome()
         val remembered = mockk<Uri>()
         coEvery { safLocationManager.rememberedLocation(any(), any()) } returns remembered
@@ -328,11 +329,42 @@ class SaveBackupOrchestratorSequencingTest {
             }
         }
 
-        val outcome = orchestrator().export(context, item, ExportLayout.ARCHIVE, pickers)
+        val outcome = orchestrator().export(context, item, ExportLayout.RAW_TREE, pickers)
 
         assertEquals(ExportOutcome.Success, outcome)
         assertTrue("SAF picker must not run when a remembered grant exists", "pickExternalTree" !in callOrder)
-        coVerify(exactly = 1) { engine.export(context, item, remembered, ExportLayout.ARCHIVE, any()) }
+        coVerify(exactly = 1) { engine.export(context, item, remembered, ExportLayout.RAW_TREE, any()) }
+    }
+
+    /**
+     * Archive export uses CreateDocument (a document URI, not a persistable tree grant), so it must
+     * NOT reuse a remembered grant and must NOT persist one — it always prompts via the picker.
+     */
+    @Test
+    fun exportArchiveDoesNotReuseOrPersistRememberedGrant() = runBlocking {
+        coEvery { resolutionService.resolve(any(), any(), any<LibraryItem>()) } returns resolvedOutcome()
+        // Even if a remembered grant exists, archive export must ignore it.
+        coEvery { safLocationManager.rememberedLocation(any(), any()) } returns mockk<Uri>()
+
+        val chosen = mockk<Uri>()
+        val pickers = object : ExportPickers {
+            override suspend fun openContainerBrowser(container: Container, appId: String, gameId: Int): SaveLocation? {
+                callOrder += "openContainerBrowser"
+                return saveLocation()
+            }
+            override suspend fun pickExternalTree(): Uri? {
+                callOrder += "pickExternalTree"
+                return chosen
+            }
+        }
+
+        val outcome = orchestrator().export(context, item, ExportLayout.ARCHIVE, pickers)
+
+        assertEquals(ExportOutcome.Success, outcome)
+        assertTrue("archive export must open the document picker", "pickExternalTree" in callOrder)
+        // The picked document URI is used as-is; it is never persisted as a tree grant.
+        coVerify(exactly = 1) { engine.export(context, item, chosen, ExportLayout.ARCHIVE, any()) }
+        coVerify(exactly = 0) { safLocationManager.tryPersist(any(), any()) }
     }
 
     // ========================================================================

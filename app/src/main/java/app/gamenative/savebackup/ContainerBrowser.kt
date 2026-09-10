@@ -68,7 +68,9 @@ class ContainerBrowser private constructor(
                             isDirectory = Files.isDirectory(path),
                         )
                     }
-                    .toList()
+                    // Collectors.toList(), NOT Stream.toList(): the latter is Java 16+ and throws
+                    // NoSuchMethodError at runtime on Android's desugared Stream (API 26–33).
+                    .collect(java.util.stream.Collectors.toList())
             }
                 .sortedWith(
                     compareByDescending<BrowserEntry> { it.isDirectory }

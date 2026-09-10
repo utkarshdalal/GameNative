@@ -336,7 +336,9 @@ class SaveBackupOrchestrator(
         }
 
         // --- Step 3: obtain the external location (remembered grant reuse, else SAF) -------
-        val dest: Uri = when (val obtained = obtainExternalLocation(context, item.appId, pickers)) {
+        val dest: Uri = when (
+            val obtained = obtainExternalLocation(context, item.appId, layout, pickers)
+        ) {
             is ExternalLocation.Selected -> obtained.uri
             ExternalLocation.Cancelled -> return ExportOutcome.Cancelled
             is ExternalLocation.OpenFailed -> return ExportOutcome.Aborted(obtained.reason)
@@ -493,20 +495,35 @@ class SaveBackupOrchestrator(
     }
 
     /**
-     * Obtain the external tree URI: reuse a still-valid remembered grant without re-prompting
-     * (Requirement 10.2), otherwise launch the SAF picker and, on a fresh selection, try to persist
-     * the grant (Requirements 10.1, 10.3, 10.4).
+     * Obtain the external location for an export.
+     *
+     * The behavior is layout-dependent because the two layouts use different SAF contracts:
+     *
+     * - **[ExportLayout.RAW_TREE]** picks a directory via `OpenDocumentTree` (a **tree** URI). This
+     *   is the reusable, grantable location, so we reuse a still-valid remembered grant without
+     *   re-prompting (Req 10.2) and, on a fresh selection, request a durable grant (Req 10.1, 10.3,
+     *   10.4).
+     * - **[ExportLayout.ARCHIVE]** creates a single `.zip` via `CreateDocument` (a **document**
+     *   URI, not a tree). A document URI is not a persistable *tree* grant — `takePersistableUri`
+     *   `Permission` and the tree-oriented `rememberedLocation` logic assume a tree — so archive
+     *   export **never reuses or persists** it. `CreateDocument` already defaults to the last-used
+     *   location and the engine writes to the document URI directly (no `fromTreeUri`).
      */
     private suspend fun obtainExternalLocation(
         context: Context,
         appId: String,
+        layout: ExportLayout,
         pickers: ExportPickers,
     ): ExternalLocation {
-        // Reuse a valid remembered grant without re-prompting (Req 10.2). A revoked/expired/
-        // unresolvable grant returns null here and is forgotten, so we fall through to the picker
-        // (Req 10.4).
-        safLocationManager.rememberedLocation(context, appId)?.let { remembered ->
-            return ExternalLocation.Selected(remembered)
+        val rememberGrant = layout == ExportLayout.RAW_TREE
+
+        // Reuse a valid remembered grant without re-prompting (Req 10.2) — tree layout only. A
+        // revoked/expired/unresolvable grant returns null here and is forgotten, so we fall through
+        // to the picker (Req 10.4).
+        if (rememberGrant) {
+            safLocationManager.rememberedLocation(context, appId)?.let { remembered ->
+                return ExternalLocation.Selected(remembered)
+            }
         }
 
         val picked = try {
@@ -519,11 +536,14 @@ class SaveBackupOrchestrator(
             // Picker cancelled → abort, no external changes (Req 4.6).
             ?: return ExternalLocation.Cancelled
 
-        // Fresh selection: request a durable grant. If it cannot be remembered, warn but continue
-        // for this operation only (Req 10.3).
-        val remembered = safLocationManager.tryPersist(appId, picked)
-        if (!remembered) {
-            pickers.onFolderNotRemembered()
+        // Fresh selection: for the tree layout, request a durable grant so it is remembered next
+        // time; if it cannot be remembered, warn but continue for this operation only (Req 10.3).
+        // Archive (document URI) is never persisted as a tree grant.
+        if (rememberGrant) {
+            val remembered = safLocationManager.tryPersist(appId, picked)
+            if (!remembered) {
+                pickers.onFolderNotRemembered()
+            }
         }
         return ExternalLocation.Selected(picked)
     }
