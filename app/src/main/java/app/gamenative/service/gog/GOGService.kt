@@ -402,12 +402,27 @@ class GOGService : Service() {
                     if (result.isFailure) {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
-                        downloadInfo.setProgress(-1.0f)
                         downloadInfo.setActive(false)
 
-                        SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
+                        if (GameDownloadQueue.reportFailure(GameSource.GOG, gameId, error?.message)) {
+                            // Transient failure: the queue holds the slot and
+                            // auto-retries with backoff. The retry marker set
+                            // wasAutoPaused, so the finally below keeps the
+                            // active-map entry (UI shows Queued).
+                        } else {
+                            downloadInfo.setProgress(-1.0f)
+                            SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
+
+                            // Unregister from queue so a paused download can resume
+                            GameDownloadQueue.unregisterDownload(GameSource.GOG, gameId)
+                        }
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
+
+                        // A completed download must never remain queued: clear the
+                        // paused state so the finally below drops the active-map
+                        // entry even if a stray auto-pause landed in a race window.
+                        downloadInfo.clearQueuedState()
 
                         // Transfer is complete — free the queue slot BEFORE post-install
                         // sync so the next queued download can start. Holding the slot

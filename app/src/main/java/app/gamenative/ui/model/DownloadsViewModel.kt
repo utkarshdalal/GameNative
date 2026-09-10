@@ -361,6 +361,19 @@ class DownloadsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * A live-map entry whose game is already installed, which is not running,
+     * not syncing, and not queue-managed is a stale zombie (e.g. a pause raced
+     * the completion job before clearQueuedState existed). Dropping it from the
+     * live rows lets the disappeared-keys path file it under COMPLETED.
+     */
+    private suspend fun isStaleCompletedEntry(gameSource: GameSource, appId: String, info: DownloadInfo): Boolean {
+        return !info.isActive() &&
+            !info.isPostInstallSyncing() &&
+            !info.wasAutoPaused() &&
+            isInstalled(gameSource, appId)
+    }
+
     private fun sortDownloads(items: Collection<DownloadItemState>): LinkedHashMap<String, DownloadItemState> {
         val sortedItems = items.sortedWith(
             compareBy<DownloadItemState> { item ->
@@ -462,6 +475,7 @@ class DownloadsViewModel @Inject constructor(
 
             for ((appId, info) in SteamService.getActiveDownloads()) {
                 val appIdString = appId.toString()
+                if (isStaleCompletedEntry(GameSource.STEAM, appIdString, info)) continue
                 val (name, icon) = getSteamMetadata(appId)
                 val item = buildActiveDownloadItem(appIdString, GameSource.STEAM, name, icon, info)
                 liveDownloads[item.uniqueId] = item
@@ -478,6 +492,7 @@ class DownloadsViewModel @Inject constructor(
 
             for ((appId, info) in EpicService.getActiveDownloads()) {
                 val appIdString = appId.toString()
+                if (isStaleCompletedEntry(GameSource.EPIC, appIdString, info)) continue
                 val (name, icon) = getEpicMetadata(appId)
                 val item = buildActiveDownloadItem(appIdString, GameSource.EPIC, name, icon, info)
                 liveDownloads[item.uniqueId] = item
@@ -493,6 +508,7 @@ class DownloadsViewModel @Inject constructor(
             }
 
             for ((gameId, info) in GOGService.getActiveDownloads()) {
+                if (isStaleCompletedEntry(GameSource.GOG, gameId, info)) continue
                 val (name, icon) = getGOGMetadata(gameId)
                 val item = buildActiveDownloadItem(gameId, GameSource.GOG, name, icon, info)
                 liveDownloads[item.uniqueId] = item
@@ -507,6 +523,7 @@ class DownloadsViewModel @Inject constructor(
             }
 
             for ((productId, info) in AmazonService.getActiveDownloads()) {
+                if (isStaleCompletedEntry(GameSource.AMAZON, productId, info)) continue
                 val (name, icon) = getAmazonMetadata(productId)
                 val item = buildActiveDownloadItem(productId, GameSource.AMAZON, name, icon, info)
                 liveDownloads[item.uniqueId] = item

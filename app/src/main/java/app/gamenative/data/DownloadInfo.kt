@@ -265,6 +265,18 @@ data class DownloadInfo(
         updateStatusMessage(statusMessage)
     }
 
+    /**
+     * Terminal success: clear the queue-managed paused state. A completed
+     * download must never remain queued — every keep-entry path (store
+     * finally blocks, Steam's removeDownloadJob) keys off wasAutoPaused,
+     * and a stray auto-pause landing in a post-install race window would
+     * otherwise leave a completed game stuck as a Paused row forever.
+     */
+    fun clearQueuedState() {
+        wasAutoPaused = false
+        autoResumeCallback = null
+    }
+
     fun setAutoResumeCallback(callback: () -> Unit) {
         autoResumeCallback = callback
     }

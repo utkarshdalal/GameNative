@@ -475,6 +475,11 @@ class EpicService : Service() {
                     if (result.isSuccess) {
                         Timber.i("[Download] Completed successfully for game $gameId")
 
+                        // A completed download must never remain queued: clear the
+                        // paused state so the finally below drops the active-map
+                        // entry even if a stray auto-pause landed in a race window.
+                        downloadInfo.clearQueuedState()
+
                         // Transfer is complete — free the queue slot BEFORE post-install
                         // sync so the next queued download can start. Holding the slot
                         // through sync also lets a newly registered download auto-pause
@@ -512,13 +517,21 @@ class EpicService : Service() {
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
-                        downloadInfo.setProgress(-1.0f)
                         downloadInfo.setActive(false)
 
-                        SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
+                        if (GameDownloadQueue.reportFailure(GameSource.EPIC, appId.toString(), error?.message)) {
+                            // Transient failure: the queue holds the slot and
+                            // auto-retries with backoff. The retry marker set
+                            // wasAutoPaused, so the finally below keeps the
+                            // active-map entry (UI shows Queued) and the DLC
+                            // selection for the resumed run.
+                        } else {
+                            downloadInfo.setProgress(-1.0f)
+                            SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
 
-                        // Unregister from queue so a paused download can resume
-                        GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
+                            // Unregister from queue so a paused download can resume
+                            GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
+                        }
                     }
                 } catch (e: CancellationException) {
                     downloadInfo.setPostInstallSyncing(false)

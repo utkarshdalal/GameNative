@@ -2781,7 +2781,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                             )
                         }
 
-                        // Remove the job here — Play button becomes visible after this
+                        // Remove the job here — Play button becomes visible after this.
+                        // clearQueuedState: a completed download must not survive as a
+                        // queued/paused entry if a stray auto-pause landed in a
+                        // post-install race window (removeDownloadJob keeps
+                        // wasAutoPaused entries).
+                        di.clearQueuedState()
                         removeDownloadJob(appId)
                         PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId, GameSource.STEAM))
 

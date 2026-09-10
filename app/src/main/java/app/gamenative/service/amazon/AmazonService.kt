@@ -494,6 +494,10 @@ class AmazonService : Service() {
 
                     if (result.isSuccess) {
                         Timber.tag("Amazon").i("Download succeeded for $productId")
+                        // A completed download must never remain queued: clear the
+                        // paused state so the finally below drops the active-map
+                        // entry even if a stray auto-pause landed in a race window.
+                        downloadInfo.clearQueuedState()
                         downloadInfo.setActive(false)
                         downloadInfo.clearPersistedBytesDownloaded(installPath)
                         SnackbarManager.show("Download completed: ${game.title}")
@@ -565,6 +569,10 @@ class AmazonService : Service() {
             }
             Timber.tag("Amazon").i("Cancelling download for $productId")
             downloadInfo.cancel()
+            // Remove the map entry like GOG/Epic do: a queued (auto-paused)
+            // entry has no live job left whose finally could remove it.
+            instance.activeDownloads.remove(productId, downloadInfo)
+            instance.activeDownloadPaths.remove(productId)
             return true
         }
 
