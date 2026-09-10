@@ -4381,7 +4381,8 @@ private fun getWineStartCommand(
 
         // Use A: drive (or the mapped drive letter) instead of Z:
         // The container setup in ContainerUtils maps the game install path to A: drive
-        val epicCommand = if (ContainerUtils.isAbsoluteWindowsPath(exePath)) exePath else "A:\\$relativePath".replace("/", "\\")
+        val isAbsoluteExe = ContainerUtils.isAbsoluteWindowsPath(exePath)
+        val epicCommand = if (isAbsoluteExe) exePath else "A:\\$relativePath".replace("/", "\\")
 
         // Get Epic launch parameters
         Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
@@ -4395,8 +4396,10 @@ private fun getWineStartCommand(
             params
         }
         // Set working directory to the folder containing the executable
-        val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
-        guestProgramLauncherComponent.workingDir = File(executableDir)
+        if (!isAbsoluteExe) {
+            val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
+            guestProgramLauncherComponent.workingDir = File(executableDir)
+        }
 
         Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
 
@@ -4628,13 +4631,13 @@ private fun getWineStartCommand(
             }
         }
 
+        if (ContainerUtils.isAbsoluteWindowsPath(executablePath)) {
+            return "winhandler.exe \"$executablePath\""
+        }
+
         if (gameFolderPath == null) {
             Timber.tag("XServerScreen").e("Could not find A: drive for Custom Game: $appId")
             return "winhandler.exe \"wfm.exe\""
-        }
-
-        if (ContainerUtils.isAbsoluteWindowsPath(executablePath)) {
-            return "winhandler.exe \"$executablePath\""
         }
 
         // Set working directory to the game folder
