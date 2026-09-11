@@ -49,7 +49,7 @@ class EaLsxServerTest {
     fun `Most Wanted legacy auth request receives refreshed token with matching routing`() {
         coEvery { EaAuthManager.opaqueLaunchToken(any()) } returns "fresh<&\"token"
         assertEquals(
-            "<LSX><Response id=\"8\" sender=\"Utility\"><AuthToken value=\"fresh&lt;&amp;&quot;token\"/></Response></LSX>",
+            "<LSX><Response id=\"8\" sender=\"EbisuSDK\"><AuthToken value=\"fresh&lt;&amp;&quot;token\"/></Response></LSX>",
             request("<LSX><Request recipient=\"EbisuSDK\" id=\"8\"><GetAuthToken version=\"2\"/></Request></LSX>"),
         )
     }

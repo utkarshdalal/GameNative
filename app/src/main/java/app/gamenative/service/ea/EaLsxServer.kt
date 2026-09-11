@@ -147,7 +147,7 @@ object EaLsxServer {
                     if (raw.startsWith("<GameNative")) { writeFrame(out, handleStub(raw)); continue }
                     val plain = if (key != null) EaCrypto.lsxDecrypt(key, raw) else raw
                     val msg = parse(plain.replace("version=\"\" ", "")) ?: continue
-                    Timber.d("LSX <- ${msg.name} id=${msg.id}")
+                    Timber.d("LSX <- ${msg.name} id=${msg.id} recipient=${msg.recipient}")
                     if (msg.name == "ChallengeResponse") {
                         val ok = EaCrypto.checkChallengeResponse(msg.attrs["response"].orEmpty(), START_KEY)
                         if (!ok) { Timber.e("LSX challenge response invalid, closing"); break }
@@ -199,13 +199,13 @@ object EaLsxServer {
                 val token = runCatching { runBlocking { EaAuthManager.opaqueLaunchToken(ctx) } }
                     .onFailure { Timber.e(it, "LSX GetAuthToken: opaque token failed, falling back to access token") }
                     .getOrElse { runCatching { runBlocking { EaAuthManager.accessToken(ctx) } }.getOrDefault("") }
-                return response(m.id, "Utility", "<AuthToken value=\"${esc(token)}\"/>")
+                "<AuthToken value=\"${esc(token)}\"/>"
             }
 
             "GetAccessToken" -> {
                 val token = runCatching { runBlocking { EaAuthManager.accessToken(ctx) } }
                     .onFailure { Timber.e(it, "LSX GetAccessToken failed") }.getOrDefault("")
-                return response(m.id, "Utility", "<AuthToken value=\"${esc(token)}\"/>")
+                "<AuthToken value=\"${esc(token)}\"/>"
             }
 
             "GetProfile" -> "<GetProfileResponse Persona=\"${esc(creds?.displayName.orEmpty())}\" SubscriberLevel=\"0\" CommerceCurrency=\"USD\" " +
