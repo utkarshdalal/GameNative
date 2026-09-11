@@ -2506,4 +2506,8 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/秒</string>
     <string name="gyro_milliseconds_value">%1$d 毫秒</string>
     <string name="reset_gyro_settings">重設陀螺儀設定</string>
+    <string name="settings_downloads_battery_title">在背景執行下載</string>
+    <string name="settings_downloads_battery_subtitle_exempt">裝置休眠時下載仍會繼續。GameNative 的電池最佳化已停用。</string>
+    <string name="settings_downloads_battery_subtitle_restricted">裝置休眠時下載可能會停止。開啟以為 GameNative 停用電池最佳化。</string>
+    <string name="downloads_notification_active">正在下載遊戲…</string>
 </resources>

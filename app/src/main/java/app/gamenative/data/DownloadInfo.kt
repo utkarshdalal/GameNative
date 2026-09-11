@@ -55,7 +55,7 @@ data class DownloadInfo(
     private var wasAutoPaused: Boolean = false
     private var autoResumeCallback: (() -> Unit)? = null
 
-    // For GameDownloadQueue integration
+    // For GameDownloadService integration
     private var queueGameSource: GameSource? = null
     private var queueGameId: String? = null
 
@@ -80,7 +80,7 @@ data class DownloadInfo(
 
         // If user manually paused (not auto-paused), unregister from queue to resume next download
         if (!autoPaused && queueGameSource != null && queueGameId != null) {
-            app.gamenative.service.GameDownloadQueue.unregisterDownload(queueGameSource!!, queueGameId!!)
+            app.gamenative.service.download.GameDownloadService.unregisterDownload(queueGameSource!!, queueGameId!!)
         }
     }
 
@@ -100,7 +100,7 @@ data class DownloadInfo(
 
         // Unregister from queue to resume next download
         if (queueGameSource != null && queueGameId != null) {
-            app.gamenative.service.GameDownloadQueue.unregisterDownload(queueGameSource!!, queueGameId!!)
+            app.gamenative.service.download.GameDownloadService.unregisterDownload(queueGameSource!!, queueGameId!!)
         }
 
         // The snapshot write hits the (possibly saturated) install volume and the

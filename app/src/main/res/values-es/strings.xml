@@ -2499,4 +2499,8 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Restablecer ajustes del giroscopio</string>
+    <string name="settings_downloads_battery_title">Ejecutar descargas en segundo plano</string>
+    <string name="settings_downloads_battery_subtitle_exempt">Las descargas continúan mientras el dispositivo está en reposo. La optimización de batería está desactivada para GameNative.</string>
+    <string name="settings_downloads_battery_subtitle_restricted">Las descargas pueden detenerse cuando el dispositivo entre en reposo. Actívalo para desactivar la optimización de batería de GameNative.</string>
+    <string name="downloads_notification_active">Descargando juegos…</string>
 </resources>

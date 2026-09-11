@@ -14,7 +14,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
-import app.gamenative.service.GameDownloadQueue
+import app.gamenative.service.download.GameDownloadService
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -477,7 +477,7 @@ class AmazonService : Service() {
             )
 
             // Register with centralized queue and auto-pause other downloads
-            GameDownloadQueue.registerDownload(
+            GameDownloadService.registerDownload(
                 gameSource = GameSource.AMAZON,
                 gameId = productId,
                 downloadInfo = downloadInfo
@@ -506,13 +506,13 @@ class AmazonService : Service() {
                         )
 
                         // Unregister from queue (will auto-resume next paused download)
-                        GameDownloadQueue.unregisterDownload(GameSource.AMAZON, productId)
+                        GameDownloadService.unregisterDownload(GameSource.AMAZON, productId)
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.tag("Amazon").e(error, "Download failed for $productId")
                         downloadInfo.setActive(false)
 
-                        if (GameDownloadQueue.reportFailure(GameSource.AMAZON, productId, error?.message)) {
+                        if (GameDownloadService.reportFailure(GameSource.AMAZON, productId, error?.message)) {
                             // Transient failure: the queue holds the slot and
                             // auto-retries with backoff. Keep the partial install
                             // (no cleanup) so the retry resumes from it; the retry
@@ -523,7 +523,7 @@ class AmazonService : Service() {
                             SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
 
                             // Unregister from queue so a paused download can resume
-                            GameDownloadQueue.unregisterDownload(GameSource.AMAZON, productId)
+                            GameDownloadService.unregisterDownload(GameSource.AMAZON, productId)
                         }
                     }
                 } catch (e: Exception) {
@@ -531,14 +531,14 @@ class AmazonService : Service() {
                         Timber.tag("Amazon").d("Download cancelled for $productId")
                     } else {
                         Timber.tag("Amazon").e(e, "Download exception for $productId")
-                        if (GameDownloadQueue.reportFailure(GameSource.AMAZON, productId, e.message)) {
+                        if (GameDownloadService.reportFailure(GameSource.AMAZON, productId, e.message)) {
                             // Transient failure: queue-managed auto-retry; keep
                             // the partial install and the active-map entry.
                         } else {
                             instance.cleanupFailedInstall(context, game, installPath)
 
                             // Unregister from queue so a paused download can resume
-                            GameDownloadQueue.unregisterDownload(GameSource.AMAZON, productId)
+                            GameDownloadService.unregisterDownload(GameSource.AMAZON, productId)
                         }
                     }
                     downloadInfo.setActive(false)
@@ -845,8 +845,8 @@ class AmazonService : Service() {
         instance = this
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
-        // Register resume listener with GameDownloadQueue
-        GameDownloadQueue.registerResumeListener(GameSource.AMAZON, object : GameDownloadQueue.ResumeListener {
+        // Register resume listener with GameDownloadService
+        GameDownloadService.registerResumeListener(GameSource.AMAZON, object : GameDownloadService.ResumeListener {
             override fun onResumeRequested(gameSource: GameSource, gameId: String) {
                 Timber.tag("Amazon").i("[AmazonService] Resume requested for product $gameId")
                 serviceScope.launch {
@@ -926,9 +926,9 @@ class AmazonService : Service() {
         notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_AMAZON)
 
         // Drop this source's queue entries before removing the listener that resumes them
-        GameDownloadQueue.unregisterAllForSource(GameSource.AMAZON)
-        // Unregister resume listener from GameDownloadQueue
-        GameDownloadQueue.unregisterResumeListener(GameSource.AMAZON)
+        GameDownloadService.unregisterAllForSource(GameSource.AMAZON)
+        // Unregister resume listener from GameDownloadService
+        GameDownloadService.unregisterResumeListener(GameSource.AMAZON)
 
         instance = null
         super.onDestroy()

@@ -2454,4 +2454,8 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/秒</string>
     <string name="gyro_milliseconds_value">%1$d ミリ秒</string>
     <string name="reset_gyro_settings">ジャイロ設定をリセット</string>
+    <string name="settings_downloads_battery_title">バックグラウンドでダウンロードを実行</string>
+    <string name="settings_downloads_battery_subtitle_exempt">デバイスのスリープ中もダウンロードを継続します。GameNative のバッテリー最適化は無効です。</string>
+    <string name="settings_downloads_battery_subtitle_restricted">デバイスがスリープするとダウンロードが停止する場合があります。オンにすると GameNative のバッテリー最適化が無効になります。</string>
+    <string name="downloads_notification_active">ゲームをダウンロード中…</string>
 </resources>

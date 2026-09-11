@@ -2534,7 +2534,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     .takeIf { !appDirPath.startsWith(DownloadService.baseDataDirPath) }
 
                 // Register with centralized queue and auto-pause other downloads
-                GameDownloadQueue.registerDownload(
+                GameDownloadService.registerDownload(
                     gameSource = GameSource.STEAM,
                     gameId = appId.toString(),
                     downloadInfo = di
@@ -2551,7 +2551,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         if (licenses.isEmpty()) {
                             Timber.w("No licenses available for download")
                             // Free the queue slot so a queued download isn't stranded
-                            GameDownloadQueue.unregisterDownload(GameSource.STEAM, appId.toString())
+                            GameDownloadService.unregisterDownload(GameSource.STEAM, appId.toString())
                             return@launch
                         }
 
@@ -2614,7 +2614,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         // lets a newly registered download auto-pause this finished one;
                         // its later auto-resume re-verifies every file (progress shows
                         // the game restarting after reaching 100%).
-                        GameDownloadQueue.unregisterDownload(GameSource.STEAM, appId.toString())
+                        GameDownloadService.unregisterDownload(GameSource.STEAM, appId.toString())
 
                         val appConfig = getAppInfoOf(appId)?.config
                         if (appConfig?.steamControllerTemplateIndex == 1) {
@@ -2798,7 +2798,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     } catch (e: Exception) {
                         Timber.e(e, "Download failed for app $appId")
                         di.persistProgressSnapshot()
-                        if (GameDownloadQueue.reportFailure(GameSource.STEAM, appId.toString(), e.message)) {
+                        if (GameDownloadService.reportFailure(GameSource.STEAM, appId.toString(), e.message)) {
                             // Transient failure: the queue holds the slot and
                             // auto-retries with backoff. The retry marker set
                             // wasAutoPaused, so removeDownloadJob keeps the entry
@@ -2812,7 +2812,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             }
                             removeDownloadJob(appId)
                             // Unregister from queue so a paused download can resume
-                            GameDownloadQueue.unregisterDownload(GameSource.STEAM, appId.toString())
+                            GameDownloadService.unregisterDownload(GameSource.STEAM, appId.toString())
                         }
                     }
                 }
@@ -4077,8 +4077,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
-        // Register resume listener with GameDownloadQueue
-        GameDownloadQueue.registerResumeListener(GameSource.STEAM, object : GameDownloadQueue.ResumeListener {
+        // Register resume listener with GameDownloadService
+        GameDownloadService.registerResumeListener(GameSource.STEAM, object : GameDownloadService.ResumeListener {
             override fun onResumeRequested(gameSource: GameSource, gameId: String) {
                 val appId = gameId.toIntOrNull() ?: return
                 Timber.i("[SteamService] Resume requested for app $appId")
@@ -4271,9 +4271,9 @@ class SteamService : Service(), IChallengeUrlChanged {
         connectivityManager.unregisterNetworkCallback(networkCallback)
 
         // Drop this source's queue entries before removing the listener that resumes them
-        GameDownloadQueue.unregisterAllForSource(GameSource.STEAM)
-        // Unregister resume listener from GameDownloadQueue
-        GameDownloadQueue.unregisterResumeListener(GameSource.STEAM)
+        GameDownloadService.unregisterAllForSource(GameSource.STEAM)
+        // Unregister resume listener from GameDownloadService
+        GameDownloadService.unregisterResumeListener(GameSource.STEAM)
 
         scope.launch { stop() }
     }

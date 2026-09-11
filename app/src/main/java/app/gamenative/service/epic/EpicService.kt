@@ -16,7 +16,7 @@ import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.data.GameSource
-import app.gamenative.service.GameDownloadQueue
+import app.gamenative.service.download.GameDownloadService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.NotificationHelper
 import com.winlator.container.Container
@@ -448,7 +448,7 @@ class EpicService : Service() {
             instance.notifierOrNull?.trackDownload(downloadInfo, game.title ?: "", NotificationHelper.NOTIFICATION_ID_EPIC)
 
             // Register with centralized queue and auto-pause other downloads
-            GameDownloadQueue.registerDownload(
+            GameDownloadService.registerDownload(
                 gameSource = GameSource.EPIC,
                 gameId = appId.toString(),
                 downloadInfo = downloadInfo
@@ -485,7 +485,7 @@ class EpicService : Service() {
                         // through sync also lets a newly registered download auto-pause
                         // this finished one; its later auto-resume re-verifies every
                         // file ("1/N again" after reaching 100%).
-                        GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
+                        GameDownloadService.unregisterDownload(GameSource.EPIC, appId.toString())
 
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
@@ -519,7 +519,7 @@ class EpicService : Service() {
                         Timber.e(error, "[Download] Failed for game $gameId")
                         downloadInfo.setActive(false)
 
-                        if (GameDownloadQueue.reportFailure(GameSource.EPIC, appId.toString(), error?.message)) {
+                        if (GameDownloadService.reportFailure(GameSource.EPIC, appId.toString(), error?.message)) {
                             // Transient failure: the queue holds the slot and
                             // auto-retries with backoff. The retry marker set
                             // wasAutoPaused, so the finally below keeps the
@@ -530,7 +530,7 @@ class EpicService : Service() {
                             SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
 
                             // Unregister from queue so a paused download can resume
-                            GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
+                            GameDownloadService.unregisterDownload(GameSource.EPIC, appId.toString())
                         }
                     }
                 } catch (e: CancellationException) {
@@ -545,7 +545,7 @@ class EpicService : Service() {
                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, false))
                     downloadInfo.setActive(false)
 
-                    if (GameDownloadQueue.reportFailure(GameSource.EPIC, appId.toString(), e.message)) {
+                    if (GameDownloadService.reportFailure(GameSource.EPIC, appId.toString(), e.message)) {
                         // Transient failure: the queue holds the slot and
                         // auto-retries with backoff. The retry marker set
                         // wasAutoPaused, so the finally below keeps the
@@ -556,7 +556,7 @@ class EpicService : Service() {
                         SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
 
                         // Unregister from queue so a paused download can resume
-                        GameDownloadQueue.unregisterDownload(GameSource.EPIC, appId.toString())
+                        GameDownloadService.unregisterDownload(GameSource.EPIC, appId.toString())
                     }
                 } finally {
                     // Keep an auto-paused (queued) entry in the map so the downloads UI
@@ -705,8 +705,8 @@ class EpicService : Service() {
         notificationHelper = NotificationHelper(applicationContext)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
-        // Register resume listener with GameDownloadQueue
-        GameDownloadQueue.registerResumeListener(GameSource.EPIC, object : GameDownloadQueue.ResumeListener {
+        // Register resume listener with GameDownloadService
+        GameDownloadService.registerResumeListener(GameSource.EPIC, object : GameDownloadService.ResumeListener {
             override fun onResumeRequested(gameSource: GameSource, gameId: String) {
                 val appId = gameId.toIntOrNull() ?: return
                 Timber.tag("Epic").i("[EpicService] Resume requested for app $appId")
@@ -830,9 +830,9 @@ class EpicService : Service() {
         notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_EPIC)
 
         // Drop this source's queue entries before removing the listener that resumes them
-        GameDownloadQueue.unregisterAllForSource(GameSource.EPIC)
-        // Unregister resume listener from GameDownloadQueue
-        GameDownloadQueue.unregisterResumeListener(GameSource.EPIC)
+        GameDownloadService.unregisterAllForSource(GameSource.EPIC)
+        // Unregister resume listener from GameDownloadService
+        GameDownloadService.unregisterResumeListener(GameSource.EPIC)
 
         instance = null
     }

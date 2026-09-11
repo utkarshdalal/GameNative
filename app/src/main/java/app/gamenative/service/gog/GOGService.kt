@@ -13,7 +13,7 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.data.GameSource
-import app.gamenative.service.GameDownloadQueue
+import app.gamenative.service.download.GameDownloadService
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
@@ -381,7 +381,7 @@ class GOGService : Service() {
             instance.notifierOrNull?.trackDownload(downloadInfo, "", NotificationHelper.NOTIFICATION_ID_GOG)
 
             // Register with centralized queue and auto-pause other downloads
-            GameDownloadQueue.registerDownload(
+            GameDownloadService.registerDownload(
                 gameSource = GameSource.GOG,
                 gameId = gameId,
                 downloadInfo = downloadInfo
@@ -404,7 +404,7 @@ class GOGService : Service() {
                         Timber.e(error, "[Download] Failed for game $gameId")
                         downloadInfo.setActive(false)
 
-                        if (GameDownloadQueue.reportFailure(GameSource.GOG, gameId, error?.message)) {
+                        if (GameDownloadService.reportFailure(GameSource.GOG, gameId, error?.message)) {
                             // Transient failure: the queue holds the slot and
                             // auto-retries with backoff. The retry marker set
                             // wasAutoPaused, so the finally below keeps the
@@ -414,7 +414,7 @@ class GOGService : Service() {
                             SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
 
                             // Unregister from queue so a paused download can resume
-                            GameDownloadQueue.unregisterDownload(GameSource.GOG, gameId)
+                            GameDownloadService.unregisterDownload(GameSource.GOG, gameId)
                         }
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
@@ -429,7 +429,7 @@ class GOGService : Service() {
                         // through sync also lets a newly registered download auto-pause
                         // this finished one; its later auto-resume re-verifies every
                         // file ("1/N again" after reaching 100%).
-                        GameDownloadQueue.unregisterDownload(GameSource.GOG, gameId)
+                        GameDownloadService.unregisterDownload(GameSource.GOG, gameId)
 
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
@@ -476,7 +476,7 @@ class GOGService : Service() {
                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: -1, false))
                     downloadInfo.setActive(false)
 
-                    if (GameDownloadQueue.reportFailure(GameSource.GOG, gameId, e.message)) {
+                    if (GameDownloadService.reportFailure(GameSource.GOG, gameId, e.message)) {
                         // Transient failure: the queue holds the slot and
                         // auto-retries with backoff. The retry marker set
                         // wasAutoPaused, so the finally below keeps the
@@ -486,7 +486,7 @@ class GOGService : Service() {
                         SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
 
                         // Unregister from queue so a paused download can resume
-                        GameDownloadQueue.unregisterDownload(GameSource.GOG, gameId)
+                        GameDownloadService.unregisterDownload(GameSource.GOG, gameId)
                     }
                 } finally {
                     // Remove from activeDownloads for both success and failure
@@ -793,8 +793,8 @@ class GOGService : Service() {
         notificationHelper = NotificationHelper(applicationContext)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
-        // Register resume listener with GameDownloadQueue
-        GameDownloadQueue.registerResumeListener(GameSource.GOG, object : GameDownloadQueue.ResumeListener {
+        // Register resume listener with GameDownloadService
+        GameDownloadService.registerResumeListener(GameSource.GOG, object : GameDownloadService.ResumeListener {
             override fun onResumeRequested(gameSource: GameSource, gameId: String) {
                 Timber.i("[GOGService] Resume requested for game $gameId")
                 scope.launch {
@@ -913,9 +913,9 @@ class GOGService : Service() {
         notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_GOG)
 
         // Drop this source's queue entries before removing the listener that resumes them
-        GameDownloadQueue.unregisterAllForSource(GameSource.GOG)
-        // Unregister resume listener from GameDownloadQueue
-        GameDownloadQueue.unregisterResumeListener(GameSource.GOG)
+        GameDownloadService.unregisterAllForSource(GameSource.GOG)
+        // Unregister resume listener from GameDownloadService
+        GameDownloadService.unregisterResumeListener(GameSource.GOG)
 
         instance = null
     }

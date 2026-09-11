@@ -2501,4 +2501,8 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Réinitialiser les réglages du gyroscope</string>
+    <string name="settings_downloads_battery_title">Exécuter les téléchargements en arrière-plan</string>
+    <string name="settings_downloads_battery_subtitle_exempt">Les téléchargements continuent lorsque l\'appareil est en veille. L\'optimisation de la batterie est désactivée pour GameNative.</string>
+    <string name="settings_downloads_battery_subtitle_restricted">Les téléchargements peuvent s\'arrêter lorsque l\'appareil se met en veille. Activez pour désactiver l\'optimisation de la batterie pour GameNative.</string>
+    <string name="downloads_notification_active">Téléchargement des jeux…</string>
 </resources>

@@ -1,14 +1,16 @@
 package app.gamenative.service
 
+import app.gamenative.service.download.GameDownloadService
+
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Classification tests for [GameDownloadQueue.isTransientFailure]: only transient
+ * Classification tests for [GameDownloadService.isTransientFailure]: only transient
  * errors are auto-retried; permanent and unknown errors fail fast.
  */
-class GameDownloadQueueRetryTest {
+class GameDownloadServiceRetryTest {
 
     @Test
     fun transient_errors_are_retried() {
@@ -29,7 +31,7 @@ class GameDownloadQueueRetryTest {
             "service temporarily unavailable",
         )
         transient.forEach { msg ->
-            assertTrue("expected transient: $msg", GameDownloadQueue.isTransientFailure(msg))
+            assertTrue("expected transient: $msg", GameDownloadService.isTransientFailure(msg))
         }
     }
 
@@ -49,22 +51,22 @@ class GameDownloadQueueRetryTest {
             "Cancelled by user",
         )
         permanent.forEach { msg ->
-            assertFalse("expected permanent: $msg", GameDownloadQueue.isTransientFailure(msg))
+            assertFalse("expected permanent: $msg", GameDownloadService.isTransientFailure(msg))
         }
     }
 
     @Test
     fun unknown_and_null_errors_fail_fast() {
-        assertFalse(GameDownloadQueue.isTransientFailure(null))
-        assertFalse(GameDownloadQueue.isTransientFailure(""))
-        assertFalse(GameDownloadQueue.isTransientFailure("download: something unexpected happened"))
+        assertFalse(GameDownloadService.isTransientFailure(null))
+        assertFalse(GameDownloadService.isTransientFailure(""))
+        assertFalse(GameDownloadService.isTransientFailure("download: something unexpected happened"))
     }
 
     @Test
     fun permanent_marker_wins_over_transient_substring() {
         // A 404 wrapped in network-ish wording must still fail fast.
         assertFalse(
-            GameDownloadQueue.isTransientFailure("network request failed: non-200 HTTP status (404)"),
+            GameDownloadService.isTransientFailure("network request failed: non-200 HTTP status (404)"),
         )
     }
 }

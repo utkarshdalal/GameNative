@@ -2506,4 +2506,8 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Resetează setările giroscopului</string>
+    <string name="settings_downloads_battery_title">Rulați descărcările în fundal</string>
+    <string name="settings_downloads_battery_subtitle_exempt">Descărcările continuă când dispozitivul doarme. Optimizarea bateriei este dezactivată pentru GameNative.</string>
+    <string name="settings_downloads_battery_subtitle_restricted">Descărcările se pot opri când dispozitivul doarme. Activați pentru a dezactiva optimizarea bateriei pentru GameNative.</string>
+    <string name="downloads_notification_active">Se descarcă jocurile…</string>
 </resources>
