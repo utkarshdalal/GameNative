@@ -11,6 +11,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
 
 /**
@@ -39,6 +40,36 @@ object EaLicenseManager {
         }.getOrDefault(true)
     }
 
+
+    /**
+     * Asks EA to pull the entitlements granted through linked storefronts (Steam, Epic) into the
+     * EA account, the way the EA app does before it verifies a Steam-launched title. Returns true
+     * when the request was accepted.
+     */
+    suspend fun refreshExternalEntitlements(context: Context, userId: String): Boolean = withContext(Dispatchers.IO) {
+        val token = EaAuthManager.accessToken(context)
+        val url = EaConstants.ENTITLEMENT_REFRESH_ENDPOINT.format(userId)
+        for (method in listOf("PUT", "POST", "GET")) {
+            val req = Request.Builder().url(url)
+                .method(method, if (method == "GET") null else ByteArray(0).toRequestBody(null))
+                .header("Authorization", "Bearer $token")
+                .header("Accept", "application/json")
+                .build()
+            val ok = runCatching {
+                client.newCall(req).execute().use { resp ->
+                    val body = resp.body?.string().orEmpty()
+                    Timber.i("EA refreshExternalEntitlements $method -> ${resp.code}")
+                    if (resp.code == 405 || resp.code == 404) return@use null
+                    resp.isSuccessful
+                }
+            }.onFailure { Timber.w(it, "EA refreshExternalEntitlements $method failed") }.getOrNull()
+            if (ok != null) return@withContext ok
+        }
+        false
+    }
+
+    fun isNotEntitled(e: Throwable): Boolean = e.message?.contains("NOT_ENTITLED") == true
+
     suspend fun request(
         context: Context,
         contentId: String,
@@ -64,7 +95,7 @@ object EaLicenseManager {
             .build()
         client.newCall(req).execute().use { resp ->
             val body = resp.body?.bytes() ?: ByteArray(0)
-            if (!resp.isSuccessful) error("EA licence HTTP ${resp.code}: ${String(body).take(300)}")
+            if (!resp.isSuccessful) error("EA licence HTTP ${resp.code}: ${String(body).replace(Regex("value=\"[^\"]*\""), "value=\"…\"").take(300)}")
             val signature = resp.header("x-signature") ?: error("EA licence: missing x-signature")
             val xml = String(EaCrypto.ooaDecrypt(body))
             fun field(name: String) = Regex("<$name>([^<]*)</$name>").find(xml)?.groupValues?.get(1)

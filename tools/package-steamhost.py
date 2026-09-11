@@ -3,7 +3,7 @@
 
 Usage: python3 tools/package-steamhost.py --base steamhost-OLD.tzst \
     --output steamhost-YYYYMMDD.tzst
-Build and commit ../eahost and ../steamhost first. Requires zstd on PATH.
+Build and commit ../steamhost first. Requires zstd on PATH.
 """
 import argparse
 import hashlib
@@ -36,14 +36,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--eahost", type=Path, default=workspace / "eahost")
     parser.add_argument("--steamhost", type=Path, default=workspace / "steamhost")
     args = parser.parse_args()
     if args.output.exists():
         parser.error("output already exists; choose a new package version")
     prefix = "home/xuser/.wine/drive_c/Program Files (x86)/Steam/"
     sources = {
-        "eastub.exe": args.eahost / "eastub.exe",
         "steam.exe": args.steamhost / "steamhost32.exe",
         "steamhost64.exe": args.steamhost / "steamhost64.exe",
     }
@@ -56,7 +54,6 @@ def main():
         "base_sha256": sha256(args.base),
         "binaries": {name: hashlib.sha256(data).hexdigest() for name, data in payloads.items()},
         "sources": {
-            "eahost": source_revision(args.eahost, ["eastub.c", "build.sh", "eastub.exe"]),
             "steamhost": source_revision(args.steamhost, ["steamhost.c", "build.sh", "steamhost32.exe", "steamhost64.exe"]),
         },
     }
@@ -70,6 +67,9 @@ def main():
                  tarfile.open(fileobj=writer.stdin, mode="w|") as updated:
                 for entry in original:
                     name = entry.name.removeprefix("./")
+                    # Older combined archives included the EA helper; it is released separately.
+                    if name == prefix + "eastub.exe":
+                        continue
                     if name in payloads:
                         if name in seen:
                             raise ValueError(f"duplicate launcher entry: {name}")
@@ -88,7 +88,7 @@ def main():
         manifest["sha256"] = sha256(output)
         output.rename(args.output)
     args.output.with_suffix(args.output.suffix + ".json").write_text(json.dumps(manifest, indent=2) + "\n")
-    print(f"Created {args.output}; all three launcher binaries replaced. SHA-256: {manifest['sha256']}")
+    print(f"Created {args.output}; both Steam launcher binaries replaced. SHA-256: {manifest['sha256']}")
 
 
 if __name__ == "__main__":

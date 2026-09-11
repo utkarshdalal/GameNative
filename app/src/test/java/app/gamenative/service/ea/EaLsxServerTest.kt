@@ -49,7 +49,7 @@ class EaLsxServerTest {
     fun `Most Wanted legacy auth request receives refreshed token with matching routing`() {
         coEvery { EaAuthManager.opaqueLaunchToken(any()) } returns "fresh<&\"token"
         assertEquals(
-            "<LSX><Response id=\"8\" sender=\"EbisuSDK\"><AuthToken value=\"fresh&lt;&amp;&quot;token\"/></Response></LSX>",
+            "<LSX><Response id=\"8\" sender=\"Utility\"><AuthToken value=\"fresh&lt;&amp;&quot;token\"/></Response></LSX>",
             request("<LSX><Request recipient=\"EbisuSDK\" id=\"8\"><GetAuthToken version=\"2\"/></Request></LSX>"),
         )
     }
@@ -60,6 +60,25 @@ class EaLsxServerTest {
         assertEquals(
             "<LSX><Response id=\"9\" sender=\"Utility\"><AuthCode value=\"game-code\"/></Response></LSX>",
             request("<LSX><Request recipient=\"Utility\" id=\"9\"><GetAuthCode ClientId=\"game-client\" Scope=\"signin\"/></Request></LSX>"),
+        )
+    }
+
+    @Test
+    fun `existing access token request remains supported`() {
+        coEvery { EaAuthManager.accessToken(any()) } returns "access-token"
+        assertEquals(
+            "<LSX><Response id=\"10\" sender=\"Utility\"><AuthToken value=\"access-token\"/></Response></LSX>",
+            request("<LSX><Request recipient=\"Utility\" id=\"10\"><GetAccessToken/></Request></LSX>"),
+        )
+    }
+
+    @Test
+    fun `existing legacy auth fallback survives opaque exchange failure`() {
+        coEvery { EaAuthManager.opaqueLaunchToken(any()) } throws IllegalStateException("exchange failed")
+        coEvery { EaAuthManager.accessToken(any()) } returns "fallback-token"
+        assertEquals(
+            "<LSX><Response id=\"11\" sender=\"Utility\"><AuthToken value=\"fallback-token\"/></Response></LSX>",
+            request("<LSX><Request recipient=\"Utility\" id=\"11\"><GetAuthToken/></Request></LSX>"),
         )
     }
 }

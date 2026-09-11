@@ -153,7 +153,7 @@ private const val SNACKBAR_SHOW_TIMEOUT_MS = 15_000L
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
 
 /** Valve Windows client tree (build 2026-01-29) + headless steam.exe for Real Steam mode; see extractSteamFiles. */
-const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20260911.tzst"
+const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20260911-2.tzst"
 
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,
@@ -2083,6 +2083,8 @@ fun preLaunchApp(
             if (container.isLaunchRealSteam && gameSource == GameSource.STEAM &&
                 EaLaunchSupport.isEaTitle(gameId, File(SteamService.getAppDirPath(gameId)))
             ) {
+                setLoadingMessage("Preparing EA launcher support")
+                app.gamenative.service.ea.EaHelperArchive.download(context) { setLoadingProgress(it) }
                 setLoadingMessage(context.getString(R.string.ea_login_required))
                 val signIn = EaLoginGate.ensureSignedIn(context)
                 if (signIn.isFailure) {

@@ -116,7 +116,7 @@ object EaLsxServer {
                 when (depth) {
                     2 -> { kind = parser.name; for (i in 0 until parser.attributeCount) { when (parser.getAttributeName(i)) { "id" -> id = parser.getAttributeValue(i); "recipient" -> recipient = parser.getAttributeValue(i) } } }
                     3 -> { name = parser.name; for (i in 0 until parser.attributeCount) attrs[parser.getAttributeName(i)] = parser.getAttributeValue(i) }
-                    4 -> { val n = parser.name; val text = runCatching { parser.nextText() }.getOrDefault(""); children[n] = text; depth-- }
+                    4 -> { val n = parser.name; val text = runCatching { parser.nextText() }.getOrDefault(""); children[n] = children[n]?.let { "$it\u0001$text" } ?: text; depth-- }
                 }
             } else if (ev == XmlPullParser.END_TAG) depth--
             ev = parser.next()
@@ -125,6 +125,7 @@ object EaLsxServer {
     }
 
     private fun esc(s: String) = s.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+
 
     private fun response(id: String, sender: String, body: String) = "<LSX><Response id=\"${esc(id)}\" sender=\"${esc(sender)}\">$body</Response></LSX>"
 
@@ -146,7 +147,6 @@ object EaLsxServer {
                     if (raw.startsWith("<GameNative")) { writeFrame(out, handleStub(raw)); continue }
                     val plain = if (key != null) EaCrypto.lsxDecrypt(key, raw) else raw
                     val msg = parse(plain.replace("version=\"\" ", "")) ?: continue
-                    // Authentication and licence frames contain credentials; log only routing.
                     Timber.d("LSX <- ${msg.name} id=${msg.id}")
                     if (msg.name == "ChallengeResponse") {
                         val ok = EaCrypto.checkChallengeResponse(msg.attrs["response"].orEmpty(), START_KEY)
@@ -188,18 +188,24 @@ object EaLsxServer {
                 "PI" to "PROGRESSIVE_INSTALLATION", "PI" to "PROGRESSIVE_INSTALLATION_EVENT", "EbisuSDK" to "CONTENT",
             ).joinToString("") { (n, f) -> "<Service Name=\"$n\" Facility=\"$f\"/>" } + "</GetConfigResponse>"
 
-            // Older Origin SDK games (including NFS Most Wanted) request the account's
-            // opaque access token instead of a client-specific authorization code.
-            "GetAuthToken" -> {
-                val token = runBlocking { EaAuthManager.opaqueLaunchToken(ctx) }
-                "<AuthToken value=\"${esc(token)}\"/>"
-            }
-
             "GetAuthCode" -> {
                 val clientId = m.attrs["ClientId"].orEmpty()
                 val code = runCatching { runBlocking { EaAuthManager.authCodeFor(ctx, clientId, m.attrs["Scope"]) } }
                     .onFailure { Timber.e(it, "LSX GetAuthCode for $clientId failed") }.getOrDefault("invalid")
                 "<AuthCode value=\"${esc(code)}\"/>"
+            }
+
+            "GetAuthToken" -> {
+                val token = runCatching { runBlocking { EaAuthManager.opaqueLaunchToken(ctx) } }
+                    .onFailure { Timber.e(it, "LSX GetAuthToken: opaque token failed, falling back to access token") }
+                    .getOrElse { runCatching { runBlocking { EaAuthManager.accessToken(ctx) } }.getOrDefault("") }
+                return response(m.id, "Utility", "<AuthToken value=\"${esc(token)}\"/>")
+            }
+
+            "GetAccessToken" -> {
+                val token = runCatching { runBlocking { EaAuthManager.accessToken(ctx) } }
+                    .onFailure { Timber.e(it, "LSX GetAccessToken failed") }.getOrDefault("")
+                return response(m.id, "Utility", "<AuthToken value=\"${esc(token)}\"/>")
             }
 
             "GetProfile" -> "<GetProfileResponse Persona=\"${esc(creds?.displayName.orEmpty())}\" SubscriberLevel=\"0\" CommerceCurrency=\"USD\" " +
@@ -251,7 +257,20 @@ object EaLsxServer {
             "SetPresence" -> "<ErrorSuccess Code=\"0\" Description=\"\"/>"
             "QueryFriends" -> "<QueryFriendsResponse/>"
             "QueryPresence" -> "<QueryPresenceResponse/>"
-            "QueryEntitlements" -> "<QueryEntitlementsResponse/>"
+            "QueryEntitlements" -> {
+                fun list(key: String) = m.children[key]?.split('\u0001')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+                val groups = (listOfNotNull(m.attrs["Group"]?.takeIf { it.isNotBlank() }) + list("FilterGroups")).distinct()
+                val items = (listOfNotNull(m.attrs["ItemId"]?.takeIf { it.isNotBlank() }, m.attrs["OfferId"]?.takeIf { it.isNotBlank() }) + list("FilterItems") + list("FilterOffers")).distinct()
+                val includeChildren = m.attrs["includeChildGroups"].equals("true", ignoreCase = true)
+                val entitlements = runCatching { runBlocking { EaEntitlements.query(ctx, groups, items, includeChildren) } }
+                    .onFailure { Timber.e(it, "LSX QueryEntitlements failed") }.getOrDefault(emptyList())
+                "<QueryEntitlementsResponse>" + entitlements.joinToString("") { e ->
+                    "<Entitlement EntitlementTag=\"${esc(e.tag)}\" Expiration=\"${esc(e.terminationDate ?: "0000-00-00T00:00:00")}\" " +
+                        "LastModifiedDate=\"0000-00-00T00:00:00\" GrantDate=\"${esc(e.grantDate)}\" ResourceId=\"\" EntitlementId=\"${esc(e.id)}\" " +
+                        "ItemId=\"${esc(e.productId)}\" Source=\"STEAM\" Type=\"${esc(e.type)}\" Version=\"${e.version}\" UseCount=\"${e.useCount}\" " +
+                        "Group=\"${esc(e.group.ifEmpty { groups.firstOrNull().orEmpty() })}\"/>"
+                } + "</QueryEntitlementsResponse>"
+            }
             "QueryOffers" -> "<QueryOffersResponse/>"
             "QueryImage" -> "<QueryImageResponse Result=\"0\"/>"
             "IsProgressiveInstallationAvailable" -> "<IsProgressiveInstallationAvailableResponse ItemId=\"${esc(m.attrs["ItemId"].orEmpty())}\" Available=\"false\"/>"
@@ -282,11 +301,32 @@ object EaLsxServer {
                 val hash = m.second["MachineHash"].orEmpty()
                 val ooaState = m.second["OoaState"]?.toIntOrNull() ?: 0
                 if (hash.isNotEmpty()) machineHashStore[s] = hash
-                if (ooaState != 0 && s.contentId.isNotEmpty() && hash.isNotEmpty() && EaLicenseManager.needsUpdate(s.prefixDriveC, s.contentId)) {
-                    val lic = runBlocking { EaLicenseManager.request(s.context, s.contentId, hash) }
-                    EaLicenseManager.save(s.prefixDriveC, lic, signatureEncoded = ooaState == 1)
-                }
                 val creds = runBlocking { EaAuthManager.launchCredentials(s.context) }
+                if (ooaState != 0 && s.contentId.isNotEmpty() && hash.isNotEmpty() && EaLicenseManager.needsUpdate(s.prefixDriveC, s.contentId)) {
+                    val lic = runBlocking {
+                        EaLicenseManager.refreshExternalEntitlements(s.context, creds.userId)
+                        runCatching { EaLicenseManager.request(s.context, s.contentId, hash) }.getOrElse { first ->
+                            if (!EaLicenseManager.isNotEntitled(first)) throw first
+                            Timber.w("EA licence not entitled for ${s.contentId}; refreshing storefront entitlements and retrying")
+                            EaLicenseManager.refreshExternalEntitlements(s.context, creds.userId)
+                            var granted: EaLicenseManager.License? = null
+                            var lastError: Throwable = first
+                            for (id in listOf(s.contentId) + s.contentIds.filter { it != s.contentId }) {
+                                val r = runCatching { EaLicenseManager.request(s.context, id, hash) }
+                                if (r.isSuccess) { granted = r.getOrThrow(); Timber.i("EA licence granted under content id $id"); break }
+                                lastError = r.exceptionOrNull()!!
+                                Timber.w("EA licence for content id $id: ${lastError.message?.take(160)}")
+                                if (!EaLicenseManager.isNotEntitled(lastError)) throw lastError
+                            }
+                            granted ?: error(
+                                "EA account ${creds.displayName} has no entitlement for content ${s.contentId} (tried ${s.contentIds.size} ids). " +
+                                    "Link your Steam account to this EA account at ${EaConstants.ACCOUNT_CONNECTIONS_URL}, then launch again.",
+                            )
+                        }
+                    }
+                    EaLicenseManager.save(s.prefixDriveC, lic, signatureEncoded = ooaState == 1)
+                    if (lic.contentId != s.contentId) EaLicenseManager.save(s.prefixDriveC, lic.copy(contentId = s.contentId), signatureEncoded = ooaState == 1)
+                }
                 val access = runBlocking { EaAuthManager.accessToken(s.context) }
                 val opaque = runCatching { runBlocking { EaAuthManager.opaqueLaunchToken(s.context) } }.onFailure { Timber.w(it, "opaque launch token unavailable") }.getOrDefault("")
                 val env = linkedMapOf(

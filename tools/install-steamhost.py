@@ -52,8 +52,8 @@ def main():
     run_as("test -d " + shlex.quote(prefix))
     archive_prefix = "home/xuser/.wine/drive_c/Program Files (x86)/Steam/"
     expected = {name.removeprefix(archive_prefix): value for name, value in manifest["binaries"].items()}
-    if set(expected) != {"eastub.exe", "steam.exe", "steamhost64.exe"}:
-        parser.error("manifest must describe the three launcher binaries")
+    if set(expected) != {"steam.exe", "steamhost64.exe"}:
+        parser.error("manifest must describe the two Steam launcher binaries")
     remote = f"/data/local/tmp/gn-steamhost-{digest[:12]}"
     shell("mkdir -p " + shlex.quote(remote))
     try:
@@ -86,7 +86,7 @@ def main():
                 raise ValueError("cached archive mismatch")
     finally:
         shell("rm -rf " + shlex.quote(remote))
-    print("Installed and verified all three prefix binaries and the cached archive. Relaunch the game to use them.")
+    print("Installed and verified both Steam prefix binaries and the cached archive. Relaunch the game to use them.")
 
 
 if __name__ == "__main__":

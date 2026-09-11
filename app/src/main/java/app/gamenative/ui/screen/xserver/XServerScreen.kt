@@ -393,6 +393,7 @@ private val REAL_STEAM_PROCESSES = setOf(
     "steamerrorreporter",
     "steamerrorreporter64",
     "gameoverlayui",
+    "eastub",
 )
 
 private var realSteamGameExecutable = ""
@@ -4157,9 +4158,8 @@ private fun setupXEnvironment(
     // Moved here, as guestProgramLauncherComponent.environment is setup after addComponent()
     if (container != null) {
         if (container.isLaunchRealSteam && !envVars.has("STEAMHOST_APPID")) {
-            // getWineStartCommand supplies STEAMHOST_APPID only when launching the host.
-            // The host owns its credential cache and receives STEAMHOST_TOKEN.
-            // Legacy token setup rewrites that cache and may boot/kill Wine before launch.
+            // The selected steamhost launch owns its cache and receives STEAMHOST_TOKEN.
+            // Legacy token setup can rewrite that cache and boot/kill Wine.
             SteamTokenLogin(
                 steamId = PrefManager.steamUserSteamId64.toString(),
                 login = PrefManager.username,
