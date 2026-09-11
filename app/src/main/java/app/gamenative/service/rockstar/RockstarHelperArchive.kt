@@ -9,7 +9,7 @@ import java.util.Properties
 
 /** Versioned helper cache. Does not overwrite game executables, mods, INIs or credentials. */
 object RockstarHelperArchive {
-    const val VERSION = "20260911.3"
+    const val VERSION = "20260911.7"
     const val ASSET = "rockstar/rgschost-$VERSION.tzst"
     private const val MANIFEST = "manifest.properties"
     private val binaries = setOf(
