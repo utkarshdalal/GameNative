@@ -13,9 +13,9 @@ import java.util.Properties
 
 /** Versioned helper cache. Does not overwrite game executables, mods, INIs or credentials. */
 object RockstarHelperArchive {
-    const val VERSION = "20260911.8"
+    const val VERSION = "20260912.1"
     const val ARCHIVE = "rgschost-$VERSION.tzst"
-    internal const val ARCHIVE_SHA256 = "9dc815936a4929e6726e5ad73dc8fd854ff06b41eed0ec76175b642d04500761"
+    internal const val ARCHIVE_SHA256 = "b5b043f5137736440d09e712d07193de0085a6c5e52f081619030fc51a692fd8"
     private const val MANIFEST = "manifest.properties"
     private val binaries = setOf(
         "rgscstub.exe", "scpatch.dll", "bink2w64.dll",
