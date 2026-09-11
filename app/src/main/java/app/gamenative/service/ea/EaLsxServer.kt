@@ -126,8 +126,6 @@ object EaLsxServer {
 
     private fun esc(s: String) = s.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
-    private val secretAttrs = Regex("""(<(?:AuthToken|AuthCode)\s+value=")[^"]*""")
-    private fun redact(xml: String) = secretAttrs.replace(xml) { "${it.groupValues[1]}…" }
 
     private fun response(id: String, sender: String, body: String) = "<LSX><Response id=\"${esc(id)}\" sender=\"${esc(sender)}\">$body</Response></LSX>"
 
@@ -148,8 +146,8 @@ object EaLsxServer {
                     if (raw.isBlank()) continue
                     if (raw.startsWith("<GameNative")) { writeFrame(out, handleStub(raw)); continue }
                     val plain = if (key != null) EaCrypto.lsxDecrypt(key, raw) else raw
-                    Timber.d("LSX <- ${plain.take(600)}")
                     val msg = parse(plain.replace("version=\"\" ", "")) ?: continue
+                    Timber.d("LSX <- ${msg.name} id=${msg.id}")
                     if (msg.name == "ChallengeResponse") {
                         val ok = EaCrypto.checkChallengeResponse(msg.attrs["response"].orEmpty(), START_KEY)
                         if (!ok) { Timber.e("LSX challenge response invalid, closing"); break }
@@ -165,7 +163,7 @@ object EaLsxServer {
                         continue
                     }
                     val reply = dispatch(msg) ?: continue
-                    Timber.d("LSX -> ${redact(reply).take(600)}")
+                    Timber.d("LSX -> ${msg.name} id=${msg.id} complete")
                     writeFrame(out, if (key != null) EaCrypto.lsxEncrypt(key, reply) else reply)
                 }
             } catch (e: Exception) {
@@ -303,7 +301,7 @@ object EaLsxServer {
                 val hash = m.second["MachineHash"].orEmpty()
                 val ooaState = m.second["OoaState"]?.toIntOrNull() ?: 0
                 if (hash.isNotEmpty()) machineHashStore[s] = hash
-                val creds = EaAuthManager.credentials(s.context) ?: error("not signed in to EA")
+                val creds = runBlocking { EaAuthManager.launchCredentials(s.context) }
                 if (ooaState != 0 && s.contentId.isNotEmpty() && hash.isNotEmpty() && EaLicenseManager.needsUpdate(s.prefixDriveC, s.contentId)) {
                     val lic = runBlocking {
                         EaLicenseManager.refreshExternalEntitlements(s.context, creds.userId)

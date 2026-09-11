@@ -20,6 +20,6 @@ object EaConstants {
     /** Path of the licence store inside the Wine prefix (relative to drive_c). */
     const val LICENSE_DIR = "ProgramData/Electronic Arts/EA Services/License"
 
-    /** Windows-side helper shipped with the Steam client package; handles link2ea:// and starts the game. */
+    /** Windows-side helper installed from the separate EA archive; handles link2ea:// and starts the game. */
     const val STUB_EXE = "C:\\Program Files (x86)\\Steam\\eastub.exe"
 }

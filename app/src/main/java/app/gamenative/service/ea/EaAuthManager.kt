@@ -2,8 +2,8 @@ package app.gamenative.service.ea
 
 import android.content.Context
 import android.net.Uri
-import android.util.Base64
 import android.provider.Settings
+import android.util.Base64
 import app.gamenative.Crypto
 import java.io.File
 import java.security.SecureRandom
@@ -20,6 +20,7 @@ import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import org.json.JSONArray
 import timber.log.Timber
 
 data class EaCredentials(
@@ -29,6 +30,7 @@ data class EaCredentials(
     val userId: String,
     val personaId: String,
     val displayName: String,
+    val personaNamespace: String = "",
 )
 
 /**
@@ -44,6 +46,7 @@ object EaAuthManager {
         .build()
 
     private val lock = Mutex()
+    private val opaqueTokens = EaOpaqueTokenCache { android.os.SystemClock.elapsedRealtime() }
     private var cached: EaCredentials? = null
     private var pendingVerifier: String? = null
 
@@ -106,6 +109,7 @@ object EaAuthManager {
                 userId = identity.first,
                 personaId = identity.second,
                 displayName = identity.third,
+                personaNamespace = "cem_ea_id",
             )
             save(context, creds)
             pendingVerifier = null
@@ -137,6 +141,20 @@ object EaAuthManager {
 
     fun credentials(context: Context): EaCredentials? = load(context)
 
+    /** Repair older saved sessions that selected the first (often linked Steam) persona. */
+    suspend fun launchCredentials(context: Context): EaCredentials {
+        val token = accessToken(context)
+        return lock.withLock {
+            val creds = load(context) ?: error("Not signed in to EA")
+            if (creds.personaNamespace == "cem_ea_id") return@withLock creds
+            withContext(Dispatchers.IO) {
+                val identity = fetchIdentity(token)
+                creds.copy(userId = identity.first, personaId = identity.second,
+                    displayName = identity.third, personaNamespace = "cem_ea_id").also { save(context, it) }
+            }
+        }
+    }
+
     /**
      * The game asks the launcher for an auth code for its own client id; EA issues it by
      * redirecting an authenticated /connect/auth request.
@@ -150,14 +168,16 @@ object EaAuthManager {
     /** Short-lived opaque token the EA app hands games as EALaunchUserAuthToken. */
     suspend fun opaqueLaunchToken(context: Context): String = withContext(Dispatchers.IO) {
         val token = accessToken(context)
-        val scopes = "basic.commerce.cartv2 service.atom dp.client.default signin social_recommendation_user " +
-            "basic.optin.write basic.commerce.cartv2.write basic.billing external.social_information_ups_admin"
-        val url = authUrl(context, EaConstants.CLIENT_ID, "token", token, extra = mapOf(
-            "scope" to scopes,
-            "token_format" to "OPAQUE",
-            "expires_in" to "550",
-        ))
-        redirectParam(url, "access_token")
+        opaqueTokens.get(token) {
+            val scopes = "basic.commerce.cartv2 service.atom dp.client.default signin social_recommendation_user " +
+                "basic.optin.write basic.commerce.cartv2.write basic.billing external.social_information_ups_admin"
+            val url = authUrl(context, EaConstants.CLIENT_ID, "token", token, extra = mapOf(
+                "scope" to scopes,
+                "token_format" to "OPAQUE",
+                "expires_in" to "550",
+            ))
+            redirectParam(url, "access_token")
+        }
     }
 
     private fun redirectParam(url: String, key: String): String {
@@ -236,10 +256,17 @@ object EaAuthManager {
             val body = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) error("EA identity HTTP ${resp.code}: ${body.take(300)}")
             val personas = JSONObject(body).getJSONObject("personas").getJSONArray("persona")
-            val p = personas.getJSONObject(0)
-            val userId = p.optString("pidId").ifEmpty { p.getJSONObject("pidId").toString() }
-            return Triple(userId, p.optString("personaId"), p.optString("displayName"))
+            return selectEaPersona(personas)
         }
+    }
+
+    internal fun selectEaPersona(personas: JSONArray): Triple<String, String, String> {
+        val persona = (0 until personas.length()).asSequence().map { personas.getJSONObject(it) }
+            .firstOrNull { it.optString("namespaceName") == "cem_ea_id" && it.optString("status", "ACTIVE") == "ACTIVE" }
+            ?: error("EA account has no active EA persona")
+        val userId = persona.optString("pidId").takeIf { it.isNotBlank() } ?: error("EA persona has no user ID")
+        val personaId = persona.optString("personaId").takeIf { it.isNotBlank() } ?: error("EA persona has no persona ID")
+        return Triple(userId, personaId, persona.getString("displayName"))
     }
 
     private fun save(context: Context, creds: EaCredentials) {
@@ -250,6 +277,7 @@ object EaAuthManager {
             .put("user_id", creds.userId)
             .put("persona_id", creds.personaId)
             .put("display_name", creds.displayName)
+            .put("persona_namespace", creds.personaNamespace)
             .toString()
         credentialsFile(context).writeBytes(Crypto.encrypt(json.toByteArray()))
         cached = creds
@@ -268,6 +296,7 @@ object EaAuthManager {
                 userId = json.getString("user_id"),
                 personaId = json.getString("persona_id"),
                 displayName = json.getString("display_name"),
+                personaNamespace = json.optString("persona_namespace"),
             ).also { cached = it }
         }.onFailure { Timber.w(it, "EA credentials unreadable, discarding") ; f.delete() }.getOrNull()
     }

@@ -2083,6 +2083,8 @@ fun preLaunchApp(
             if (container.isLaunchRealSteam && gameSource == GameSource.STEAM &&
                 EaLaunchSupport.isEaTitle(gameId, File(SteamService.getAppDirPath(gameId)))
             ) {
+                setLoadingMessage("Preparing EA launcher support")
+                app.gamenative.service.ea.EaHelperArchive.download(context) { setLoadingProgress(it) }
                 setLoadingMessage(context.getString(R.string.ea_login_required))
                 val signIn = EaLoginGate.ensureSignedIn(context)
                 if (signIn.isFailure) {

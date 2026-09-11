@@ -71,6 +71,9 @@ object EaLaunchSupport {
         exeRelative: String,
         arguments: String,
     ) {
+        // setupWineSystemFiles has already refreshed Steam and removed older executables.
+        // Install the independently versioned EA helper before registering/launching it.
+        EaHelperArchive.install(context, File(container.rootDir, ".wine/drive_c"))
         if (!EaAuthManager.isLoggedIn(context)) {
             Timber.e("EA: no EA account signed in; the game will not be able to authenticate")
         }
