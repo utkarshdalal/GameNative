@@ -14,11 +14,6 @@ import java.io.File
 class RockstarHelperArchiveTest {
     @get:Rule val temporary = TemporaryFolder()
 
-    private fun archive(): File = listOf(
-        File("src/main/assets/${RockstarHelperArchive.ASSET}"),
-        File("app/src/main/assets/${RockstarHelperArchive.ASSET}"),
-    ).first { it.isFile }
-
     @Test fun detectsInstalledRockstarMetadataButNotUnrelatedFiles() {
         val game = temporary.newFolder()
         assertFalse(RockstarHelperArchive.usesRockstar(game))
@@ -31,19 +26,31 @@ class RockstarHelperArchiveTest {
         assertTrue(RockstarHelperArchive.usesRockstar(game))
     }
 
-    @Test fun extractsRealArchiveOnceAndRepairsCorruptCache() {
+    @Test fun extractsArchiveOnceAndRepairsCorruptCache() {
         val files = temporary.newFolder()
+        val bytes = rockstarTestArchive()
         var opens = 0
-        val open = { opens++; archive().inputStream() }
+        val open = { opens++; bytes.inputStream() }
         val destination = RockstarHelperArchive.ensureExtracted(files, open)
         assertTrue(RockstarHelperArchive.isReady(files))
-        assertEquals(6, destination.listFiles()!!.size)
+        assertEquals(7, destination.listFiles()!!.size)
         RockstarHelperArchive.ensureExtracted(files, open)
         assertEquals(1, opens)
         File(destination, "rgscstub.exe").writeText("damaged")
         assertFalse(RockstarHelperArchive.isReady(files))
         RockstarHelperArchive.ensureExtracted(files, open)
         assertEquals(2, opens)
+        assertTrue(RockstarHelperArchive.isReady(files))
+    }
+
+    @Test fun installsDownloadedArchiveAndRejectsCorruptDownloads() {
+        val files = temporary.newFolder()
+        val archive = temporary.newFile().apply { writeBytes(rockstarTestArchive()) }
+        val hash = RockstarHelperArchive.sha256(archive)
+        RockstarHelperArchive.install(archive, files, hash)
+        assertTrue(RockstarHelperArchive.isReady(files))
+        archive.writeText("incomplete download")
+        assertThrows(IllegalStateException::class.java) { RockstarHelperArchive.install(archive, files, hash) }
         assertTrue(RockstarHelperArchive.isReady(files))
     }
 

@@ -12,8 +12,7 @@ class RockstarHelperDeploymentTest {
     @Test fun stagesOnlyPrivateHelperFilesAndRepairsChangedCopies() {
         val files = temporary.newFolder()
         val game = temporary.newFolder()
-        val archive = listOf(File("src/main/assets/${RockstarHelperArchive.ASSET}"), File("app/src/main/assets/${RockstarHelperArchive.ASSET}")).first { it.isFile }
-        RockstarHelperArchive.ensureExtracted(files) { archive.inputStream() }
+        RockstarHelperArchive.ensureExtracted(files) { rockstarTestArchive().inputStream() }
         File(game, "Game.exe").writeText("original game")
         File(game, "bink2w64.dll").writeText("original bink")
         File(game, "rgscstub.ini").writeText("user settings")

@@ -5,8 +5,6 @@ import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.service.rockstar.RockstarHelperArchive
 import com.winlator.container.Container
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 
 /** No download or extraction during ordinary launches. Trigger from installed Rockstar files. */
@@ -40,9 +38,7 @@ object RockstarHelperDependency : LaunchDependency {
         gameSource: GameSource,
         gameId: Int,
     ) {
-        withContext(Dispatchers.IO) {
-            RockstarHelperArchive.ensureExtracted(context.filesDir) { context.assets.open(RockstarHelperArchive.ASSET) }
-        }
+        RockstarHelperArchive.downloadAndExtract(context, callbacks.setLoadingProgress)
         callbacks.setLoadingProgress(1f)
     }
 }

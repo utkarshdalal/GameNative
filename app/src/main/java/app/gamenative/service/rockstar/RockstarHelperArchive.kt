@@ -1,5 +1,9 @@
 package app.gamenative.service.rockstar
 
+import android.content.Context
+import app.gamenative.service.SteamService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream
 import java.io.File
@@ -9,14 +13,15 @@ import java.util.Properties
 
 /** Versioned helper cache. Does not overwrite game executables, mods, INIs or credentials. */
 object RockstarHelperArchive {
-    const val VERSION = "20260911.7"
-    const val ASSET = "rockstar/rgschost-$VERSION.tzst"
+    const val VERSION = "20260911.8"
+    const val ARCHIVE = "rgschost-$VERSION.tzst"
+    internal const val ARCHIVE_SHA256 = "9dc815936a4929e6726e5ad73dc8fd854ff06b41eed0ec76175b642d04500761"
     private const val MANIFEST = "manifest.properties"
     private val binaries = setOf(
         "rgscstub.exe", "scpatch.dll", "bink2w64.dll",
         "SocialClubD3D12Renderer.dll", "SocialClubVulkanLayer.dll",
     )
-    private val entries = binaries + MANIFEST
+    private val entries = binaries + setOf(MANIFEST, "NOTICE.txt")
 
     fun directory(filesDir: File) = File(filesDir, "rockstar/rgschost-$VERSION")
 
@@ -35,7 +40,7 @@ object RockstarHelperArchive {
         return listOf("socialclub.dll", "socialclub64.dll").any { names[it]?.isFile == true }
     }
 
-    private fun sha256(file: File): String {
+    internal fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input ->
             val buffer = ByteArray(8192)
@@ -50,9 +55,23 @@ object RockstarHelperArchive {
 
     fun isReady(filesDir: File): Boolean = validate(directory(filesDir))
 
+    suspend fun downloadAndExtract(context: Context, onProgress: (Float) -> Unit) = withContext(Dispatchers.IO) {
+        if (isReady(context.filesDir)) return@withContext directory(context.filesDir)
+        val archive = File(context.filesDir, ARCHIVE)
+        if (!archive.isFile || sha256(archive) != ARCHIVE_SHA256) {
+            SteamService.fetchFileWithFallback(ARCHIVE, archive, context, onProgress)
+        }
+        install(archive, context.filesDir)
+    }
+
+    internal fun install(archive: File, filesDir: File, archiveHash: String = ARCHIVE_SHA256): File {
+        check(archive.isFile && sha256(archive) == archiveHash) { "Rockstar helper download failed integrity verification" }
+        return ensureExtracted(filesDir) { archive.inputStream() }
+    }
+
     private fun validate(dir: File): Boolean = runCatching {
         val manifest = Properties().apply { File(dir, MANIFEST).inputStream().use { load(it) } }
-        manifest.getProperty("version") == VERSION && binaries.all { name ->
+        manifest.getProperty("version") == VERSION && File(dir, "NOTICE.txt").isFile && binaries.all { name ->
             val file = File(dir, name)
             val hash = manifest.getProperty(name).orEmpty()
             file.isFile && file.length() in 2..16L * 1024 * 1024 &&
