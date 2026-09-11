@@ -111,6 +111,8 @@ import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamService
 import app.gamenative.service.ea.EaLaunchSupport
+import app.gamenative.service.rockstar.RockstarHelperDeployment
+import app.gamenative.service.rockstar.RockstarLaunchSupport
 import app.gamenative.service.epic.EpicOverlayManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
@@ -397,6 +399,7 @@ private val REAL_STEAM_PROCESSES = setOf(
 )
 
 private var realSteamGameExecutable = ""
+private var realSteamRockstarDirectory: File? = null
 
 private fun buildEssentialProcessAllowlist(realSteam: Boolean): Set<String> {
     val essentialServices = WineUtils.getEssentialServiceNames()
@@ -951,8 +954,9 @@ fun XServerScreen(
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
         if (exitWatchJob?.isActive == true) return
+        val rockstarExecutable = realSteamRockstarDirectory?.let(RockstarHelperDeployment::gameExecutable)
         val targetExecutable = extractExecutableBasename(
-            if (container.isLaunchRealSteam && realSteamGameExecutable.isNotEmpty()) realSteamGameExecutable else container.executablePath,
+            rockstarExecutable ?: if (container.isLaunchRealSteam && realSteamGameExecutable.isNotEmpty()) realSteamGameExecutable else container.executablePath,
         )
         if (!windowMatchesExecutable(window, targetExecutable)) return
 
@@ -4305,6 +4309,7 @@ private fun getWineStartCommand(
     gameSource: GameSource,
     offline: Boolean
 ): String {
+    realSteamRockstarDirectory = null
     val tempDir = File(container.getRootDir(), ".wine/drive_c/windows/temp")
     FileUtils.clear(tempDir)
 
@@ -4664,7 +4669,9 @@ private fun getWineStartCommand(
             // The native libsteamclient.so is already running in the Android process
             // and will monitor the game via nativeWaitAppExit.
             val appDirPath = SteamService.getAppDirPath(gameId)
-            val exePath = container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
+            val isRockstar = RockstarLaunchSupport.isRockstarTitle(File(appDirPath))
+            val exePath = if (isRockstar) RockstarHelperDeployment.EXECUTABLE else container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
+            realSteamRockstarDirectory = if (isRockstar) File(appDirPath) else null
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
             val executableDir = appDirPath + "/" + exePath.substringBeforeLast("/", "")
             guestProgramLauncherComponent.workingDir = File(executableDir)
@@ -4677,14 +4684,16 @@ private fun getWineStartCommand(
             // arguments and working dir; a user-chosen exe in the container wins,
             // and keeps the config's arguments only when it is the same executable.
             val isEaLaunch = EaLaunchSupport.isEaTitle(gameId, File(appDirPath))
+            val isRockstar = RockstarLaunchSupport.isRockstarTitle(File(appDirPath))
+            realSteamRockstarDirectory = if (isRockstar) File(appDirPath) else null
             val launchExe = if (isEaLaunch) "" else appLaunchInfo?.executable?.trim('/').orEmpty()
-            val exePath = container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
+            val exePath = if (isRockstar) RockstarHelperDeployment.EXECUTABLE else container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
             val launchArgs = if (appLaunchInfo != null && exePath.replace('\\', '/').trim('/').equals(launchExe, ignoreCase = true)) appLaunchInfo.arguments.trim() else ""
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
             val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
             val steamRoot = "C:\\Program Files (x86)\\Steam"
             val gameCmd = "\"$steamRoot\\steamapps\\common\\$gameFolderName\\$normalizedExe\"" + (if (launchArgs.isNotEmpty()) " $launchArgs" else "")
-            val launchWorkDir = appLaunchInfo?.workingDir?.trim('/').orEmpty()
+            val launchWorkDir = if (isRockstar) "" else appLaunchInfo?.workingDir?.trim('/').orEmpty()
             val relDir = if (launchWorkDir.isNotEmpty()) launchWorkDir else exePath.replace('\\', '/').substringBeforeLast("/", "")
             val exeSubDir = relDir.replace('/', '\\')
             val gameDir = "$steamRoot\\steamapps\\common\\$gameFolderName" + (if (exeSubDir.isNotEmpty()) "\\$exeSubDir" else "")

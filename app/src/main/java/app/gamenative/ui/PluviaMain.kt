@@ -71,6 +71,9 @@ import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
 import app.gamenative.service.ea.EaLaunchSupport
 import app.gamenative.service.ea.EaLoginGate
+import app.gamenative.service.rockstar.RockstarLaunchSupport
+import app.gamenative.service.rockstar.RockstarHelperDeployment
+import app.gamenative.service.rockstar.RockstarLoginGate
 import app.gamenative.service.amazon.AmazonService
 import com.posthog.PostHog
 import app.gamenative.ui.component.AchievementOverlay
@@ -2100,6 +2103,43 @@ fun preLaunchApp(
                         ),
                     )
                     return@launch
+                }
+            }
+            /*
+             * Rockstar titles sign in through Social Club, and the Windows stub needs the
+             * resulting ScAuthToken on disk before the game starts: it mints the ROS ticket with
+             * CreateTicketScAuthToken2 and exits when the token file is missing. Minting from
+             * Steam ownership instead was tried and refused by the server, so the account sign-in
+             * is required rather than a convenience.
+             */
+            if (gameSource == GameSource.STEAM && (container.isLaunchRealSteam || container.isLaunchBionicSteam) &&
+                RockstarLaunchSupport.isRockstarTitle(File(SteamService.getAppDirPath(gameId)))
+            ) {
+                val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
+                setLoadingMessage(context.getString(R.string.rockstar_login_required))
+                val signIn = RockstarLoginGate.ensureSignedIn(context, "launcher")
+                if (signIn.isFailure && RockstarLaunchSupport.hasUsableToken(File(SteamService.getAppDirPath(gameId)))) {
+                    /* A token is already in place, so carry on rather than block a launch that works. */
+                    Timber.tag("preLaunchApp").w("Rockstar sign-in did not complete; using the token already in the game directory")
+                } else if (signIn.isFailure) {
+                    Timber.tag("preLaunchApp").w(signIn.exceptionOrNull(), "Rockstar sign-in did not complete")
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.rockstar_login_required_title),
+                            message = context.getString(R.string.rockstar_login_failed, signIn.exceptionOrNull()?.message ?: ""),
+                            dismissBtnText = context.getString(R.string.ok),
+                        ),
+                    )
+                    return@launch
+                }
+                withContext(Dispatchers.IO) {
+                    check(RockstarLaunchSupport.placeToken(context, rockstarGameDir) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir)) {
+                        "Could not place Rockstar sign-in credentials in the game directory"
+                    }
+                    RockstarHelperDeployment.prepare(context.filesDir, rockstarGameDir)
                 }
             }
             if (container.isLaunchBionicSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {

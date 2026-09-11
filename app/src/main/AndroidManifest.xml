@@ -145,6 +145,13 @@
             android:exported="false"
             android:theme="@style/Theme.Pluvia" />
 
+        <!-- Rockstar / Social Club sign-in (in-app WebView; the page needs a real browser
+             because it runs reCAPTCHA Enterprise and adds its own Castle token) -->
+        <activity
+            android:name=".ui.screen.auth.RockstarOAuthActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Pluvia" />
+
         <!-- Epic OAuth (in-app WebView; intercepts redirect for automatic code capture) -->
         <activity
             android:name=".ui.screen.auth.EpicOAuthActivity"

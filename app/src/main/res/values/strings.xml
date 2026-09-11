@@ -1678,6 +1678,9 @@
     <string name="gog_settings_login_title">Sign in to GOG</string>
     <string name="gog_settings_login_subtitle">Sign in to your GOG account</string>
     <string name="gog_login_success_title">Login Successful</string>
+    <string name="rockstar_login_required">Sign in to your Rockstar account to launch this game</string>
+    <string name="rockstar_login_required_title">Rockstar sign-in required</string>
+    <string name="rockstar_login_failed">Rockstar sign-in failed: %1$s</string>
     <string name="ea_login_required">Sign in to your EA account to launch this game</string>
     <string name="ea_login_required_title">EA sign-in required</string>
     <string name="ea_login_success">Signed in to EA as %1$s</string>
