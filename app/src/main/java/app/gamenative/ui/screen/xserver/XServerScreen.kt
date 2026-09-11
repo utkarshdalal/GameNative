@@ -4106,9 +4106,6 @@ private fun setupXEnvironment(
         environment.addComponent(VortekRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options2, context))
     }
 
-    // The Rockstar stub creates DLL backups and handoff files during startup. The
-    // external-storage lookup cache can hide these new files from the same process.
-    if (!bootToContainer && realSteamRockstarDirectory != null) envVars.put("FFP_DISABLE", "1")
     guestProgramLauncherComponent.envVars = EnvVars().apply { putAll(envVars) }
 
     val gameTerminationCallback = Callback<Int> { status ->
