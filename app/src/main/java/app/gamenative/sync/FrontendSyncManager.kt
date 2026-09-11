@@ -12,6 +12,7 @@ import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.CustomGameScanner
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.EntryPoint
@@ -190,8 +191,13 @@ object FrontendSyncManager {
     private suspend fun syncAllInstalledGames(source: GameSource, dir: String) {
         try {
             val games: List<Pair<Int, String>> = when (source) {
-                GameSource.STEAM, GameSource.CUSTOM_GAME -> {
+                GameSource.STEAM -> {
                     steamAppDao.getInstalledGames().map { it.id to it.name }
+                }
+                GameSource.CUSTOM_GAME -> {
+                    CustomGameScanner.scanAsLibraryItems()
+                        .filter { it.gameSource == GameSource.CUSTOM_GAME }
+                        .map { it.gameId to it.name }
                 }
                 GameSource.EPIC -> {
                     epicGameDao.getInstalledGames().map { it.id to it.title }
@@ -225,14 +231,16 @@ object FrontendSyncManager {
     }
 
     private suspend fun lookupGameName(appId: Int, source: GameSource): String? = when (source) {
-        GameSource.STEAM, GameSource.CUSTOM_GAME -> steamAppDao.findApp(appId)?.name
+        GameSource.STEAM -> steamAppDao.findApp(appId)?.name
+        GameSource.CUSTOM_GAME -> CustomGameScanner.findCustomGameById(appId)?.let { File(it).name }
         GameSource.EPIC -> epicGameDao.getById(appId)?.title
         GameSource.GOG -> gogGameDao.getById(appId.toString())?.title
         GameSource.AMAZON -> amazonGameDao.getByAppId(appId)?.title
     }
 
     private suspend fun isGameInstalled(appId: Int, source: GameSource): Boolean = when (source) {
-        GameSource.STEAM, GameSource.CUSTOM_GAME -> SteamService.isAppInstalled(appId)
+        GameSource.STEAM -> SteamService.isAppInstalled(appId)
+        GameSource.CUSTOM_GAME -> CustomGameScanner.isGameInstalled(appId)
         GameSource.EPIC -> epicGameDao.getById(appId)?.isInstalled ?: false
         GameSource.GOG -> gogGameDao.getById(appId.toString())?.isInstalled ?: false
         GameSource.AMAZON -> amazonGameDao.getByAppId(appId)?.isInstalled ?: false
