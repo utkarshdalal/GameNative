@@ -1645,7 +1645,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             fileName: String,
         ) = parentScope.async {
             Timber.i("$fileName will be downloaded")
-            val dest = File(instance!!.filesDir, fileName)
+            // A cold launch can request client assets before SteamService is created.
+            val dest = File(context.filesDir, fileName)
             Timber.d("Downloading $fileName to " + dest.toString())
             fetchFileWithFallback(fileName, dest, context, onDownloadProgress)
         }
