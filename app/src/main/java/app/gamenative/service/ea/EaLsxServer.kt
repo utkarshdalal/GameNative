@@ -145,8 +145,9 @@ object EaLsxServer {
                     if (raw.isBlank()) continue
                     if (raw.startsWith("<GameNative")) { writeFrame(out, handleStub(raw)); continue }
                     val plain = if (key != null) EaCrypto.lsxDecrypt(key, raw) else raw
-                    Timber.d("LSX <- ${plain.take(600)}")
                     val msg = parse(plain.replace("version=\"\" ", "")) ?: continue
+                    // Authentication and licence frames contain credentials; log only routing.
+                    Timber.d("LSX <- ${msg.name} id=${msg.id}")
                     if (msg.name == "ChallengeResponse") {
                         val ok = EaCrypto.checkChallengeResponse(msg.attrs["response"].orEmpty(), START_KEY)
                         if (!ok) { Timber.e("LSX challenge response invalid, closing"); break }
@@ -162,7 +163,7 @@ object EaLsxServer {
                         continue
                     }
                     val reply = dispatch(msg) ?: continue
-                    Timber.d("LSX -> ${reply.take(600)}")
+                    Timber.d("LSX -> ${msg.name} id=${msg.id} complete")
                     writeFrame(out, if (key != null) EaCrypto.lsxEncrypt(key, reply) else reply)
                 }
             } catch (e: Exception) {
@@ -186,6 +187,13 @@ object EaLsxServer {
                 "EbisuSDK" to "ONLINE_STATUS_EVENT", "EbisuSDK" to "ACHIEVEMENT", "EbisuSDK" to "ACHIEVEMENT_EVENT", "EbisuSDK" to "BROADCAST_EVENT",
                 "PI" to "PROGRESSIVE_INSTALLATION", "PI" to "PROGRESSIVE_INSTALLATION_EVENT", "EbisuSDK" to "CONTENT",
             ).joinToString("") { (n, f) -> "<Service Name=\"$n\" Facility=\"$f\"/>" } + "</GetConfigResponse>"
+
+            // Older Origin SDK games (including NFS Most Wanted) request the account's
+            // opaque access token instead of a client-specific authorization code.
+            "GetAuthToken" -> {
+                val token = runBlocking { EaAuthManager.opaqueLaunchToken(ctx) }
+                "<AuthToken value=\"${esc(token)}\"/>"
+            }
 
             "GetAuthCode" -> {
                 val clientId = m.attrs["ClientId"].orEmpty()
@@ -278,7 +286,7 @@ object EaLsxServer {
                     val lic = runBlocking { EaLicenseManager.request(s.context, s.contentId, hash) }
                     EaLicenseManager.save(s.prefixDriveC, lic, signatureEncoded = ooaState == 1)
                 }
-                val creds = EaAuthManager.credentials(s.context) ?: error("not signed in to EA")
+                val creds = runBlocking { EaAuthManager.launchCredentials(s.context) }
                 val access = runBlocking { EaAuthManager.accessToken(s.context) }
                 val opaque = runCatching { runBlocking { EaAuthManager.opaqueLaunchToken(s.context) } }.onFailure { Timber.w(it, "opaque launch token unavailable") }.getOrDefault("")
                 val env = linkedMapOf(

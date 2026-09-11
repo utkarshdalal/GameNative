@@ -4156,7 +4156,10 @@ private fun setupXEnvironment(
 
     // Moved here, as guestProgramLauncherComponent.environment is setup after addComponent()
     if (container != null) {
-        if (container.isLaunchRealSteam) {
+        if (container.isLaunchRealSteam && !envVars.has("STEAMHOST_APPID")) {
+            // getWineStartCommand supplies STEAMHOST_APPID only when launching the host.
+            // The host owns its credential cache and receives STEAMHOST_TOKEN.
+            // Legacy token setup rewrites that cache and may boot/kill Wine before launch.
             SteamTokenLogin(
                 steamId = PrefManager.steamUserSteamId64.toString(),
                 login = PrefManager.username,
@@ -6175,7 +6178,7 @@ private fun extractSteamFiles(
                 if (f.isDirectory && (n == "bin" || n == "win64")) f.deleteRecursively()
             }
         }
-        Timber.i("Extracting steamhost-20260908.tzst (Valve client 2026-01-29 + headless steam.exe)")
+        Timber.i("Extracting ${steamhostArchive.name} (Valve client 2026-01-29 + headless steam.exe)")
         TarCompressorUtils.extract(
             TarCompressorUtils.Type.ZSTD,
             steamhostArchive,
