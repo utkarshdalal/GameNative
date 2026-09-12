@@ -19,7 +19,7 @@ use crate::fetch_core::{run_fetch, FetchItem, FetchOptions, FetchSink, SinkError
 use super::manifest::{parse_manifest, Manifest};
 use super::plan::{
     cached_chunk_path, chunk_cache_dir, chunk_url, distinct_prefixes, per_host_cap,
-    total_credit_bytes, unique_chunks_for_files,
+    resolve_cached_chunk_path, resolve_cached_name, total_credit_bytes, unique_chunks_for_files,
 };
 
 /// Java `conn.setReadTimeout(60000)` — the longer of the two Java timeouts (connect was 30 s).
@@ -170,6 +170,16 @@ impl<'a> FetchSink for ChunkCacheSink<'a> {
         };
         let chunk = &self.plan.manifest.unique_chunks[ci];
         let final_path = cached_chunk_path(&self.plan.cache_dir, chunk);
+        // Sharded layout: the <first2>/ subdir must exist before the write.
+        if let Some(parent) = final_path.parent() {
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                return Err(SinkError::Retry(format!(
+                    "{} mkdirs {}: {e}",
+                    chunk.guid_str(),
+                    parent.display()
+                )));
+            }
+        }
         match super::chunk::write_verified_chunk(
             &body,
             chunk.verifiable_sha1(),
@@ -289,7 +299,9 @@ pub fn run_plan(
             return outcome;
         }
         let chunk = &plan.manifest.unique_chunks[ci];
-        let cached = cached_chunk_path(&plan.cache_dir, chunk);
+        // Dual-read: sharded first, legacy flat (pre-sharding builds) second, so resuming
+        // an old partial cache does not refetch everything.
+        let cached = resolve_cached_chunk_path(&plan.cache_dir, chunk);
         if cached.exists() && cached_chunk_valid(&cached, chunk) {
             // Credit the DECOMPRESSED size: the cache file holds the inflated chunk, so its
             // length is exactly that (Java credited the compressed `max(fileSize,1)`).
@@ -443,8 +455,16 @@ fn finish_with_assembly(
     match assemble_files(plan, req, cancel, assembly_progress, log) {
         Ok(bytes) => {
             log(&format!("assembleOK files={} bytes={bytes}", req.pending_file_indices.len()));
-            // Cache files are gone (last-consumer deletion); remove the dir when
-            // nothing else (stray .part from an older run) keeps it.
+            // Cache files are gone (last-consumer deletion); sweep any leftover empty
+            // shard dirs, then remove the cache dir when nothing else (stray .part from
+            // an older run) keeps it.
+            if let Ok(rd) = std::fs::read_dir(&plan.cache_dir) {
+                for entry in rd.flatten() {
+                    if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                        let _ = std::fs::remove_dir(entry.path());
+                    }
+                }
+            }
             let _ = std::fs::remove_dir(&plan.cache_dir);
         }
         Err(err) => {
@@ -529,7 +549,8 @@ fn assemble_files(
                                 return Ok(());
                             }
                             let cache_name = part_cache_name(&part.guid);
-                            let cache_path = plan.cache_dir.join(&cache_name);
+                            // Dual-read: sharded first, legacy flat second (see plan.rs).
+                            let cache_path = resolve_cached_name(&plan.cache_dir, &cache_name);
                             let cache = std::fs::File::open(&cache_path).map_err(|_| {
                                 format!("Chunk file missing: {cache_name}")
                             })?;
@@ -564,6 +585,13 @@ fn assemble_files(
                                     refs.remove(&cache_name);
                                     drop(refs);
                                     let _ = std::fs::remove_file(&cache_path);
+                                    // Best-effort: drop the shard dir once it is empty
+                                    // (succeeds only when this was its last chunk).
+                                    if let Some(shard) = cache_path.parent() {
+                                        if shard != plan.cache_dir {
+                                            let _ = std::fs::remove_dir(shard);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -591,6 +619,7 @@ fn assemble_files(
 #[cfg(test)]
 mod tests {
     use super::super::manifest::test_support::*;
+    use super::super::plan::legacy_cached_chunk_path;
     use super::*;
 
     fn request(dir: &str, pending: Vec<usize>) -> EpicRequest {
@@ -674,8 +703,10 @@ mod tests {
         let mut req = request(dir.to_str().unwrap(), vec![0]);
         req.manifest_bytes = manifest_bytes;
         let plan = build_plan(&req).unwrap();
-        // Populate the cache with a genuinely valid chunk (size + SHA-1 verified).
+        // Populate the cache with a genuinely valid chunk (size + SHA-1 verified),
+        // in the sharded layout the fetch sink writes to.
         let cache_path = cached_chunk_path(&plan.cache_dir, &plan.manifest.unique_chunks[0]);
+        std::fs::create_dir_all(cache_path.parent().unwrap()).unwrap();
         let n = super::super::chunk::write_verified_chunk(
             &body,
             Some(&sha1),
@@ -733,7 +764,9 @@ mod tests {
         req.manifest_bytes = manifest_bytes;
         req.max_workers = 1;
         let plan = build_plan(&req).unwrap();
-        let cache_path = cached_chunk_path(&plan.cache_dir, &plan.manifest.unique_chunks[0]);
+        // Seed the corrupt chunk in the LEGACY FLAT layout (pre-sharding builds): dual-read
+        // must find it, declare it invalid, remove it, and refetch.
+        let cache_path = legacy_cached_chunk_path(&plan.cache_dir, &plan.manifest.unique_chunks[0]);
         std::fs::write(&cache_path, b"garbage").unwrap();
 
         let cancel = AtomicBool::new(false);

@@ -1206,7 +1206,7 @@ class GOGDownloadManager @Inject constructor(
                 // 4. Free the cached chunk once it has been placed into all of its positions
                 val usageCount = chunkUsageCounts[chunkMd5]?.addAndGet(-assemblySuccessCount)
                 if (usageCount != null && usageCount <= 0) {
-                    val cacheFile = File(chunkCacheDir, "${chunkMd5}.chunk")
+                    val cacheFile = resolveChunkFile(chunkCacheDir, "${chunkMd5}.chunk")
                     cacheFile.delete()
                 }
 
@@ -1261,7 +1261,7 @@ class GOGDownloadManager @Inject constructor(
                                             "Chunk $chunkMd5 assembly failed (attempt $attempts/$MAX_CHUNK_ASSEMBLY_ATTEMPTS), " +
                                                 "re-fetching: ${assembleResult.exceptionOrNull()?.message}",
                                         )
-                                        File(chunkCacheDir, "${chunkMd5}.chunk").delete()
+                                        resolveChunkFile(chunkCacheDir, "${chunkMd5}.chunk").delete()
                                         downloadedChunkIds.remove(chunkMd5)
                                         networkChunkFlow.tryEmit(chunkMd5)
                                         return@flow
@@ -1734,6 +1734,22 @@ class GOGDownloadManager @Inject constructor(
     }
 
     /**
+     * Sharded chunk-cache layout: `<cache>/<first2>/<md5>.chunk`. A flat directory with tens
+     * of thousands of chunk files costs a growing directory scan per lookup. Writes always go
+     * to the sharded path; [resolveChunkFile] dual-reads (sharded first, legacy flat second)
+     * so caches written by older builds resume without refetching. Same scheme as the Epic
+     * cache (EpicDownloadManager.shardedChunkFile / store_dl/epic/plan.rs).
+     */
+    private fun shardedChunkFile(chunkCacheDir: File, name: String): File =
+        File(File(chunkCacheDir, name.take(2)), name)
+
+    /** Dual-read resolution: sharded first, legacy flat (pre-sharding builds) second. */
+    private fun resolveChunkFile(chunkCacheDir: File, name: String): File {
+        val sharded = shardedChunkFile(chunkCacheDir, name)
+        return if (sharded.exists()) sharded else File(chunkCacheDir, name)
+    }
+
+    /**
      * Download a single chunk from GOG CDN
      *
      * @param chunkMd5 Compressed MD5 hash (chunk identifier)
@@ -1753,20 +1769,21 @@ class GOGDownloadManager @Inject constructor(
                 return@withContext Result.failure(Exception("Download cancelled"))
             }
 
-            val chunkFile = File(chunkCacheDir, "$chunkMd5.chunk")
-            val tempChunkFile = File(chunkCacheDir, "$chunkMd5.chunk.part")
-
-            // Skip if already downloaded and verified
-            if (chunkFile.exists()) {
-                val existingMd5 = calculateMd5(chunkFile.readBytes())
+            // Dual-read: an existing file (either layout) is the skip/corrupt candidate;
+            // on a miss the write target is always the sharded path.
+            val existing = resolveChunkFile(chunkCacheDir, "$chunkMd5.chunk")
+            if (existing.exists()) {
+                val existingMd5 = calculateMd5(existing.readBytes())
                 if (existingMd5 == chunkMd5) {
                     Timber.tag("GOG").d("Chunk $chunkMd5 already exists and verified, skipping")
-                    return@withContext Result.success(chunkFile)
+                    return@withContext Result.success(existing)
                 } else {
                     Timber.tag("GOG").w("Chunk $chunkMd5 exists but failed verification, re-downloading")
-                    chunkFile.delete()
+                    existing.delete()
                 }
             }
+            val chunkFile = shardedChunkFile(chunkCacheDir, "$chunkMd5.chunk").apply { parentFile?.mkdirs() }
+            val tempChunkFile = File(chunkFile.parentFile, "$chunkMd5.chunk.part")
 
             // Download compressed chunk (redact query params to avoid token leakage in logs)
             val safeUrl = url.substringBefore('?')
@@ -1867,8 +1884,8 @@ class GOGDownloadManager @Inject constructor(
             val outputFile = File(installDir, file.path)
             outputFile.parentFile?.mkdirs()
 
-            // Get compressed chunk file
-            val chunkFile = File(chunkCacheDir, "${chunk.compressedMd5}.chunk")
+            // Get compressed chunk file (dual-read: sharded first, legacy flat second)
+            val chunkFile = resolveChunkFile(chunkCacheDir, "${chunk.compressedMd5}.chunk")
 
             if (!chunkFile.exists()) {
                 return@withContext Result.failure(

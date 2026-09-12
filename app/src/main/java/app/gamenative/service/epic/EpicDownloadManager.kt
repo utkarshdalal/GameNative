@@ -88,6 +88,23 @@ class EpicDownloadManager @Inject constructor(
             return File(context.cacheDir, "epic_chunks/$key-${dir.name}")
         }
 
+        /**
+         * Sharded chunk-cache layout: `<cache>/<first2>/<guidStr>`. A flat directory with
+         * ~100k chunk files (a 100 GB game of 1 MB chunks) makes every open/exists scan one
+         * huge directory — expensive even on internal storage, worse on FUSE. Writes always
+         * go to the sharded path; [resolveChunkFile] dual-reads (sharded first, legacy flat
+         * second) so caches written by older builds resume without refetching. Mirrors
+         * `store_dl/epic/plan.rs` (the native engine uses the same scheme for `.chunks`).
+         */
+        fun shardedChunkFile(chunkCacheDir: File, guidStr: String): File =
+            File(File(chunkCacheDir, guidStr.take(2)), guidStr)
+
+        /** Dual-read resolution: sharded first, legacy flat (pre-sharding builds) second. */
+        fun resolveChunkFile(chunkCacheDir: File, guidStr: String): File {
+            val sharded = shardedChunkFile(chunkCacheDir, guidStr)
+            return if (sharded.exists()) sharded else File(chunkCacheDir, guidStr)
+        }
+
         private const val CHUNK_BUFFER_SIZE = 1024 * 1024 // 1MB buffer for decompression
         private const val MAX_CHUNK_RETRIES = 3 // Maximum retries per chunk
         private const val RETRY_DELAY_MS = 1000L // Initial retry delay in milliseconds
@@ -651,7 +668,16 @@ class EpicDownloadManager @Inject constructor(
         downloadHttpClient: okhttp3.OkHttpClient,
     ): Result<File> = withContext(Dispatchers.IO) {
         try {
-            val decompressedFile = File(chunkCacheDir, chunk.guidStr)
+            // Dual-read: an existing file (either layout) is the skip/corrupt candidate;
+            // on a miss the write target is always the sharded path.
+            val decompressedFile = run {
+                val resolved = resolveChunkFile(chunkCacheDir, chunk.guidStr)
+                if (resolved.exists()) {
+                    resolved
+                } else {
+                    shardedChunkFile(chunkCacheDir, chunk.guidStr).apply { parentFile?.mkdirs() }
+                }
+            }
 
             // Skip if already downloaded and decompressed
             if (decompressedFile.exists() && decompressedFile.length() == chunk.windowSize.toLong()) {
@@ -1181,7 +1207,7 @@ class EpicDownloadManager @Inject constructor(
                 // resume and assembly): re-download the chunk instead of failing the
                 // whole install with "Chunk file missing". The remove-guard ensures a
                 // duplicate event for the same chunk cannot requeue it twice.
-                if (!File(chunkCacheDir, guidStr).exists()) {
+                if (!resolveChunkFile(chunkCacheDir, guidStr).exists()) {
                     Timber.tag("EPIC").w("Chunk $guidStr missing from cache at assembly; re-downloading")
                     if (downloadedChunkIds.remove(guidStr)) {
                         networkChunkFlow.tryEmit(finishChunk)
@@ -1207,7 +1233,7 @@ class EpicDownloadManager @Inject constructor(
                 if (assemblySuccessCount > 0) {
                     val usageCount = chunkUsageCounts[guidStr]?.addAndGet(-assemblySuccessCount)
                     if (usageCount != null && usageCount <= 0) {
-                        val cacheFile = File(chunkCacheDir, guidStr)
+                        val cacheFile = resolveChunkFile(chunkCacheDir, guidStr)
                         cacheFile.delete()
                     }
                 }
@@ -1446,7 +1472,7 @@ class EpicDownloadManager @Inject constructor(
 
             outputFile.outputStream().use { output ->
                 for (chunkPart in fileManifest.chunkParts) {
-                    val chunkFile = File(chunkCacheDir, chunkPart.guidStr)
+                    val chunkFile = resolveChunkFile(chunkCacheDir, chunkPart.guidStr)
 
                     if (!chunkFile.exists()) {
                         return@withContext Result.failure(Exception("Chunk file missing: ${chunkPart.guidStr}"))
@@ -1493,8 +1519,8 @@ class EpicDownloadManager @Inject constructor(
             val outputFile = File(installDir, fileManifest.filename)
             outputFile.parentFile?.mkdirs()
 
-            // Get compressed chunk file
-            val chunkFile = File(chunkCacheDir, chunk.guidStr)
+            // Get compressed chunk file (dual-read: sharded first, legacy flat second)
+            val chunkFile = resolveChunkFile(chunkCacheDir, chunk.guidStr)
 
             if (!chunkFile.exists()) {
                 return@withContext Result.failure(

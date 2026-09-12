@@ -95,15 +95,50 @@ pub fn chunk_cache_dir(install_dir: &str) -> PathBuf {
     Path::new(install_dir).join(super::CHUNK_CACHE_DIR)
 }
 
-/// Final cache file for a chunk: `new File(chunkCacheDir, chunk.guidStr)` — DASHED LOWERCASE
-/// (see [`ChunkInfo::cache_file_name`]); the Kotlin assembly stage resolves this exact name.
+/// Shard subdirectory name for a cache file: its first two hex chars. A flat `.chunks`
+/// directory holding ~100k entries (a 100 GB game ≈ 100k 1-MiB chunks) makes every
+/// open/exists revalidate one huge directory — brutal on sdcardfs/FUSE external storage.
+/// 256 shard dirs keep even a 500 GB game at ~2k files per directory.
+pub fn shard_dir_name(cache_file_name: &str) -> &str {
+    cache_file_name.get(..2).unwrap_or(cache_file_name)
+}
+
+/// Sharded write target: `<cache>/<first2>/<guidStr>`. New downloads always write here.
 pub fn cached_chunk_path(cache_dir: &Path, chunk: &ChunkInfo) -> PathBuf {
+    let name = chunk.cache_file_name();
+    cache_dir.join(shard_dir_name(&name)).join(&name)
+}
+
+/// Pre-sharding layout: `<cache>/<guidStr>` (flat). READ-ONLY fallback for caches written by
+/// older builds — without it, resuming an old partial download would refetch everything.
+pub fn legacy_cached_chunk_path(cache_dir: &Path, chunk: &ChunkInfo) -> PathBuf {
     cache_dir.join(chunk.cache_file_name())
 }
 
+/// Dual-read resolution: sharded first, legacy flat second.
+pub fn resolve_cached_chunk_path(cache_dir: &Path, chunk: &ChunkInfo) -> PathBuf {
+    let sharded = cached_chunk_path(cache_dir, chunk);
+    if sharded.exists() {
+        sharded
+    } else {
+        legacy_cached_chunk_path(cache_dir, chunk)
+    }
+}
+
+/// Same dual-read resolution by bare cache file name (assembly has only the part GUID).
+pub fn resolve_cached_name(cache_dir: &Path, cache_name: &str) -> PathBuf {
+    let sharded = cache_dir.join(shard_dir_name(cache_name)).join(cache_name);
+    if sharded.exists() {
+        sharded
+    } else {
+        cache_dir.join(cache_name)
+    }
+}
+
 /// The Java pool's skip rule: a chunk whose cache file EXISTS (any size) is not fetched.
+/// Dual-read: either layout counts.
 pub fn is_chunk_cached(cache_dir: &Path, chunk: &ChunkInfo) -> bool {
-    cached_chunk_path(cache_dir, chunk).exists()
+    cached_chunk_path(cache_dir, chunk).exists() || legacy_cached_chunk_path(cache_dir, chunk).exists()
 }
 
 /// One CDN entry as the Java manager passes it: `cdn.baseUrl + cdn.cloudDir` (auth params are
@@ -230,13 +265,53 @@ mod tests {
         );
         let cache = chunk_cache_dir("/data/x/imagefs/epic_games/Game");
         assert_eq!(cache, PathBuf::from("/data/x/imagefs/epic_games/Game/.chunks"));
+        let name = c.cache_file_name();
+        assert_eq!(name, "00000001-00000002-00000003-00000004", "Kotlin guidStr form: dashed, lowercase");
         assert_eq!(
             cached_chunk_path(&cache, c),
+            PathBuf::from("/data/x/imagefs/epic_games/Game/.chunks/00/00000001-00000002-00000003-00000004"),
+            "write target is sharded by the first two hex chars"
+        );
+        assert_eq!(
+            legacy_cached_chunk_path(&cache, c),
             PathBuf::from("/data/x/imagefs/epic_games/Game/.chunks/00000001-00000002-00000003-00000004"),
-            "Kotlin guidStr form: dashed, lowercase"
+            "pre-sharding flat layout stays resolvable for resume"
         );
         let prefixes = vec!["a".to_string(), "b".to_string(), "a".to_string()];
         assert_eq!(distinct_prefixes(&prefixes), vec!["a".to_string(), "b".to_string()]);
+    }
+
+    #[test]
+    fn dual_read_resolves_sharded_first_then_legacy_flat() {
+        let m = manifest();
+        let c = &m.unique_chunks[0];
+        let cache = std::env::temp_dir().join(format!("gn_epic_shard_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&cache);
+
+        // Nothing on disk → resolve falls back to the flat path (the miss candidate).
+        assert_eq!(resolve_cached_chunk_path(&cache, c), legacy_cached_chunk_path(&cache, c));
+        assert!(!is_chunk_cached(&cache, c));
+
+        // Legacy-flat only (cache written by an old build) → resolved and counted.
+        std::fs::create_dir_all(&cache).unwrap();
+        let flat = legacy_cached_chunk_path(&cache, c);
+        std::fs::write(&flat, b"x").unwrap();
+        assert_eq!(resolve_cached_chunk_path(&cache, c), flat);
+        assert!(is_chunk_cached(&cache, c));
+
+        // Sharded present → preferred over flat.
+        let sharded = cached_chunk_path(&cache, c);
+        std::fs::create_dir_all(sharded.parent().unwrap()).unwrap();
+        std::fs::write(&sharded, b"x").unwrap();
+        assert_eq!(resolve_cached_chunk_path(&cache, c), sharded);
+
+        // By-name resolution (assembly has only the part GUID) follows the same rule.
+        let name = c.cache_file_name();
+        assert_eq!(resolve_cached_name(&cache, &name), sharded);
+        std::fs::remove_file(&sharded).unwrap();
+        assert_eq!(resolve_cached_name(&cache, &name), cache.join(&name));
+
+        let _ = std::fs::remove_dir_all(&cache);
     }
 
     #[test]
