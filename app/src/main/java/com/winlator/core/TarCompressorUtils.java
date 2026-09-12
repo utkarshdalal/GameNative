@@ -1,6 +1,7 @@
 package com.winlator.core;
 
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.net.Uri;
 import android.util.Log;
@@ -22,12 +23,24 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
 public abstract class TarCompressorUtils {
     public enum Type {XZ, ZSTD}
+
+    /**
+     * Reports how far an extraction has consumed its source. Every extract() overload funnels
+     * through the same private method, so a single listener covers all of them.
+     */
+    public interface ExtractProgressListener {
+        //! totalBytes is -1 when the source size is unknown (raw streams, compressed assets)
+        void onExtractProgress(String sourceName, long bytesRead, long totalBytes);
+    }
+
+    public static volatile ExtractProgressListener extractProgressListener = null;
 
     private static void addFile(ArchiveOutputStream tar, File file, String entryName) {
         try {
@@ -108,10 +121,20 @@ public abstract class TarCompressorUtils {
 
     public static boolean extract(Type type, AssetManager assetManager, String assetFile, File destination, OnExtractFileListener onExtractFileListener) {
         try {
-            return extract(type, assetManager.open(assetFile), destination, onExtractFileListener);
+            return extract(type, assetManager.open(assetFile), destination, onExtractFileListener, assetFile, assetLength(assetManager, assetFile));
         }
         catch (IOException e) {
             return false;
+        }
+    }
+
+    //! Compressed assets have no file descriptor, so their size is only knowable after inflation
+    private static long assetLength(AssetManager assetManager, String assetFile) {
+        try (AssetFileDescriptor fd = assetManager.openFd(assetFile)) {
+            return fd.getLength();
+        }
+        catch (IOException e) {
+            return -1;
         }
     }
 
@@ -121,7 +144,7 @@ public abstract class TarCompressorUtils {
 
     public static boolean extract(Type type, Context context, String assetFile, File destination, OnExtractFileListener onExtractFileListener) {
         try {
-            return extract(type, context.getAssets().open(assetFile), destination, onExtractFileListener);
+            return extract(type, context.getAssets().open(assetFile), destination, onExtractFileListener, assetFile, assetLength(context.getAssets(), assetFile));
         }
         catch (IOException e) {
             return false;
@@ -136,9 +159,10 @@ public abstract class TarCompressorUtils {
         if (source == null) return false;
         try {
             if (source.toString().startsWith("/")) {
-                return extract(type, new FileInputStream(source.toString()), destination, onExtractFileListener);
+                File file = new File(source.toString());
+                return extract(type, new FileInputStream(file), destination, onExtractFileListener, file.getName(), file.length());
             } else {
-            return extract(type, context.getContentResolver().openInputStream(source), destination, onExtractFileListener);
+            return extract(type, context.getContentResolver().openInputStream(source), destination, onExtractFileListener, source.getLastPathSegment(), -1);
             }
         }
         catch (FileNotFoundException e) {
@@ -157,7 +181,7 @@ public abstract class TarCompressorUtils {
     public static boolean extract(Type type, File source, File destination, OnExtractFileListener onExtractFileListener) {
         if (source == null || !source.isFile()) return false;
         try {
-            return extract(type, new BufferedInputStream(new FileInputStream(source), StreamUtils.BUFFER_SIZE), destination, onExtractFileListener);
+            return extract(type, new BufferedInputStream(new FileInputStream(source), StreamUtils.BUFFER_SIZE), destination, onExtractFileListener, source.getName(), source.length());
         }
         catch (FileNotFoundException e) {
             return false;
@@ -165,8 +189,13 @@ public abstract class TarCompressorUtils {
     }
 
     private static boolean extract(Type type, InputStream source, File destination, OnExtractFileListener onExtractFileListener) {
+        return extract(type, source, destination, onExtractFileListener, null, -1);
+    }
+
+    private static boolean extract(Type type, InputStream source, File destination, OnExtractFileListener onExtractFileListener, String sourceName, long totalBytes) {
         if (source == null) return false;
-        try (InputStream inStream = getCompressorInputStream(type, source);
+        CountingInputStream countingSource = new CountingInputStream(source);
+        try (InputStream inStream = getCompressorInputStream(type, countingSource);
              ArchiveInputStream tar = new TarArchiveInputStream(inStream)) {
             TarArchiveEntry entry;
             while ((entry = (TarArchiveEntry)tar.getNextEntry()) != null) {
@@ -200,12 +229,49 @@ public abstract class TarCompressorUtils {
                 }
 
                 FileUtils.chmod(file, 0771);
+
+                ExtractProgressListener progressListener = extractProgressListener;
+                if (progressListener != null) progressListener.onExtractProgress(sourceName, countingSource.getCount(), totalBytes);
             }
             return true;
         }
         catch (IOException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    //! Counts the compressed bytes consumed, which is what the source size can be compared against
+    private static class CountingInputStream extends FilterInputStream {
+        private long count;
+
+        CountingInputStream(InputStream in) {
+            super(in);
+        }
+
+        long getCount() {
+            return count;
+        }
+
+        @Override
+        public int read() throws IOException {
+            int value = super.read();
+            if (value != -1) count++;
+            return value;
+        }
+
+        @Override
+        public int read(byte[] buffer, int offset, int length) throws IOException {
+            int read = super.read(buffer, offset, length);
+            if (read > 0) count += read;
+            return read;
+        }
+
+        @Override
+        public long skip(long n) throws IOException {
+            long skipped = super.skip(n);
+            if (skipped > 0) count += skipped;
+            return skipped;
         }
     }
 
