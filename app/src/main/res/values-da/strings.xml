@@ -2327,6 +2327,8 @@
     <string name="xr_open_composite_toggle">SteamVR (OpenVR)-kompatibilitet</string>
     <string name="xr_open_composite_toggle_desc">Sender spil bygget til SteamVR gennem OpenComposite. Slå til, hvis spillet siger, at SteamVR ikke kører, eller forbliver fladt med VR-tilstand slået til.</string>
     <string name="xr_render_scale">VR-gengivelsesskala</string>
+    <string name="settings_hide_ai_title">Skjul AI-funktioner</string>
+    <string name="settings_hide_ai_subtitle">Skjuler den valgfrie AI-fejlfindingshjælp</string>
     <string name="settings_info_boot_ads_title">Sponsorerede indlæsningsskærme</string>
     <string name="settings_info_boot_ads_subtitle">At lade dette være slået til hjælper med at støtte udviklingen af GameNative. Det gør aldrig spilstart langsommere og påvirker dig ikke på nogen måde.</string>
     <string name="settings_info_boot_recs_title">Spilanbefalinger på indlæsningsskærme</string>

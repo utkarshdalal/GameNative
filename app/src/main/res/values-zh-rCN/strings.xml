@@ -2471,6 +2471,8 @@
     <string name="xr_open_composite_toggle">SteamVR (OpenVR) 兼容</string>
     <string name="xr_open_composite_toggle_desc">通过 OpenComposite 运行为 SteamVR 开发的游戏。若游戏提示 SteamVR 未运行，或开启 VR 模式后仍为平面显示，请开启此项。</string>
     <string name="xr_render_scale">VR 渲染比例</string>
+    <string name="settings_hide_ai_title">隐藏 AI 功能</string>
+    <string name="settings_hide_ai_subtitle">隐藏可选的 AI 调试帮助</string>
     <string name="settings_info_boot_ads_title">赞助加载画面</string>
     <string name="settings_info_boot_ads_subtitle">保持开启有助于支持 GameNative 的开发。它绝不会拖慢游戏启动，也不会以任何方式影响你。</string>
     <string name="settings_info_boot_recs_title">在加载画面显示游戏推荐</string>

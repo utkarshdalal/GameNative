@@ -2459,6 +2459,8 @@
     <string name="xr_open_composite_toggle">Сумісність зі SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Запускає ігри, створені для SteamVR, через OpenComposite. Увімкніть, якщо гра повідомляє, що SteamVR не запущено, або залишається пласкою з увімкненим VR-режимом.</string>
     <string name="xr_render_scale">Масштаб рендерингу VR</string>
+    <string name="settings_hide_ai_title">Приховати функції ШІ</string>
+    <string name="settings_hide_ai_subtitle">Приховує необов\'язкову допомогу ШІ у налагодженні</string>
     <string name="settings_info_boot_ads_title">Спонсорські екрани завантаження</string>
     <string name="settings_info_boot_ads_subtitle">Якщо залишити це увімкненим, ви підтримаєте розробку GameNative. Це ніколи не сповільнює запуск ігор і жодним чином на вас не впливає.</string>
     <string name="settings_info_boot_recs_title">Рекомендації ігор на екранах завантаження</string>

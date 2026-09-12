@@ -2462,6 +2462,8 @@
     <string name="xr_open_composite_toggle">Compatibilitate SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Direcționează jocurile create pentru SteamVR prin OpenComposite. Activează dacă jocul spune că SteamVR nu rulează sau rămâne plat cu modul VR pornit.</string>
     <string name="xr_render_scale">Scară de randare VR</string>
+    <string name="settings_hide_ai_title">Ascunde funcțiile AI</string>
+    <string name="settings_hide_ai_subtitle">Ascunde ajutorul opțional de depanare cu AI</string>
     <string name="settings_info_boot_ads_title">Ecrane de încărcare sponsorizate</string>
     <string name="settings_info_boot_ads_subtitle">Păstrarea acestei opțiuni activate ajută la susținerea dezvoltării GameNative. Nu încetinește niciodată pornirea jocurilor și nu te afectează în niciun fel.</string>
     <string name="settings_info_boot_recs_title">Recomandări de jocuri pe ecranele de încărcare</string>
