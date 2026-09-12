@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
@@ -22,10 +23,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.theme.PluviaBackground
 import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalControllerBinding
+import java.util.Locale
 
 /**
  * Data classes for controller configuration
@@ -117,7 +120,8 @@ internal fun PhysicalControllerConfigSection(
         }
     }
 
-    var selectedCategory by remember { mutableStateOf(0) } // 0 = Face, 1 = Shoulder, 2 = Menu, 3 = Thumbstick, 4 = Left Stick, 5 = Right Stick, 6 = D-Pad
+    // 0 = Face, 1 = Shoulder, 2 = Menu, 3 = Thumbstick, 4 = Left Stick, 5 = Right Stick, 6 = D-Pad
+    var selectedCategory by remember { mutableStateOf(0) }
     var showBindingDialog by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var refreshKey by remember { mutableIntStateOf(0) }
 
@@ -261,6 +265,7 @@ internal fun PhysicalControllerConfigSection(
                         // Save button
                         IconButton(onClick = {
                             Log.d("gncontrol", "=== Save: Applying ${workingBindings.size} bindings ===")
+
                             controller?.let { ctrl ->
                                 val existingBindings = ctrl.getControllerBindings().toList()
                                 for (binding in existingBindings) {
@@ -369,6 +374,7 @@ internal fun PhysicalControllerConfigSection(
                             isSelected = selectedCategory == 6,
                             onClick = { selectedCategory = 6 }
                         )
+
                         }
                     }
 
@@ -610,6 +616,282 @@ private fun ControllerBindingItem(
         }
     }
 }
+
+private data class StickTuningState(
+    val deadzone: Float,
+    val sensitivity: Float,
+    val deadzoneMode: ControlsProfile.StickDeadzoneMode,
+    val directionMode: ControlsProfile.StickDigitalMode,
+)
+
+private data class PhysicalStickTuningState(
+    val left: StickTuningState,
+    val right: StickTuningState,
+) {
+    fun applyTo(profile: ControlsProfile) {
+        profile.leftStickDeadzone = left.deadzone
+        profile.leftStickSensitivity = left.sensitivity
+        profile.leftStickDeadzoneMode = left.deadzoneMode
+        profile.leftStickDigitalMode = left.directionMode
+        profile.rightStickDeadzone = right.deadzone
+        profile.rightStickSensitivity = right.sensitivity
+        profile.rightStickDeadzoneMode = right.deadzoneMode
+        profile.rightStickDigitalMode = right.directionMode
+    }
+
+    companion object {
+        fun from(profile: ControlsProfile) = PhysicalStickTuningState(
+            left = StickTuningState(
+                deadzone = profile.leftStickDeadzone,
+                sensitivity = profile.leftStickSensitivity,
+                deadzoneMode = profile.leftStickDeadzoneMode,
+                directionMode = profile.leftStickDigitalMode,
+            ),
+            right = StickTuningState(
+                deadzone = profile.rightStickDeadzone,
+                sensitivity = profile.rightStickSensitivity,
+                deadzoneMode = profile.rightStickDeadzoneMode,
+                directionMode = profile.rightStickDigitalMode,
+            ),
+        )
+
+        fun defaults(): PhysicalStickTuningState {
+            val defaults = StickTuningState(
+                deadzone = ControlsProfile.DEFAULT_STICK_DEADZONE,
+                sensitivity = ControlsProfile.DEFAULT_STICK_SENSITIVITY,
+                deadzoneMode = ControlsProfile.DEFAULT_STICK_DEADZONE_MODE,
+                directionMode = ControlsProfile.DEFAULT_STICK_DIGITAL_MODE,
+            )
+            return PhysicalStickTuningState(left = defaults, right = defaults)
+        }
+    }
+}
+
+/** Full-screen stick tuning page opened from the Physical Controller quick-menu gear. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun PhysicalControllerSettingsDialog(
+    profile: ControlsProfile,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+) {
+    var tuning by remember(profile) { mutableStateOf(PhysicalStickTuningState.from(profile)) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+        ),
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = PluviaBackground,
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.physical_controller_settings_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { tuning = PhysicalStickTuningState.defaults() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.reset))
+                        }
+                        IconButton(onClick = {
+                            tuning.applyTo(profile)
+                            onSave()
+                        }) {
+                            Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
+                        }
+                    },
+                )
+            },
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 16.dp),
+            ) {
+                StickTuningSection(
+                    tuning = tuning,
+                    onTuningChange = { tuning = it },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Deadzone and sensitivity tuning for the physical controller's analog sticks.
+ *
+ * These values are applied to the raw stick axes before they reach the virtual gamepad state, so
+ * they carry through to the guest game (including while shooter mode is active).
+ */
+@Composable
+private fun StickTuningSection(
+    tuning: PhysicalStickTuningState,
+    onTuningChange: (PhysicalStickTuningState) -> Unit,
+) {
+    val deadzoneDescription = stringResource(R.string.stick_deadzone_description)
+    val sensitivityDescription = stringResource(R.string.stick_sensitivity_description)
+    val directionDescription = stringResource(R.string.stick_direction_mode_description)
+    val deadzoneOptions = listOf(
+        ControlsProfile.StickDeadzoneMode.AXIAL to stringResource(R.string.stick_deadzone_axial),
+        ControlsProfile.StickDeadzoneMode.CIRCULAR to stringResource(R.string.stick_deadzone_circular),
+        ControlsProfile.StickDeadzoneMode.HYBRID to stringResource(R.string.stick_deadzone_hybrid),
+    )
+    val directionOptions = listOf(
+        ControlsProfile.StickDigitalMode.UNRESTRICTED to stringResource(R.string.stick_direction_unrestricted),
+        ControlsProfile.StickDigitalMode.FOUR_WAY to stringResource(R.string.stick_direction_four_way),
+        ControlsProfile.StickDigitalMode.EIGHT_WAY to stringResource(R.string.stick_direction_eight_way),
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        StickTuningControls(
+            title = stringResource(R.string.left_stick),
+            deadzoneLabel = stringResource(R.string.left_stick_deadzone),
+            deadzoneShapeLabel = stringResource(R.string.left_stick_deadzone_shape),
+            sensitivityLabel = stringResource(R.string.left_stick_sensitivity),
+            directionLabel = stringResource(R.string.left_stick_direction_mode),
+            tuning = tuning.left,
+            deadzoneDescription = deadzoneDescription,
+            sensitivityDescription = sensitivityDescription,
+            directionDescription = directionDescription,
+            deadzoneOptions = deadzoneOptions,
+            directionOptions = directionOptions,
+            onTuningChange = { onTuningChange(tuning.copy(left = it)) },
+        )
+        StickTuningControls(
+            title = stringResource(R.string.right_stick),
+            deadzoneLabel = stringResource(R.string.right_stick_deadzone),
+            deadzoneShapeLabel = stringResource(R.string.right_stick_deadzone_shape),
+            sensitivityLabel = stringResource(R.string.right_stick_sensitivity),
+            directionLabel = stringResource(R.string.right_stick_direction_mode),
+            tuning = tuning.right,
+            deadzoneDescription = deadzoneDescription,
+            sensitivityDescription = sensitivityDescription,
+            directionDescription = directionDescription,
+            deadzoneOptions = deadzoneOptions,
+            directionOptions = directionOptions,
+            onTuningChange = { onTuningChange(tuning.copy(right = it)) },
+        )
+    }
+}
+
+@Composable
+private fun StickTuningControls(
+    title: String,
+    deadzoneLabel: String,
+    deadzoneShapeLabel: String,
+    sensitivityLabel: String,
+    directionLabel: String,
+    tuning: StickTuningState,
+    deadzoneDescription: String,
+    sensitivityDescription: String,
+    directionDescription: String,
+    deadzoneOptions: List<Pair<ControlsProfile.StickDeadzoneMode, String>>,
+    directionOptions: List<Pair<ControlsProfile.StickDigitalMode, String>>,
+    onTuningChange: (StickTuningState) -> Unit,
+) {
+    SettingsDialogSectionHeader(title)
+    StickAdjustmentSlider(
+        label = deadzoneLabel,
+        description = deadzoneDescription,
+        value = tuning.deadzone,
+        displayValue = String.format(Locale.getDefault(), "%.0f%%", tuning.deadzone * 100),
+        valueRange = ControlsProfile.MIN_STICK_DEADZONE..ControlsProfile.MAX_STICK_DEADZONE,
+        steps = DEADZONE_SLIDER_STEPS,
+        onValueChange = { onTuningChange(tuning.copy(deadzone = it)) },
+    )
+    StickModeSelector(
+        label = deadzoneShapeLabel,
+        description = stickDeadzoneModeDescription(tuning.deadzoneMode),
+        selected = tuning.deadzoneMode,
+        options = deadzoneOptions,
+        onSelected = { onTuningChange(tuning.copy(deadzoneMode = it)) },
+    )
+    StickAdjustmentSlider(
+        label = sensitivityLabel,
+        description = sensitivityDescription,
+        value = tuning.sensitivity,
+        displayValue = String.format(Locale.getDefault(), "%.2f×", tuning.sensitivity),
+        valueRange = ControlsProfile.MIN_STICK_SENSITIVITY..ControlsProfile.MAX_STICK_SENSITIVITY,
+        steps = SENSITIVITY_SLIDER_STEPS,
+        onValueChange = { onTuningChange(tuning.copy(sensitivity = it)) },
+    )
+    StickModeSelector(
+        label = directionLabel,
+        description = directionDescription,
+        selected = tuning.directionMode,
+        options = directionOptions,
+        onSelected = { onTuningChange(tuning.copy(directionMode = it)) },
+    )
+}
+
+@Composable
+private fun stickDeadzoneModeDescription(mode: ControlsProfile.StickDeadzoneMode): String {
+    val description = when (mode) {
+        ControlsProfile.StickDeadzoneMode.AXIAL -> R.string.stick_deadzone_axial_description
+        ControlsProfile.StickDeadzoneMode.CIRCULAR -> R.string.stick_deadzone_circular_description
+        ControlsProfile.StickDeadzoneMode.HYBRID -> R.string.stick_deadzone_hybrid_description
+    }
+    return stringResource(description)
+}
+
+@Composable
+private fun <T> StickModeSelector(
+    label: String,
+    description: String,
+    selected: T,
+    options: List<Pair<T, String>>,
+    onSelected: (T) -> Unit,
+) {
+    SettingsDropdownBlock(
+        title = label,
+        subtitle = description,
+        value = selected,
+        values = options.map { it.first },
+        labels = options.map { it.second },
+        onValueChange = onSelected,
+    )
+}
+
+@Composable
+private fun StickAdjustmentSlider(
+    label: String,
+    description: String,
+    value: Float,
+    displayValue: String,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    onValueChange: (Float) -> Unit
+) {
+    SettingsSliderBlock(
+        title = label,
+        subtitle = description,
+        value = value,
+        valueRange = valueRange,
+        valueText = displayValue,
+        onValueChange = onValueChange,
+        steps = steps,
+    )
+}
+
+// 0% .. 100% in 1% increments leaves 99 stops between the two endpoints
+private const val DEADZONE_SLIDER_STEPS = 99
+// 0.10 .. 3.0 in 0.10 increments leaves 28 stops between the two endpoints
+private const val SENSITIVITY_SLIDER_STEPS = 28
 
 /**
  * Quick preset buttons for physical controller stick/dpad bindings
