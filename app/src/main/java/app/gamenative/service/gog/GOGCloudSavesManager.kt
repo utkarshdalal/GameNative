@@ -2,8 +2,10 @@ package app.gamenative.service.gog
 
 import android.content.Context
 import app.gamenative.utils.FileUtils
+import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -11,13 +13,14 @@ import okhttp3.OkHttpClient
 import org.json.JSONArray
 import timber.log.Timber
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.time.format.DateTimeParseException
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.zip.GZIPOutputStream
 import java.util.concurrent.TimeUnit
 
@@ -33,9 +36,23 @@ class GOGCloudSavesManager(
 
     companion object {
         private const val CLOUD_STORAGE_BASE_URL = "https://cloudstorage.gog.com"
-        private const val USER_AGENT = "GOGGalaxyCommunicationService/2.0.13.27 (Windows_32bit) dont_sync_marker/true installation_source/gog"
+        // the version Galaxy desktop reports in `x-container-meta-user-agent`. if Galaxy ever
+        // rejects writes from it, fall back to Heroic's 2.0.13.27.
+        private const val USER_AGENT = "GOGGalaxyCommunicationService/2.0.18.181 (Windows_32bit) dont_sync_marker/true installation_source/gog"
         private const val DELETION_MD5 = "aadd86936a80ee8a369579c3926f1b3c"
 
+        // MUST be byte-stable for unchanged content: Galaxy uses md5(gzipped bytes) as the manifest version.
+        // GZIPOutputStream writes MTIME=0 (asserted in GOGCloudSavesManagerTest).
+        internal fun gzipBytes(input: ByteArray): ByteArray {
+            val out = ByteArrayOutputStream()
+            GZIPOutputStream(out).use { it.write(input) }
+            return out.toByteArray()
+        }
+
+        internal fun md5Hex(bytes: ByteArray): String {
+            return MessageDigest.getInstance("MD5").digest(bytes)
+                .joinToString("") { "%02x".format(it) }
+        }
     }
 
     enum class SyncAction {
@@ -69,25 +86,16 @@ class GOGCloudSavesManager(
                 // Get file modification timestamp
                 val timestamp = file.lastModified()
                 val instant = Instant.ofEpochMilli(timestamp)
-                updateTime = DateTimeFormatter.ISO_INSTANT.format(instant)
+                // seconds + explicit +00:00, as heroic-gogdl sends it (Python isoformat). pattern
+                // `x`, not `X`: `X` and ISO_INSTANT both render a zero offset as Z.
+                val odt = OffsetDateTime.ofInstant(instant, ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS)
+                updateTime = odt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssxxx"))
                 updateTimestamp = timestamp / 1000 // Convert to seconds
 
-                // Calculate MD5 of gzipped content (matching Python implementation)
-                FileInputStream(file).use { fis ->
-                    val digest = MessageDigest.getInstance("MD5")
-                    val buffer = java.io.ByteArrayOutputStream()
-
-                    GZIPOutputStream(buffer).use { gzipOut ->
-                        val fileBuffer = ByteArray(8192)
-                        var bytesRead: Int
-                        while (fis.read(fileBuffer).also { bytesRead = it } != -1) {
-                            gzipOut.write(fileBuffer, 0, bytesRead)
-                        }
-                    }
-
-                    md5Hash = digest.digest(buffer.toByteArray())
-                        .joinToString("") { "%02x".format(it) }
-                }
+                // md5 of the GZIPPED bytes -- must match the upload Etag and GOG's listing hash, or Galaxy
+                // flags a conflict.
+                val raw = file.readBytes()
+                md5Hash = md5Hex(gzipBytes(raw))
 
                 Timber.d("Calculated metadata for $relativePath: md5=$md5Hash, timestamp=$updateTimestamp")
             } catch (e: Exception) {
@@ -545,6 +553,23 @@ class GOGCloudSavesManager(
             null
         }
 
+    // per-segment encoding: relativePath may contain spaces/parens that break naive concatenation.
+    internal fun cloudFileUrl(userId: String, clientId: String, dirname: String, relativePath: String): HttpUrl {
+        val b = HttpUrl.Builder()
+            .scheme("https")
+            .host("cloudstorage.gog.com")
+            .addPathSegment("v1")
+            .addPathSegment(userId)
+            .addPathSegment(clientId)
+        // empty dirname = Galaxy SDK fallback (no namespace prefix); an empty segment would
+        // put a stray slash in the object path.
+        if (dirname.isNotEmpty()) b.addPathSegment(dirname)
+        relativePath.replace('\\', '/').split('/').forEach { segment ->
+            if (segment.isNotEmpty()) b.addPathSegment(segment)
+        }
+        return b.build()
+    }
+
     /**
      * Upload file to GOG cloud storage
      */
@@ -561,15 +586,13 @@ class GOGCloudSavesManager(
 
             Timber.tag("GOG-CloudSaves").i("Uploading: ${file.relativePath} (${fileSize} bytes)")
 
-            val objectPath = if (dirname.isEmpty()) file.relativePath else "$dirname/${file.relativePath}"
-            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$objectPath"
+            val url = cloudFileUrl(userId, clientId, dirname, file.relativePath)
 
             // GOG stores saves gzip-compressed. Match the Galaxy/gogdl protocol: send the gzipped
             // bytes with Content-Encoding: gzip and an Etag of the compressed MD5, otherwise other
             // clients (and GOG's own validation) can't read what we upload.
-            val compressedData = gzip(localFile.readBytes())
-            val etag = MessageDigest.getInstance("MD5").digest(compressedData)
-                .joinToString("") { "%02x".format(it) }
+            val compressedData = gzipBytes(localFile.readBytes())
+            val etag = md5Hex(compressedData)
 
             val requestBody = compressedData.toRequestBody("application/octet-stream".toMediaType())
 
@@ -618,8 +641,7 @@ class GOGCloudSavesManager(
         try {
             Timber.tag("GOG-CloudSaves").i("Downloading: ${file.relativePath}")
 
-            val objectPath = if (dirname.isEmpty()) file.relativePath else "$dirname/${file.relativePath}"
-            val url = "$CLOUD_STORAGE_BASE_URL/v1/$userId/$clientId/$objectPath"
+            val url = cloudFileUrl(userId, clientId, dirname, file.relativePath)
 
             val request = Request.Builder()
                 .url(url)
@@ -723,13 +745,4 @@ class GOGCloudSavesManager(
         return System.currentTimeMillis() / 1000
     }
 
-    /**
-     * Gzip [data] for cloud upload. Uses a fixed mtime (GZIPOutputStream writes 0) so the output
-     * is deterministic, matching gogdl's gzip.compress(data, 6, mtime=0).
-     */
-    private fun gzip(data: ByteArray): ByteArray {
-        val buffer = java.io.ByteArrayOutputStream()
-        GZIPOutputStream(buffer).use { it.write(data) }
-        return buffer.toByteArray()
-    }
 }
