@@ -123,6 +123,9 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                         text = { Text(knownVariable.identifier) },
                                         onClick = {
                                             envVarName = knownVariable.identifier
+                                            if (knownVariable.selectionType == EnvVarSelectionType.TOGGLE) {
+                                                envVarValue = knownVariable.possibleValues.last()
+                                            }
                                             knownVarsMenuOpen = false
                                         },
                                     )
@@ -217,7 +220,15 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                     enabled = envVarName.isNotEmpty(),
                     onClick = {
                         val envVars = EnvVars(config.envVars)
-                        envVars.put(envVarName, envVarValue)
+                        val knownVar = EnvVarInfo.KNOWN_ENV_VARS[envVarName]
+                        val value = if (envVarValue.isEmpty() &&
+                            knownVar?.selectionType == EnvVarSelectionType.TOGGLE
+                        ) {
+                            knownVar.possibleValues.last()
+                        } else {
+                            envVarValue
+                        }
+                        envVars.put(envVarName, value)
                         state.config.value = config.copy(envVars = envVars.toString())
                         state.showEnvVarCreateDialog.value = false
                     },
