@@ -625,6 +625,10 @@
     <string name="in_progress">В процессе</string>
     <string name="indeterminate">Частично отмечено</string>
     <string name="input_controls">Экранный контроллер</string>
+    <string name="on_screen_controller_settings">Настройки экранного контроллера</string>
+    <string name="mouse_speed">Скорость мыши</string>
+    <string name="mouse_speed_subtitle">Настройте скорость указателя для сенсорного перемещения и элементов управления, назначенных на движение мыши. Режим шутера использует отдельную чувствительность обзора.</string>
+    <string name="reset_mouse_speed">Сбросить скорость мыши</string>
     <string name="install">Установить</string>
     <string name="install_anyway">Установить в любом случае</string>
     <string name="install_app">Установить</string>
