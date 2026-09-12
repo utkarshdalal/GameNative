@@ -10,6 +10,7 @@
 //! Listener (all methods run on native threads):
 //! `onPlan(int chunksTotal, long bytesTotal, String chunkDir)` once before any fetch,
 //! `onProgress(long bytesDone, long bytesTotal, int chunksDone, int chunksTotal)` per chunk,
+//! `onAssemblyProgress(long bytesWritten)` per assembled file part (after a successful fetch),
 //! `onLog(String line)`, `onComplete(boolean success, String error, long bytesCredited)`.
 //!
 //! Planning (manifest parse + cross-check) runs synchronously on the calling thread so a plan
@@ -167,6 +168,19 @@ fn call_on_progress(
             JValue::Int(chunks_done.min(i32::MAX as u64) as jint),
             JValue::Int(chunks_total.min(i32::MAX as u64) as jint),
         ],
+    );
+    clear_pending_exception(env);
+}
+
+fn call_on_assembly_progress(env: &mut JNIEnv, listener: &JObject, bytes_written: u64) {
+    if listener.is_null() {
+        return;
+    }
+    let _ = env.call_method(
+        listener,
+        "onAssemblyProgress",
+        "(J)V",
+        &[JValue::Long(bytes_written as jlong)],
     );
     clear_pending_exception(env);
 }
@@ -344,8 +358,15 @@ fn run_on_thread(
         };
         call_on_log(&mut env, listener.as_obj(), line);
     };
+    // Assembly runs on the driver's worker threads after a successful fetch.
+    let assembly_progress = |bytes_written: u64| {
+        let Ok(mut env) = vm.attach_current_thread_as_daemon() else {
+            return;
+        };
+        call_on_assembly_progress(&mut env, listener.as_obj(), bytes_written);
+    };
 
-    let outcome = run_plan(&plan, &req, cancel.as_ref(), &progress, &log);
+    let outcome = run_plan(&plan, &req, cancel.as_ref(), &progress, &assembly_progress, &log);
 
     let Ok(mut env) = vm.attach_current_thread_as_daemon() else {
         return;

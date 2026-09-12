@@ -11,10 +11,11 @@ import timber.log.Timber
 /**
  * JVM facade over the native Epic chunk fetcher in `libgndownload.so` (`store_dl/epic`).
  *
- * Replaces exactly one thing in `EpicDownloadManager`: the fixed thread pool that fills
- * `<installDir>/.chunks/<GUID>` with verified, decompressed chunks. Everything around it
- * (manifest fetch/parse, install-tag selection, delta/verify, file assembly, post-install)
- * stays in Kotlin.
+ * Replaces exactly two things in `EpicDownloadManager`: the fixed thread pool that fills
+ * `<installDir>/.chunks/<GUID>` with verified, decompressed chunks, and the assembly stage
+ * that writes each pending file out of the cache (deleting chunks after their last
+ * consumer). Everything around it (manifest fetch/parse, install-tag selection,
+ * delta/verify, post-install) stays in Kotlin.
  *
  * [run] is BLOCKING (like the pool it replaces) and polls [AtomicBoolean] `cancel` every
  * 250 ms: on cancel it flips the native flag, waits up to 5 s for the run to wind down, then
@@ -31,6 +32,9 @@ object NativeEpicDownload {
 
         /** Per accounted chunk (cached-skip or fetched). */
         fun onProgress(bytesDone: Long, bytesTotal: Long, chunksDone: Int, chunksTotal: Int)
+
+        /** Per assembled file part (cumulative), after a successful fetch. */
+        fun onAssemblyProgress(bytesWritten: Long)
 
         /** Engine log line. */
         fun onLog(line: String)
@@ -99,6 +103,8 @@ object NativeEpicDownload {
                 doneRef.set(chunksDone)
                 listener.onProgress(bytesDone, bytesTotal, chunksDone, chunksTotal)
             }
+
+            override fun onAssemblyProgress(bytesWritten: Long) = listener.onAssemblyProgress(bytesWritten)
 
             override fun onLog(line: String) = listener.onLog(line)
 

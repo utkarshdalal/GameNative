@@ -241,13 +241,15 @@ impl SpeedMeter {
 }
 
 /// Run the plan. `progress(bytes_done, chunks_done)` fires once per accounted chunk (cached-skip
-/// or fetched), exactly the cadence of the Java pool's per-task `progress(...)` call. `log`
-/// receives engine lines (`fetch-window`, `summary`, failures).
+/// or fetched), exactly the cadence of the Java pool's per-task `progress(...)` call.
+/// `assembly_progress(assembled_bytes)` fires per written file part once fetching succeeded.
+/// `log` receives engine lines (`fetch-window`, `summary`, failures).
 pub fn run_plan(
     plan: &EpicPlan,
     req: &EpicRequest,
     cancel: &AtomicBool,
     progress: &(dyn Fn(u64, u64) + Sync),
+    assembly_progress: &(dyn Fn(u64) + Sync),
     log: &(dyn Fn(&str) + Sync),
 ) -> EpicOutcome {
     let chunks_total = plan.needed.len() as u64;
@@ -320,7 +322,8 @@ pub fn run_plan(
         outcome.bytes_credited = pre_bytes;
         outcome.chunks_done = pre_chunks;
         log("summary bytes=0 decompressed=0 elapsed=0.0s avg_mbps=0.00 peak_mbps=0.00 (nothing to fetch)");
-        return outcome;
+        // Fall through to assembly: fully cached still needs files written.
+        return finish_with_assembly(plan, req, cancel, assembly_progress, log, outcome);
     }
 
     let items: Vec<FetchItem> = fetch_chunks
@@ -420,7 +423,169 @@ pub fn run_plan(
     }
     outcome.success = true;
     log(&format!("chunksOK={}", outcome.chunks_done));
+    finish_with_assembly(plan, req, cancel, assembly_progress, log, outcome)
+}
+
+/// Assembly epilogue shared by the fully-cached and freshly-fetched success paths.
+fn finish_with_assembly(
+    plan: &EpicPlan,
+    req: &EpicRequest,
+    cancel: &AtomicBool,
+    assembly_progress: &(dyn Fn(u64) + Sync),
+    log: &(dyn Fn(&str) + Sync),
+    mut outcome: EpicOutcome,
+) -> EpicOutcome {
+    // ── Assembly (ported from the Kotlin `assembleFileSequential` loop) ──────
+    // Writes each pending file out of the chunk cache, deleting every chunk
+    // after its last consumer so peak disk stays at ~install size + remaining
+    // cache instead of 2× install. Progress = assembled bytes (cumulative);
+    // Kotlin credits them against the same budget as the fetch stage.
+    match assemble_files(plan, req, cancel, assembly_progress, log) {
+        Ok(bytes) => {
+            log(&format!("assembleOK files={} bytes={bytes}", req.pending_file_indices.len()));
+            // Cache files are gone (last-consumer deletion); remove the dir when
+            // nothing else (stray .part from an older run) keeps it.
+            let _ = std::fs::remove_dir(&plan.cache_dir);
+        }
+        Err(err) => {
+            outcome.success = false;
+            if cancel.load(Ordering::Relaxed) {
+                outcome.cancelled = true;
+                outcome.error = "cancelled".to_string();
+                log("cancelled during assembly");
+            } else {
+                outcome.error = format!("assembly failed: {err}");
+                log(&format!("FAIL {}", outcome.error));
+            }
+        }
+    }
     outcome
+}
+
+/// Cache file name for a part's GUID: `guidStr` = dashed-lowercase, exactly what
+/// the Kotlin assembly resolved (`File(chunkCacheDir, chunkPart.guidStr)`).
+fn part_cache_name(guid: &[u32; 4]) -> String {
+    format!("{:08x}-{:08x}-{:08x}-{:08x}", guid[0], guid[1], guid[2], guid[3])
+}
+
+/// Assemble the pending files from the chunk cache. Mirrors the Kotlin native-path
+/// assembly (`assembleFileSequential` batches of 4): sequential part writes per
+/// file, `Chunk file missing: <guid>` on a cache miss, cache files deleted after
+/// their last consumer. Files are assembled in Java's `pendingFiles` order across
+/// `process_workers` threads. `assembly_progress(cumulative_bytes)` fires per part.
+fn assemble_files(
+    plan: &EpicPlan,
+    req: &EpicRequest,
+    cancel: &AtomicBool,
+    assembly_progress: &(dyn Fn(u64) + Sync),
+    log: &(dyn Fn(&str) + Sync),
+) -> Result<u64, String> {
+    use std::collections::HashMap;
+    use std::io::Write;
+    use std::os::unix::fs::FileExt;
+
+    let install_dir = std::path::Path::new(&req.install_dir);
+
+    // Chunk → remaining consumer count over the pending set (for last-consumer deletion).
+    let mut refcounts: HashMap<String, usize> = HashMap::new();
+    for &fi in &req.pending_file_indices {
+        for p in &plan.manifest.files[fi].parts {
+            *refcounts.entry(part_cache_name(&p.guid)).or_insert(0) += 1;
+        }
+    }
+    let refcounts = Mutex::new(refcounts);
+    let assembled = AtomicU64::new(0);
+    let next = AtomicU64::new(0);
+    let failure: Mutex<Option<String>> = Mutex::new(None);
+
+    let workers = req.process_workers.max(1).min(req.pending_file_indices.len().max(1));
+    std::thread::scope(|scope| {
+        for _ in 0..workers {
+            scope.spawn(|| {
+                let mut buf = vec![0u8; 1024 * 1024];
+                loop {
+                    if cancel.load(Ordering::Relaxed) {
+                        return;
+                    }
+                    if failure.lock().unwrap().is_some() {
+                        return;
+                    }
+                    let i = next.fetch_add(1, Ordering::Relaxed) as usize;
+                    if i >= req.pending_file_indices.len() {
+                        return;
+                    }
+                    let file = &plan.manifest.files[req.pending_file_indices[i]];
+                    let result = (|| -> Result<(), String> {
+                        let out_path = install_dir.join(&file.filename);
+                        if let Some(parent) = out_path.parent() {
+                            std::fs::create_dir_all(parent)
+                                .map_err(|e| format!("mkdirs {}: {e}", parent.display()))?;
+                        }
+                        let out = std::fs::File::create(&out_path)
+                            .map_err(|e| format!("create {}: {e}", out_path.display()))?;
+                        let mut writer = std::io::BufWriter::with_capacity(1024 * 1024, out);
+                        for part in &file.parts {
+                            if cancel.load(Ordering::Relaxed) {
+                                return Ok(());
+                            }
+                            let cache_name = part_cache_name(&part.guid);
+                            let cache_path = plan.cache_dir.join(&cache_name);
+                            let cache = std::fs::File::open(&cache_path).map_err(|_| {
+                                format!("Chunk file missing: {cache_name}")
+                            })?;
+                            // Read the part slice (offset/length into the DECOMPRESSED
+                            // chunk); a short read means a corrupt cache — fail loudly
+                            // instead of writing a truncated file like the Kotlin
+                            // `break-on-EOF` loop did.
+                            let mut remaining = part.size.max(0) as u64;
+                            let mut at = part.offset.max(0) as u64;
+                            while remaining > 0 {
+                                let want = remaining.min(buf.len() as u64) as usize;
+                                cache
+                                    .read_exact_at(&mut buf[..want], at)
+                                    .map_err(|e| format!("read {cache_name}: {e}"))?;
+                                writer
+                                    .write_all(&buf[..want])
+                                    .map_err(|e| format!("write {}: {e}", out_path.display()))?;
+                                at += want as u64;
+                                remaining -= want as u64;
+                            }
+                            writer
+                                .flush()
+                                .map_err(|e| format!("write {}: {e}", out_path.display()))?;
+                            let done = assembled.fetch_add(part.size.max(0) as u64, Ordering::Relaxed)
+                                + part.size.max(0) as u64;
+                            assembly_progress(done);
+                            // Last consumer drops the cache file (Kotlin streaming parity).
+                            let mut refs = refcounts.lock().unwrap();
+                            if let Some(count) = refs.get_mut(&cache_name) {
+                                *count -= 1;
+                                if *count == 0 {
+                                    refs.remove(&cache_name);
+                                    drop(refs);
+                                    let _ = std::fs::remove_file(&cache_path);
+                                }
+                            }
+                        }
+                        Ok(())
+                    })();
+                    if let Err(err) = result {
+                        log(&format!("assemble {} failed: {err}", file.filename));
+                        *failure.lock().unwrap() = Some(err);
+                        return;
+                    }
+                }
+            });
+        }
+    });
+
+    if cancel.load(Ordering::Relaxed) {
+        return Err("cancelled".to_string());
+    }
+    if let Some(err) = failure.lock().unwrap().take() {
+        return Err(err);
+    }
+    Ok(assembled.load(Ordering::Relaxed))
 }
 
 #[cfg(test)]
@@ -522,14 +687,21 @@ mod tests {
 
         let cancel = AtomicBool::new(false);
         let calls = Mutex::new(Vec::new());
+        let asm = Mutex::new(Vec::new());
         let progress = |b: u64, c: u64| calls.lock().unwrap().push((b, c));
+        let assembly_progress = |b: u64| asm.lock().unwrap().push(b);
         let log = |_: &str| {};
-        let out = run_plan(&plan, &req, &cancel, &progress, &log);
+        let out = run_plan(&plan, &req, &cancel, &progress, &assembly_progress, &log);
         assert!(out.success);
         assert_eq!(out.chunks_done, 1);
         // Cached credit = cache-file length (decompressed bytes).
         assert_eq!(out.bytes_credited, data.len() as u64);
         assert_eq!(*calls.lock().unwrap(), vec![(data.len() as u64, 1)]);
+        // Assembly ran in-engine: file written, cache chunk consumed (last consumer).
+        assert_eq!(*asm.lock().unwrap(), vec![data.len() as u64]);
+        let assembled_file = dir.join("Game/f.bin");
+        assert_eq!(std::fs::read(&assembled_file).unwrap(), data);
+        assert!(!cache_path.exists(), "cache chunk deleted after its last consumer");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -568,7 +740,8 @@ mod tests {
         let calls = Mutex::new(Vec::new());
         let progress = |b: u64, c: u64| calls.lock().unwrap().push((b, c));
         let log = |_: &str| {};
-        let out = run_plan(&plan, &req, &cancel, &progress, &log);
+        let assembly_progress = |_: u64| {};
+        let out = run_plan(&plan, &req, &cancel, &progress, &assembly_progress, &log);
         assert!(!out.success, "refetch must fail without a reachable CDN");
         assert!(calls.lock().unwrap().is_empty(), "no credit for corrupt cache");
         assert!(!cache_path.exists(), "corrupt cache was removed before refetch");
@@ -582,10 +755,108 @@ mod tests {
         let plan = build_plan(&req).unwrap();
         let cancel = AtomicBool::new(true);
         let progress = |_: u64, _: u64| {};
+        let assembly_progress = |_: u64| {};
         let log = |_: &str| {};
-        let out = run_plan(&plan, &req, &cancel, &progress, &log);
+        let out = run_plan(&plan, &req, &cancel, &progress, &assembly_progress, &log);
         assert!(out.cancelled);
         assert!(!out.success);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn assembly_writes_files_and_drops_shared_chunks_after_last_consumer() {
+        // file a = chunk1[0..4000] + chunk2[0..2000]; file b = chunk2[100..600] (shared chunk).
+        let chunks = vec![
+            TestChunk {
+                guid: [1, 2, 3, 4],
+                hash: 0,
+                sha1: [0; 20],
+                group: 0,
+                window: 4000,
+                file_size: 10,
+            },
+            TestChunk {
+                guid: [5, 6, 7, 8],
+                hash: 0,
+                sha1: [0; 20],
+                group: 0,
+                window: 3000,
+                file_size: 10,
+            },
+        ];
+        let files = vec![
+            TestFile {
+                name: "Game/a.bin".to_string(),
+                sha1: [0; 20],
+                tags: vec![],
+                parts: vec![(chunks[0].guid, 0, 4000), (chunks[1].guid, 0, 2000)],
+            },
+            TestFile {
+                name: "Game/b.bin".to_string(),
+                sha1: [0; 20],
+                tags: vec![],
+                parts: vec![(chunks[1].guid, 100, 500)],
+            },
+        ];
+        let manifest_bytes = build_manifest(&chunks, &files, 21, true);
+        let dir = super::super::chunk::test_support::temp_dir("assemble");
+        let mut req = request(dir.to_str().unwrap(), vec![0, 1]);
+        req.manifest_bytes = manifest_bytes;
+        let plan = build_plan(&req).unwrap();
+
+        let d1 = vec![1u8; 4000];
+        let d2: Vec<u8> = (0..3000).map(|i| (i % 251) as u8).collect();
+        let c1 = plan.cache_dir.join(part_cache_name(&chunks[0].guid));
+        let c2 = plan.cache_dir.join(part_cache_name(&chunks[1].guid));
+        std::fs::write(&c1, &d1).unwrap();
+        std::fs::write(&c2, &d2).unwrap();
+
+        let cancel = AtomicBool::new(false);
+        let asm = Mutex::new(Vec::new());
+        let assembly_progress = |b: u64| asm.lock().unwrap().push(b);
+        let log = |_: &str| {};
+        let n = assemble_files(&plan, &req, &cancel, &assembly_progress, &log).unwrap();
+        assert_eq!(n, 6500);
+
+        let a = std::fs::read(dir.join("Game/a.bin")).unwrap();
+        assert_eq!(&a[..4000], &d1[..]);
+        assert_eq!(&a[4000..], &d2[..2000]);
+        let b = std::fs::read(dir.join("Game/b.bin")).unwrap();
+        assert_eq!(b, &d2[100..600]);
+        assert!(!c1.exists(), "single-consumer chunk deleted");
+        assert!(!c2.exists(), "shared chunk deleted after its LAST consumer");
+        // Progress is cumulative over written parts (order across threads not asserted).
+        assert_eq!(asm.lock().unwrap().last().copied(), Some(6500));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn assembly_fails_loudly_on_missing_chunk() {
+        let chunks = vec![TestChunk {
+            guid: [9, 9, 9, 9],
+            hash: 0,
+            sha1: [0; 20],
+            group: 0,
+            window: 100,
+            file_size: 10,
+        }];
+        let files = vec![TestFile {
+            name: "Game/x.bin".to_string(),
+            sha1: [0; 20],
+            tags: vec![],
+            parts: vec![(chunks[0].guid, 0, 100)],
+        }];
+        let manifest_bytes = build_manifest(&chunks, &files, 21, true);
+        let dir = super::super::chunk::test_support::temp_dir("assemble-missing");
+        let mut req = request(dir.to_str().unwrap(), vec![0]);
+        req.manifest_bytes = manifest_bytes;
+        let plan = build_plan(&req).unwrap();
+
+        let cancel = AtomicBool::new(false);
+        let assembly_progress = |_: u64| {};
+        let log = |_: &str| {};
+        let err = assemble_files(&plan, &req, &cancel, &assembly_progress, &log).unwrap_err();
+        assert!(err.contains("Chunk file missing"), "unexpected error: {err}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

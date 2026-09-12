@@ -294,7 +294,7 @@ class EpicDownloadManager @Inject constructor(
             val chunkQueue = buildFileOrderedChunkQueue(manifest, fileChunkIds)
 
             // Native (Rust) chunk engine first; falls back to the Kotlin streaming pipeline.
-            val downloadResult = downloadAndAssembleEpicChunksNative(
+            val nativeResult = downloadAndAssembleEpicChunksNative(
                 manifestBytes = manifestData.manifestBytes,
                 cdnUrls = cdnUrls,
                 installDir = installDir,
@@ -304,7 +304,9 @@ class EpicDownloadManager @Inject constructor(
                 allFiles = manifest.fileManifestList?.elements ?: files,
                 pendingFiles = pendingFiles,
                 downloadInfo = downloadInfo,
-            ) ?: downloadAndAssembleEpicChunks(
+            )
+
+            val downloadAndAssembleResult = nativeResult ?: downloadAndAssembleEpicChunks(
                 manifest = manifest,
                 cdnUrls = cdnUrls,
                 chunkCacheDir = chunkCacheDir,
@@ -314,8 +316,9 @@ class EpicDownloadManager @Inject constructor(
                 chunkQueue = chunkQueue,
                 chunkDir = chunkDir,
             )
-            if (downloadResult.isFailure) {
-                return@withContext downloadResult
+
+            if (downloadAndAssembleResult.isFailure) {
+                return@withContext downloadAndAssembleResult
             }
 
             chunkCacheDir.deleteRecursively()
@@ -991,7 +994,27 @@ class EpicDownloadManager @Inject constructor(
             if (cause is CancellationException) cancelFlag.set(true)
         }
 
+        // Single credit budget for the WHOLE native run (fetch + assembly):
+        // totalExpected − already-persisted bytes. The engine credits cached-skip
+        // chunks at fetch time and reports assembled bytes afterwards; routing
+        // both through this budget makes double-crediting on resume impossible
+        // (the persisted snapshot is already counted) and caps the bar at 100%.
+        val remainingCredit = java.util.concurrent.atomic.AtomicLong(
+            (downloadInfo.getTotalExpectedBytes() - downloadInfo.getBytesDownloaded()).coerceAtLeast(0L),
+        )
+        // Atomically take up to `want` from the budget; returns the amount taken.
+        val takeCredit: (Long) -> Long = { want ->
+            var taken = 0L
+            remainingCredit.getAndUpdate { remaining ->
+                taken = minOf(want, remaining)
+                remaining - taken
+            }
+            taken
+        }
+
         var creditedBytes = 0L
+        var assemblyCredited = 0L
+        var lastAssemblyEmitAt = 0L
         val listener = object : NativeEpicDownload.Listener {
             override fun onPlan(chunksTotal: Int, bytesTotal: Long, chunkDir: String) = Unit
 
@@ -1003,13 +1026,36 @@ class EpicDownloadManager @Inject constructor(
                     val delta = bytesDone - creditedBytes
                     if (delta > 0L) {
                         creditedBytes = bytesDone
-                        downloadInfo.updateBytesDownloaded(delta)
+                        val taken = takeCredit(delta)
+                        if (taken > 0L) {
+                            downloadInfo.updateBytesDownloaded(taken)
+                        }
                     }
                 }
                 if (chunksTotal > 0) {
                     downloadInfo.setProgress(chunksDone.toFloat() / chunksTotal.toFloat())
                 }
                 downloadInfo.updateStatusMessage("Downloading ($chunksDone/$chunksTotal chunks)")
+            }
+
+            override fun onAssemblyProgress(bytesWritten: Long) {
+                // Assembly runs in-engine now (Rust); bytesWritten is cumulative.
+                synchronized(this) {
+                    val delta = bytesWritten - assemblyCredited
+                    if (delta > 0L) {
+                        assemblyCredited = bytesWritten
+                        val taken = takeCredit(delta)
+                        if (taken > 0L) {
+                            downloadInfo.updateBytesDownloaded(taken)
+                        }
+                    }
+                }
+                val now = System.currentTimeMillis()
+                if (now - lastAssemblyEmitAt >= 250L) {
+                    lastAssemblyEmitAt = now
+                    downloadInfo.updateStatusMessage("Assembling files...")
+                    downloadInfo.emitProgressChange()
+                }
             }
 
             override fun onLog(line: String) {
@@ -1055,49 +1101,11 @@ class EpicDownloadManager @Inject constructor(
             )
         }
 
-        // Assemble the pending files out of the native chunk cache (`<installDir>/.chunks`).
-        // Progress: the engine credited each unique chunk's DECOMPRESSED bytes once (D below).
-        // Assembly writes Σ file sizes (U ≥ D — shared chunks are written once per consumer),
-        // so credit only the part of the written stream beyond D; the bar then climbs to
-        // exactly 100% when the last file is assembled.
-        val nativeChunkCacheDir = File(installDir, ".chunks")
-        val downloadedCredit = creditedBytes
-        val assembledBytes = java.util.concurrent.atomic.AtomicLong(0L)
-        val extraCredited = java.util.concurrent.atomic.AtomicLong(0L)
-        var lastAssemblyEmitAt = 0L
-        val onPartWritten: (Long) -> Unit = { partSize ->
-            val written = assembledBytes.addAndGet(partSize)
-            val extra = (written - downloadedCredit).coerceAtLeast(0L)
-            val delta = extra - extraCredited.get()
-            if (delta > 0L && extraCredited.compareAndSet(extra - delta, extra)) {
-                downloadInfo.updateBytesDownloaded(delta)
-                val now = System.currentTimeMillis()
-                if (now - lastAssemblyEmitAt >= 250L) {
-                    lastAssemblyEmitAt = now
-                    downloadInfo.updateStatusMessage("Assembling files...")
-                    downloadInfo.emitProgressChange()
-                }
-            }
-        }
-        try {
-            pendingFiles.chunked(4).forEach { batch ->
-                if (!downloadInfo.isActive()) {
-                    return@withContext Result.failure(Exception("Download cancelled"))
-                }
-                val results = batch.map { fileManifest ->
-                    async { assembleFileSequential(fileManifest, nativeChunkCacheDir, installDir, onPartWritten) }
-                }.awaitAll()
-
-                results.firstOrNull { it.isFailure }?.let { failure ->
-                    return@withContext Result.failure(
-                        failure.exceptionOrNull() ?: Exception("File assembly failed"),
-                    )
-                }
-            }
-            Result.success(Unit)
-        } finally {
-            nativeChunkCacheDir.deleteRecursively()
-        }
+        // The engine assembled every pending file in-process (Rust) and deleted
+        // each cache chunk after its last consumer; this is only a safety sweep
+        // for stray `.part` files from older interrupted runs.
+        File(installDir, ".chunks").deleteRecursively()
+        Result.success(Unit)
     }
 
     // assembles files as chunks arrive, deletes chunks once their last consumer is assembled

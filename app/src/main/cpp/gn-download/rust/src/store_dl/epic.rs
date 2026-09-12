@@ -1,9 +1,11 @@
 //! Epic Games Store download adapter for the shared fetch core (`crate::fetch_core`).
 //!
 //! Scope = the chunk-fetch inner loop of `EpicDownloadManager.java` (the fixed 8-thread pool that
-//! fills `<installDir>/.chunks/<GUID>`), nothing more. The Java manager still parses the manifest
-//! API JSON, downloads the manifest, selects files (install tags), runs the delta/verify pass,
-//! assembles files from the chunk cache and does every post-install step. The adapter re-parses
+//! fills `<installDir>/.chunks/<GUID>`) PLUS the assembly stage (`assembleFileSequential`):
+//! after a successful fetch the engine writes every pending file out of the cache, deleting
+//! each chunk after its last consumer. The Java manager still parses the manifest API JSON,
+//! downloads the manifest, selects files (install tags), runs the delta/verify pass and does
+//! every post-install step. The adapter re-parses
 //! the same manifest bytes, rebuilds the same chunk plan for the pending files Java hands it,
 //! skips chunks already in the cache and writes verified chunks with the same `.part` + rename
 //! protocol, so the on-disk state is identical whichever engine ran (see

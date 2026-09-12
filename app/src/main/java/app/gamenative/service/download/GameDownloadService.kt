@@ -767,6 +767,12 @@ object GameDownloadService {
      * retried when that service registers its listener (service restart path).
      */
     private fun resumeNextLocked() {
+        // Only advance the queue when nothing is transferring: unregistering an
+        // inactive (queued) entry while the active download is still running
+        // must not start another download — the queue advances when the active
+        // one finishes. Without this, dequeueing one of several queued entries
+        // resumes the next queued entry and preempts the active download.
+        if (activeDownloads.values.any { it.downloadInfo.isActive() }) return
         val nextDownload = activeDownloads.values.firstOrNull { entry ->
             entry.downloadInfo.wasAutoPaused() && resumeListeners.containsKey(entry.gameSource)
         } ?: return
