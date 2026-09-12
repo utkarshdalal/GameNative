@@ -1697,6 +1697,7 @@
     <string name="debug_prerun_title">Få AI-hjælp</string>
     <string name="debug_prerun_message_1">Kører spillet med debug-logning og deler loggen med vores AI på Discord, når du afslutter. Spil, indtil du oplever problemet.</string>
     <string name="debug_prerun_message_2">AI-svar er kun for abonnenter.</string>
+    <string name="debug_trial_note">Gratis prøveperiode tilgængelig.</string>
     <string name="debug_prerun_message_3">Alle kan dele rapporten for at få menneskelig hjælp.</string>
     <string name="debug_paywall_title">Få AI-fejlfindingshjælp</string>
     <string name="debug_paywall_pitch">Vores AI læser din nøjagtige log og konfiguration og fortæller dig, hvad du skal ændre, som regel på under 5 minutter.</string>

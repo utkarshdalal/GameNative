@@ -128,6 +128,7 @@ import app.gamenative.utils.AssetUtils
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
@@ -3876,7 +3877,10 @@ private fun setupXEnvironment(
     val wineDebugChannels = PrefManager.wineDebugChannels
     // explicitly enable or disable Wine debug channels
     if (debugRun) {
-        envVars.put("WINEDEBUG", "warn+seh,+loaddll,+timestamp,+pid,+tid")
+        envVars.put("WINEDEBUG", "warn+seh,+loaddll,+process,+timestamp,+pid,+tid")
+        envVars.put("DXVK_LOG_LEVEL", "info")
+        envVars.put("DXVK_LOG_PATH", "none")
+        envVars.put("VKD3D_DEBUG", "warn")
     } else if (diagnostics) {
         envVars.put("WRAPPER_DIAG", "1")
         envVars.put("WRAPPER_DIAG_APPID", appId)
@@ -3901,6 +3905,7 @@ private fun setupXEnvironment(
         wineLogDir.mkdirs()
         logFile = File(wineLogDir, if (debugRun) "debug_run_$appId.log" else "wine_debug.log")
         if (logFile.exists()) logFile.delete()
+        if (debugRun) DebugReportUtils.startLogcatCapture(context, appId)
     }
 
     ProcessHelper.addDebugCallback { line ->

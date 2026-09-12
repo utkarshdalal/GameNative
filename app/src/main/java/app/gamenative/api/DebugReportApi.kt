@@ -30,6 +30,7 @@ object DebugReportApi {
         logFile: File,
         relayToken: String,
         perfFile: File? = null,
+        logcatFile: File? = null,
     ): SubmitResult = withContext(Dispatchers.IO) {
         try {
             val headerString = header.toString()
@@ -50,6 +51,13 @@ object DebugReportApi {
                     "perf",
                     "perf.json",
                     perfFile.asRequestBody("application/json".toMediaType()),
+                )
+            }
+            if (logcatFile != null && logcatFile.exists()) {
+                bodyBuilder.addFormDataPart(
+                    "logcat",
+                    "logcat.gz",
+                    logcatFile.asRequestBody("application/gzip".toMediaType()),
                 )
             }
             val body = bodyBuilder.build()

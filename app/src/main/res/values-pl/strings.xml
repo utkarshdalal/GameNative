@@ -1827,6 +1827,7 @@
     <string name="debug_prerun_title">Uzyskaj pomoc AI</string>
     <string name="debug_prerun_message_1">Uruchamia grę z logowaniem debugowania i po wyjściu udostępnia log naszemu AI na Discordzie. Graj, aż wystąpi problem.</string>
     <string name="debug_prerun_message_2">Odpowiedzi AI są tylko dla subskrybentów.</string>
+    <string name="debug_trial_note">Dostępny bezpłatny okres próbny.</string>
     <string name="debug_prerun_message_3">Każdy może udostępnić raport, aby uzyskać pomoc od ludzi.</string>
     <string name="debug_paywall_title">Uzyskaj pomoc AI w debugowaniu</string>
     <string name="debug_paywall_pitch">Nasza AI czyta dokładnie Twój log i konfigurację i mówi, co zmienić, zwykle w niecałe 5 minut.</string>

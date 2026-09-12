@@ -1829,6 +1829,7 @@
     <string name="debug_prerun_title">Primește ajutor de la AI</string>
     <string name="debug_prerun_message_1">Rulează jocul cu jurnal de depanare și partajează jurnalul cu AI-ul nostru pe Discord la ieșire. Joacă până când apare problema.</string>
     <string name="debug_prerun_message_2">Răspunsurile AI sunt doar pentru abonați.</string>
+    <string name="debug_trial_note">Perioadă de probă gratuită disponibilă.</string>
     <string name="debug_prerun_message_3">Oricine poate partaja raportul pentru ajutor uman.</string>
     <string name="debug_paywall_title">Obține suport de depanare AI</string>
     <string name="debug_paywall_pitch">AI-ul nostru îți citește exact jurnalul și configurația și îți spune ce să schimbi, de obicei în mai puțin de 5 minute.</string>
