@@ -2,7 +2,10 @@ package com.winlator.inputcontrols;
 
 import com.winlator.math.Mathf;
 
-/** Pure two-dimensional transforms shared by physical-stick passthrough and digital bindings. */
+/**
+ * Pure two-dimensional transforms shared by physical-stick passthrough and digital bindings. The
+ * {@link MutableVector} overloads write into a caller-owned result, so the per-event path doesn't allocate.
+ */
 public final class StickVectorProcessor {
     public static final int DIRECTION_NONE = -1;
     private static final double MAGNITUDE_EPSILON = 1.0e-6;
@@ -23,27 +26,63 @@ public final class StickVectorProcessor {
         }
     }
 
+    /** Reusable result of the allocation-free overloads. */
+    public static final class MutableVector {
+        public float x;
+        public float y;
+
+        public MutableVector() {}
+
+        public MutableVector(float x, float y) {
+            set(x, y);
+        }
+
+        public void set(float x, float y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        public Vector toVector() {
+            return x == 0 && y == 0 ? Vector.ZERO : new Vector(x, y);
+        }
+    }
+
     public static Vector tune(
             float x,
             float y,
             float deadzone,
             float sensitivity,
             ControlsProfile.StickDeadzoneMode mode) {
-        if (!Float.isFinite(x) || !Float.isFinite(y)) return Vector.ZERO;
+        MutableVector out = new MutableVector();
+        tune(x, y, deadzone, sensitivity, mode, out);
+        return out.toVector();
+    }
+
+    /** {@link #tune(float, float, float, float, ControlsProfile.StickDeadzoneMode)} into {@code out}. */
+    public static void tune(
+            float x,
+            float y,
+            float deadzone,
+            float sensitivity,
+            ControlsProfile.StickDeadzoneMode mode,
+            MutableVector out) {
+        if (!Float.isFinite(x) || !Float.isFinite(y)) {
+            out.set(0, 0);
+            return;
+        }
         ControlsProfile.StickDeadzoneMode resolvedMode = mode != null
                 ? mode
                 : ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
-        Vector adjusted;
         switch (resolvedMode) {
             case CIRCULAR:
-                adjusted = applyCircularDeadzone(x, y, deadzone);
+                applyCircularDeadzone(x, y, deadzone, out);
                 break;
             case HYBRID:
-                adjusted = applyHybridDeadzone(x, y, deadzone);
+                applyHybridDeadzone(x, y, deadzone, out);
                 break;
             case AXIAL:
             default:
-                adjusted = new Vector(
+                out.set(
                         ControlsProfile.applyStickDeadzone(x, deadzone),
                         ControlsProfile.applyStickDeadzone(y, deadzone));
                 break;
@@ -55,48 +94,64 @@ public final class StickVectorProcessor {
                         ControlsProfile.MIN_STICK_SENSITIVITY,
                         ControlsProfile.MAX_STICK_SENSITIVITY)
                 : ControlsProfile.DEFAULT_STICK_SENSITIVITY;
-        float scaledX = adjusted.x * resolvedSensitivity;
-        float scaledY = adjusted.y * resolvedSensitivity;
+        float scaledX = out.x * resolvedSensitivity;
+        float scaledY = out.y * resolvedSensitivity;
         if (resolvedMode == ControlsProfile.StickDeadzoneMode.AXIAL) {
-            return new Vector(Mathf.clamp(scaledX, -1, 1), Mathf.clamp(scaledY, -1, 1));
+            out.set(Mathf.clamp(scaledX, -1, 1), Mathf.clamp(scaledY, -1, 1));
+            return;
         }
-        return clampToUnitCircle(scaledX, scaledY);
+        clampToUnitCircle(scaledX, scaledY, out);
     }
 
-    static Vector applyCircularDeadzone(float x, float y, float deadzone) {
+    static void applyCircularDeadzone(float x, float y, float deadzone, MutableVector out) {
         float resolvedDeadzone = resolveDeadzone(deadzone);
-        double magnitude = Math.hypot(x, y);
-        if (magnitude <= resolvedDeadzone + MAGNITUDE_EPSILON || resolvedDeadzone >= 1.0f) {
-            return Vector.ZERO;
+        // Squared: a stick at rest or inside the dead zone, the common case, needs no root.
+        double magnitudeSquared = magnitudeSquared(x, y);
+        double threshold = resolvedDeadzone + MAGNITUDE_EPSILON;
+        if (magnitudeSquared <= threshold * threshold || resolvedDeadzone >= 1.0f) {
+            out.set(0, 0);
+            return;
         }
+        double magnitude = Math.sqrt(magnitudeSquared);
         float outputMagnitude = Mathf.clamp(
                 (float)((magnitude - resolvedDeadzone) / (1.0f - resolvedDeadzone)),
                 0,
                 1);
         float scale = outputMagnitude / (float)magnitude;
-        return new Vector(x * scale, y * scale);
+        out.set(x * scale, y * scale);
     }
 
-    static Vector applyHybridDeadzone(float x, float y, float deadzone) {
+    static void applyHybridDeadzone(float x, float y, float deadzone, MutableVector out) {
         float resolvedDeadzone = resolveDeadzone(deadzone);
-        Vector circular = applyCircularDeadzone(x, y, resolvedDeadzone);
-        if (circular.x == 0 && circular.y == 0) return circular;
+        applyCircularDeadzone(x, y, resolvedDeadzone, out);
+        float circularX = out.x;
+        float circularY = out.y;
+        if (circularX == 0 && circularY == 0) return;
 
         // Add narrow axial corridors to a circular center without changing diagonal magnitude.
-        float outputX = Math.abs(circular.x) <= resolvedDeadzone * Math.abs(circular.y)
+        float outputX = Math.abs(circularX) <= resolvedDeadzone * Math.abs(circularY)
                 ? 0
-                : circular.x;
-        float outputY = Math.abs(circular.y) <= resolvedDeadzone * Math.abs(circular.x)
+                : circularX;
+        float outputY = Math.abs(circularY) <= resolvedDeadzone * Math.abs(circularX)
                 ? 0
-                : circular.y;
-        return new Vector(outputX, outputY);
+                : circularY;
+        out.set(outputX, outputY);
     }
 
-    private static Vector clampToUnitCircle(float x, float y) {
-        double magnitude = Math.hypot(x, y);
-        if (magnitude <= 1.0) return new Vector(x, y);
-        float scale = 1.0f / (float)magnitude;
-        return new Vector(x * scale, y * scale);
+    private static void clampToUnitCircle(float x, float y, MutableVector out) {
+        double magnitudeSquared = magnitudeSquared(x, y);
+        if (magnitudeSquared <= 1.0) {
+            out.set(x, y);
+            return;
+        }
+        float scale = 1.0f / (float)Math.sqrt(magnitudeSquared);
+        out.set(x * scale, y * scale);
+    }
+
+    // Squared length, compared against squared bounds so a root is taken only where the length itself is needed.
+    // (Math.hypot guards against overflow at a large cost; stick vectors are bounded.)
+    private static double magnitudeSquared(float x, float y) {
+        return (double)x * x + (double)y * y;
     }
 
     private static float resolveDeadzone(float deadzone) {
@@ -138,21 +193,30 @@ public final class StickVectorProcessor {
     }
 
     static Vector snapToDirection(float x, float y, int direction) {
+        MutableVector out = new MutableVector();
+        snapToDirection(x, y, direction, out);
+        return out.toVector();
+    }
+
+    /** {@link #snapToDirection(float, float, int)} into {@code out}, which may hold {@code x} and {@code y}. */
+    static void snapToDirection(float x, float y, int direction, MutableVector out) {
         if (!Float.isFinite(x) || !Float.isFinite(y) || direction < 0 || direction > 7) {
-            return Vector.ZERO;
+            out.set(0, 0);
+            return;
         }
-        float strength = Mathf.clamp((float)Math.hypot(x, y), 0, 1);
+        double magnitudeSquared = magnitudeSquared(x, y);
+        float strength = magnitudeSquared >= 1.0 ? 1 : (float)Math.sqrt(magnitudeSquared);
         float diagonalComponent = strength * INVERSE_SQRT_TWO;
         switch (direction) {
-            case 0: return new Vector(strength, 0);
-            case 1: return new Vector(diagonalComponent, diagonalComponent);
-            case 2: return new Vector(0, strength);
-            case 3: return new Vector(-diagonalComponent, diagonalComponent);
-            case 4: return new Vector(-strength, 0);
-            case 5: return new Vector(-diagonalComponent, -diagonalComponent);
-            case 6: return new Vector(0, -strength);
-            case 7: return new Vector(diagonalComponent, -diagonalComponent);
-            default: return Vector.ZERO;
+            case 0: out.set(strength, 0); break;
+            case 1: out.set(diagonalComponent, diagonalComponent); break;
+            case 2: out.set(0, strength); break;
+            case 3: out.set(-diagonalComponent, diagonalComponent); break;
+            case 4: out.set(-strength, 0); break;
+            case 5: out.set(-diagonalComponent, -diagonalComponent); break;
+            case 6: out.set(0, -strength); break;
+            case 7: out.set(diagonalComponent, -diagonalComponent); break;
+            default: out.set(0, 0); break;
         }
     }
 

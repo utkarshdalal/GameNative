@@ -339,6 +339,9 @@
     <string name="performance_hud_fps_limiter_off">無制限</string>
     <string name="performance_hud_fps_limiter_value">%1$d FPS</string>
     <string name="performance_hud_fps_limiter_lsfg_base">ベースフレームレートを制限します。画面上のレートは上限×LSFG倍率です。</string>
+    <string name="performance_hud_input_throttling">入力スロットリング</string>
+    <string name="performance_hud_input_throttling_description">スティックとトリガーの動きをゲームに送る頻度を制限します。ボタンは遅延しません。</string>
+    <string name="performance_hud_input_throttling_rate">スロットリングレート</string>
     <string name="performance_hud_presets">プリセット</string>
     <string name="performance_hud_presets_description">一般的な HUD レイアウトをすばやく切り替えます。</string>
     <string name="performance_hud_preset_fps_only">1</string>
