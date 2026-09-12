@@ -1311,6 +1311,13 @@ object PrefManager {
             setPref(BOOT_SCREEN_ADS_ENABLED, value)
         }
 
+    private val HIDE_AI_FEATURES = booleanPreferencesKey("hide_ai_features")
+    var hideAiFeatures: Boolean
+        get() = getPref(HIDE_AI_FEATURES, false)
+        set(value) {
+            setPref(HIDE_AI_FEATURES, value)
+        }
+
     // Show game recommendations in library
     private val SHOW_RECOMMENDATIONS = booleanPreferencesKey("show_recommendations")
     var showRecommendations: Boolean

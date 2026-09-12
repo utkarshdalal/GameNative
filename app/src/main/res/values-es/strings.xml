@@ -2455,6 +2455,8 @@
     <string name="xr_open_composite_toggle">Compatibilidad con SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Redirige los juegos creados para SteamVR a través de OpenComposite. Actívalo si el juego dice que SteamVR no está en ejecución o se queda en plano con el modo VR activado.</string>
     <string name="xr_render_scale">Escala de renderizado de RV</string>
+    <string name="settings_hide_ai_title">Ocultar funciones de IA</string>
+    <string name="settings_hide_ai_subtitle">Oculta la ayuda de depuración con IA opcional</string>
     <string name="settings_info_boot_ads_title">Pantallas de carga patrocinadas</string>
     <string name="settings_info_boot_ads_subtitle">Mantener esto activado ayuda a apoyar el desarrollo de GameNative. Nunca ralentiza el inicio de los juegos ni te afecta de ninguna manera.</string>
     <string name="settings_info_boot_recs_title">Recomendaciones de juegos en pantallas de carga</string>

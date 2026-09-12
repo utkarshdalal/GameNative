@@ -1141,6 +1141,8 @@
     <string name="settings_info_libraries_subtitle">See what technologies make GameNative possible</string>
     <string name="settings_info_privacy_title">Privacy Policy</string>
     <string name="settings_info_privacy_subtitle">Opens a link to GameNative\'s privacy policy</string>
+    <string name="settings_hide_ai_title">Hide AI features</string>
+    <string name="settings_hide_ai_subtitle">Hides the optional AI debugging help</string>
     <string name="settings_info_boot_ads_title">Sponsored loading screens</string>
     <string name="settings_info_boot_ads_subtitle">Keeping this on helps support GameNative\'s development. It never slows down game launches or affects you in any way.</string>
     <string name="settings_info_boot_recs_title">Game recommendations on loading screens</string>

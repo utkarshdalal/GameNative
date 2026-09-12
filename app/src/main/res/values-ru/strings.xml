@@ -2391,6 +2391,8 @@ https://gamenative.app
     <string name="xr_open_composite_toggle">Совместимость со SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Запускает игры, созданные для SteamVR, через OpenComposite. Включите, если игра сообщает, что SteamVR не запущен, или остаётся плоской при включённом VR-режиме.</string>
     <string name="xr_render_scale">Масштаб рендеринга VR</string>
+    <string name="settings_hide_ai_title">Скрыть функции ИИ</string>
+    <string name="settings_hide_ai_subtitle">Скрывает необязательную помощь ИИ в отладке</string>
     <string name="settings_info_boot_ads_title">Спонсорские экраны загрузки</string>
     <string name="settings_info_boot_ads_subtitle">Если оставить это включённым, вы поддержите разработку GameNative. Это никогда не замедляет запуск игр и никак на вас не влияет.</string>
     <string name="settings_info_boot_recs_title">Рекомендации игр на экранах загрузки</string>

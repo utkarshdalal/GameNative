@@ -774,6 +774,7 @@ class MainViewModel @Inject constructor(
     }
 
     private suspend fun offerAiDebugRun(context: Context, appId: String, trigger: String): Boolean {
+        if (PrefManager.hideAiFeatures) return false
         return try {
             val container = ContainerUtils.getContainer(context, appId)
             val now = System.currentTimeMillis()
