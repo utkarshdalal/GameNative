@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Diversity3
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.InstallMobile
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SportsEsports
@@ -48,6 +49,11 @@ enum class AppFilter(
         code = 0x10,
         displayTextRes = R.string.app_filter_demo,
         icon = Icons.Default.AvTimer,
+    ),
+    PLAYTEST(
+        code = 0x1000,
+        displayTextRes = R.string.app_filter_playtest,
+        icon = Icons.Default.Science,
     ),
     SHARED(
         code = 0x20,
@@ -105,6 +111,10 @@ enum class AppFilter(
             }
             if (appFilter.contains(DEMO)) {
                 output.add(AppType.demo)
+            }
+            if (appFilter.contains(PLAYTEST)) {
+                // Steam Playtests are PICS'd with type "Beta".
+                output.add(AppType.beta)
             }
             return output
         }

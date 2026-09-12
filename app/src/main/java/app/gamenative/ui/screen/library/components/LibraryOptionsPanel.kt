@@ -243,6 +243,7 @@ fun LibraryOptionsPanel(
                                         AppFilter.APPLICATION,
                                         AppFilter.TOOL,
                                         AppFilter.DEMO,
+                                        AppFilter.PLAYTEST,
                                     )
                                 ) {
                                     OptionListItem(

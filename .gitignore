@@ -72,3 +72,4 @@ app/src/main/cpp/steambootstrap/steam_bootstrap.c
 
 # Vendored SDL2 headers (fetched for evshim build, not pushed)
 app/src/main/cpp/third_party/SDL2/
+/gradle
