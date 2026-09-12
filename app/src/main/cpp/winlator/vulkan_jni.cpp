@@ -267,7 +267,8 @@ Java_com_winlator_renderer_VulkanRenderer_nativeSetPresentMode(JNIEnv*, jobject,
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_renderer_VulkanRenderer_nativeSetEffect(
     JNIEnv*, jobject, jlong handle, jint effectId, jfloat sharpness,
-    jint effectMask, jfloat brightness, jfloat contrast, jfloat gamma) {
+    jint effectMask, jfloat brightness, jfloat contrast, jfloat gamma,
+    jfloat barrelStrength, jfloat barrelHeight, jfloat barrelCylindricalRatio) {
     auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
     if (r) r->setEffect(
         (int)effectId,
@@ -275,7 +276,10 @@ Java_com_winlator_renderer_VulkanRenderer_nativeSetEffect(
         (int)effectMask,
         (float)brightness,
         (float)contrast,
-        (float)gamma
+        (float)gamma,
+        (float)barrelStrength,
+        (float)barrelHeight,
+        (float)barrelCylindricalRatio
     );
 }
 

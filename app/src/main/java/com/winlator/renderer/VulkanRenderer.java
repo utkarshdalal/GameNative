@@ -41,6 +41,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     public static final int EFFECT_MASK_VIVID = 1 << 2;
     public static final int EFFECT_MASK_CRT = 1 << 3;
     public static final int EFFECT_MASK_NTSC = 1 << 4;
+    public static final int EFFECT_MASK_BARREL_DISTORTION = 1 << 5;
 
     public final XServerView xServerView;
     private final XServer xServer;
@@ -175,7 +176,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private native void nativeSetSwapRB(long handle, boolean enabled);
     private native void nativeSetPresentMode(long handle, int mode);
     private native void nativeSetEffect(long handle, int effectId, float sharpness,
-        int effectMask, float brightness, float contrast, float gamma);
+        int effectMask, float brightness, float contrast, float gamma,
+        float barrelStrength, float barrelHeight, float barrelCylindricalRatio);
     private native long nativeEnableXrTarget(long handle);
     private native void nativeDisableXrTarget(long handle);
     private native long nativeGetXrTargetExtent(long handle);
@@ -225,7 +227,8 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                     nativeSetFilterMode(nativeHandle, pendingFilterMode);
                     nativeSetSwapRB(nativeHandle, pendingSwapRB);
                     nativeSetEffect(nativeHandle, pendingEffectId, pendingSharpness,
-                        pendingEffectMask, pendingBrightness, pendingContrast, pendingGamma);
+                            pendingEffectMask, pendingBrightness, pendingContrast, pendingGamma,
+                            pendingBarrelStrength, pendingBarrelHeight, pendingBarrelCylindricalRatio);
                     updateTransform();
                     nativeSetCursorVisible(nativeHandle, cursorVisible);
                     if (nativeMode && !effectsRequireCompositor) {
@@ -794,19 +797,30 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
 
     public void setEffect(int effectId, float sharpness, int scalingMode,
                           int effectMask, float brightness, float contrast, float gamma) {
+        setEffect(effectId, sharpness, scalingMode, effectMask, brightness, contrast, gamma,
+                0.0f, 0.176327f /* tan(15°) default FOV */, 0.5f);
+    }
+
+    public void setEffect(int effectId, float sharpness, int scalingMode,
+                          int effectMask, float brightness,float contrast,float gamma,
+                          float barrelStrength, float barrelHeight, float barrelCylindricalRatio) {
         pendingEffectId = Math.max(EFFECT_NONE, Math.min(EFFECT_NATURAL, effectId));
         pendingSharpness = Math.max(0.0f, Math.min(1.0f, sharpness));
         pendingEffectMask = Math.max(0, effectMask);
         pendingBrightness = Math.max(-1.0f, Math.min(1.0f, brightness));
         pendingContrast = Math.max(-1.0f, Math.min(1.0f, contrast));
         pendingGamma = Math.max(0.1f, Math.min(4.0f, gamma));
+        pendingBarrelStrength = barrelStrength;
+        pendingBarrelHeight = barrelHeight;
+        pendingBarrelCylindricalRatio = barrelCylindricalRatio;
         outputScalingMode = Math.max(SCALE_FIT, Math.min(SCALE_FILL, scalingMode));
         boolean wasRequireCompositor = effectsRequireCompositor;
         effectsRequireCompositor = computeEffectsRequireCompositor();
         synchronized (lock) {
             if (nativeHandle != 0) {
-                nativeSetEffect(nativeHandle, pendingEffectId, pendingSharpness,
-                    pendingEffectMask, pendingBrightness, pendingContrast, pendingGamma);
+                nativeSetEffect(nativeHandle,pendingEffectId,pendingSharpness,
+                    pendingEffectMask,pendingBrightness,pendingContrast,pendingGamma,
+                    pendingBarrelStrength, pendingBarrelHeight, pendingBarrelCylindricalRatio);
                 updateTransform();
             }
         }
@@ -888,6 +902,9 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private float   pendingBrightness     = 0.0f;
     private float   pendingContrast       = 0.0f;
     private float   pendingGamma          = 1.0f;
+    private float   pendingBarrelStrength      = 0.0f;
+    private float   pendingBarrelHeight        = 0.0f;
+    private float   pendingBarrelCylindricalRatio = 0.5f;
     // When any screen effect / filter / color adjustment is active we must route
     // fullscreen content through the compositor (window.frag) instead of the
     // zero-copy scanout fast-path, because scanout bypasses the shader entirely.

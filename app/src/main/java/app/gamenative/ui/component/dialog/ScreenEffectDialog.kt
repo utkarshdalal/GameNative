@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -83,7 +84,22 @@ fun ScreenEffectDialog(
         mutableStateOf(initialConfig.enableNTSC)
     }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableVivid, enableCRT, enableNTSC) {
+    var barrelDistortionStrength by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.barrelDistortionStrength)
+    }
+    var barrelDistortionFov by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.barrelDistortionFov)
+    }
+    var barrelDistortionCylindricalRatio by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.barrelDistortionCylindricalRatio)
+    }
+    var enableBarrelDistortion by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableBarrelDistortion)
+    }
+
+    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableVivid, enableCRT,
+        enableNTSC, barrelDistortionStrength, barrelDistortionFov,
+        barrelDistortionCylindricalRatio, enableBarrelDistortion) {
         val config = ScreenEffectsConfig(
             brightness = brightness,
             contrast = contrast,
@@ -93,6 +109,10 @@ fun ScreenEffectDialog(
             enableVivid = enableVivid,
             enableCRT = enableCRT,
             enableNTSC = enableNTSC,
+            barrelDistortionStrength = barrelDistortionStrength,
+            barrelDistortionFov = barrelDistortionFov,
+            barrelDistortionCylindricalRatio = barrelDistortionCylindricalRatio,
+            enableBarrelDistortion = enableBarrelDistortion,
         )
         applyScreenEffectsConfig(renderer, config)
         delay(300)
@@ -109,6 +129,10 @@ fun ScreenEffectDialog(
         enableVivid = false
         enableCRT = false
         enableNTSC = false
+        barrelDistortionStrength = 50f
+        barrelDistortionFov = 90f
+        barrelDistortionCylindricalRatio = 1f
+        enableBarrelDistortion = false
     }
 
     Dialog(
@@ -244,6 +268,45 @@ fun ScreenEffectDialog(
                             state = enableNTSC,
                             onCheckedChange = { enableNTSC = it },
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        SettingsSwitch(
+                            colors = settingsTileColors(),
+                            title = { Text(stringResource(R.string.screen_effects_barrel_distortion)) },
+                            subtitle = { Text(stringResource(R.string.screen_effects_barrel_distortion_description)) },
+                            state = enableBarrelDistortion,
+                            onCheckedChange = { enableBarrelDistortion = it },
+                        )
+                        AnimatedVisibility(visible = enableBarrelDistortion) {
+                            Column {
+                                ScreenEffectSlider(
+                                    label = stringResource(R.string.screen_effects_barrel_distortion_strength),
+                                    valueText = formatPercent(barrelDistortionStrength),
+                                    value = barrelDistortionStrength,
+                                    valueRange = 0f..100f,
+                                    onValueChange = { barrelDistortionStrength = it },
+                                )
+                                ScreenEffectSlider(
+                                    label = stringResource(R.string.screen_effects_barrel_distortion_fov),
+                                    valueText = String.format("%.0f°", barrelDistortionFov),
+                                    value = barrelDistortionFov,
+                                    valueRange = 40f..120f,
+                                    onValueChange = { barrelDistortionFov = it },
+                                )
+                                ScreenEffectSlider(
+                                    label = stringResource(R.string.screen_effects_barrel_distortion_cylindrical_ratio),
+                                    valueText = String.format("%.1fx", barrelDistortionCylindricalRatio),
+                                    value = barrelDistortionCylindricalRatio,
+                                    valueRange = 0.5f..1.5f,
+                                    onValueChange = { barrelDistortionCylindricalRatio = it },
+                                )
+                            }
+                        }
                     }
                 }
 

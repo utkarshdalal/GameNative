@@ -236,6 +236,15 @@ fun GLScreenEffectsTabContent(
     var gamma by remember(renderer, container) {
         mutableFloatStateOf(initialConfig.gamma)
     }
+    var barrelDistortionStrength by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.barrelDistortionStrength)
+    }
+    var barrelDistortionFov by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.barrelDistortionFov)
+    }
+    var barrelDistortionCylindricalRatio by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.barrelDistortionCylindricalRatio)
+    }
     var scalingMode by remember(renderer, container) {
         mutableIntStateOf(initialConfig.scalingMode)
     }
@@ -257,6 +266,9 @@ fun GLScreenEffectsTabContent(
     var enableNTSC by remember(renderer, container) {
         mutableStateOf(initialConfig.enableNTSC)
     }
+    var enableBarrelDistortion by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableBarrelDistortion)
+    }
 
     LaunchedEffect(
         brightness,
@@ -264,11 +276,15 @@ fun GLScreenEffectsTabContent(
         gamma,
         scalingMode,
         fsrSharpnessLevel,
+        barrelDistortionStrength,
+        barrelDistortionFov,
+        barrelDistortionCylindricalRatio,
         enableToon,
         enableFXAA,
         enableVivid,
         enableCRT,
         enableNTSC,
+        enableBarrelDistortion,
     ) {
         val config = ScreenEffectsConfig(
             brightness = brightness,
@@ -276,11 +292,15 @@ fun GLScreenEffectsTabContent(
             gamma = gamma,
             scalingMode = scalingMode,
             fsrSharpnessLevel = fsrSharpnessLevel,
+            barrelDistortionStrength = barrelDistortionStrength,
+            barrelDistortionFov = barrelDistortionFov,
+            barrelDistortionCylindricalRatio = barrelDistortionCylindricalRatio,
             enableToon = enableToon,
             enableFXAA = enableFXAA,
             enableVivid = enableVivid,
             enableCRT = enableCRT,
             enableNTSC = enableNTSC,
+            enableBarrelDistortion = enableBarrelDistortion,
         )
         applyScreenEffectsConfig(renderer, config)
         delay(300)
@@ -294,11 +314,15 @@ fun GLScreenEffectsTabContent(
         gamma = 1.0f
         scalingMode = ScreenEffectsConfig.SCALING_MODE_NONE
         fsrSharpnessLevel = ScreenEffectsConfig.FSR_DEFAULT_LEVEL
+        barrelDistortionStrength = 50f
+        barrelDistortionFov = 90f
+        barrelDistortionCylindricalRatio = 1f
         enableToon = false
         enableFXAA = false
         enableVivid = false
         enableCRT = false
         enableNTSC = false
+        enableBarrelDistortion = false
     }
 
     Column(
@@ -433,7 +457,49 @@ fun GLScreenEffectsTabContent(
             enabled = enableNTSC,
             onToggle = { enableNTSC = !enableNTSC },
         )
-
+        ScreenEffectToggleRow(
+            title = stringResource(R.string.screen_effects_barrel_distortion),
+            subtitle = stringResource(R.string.screen_effects_barrel_distortion_description),
+            enabled = enableBarrelDistortion,
+            onToggle = { enableBarrelDistortion = !enableBarrelDistortion },
+        )
+        AnimatedVisibility(visible = enableBarrelDistortion) {
+            Column {
+                ScreenEffectAdjustmentRow(
+                    title = stringResource(R.string.screen_effects_barrel_distortion_strength),
+                    valueText = formatPercent(barrelDistortionStrength),
+                    progress = normalizedProgress(barrelDistortionStrength, 0f, 100f),
+                    onDecrease = {
+                        barrelDistortionStrength = (barrelDistortionStrength - SCREEN_EFFECT_PERCENT_STEP).coerceIn(0f, 100f)
+                    },
+                    onIncrease = {
+                        barrelDistortionStrength = (barrelDistortionStrength + SCREEN_EFFECT_PERCENT_STEP).coerceIn(0f, 100f)
+                    },
+                )
+                ScreenEffectAdjustmentRow(
+                    title = stringResource(R.string.screen_effects_barrel_distortion_fov),
+                    valueText = String.format("%.0f°", barrelDistortionFov),
+                    progress = normalizedProgress(barrelDistortionFov, 40f, 120f),
+                    onDecrease = {
+                        barrelDistortionFov = (barrelDistortionFov - SCREEN_EFFECT_PERCENT_STEP).coerceIn(40f, 120f)
+                    },
+                    onIncrease = {
+                        barrelDistortionFov = (barrelDistortionFov + SCREEN_EFFECT_PERCENT_STEP).coerceIn(40f, 120f)
+                    },
+                )
+                ScreenEffectAdjustmentRow(
+                    title = stringResource(R.string.screen_effects_barrel_distortion_cylindrical_ratio),
+                    valueText = String.format("%.1fx", barrelDistortionCylindricalRatio),
+                    progress = normalizedProgress(barrelDistortionCylindricalRatio, 0.5f, 1.5f),
+                    onDecrease = {
+                        barrelDistortionCylindricalRatio = (barrelDistortionCylindricalRatio - 0.1f).coerceIn(0.5f, 1.5f)
+                    },
+                    onIncrease = {
+                        barrelDistortionCylindricalRatio = (barrelDistortionCylindricalRatio + 0.1f).coerceIn(0.5f, 1.5f)
+                    },
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(20.dp))
 
         AccentActionRow(
@@ -478,6 +544,15 @@ fun ScreenEffectsTabContent(
     var gamma by remember(renderer, container) {
         mutableFloatStateOf(initialConfig.gamma)
     }
+    var barrelDistortionStrength by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.barrelDistortionStrength)
+    }
+    var barrelDistortionFov by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.barrelDistortionFov)
+    }
+    var barrelDistortionCylindricalRatio by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.barrelDistortionCylindricalRatio)
+    }
     var enableToon by remember(renderer, container) {
         mutableStateOf(initialConfig.enableToon)
     }
@@ -493,6 +568,9 @@ fun ScreenEffectsTabContent(
     var enableNTSC by remember(renderer, container) {
         mutableStateOf(initialConfig.enableNTSC)
     }
+    var enableBarrelDistortion by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableBarrelDistortion)
+    }
 
     LaunchedEffect(
         scalingMode,
@@ -500,11 +578,15 @@ fun ScreenEffectsTabContent(
         brightness,
         contrast,
         gamma,
+        barrelDistortionStrength,
+        barrelDistortionFov,
+        barrelDistortionCylindricalRatio,
         enableToon,
         enableFXAA,
         enableVivid,
         enableCRT,
         enableNTSC,
+        enableBarrelDistortion,
     ) {
         val config = initialConfig.copy(
             scalingMode = scalingMode,
@@ -512,11 +594,15 @@ fun ScreenEffectsTabContent(
             brightness = brightness,
             contrast = contrast,
             gamma = gamma,
+            barrelDistortionStrength = barrelDistortionStrength,
+            barrelDistortionFov = barrelDistortionFov,
+            barrelDistortionCylindricalRatio = barrelDistortionCylindricalRatio,
             enableToon = enableToon,
             enableFXAA = enableFXAA,
             enableVivid = enableVivid,
             enableCRT = enableCRT,
             enableNTSC = enableNTSC,
+            enableBarrelDistortion = enableBarrelDistortion,
         )
         // Apply immediately for live preview
         applyScreenEffectsConfig(renderer, config)
@@ -532,11 +618,15 @@ fun ScreenEffectsTabContent(
         brightness = 0f
         contrast = 0f
         gamma = 1.0f
+        barrelDistortionStrength = 50f
+        barrelDistortionFov = 90.0f
+        barrelDistortionCylindricalRatio = 1.0f
         enableToon = false
         enableFXAA = false
         enableVivid = false
         enableCRT = false
         enableNTSC = false
+        enableBarrelDistortion = false
     }
 
     Column(
@@ -672,6 +762,49 @@ fun ScreenEffectsTabContent(
             enabled = enableNTSC,
             onToggle = { enableNTSC = !enableNTSC },
         )
+        ScreenEffectToggleRow(
+            title = stringResource(R.string.screen_effects_barrel_distortion),
+            subtitle = stringResource(R.string.screen_effects_barrel_distortion_description),
+            enabled = enableBarrelDistortion,
+            onToggle = { enableBarrelDistortion = !enableBarrelDistortion },
+        )
+        AnimatedVisibility(visible = enableBarrelDistortion) {
+            Column {
+                ScreenEffectAdjustmentRow(
+                    title = stringResource(R.string.screen_effects_barrel_distortion_strength),
+                    valueText = formatPercent(barrelDistortionStrength),
+                    progress = normalizedProgress(barrelDistortionStrength, 0f, 100f),
+                    onDecrease = {
+                        barrelDistortionStrength = (barrelDistortionStrength - SCREEN_EFFECT_PERCENT_STEP).coerceIn(0f, 100f)
+                    },
+                    onIncrease = {
+                        barrelDistortionStrength = (barrelDistortionStrength + SCREEN_EFFECT_PERCENT_STEP).coerceIn(0f, 100f)
+                    },
+                )
+                ScreenEffectAdjustmentRow(
+                    title = stringResource(R.string.screen_effects_barrel_distortion_fov),
+                    valueText = String.format("%.0f°", barrelDistortionFov),
+                    progress = normalizedProgress(barrelDistortionFov, 40f, 120f),
+                    onDecrease = {
+                        barrelDistortionFov = (barrelDistortionFov - SCREEN_EFFECT_PERCENT_STEP).coerceIn(40f, 120f)
+                    },
+                    onIncrease = {
+                        barrelDistortionFov = (barrelDistortionFov + SCREEN_EFFECT_PERCENT_STEP).coerceIn(40f, 120f)
+                    },
+                )
+                ScreenEffectAdjustmentRow(
+                    title = stringResource(R.string.screen_effects_barrel_distortion_cylindrical_ratio),
+                    valueText = String.format("%.1fx", barrelDistortionCylindricalRatio),
+                    progress = normalizedProgress(barrelDistortionCylindricalRatio, 0.5f, 1.5f),
+                    onDecrease = {
+                        barrelDistortionCylindricalRatio = (barrelDistortionCylindricalRatio - 0.1f).coerceIn(0.5f, 1.5f)
+                    },
+                    onIncrease = {
+                        barrelDistortionCylindricalRatio = (barrelDistortionCylindricalRatio + 0.1f).coerceIn(0.5f, 1.5f)
+                    },
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -706,6 +839,15 @@ fun ScreenEffectsPanel(
     var gamma by remember(renderer, container) {
         mutableFloatStateOf(initialConfig.gamma)
     }
+    var barrelDistortionStrength by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.barrelDistortionStrength)
+    }
+    var barrelDistortionFov by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.barrelDistortionFov)
+    }
+    var barrelDistortionCylindricalRatio by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.barrelDistortionCylindricalRatio)
+    }
     var enableToon by remember(renderer, container) {
         mutableStateOf(initialConfig.enableToon)
     }
@@ -721,17 +863,24 @@ fun ScreenEffectsPanel(
     var enableNTSC by remember(renderer, container) {
         mutableStateOf(initialConfig.enableNTSC)
     }
+    var enableBarrelDistortion by remember(renderer, container) {
+        mutableStateOf(initialConfig.enableBarrelDistortion)
+    }
 
-    LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableVivid, enableCRT, enableNTSC) {
+    LaunchedEffect(brightness, contrast, gamma, barrelDistortionStrength, barrelDistortionFov, barrelDistortionCylindricalRatio, enableToon, enableFXAA, enableVivid, enableCRT, enableNTSC, enableBarrelDistortion) {
         val config = initialConfig.copy(
             brightness = brightness,
             contrast = contrast,
             gamma = gamma,
+            barrelDistortionStrength = barrelDistortionStrength,
+            barrelDistortionFov = barrelDistortionFov,
+            barrelDistortionCylindricalRatio = barrelDistortionCylindricalRatio,
             enableToon = enableToon,
             enableFXAA = enableFXAA,
             enableVivid = enableVivid,
             enableCRT = enableCRT,
             enableNTSC = enableNTSC,
+            enableBarrelDistortion = enableBarrelDistortion,
         )
         applyScreenEffectsConfig(renderer, config)
         delay(300)
@@ -743,6 +892,9 @@ fun ScreenEffectsPanel(
         brightness = 0f
         contrast = 0f
         gamma = 1.0f
+        barrelDistortionStrength = 50f
+        barrelDistortionFov = 90.0f
+        barrelDistortionCylindricalRatio = 1.0f
         enableToon = false
         enableFXAA = false
         enableVivid = false
