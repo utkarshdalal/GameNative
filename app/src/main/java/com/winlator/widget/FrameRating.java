@@ -37,6 +37,10 @@ public class FrameRating extends FrameLayout implements Runnable {
     private int minFPS = Integer.MAX_VALUE;
     private long lastReadingTime = 0;
     private long fpsSum = 0; // Sum of all FPS readings for average calculation
+    private long lastFrameTime = 0;
+    private long totalFrames = 0;
+    private static final int FRAME_HIST_CAP_MS = 200;
+    private final int[] frameHistMs = new int[FRAME_HIST_CAP_MS + 1];
 
     public FrameRating(Context context) {
         this(context, null);
@@ -61,6 +65,12 @@ public class FrameRating extends FrameLayout implements Runnable {
             sessionStartTime = SystemClock.elapsedRealtime();
         }
         long time = SystemClock.elapsedRealtime();
+        if (lastFrameTime != 0) {
+            int delta = (int) Math.min(time - lastFrameTime, FRAME_HIST_CAP_MS);
+            frameHistMs[delta]++;
+        }
+        lastFrameTime = time;
+        totalFrames++;
         if (time >= lastTime + 500) {
             lastFPS = ((float)(frameCount * 1000) / (time - lastTime));
 
@@ -99,6 +109,9 @@ public class FrameRating extends FrameLayout implements Runnable {
         minFPS = Integer.MAX_VALUE;
         lastReadingTime = 0;
         fpsSum = 0;
+        lastFrameTime = 0;
+        totalFrames = 0;
+        java.util.Arrays.fill(frameHistMs, 0);
         post(() -> textView.setText(String.format(Locale.ENGLISH, "%.1f", 0f)));
     }
 
@@ -110,6 +123,20 @@ public class FrameRating extends FrameLayout implements Runnable {
     public float getAvgFPS() {
         if (readingCount == 0) return 0;
         return (float) fpsSum / readingCount;
+    }
+
+    public long getTotalFrames() {
+        return totalFrames;
+    }
+
+    public int getFramePercentileMs(double percentile) {
+        long counted = 0;
+        long target = (long) Math.ceil(percentile * (totalFrames - 1));
+        for (int ms = 0; ms < frameHistMs.length; ms++) {
+            counted += frameHistMs[ms];
+            if (counted > target) return ms;
+        }
+        return FRAME_HIST_CAP_MS;
     }
 
     public float getSessionLengthSec() {

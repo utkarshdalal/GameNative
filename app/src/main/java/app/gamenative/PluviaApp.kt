@@ -20,6 +20,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.screen.xserver.RadialMenuCoordinator
 import app.gamenative.utils.ContainerMigrator
+import app.gamenative.utils.DeviceTelemetry
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.PlayIntegrity
 import app.gamenative.utils.downloader.ContainerFilesDownloader
@@ -124,6 +125,8 @@ class PluviaApp : SplitCompatApplication() {
         }
         PostHogAndroid.setup(this, postHogConfig)
         com.posthog.PostHog.register("build_flavor", BuildConfig.FLAVOR)
+        DeviceTelemetry.registerSuperProperties(this)
+        appScope.launch { DeviceTelemetry.registerGpuSuperProperties(applicationContext) }
 
         if (PrefManager.usageAnalyticsEnabled) {
             com.posthog.PostHog.capture(
