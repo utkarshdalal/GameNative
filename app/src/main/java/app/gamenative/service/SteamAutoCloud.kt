@@ -113,6 +113,21 @@ object SteamAutoCloud {
         val wasCacheHit: Boolean,
     )
 
+    // cache for the post-EResult.Fail reconcile. files in cloud keep cloud's sha on mismatch (a failed PUT)
+    // so the next diff sees "modified" and retries. local-only files are EXCLUDED so the next diff treats
+    // them as new and retries; caching them with local's sha would never retry.
+    internal fun buildUploadFailCacheEntries(
+        localFiles: List<UserFileInfo>,
+        remoteShaByPath: Map<String, ByteArray>,
+        keyOf: (UserFileInfo) -> String,
+    ): List<UserFileInfo> =
+        localFiles
+            .filter { remoteShaByPath.containsKey(keyOf(it)) }
+            .map { local ->
+                val cloudSha = remoteShaByPath[keyOf(local)]
+                if (cloudSha != null && !cloudSha.contentEquals(local.sha)) local.copy(sha = cloudSha) else local
+            }
+
     /** Computes SHA-1 hash by streaming the file in chunks to avoid OOM on large files. */
     private fun streamingShaHash(path: Path): ByteArray {
         val digest = MessageDigest.getInstance("SHA-1")
@@ -949,6 +964,44 @@ object SteamAutoCloud {
                         }
                     } else {
                         syncResult = SyncResult.UpdateFail
+
+                        // Steam advances the cloud change number even when completeAppUploadBatch reports EResult.Fail;
+                        // without reconciling, every later launch reports a spurious conflict. rebuilding the cache
+                        // from the refetched manifest makes failed files re-upload next launch. cloud orphans stay.
+                        runCatching {
+                            val refreshed = steamCloud.getAppFileListChange(appInfo.id, 0L).await()
+                            val remoteEntries = refreshed.files.filter { it.persistState.number == 0 }
+                            val remoteByPath = remoteEntries.associate {
+                                getFullFilePath(it, refreshed).toString().lowercase() to it.shaFile
+                            }
+                            val localByPath = allLocalUserFiles.associate {
+                                it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
+                            }
+                            val cloudOnlyCount = (remoteByPath.keys - localByPath.keys).size
+                            val mismatchedShas = (localByPath.keys intersect remoteByPath.keys)
+                                .count { !localByPath[it]!!.contentEquals(remoteByPath[it]) }
+
+                            val cacheEntries = buildUploadFailCacheEntries(allLocalUserFiles, remoteByPath) {
+                                it.getAbsPath(prefixToPath).toString().lowercase()
+                            }
+                            val localOnlyDropped = allLocalUserFiles.size - cacheEntries.size
+                            Timber.i(
+                                "Upload-fail reconcile: writing cache (${cacheEntries.size} entries, " +
+                                    "$mismatchedShas sha-mismatch retained as cloud SHA for next-launch retry, " +
+                                    "$localOnlyDropped local-only excluded for next-launch retry, " +
+                                    "$cloudOnlyCount cloud orphan(s) left in cloud) " +
+                                    "to CN ${refreshed.currentChangeNumber}",
+                            )
+                            with(steamInstance) {
+                                db.withTransaction {
+                                    fileChangeListsDao.insert(appInfo.id, cacheEntries)
+                                    changeNumbersDao.insert(appInfo.id, refreshed.currentChangeNumber)
+                                }
+                            }
+                            // result stays UpdateFail: the upload did not land, so the user is told.
+                        }.onFailure { e ->
+                            Timber.e(e, "Upload-fail reconcile failed")
+                        }
                     }
                 }
             }
