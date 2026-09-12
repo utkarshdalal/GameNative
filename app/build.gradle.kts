@@ -229,7 +229,10 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
-            all { it.maxHeapSize = "4g" }
+            all {
+                it.maxHeapSize = "4g"
+                it.testLogging { events("started", "failed") }
+            }
         }
     }
 
