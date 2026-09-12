@@ -168,13 +168,19 @@ object FrontendSyncManager {
         val dir = PrefManager.getFrontendSyncDir(source)
         if (dir.isEmpty()) return
 
+        val ext = extensionFor(source)
         val gameName = lookupGameName(appId, source) ?: run {
-            Timber.w("FrontendSyncManager: no game name for appId=%d source=%s", appId, source)
+            Timber.w(
+                "FrontendSyncManager: no game name for appId=%d source=%s, removing stale export if present",
+                appId,
+                source,
+            )
+            deleteExportFileForAppId(dir, ext, appId)
             return
         }
 
         val isInstalled = isGameInstalled(appId, source)
-        val file = File(dir, "${sanitizeFileName(gameName)}${extensionFor(source)}")
+        val file = File(dir, "${sanitizeFileName(gameName)}$ext")
 
         try {
             if (isInstalled) {
@@ -250,6 +256,29 @@ object FrontendSyncManager {
 
     private fun sanitizeFileName(name: String): String =
         name.replace(invalidFileChars, "_").trim().ifEmpty { "unknown" }
+
+    /**
+     * Finds and deletes the export file for [appId] inside [dir] by matching each candidate
+     * file's stored appId content, since the game's current name may no longer be resolvable
+     * (e.g. a custom game whose folder was deleted).
+     */
+    private fun deleteExportFileForAppId(dir: String, extension: String, appId: Int) {
+        try {
+            val directory = File(dir)
+            if (!directory.isDirectory) return
+            val target = appId.toString()
+            directory.walkTopDown().maxDepth(1)
+                .filter { it.isFile && it.name.endsWith(extension) }
+                .firstOrNull { it.readText(Charsets.UTF_8).trim() == target }
+                ?.let { file ->
+                    if (!file.delete()) {
+                        Timber.w("FrontendSyncManager: could not delete stale export %s", file.absolutePath)
+                    }
+                }
+        } catch (e: Exception) {
+            Timber.e(e, "FrontendSyncManager: failed to remove stale export for appId=%d in %s", appId, dir)
+        }
+    }
 
     /** Deletes all files with [extension] directly inside [dir] (non-recursive, depth = 1). */
     internal fun deleteAllFilesWithExtension(dir: String, extension: String) {
