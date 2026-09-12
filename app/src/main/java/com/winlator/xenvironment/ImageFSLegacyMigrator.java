@@ -11,17 +11,15 @@ public final class ImageFSLegacyMigrator {
     private ImageFSLegacyMigrator() {}
 
     /**
-     * Migrate legacy directories if needed. After that, ensure the shared home and proton are symlinked.
+     * Migrate legacy directories if needed.
      */
-    public static boolean migrateLegacyDirsIfNeeded(Context context, File legacyImageFsRoot, String wineVersion) {
+    public static boolean migrateLegacyDirsIfNeeded(Context context, File legacyImageFsRoot) {
         if (!migrateLegacyHomeToShared(context, legacyImageFsRoot)) {
             return false;
         }
         if (!migrateLegacyProtonToShared(context, legacyImageFsRoot)) {
             return false;
         }
-        ImageFsInstaller.ensureSharedHomeRoot(context, legacyImageFsRoot);
-        ImageFsInstaller.ensureProtonVersionSymlink(context, legacyImageFsRoot, wineVersion);
         return true;
     }
 
