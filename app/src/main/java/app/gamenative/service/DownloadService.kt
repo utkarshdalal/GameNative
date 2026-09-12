@@ -26,7 +26,7 @@ object DownloadService {
             field = value
         }
 
-    // all mounted non-primary external volumes (SD cards, USB), discovered at init
+    // All mounted install target volumes (SD cards, USB, and adopted primary storage), discovered at init
     var externalVolumePaths: List<String> = emptyList()
         private set
 
@@ -40,7 +40,7 @@ object DownloadService {
         val sm = context.getSystemService(android.os.storage.StorageManager::class.java)
         val appFilesDirs = StorageUtils.getAllExternalFilesDirs(context)
             .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
-            .filter { sm?.getStorageVolume(it)?.isPrimary != true }
+            .filter { StorageUtils.isExternalInstallTarget(sm, it) }
         // both layouts per volume: legacy Android/data (existing installs) + public root (new installs)
         externalVolumePaths = appFilesDirs
             .flatMap { dir -> listOfNotNull(dir.absolutePath, StorageUtils.publicInstallRoot(dir)?.absolutePath) }
