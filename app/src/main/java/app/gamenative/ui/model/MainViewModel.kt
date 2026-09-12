@@ -779,7 +779,6 @@ class MainViewModel @Inject constructor(
             val now = System.currentTimeMillis()
             val lastShownForGame = container.getExtra("ai_debug_offer_last_shown", "0").toLongOrNull() ?: 0L
             if (now - lastShownForGame < AI_DEBUG_OFFER_INTERVAL_MS) return false
-            if (now - PrefManager.lastWarmPitchTime < WARM_PITCH_COOLDOWN_MS) return false
 
             container.putExtra("ai_debug_offer_last_shown", now.toString())
             container.saveData()

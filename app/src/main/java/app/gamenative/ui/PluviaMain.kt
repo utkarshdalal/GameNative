@@ -1226,14 +1226,12 @@ fun PluviaMain(
             }
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
-                PrefManager.lastWarmPitchTime = System.currentTimeMillis()
                 if (aiDebugOfferAppId.isNotEmpty()) {
                     trackAiDebugOffer("ai_debug_offer_dismissed", aiDebugOfferAppId, aiDebugOfferTrigger)
                 }
             }
             onDismissRequest = {
                 setMessageDialogState(MessageDialogState(false))
-                PrefManager.lastWarmPitchTime = System.currentTimeMillis()
                 if (aiDebugOfferAppId.isNotEmpty()) {
                     trackAiDebugOffer("ai_debug_offer_dismissed", aiDebugOfferAppId, aiDebugOfferTrigger)
                 }
