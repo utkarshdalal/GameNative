@@ -1,4 +1,5 @@
 param(
+    [ValidateSet("Release", "Debug")]
     [string]$Configuration = "Release"
 )
 
@@ -38,11 +39,14 @@ foreach ($architecture in @("x64", "x86")) {
     }
 }
 
+# Freestanding prevents builtin memory-loop recognition from making our CRT-less
+# memcpy/memset implementations call themselves. Keep normal floating-point semantics.
+$optimization = if ($Configuration -eq "Release") { "-O2" } else { "-O0" }
 $runtimeSource = Join-Path $source "gamenative_openxr_runtime.c"
 $runtime64 = Join-Path $build "gamenative_openxr_runtime64.dll"
 $runtime32 = Join-Path $build "gamenative_openxr_runtime32.dll"
-Invoke-Tool { & $clang --target=x86_64-w64-windows-gnu -shared -nostdlib "-Wl,-e,DllMain" -I $include -o $runtime64 $runtimeSource (Join-Path $source "gamenative_openxr_runtime_x64.def") $imports["ws2_32-x64"] $imports["kernel32-x64"] $imports["ntdll-x64"] $imports["dxgi-x64"] } "x64 OpenXR runtime"
-Invoke-Tool { & $clang --target=i686-w64-windows-gnu -shared -nostdlib "-Wl,-e,DllMain" -I $include -o $runtime32 $runtimeSource (Join-Path $source "gamenative_openxr_runtime_x86.def") $imports["ws2_32-x86"] $imports["kernel32-x86"] $imports["ntdll-x86"] $imports["dxgi-x86"] } "x86 OpenXR runtime"
+Invoke-Tool { & $clang --target=x86_64-w64-windows-gnu -shared -nostdlib -ffreestanding $optimization "-Wl,-e,DllMain" -I $include -o $runtime64 $runtimeSource (Join-Path $source "gamenative_openxr_runtime_x64.def") $imports["ws2_32-x64"] $imports["kernel32-x64"] $imports["ntdll-x64"] $imports["dxgi-x64"] } "x64 OpenXR runtime"
+Invoke-Tool { & $clang --target=i686-w64-windows-gnu -shared -nostdlib -ffreestanding $optimization "-Wl,-e,DllMain" -I $include -o $runtime32 $runtimeSource (Join-Path $source "gamenative_openxr_runtime_x86.def") $imports["ws2_32-x86"] $imports["kernel32-x86"] $imports["ntdll-x86"] $imports["dxgi-x86"] } "x86 OpenXR runtime"
 
 function Assert-Machine {
     param([string]$Path, [int]$Expected)
@@ -53,8 +57,11 @@ function Assert-Machine {
 }
 Assert-Machine $runtime64 0x8664
 Assert-Machine $runtime32 0x014c
-Copy-Item -Force -LiteralPath $runtime64 -Destination (Join-Path $output "gamenative_openxr_runtime64.dll")
-Copy-Item -Force -LiteralPath $runtime32 -Destination (Join-Path $output "gamenative_openxr_runtime32.dll")
-$hash64 = (Get-FileHash -Algorithm SHA256 -LiteralPath $runtime64).Hash.ToLowerInvariant()
-$hash32 = (Get-FileHash -Algorithm SHA256 -LiteralPath $runtime32).Hash.ToLowerInvariant()
-Set-Content -NoNewline -LiteralPath (Join-Path $output "payload.version") -Value "3 $hash64 $hash32"
+foreach ($flavor in @("modernXr", "legacyXr")) {
+    $assets = Join-Path $repository "app\src\$flavor\assets"
+    New-Item -ItemType Directory -Force -Path $assets | Out-Null
+    Copy-Item -Force -LiteralPath $runtime64 -Destination (Join-Path $assets "gamenative_openxr_runtime64.dll")
+    Copy-Item -Force -LiteralPath $runtime32 -Destination (Join-Path $assets "gamenative_openxr_runtime32.dll")
+}
+& (Join-Path $PSScriptRoot "verify-xr-payload.ps1")
+Copy-Item -Force -LiteralPath (Join-Path $output "payload.version") -Destination (Join-Path $repository "app\src\legacyXr\assets\payload.version")
