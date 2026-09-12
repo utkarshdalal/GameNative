@@ -144,6 +144,7 @@ fun KeyValue.generateSteamApp(): SteamApp {
                     type = it["type"].value.orEmpty(),
                     configOS = OS.from(it["config"]["oslist"].value),
                     configArch = OSArch.from(it["config"]["osarch"].value),
+                    arguments = it["arguments"].value.orEmpty(),
                 )
             },
             steamControllerTemplateIndex = this["config"]["steamcontrollertemplateindex"].asInteger(),

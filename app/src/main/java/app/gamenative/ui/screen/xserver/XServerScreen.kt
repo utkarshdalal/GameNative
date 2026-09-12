@@ -137,6 +137,7 @@ import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
 import app.gamenative.utils.downloader.DXWrapperDownloader
 import app.gamenative.utils.downloader.GraphicsDriverDownloader
 import app.gamenative.utils.PreInstallSteps
+import app.gamenative.utils.SteamHostAuth
 import app.gamenative.utils.BrightnessManager
 import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.utils.SteamUtils
@@ -386,10 +387,19 @@ private fun windowMatchesExecutable(window: Window, targetExecutable: String): B
     }
 }
 
-private fun buildEssentialProcessAllowlist(): Set<String> {
+private val REAL_STEAM_PROCESSES = setOf(
+    "steam",
+    "steamerrorreporter",
+    "steamerrorreporter64",
+    "gameoverlayui",
+)
+
+private var realSteamGameExecutable = ""
+
+private fun buildEssentialProcessAllowlist(realSteam: Boolean): Set<String> {
     val essentialServices = WineUtils.getEssentialServiceNames()
         .map { normalizeProcessName(it) }
-    return (essentialServices + CORE_WINE_PROCESSES).toSet()
+    return (essentialServices + CORE_WINE_PROCESSES + (if (realSteam) REAL_STEAM_PROCESSES else emptySet())).toSet()
 }
 
 @Composable
@@ -939,11 +949,13 @@ fun XServerScreen(
     fun startExitWatchForUnmappedGameWindow(window: Window) {
         val winHandler = xServerView?.getxServer()?.winHandler ?: return
         if (exitWatchJob?.isActive == true) return
-        val targetExecutable = extractExecutableBasename(container.executablePath)
+        val targetExecutable = extractExecutableBasename(
+            if (container.isLaunchRealSteam && realSteamGameExecutable.isNotEmpty()) realSteamGameExecutable else container.executablePath,
+        )
         if (!windowMatchesExecutable(window, targetExecutable)) return
 
         exitWatchJob = CoroutineScope(Dispatchers.IO).launch {
-            val allowlist = buildEssentialProcessAllowlist()
+            val allowlist = buildEssentialProcessAllowlist(container.isLaunchRealSteam)
             val previousListener = winHandler.getOnGetProcessInfoListener()
             val lock = Any()
             var pendingSnapshot: CompletableDeferred<List<ProcessInfo>?>? = null
@@ -4088,7 +4100,7 @@ private fun setupXEnvironment(
         environment.addComponent(VortekRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options2, context))
     }
 
-    guestProgramLauncherComponent.envVars = envVars
+    guestProgramLauncherComponent.envVars = EnvVars().apply { putAll(envVars) }
 
     val gameTerminationCallback = Callback<Int> { status ->
         if (status != 0) {
@@ -4139,7 +4151,9 @@ private fun setupXEnvironment(
 
     // Moved here, as guestProgramLauncherComponent.environment is setup after addComponent()
     if (container != null) {
-        if (container.isLaunchRealSteam) {
+        if (container.isLaunchRealSteam && !envVars.has("STEAMHOST_APPID")) {
+            // The selected steamhost launch owns its cache and receives STEAMHOST_TOKEN.
+            // Legacy token setup can rewrite that cache and boot/kill Wine.
             SteamTokenLogin(
                 steamId = PrefManager.steamUserSteamId64.toString(),
                 login = PrefManager.username,
@@ -4664,9 +4678,33 @@ private fun getWineStartCommand(
             val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe\""
         } else if (container.isLaunchRealSteam) {
-            // Launch Steam with the applaunch parameter to start the game
-            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
-                    "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $gameId"
+            val appDirPath = SteamService.getAppDirPath(gameId)
+            // Mirror Steam's LaunchApp: the app's launch config supplies executable,
+            // arguments and working dir; a user-chosen exe in the container wins,
+            // and keeps the config's arguments only when it is the same executable.
+            val launchExe = appLaunchInfo?.executable?.trim('/').orEmpty()
+            val exePath = container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
+            val launchArgs = if (appLaunchInfo != null && exePath.replace('\\', '/').trim('/').equals(launchExe, ignoreCase = true)) appLaunchInfo.arguments.trim() else ""
+            val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
+            val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
+            val steamRoot = "C:\\Program Files (x86)\\Steam"
+            val gameCmd = "\"$steamRoot\\steamapps\\common\\$gameFolderName\\$normalizedExe\"" + (if (launchArgs.isNotEmpty()) " $launchArgs" else "")
+            val launchWorkDir = appLaunchInfo?.workingDir?.trim('/').orEmpty()
+            val relDir = if (launchWorkDir.isNotEmpty()) launchWorkDir else exePath.replace('\\', '/').substringBeforeLast("/", "")
+            val exeSubDir = relDir.replace('/', '\\')
+            val gameDir = "$steamRoot\\steamapps\\common\\$gameFolderName" + (if (exeSubDir.isNotEmpty()) "\\$exeSubDir" else "")
+            guestProgramLauncherComponent.workingDir = File(appDirPath + (if (relDir.isNotEmpty()) "/$relDir" else ""))
+            realSteamGameExecutable = normalizedExe
+            envVars.put("PROTON_DISABLE_LSTEAMCLIENT", "1")
+            if (offline || container.isSteamOfflineMode) envVars.put("STEAMHOST_OFFLINE", "1")
+            envVars.put("STEAMHOST_ACCOUNT", PrefManager.username)
+            envVars.put("STEAMHOST_TOKEN", SteamHostAuth.seal(context.packageName, PrefManager.refreshToken))
+            envVars.put("STEAMHOST_STEAMID64", PrefManager.steamUserSteamId64.toString())
+            envVars.put("STEAMHOST_APPID", gameId.toString())
+            envVars.put("STEAMHOST_GAME_CMD", gameCmd)
+            envVars.put("STEAMHOST_GAME_DIR", gameDir)
+            Timber.i("Real-Steam via steamhost: game=$gameCmd dir=$gameDir")
+            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\""
         } else {
             var executablePath = ""
             if (container.executablePath.isNotEmpty()) {
@@ -6119,8 +6157,31 @@ private fun extractSteamFiles(
         val cached = File(imageFs.getFilesDir(), name)
         cached.exists() && FileUtils.contentEquals(steamExe, cached)
     }
-    if (steamExe.exists() && !installedIsBionic) return
+    val steamhostArchive = File(imageFs.getFilesDir(), app.gamenative.ui.REAL_STEAM_CLIENT_ARCHIVE)
+    if (steamhostArchive.exists()) {
+        // Current Valve client tree (build 2026-01-29) + headless host as steam.exe.
+        // Clear any older client binaries first so nothing from another build is
+        // left beside the new engine; per-game data (steamapps, config, userdata,
+        // logs, appcache) is kept.
+        val steamDir = steamExe.parentFile
+        if (steamDir != null && steamDir.isDirectory) {
+            steamDir.listFiles()?.forEach { f ->
+                val n = f.name.lowercase()
+                if (f.isFile && (n.endsWith(".dll") || n.endsWith(".exe") || n.endsWith(".old") || n.endsWith(".crypt"))) f.delete()
+                if (f.isDirectory && (n == "bin" || n == "win64")) f.deleteRecursively()
+            }
+        }
+        Timber.i("Extracting ${steamhostArchive.name} (Valve client 2026-01-29 + headless steam.exe)")
+        TarCompressorUtils.extract(
+            TarCompressorUtils.Type.ZSTD,
+            steamhostArchive,
+            imageFs.getRootDir(),
+            onExtractFileListener,
+        )
+        return
+    }
 
+    if (steamExe.exists() && !installedIsBionic) return
     val downloaded = File(imageFs.getFilesDir(), "steam.tzst")
     Timber.i("Extracting steam.tzst")
     TarCompressorUtils.extract(
