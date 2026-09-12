@@ -1,7 +1,9 @@
 package app.gamenative.ui.util
 
 import com.winlator.container.Container
+import com.winlator.renderer.ASurfaceRenderer
 import com.winlator.renderer.GLRenderer
+import com.winlator.renderer.ViewTransformation
 import com.winlator.renderer.VulkanRenderer
 import com.winlator.renderer.effects.ColorEffect
 import com.winlator.renderer.effects.CRTEffect
@@ -26,6 +28,10 @@ data class ScreenEffectsConfig(
     val enableVivid: Boolean = false,
     val enableCRT: Boolean = false,
     val enableNTSC: Boolean = false,
+    // Shift of the letterboxed image within its free space, in percent:
+    // -100 = flush left/top, 0 = centered, +100 = flush right/bottom.
+    val viewportOffsetX: Float = 0f,
+    val viewportOffsetY: Float = 0f,
 ) {
     companion object {
         const val SCALING_MODE_NONE = 0
@@ -52,6 +58,8 @@ data class ScreenEffectsConfig(
         const val KEY_ENABLE_VIVID = "screenEffectsEnableVivid"
         const val KEY_ENABLE_CRT = "screenEffectsEnableCRT"
         const val KEY_ENABLE_NTSC = "screenEffectsEnableNTSC"
+        const val KEY_VIEWPORT_OFFSET_X = "screenEffectsViewportOffsetX"
+        const val KEY_VIEWPORT_OFFSET_Y = "screenEffectsViewportOffsetY"
     }
 }
 
@@ -69,6 +77,8 @@ fun loadScreenEffectsConfig(container: Container?): ScreenEffectsConfig {
         enableVivid = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_VIVID)?.toBooleanStrictOrNull() ?: false,
         enableCRT = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_CRT)?.toBooleanStrictOrNull() ?: false,
         enableNTSC = container.getExtra(ScreenEffectsConfig.KEY_ENABLE_NTSC)?.toBooleanStrictOrNull() ?: false,
+        viewportOffsetX = container.getExtra(ScreenEffectsConfig.KEY_VIEWPORT_OFFSET_X)?.toFloatOrNull() ?: 0f,
+        viewportOffsetY = container.getExtra(ScreenEffectsConfig.KEY_VIEWPORT_OFFSET_Y)?.toFloatOrNull() ?: 0f,
     )
 }
 
@@ -88,6 +98,23 @@ fun persistScreenEffectsConfig(container: Container?, config: ScreenEffectsConfi
     container.putExtra(ScreenEffectsConfig.KEY_ENABLE_VIVID, config.enableVivid)
     container.putExtra(ScreenEffectsConfig.KEY_ENABLE_CRT, config.enableCRT)
     container.putExtra(ScreenEffectsConfig.KEY_ENABLE_NTSC, config.enableNTSC)
+    container.putExtra(ScreenEffectsConfig.KEY_VIEWPORT_OFFSET_X, config.viewportOffsetX)
+    container.putExtra(ScreenEffectsConfig.KEY_VIEWPORT_OFFSET_Y, config.viewportOffsetY)
+}
+
+/**
+ * Push the viewport offset into the shared ViewTransformation state. Touch mappers
+ * (TouchpadView/TouchMouse) pick the change up on their next event; the renderer
+ * must be told to recompute explicitly, which the applyScreenEffectsConfig
+ * overloads do.
+ */
+fun applyViewportOffsetConfig(config: ScreenEffectsConfig) {
+    ViewTransformation.setUserOffset(config.viewportOffsetX / 100f, config.viewportOffsetY / 100f)
+}
+
+fun applyViewportOffsetConfig(renderer: ASurfaceRenderer, config: ScreenEffectsConfig) {
+    applyViewportOffsetConfig(config)
+    renderer.updateViewTransformation()
 }
 
 fun fsrQuickMenuLevelToStops(level: Int): Float {
@@ -154,6 +181,9 @@ fun applyScreenEffectsConfig(renderer: GLRenderer, config: ScreenEffectsConfig) 
     }
 
     composer.setEffects(effects)
+
+    applyViewportOffsetConfig(config)
+    renderer.updateViewTransformation()
 }
 
 fun applyScreenEffectsConfig(renderer: VulkanRenderer, config: ScreenEffectsConfig) {
@@ -198,4 +228,7 @@ fun applyScreenEffectsConfig(renderer: VulkanRenderer, config: ScreenEffectsConf
         config.contrast / 100f,
         config.gamma,
     )
+
+    applyViewportOffsetConfig(config)
+    renderer.updateViewTransformation()
 }

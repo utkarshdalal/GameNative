@@ -41,7 +41,6 @@ import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
-import app.gamenative.ui.util.ScreenEffectsConfig
 import app.gamenative.ui.util.applyScreenEffectsConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
 import app.gamenative.ui.util.persistScreenEffectsConfig
@@ -84,7 +83,9 @@ fun ScreenEffectDialog(
     }
 
     LaunchedEffect(brightness, contrast, gamma, enableToon, enableFXAA, enableVivid, enableCRT, enableNTSC) {
-        val config = ScreenEffectsConfig(
+        // copy() so settings this dialog doesn't edit (scaling mode, viewport offset)
+        // survive the round-trip instead of being reset to defaults.
+        val config = initialConfig.copy(
             brightness = brightness,
             contrast = contrast,
             gamma = gamma,
