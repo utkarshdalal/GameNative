@@ -587,10 +587,10 @@ class MainViewModel @Inject constructor(
                 )
             }
 
-            bootAwaitingGameWindow = true
             // A new launch is a new impression: never reuse the previous launch's ad.
             bootAdHiddenAtMs = 0L
             setShowBootingSplash(true)
+            bootAwaitingGameWindow = _state.value.bootAd != null
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
             val heroUrl = withContext(Dispatchers.IO) {
@@ -863,14 +863,15 @@ class MainViewModel @Inject constructor(
 
     fun onWindowMapped(context: Context, window: Window, appId: String) {
         viewModelScope.launch {
-            // Hide the booting splash when a window is mapped. During boot, Wine's own shell
-            // windows (explorer.exe etc.) map long before the game renders, so they must not
-            // end it; outside boot (exit/teardown re-shows) any window map hides it as before.
+            // Hide the booting splash when a window is mapped. While a boot card is showing,
+            // explorer's desktop window maps long before the game renders, so it must not
+            // end it; with no card (or outside boot) any window map hides it as before.
             if (window.isApplicationWindow() && !WineProcessSnapshotHelper.isSystemProcessName(window.className)) {
                 gameWindowSeen = true
             }
-            if (bootAwaitingGameWindow && WineProcessSnapshotHelper.isSystemProcessName(window.className)) {
-                Timber.tag("BootAdTrace").i("ignoring system window map: %s", window.className)
+            val windowClass = window.className.trim().lowercase()
+            if (bootAwaitingGameWindow && (windowClass.isEmpty() || windowClass == "explorer.exe")) {
+                Timber.tag("BootAdTrace").i("ignoring shell window map: %s", window.className)
             } else {
                 bootAwaitingGameWindow = false
                 bootingSplashTimeoutJob?.cancel()
