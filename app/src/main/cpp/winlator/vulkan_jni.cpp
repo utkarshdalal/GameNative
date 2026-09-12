@@ -307,3 +307,72 @@ Java_com_winlator_renderer_VulkanRenderer_nativeReattachSurface(JNIEnv* env, job
     }
     return (jboolean)ok;
 }
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeSetFrameGenerationEnabled(JNIEnv*, jobject, jlong handle, jboolean enabled) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenerationEnabled(enabled == JNI_TRUE);
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeIsFrameGenerationSupported(JNIEnv*, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return r ? (jboolean)r->isFrameGenerationSupported() : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeSetFrameGenerationShaders(JNIEnv* env, jobject, jlong handle, jstring cachePath) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (!r) return;
+    std::string path;
+    if (cachePath) {
+        const char* p = env->GetStringUTFChars(cachePath, nullptr);
+        if (p) {
+            path = p;
+            env->ReleaseStringUTFChars(cachePath, p);
+        }
+    }
+    r->setFrameGenerationShaders(path);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeSetSourceFrameCount(JNIEnv*, jobject, jlong handle, jlong count) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setSourceFrameCount((uint64_t)count);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeSetFrameGenerationRefreshRate(JNIEnv*, jobject, jlong handle, jfloat hz) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenerationRefreshRate((float)hz);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeSetFrameGenerationMode(JNIEnv*, jobject, jlong handle, jint multiplier, jint targetRate, jint flowScalePct) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    if (r) r->setFrameGenerationMode((int)multiplier, (int)targetRate, (int)flowScalePct);
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeGetGeneratedFrameCount(JNIEnv*, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return r ? (jlong)r->getGeneratedFrameCount() : 0;
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeGetPresentedFrameCount(JNIEnv*, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return r ? (jlong)r->getPresentedFrameCount() : 0;
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeGetRealFrameCount(JNIEnv*, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return r ? (jlong)r->getRealFrameCount() : 0;
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_winlator_renderer_VulkanRenderer_nativeGetSourceFrameCount(JNIEnv*, jobject, jlong handle) {
+    auto* r = reinterpret_cast<VulkanRendererContext*>(handle);
+    return r ? (jlong)r->getSourceFrameCount() : 0;
+}

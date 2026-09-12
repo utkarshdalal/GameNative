@@ -350,7 +350,7 @@ object PrefManager {
     var quickMenuLastTab: Int
         get() = getPref(QUICK_MENU_LAST_TAB, 0)
         set(value) {
-            setPref(QUICK_MENU_LAST_TAB, value.coerceIn(0, 6))
+            setPref(QUICK_MENU_LAST_TAB, value.coerceIn(0, 7))
         }
 
     private val SHOW_FPS = booleanPreferencesKey("show_fps")

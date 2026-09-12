@@ -60,6 +60,14 @@ class PluviaApp : SplitCompatApplication() {
         super.onCreate()
         instance = this
 
+        try {
+            val gamepadDir = java.io.File(filesDir, "gamepad_shm")
+            gamepadDir.mkdirs()
+            android.system.Os.setenv("EVSHIM_BASE_PATH", filesDir.absolutePath, true)
+        } catch (e: Throwable) {
+            Timber.w(e, "Failed to set EVSHIM_BASE_PATH")
+        }
+
         preloadSystemLibraries()
 
         // Allows to find resource streams not closed within GameNative and JavaSteam
@@ -105,6 +113,7 @@ class PluviaApp : SplitCompatApplication() {
         appScope.launch {
             ContainerFilesDownloader.preloadAllContainerFiles(applicationContext)
         }
+
 
         // Clear any stale temporary config overrides from previous app sessions
         try {
@@ -210,6 +219,8 @@ class PluviaApp : SplitCompatApplication() {
         internal var onDestinationChangedListener: NavChangedListener? = null
 
         private lateinit var instance: PluviaApp
+        @JvmStatic
+        fun getAppContext(): android.content.Context? = if (::instance.isInitialized) instance.applicationContext else null
         private var cachedDefaultScreenSize: String? = null
 
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)

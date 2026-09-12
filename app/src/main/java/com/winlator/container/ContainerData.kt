@@ -109,9 +109,12 @@ data class ContainerData(
     val sharpnessEffect: String = "None",
     val sharpnessLevel: Int = 100,
     val sharpnessDenoise: Int = 100,
-    // LSFG Vulkan frame generation
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
+    val lsfgMultiplier: Int = 2,
+    val lsfgFlowScale: Float = 0.70f,
+    val lsfgPreset: String = "BALANCED",
+    val lsfgTargetRate: Int = 0,
     val windowsVrEnabled: Boolean = false,
     val openCompositeEnabled: Boolean = false,
 ) {
@@ -189,6 +192,10 @@ data class ContainerData(
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
                     "lsfgEnabled" to state.lsfgEnabled,
+                    "lsfgMultiplier" to state.lsfgMultiplier,
+                    "lsfgFlowScale" to state.lsfgFlowScale,
+                    "lsfgPreset" to state.lsfgPreset,
+                    "lsfgTargetRate" to state.lsfgTargetRate,
                     "windowsVrEnabled" to state.windowsVrEnabled,
                     "openCompositeEnabled" to state.openCompositeEnabled,
                 )
@@ -265,6 +272,10 @@ data class ContainerData(
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
+                    lsfgMultiplier = (savedMap["lsfgMultiplier"] as? Int) ?: 2,
+                    lsfgFlowScale = (savedMap["lsfgFlowScale"] as? Float) ?: 0.70f,
+                    lsfgPreset = (savedMap["lsfgPreset"] as? String) ?: "BALANCED",
+                    lsfgTargetRate = (savedMap["lsfgTargetRate"] as? Int) ?: 0,
                     windowsVrEnabled = (savedMap["windowsVrEnabled"] as? Boolean) ?: false,
                     openCompositeEnabled = (savedMap["openCompositeEnabled"] as? Boolean) ?: false,
                 )

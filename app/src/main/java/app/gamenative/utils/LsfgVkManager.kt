@@ -7,11 +7,13 @@ import android.view.Choreographer
 import android.view.WindowManager
 import java.util.concurrent.Executors
 import app.gamenative.BuildConfig
+import app.gamenative.PluviaApp
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import com.winlator.core.FileUtils
 import com.winlator.core.envvars.EnvVars
+import com.winlator.renderer.lsfg.LosslessScaling
 import java.io.File
 import java.util.Locale
 import timber.log.Timber
@@ -44,48 +46,21 @@ object LsfgVkManager {
     private const val LOSSLESS_DLL_NAME = "Lossless.dll"
 
     // Paths inside the container's HOME (relative to rootDir)
-    private const val CONFIG_RELATIVE_PATH = ".config/lsfg-vk/conf.toml"
-    private const val LIB_RELATIVE_DIR = ".local/lib"
     private const val LAYER_RELATIVE_DIR = ".local/share/vulkan/implicit_layer.d"
     private const val DLL_RELATIVE_DIR = ".local/share/lsfg-vk"
-    private const val LIB_FILENAME = "liblsfg-vk-layer.so"
     private const val MANIFEST_FILENAME = "VkLayer_LS_frame_generation.json"
-    private const val VERSION_FILENAME = ".lsfg_vk_runtime_version"
-
-    // Relative path from implicit_layer.d back to lib/
-    private const val MANIFEST_LIBRARY_PATH = "../../../lib/$LIB_FILENAME"
-
-    // Process identifier written to conf.toml [[game]] exe field.
-    // Under Wine, /proc/self/exe points to the Wine loader, so we use this
-    // stable identifier instead. Set via LSFG_PROCESS env var.
-    private const val PROCESS_EXE_IDENTIFIER = "gamenative-lsfg"
 
     // Container extra keys
     const val EXTRA_ARMED = "lsfgEnabled"
     const val EXTRA_MULTIPLIER = "lsfgMultiplier"
     const val EXTRA_FLOW_SCALE = "lsfgFlowScale"
-    const val EXTRA_PERFORMANCE_MODE = "lsfgPerformanceMode"
     const val EXTRA_PRESENT_MODE = "lsfgPresentMode"
+    const val EXTRA_TARGET_RATE = "lsfgTargetRate"
+    const val EXTRA_PRESET = "lsfgPreset"
 
     // FPS limiter extras (owned by XServerScreen)
     private const val EXTRA_FPS_LIMITER_ENABLED = "fpsLimiterEnabled"
     private const val EXTRA_FPS_LIMITER_TARGET = "fpsLimiterTarget"
-
-    // Written by the layer next to conf.toml; measured presented/base fps
-    private const val STATS_RELATIVE_PATH = ".config/lsfg-vk/stats.txt"
-    private const val STATS_FRESHNESS_MS = 2000L
-
-    // Environment variables consumed by the lsfg-vk layer
-    private const val ENV_DISABLE = "DISABLE_LSFG"
-    private const val ENV_CONFIG = "LSFG_CONFIG"
-    private const val ENV_PROCESS = "LSFG_PROCESS"
-
-    // Current runtime version (bumped when the bundled .so changes)
-    private const val RUNTIME_VERSION = "v1.3.3-android-arm64-v8a"
-
-    // Asset path for manifest (still in assets)
-    private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
-    private const val ASSET_MANIFEST = "$ASSET_DIR/$MANIFEST_FILENAME"
 
     // ---- Public API --------------------------------------------------------
 
@@ -94,21 +69,29 @@ object LsfgVkManager {
     fun isSupported(container: Container): Boolean =
         container.containerVariant.equals(Container.BIONIC, ignoreCase = true)
 
-    /** Whether LSFG is armed (enabled + Lossless.dll available in Steam dir) for this container. The DLL is copied into the container at launch time by ensureRuntimeInstalled(). */
+    /** Whether LSFG is armed (enabled + Lossless.dll available + Steam ownership) for this container. The DLL is copied into the container at launch time by ensureRuntimeInstalled(). */
     @JvmStatic
     fun isArmed(container: Container): Boolean =
         isSupported(container) &&
-            parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
-            isDllAvailable()
+            (parseBool(container.getExtra(EXTRA_ARMED, "false")) || parseBool(container.getExtra("frameGen", "0"))) &&
+            isDllAvailable() &&
+            ownsLosslessScaling()
 
-    /** Whether Lossless Scaling is installed (Lossless.dll exists in Steam dir). */
+    /** Whether Lossless Scaling is installed (Lossless.dll exists in internal storage, container, or Steam dir). */
     @JvmStatic
-    fun isDllAvailable(): Boolean = findSteamDll() != null
+    @JvmOverloads
+    fun isDllAvailable(context: Context? = null): Boolean {
+        val ctx = context ?: PluviaApp.getAppContext()
+        if (ctx != null) {
+            if (LosslessScaling.getDllFile(ctx).isFile) return true
+        }
+        return findSteamDll() != null
+    }
 
-    /** Whether the user owns Lossless Scaling in their Steam library. */
+    /** Whether the user is signed into Steam and owns Lossless Scaling in their Steam library. */
     @JvmStatic
     fun ownsLosslessScaling(): Boolean =
-        SteamService.getAppInfoOf(LOSSLESS_SCALING_APP_ID) != null
+        SteamService.isLoggedIn && SteamService.getAppInfoOf(LOSSLESS_SCALING_APP_ID) != null
 
     /** Get the DLL path inside the container, or null if the copy doesn't exist. */
     @JvmStatic
@@ -119,26 +102,35 @@ object LsfgVkManager {
 
     /** Get the multiplier (0=Off, 2-4, default 2). */
     fun multiplier(container: Container): Int {
-        val raw = container.getExtra(EXTRA_MULTIPLIER, "2").toIntOrNull() ?: 2
+        val raw = container.getExtra(EXTRA_MULTIPLIER, "").toIntOrNull()
+            ?: container.getExtra("frameGenMultiplier", "2").toIntOrNull() ?: 2
         return if (raw == 0) 0 else raw.coerceIn(2, 4)
     }
 
-    /** Get the flow scale (0.25-1.0, default 0.80). */
-    fun flowScale(container: Container): Float =
-        container.getExtra(EXTRA_FLOW_SCALE, "0.80").toFloatOrNull()?.coerceIn(0.25f, 1.0f) ?: 0.80f
+    /** Get the flow scale (0.25-1.0, default 0.70). */
+    fun flowScale(container: Container): Float {
+        val raw = container.getExtra(EXTRA_FLOW_SCALE, "").toFloatOrNull()
+        if (raw != null) return raw.coerceIn(0.25f, 1.0f)
+        val fgFlow = container.getExtra("frameGenFlowScale", "").toIntOrNull()
+        if (fgFlow != null) return (fgFlow / 100.0f).coerceIn(0.25f, 1.0f)
+        return 0.70f
+    }
 
-    /** Get whether performance mode is enabled (default true). */
-    fun performanceMode(container: Container): Boolean =
-        parseBool(container.getExtra(EXTRA_PERFORMANCE_MODE, "true"))
+    /** Get the target rate (0=Off, 60, 90, 120, 144). */
+    fun targetRate(container: Container): Int {
+        return container.getExtra(EXTRA_TARGET_RATE, "").toIntOrNull()
+            ?: container.getExtra("frameGenTargetRate", "0").toIntOrNull() ?: 0
+    }
+
 
     /**
-     * Swapchain present mode while frame generation runs ("mailbox" or
-     * "fifo"). Mailbox is the default: the layer already paces vsync-locked,
-     * and mesa's FIFO queue underneath it breaks the display cadence.
+     * Swapchain present mode while frame generation runs ("fifo" or
+     * "mailbox"). FIFO is the default: universally supported across all
+     * Vulkan implementations and Android surfaces without swapchain creation failures.
      */
     fun presentMode(container: Container): String =
-        container.getExtra(EXTRA_PRESENT_MODE, "mailbox")
-            .takeIf { it == "fifo" || it == "mailbox" } ?: "mailbox"
+        container.getExtra(EXTRA_PRESENT_MODE, "fifo")
+            .takeIf { it == "fifo" || it == "mailbox" } ?: "fifo"
 
     /**
      * Base fps cap for the layer's limiter (0 = uncapped). The layer
@@ -204,240 +196,48 @@ object LsfgVkManager {
      * in which case callers should fall back to their own estimate.
      */
     @JvmStatic
-    @Volatile private var cachedMeasuredFps: Float? = null
-    @Volatile private var lastStatsReadMs: Long = 0L
+    @Volatile private var lastPresentedFrames: Long = 0L
+    @Volatile private var lastFpsTimeNs: Long = 0L
+    @Volatile private var liveFps: Float? = null
 
-    /** Served from a cache refreshed off the main thread; callers poll ~1/s. */
+    /** Served from host VulkanRenderer presented frame counter; callers poll ~1/s. */
     fun readMeasuredFps(container: Container): Float? {
-        val now = System.currentTimeMillis()
-        if (now - lastStatsReadMs >= 500L) {
-            lastStatsReadMs = now
-            vsyncWriteExecutor.execute {
-                cachedMeasuredFps = try {
-                    val statsFile = File(container.rootDir, STATS_RELATIVE_PATH)
-                    if (statsFile.isFile &&
-                        System.currentTimeMillis() - statsFile.lastModified() <= STATS_FRESHNESS_MS
-                    ) {
-                        statsFile.readLines()
-                            .firstOrNull { it.startsWith("fps=") }
-                            ?.substringAfter("fps=")
-                            ?.toFloatOrNull()
-                    } else {
-                        null
-                    }
-                } catch (t: Throwable) {
-                    null
+        val vulkanRenderer = app.gamenative.PluviaApp.xServerView?.renderer as? com.winlator.renderer.VulkanRenderer
+        if (vulkanRenderer != null) {
+            val nowNs = System.nanoTime()
+            val presented = vulkanRenderer.presentedFrameCount
+            val dt = (nowNs - lastFpsTimeNs) / 1_000_000_000.0
+            if (lastFpsTimeNs != 0L && dt >= 0.5) {
+                val dFrames = presented - lastPresentedFrames
+                if (dFrames >= 0) {
+                    liveFps = (dFrames / dt).toFloat()
                 }
+                lastPresentedFrames = presented
+                lastFpsTimeNs = nowNs
+            } else if (lastFpsTimeNs == 0L) {
+                lastPresentedFrames = presented
+                lastFpsTimeNs = nowNs
             }
+            return liveFps
         }
-        return cachedMeasuredFps
-    }
-
-    /**
-     * Install the layer runtime + DLL into the container's filesystem.
-     * Called during container startup in BionicProgramLauncherComponent.
-     *
-     * Installs:
-     * - liblsfg-vk-layer.so → ~/.local/lib/
-     * - VkLayer_LS_frame_generation.json → ~/.local/share/vulkan/implicit_layer.d/
-     * - Lossless.dll → ~/.local/share/lsfg-vk/  (copied from Steam install dir)
-     *
-     * Uses versioned caching to skip redundant copies.
-     *
-     * @return true if installation succeeded or was already up-to-date
-     */
-    @JvmStatic
-    fun ensureRuntimeInstalled(context: Context, container: Container): Boolean {
-        if (!isSupported(container)) return false
-
-        val rootDir = container.rootDir
-        val localLibDir = File(rootDir, LIB_RELATIVE_DIR)
-        val layerDir = File(rootDir, LAYER_RELATIVE_DIR)
-        val dllDir = File(rootDir, DLL_RELATIVE_DIR)
-        val libFile = File(localLibDir, LIB_FILENAME)
-        val manifestFile = File(layerDir, MANIFEST_FILENAME)
-        val versionFile = File(layerDir, VERSION_FILENAME)
-
-        val installedVersion = versionFile.takeIf { it.exists() }?.readText()?.trim().orEmpty()
-        val needsInstall = installedVersion != RUNTIME_VERSION ||
-            !libFile.isFile || !manifestFile.isFile
-
-        var success = true
-
-        if (needsInstall) {
-            try {
-                localLibDir.mkdirs()
-                layerDir.mkdirs()
-
-                // Copy the layer .so from native library directory (jniLibs)
-                val nativeLibDir = File(context.applicationInfo.nativeLibraryDir)
-                val sourceLib = File(nativeLibDir, LIB_FILENAME)
-                if (!sourceLib.exists()) {
-                    Timber.tag(TAG).e("Native library not found: %s", sourceLib.absolutePath)
-                    return false
-                }
-                sourceLib.inputStream().use { input ->
-                    libFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                // Write the manifest with patched library_path
-                val manifestText = context.assets.open(ASSET_MANIFEST)
-                    .bufferedReader().use { it.readText() }
-                    .replace(
-                        "\"library_path\": \"$LIB_FILENAME\"",
-                        "\"library_path\": \"$MANIFEST_LIBRARY_PATH\""
-                    )
-                FileUtils.writeString(manifestFile, manifestText)
-                FileUtils.writeString(versionFile, RUNTIME_VERSION)
-
-                // Set executable permissions
-                if (libFile.exists()) FileUtils.chmod(libFile, 0b111101101)
-                if (manifestFile.exists()) FileUtils.chmod(manifestFile, 0b110100100)
-                if (versionFile.exists()) FileUtils.chmod(versionFile, 0b110100100)
-
-                val ok = libFile.isFile && manifestFile.isFile
-                if (ok) {
-                    Timber.tag(TAG).i("Installed LSFG runtime %s into %s", RUNTIME_VERSION, rootDir)
-                } else {
-                    Timber.tag(TAG).e("Runtime installation verification failed")
-                    success = false
-                }
-            } catch (t: Throwable) {
-                Timber.tag(TAG).e(t, "Failed to install LSFG runtime")
-                success = false
-            }
-        } else {
-            Timber.tag(TAG).d("Runtime %s already installed in %s", RUNTIME_VERSION, rootDir)
-        }
-
-        // Delete the Lossless Scaling container if it exists (no longer needed)
-        // We now copy the DLL directly from Steam install dir instead of creating a container
-        deleteLosslessScalingContainerIfExists(context)
-
-        // Copy Lossless.dll from Steam install dir into the container
-        val dllFile = File(dllDir, LOSSLESS_DLL_NAME)
-        val steamDll = findSteamDll()
-        if (steamDll != null) {
-            try {
-                if (!dllFile.isFile || dllFile.length() != steamDll.length()) {
-                    dllDir.mkdirs()
-                    steamDll.inputStream().use { input ->
-                        dllFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                    if (dllFile.exists()) FileUtils.chmod(dllFile, 0b110100100)
-                    Timber.tag(TAG).i("Copied Lossless.dll (%d bytes) into %s", dllFile.length(), dllDir)
-                }
-            } catch (t: Throwable) {
-                Timber.tag(TAG).e(t, "Failed to copy Lossless.dll into container")
-                success = false
-            }
-        } else if (parseBool(container.getExtra(EXTRA_ARMED, "false"))) {
-            Timber.tag(TAG).w("LSFG enabled but Lossless.dll not found in Steam dir")
-            success = false
-        }
-
-        return success
-    }
-
-    /**
-     * Write the lsfg-vk conf.toml for this container.
-     * The layer reads this on init to find the DLL and game settings.
-     *
-     * @return true if the config was written successfully
-     */
-    @JvmStatic
-    fun writeConfig(container: Container): Boolean {
-        if (!isSupported(container)) return false
-
-        return try {
-            val dllPath = containerDllPath(container)
-            val savedMultiplier = multiplier(container)
-            val frameGenActive = parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
-                dllPath != null && savedMultiplier >= 2
-            val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
-            val configText = buildConfigToml(
-                dllPath = dllPath,
-                enabled = frameGenActive,
-                multiplier = if (frameGenActive) savedMultiplier else 1,
-                flowScale = flowScale(container),
-                performanceMode = performanceMode(container) && frameGenActive,
-                fpsLimit = fpsLimit(container),
-                presentMode = presentMode(container),
-            )
-            val ok = writeConfigAtomic(configFile, configText)
-            ok
-        } catch (t: Throwable) {
-            Timber.tag(TAG).e(t, "Failed to write LSFG conf.toml")
-            false
-        }
-    }
-
-    /**
-     * Apply LSFG-related environment variables to the launch environment.
-     * Called during container startup in BionicProgramLauncherComponent.
-     *
-     * @return true if LSFG is armed and env vars were applied
-     */
-    @JvmStatic
-    fun applyLaunchEnv(container: Container, envVars: EnvVars): Boolean {
-        // Clear any stale env vars first
-        envVars.remove(ENV_DISABLE)
-        envVars.remove(ENV_CONFIG)
-        envVars.remove(ENV_PROCESS)
-
-        if (!isSupported(container)) {
-            // Remove the manifest so the Vulkan loader can't find the layer
-            disableLayerInContainer(container)
-            return false
-        }
-
-        val dllPath = containerDllPath(container)
-        val armed = parseBool(container.getExtra(EXTRA_ARMED, "false")) && dllPath != null
-
-        if (!armed) {
-            // Remove the manifest so the Vulkan loader can't find the layer
-            disableLayerInContainer(container)
-            Timber.tag(TAG).i("LSFG disabled (enabled=%s, dll=%s)",
-                container.getExtra(EXTRA_ARMED, "false"), dllPath ?: "null")
-            return false
-        }
-
-        envVars.put(ENV_CONFIG, configFile(container).absolutePath)
-        envVars.put(ENV_PROCESS, PROCESS_EXE_IDENTIFIER)
-
-        // Add the container's implicit_layer.d to VK_LAYER_PATH so the
-        // Vulkan loader discovers the lsfg-vk layer installed there.
-        // The static VK_LAYER_PATH only covers /usr/share/vulkan/implicit_layer.d,
-        // but we install the layer into the container's ~/.local/share/vulkan/.
-        val containerLayerDir = File(container.rootDir, LAYER_RELATIVE_DIR)
-        val existingLayerPath = envVars["VK_LAYER_PATH"] ?: ""
-        if (existingLayerPath.isNotEmpty()) {
-            envVars.put("VK_LAYER_PATH", "$existingLayerPath:${containerLayerDir.absolutePath}")
-        } else {
-            envVars.put("VK_LAYER_PATH", containerLayerDir.absolutePath)
-        }
-
-        Timber.tag(TAG).i(
-            "LSFG armed: dll=%s, multiplier=%d, flowScale=%.2f, perf=%s",
-            dllPath, multiplier(container), flowScale(container),
-            if (performanceMode(container)) "on" else "off"
-        )
-        return true
+        return null
     }
 
     /**
      * Remove the layer manifest so the Vulkan loader can't discover it.
      * Called when LSFG is disabled to ensure no stale layer is loaded.
      */
-    private fun disableLayerInContainer(container: Container) {
+    @JvmStatic
+    fun disableLayerInContainer(container: Container) {
         val layerDir = File(container.rootDir, LAYER_RELATIVE_DIR)
         val manifest = File(layerDir, MANIFEST_FILENAME)
         if (manifest.exists()) {
             manifest.delete()
             Timber.tag(TAG).d("Removed LSFG manifest to disable layer")
+        }
+        val usrManifest = File(container.rootDir, "usr/share/vulkan/implicit_layer.d/$MANIFEST_FILENAME")
+        if (usrManifest.exists()) {
+            usrManifest.delete()
         }
     }
 
@@ -450,7 +250,8 @@ object LsfgVkManager {
      * This function searches all possible Steam install paths directly
      * without creating a container for the Lossless Scaling app.
      */
-    private fun findSteamDll(): File? {
+    @JvmStatic
+    fun findSteamDll(): File? {
         return findSteamDllDirect()
     }
 
@@ -503,96 +304,9 @@ object LsfgVkManager {
 
     // ---- Helpers -----------------------------------------------------------
 
-    private fun configFile(container: Container): File =
-        File(container.rootDir, CONFIG_RELATIVE_PATH)
-
-    // The layer rereads conf.toml on mtime change and must never observe a
-    // half-written file.
-    private fun writeConfigAtomic(file: File, text: String): Boolean {
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        return try {
-            if (!FileUtils.writeString(tmp, text)) return false
-            FileUtils.chmod(tmp, 0b110100100)
-            tmp.renameTo(file)
-        } catch (t: Throwable) {
-            tmp.delete()
-            false
-        }
-    }
-
-    private fun buildConfigToml(
-        dllPath: String?,
-        enabled: Boolean,
-        multiplier: Int,
-        flowScale: Float,
-        performanceMode: Boolean,
-        fpsLimit: Int,
-        presentMode: String,
-    ): String = buildString {
-        appendLine("version = 1")
-        appendLine()
-        appendLine("[global]")
-        if (!dllPath.isNullOrBlank()) {
-            appendLine("dll = ${tomlString(dllPath)}")
-        }
-        appendLine("no_fp16 = false")
-        appendLine()
-
-        if (!dllPath.isNullOrBlank()) {
-            val effectiveMultiplier = if (enabled) multiplier.coerceIn(2, 4) else 1
-            appendLine("[[game]]")
-            appendLine("exe = ${tomlString(PROCESS_EXE_IDENTIFIER)}")
-            appendLine("multiplier = $effectiveMultiplier")
-            appendLine("flow_scale = ${formatFlowScale(flowScale)}")
-            appendLine("performance_mode = ${if (enabled && performanceMode) "true" else "false"}")
-            appendLine("hdr_mode = false")
-            appendLine("fps_limit = ${fpsLimit.coerceAtLeast(0)}")
-            appendLine("experimental_present_mode = ${tomlString(if (enabled) presentMode else "fifo")}")
-        }
-    }
-
-    private fun tomlString(value: String): String = buildString {
-        append('"')
-        value.forEach { ch ->
-            when (ch) {
-                '\\' -> append("\\\\")
-                '"' -> append("\\\"")
-                else -> append(ch)
-            }
-        }
-        append('"')
-    }
-
     /** Parse boolean from container extra (handles "true"/"false" and "1"/"0"). */
     private fun parseBool(value: String): Boolean =
         value.equals("true", ignoreCase = true) || value == "1"
-
-    private fun formatFlowScale(value: Float): String =
-        String.format(Locale.US, "%.2f", value.coerceIn(0.25f, 1.0f))
-
-    /**
-     * Delete the Lossless Scaling container if it exists.
-     * This container is no longer needed since we copy the DLL directly from
-     * the Steam install directory instead of creating a container for app 993090.
-     * This saves storage space.
-     */
-    private fun deleteLosslessScalingContainerIfExists(context: Context) {
-        try {
-            val containerManager = ContainerManager(context)
-            val losslessContainer = containerManager.getContainerById("STEAM_$LOSSLESS_SCALING_APP_ID")
-            if (losslessContainer != null) {
-                Timber.tag(TAG).i("Deleting Lossless Scaling container to save storage")
-                if (FileUtils.delete(losslessContainer.rootDir)) {
-                    containerManager.containers.remove(losslessContainer)
-                    Timber.tag(TAG).i("Successfully deleted Lossless Scaling container")
-                } else {
-                    Timber.tag(TAG).w("Failed to delete Lossless Scaling container directory")
-                }
-            }
-        } catch (t: Throwable) {
-            Timber.tag(TAG).w(t, "Error while trying to delete Lossless Scaling container")
-        }
-    }
 
     // ---- Runtime hot-reload -----------------------------------------------
 
@@ -606,7 +320,6 @@ object LsfgVkManager {
      * @param enabled Whether frame generation is active (sets multiplier to 1 if false)
      * @param multiplier Frame generation multiplier (2-4)
      * @param flowScale Flow scale factor (0.25-1.0)
-     * @param performanceMode Whether performance mode is enabled
      * @return true if the config was updated successfully
      */
     @JvmStatic
@@ -615,43 +328,52 @@ object LsfgVkManager {
         enabled: Boolean,
         multiplier: Int,
         flowScale: Float,
-        performanceMode: Boolean,
         fpsLimitOverride: Int? = null,
+        targetRate: Int = targetRate(container),
     ): Boolean {
-        if (!isSupported(container)) return false
-
-        val dllPath = containerDllPath(container)
-        val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
-
-        if (!configFile.exists()) {
-            Timber.tag(TAG).w("conf.toml not found, cannot hot-reload")
-            return false
-        }
-
-        return try {
-            val frameGenActive = enabled && dllPath != null
-            val configText = buildConfigToml(
-                dllPath = dllPath,
-                enabled = frameGenActive,
-                multiplier = if (frameGenActive) multiplier.coerceIn(2, 4) else 1,
-                flowScale = flowScale.coerceIn(0.25f, 1.0f),
-                performanceMode = performanceMode && frameGenActive,
-                fpsLimit = fpsLimitOverride ?: fpsLimit(container),
-                presentMode = presentMode(container),
-            )
-
-            val ok = writeConfigAtomic(configFile, configText)
-            if (ok) {
-                Timber.tag(TAG).i(
-                    "Hot-reloaded conf.toml: enabled=%s, multiplier=%d, flowScale=%.2f, perf=%s, fpsLimit=%d",
-                    frameGenActive, multiplier, flowScale, performanceMode, fpsLimit(container)
-                )
+        val vulkanRenderer = app.gamenative.PluviaApp.xServerView?.renderer as? com.winlator.renderer.VulkanRenderer
+        if (vulkanRenderer != null) {
+            val ctx = app.gamenative.PluviaApp.xServerView?.context
+            if (ctx != null) {
+                val cache = com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(ctx, container, true)
+                if (cache != null && cache.isFile) {
+                    vulkanRenderer.setFrameGenerationShaders(cache.absolutePath)
+                }
             }
-            ok
-        } catch (t: Throwable) {
-            Timber.tag(TAG).e(t, "Failed to hot-reload conf.toml")
-            false
+            val flowScalePct = Math.round(flowScale * 100f)
+            vulkanRenderer.setFrameGenerationMode(
+                if (multiplier >= 2) multiplier else 2,
+                targetRate,
+                flowScalePct
+            )
+            val refreshRate = if (ctx != null) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    ctx.display?.refreshRate ?: 60f
+                } else {
+                    val wm = ctx.getSystemService(android.content.Context.WINDOW_SERVICE) as? android.view.WindowManager
+                    @Suppress("DEPRECATION")
+                    wm?.defaultDisplay?.refreshRate ?: 60f
+                }
+            } else 60f
+            val stored = container.getExtra(EXTRA_PRESENT_MODE, "")
+            val pm = if (stored.isNotEmpty()) presentMode(container)
+                     else container.rendererPresentMode.ifEmpty { "fifo" }
+            val vkMode = when (pm.lowercase(java.util.Locale.ROOT)) {
+                "mailbox" -> 1
+                "immediate" -> 0
+                "relaxed" -> 3
+                else -> 2
+            }
+            vulkanRenderer.setVkPresentMode(vkMode)
+            vulkanRenderer.setFrameGenerationRefreshRate(refreshRate)
+            vulkanRenderer.setFrameGenerationEnabled(enabled)
+            Timber.tag(TAG).i(
+                "Configured host VulkanRenderer LSFG: enabled=%s, multiplier=%d, flowScale=%.2f, targetRate=%d",
+                enabled, multiplier, flowScale, targetRate
+            )
+            return true
         }
+        return false
     }
 
 }

@@ -200,20 +200,15 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     private int execGuestProgram() {
 
+        Context context = environment.getContext();
+        ImageFs imageFs = ImageFs.find(context);
+        File rootDir = imageFs.getRootDir();
+
         final int MAX_PLAYERS = 4;
 
         // Get the number of enabled players directly from ControllerManager.
         for (int i = 0; i < MAX_PLAYERS; i++) {
-            String memPath;
-            if (i == 0) {
-                // Player 1 uses the original, non-numbered path that is known to work.
-                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad.mem";
-            } else {
-                // Players 2, 3, 4 use a 1-based index.
-                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad" + i + ".mem";
-            }
-
-            File memFile = new File(memPath);
+            File memFile = new File(rootDir, i == 0 ? "tmp/gamepad.mem" : ("tmp/gamepad" + i + ".mem"));
             memFile.getParentFile().mkdirs();
             try (RandomAccessFile raf = new RandomAccessFile(memFile, "rw")) {
                 raf.setLength(64);
@@ -221,14 +216,25 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 Log.e("EVSHIM_HOST", "Failed to create mem file for player index "+i, e);
             }
         }
-        Context context = environment.getContext();
-        ImageFs imageFs = ImageFs.find(context);
-        File rootDir = imageFs.getRootDir();
+
+        File gamepadShmDir = new File(context.getFilesDir(), "gamepad_shm");
+        gamepadShmDir.mkdirs();
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+            File memFile = new File(gamepadShmDir, i == 0 ? "gamepad.mem" : ("gamepad" + i + ".mem"));
+            try (RandomAccessFile raf = new RandomAccessFile(memFile, "rw")) {
+                raf.setLength(64);
+            } catch (IOException e) {
+                Log.e("EVSHIM_HOST", "Failed to create shm file for player index "+i, e);
+            }
+        }
 
         PrefManager.init(context);
         boolean enableBox86_64Logs = PrefManager.getBoolean("enable_box86_64_logs", true);
         boolean shareAndroidClipboard = PrefManager.getBoolean("share_android_clipboard", false);
         boolean enablePebLogs = PrefManager.getBoolean("enable_peb_logs", false);
+
+        EnvVars envVars = new EnvVars();
+        if (this.envVars != null) envVars.putAll(this.envVars);
 
         // Always set this to defer handling to WineRequestComponent
         envVars.put("WINE_OPEN_WITH_ANDROID_BROwSER", "1"); // Pipetto wine has a typo, so we need 2 envvar for it to work
@@ -242,10 +248,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             envVars.put("WINE_LOG_PEB_DATA", "1");
         }
 
-        EnvVars envVars = new EnvVars();
-
         // Use the ControllerManager's dynamic count for the environment variable
         envVars.put("EVSHIM_MAX_PLAYERS", String.valueOf(MAX_PLAYERS));
+        envVars.put("EVSHIM_BASE_PATH", context.getFilesDir().getAbsolutePath());
         if (true) {
             envVars.put("EVSHIM_SHM_ID", 1);
         }
@@ -326,6 +331,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("LD_PRELOAD", ld_preload);
         envVars.put("EVSHIM_WINE", 1);
         envVars.put("EVSHIM_SHM_NAME", "controller-shm0");
+        envVars.put("EVSHIM_BASE_PATH", context.getFilesDir().getAbsolutePath());
 
         if (container != null && container.isFasterExternalLoading()) {
             String ffpGameDir = null;
@@ -376,9 +382,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
 
         if (LsfgVkManager.isSupported(container)) {
-            LsfgVkManager.ensureRuntimeInstalled(environment.getContext(), container);
-            LsfgVkManager.writeConfig(container);
-            LsfgVkManager.applyLaunchEnv(container, envVars);
+            LsfgVkManager.disableLayerInContainer(container);
+            if (LsfgVkManager.isArmed(container)) {
+                com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(context, container, true);
+            }
         }
 
         Log.d("BionicProgramLauncherComponent", "env vars are " + envVars.toString());

@@ -113,7 +113,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.epic.EpicOverlayManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
-import app.gamenative.ui.component.LsfgQuickMenuState
+import app.gamenative.ui.component.PerformanceHudQuickMenuState
 import app.gamenative.ui.component.PerformanceQuickMenuState
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
@@ -618,12 +618,12 @@ fun XServerScreen(
         viewKey = xServerView,
     )
 
-    // LSFG tab in QuickMenu only visible when enabled in container settings
+    // LSFG controls in Performance tab only visible when enabled in container settings
     val isLsfgAvailable = LsfgQuickMenuHelper.isAvailable(container)
     val initialLsfgSettings = remember(container.id) { LsfgQuickMenuHelper.readSettings(container) }
     var lsfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialLsfgSettings.multiplier) }
     var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
-    var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
+    val lsfgFpsCounter = remember { app.gamenative.utils.RollingFpsCounter() }
 
     fun persistFpsLimiterState() {
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
@@ -700,27 +700,42 @@ fun XServerScreen(
         }
     }
 
+    fun isLsfgActive(): Boolean =
+        isLsfgAvailable && (lsfgMultiplier >= 2 || LsfgQuickMenuHelper.targetRate(container) > 0)
+
+    fun effectiveLsfgMultiplier(): Int {
+        val target = LsfgQuickMenuHelper.targetRate(container)
+        return when {
+            lsfgMultiplier >= 2 -> lsfgMultiplier
+            target > 0 -> 2
+            else -> 1
+        }
+    }
+
     fun applyFpsLimiterToEngines(limit: Int) {
-        // With LSFG active the layer owns ALL pacing (vsync-locked via
-        // vsync.txt) and presents at limit * multiplier. Both the renderer's
-        // SurfaceControl frame-rate hint and the PresentExtension's scheduled
-        // idle-release pacing must stay off: the hint would clamp the display
-        // to the base rate, and the extension's Choreographer-scheduled pixmap
-        // releases mix stale pixmaps under multiplied present traffic
-        // (measured as constant multi-exposure ghosting on the X11/turnip
-        // present path).
-        xServerView?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+        val lsfgActive = isLsfgActive()
+        val mult = effectiveLsfgMultiplier()
+        // SurfaceControl frame-rate hint: when LSFG is active, the display output
+        // presents at base * multiplier. Setting the hint to the multiplied rate
+        // (or 0 for panel default) avoids clamping the panel to the base rate.
+        val displayRate = if (lsfgActive && limit > 0) {
+            (limit * mult).coerceAtMost(detectedMaxRefreshRateHz)
+        } else {
+            if (lsfgActive) 0 else limit
+        }
+        xServerView?.setFrameRateLimit(displayRate)
+        // Throttle the X Present extension so the game's own render loop receives
+        // back-pressure and actually limits its rendering rate (matches WinNative).
         xServerView?.getxServer()
             ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
-            ?.setFrameRateLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+            ?.setFrameRateLimit(limit)
         // Not disarmed with LSFG: the layer only multiplies Vulkan-swapchain
         // presents, so SHM-presenting games never pass through it and would
         // otherwise run uncapped whenever LSFG is armed.
         ShmFramePacer.setFrameRateLimit(limit)
         PowerManager.targetFps = limit
         // keeps frame stats in base units while generated frames tick the ring
-        PowerManager.frameSampleStride =
-            if (isLsfgAvailable && lsfgMultiplier >= 2) lsfgMultiplier else 1
+        PowerManager.frameSampleStride = if (lsfgActive) mult else 1
     }
 
     fun effectiveFpsLimit(): Int =
@@ -729,7 +744,11 @@ fun XServerScreen(
     fun applyLsfgSettings() {
         LsfgQuickMenuHelper.applySettings(
             container,
-            LsfgQuickMenuHelper.Settings(lsfgMultiplier, lsfgFlowScale, lsfgPerformanceMode),
+            LsfgQuickMenuHelper.Settings(
+                multiplier = lsfgMultiplier,
+                flowScale = lsfgFlowScale,
+                targetRate = LsfgQuickMenuHelper.targetRate(container),
+            ),
         )
     }
 
@@ -737,7 +756,7 @@ fun XServerScreen(
         fpsLimiterEnabled = enabled
         applyFpsLimiterToEngines(effectiveFpsLimit())
         persistFpsLimiterState()
-        if (isLsfgAvailable && lsfgMultiplier >= 2) {
+        if (isLsfgActive()) {
             applyLsfgSettings()
         }
     }
@@ -749,13 +768,15 @@ fun XServerScreen(
             applyFpsLimiterToEngines(effectiveFpsLimit())
         }
         persistFpsLimiterState()
-        if (isLsfgAvailable && lsfgMultiplier >= 2) {
+        if (isLsfgActive()) {
             applyLsfgSettings()
         }
     }
 
     fun applyLsfgMultiplier(mult: Int) {
         lsfgMultiplier = LsfgQuickMenuHelper.sanitizeMultiplier(mult)
+        container.putExtra(LsfgVkManager.EXTRA_TARGET_RATE, "0")
+        container.saveData()
         applyLsfgSettings()
         applyFpsLimiterToEngines(effectiveFpsLimit())
     }
@@ -765,18 +786,18 @@ fun XServerScreen(
         applyLsfgSettings()
     }
 
-    fun applyLsfgPerformanceMode(enabled: Boolean) {
-        lsfgPerformanceMode = enabled
-        applyLsfgSettings()
+    fun applyLsfgTargetRate(target: Int) {
+        applyFpsLimiterToEngines(effectiveFpsLimit())
     }
 
     LaunchedEffect(xServerView) {
-        // Adaptive-cap steps route through the LSFG limiter; the X-server
-        // limiters must stay at 0 under LSFG.
+        // Adaptive-cap steps route through the X Present pacer to throttle the game.
         PowerManager.fpsCapApplier = applier@{ capFps: Int ->
-            if (!isLsfgAvailable || lsfgMultiplier < 2) return@applier false
+            if (!isLsfgActive()) return@applier false
             PowerManager.targetFps = capFps
-            LsfgQuickMenuHelper.applyLiveFpsCap(container, capFps)
+            xServerView?.getxServer()
+                ?.getExtension<PresentExtension>(PresentExtension.MAJOR_OPCODE.toInt())
+                ?.setFrameRateLimit(capFps)
             ShmFramePacer.setFrameRateLimit(capFps)
             true
         }
@@ -860,15 +881,19 @@ fun XServerScreen(
         val hud = PerformanceHudView(
             context = context,
             fpsProvider = {
-                val raw = frameRating?.currentFPS ?: 0f
-                if (isLsfgAvailable && lsfgMultiplier >= 2) {
-                    // Only trust the layer's own measurement; multiplying raw
-                    // fabricates fps for games the layer never attaches to
-                    // (SHM-presenting games have no Vulkan swapchain).
-                    LsfgVkManager.readMeasuredFps(container) ?: raw
+                val vr = xServerView?.renderer as? com.winlator.renderer.VulkanRenderer
+                if (vr != null && vr.isFrameGenerationEnabled && lsfgFpsCounter.isGenerating) {
+                    lsfgFpsCounter.sourceFps
                 } else {
-                    raw
+                    frameRating?.currentFPS ?: lsfgFpsCounter.outputFps
                 }
+            },
+            outputFpsProvider = {
+                val vr = xServerView?.renderer as? com.winlator.renderer.VulkanRenderer
+                val out = lsfgFpsCounter.sample(vr)
+                if (vr != null && vr.isFrameGenerationEnabled && lsfgFpsCounter.isGenerating) {
+                    out
+                } else 0f
             },
             initialConfig = performanceHudConfig,
             initialCompactMode = PrefManager.performanceHudCompactMode,
@@ -2087,6 +2112,28 @@ fun XServerScreen(
                 win32AppWorkarounds = Win32AppWorkarounds(getxServer())
                 touchMouse = TouchMouse(getxServer())
                 keyboard = Keyboard(getxServer())
+                if (renderer is com.winlator.renderer.VulkanRenderer) {
+                    val isFrameGen = LsfgVkManager.isArmed(container)
+                    val cache = if (isFrameGen) {
+                        com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(context, container, true)
+                    } else {
+                        null
+                    }
+                    if (cache != null && cache.isFile) {
+                        renderer.setFrameGenerationShaders(cache.absolutePath)
+                    }
+                    val multiplier = LsfgVkManager.multiplier(container)
+                    val flowScale = LsfgVkManager.flowScale(container)
+                    val targetRate = LsfgVkManager.targetRate(container)
+                    val refreshRate = context.display?.refreshRate ?: 60f
+                    renderer.setFrameGenerationRefreshRate(refreshRate)
+                    renderer.setFrameGenerationMode(
+                        if (multiplier >= 2) multiplier else 2,
+                        targetRate,
+                        Math.round(flowScale * 100f)
+                    )
+                    renderer.setFrameGenerationEnabled(isFrameGen && (multiplier >= 2 || targetRate > 0))
+                }
                 if (!bootToContainer) {
                     renderer.setUnviewableWMClasses("explorer.exe")
                     // TODO: make 'force fullscreen' be an option of the app being launched
@@ -2365,11 +2412,9 @@ fun XServerScreen(
                                     context,
                                     fpsProvider = {
                                         val raw = frameRating?.currentFPS ?: 0f
-                                        if (isLsfgAvailable && lsfgMultiplier >= 2) {
-                                            LsfgVkManager.readMeasuredFps(container) ?: raw
-                                        } else {
-                                            raw
-                                        }
+                                        val vr = xServerView?.renderer as? com.winlator.renderer.VulkanRenderer
+                                        val out = lsfgFpsCounter.sample(vr)
+                                        if (out > 0f) out else raw
                                     },
                                     drives = container.drives,
                                 )
@@ -2876,15 +2921,10 @@ fun XServerScreen(
                     quickMenuWineProcesses = quickMenuWineProcesses.filterNot { it.pid == process.pid }
                 }
             },
-            performance = PerformanceQuickMenuState(
+            performanceHud = PerformanceHudQuickMenuState(
                 hudEnabled = isPerformanceHudEnabled,
                 hudConfig = performanceHudConfig,
-                fpsLimiterEnabled = fpsLimiterEnabled,
-                fpsLimiterTarget = fpsLimiterTarget,
-                fpsLimiterMax = detectedMaxRefreshRateHz,
                 onHudConfigChanged = ::applyPerformanceHudConfig,
-                onFpsLimiterEnabledChanged = ::applyFpsLimiterEnabled,
-                onFpsLimiterChanged = ::applyFpsLimiterTarget,
             ),
             hasPhysicalController = hasPhysicalController,
             isTouchscreenModeActive = isTouchscreenModeActive,
@@ -2897,15 +2937,19 @@ fun XServerScreen(
                 if (isShooterModeActive) add(QuickMenuAction.SHOOTER_MODE)
                 if (isDisableMouseInput) add(QuickMenuAction.DISABLE_MOUSE)
             },
-            // LSFG hot-reload (tab only visible when enabled in container settings)
-            lsfg = LsfgQuickMenuState(
+            // Performance tab (FPS limiter + LSFG)
+            performance = PerformanceQuickMenuState(
                 isAvailable = isLsfgAvailable,
+                fpsLimiterEnabled = fpsLimiterEnabled,
+                fpsLimiterTarget = fpsLimiterTarget,
+                fpsLimiterMax = detectedMaxRefreshRateHz,
+                onFpsLimiterEnabledChanged = ::applyFpsLimiterEnabled,
+                onFpsLimiterChanged = ::applyFpsLimiterTarget,
                 multiplier = lsfgMultiplier,
                 flowScale = lsfgFlowScale,
-                performanceMode = lsfgPerformanceMode,
                 onMultiplierChanged = ::applyLsfgMultiplier,
                 onFlowScaleChanged = ::applyLsfgFlowScale,
-                onPerformanceModeChanged = ::applyLsfgPerformanceMode,
+                onTargetRateChanged = ::applyLsfgTargetRate,
             ),
             onRequestOpen = { showQuickMenu = true },
             // Immersive tab (tab only visible when hosted by ImmersiveXrActivity)
@@ -4296,7 +4340,7 @@ private fun getWineStartCommand(
     val isSteamGame = gameSource == GameSource.STEAM
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
-    if (isSteamGame) {
+    if (isSteamGame && !testGraphics && !bootToContainer) {
         // Steam-specific setup
         if (container.executablePath.isEmpty()){
             container.executablePath = SteamService.getInstalledExe(gameId)
