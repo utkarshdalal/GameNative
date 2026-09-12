@@ -489,6 +489,9 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.test.manifest)
     testImplementation(libs.junit)
+    // Property-based testing under the existing JUnit 4 runner (no JUnit Platform migration).
+    testImplementation(libs.junit.quickcheck.core)
+    testImplementation(libs.junit.quickcheck.generators)
     testImplementation(libs.robolectric)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)

@@ -15,8 +15,8 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.gamenative.data.GameSource
-import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.enums.AppTheme
+import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.HomeDestination
 import app.gamenative.ui.enums.LibraryTab
@@ -56,6 +56,14 @@ object PrefManager {
     private var favoritePersistenceVersion = 0L
 
     private lateinit var dataStore: DataStore<Preferences>
+
+    /**
+     * The same [DataStore] instance [PrefManager] owns, exposed for components that must perform
+     * their own suspend-aware, failure-observable writes (e.g. `SaveLocationStore`) against the
+     * app's single preference store rather than going through the fire-and-forget [setPref].
+     * Must only be accessed after [init].
+     */
+    fun getDataStore(): DataStore<Preferences> = dataStore
 
     fun init(context: Context) {
         dataStore = context.datastore
@@ -569,7 +577,6 @@ object PrefManager {
             setPref(EPIC_OFFLINE_MODE, value)
         }
 
-
     private val USE_LEGACY_DRM = booleanPreferencesKey("use_legacy_drm")
     var useLegacyDRM: Boolean
         get() = getPref(USE_LEGACY_DRM, false)
@@ -750,12 +757,16 @@ object PrefManager {
     private val EXTERNAL_DISPLAY_INPUT_MODE = stringPreferencesKey("external_display_input_mode")
     var externalDisplayInputMode: String
         get() = getPref(EXTERNAL_DISPLAY_INPUT_MODE, Container.DEFAULT_EXTERNAL_DISPLAY_MODE)
-        set(value) { setPref(EXTERNAL_DISPLAY_INPUT_MODE, value) }
+        set(value) {
+            setPref(EXTERNAL_DISPLAY_INPUT_MODE, value)
+        }
 
     private val EXTERNAL_DISPLAY_SWAP = booleanPreferencesKey("external_display_swap")
     var externalDisplaySwap: Boolean
         get() = getPref(EXTERNAL_DISPLAY_SWAP, false)
-        set(value) { setPref(EXTERNAL_DISPLAY_SWAP, value) }
+        set(value) {
+            setPref(EXTERNAL_DISPLAY_SWAP, value)
+        }
 
     // Disable Mouse Input (prevents external mouse events)
     private val DISABLE_MOUSE_INPUT = booleanPreferencesKey("disable_mouse_input")
@@ -792,7 +803,6 @@ object PrefManager {
         set(value) {
             setPref(EXEC_ARGS, value)
         }
-
 
     /* Recent Crash Flag */
     private val RECENTLY_CRASHED = booleanPreferencesKey("recently_crashed")
@@ -911,12 +921,16 @@ object PrefManager {
     private val LIBRARY_STEAM_COLLECTIONS_CACHE = stringPreferencesKey("library_steam_collections_cache")
     var librarySteamCollectionsCache: String
         get() = getPref(LIBRARY_STEAM_COLLECTIONS_CACHE, "")
-        set(value) { setPref(LIBRARY_STEAM_COLLECTIONS_CACHE, value) }
+        set(value) {
+            setPref(LIBRARY_STEAM_COLLECTIONS_CACHE, value)
+        }
 
     private val LIBRARY_STEAM_COLLECTIONS_SKIPPED_DYNAMIC = booleanPreferencesKey("library_steam_collections_skipped_dynamic")
     var librarySteamCollectionsSkippedDynamic: Boolean
         get() = getPref(LIBRARY_STEAM_COLLECTIONS_SKIPPED_DYNAMIC, false)
-        set(value) { setPref(LIBRARY_STEAM_COLLECTIONS_SKIPPED_DYNAMIC, value) }
+        set(value) {
+            setPref(LIBRARY_STEAM_COLLECTIONS_SKIPPED_DYNAMIC, value)
+        }
 
     private val LIBRARY_STEAM_COLLECTIONS = stringPreferencesKey("library_steam_collections")
     private const val COLLECTION_ID_SEPARATOR = "" // unit separator; cannot appear in a collection id
@@ -944,7 +958,9 @@ object PrefManager {
     private val LIBRARY_CURATED_LISTS_CACHE = stringPreferencesKey("library_curated_lists_cache")
     var libraryCuratedListsCache: String
         get() = getPref(LIBRARY_CURATED_LISTS_CACHE, "")
-        set(value) { setPref(LIBRARY_CURATED_LISTS_CACHE, value) }
+        set(value) {
+            setPref(LIBRARY_CURATED_LISTS_CACHE, value)
+        }
 
     private val LIBRARY_TAB_PREFERENCES = stringPreferencesKey("library_tab_preferences")
     var libraryTabs: List<LibraryTab>
@@ -1360,7 +1376,6 @@ object PrefManager {
             setPref(SHOW_ADD_CUSTOM_GAME_DIALOG, value)
         }
 
-
     // Import the custom game as a Steam game
     private val IMPORT_CUSTOM_GAME_AS_STEAM_GAME = booleanPreferencesKey("import_custom_game_as_steam_game")
     var importCustomGameAsSteamGame: Boolean
@@ -1415,23 +1430,33 @@ object PrefManager {
 
     var frontendSyncDirSteam: String
         get() = getPref(FRONTEND_SYNC_DIR_STEAM, "")
-        set(value) { setPref(FRONTEND_SYNC_DIR_STEAM, value) }
+        set(value) {
+            setPref(FRONTEND_SYNC_DIR_STEAM, value)
+        }
 
     var frontendSyncDirEpic: String
         get() = getPref(FRONTEND_SYNC_DIR_EPIC, "")
-        set(value) { setPref(FRONTEND_SYNC_DIR_EPIC, value) }
+        set(value) {
+            setPref(FRONTEND_SYNC_DIR_EPIC, value)
+        }
 
     var frontendSyncDirGog: String
         get() = getPref(FRONTEND_SYNC_DIR_GOG, "")
-        set(value) { setPref(FRONTEND_SYNC_DIR_GOG, value) }
+        set(value) {
+            setPref(FRONTEND_SYNC_DIR_GOG, value)
+        }
 
     var frontendSyncDirAmazon: String
         get() = getPref(FRONTEND_SYNC_DIR_AMAZON, "")
-        set(value) { setPref(FRONTEND_SYNC_DIR_AMAZON, value) }
+        set(value) {
+            setPref(FRONTEND_SYNC_DIR_AMAZON, value)
+        }
 
     var frontendSyncDirCustom: String
         get() = getPref(FRONTEND_SYNC_DIR_CUSTOM, "")
-        set(value) { setPref(FRONTEND_SYNC_DIR_CUSTOM, value) }
+        set(value) {
+            setPref(FRONTEND_SYNC_DIR_CUSTOM, value)
+        }
 
     /** Returns the configured export directory for [source], or an empty string if not set. */
     fun getFrontendSyncDir(source: GameSource): String = when (source) {
@@ -1594,32 +1619,44 @@ object PrefManager {
     private val GOG_AMAZON_PATH_MIGRATED = booleanPreferencesKey("gog_amazon_path_migrated")
     var gogAmazonPathMigrated: Boolean
         get() = getPref(GOG_AMAZON_PATH_MIGRATED, false)
-        set(value) { setPref(GOG_AMAZON_PATH_MIGRATED, value) }
+        set(value) {
+            setPref(GOG_AMAZON_PATH_MIGRATED, value)
+        }
 
     private val ACHIEVEMENT_SHOW_NOTIFICATION = booleanPreferencesKey("achievement_show_notification")
     var achievementShowNotification: Boolean
         get() = getPref(ACHIEVEMENT_SHOW_NOTIFICATION, true)
-        set(value) { setPref(ACHIEVEMENT_SHOW_NOTIFICATION, value) }
+        set(value) {
+            setPref(ACHIEVEMENT_SHOW_NOTIFICATION, value)
+        }
 
     private val ACHIEVEMENT_PLAY_SOUND = booleanPreferencesKey("achievement_play_sound")
     var achievementPlaySound: Boolean
         get() = getPref(ACHIEVEMENT_PLAY_SOUND, true)
-        set(value) { setPref(ACHIEVEMENT_PLAY_SOUND, value) }
+        set(value) {
+            setPref(ACHIEVEMENT_PLAY_SOUND, value)
+        }
 
     private val ACHIEVEMENT_NOTIFICATION_POSITION = stringPreferencesKey("achievement_notification_position")
     var achievementNotificationPosition: String
         get() = getPref(ACHIEVEMENT_NOTIFICATION_POSITION, "bottom_right")
-        set(value) { setPref(ACHIEVEMENT_NOTIFICATION_POSITION, value) }
+        set(value) {
+            setPref(ACHIEVEMENT_NOTIFICATION_POSITION, value)
+        }
 
     private val WARN_BEFORE_EXIT = booleanPreferencesKey("warn_before_exit")
     var warnBeforeExit: Boolean
         get() = getPref(WARN_BEFORE_EXIT, false)
-        set(value) { setPref(WARN_BEFORE_EXIT, value) }
+        set(value) {
+            setPref(WARN_BEFORE_EXIT, value)
+        }
 
     private val USAGE_ANALYTICS_ENABLED = booleanPreferencesKey("usage_analytics_enabled")
     var usageAnalyticsEnabled: Boolean
         get() = getPref(USAGE_ANALYTICS_ENABLED, true)
-        set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
+        set(value) {
+            setPref(USAGE_ANALYTICS_ENABLED, value)
+        }
 
     private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")
     var nexusLastPlacementJson: String
@@ -1682,5 +1719,7 @@ object PrefManager {
     private val POWER_CONTROL_DEFAULT_ENABLED = booleanPreferencesKey("power_control_default_enabled")
     var powerControlDefaultEnabled: Boolean
         get() = getPref(POWER_CONTROL_DEFAULT_ENABLED, DeviceGate.isDeviceSupported())
-        set(value) { setPref(POWER_CONTROL_DEFAULT_ENABLED, value) }
+        set(value) {
+            setPref(POWER_CONTROL_DEFAULT_ENABLED, value)
+        }
 }

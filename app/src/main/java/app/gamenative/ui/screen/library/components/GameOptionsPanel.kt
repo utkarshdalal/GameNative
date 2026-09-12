@@ -356,6 +356,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.ExportConfig -> Icons.Default.ArrowUpward
         AppOptionMenuType.ImportSaves -> Icons.Default.ArrowDownward
         AppOptionMenuType.ExportSaves -> Icons.Default.ArrowUpward
+        AppOptionMenuType.ResetSaveBackup -> Icons.Default.RestartAlt
         AppOptionMenuType.ManageGameContent -> Icons.Default.Apps
         AppOptionMenuType.ManageWorkshop -> Icons.Default.Build
         AppOptionMenuType.ManageMods -> Icons.Default.Extension
@@ -405,6 +406,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.ExportConfig,
             AppOptionMenuType.ImportSaves,
             AppOptionMenuType.ExportSaves,
+            AppOptionMenuType.ResetSaveBackup,
             -> containerSettings.add(option)
 
             // Cloud Saves

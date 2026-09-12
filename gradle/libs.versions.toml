@@ -15,6 +15,7 @@ hiltNavigationCompose = "1.2.0" # https://mvnrepository.com/artifact/androidx.hi
 javasteam = "1.8.0.1-26-SNAPSHOT" # https://github.com/joshuatam/JavaSteam/tree/gamenative-latest
 json = "1.8.0" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json
 junit = "4.13.2" # https://mvnrepository.com/artifact/junit/junit
+junitQuickcheck = "1.0" # https://mvnrepository.com/artifact/com.pholser/junit-quickcheck-core
 junitVersion = "1.2.1" # https://mvnrepository.com/artifact/androidx.test.ext/junit
 kotlin = "2.1.21" # https://mvnrepository.com/artifact/org.jetbrains.kotlin.android/org.jetbrains.kotlin.android.gradle.plugin
 kotlinter = "5.0.1" # https://plugins.gradle.org/plugin/org.jmailen.kotlinter
@@ -102,6 +103,11 @@ androidx-runner = { group = "androidx.test", name = "runner", version.ref = "run
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+
+# Property-based testing (junit-quickcheck) — runs under the existing JUnit 4 runner via
+# @RunWith(JUnitQuickcheck::class); no JUnit Platform migration required.
+junit-quickcheck-core = { group = "com.pholser", name = "junit-quickcheck-core", version.ref = "junitQuickcheck" }
+junit-quickcheck-generators = { group = "com.pholser", name = "junit-quickcheck-generators", version.ref = "junitQuickcheck" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockitoKotlin" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
