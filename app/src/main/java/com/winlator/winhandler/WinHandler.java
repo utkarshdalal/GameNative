@@ -119,6 +119,28 @@ public class WinHandler {
     private static final int STANDALONE_PHONE_RUMBLE_DURATION_MS = 70;
     private static final int STANDALONE_PHONE_RUMBLE_THROTTLE_MS = 120;
 
+    /**
+     * Optional Steam-Controller rumble tap. A raw BLE Steam Controller is not an Android input device, so game
+     * rumble would otherwise only buzz the phone. When a TritonMapper session is live it registers itself for the
+     * slot it feeds (see {@link #setScRumbleForwarder}) so that slot's XInput rumble goes to the controller's own
+     * motors. Every OTHER slot keeps the stock per-device path, so a second pad still rumbles normally.
+     * Unregistered (default) = unchanged behavior for all slots.
+     */
+    public interface RumbleForwarder { void onRumble(short lowFreq, short highFreq); }
+    private static volatile RumbleForwarder scRumbleForwarder = null;
+    private static volatile int scRumbleSlot = -1;
+
+    /** Register (or clear, with a null forwarder) the Steam-Controller rumble tap for one gamepad slot. */
+    public static void setScRumbleForwarder(int slot, RumbleForwarder forwarder) {
+        scRumbleSlot = forwarder != null ? slot : -1;
+        scRumbleForwarder = forwarder;
+    }
+
+    /** The tap for {@code slot}, or null if the Steam Controller doesn't own that slot. */
+    private static RumbleForwarder scRumbleForwarderFor(int slot) {
+        return slot == scRumbleSlot ? scRumbleForwarder : null;
+    }
+
     // Add method to set InputControlsView
     public void setInputControlsView(InputControlsView view) {
         this.inputControlsView = view;
@@ -842,6 +864,15 @@ public class WinHandler {
         if (slot < 0 || slot >= MAX_PLAYERS) {
             return;
         }
+        // A live Steam Controller owns rumble output for ITS slot only (its own motors); forward and skip the
+        // per-slot device path. Other slots fall through to the stock path below.
+        RumbleForwarder fwd = scRumbleForwarderFor(slot);
+        if (fwd != null) {
+            // Cancel any local buzz still in flight on this slot so it doesn't linger alongside the SC's rumble.
+            if (isRumbling[slot]) { stopDeviceVibration(rumbleDeviceIds[slot]); isRumbling[slot] = false; }
+            fwd.onRumble(lowFreq, highFreq);
+            return;
+        }
         if (startDeviceVibration(rumbleDeviceIds[slot], lowFreq, highFreq)) {
             isRumbling[slot] = true;
         }
@@ -917,6 +948,9 @@ public class WinHandler {
         if (slot < 0 || slot >= MAX_PLAYERS) {
             return;
         }
+        // A live Steam Controller owns rumble output for ITS slot; forward the stop and skip the device path.
+        RumbleForwarder fwd = scRumbleForwarderFor(slot);
+        if (fwd != null) { fwd.onRumble((short) 0, (short) 0); return; }
         if (!isRumbling[slot]) return;
         stopDeviceVibration(rumbleDeviceIds[slot]);
         isRumbling[slot] = false;

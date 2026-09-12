@@ -330,6 +330,66 @@ fun SettingsGroupInterface(
             },
         )
 
+        // Steam Controller (2026 "Triton") support is opt-in: when on, every game launch connects to the controller
+        // over BLE, which needs the runtime Bluetooth permissions (manifest entries alone don't grant them on API
+        // 31+). Turning the switch on requests them and only sticks if they're granted — so the launch path can
+        // never reach a Bluetooth call ungranted, and users without the hardware run exactly as before.
+        // Shown as on only if the permissions are ALSO still granted: the user can revoke "Nearby devices" in
+        // Android settings at any time, and the launch path refuses to start the transport without them — a switch
+        // that still reads "on" would be claiming a feature that silently can't run.
+        var steamControllerEnabled by rememberSaveable {
+            mutableStateOf(
+                PrefManager.steamControllerEnabled &&
+                    app.gamenative.steamcontroller.TritonBle.hasPermissions(context),
+            )
+        }
+        val setSteamControllerEnabled: (Boolean) -> Unit = { enabled ->
+            steamControllerEnabled = enabled
+            PrefManager.steamControllerEnabled = enabled
+        }
+        val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+        ) { result ->
+            val granted = result.values.all { it }
+            setSteamControllerEnabled(granted)
+            if (!granted) {
+                // Android stops showing the dialog once a permission is permanently denied — requestPermissions
+                // then returns "denied" instantly and tapping the switch again looks like it does nothing. In that
+                // state the only route left is the app's own settings page, so say so and go there.
+                val activity = generateSequence(context) { (it as? android.content.ContextWrapper)?.baseContext }
+                    .filterIsInstance<android.app.Activity>()
+                    .firstOrNull()
+                val canAskAgain = activity != null && app.gamenative.steamcontroller.TritonBle.REQUIRED_PERMISSIONS.any {
+                    androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, it)
+                }
+                if (canAskAgain) {
+                    SnackbarManager.show(context.getString(R.string.settings_interface_steam_controller_denied))
+                } else {
+                    SnackbarManager.show(context.getString(R.string.settings_interface_steam_controller_denied_forever))
+                    runCatching {
+                        context.startActivity(
+                            Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = android.net.Uri.parse("package:${context.packageName}")
+                            },
+                        )
+                    }.onFailure { Timber.w(it, "Could not open app settings for the Bluetooth permission") }
+                }
+            }
+        }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_steam_controller_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_steam_controller_subtitle)) },
+            state = steamControllerEnabled,
+            onCheckedChange = { enabled ->
+                if (!enabled || app.gamenative.steamcontroller.TritonBle.hasPermissions(context)) {
+                    setSteamControllerEnabled(enabled)
+                } else {
+                    bluetoothPermissionLauncher.launch(app.gamenative.steamcontroller.TritonBle.REQUIRED_PERMISSIONS)
+                }
+            },
+        )
+
         var warnBeforeExit by rememberSaveable { mutableStateOf(PrefManager.warnBeforeExit) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),

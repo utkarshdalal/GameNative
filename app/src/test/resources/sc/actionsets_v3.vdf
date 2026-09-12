@@ -1,0 +1,33 @@
+// Synthetic 2-action-set config for the action-set-switching (step 3) tests.
+// "Default" (preset id 0): A -> Q, hold right_bumper (Start_Press) -> CHANGE_PRESET 2 (enter "Menus", id 1).
+// "Menus"   (preset id 1): A -> M, release right_bumper -> CHANGE_PRESET 1 (return to "Default", id 0).
+// NB: CHANGE_PRESET is 1-based, so target preset id = N-1 (verified against Delf's real ToME4 config).
+// This is the real "hold for menus" round-trip pattern: enter-on-press in set A, leave-on-release in set B.
+"controller_mappings"
+{
+	"version"		"3"
+	"title"		"Action Set Switch (synthetic)"
+	"controller_type"		"controller_neptune"
+
+	"actions"
+	{
+		"Default" { "title" "Main" "legacy_set" "1" }
+		"Menus"   { "title" "Menus" "legacy_set" "1" }
+	}
+
+	"group" { "id" "0" "mode" "four_buttons"
+		"inputs" { "button_a" { "activators" { "Full_Press" { "bindings" { "binding" "key_press Q" } } } } } }
+	"group" { "id" "1" "mode" "four_buttons"
+		"inputs" { "button_a" { "activators" { "Full_Press" { "bindings" { "binding" "key_press M" } } } } } }
+	"group" { "id" "2" "mode" "switches"
+		"inputs" { "right_bumper" { "activators" { "Start_Press" {
+			"bindings" { "binding" "controller_action CHANGE_PRESET 2 0 0, Hold for Menus" } } } } } }
+	"group" { "id" "3" "mode" "switches"
+		"inputs" { "right_bumper" { "activators" { "release" {
+			"bindings" { "binding" "controller_action CHANGE_PRESET 1 0 0, Release to Default" } } } } } }
+
+	"preset" { "id" "0" "name" "Default"
+		"group_source_bindings" { "0" "button_diamond active" "2" "switch active" } }
+	"preset" { "id" "1" "name" "Menus"
+		"group_source_bindings" { "1" "button_diamond active" "3" "switch active" } }
+}

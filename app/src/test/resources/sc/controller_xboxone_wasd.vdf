@@ -1,0 +1,824 @@
+"controller_mappings"
+{
+	"version"		"3"
+	"game" "WASD with Mouse"
+	"title" "#Title"
+	"description" "#Description"
+	"controller_type"		"controller_xboxone"
+	"localization"
+	{
+		"english"
+		{
+			"title"		"Keyboard (WASD) and Mouse"
+			"description"		"This template works great for the games on Steam that were designed with a keyboard and mouse in mind, without real gamepad support. The controller will drive the game's keyboard based events with buttons, but will make assumptions about which buttons move you around (WASD for movement, space for jump, etc.). The right pad will emulate the movement of a mouse."
+		}
+		"czech"
+		{
+			"title"		"Klávesnice (WASD) a myš"
+			"description"		"Tato šablona je pro hry ve službě Steam, které byly vytvořeny pro ovládání klávesnicí a myší bez podpory gamepadu. Ovladač nahradí hrou vyžadované klávesy svými tlačítky, avšak pouze odhadne, jaké klávesy jsou použity pro ovládání (WASD pro pohyb, mezerník pro skok, atp.). Pravý trackpad bude emulovat myš."
+		}
+		"danish"
+		{
+			"title"		"Tastatur (WASD) og mus"
+			"description"		"Denne skabelon virker godt til spil på Steam, der blev designet med tastatur og mus i tankerne og er uden egentlig gamepad-understøttelse. Controlleren vil udføre spillets tastaturbaserede handlinger med knapper, men vil lave antagelser om, hvilke knapper bevæger dig omkring (WASD til bevægelse, mellemrum til at hoppe osv.). Den højre flade vil efterligne en mus' bevægelser."
+		}
+		"dutch"
+		{
+			"title"		"Toetsenbord (WASD) en muis"
+			"description"		"Deze template werkt goed voor de spellen op Steam die zijn ontworpen voor besturing met een toetsenbord en muis, zonder echte gamepad ondersteuning. De controller bestuurt de toetsenbordgebaseerde gebeurtenissen van het spel met knoppen, maar zal aannames doen over welke knoppen je rondbewegen (WASD voor beweging, spatiebalk voor springen, etc.). De rechter-pad emuleert de beweging van een muis."
+		}
+		"finnish"
+		{
+			"title"		"Näppäimistö (WASD) ja hiiri"
+			"description"		"Tämä malli sopii hyvin peleille, jotka suunniteltiin näppäimistölle ja hiirelle ilman ohjaintukea. Ohjain omaksuu tietyt näppäimistön näppäimet yleisten toimintojen perusteella (liikkuminen WASD-näppäimillä, hyppääminen välilyönnistä jne.). Oikea ohjainlevy toimii hiirenä."
+		}
+		"french"
+		{
+			"title"		"Clavier (ZQSD) et souris"
+			"description"		"Ce modèle fonctionne particulièrement bien pour les jeux conçus pour le clavier et la souris, sans support pour la manette. Les actions normalement effectuées au clavier seront déclenchées par les touches du contrôleur. Il sera supposé que le déplacement correspond aux touches ZQSD, le saut à la touche espace, etc. Le pad droit simulera les mouvements de la souris."
+		}
+		"german"
+		{
+			"title"		"Tastatur (WASD) und Maus"
+			"description"		"Diese Vorlage ist an Steam-Spiele ohne echte Gamepad-Unterstützung angepasst, die eigentlich mithilfe von Tastatur und Maus gesteuert werden. Der Controller ist verantwortlich für die tastenbasierte Steuerung des Spiels, wird aber Annahmen treffen, welche Tasten Sie zur Fortbewegung nutzen (WASD für Bewegungen, Leertaste zum Springen usw.). Das rechte Pad wird die Mausbewegungen emulieren."
+		}
+		"hungarian"
+		{
+			"title"		"Billentyűzet (WASD) és egér"
+			"description"		"Ez a sablon remekül működik az olyan Steames játékokhoz, melyek billentyűzetet és egeret szem előtt tartva készültek, igazi gamepad-támogatás nélkül. A játékvezérlő a játék billentyűzetalapú eseményeit gombokkal fogja irányítani, de feltételezéseket fog tenni arra vonatkozóan, hogy mely gombok segítségével mozoghatsz (WASD a mozgáshoz, szóköz az ugráshoz, stb.). A jobb felület az egér mozgását fogja emulálni."
+		}
+		"italian"
+		{
+			"title"		"Tastiera (WASD) e mouse"
+		}
+		"japanese"
+		{
+			"title"		"キーボード (WASD) とマウス"
+		}
+		"koreana"
+		{
+			"title"		"키보드(WASD)와 마우스"
+			"description"		"이 설정은 게임패드가 아니라 키보드와 마우스의 사용을 염두에 두고 설계된 게임을 플레이할 때 적합합니다. 컨트롤러의 단추가 키보드 입력을 대신하지만, (이동이나 점프 등의) 동작을 할 때 (WASD키나 스페이스 바 등의) 어떤 단추를 썼는지는 예측만 할 뿐입니다. 우측 패드는 마우스 이동을 모방합니다."
+		}
+		"polish"
+		{
+			"title"		"Klawiatura (WASD) i mysz"
+			"description"		"Ten szablon świetnie działa dla gier na Steam, które zostały zaprojektowane z myślą o klawiaturze i myszce, bez wsparcia dla kontrolera. Kontroler będzie przesyłać do gry zdarzenia klawiatury za pomocą przycisków, ale będzie zgadywać użyte klawisze (WASD dla poruszania się, Spacja dla skoku itd.). Prawy pad będzie emulować poruszanie myszką."
+		}
+		"portuguese"
+		{
+			"title"		"Teclado (WASD) e rato"
+			"description"		"Este modelo é indicado para jogos no Steam concebidos com teclado e rato em mente, sem compatibilidade com comandos. O comando irá associar as ações das teclas no jogo aos seus botões, e tentará adivinhar que botões te fazem mover (WASD para te deslocares, Espaço para saltar, etc.). O pad direito irá simular o movimento de um rato."
+		}
+		"romanian"
+		{
+			"title"		"Tastatură (WASD) și Mouse"
+			"description"		"Acest şablon merge grozav cu jocurile de pe Steam care au fost dezvoltate cu o tastatură şi un mouse în minte, fără sprijin nativ pentru controller. Controller-ul va conduce evenimentele bazate pe tastatura jocului cu butoane, dar va face presupuneri bazate pe butoanele care te pun în mişcare (WASD pentru mişcare, space pentru săritură, etc.). Pad-ul din dreapta va simula mişcarea mouse-ului."
+		}
+		"russian"
+		{
+			"title"		"Клавиатура (WASD) и мышь"
+			"description"		"Этот шаблон подходит для игр в Steam, которые разрабатывались для клавиатуры и мыши без поддержки геймпада. Кнопки контроллера эмулируют клавиши клавиатуры, предугадывая их функции в игре (WASD — передвижение, пробел — прыжок и т.д.). Правый трекпад эмулирует мышь."
+		}
+		"spanish"
+		{
+			"title"		"Teclado (WASD) y ratón"
+			"description"		"Esta plantilla funciona muy bien con juegos de Steam que fueron diseñados pensando en un teclado y un ratón, sin verdadero soporte para mando. El controlador guiará con los botones los eventos basados en el uso del teclado, pero hará conjeturas acerca de qué botones te mueven (WASD para moverse, espacio para saltar, etc.). El pad derecho emulará el movimiento de un ratón."
+		}
+		"swedish"
+		{
+			"title"		"Tangentbord (WASD) och mus"
+			"description"		"Denna mall fungerar bra för spel på Steam som främst designats för tangentbord och mus, utan riktigt stöd för gamepad. Handkontrollen tar sig igenom spelets tangentbordsbaserade händelser med knappar, men kommer göra antaganden om vilka knappar som förflyttar dig (WASD för förflyttning, mellanslag för hopp, osv.). Den högra plattan emulerar musens rörelser."
+		}
+		"schinese"
+		{
+			"title"		"键盘（WASD）和鼠标"
+			"description"		"该模板非常适合 Steam 上原生支持键鼠，却不真正支持手柄的游戏。控制器会通过按键来驱动游戏基于键盘的事件，而且会假定您用哪些按键移动（WSAD 键移动、空格键跳跃等）。右触板会模拟鼠标移动。"
+		}
+		"brazilian"
+		{
+			"title"		"Teclado (WASD) e mouse"
+			"description"		"Este modelo funciona melhor em jogos Steam projetados para teclado e mouse, sem compatibilidade com controles. O controle usará botões para simular eventos do teclado e assumirá quais botões servem para quais comandos (WASD para movimentação, espaço para pular, etc.). O trackpad direito emulará o movimento de um mouse."
+		}
+		"bulgarian"
+		{
+			"title"		"Мишка и клавиатура (WASD)"
+			"description"		"Този шаблон върши добра работа при игри, които са били проектирани за мишка и клавиатура, без да имат действителна поддръжка на геймпад. Контролерът ще активира клавиатурно базираните действия чрез бутоните, но ще прави предположения относно това с кои от тях можете да се движите (WASD за движение, интервал за скок и т.н.). Десният пад ще емулира движението на мишката."
+		}
+		"greek"
+		{
+			"title"		"Πληκτρολόγιο (WASD) και ποντίκι"
+			"description"		"Το πρότυπο αυτό λειτουργεί καλά για παιχνίδια σχεδιασμένα για την χρήση πληκτρολογίου και ποντικιού, χωρίς την υποστήριξη χειριστηρίου. Το χειριστήριο θα οδηγήσει τις ενέργειες του πληκτρολογίου του παιχνιδιού με κουμπιά, αλλά θα κάνει υποθέσεις σχετικά με ποια κουμπιά θα κινείστε (WASD για μετακίνηση, κενό για άλμα, κλπ.). Η δεξιά επιφάνεια θα μιμηθεί την κίνηση του ποντικιού."
+		}
+		"turkish"
+		{
+			"title"		"Klavye (WASD) ve Fare"
+			"description"		"Bu şablon, gerçek bir kontrolcü desteği olmayan, klavye ve fare düşünülerek tasarlanan Steam'deki oyunlar için çok iyidir. Kontrolcü, oyunun klavye temelli eylemlerini butonlar ile gerçekleştirecektir ancak hangi butonların sizi hareket ettirdiği (hareket için WASD, zıplamak için boşluk, vb.) konusunda varsayımda bulunacaktır. Sağ pad, farenin hareketlerini taklit edecektir."
+		}
+		"ukrainian"
+		{
+			"title"		"Клавіатура (WASD) та миша"
+			"description"		"Цей шаблон відмінно підійде для ігор у Steam, які розроблялися для клавіатури та миші, без повної підтримки контролера. Контролер емулюватиме значення клавіатурних клавіш для гри, передбачаючи їх дії (клавіші WASD для рухів, пробіл для стрибка тощо). Правий трекпад емулюватиме рух мишею."
+		}
+	}
+	"group"
+	{
+		"id"		"0"
+		"mode"		"four_buttons"
+		"inputs"
+		{
+			"button_a"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press SPACE, Jump"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+						}
+					}
+				}
+			}
+			"button_b"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press E, Use"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+						}
+					}
+				}
+			}
+			"button_x"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press R, Reload"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+						}
+					}
+				}
+			}
+			"button_y"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press F, Flashlight"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+						}
+					}
+				}
+			}
+		}
+		"settings"
+		{
+			"button_size"		"17994"
+			"button_dist"		"19994"
+		}
+	}
+	"group"
+	{
+		"id"		"1"
+		"mode"		"dpad"
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 1, Weapon 1"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 3, Weapon 3"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 2, Weapon 2"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 4, Weapon 4"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+		}
+		"settings"
+		{
+			"edge_binding_radius"		"24996"
+		}
+	}
+	"group"
+	{
+		"id"		"2"
+		"mode"		"absolute_mouse"
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press E, Use"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+		}
+		"settings"
+		{
+			"sensitivity"		"145"
+			"doubetap_max_duration"		"320"
+		}
+		"gameactions"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"3"
+		"mode"		"dpad"
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press W, Move Forward"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press S, Move Back"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press D, Move Right"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press A, Move Left"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press LEFT_SHIFT, Sprint"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+		}
+		"settings"
+		{
+			"requires_click"		"0"
+			"edge_binding_radius"		"24995"
+		}
+	}
+	"group"
+	{
+		"id"		"4"
+		"mode"		"trigger"
+		"inputs"
+		{
+			"edge"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_button RIGHT"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"5"
+		"mode"		"trigger"
+		"inputs"
+		{
+			"edge"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_button LEFT"
+						}
+						"settings"
+						{
+							"repeat_rate"		"99"
+							"haptic_intensity"		"2"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"7"
+		"mode"		"dpad"
+		"inputs"
+		{
+			"dpad_north"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 1"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+			"dpad_south"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 3"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+			"dpad_east"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 2"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+			"dpad_west"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press 4"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"6"
+		"mode"		"switches"
+		"inputs"
+		{
+			"button_escape"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press ESCAPE, Menu"
+						}
+					}
+				}
+			}
+			"button_menu"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press TAB, Map"
+						}
+					}
+				}
+			}
+			"left_bumper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_wheel SCROLL_DOWN, Previous Weapon"
+						}
+					}
+				}
+			}
+			"right_bumper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_wheel SCROLL_UP, Next Weapon"
+						}
+					}
+				}
+			}
+			"button_back_left_upper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press R, Reload"
+						}
+					}
+				}
+			}
+			"button_back_left"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press F, Flashlight"
+						}
+					}
+				}
+			}
+			"button_back_right_upper"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press E, Use"
+						}
+					}
+				}
+			}
+			"button_back_right"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"key_press SPACE, Jump"
+						}
+					}
+				}
+			}
+			"button_capture"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action SCREENSHOT"
+						}
+					}
+				}
+			}
+		}
+	}
+	"group"
+	{
+		"id"		"9"
+		"mode"		"joystick_mouse"
+		"inputs"
+		{
+			"click"
+			{
+				"activators"
+				{
+					"Full_Press"
+					{
+						"bindings"
+						{
+							"binding"		"mouse_button LEFT"
+						}
+						"settings"
+						{
+							"haptic_intensity"		"1"
+						}
+					}
+				}
+			}
+		}
+		"gameactions"
+		{
+		}
+	}
+	"group"
+	{
+		"id"		"10"
+		"mode"		"flickstick"
+		"inputs"
+		{
+
+			"click"
+			{
+				"activators"
+				{
+					"Double_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action camera_reset 180 66 90, , "
+						}
+					}
+				}
+			}
+		}
+
+	}
+	"group"
+	{
+		"id"		"11"
+		"mode"		"flickstick"
+		"inputs"
+		{
+
+			"click"
+			{
+				"activators"
+				{
+					"Double_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action camera_reset 180 66 90, , "
+						}
+					}
+				}
+			}
+		}
+
+	}
+	"group"
+	{
+		"id"		"12"
+		"mode"		"flickstick"
+		"inputs"
+		{
+
+			"click"
+			{
+				"activators"
+				{
+					"Double_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action camera_reset 180 66 90, , "
+						}
+					}
+				}
+			}
+		}
+
+	}
+	"group"
+	{
+		"id"		"13"
+		"mode"		"flickstick"
+		"inputs"
+		{
+
+			"click"
+			{
+				"activators"
+				{
+					"Double_Press"
+					{
+						"bindings"
+						{
+							"binding"		"controller_action camera_reset 180 66 90, , "
+						}
+					}
+				}
+			}
+		}
+
+	}
+	"preset"
+	{
+		"id"		"0"
+		"name"		"Default"
+		"group_source_bindings"
+		{
+			"6"		"switch active"
+			"0"		"button_diamond active"
+			"1"		"left_trackpad inactive"
+			"2"		"right_trackpad inactive"
+			"3"		"joystick active"
+			"4"		"left_trigger active"
+			"5"		"right_trigger active"
+			"9"		"right_joystick active"
+			"7"		"dpad active"
+			"10"		"right_joystick inactive" 
+			"11"		"joystick inactive" 
+			"12"		"right_trackpad inactive" 
+			"13"		"left_trackpad inactive" 
+		}
+	}
+	"settings"
+	{
+		"left_trackpad_mode"		"0"
+		"right_trackpad_mode"		"0"
+	}
+}
