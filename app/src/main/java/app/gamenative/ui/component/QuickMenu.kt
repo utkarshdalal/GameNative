@@ -373,9 +373,13 @@ class PerformanceQuickMenuState(
     val fpsLimiterEnabled: Boolean = true,
     val fpsLimiterTarget: Int = 60,
     val fpsLimiterMax: Int = 60,
+    val inputThrottlingEnabled: Boolean = false,
+    val inputThrottlingRateHz: Int = 60,
     val onHudConfigChanged: (PerformanceHudConfig) -> Unit = {},
     val onFpsLimiterEnabledChanged: (Boolean) -> Unit = {},
     val onFpsLimiterChanged: (Int) -> Unit = {},
+    val onInputThrottlingEnabledChanged: (Boolean) -> Unit = {},
+    val onInputThrottlingRateHzChanged: (Int) -> Unit = {},
 )
 
 /** LSFG hot-reload state/callbacks as one QuickMenu parameter instead of seven — same
@@ -426,9 +430,13 @@ fun QuickMenu(
     val fpsLimiterEnabled = performance.fpsLimiterEnabled
     val fpsLimiterTarget = performance.fpsLimiterTarget
     val fpsLimiterMax = performance.fpsLimiterMax
+    val inputThrottlingEnabled = performance.inputThrottlingEnabled
+    val inputThrottlingRateHz = performance.inputThrottlingRateHz
     val onPerformanceHudConfigChanged = performance.onHudConfigChanged
     val onFpsLimiterEnabledChanged = performance.onFpsLimiterEnabledChanged
     val onFpsLimiterChanged = performance.onFpsLimiterChanged
+    val onInputThrottlingEnabledChanged = performance.onInputThrottlingEnabledChanged
+    val onInputThrottlingRateHzChanged = performance.onInputThrottlingRateHzChanged
     val isLsfgAvailable = lsfg.isAvailable
     val lsfgMultiplier = lsfg.multiplier
     val lsfgFlowScale = lsfg.flowScale
@@ -1029,6 +1037,8 @@ fun QuickMenu(
                                             fpsLimiterEnabled = fpsLimiterEnabled,
                                             fpsLimiterTarget = fpsLimiterTarget,
                                             fpsLimiterMax = fpsLimiterMax,
+                                            inputThrottlingEnabled = inputThrottlingEnabled,
+                                            inputThrottlingRateHz = inputThrottlingRateHz,
                                             lsfgMultiplier = if (isLsfgAvailable) lsfgMultiplier else 0,
                                             onTogglePerformanceHud = {
                                                 onItemSelected(QuickMenuAction.PERFORMANCE_HUD)
@@ -1036,6 +1046,8 @@ fun QuickMenu(
                                             onPerformanceHudConfigChanged = onPerformanceHudConfigChanged,
                                             onFpsLimiterEnabledChanged = onFpsLimiterEnabledChanged,
                                             onFpsLimiterChanged = onFpsLimiterChanged,
+                                            onInputThrottlingEnabledChanged = onInputThrottlingEnabledChanged,
+                                            onInputThrottlingRateHzChanged = onInputThrottlingRateHzChanged,
                                             scrollState = hudScrollState,
                                             focusRequester = hudItemFocusRequester,
                                             modifier = Modifier.fillMaxSize(),
@@ -1457,11 +1469,15 @@ private fun PerformanceHudQuickMenuTab(
     fpsLimiterEnabled: Boolean,
     fpsLimiterTarget: Int,
     fpsLimiterMax: Int,
+    inputThrottlingEnabled: Boolean,
+    inputThrottlingRateHz: Int,
     lsfgMultiplier: Int,
     onTogglePerformanceHud: () -> Unit,
     onPerformanceHudConfigChanged: (PerformanceHudConfig) -> Unit,
     onFpsLimiterEnabledChanged: (Boolean) -> Unit,
     onFpsLimiterChanged: (Int) -> Unit,
+    onInputThrottlingEnabledChanged: (Boolean) -> Unit,
+    onInputThrottlingRateHzChanged: (Int) -> Unit,
     scrollState: ScrollState,
     focusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier,
@@ -1506,6 +1522,37 @@ private fun PerformanceHudQuickMenuTab(
                     },
                     onIncrease = {
                         onFpsLimiterChanged(nextFpsLimiterValue(fpsLimiterTarget, fpsLimiterMax))
+                    },
+                    accentColor = accentColor,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        QuickMenuToggleRow(
+            title = stringResource(R.string.performance_hud_input_throttling),
+            enabled = inputThrottlingEnabled,
+            onToggle = { onInputThrottlingEnabledChanged(!inputThrottlingEnabled) },
+            accentColor = accentColor,
+            subtitle = stringResource(R.string.performance_hud_input_throttling_description),
+        )
+
+        AnimatedVisibility(
+            visible = inputThrottlingEnabled,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column {
+                Spacer(modifier = Modifier.height(4.dp))
+                QuickMenuAdjustmentRow(
+                    title = stringResource(R.string.performance_hud_input_throttling_rate),
+                    valueText = inputThrottlingRateHz.toString(),
+                    progress = fpsLimiterProgress(inputThrottlingRateHz, 240),
+                    onDecrease = {
+                        onInputThrottlingRateHzChanged(previousFpsLimiterValue(inputThrottlingRateHz, 240))
+                    },
+                    onIncrease = {
+                        onInputThrottlingRateHzChanged(nextFpsLimiterValue(inputThrottlingRateHz, 240))
                     },
                     accentColor = accentColor,
                 )
