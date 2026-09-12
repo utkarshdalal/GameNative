@@ -1,7 +1,11 @@
 package app.gamenative.service.gog
 
 import android.content.Context
+import java.io.File
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -12,6 +16,100 @@ import java.lang.reflect.Method
 class GOGCloudSavesManagerTest {
     private val context: Context = mock()
     private val manager = GOGCloudSavesManager(context)
+
+    // Galaxy uses the Etag we send (md5 of the gzipped body) as the manifest version, so
+    // identical content MUST gzip to identical bytes. java.util.zip writes MTIME=0 rather than
+    // wall-clock time, which is what makes that hold -- assert it rather than assume it, since
+    // a JDK that started stamping real time would silently produce a permanent conflict icon.
+    @Test
+    fun gzipBytes_is_byte_stable_for_identical_content() {
+        val payload = """{"slot":1,"gold":9999}""".toByteArray()
+
+        val first = GOGCloudSavesManager.gzipBytes(payload)
+        Thread.sleep(1_100) // cross a wall-clock second
+        val second = GOGCloudSavesManager.gzipBytes(payload)
+
+        assertArrayEquals(first, second)
+        assertEquals(GOGCloudSavesManager.md5Hex(first), GOGCloudSavesManager.md5Hex(second))
+    }
+
+    @Test
+    fun gzipBytes_writes_zero_mtime_header() {
+        val gzipped = GOGCloudSavesManager.gzipBytes("payload".toByteArray())
+
+        // gzip header bytes 4..7 are MTIME, little-endian; gogdl sends mtime=0 and so must we.
+        assertArrayEquals(byteArrayOf(0, 0, 0, 0), gzipped.copyOfRange(4, 8))
+    }
+
+    // Heroic emits Python's datetime.isoformat(timespec="seconds") on a UTC-aware datetime,
+    // which renders the offset as +00:00. ISO_INSTANT (and pattern `X`) render it as Z.
+    @Test
+    fun calculateMetadata_formats_timestamp_with_explicit_offset_not_z() = runBlocking {
+        val file = File.createTempFile("gog-save", ".sav").apply {
+            writeText("save-payload")
+            setLastModified(1_775_162_040_123L)
+            deleteOnExit()
+        }
+
+        val syncFile = GOGCloudSavesManager.SyncFile(
+            relativePath = "save-1.sav",
+            absolutePath = file.absolutePath,
+        )
+        syncFile.calculateMetadata()
+
+        assertEquals("2026-04-02T20:34:00+00:00", syncFile.updateTime)
+        assertFalse(syncFile.updateTime!!.endsWith("Z"))
+        assertEquals(1_775_162_040L, syncFile.updateTimestamp)
+    }
+
+    @Test
+    fun calculateMetadata_hashes_the_gzipped_bytes_not_the_raw_bytes() = runBlocking {
+        val payload = "save-payload"
+        val file = File.createTempFile("gog-save", ".sav").apply {
+            writeText(payload)
+            deleteOnExit()
+        }
+
+        val syncFile = GOGCloudSavesManager.SyncFile(
+            relativePath = "save-1.sav",
+            absolutePath = file.absolutePath,
+        )
+        syncFile.calculateMetadata()
+
+        val expected = GOGCloudSavesManager.md5Hex(
+            GOGCloudSavesManager.gzipBytes(payload.toByteArray()),
+        )
+        assertEquals(expected, syncFile.md5Hash)
+    }
+
+    // relativePath comes off the local filesystem and routinely contains spaces and parens
+    // (e.g. "Slot 1 (autosave).sav"), which must not go into the URL raw.
+    @Test
+    fun cloudFileUrl_percent_encodes_path_segments() {
+        val url = manager.cloudFileUrl("user-1", "client-1", "__default", "Slot 1 (autosave).sav")
+
+        assertEquals(
+            "https://cloudstorage.gog.com/v1/user-1/client-1/__default/Slot%201%20(autosave).sav",
+            url.toString(),
+        )
+        assertEquals(listOf("v1", "user-1", "client-1", "__default", "Slot 1 (autosave).sav"), url.pathSegments)
+    }
+
+    @Test
+    fun cloudFileUrl_splits_nested_relative_paths_into_segments() {
+        val url = manager.cloudFileUrl("user-1", "client-1", "__default", "profiles\\slot 2/save.dat")
+
+        assertEquals(listOf("v1", "user-1", "client-1", "__default", "profiles", "slot 2", "save.dat"), url.pathSegments)
+    }
+
+    // empty dirname is the Galaxy SDK fallback (no namespace prefix); an empty path segment
+    // would put a stray double slash in the object path and 404 the upload.
+    @Test
+    fun cloudFileUrl_omits_empty_dirname_segment() {
+        val url = manager.cloudFileUrl("user-1", "client-1", "", "save.dat")
+
+        assertEquals("https://cloudstorage.gog.com/v1/user-1/client-1/save.dat", url.toString())
+    }
 
     @Test
     fun parseCloudTimestamp_accepts_gog_offset_format() {
