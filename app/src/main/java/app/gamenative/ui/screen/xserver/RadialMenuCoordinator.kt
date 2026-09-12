@@ -22,10 +22,12 @@ import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
+import com.winlator.inputcontrols.GamepadState
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.inputcontrols.RadialMenu
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
+import com.winlator.winhandler.WinHandler
 import com.winlator.xserver.XServer
 import timber.log.Timber
 import kotlin.math.atan2
@@ -642,15 +644,25 @@ class RadialMenuCoordinator(
         }
 
         winHandler?.currentController?.state?.copy(state)
-        winHandler?.sendGamepadState()
-        winHandler?.sendVirtualGamepadState(state)
+        transmitGamepadState(winHandler, state)
     }
 
     private fun sendCurrentGamepadState(profile: ControlsProfile?) {
         val state = profile?.gamepadState ?: return
         val winHandler = xServer.winHandler ?: PluviaApp.xServerView?.getxServer()?.winHandler
         winHandler?.currentController?.state?.copy(state)
-        winHandler?.sendGamepadState()
-        winHandler?.sendVirtualGamepadState(state)
+        transmitGamepadState(winHandler, state)
+    }
+
+    // Through the shared output when there is one, so it knows what Wine has.
+    private fun transmitGamepadState(winHandler: WinHandler?, state: GamepadState) {
+        if (winHandler == null) return
+        val output = inputControlsView?.gamepadOutput
+        if (output != null) {
+            output.sendForced(state)
+        } else {
+            winHandler.sendGamepadState()
+            winHandler.sendVirtualGamepadState(state)
+        }
     }
 }

@@ -4,6 +4,7 @@ import android.graphics.PointF
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.MotionEvent
+import app.gamenative.PluviaApp
 import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlsProfile
@@ -16,10 +17,12 @@ import com.winlator.xserver.XServer
 import com.winlator.xserver.XKeycode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.ArgumentMatchers.anyInt
+import org.mockito.Mockito.atLeastOnce
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
@@ -82,8 +85,9 @@ class PhysicalControllerHandlerTest {
 
         try {
             assertTrue(handler.onGenericMotionEvent(motionEvent(deviceId)))
-            verify(xServer, org.mockito.Mockito.timeout(500).atLeastOnce())
-                .injectPointerMoveDelta(1, 0)
+            // Below a pixel per frame: only the carried remainder moves the pointer.
+            shadowOf(Looper.getMainLooper()).idleFor(500, MILLISECONDS)
+            verify(xServer, atLeastOnce()).injectPointerMoveDelta(1, 0)
         } finally {
             handler.cleanup()
         }
@@ -104,6 +108,40 @@ class PhysicalControllerHandlerTest {
 
         try {
             assertTrue(handler.onGenericMotionEvent(motionEvent(deviceId)))
+            assertFalse(gamepadState.dpad[1])
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `tuned stick key presses past a small margin and holds until the stick centers`() {
+        val deviceId = 42
+        val rightSource = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1)
+        val controller = motionController(rightSource, Binding.GAMEPAD_DPAD_RIGHT)
+        val gamepadState = GamepadState()
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        whenever(profile.gamepadState).thenReturn(gamepadState)
+        whenever(profile.isStickTuningConfigured).thenReturn(true)
+        val handler = PhysicalControllerHandler(profile, mock<XServer>(), gamepadStateSender = {})
+        val event = motionEvent(deviceId)
+
+        try {
+            controller.state.thumbLX = 0.02f
+            assertTrue(handler.onGenericMotionEvent(event))
+            assertFalse(gamepadState.dpad[1])
+
+            controller.state.thumbLX = 0.05f
+            assertTrue(handler.onGenericMotionEvent(event))
+            assertTrue(gamepadState.dpad[1])
+
+            controller.state.thumbLX = 0.01f
+            assertTrue(handler.onGenericMotionEvent(event))
+            assertTrue(gamepadState.dpad[1])
+
+            controller.state.thumbLX = 0f
+            assertTrue(handler.onGenericMotionEvent(event))
             assertFalse(gamepadState.dpad[1])
         } finally {
             handler.cleanup()
@@ -142,10 +180,12 @@ class PhysicalControllerHandlerTest {
         try {
             controller.state.thumbLY = 0.8f
             assertTrue(handler.onGenericMotionEvent(event))
+            runInputTicks()
             assertEquals(0.8f, gamepadState.thumbLY, 0f)
 
             controller.state.thumbLY = 0f
             assertTrue(handler.onGenericMotionEvent(event))
+            runInputTicks()
             assertEquals(0f, gamepadState.thumbLY, 0f)
         } finally {
             handler.cleanup()
@@ -219,7 +259,9 @@ class PhysicalControllerHandlerTest {
 
         try {
             assertTrue(handler.onGenericMotionEvent(otherMotion))
+            runInputTicks()
             assertTrue(handler.onGenericMotionEvent(radialMotion))
+            runInputTicks()
 
             verify(xServer).injectKeyPress(XKeycode.KEY_E)
             verify(xServer).injectKeyRelease(XKeycode.KEY_E)
@@ -314,6 +356,7 @@ class PhysicalControllerHandlerTest {
 
         try {
             assertTrue(handler.onGenericMotionEvent(motionEvent(deviceId)))
+            runInputTicks()
             handler.onInputDeviceRemoved(deviceId)
 
             verify(xServer).injectKeyPress(XKeycode.KEY_E)
@@ -351,24 +394,370 @@ class PhysicalControllerHandlerTest {
 
             shadowOf(Looper.getMainLooper()).idleFor(sequenceDelayMs.toLong() - 1, MILLISECONDS)
             assertEquals(0f, mouseMoveOffset(handler).x, 0f)
-            assertNull(privateField(handler, "mouseMoveTimer"))
+            assertFalse(frameScheduled(handler))
         } finally {
             handler.cleanup()
         }
     }
 
-    private fun mouseMoveOffset(handler: PhysicalControllerHandler): PointF {
-        return privateField(handler, "mouseMoveOffset") as PointF
+    @Test
+    fun `stick sequence binding fires once per deflection, not on every tick`() {
+        val deviceId = 42
+        val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
+        val controller = motionController(
+            axisKeyCode,
+            BindingCombo.fromBindings(listOf(Binding.MOUSE_MOVE_RIGHT, Binding.KEY_E), BindingCombo.Mode.SEQUENCE, 100),
+        )
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        val xServer = mock<XServer>()
+        val handler = PhysicalControllerHandler(profile, xServer)
+        val event = motionEvent(deviceId)
+
+        try {
+            for (value in listOf(0.5f, 0.8f, 1f)) {
+                controller.state.thumbLX = value
+                assertTrue(handler.onGenericMotionEvent(event))
+                runInputTicks()
+            }
+            shadowOf(Looper.getMainLooper()).idleFor(300, MILLISECONDS)
+
+            verify(xServer, times(1)).injectKeyPress(XKeycode.KEY_E)
+            assertFalse(frameScheduled(handler))
+        } finally {
+            handler.cleanup()
+        }
     }
 
-    private fun motionController(keyCode: Int, binding: Binding): ExternalController {
+    @Test
+    fun `held stick keeps updating the analog part of a combo without re-pressing its key`() {
+        val deviceId = 42
+        val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
+        val controller = motionController(
+            axisKeyCode,
+            BindingCombo.fromBindings(listOf(Binding.MOUSE_MOVE_RIGHT, Binding.KEY_E)),
+        )
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        whenever(profile.cursorSpeed).thenReturn(1f)
+        val xServer = mock<XServer>()
+        val handler = PhysicalControllerHandler(profile, xServer)
+        val event = motionEvent(deviceId)
+
+        try {
+            for (value in listOf(0.5f, 0.8f, 1f)) {
+                controller.state.thumbLX = value
+                assertTrue(handler.onGenericMotionEvent(event))
+                runInputTicks()
+                assertEquals(value, mouseMoveOffset(handler).x, 0f)
+            }
+
+            verify(xServer, times(1)).injectKeyPress(XKeycode.KEY_E)
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `stick key releases when the stick jumps past the center in one event`() {
+        val deviceId = 42
+        val rightKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
+        val leftKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, (-1).toByte())
+        val controller = motionController(rightKeyCode, Binding.KEY_D).apply {
+            addControllerBinding(
+                ExternalControllerBinding().apply {
+                    setKeyCode(leftKeyCode)
+                    setBinding(Binding.KEY_A)
+                },
+            )
+        }
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        val xServer = mock<XServer>()
+        val handler = PhysicalControllerHandler(profile, xServer)
+        val event = motionEvent(deviceId)
+
+        try {
+            controller.state.thumbLX = 0.2f
+            assertTrue(handler.onGenericMotionEvent(event))
+            verify(xServer).injectKeyPress(XKeycode.KEY_D)
+
+            // Left of center but inside the dead zone: D is released, A is not pressed.
+            controller.state.thumbLX = -0.12f
+            assertTrue(handler.onGenericMotionEvent(event))
+            verify(xServer).injectKeyRelease(XKeycode.KEY_D)
+            verify(xServer, times(0)).injectKeyPress(XKeycode.KEY_A)
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `held stick is pressed again after the radial menu closes`() {
+        val deviceId = 42
+        val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
+        val radialKeyCode = KeyEvent.KEYCODE_BUTTON_L1
+        val controller = motionController(axisKeyCode, Binding.KEY_E).apply {
+            addControllerBinding(
+                ExternalControllerBinding().apply {
+                    setKeyCode(radialKeyCode)
+                    setBinding(Binding.OPEN_RADIAL_MENU)
+                },
+            )
+            state.thumbLX = 1f
+        }
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        val xServer = mock<XServer>()
+        val handler = PhysicalControllerHandler(profile, xServer)
+
+        try {
+            assertTrue(handler.onGenericMotionEvent(motionEvent(deviceId)))
+            runInputTicks()
+            verify(xServer, times(1)).injectKeyPress(XKeycode.KEY_E)
+
+            assertTrue(handler.onKeyEvent(keyEvent(deviceId, radialKeyCode, KeyEvent.ACTION_DOWN)))
+            verify(xServer, times(1)).injectKeyRelease(XKeycode.KEY_E)
+
+            // No new MotionEvent: the stick didn't move while the menu was open.
+            assertTrue(handler.onKeyEvent(keyEvent(deviceId, radialKeyCode, KeyEvent.ACTION_UP)))
+            runInputTicks()
+            verify(xServer, times(2)).injectKeyPress(XKeycode.KEY_E)
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `held trigger key is pressed again after the radial menu closes`() {
+        val deviceId = 42
+        val radialKeyCode = KeyEvent.KEYCODE_BUTTON_L1
+        val controller = motionController(KeyEvent.KEYCODE_BUTTON_L2, Binding.KEY_E).apply {
+            addControllerBinding(
+                ExternalControllerBinding().apply {
+                    setKeyCode(radialKeyCode)
+                    setBinding(Binding.OPEN_RADIAL_MENU)
+                },
+            )
+            state.triggerL = 1f
+        }
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        val xServer = mock<XServer>()
+        val handler = PhysicalControllerHandler(profile, xServer)
+
+        try {
+            assertTrue(handler.onGenericMotionEvent(motionEvent(deviceId)))
+            verify(xServer, times(1)).injectKeyPress(XKeycode.KEY_E)
+
+            assertTrue(handler.onKeyEvent(keyEvent(deviceId, radialKeyCode, KeyEvent.ACTION_DOWN)))
+            verify(xServer, times(1)).injectKeyRelease(XKeycode.KEY_E)
+
+            // The trigger is still held when the menu closes.
+            assertTrue(handler.onKeyEvent(keyEvent(deviceId, radialKeyCode, KeyEvent.ACTION_UP)))
+            runInputTicks()
+            verify(xServer, times(2)).injectKeyPress(XKeycode.KEY_E)
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `releasing all input is not undone by stale stick state`() {
+        val deviceId = 42
+        val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
+        val controller = motionController(axisKeyCode, Binding.MOUSE_MOVE_RIGHT).apply {
+            state.thumbLX = 1f
+        }
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        val handler = PhysicalControllerHandler(profile, mock<XServer>())
+
+        try {
+            assertTrue(handler.onGenericMotionEvent(motionEvent(deviceId)))
+            runInputTicks()
+            assertEquals(1f, mouseMoveOffset(handler).x, 0f)
+
+            // e.g. quick menu opened; controller.state is stale from here on.
+            handler.releaseAllActiveInput()
+            runInputTicks()
+            assertEquals(0f, mouseMoveOffset(handler).x, 0f)
+
+            assertTrue(handler.onGenericMotionEvent(motionEvent(deviceId)))
+            runInputTicks()
+            assertEquals(1f, mouseMoveOffset(handler).x, 0f)
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `non-joystick motion is left to the fallbacks and does not wake the frame loop`() {
+        val deviceId = 42
+        val controller = object : ExternalController() {
+            override fun updateStateFromMotionEvent(event: MotionEvent): Boolean = false
+        }
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        val handler = PhysicalControllerHandler(profile, mock<XServer>())
+
+        try {
+            assertFalse(handler.onGenericMotionEvent(motionEvent(deviceId)))
+            assertFalse(frameScheduled(handler))
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `motion is dispatched synchronously with throttling off, the default`() {
+        val deviceId = 42
+        val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
+        val controller = motionController(axisKeyCode, Binding.KEY_E)
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        val xServer = mock<XServer>()
+        val handler = PhysicalControllerHandler(profile, xServer)
+        val event = motionEvent(deviceId)
+
+        try {
+            controller.state.thumbLX = 1f
+            assertTrue(handler.onGenericMotionEvent(event))
+            verify(xServer, times(1)).injectKeyPress(XKeycode.KEY_E)
+
+            controller.state.thumbLX = 0f
+            assertTrue(handler.onGenericMotionEvent(event))
+            verify(xServer, times(1)).injectKeyRelease(XKeycode.KEY_E)
+            assertFalse(frameScheduled(handler))
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `throttled motion inside the interval is dispatched on a later frame, not dropped`() {
+        val deviceId = 42
+        val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
+        val controller = motionController(axisKeyCode, Binding.KEY_E)
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        val xServer = mock<XServer>()
+        val handler = PhysicalControllerHandler(profile, xServer, throttling = InputThrottling().apply { enabled = true })
+        val event = motionEvent(deviceId)
+
+        try {
+            // First motion after idle goes out right away.
+            controller.state.thumbLX = 1f
+            assertTrue(handler.onGenericMotionEvent(event))
+            verify(xServer, times(1)).injectKeyPress(XKeycode.KEY_E)
+
+            // Same instant: inside the throttle interval, so it waits for the first frame it is due on.
+            controller.state.thumbLX = 0f
+            assertTrue(handler.onGenericMotionEvent(event))
+            verify(xServer, times(0)).injectKeyRelease(XKeycode.KEY_E)
+            assertTrue(frameScheduled(handler))
+
+            runInputTicks()
+            verify(xServer, times(1)).injectKeyRelease(XKeycode.KEY_E)
+            assertFalse(frameScheduled(handler))
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `held mouse-look steps on display frames and the loop parks on release`() {
+        val deviceId = 42
+        val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
+        val controller = motionController(axisKeyCode, Binding.MOUSE_MOVE_RIGHT)
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        whenever(profile.cursorSpeed).thenReturn(1f)
+        val xServer = mock<XServer>()
+        val handler = PhysicalControllerHandler(profile, xServer)
+        val event = motionEvent(deviceId)
+
+        try {
+            controller.state.thumbLX = 1f
+            assertTrue(handler.onGenericMotionEvent(event))
+            assertTrue(frameScheduled(handler))
+            runInputTicks()
+            verify(xServer, atLeastOnce()).injectPointerMoveDelta(anyInt(), anyInt())
+
+            controller.state.thumbLX = 0f
+            assertTrue(handler.onGenericMotionEvent(event))
+            runInputTicks()
+            assertEquals(0f, mouseMoveOffset(handler).x, 0f)
+            assertFalse(frameScheduled(handler))
+        } finally {
+            handler.cleanup()
+        }
+    }
+
+    @Test
+    fun `motion held back by a pause is dispatched once the game resumes`() {
+        val deviceId = 42
+        val axisKeyCode = ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte())
+        val controller = motionController(axisKeyCode, Binding.KEY_E)
+        val profile = mock<ControlsProfile>()
+        whenever(profile.getController(deviceId)).thenReturn(controller)
+        val xServer = mock<XServer>()
+        val handler = PhysicalControllerHandler(profile, xServer)
+
+        try {
+            PluviaApp.isOverlayPaused = true
+            controller.state.thumbLX = 1f
+            assertTrue(handler.onGenericMotionEvent(motionEvent(deviceId)))
+            runInputTicks()
+            verify(xServer, times(0)).injectKeyPress(XKeycode.KEY_E)
+
+            // e.g. manual resume: no new motion, the stick is simply still held.
+            PluviaApp.isOverlayPaused = false
+            handler.onOverlayResumed()
+            runInputTicks()
+            verify(xServer, times(1)).injectKeyPress(XKeycode.KEY_E)
+        } finally {
+            PluviaApp.isOverlayPaused = false
+            handler.cleanup()
+        }
+    }
+
+    private fun runInputTicks() {
+        shadowOf(Looper.getMainLooper()).idleFor(50, MILLISECONDS)
+    }
+
+    private fun keyEvent(deviceId: Int, keyCode: Int, action: Int): KeyEvent {
+        return mock<KeyEvent>().also { event ->
+            whenever(event.repeatCount).thenReturn(0)
+            whenever(event.deviceId).thenReturn(deviceId)
+            whenever(event.keyCode).thenReturn(keyCode)
+            whenever(event.action).thenReturn(action)
+        }
+    }
+
+    private fun mouseLook(handler: PhysicalControllerHandler): MouseLookStepper =
+        privateField(handler, "mouseLook") as MouseLookStepper
+
+    private fun mouseMoveOffset(handler: PhysicalControllerHandler): PointF {
+        val mouseLook = mouseLook(handler)
+        return PointF(mouseLook.offsetX, mouseLook.offsetY)
+    }
+
+    // The handler's own loop (throttled motion) or the mouse-look loop it drives.
+    private fun frameScheduled(handler: PhysicalControllerHandler): Boolean =
+        (privateField(handler, "frameLoop") as FrameCallbackLoop).isScheduled || mouseLook(handler).isRunning
+
+    private fun motionController(keyCode: Int, binding: Binding): ExternalController =
+        motionController(keyCode, BindingCombo.of(binding))
+
+    private fun motionController(keyCode: Int, bindingCombo: BindingCombo): ExternalController {
         return object : ExternalController() {
             override fun updateStateFromMotionEvent(event: MotionEvent): Boolean = true
         }.apply {
             addControllerBinding(
                 ExternalControllerBinding().apply {
                     setKeyCode(keyCode)
-                    setBinding(binding)
+                    setBindingCombo(bindingCombo)
                 },
             )
         }

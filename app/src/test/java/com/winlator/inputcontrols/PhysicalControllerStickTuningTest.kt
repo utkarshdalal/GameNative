@@ -239,6 +239,24 @@ class PhysicalControllerStickTuningTest {
     }
 
     @Test
+    fun `in-place tuning reuses its output and matches the allocating API`() {
+        val out = StickVectorProcessor.MutableVector()
+        for (mode in ControlsProfile.StickDeadzoneMode.values()) {
+            for ((x, y) in listOf(0f to 0f, 0.1f to 0.05f, 0.48f to 0.36f, -0.9f to 0.7f, 1f to -1f)) {
+                val expected = StickVectorProcessor.tune(x, y, 0.2f, 1.5f, mode)
+                StickVectorProcessor.tune(x, y, 0.2f, 1.5f, mode, out)
+                assertEquals(expected.x, out.x, 0f)
+                assertEquals(expected.y, out.y, 0f)
+            }
+        }
+        // Snapping may write into the vector holding its input.
+        out.set(0.48f, 0.36f)
+        StickVectorProcessor.snapToDirection(out.x, out.y, 0, out)
+        assertEquals(0.6f, out.x, 0.0001f)
+        assertEquals(0f, out.y, 0f)
+    }
+
+    @Test
     fun `an unreported Joy-Con axis retains its raw value`() {
         assertEquals(0.65f, ExternalController.resolveRawAxis(false, 0.65f, -0.6f), 0f)
         assertEquals(-0.6f, ExternalController.resolveRawAxis(true, 0.65f, -0.6f), 0f)

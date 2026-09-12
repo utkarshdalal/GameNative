@@ -23,6 +23,7 @@ public final class BindingCombo {
     private final List<Binding> bindings;
     private final Mode mode;
     private final int sequenceDelayMs;
+    private final List<Binding> heldUpdateBindings;
 
     public enum Mode {
         SIMULTANEOUS("simultaneous"),
@@ -49,6 +50,18 @@ public final class BindingCombo {
         this.sequenceDelayMs = this.mode == Mode.SEQUENCE
                 ? normalizeSequenceDelayMs(sequenceDelayMs)
                 : DEFAULT_SEQUENCE_DELAY_MS;
+        this.heldUpdateBindings = analogMembers(this.bindings, this.mode);
+    }
+
+    private static List<Binding> analogMembers(List<Binding> bindings, Mode mode) {
+        if (mode == Mode.SEQUENCE) return Collections.emptyList();
+        ArrayList<Binding> analog = null;
+        for (Binding binding : bindings) {
+            if (!binding.isAnalog()) continue;
+            if (analog == null) analog = new ArrayList<>(bindings.size());
+            analog.add(binding);
+        }
+        return analog != null ? Collections.unmodifiableList(analog) : Collections.emptyList();
     }
 
     public static BindingCombo none() {
@@ -189,6 +202,19 @@ public final class BindingCombo {
     public boolean containsGamepadBinding() {
         for (Binding binding : bindings) if (binding.isGamepad()) return true;
         return false;
+    }
+
+    /** Whether a held input should keep updating this combo. Never for sequences: they are macros. */
+    public boolean hasAnalog() {
+        return !heldUpdateBindings.isEmpty();
+    }
+
+    /**
+     * What to dispatch again while the input stays held (each stick or finger movement): the analog members
+     * only. Keys and buttons fire once, on the press.
+     */
+    public List<Binding> getHeldUpdateBindings() {
+        return heldUpdateBindings;
     }
 
     public boolean isGamepadOnly() {
