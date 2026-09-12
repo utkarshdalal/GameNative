@@ -724,16 +724,16 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.ShowAiDebugOffer -> {
                     aiDebugOfferAppId = event.appId
                     aiDebugOfferTrigger = event.trigger
-                    PrefManager.lastWarmPitchTime = System.currentTimeMillis()
                     trackAiDebugOffer("ai_debug_offer_shown", event.appId, event.trigger)
+                    val offerMessage = context.getString(
+                        R.string.debug_offer_message,
+                        ContainerUtils.resolveGameName(event.appId),
+                    )
                     msgDialogState = MessageDialogState(
                         visible = true,
                         type = DialogType.AI_DEBUG_OFFER,
                         title = context.getString(R.string.debug_offer_title),
-                        message = context.getString(
-                            R.string.debug_offer_message,
-                            ContainerUtils.resolveGameName(event.appId),
-                        ),
+                        message = offerMessage + " " + context.getString(R.string.debug_trial_note),
                         confirmBtnText = context.getString(R.string.debug_offer_confirm),
                         dismissBtnText = context.getString(R.string.close),
                     )
@@ -1226,12 +1226,14 @@ fun PluviaMain(
             }
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
+                PrefManager.lastWarmPitchTime = System.currentTimeMillis()
                 if (aiDebugOfferAppId.isNotEmpty()) {
                     trackAiDebugOffer("ai_debug_offer_dismissed", aiDebugOfferAppId, aiDebugOfferTrigger)
                 }
             }
             onDismissRequest = {
                 setMessageDialogState(MessageDialogState(false))
+                PrefManager.lastWarmPitchTime = System.currentTimeMillis()
                 if (aiDebugOfferAppId.isNotEmpty()) {
                     trackAiDebugOffer("ai_debug_offer_dismissed", aiDebugOfferAppId, aiDebugOfferTrigger)
                 }
@@ -1415,7 +1417,7 @@ fun PluviaMain(
 
             val shareDebugLog: () -> Unit = {
                 val reportDir = File(debugReportState.reportDir)
-                val files = listOf(DebugReportUtils.logFile(reportDir), DebugReportUtils.perfFile(reportDir))
+                val files = listOf(DebugReportUtils.logFile(reportDir), DebugReportUtils.perfFile(reportDir), DebugReportUtils.logcatFile(reportDir))
                     .filter { it.exists() }
                 if (files.isNotEmpty()) {
                     val uris = files.map { FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", it) }
@@ -1456,7 +1458,8 @@ fun PluviaMain(
                         return@launch
                     }
                     val perfFile = DebugReportUtils.perfFile(dir)
-                    when (val result = DebugReportApi.submit(header, logFile, PrefManager.discordRelayToken, perfFile)) {
+                    val logcatFile = DebugReportUtils.logcatFile(dir)
+                    when (val result = DebugReportApi.submit(header, logFile, PrefManager.discordRelayToken, perfFile, logcatFile)) {
                         is DebugReportApi.SubmitResult.Success -> {
                             withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(dir) }
                             debugReportState = debugReportState.copy(

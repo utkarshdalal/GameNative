@@ -1818,6 +1818,7 @@
     <string name="debug_prerun_title">Ottieni aiuto dall\'AI</string>
     <string name="debug_prerun_message_1">Avvia il gioco con i log di debug e li condivide con la nostra AI su Discord alla chiusura. Gioca finché il problema non si presenta.</string>
     <string name="debug_prerun_message_2">Le risposte dell\'AI sono solo per gli abbonati.</string>
+    <string name="debug_trial_note">Prova gratuita disponibile.</string>
     <string name="debug_prerun_message_3">Chiunque può condividere il report per ricevere aiuto umano.</string>
     <string name="debug_paywall_title">Ottieni supporto di debug AI</string>
     <string name="debug_paywall_pitch">La nostra AI legge il tuo log e la tua configurazione esatti e ti dice cosa cambiare, di solito in meno di 5 minuti.</string>

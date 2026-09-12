@@ -75,6 +75,7 @@ class MainViewModel @Inject constructor(
         private const val WARM_PITCH_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000L
         private const val SHORT_SESSION_MS = 90 * 1000L
         private const val AI_DEBUG_OFFER_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000L
+        private const val BOOT_GAME_SEEN_GRACE_MS = 15_000L
         private const val LOW_RATING_MAX = 3
         private val FAILURE_TAGS = setOf("does_not_open", "no_graphics", "directx_error")
         private const val BOOT_AD_REUSE_WINDOW_MS = 2 * 60 * 1000L
@@ -274,6 +275,7 @@ class MainViewModel @Inject constructor(
     private val onClearBootingSplash: (AndroidEvent.ClearBootingSplash) -> Unit = {
         bootingSplashTimeoutJob?.cancel()
         bootingSplashTimeoutJob = null
+        bootAwaitingGameWindow = false
         setShowBootingSplash(false)
     }
 
@@ -591,6 +593,7 @@ class MainViewModel @Inject constructor(
             bootAdHiddenAtMs = 0L
             setShowBootingSplash(true)
             bootAwaitingGameWindow = _state.value.bootAd != null
+            if (bootAwaitingGameWindow) startBootGameExitWatch(context, appId)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
             val heroUrl = withContext(Dispatchers.IO) {
@@ -857,6 +860,22 @@ class MainViewModel @Inject constructor(
                 throw e
             } catch (t: Throwable) {
                 Timber.tag("Steam").e(t, "[Cloud Saves] Exception during close app sync for $gameId")
+            }
+        }
+    }
+
+    private fun startBootGameExitWatch(context: Context, appId: String) = viewModelScope.launch(Dispatchers.IO) {
+        val exe = ContainerUtils.getContainer(context, appId).executablePath
+            .substringAfterLast('/').substringAfterLast('\\').lowercase()
+        if (!exe.endsWith(".exe")) return@launch
+        var seenAt = 0L
+        while (bootAwaitingGameWindow) {
+            delay(200)
+            val running = WineProcessSnapshotHelper.readFromProc().any { it.name.lowercase().endsWith(exe) }
+            if (running && seenAt == 0L) seenAt = System.currentTimeMillis()
+            if (seenAt != 0L && (!running || System.currentTimeMillis() - seenAt >= BOOT_GAME_SEEN_GRACE_MS)) {
+                PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+                return@launch
             }
         }
     }
