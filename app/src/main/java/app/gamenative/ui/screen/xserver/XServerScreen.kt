@@ -4676,7 +4676,7 @@ private fun getWineStartCommand(
                 container.executablePath = executablePath
                 container.saveData()
             }
-            if (container.isUseLegacyDRM) {
+            if (container.isUseLegacyDRM || executablePath.endsWith(".bat", ignoreCase = true)) {
                 val appDirPath = SteamService.getAppDirPath(gameId)
                 val executableDir = appDirPath + "/" + executablePath.substringBeforeLast("/", "")
                 guestProgramLauncherComponent.workingDir = File(executableDir);
@@ -5000,9 +5000,9 @@ private fun unpackExecutableFile(
             val exePaths = if (container.isUnpackFiles) {
                 val scanned = ContainerUtils.scanExecutablesInADrive(container.drives)
                 val filtered = ContainerUtils.filterExesForUnpacking(scanned)
-                if (filtered.isEmpty()) listOf(container.executablePath).filter { it.isNotEmpty() } else filtered
+                if (filtered.isEmpty()) listOf(container.executablePath).filter { it.isNotEmpty() && !ContainerUtils.isAbsoluteWindowsPath(it) } else filtered
             } else {
-                listOf(container.executablePath).filter { it.isNotEmpty() }
+                listOf(container.executablePath).filter { it.isNotEmpty() && !ContainerUtils.isAbsoluteWindowsPath(it) }
             }
             if (exePaths.isEmpty()) {
                 Timber.w("No executable path set, skipping Steamless")
