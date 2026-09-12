@@ -55,6 +55,7 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.service.achievements.SteamAchievementCodec
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.LicenseSerializer
@@ -116,6 +117,7 @@ import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOnCallba
 import `in`.dragonbra.javasteam.steam.handlers.steamuser.callback.PlayingSessionStateCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.Stats
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.SteamUserStats
+import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.callback.UserStatsCallback
 import `in`.dragonbra.javasteam.steam.handlers.steamworkshop.SteamWorkshop
 import `in`.dragonbra.javasteam.steam.steamclient.AsyncJobFailedException
 import `in`.dragonbra.javasteam.steam.steamclient.SteamClient
@@ -3753,6 +3755,17 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        // null when offline or the request fails.
+        suspend fun fetchUserStatsForApp(appId: Int): UserStatsCallback? {
+            val service = instance ?: return null
+            val steamUser = service._steamUser ?: return null
+            val steamId = steamUser.steamID ?: return null
+            val handler = service._steamUserStats ?: return null
+            return runCatching { handler.getUserStats(appId, steamId).await() }
+                .onFailure { Timber.tag("SteamService").w(it, "fetchUserStatsForApp failed for appId=$appId") }
+                .getOrNull()
+        }
+
         suspend fun generateAchievements(appId: Int, configDirectory: String) {
             val steamUser = instance!!._steamUser!!
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
@@ -3777,12 +3790,18 @@ class SteamService : Service(), IChallengeUrlChanged {
             // Seed the GSE Saves file with the real earned state from Steam to avoid re-trigger notifications
             val context = instance!!.applicationContext
             val gseDirs = getGseSaveDirs(context, appId)
-            seedGseSaveAchievements(gseDirs, result.achievements)
+            val resets = SteamAchievementCodec.resetAchievements(userStats, nameToBlockBit)
+            seedGseSaveAchievements(gseDirs, result.achievements, resets)
         }
 
         // Seed the GSE achievements file to ensure that we don't get early unlock triggers (Games such as Brotato do re-triggers on launch).
         // merges results with ones from Steam Servers so we don't overwrite offline achievements.
-        private fun seedGseSaveAchievements(dirs: List<File>, achievements: List<app.gamenative.statsgen.Achievement>) {
+        // resets: name -> unlock time Steam discarded; those local flags are cleared, not merged.
+        private fun seedGseSaveAchievements(
+            dirs: List<File>,
+            achievements: List<app.gamenative.statsgen.Achievement>,
+            resets: Map<String, Long>,
+        ) {
             if (achievements.isEmpty()) return
             for (dir in dirs) {
                 try {
@@ -3803,12 +3822,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                     // Apply achievements earned & timestamp to file where matched & persists local if local is earned & timestamped.
                     for (ach in achievements) {
                         val existing = if (merged.has(ach.name)) merged.getJSONObject(ach.name) else JSONObject()
-                        val localEarned = existing.optBoolean("earned", false)
-                        val steamEarned = ach.unlocked ?: false
-                        val earned = localEarned || steamEarned
-                        val localTime = existing.optLong("earned_time", 0L)
-                        val steamTime = (ach.unlockTimestamp ?: 0).toLong()
-                        val earnedTime = maxOf(localTime, steamTime)
+                        val (earned, earnedTime) = SteamAchievementCodec.seedEarnedState(
+                            localEarned = existing.optBoolean("earned", false),
+                            localTime = existing.optLong("earned_time", 0L),
+                            steamEarned = ach.unlocked ?: false,
+                            steamTime = (ach.unlockTimestamp ?: 0).toLong(),
+                            resetAt = resets[ach.name],
+                        )
                         existing.put("earned", earned)
                         existing.put("earned_time", earnedTime)
                         merged.put(ach.name, existing)
@@ -3872,6 +3892,25 @@ class SteamService : Service(), IChallengeUrlChanged {
             return unlocked to statsDir
         }
 
+        // max across dirs: the same achievement can sit in both GSE save locations with different times.
+        fun collectGseUnlockTimes(gseDirs: List<File>): Map<String, Long> {
+            val times = mutableMapOf<String, Long>()
+            for (dir in gseDirs) {
+                val achFile = File(dir, "achievements.json")
+                if (!achFile.exists()) continue
+                try {
+                    val json = JSONObject(achFile.readText(Charsets.UTF_8))
+                    for (name in json.keys()) {
+                        val entry = json.optJSONObject(name) ?: continue
+                        times[name] = maxOf(times[name] ?: 0L, entry.optLong("earned_time", 0L))
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to parse achievements.json in ${dir.absolutePath}")
+                }
+            }
+            return times
+        }
+
         suspend fun syncAchievementsFromGoldberg(context: Context, appId: Int) {
             val gseSaveDirs = getGseSaveDirs(context, appId).filter { it.isDirectory }
             if (gseSaveDirs.isEmpty()) {
@@ -3892,9 +3931,33 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return
             }
 
+            // skip what Steam already has; resets are dropped in storeAchievementUnlocks, the choke point
+            // both push paths share. if the fetch fails (offline at close) push everything so offline
+            // unlocks survive.
+            val nameToBlockBit = SteamAchievementCodec.readNameToBlockBitMap(configDirectory)
+            val steamUserStats = fetchUserStatsForApp(appId)
+            val steamEarnedNames: Set<String>? =
+                if (steamUserStats != null && steamUserStats.result == EResult.OK && nameToBlockBit.isNotEmpty()) {
+                    SteamAchievementCodec.decodeAchievementBlocks(steamUserStats, nameToBlockBit)
+                        .first.filterValues { it }.keys
+                } else {
+                    null
+                }
+            val toPush = SteamAchievementCodec.achievementsToPush(unlockedNames, steamEarnedNames)
+
             val hasStats = gseStatsDir != null
-            Timber.i("Found ${unlockedNames.size} earned achievements and ${if (hasStats) "stats" else "no stats"} for appId=$appId, syncing to Steam")
-            val result = storeAchievementUnlocks(appId, configDirectory, unlockedNames, gseStatsDir ?: gseSaveDirs.first().resolve("stats"))
+            Timber.i(
+                "syncAchievementsFromGoldberg: disk=${unlockedNames.size} " +
+                    "steam=${steamEarnedNames?.size ?: "fetch-failed"} push=${toPush.size} " +
+                    "stats=${if (hasStats) "yes" else "no"} appId=$appId",
+            )
+
+            if (toPush.isEmpty() && !hasStats) {
+                Timber.i("Nothing to push for appId=$appId (Steam already has all ${unlockedNames.size} disk-earned achievements)")
+                return
+            }
+
+            val result = storeAchievementUnlocks(appId, configDirectory, toPush, gseStatsDir ?: gseSaveDirs.first().resolve("stats"))
             result.onSuccess {
                 Timber.i("Successfully synced achievements and stats to Steam for appId=$appId")
             }.onFailure { e ->
@@ -3935,36 +3998,37 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             val allStats = mutableMapOf<Int, Int>()
 
-            // Build achievement name-to-block mapping from on-disk file
-            val mappingFile = File(configDirectory, "achievement_name_to_block.json")
-            if (mappingFile.exists() && unlockedNames.isNotEmpty()) {
-                val mappingJson = JSONObject(mappingFile.readText(Charsets.UTF_8))
-                val nameToBlockBit = mutableMapOf<String, Pair<Int, Int>>()
-                for (key in mappingJson.keys()) {
-                    val arr = mappingJson.optJSONArray(key) ?: continue
-                    if (arr.length() >= 2) {
-                        nameToBlockBit[key] = Pair(arr.getInt(0), arr.getInt(1))
+            val nameToBlockBit = SteamAchievementCodec.readNameToBlockBitMap(configDirectory)
+            // never re-set a bit Steam cleared. launch seeding drops resets from disk, but it only runs when
+            // the game launched logged in -- a game played offline reaches BOTH push paths (close-time sync
+            // and AchievementWatcher's real-time upload) with the stale flag still on disk. filtering here
+            // covers both, since every push funnels through this function.
+            val pushNames = if (nameToBlockBit.isEmpty()) {
+                unlockedNames
+            } else {
+                SteamAchievementCodec.dropResetUnlocks(
+                    unlockedNames,
+                    collectGseUnlockTimes(getGseSaveDirs(instance!!.applicationContext, appId)),
+                    SteamAchievementCodec.resetAchievements(userStats, nameToBlockBit),
+                ).also {
+                    if (it.size != unlockedNames.size) {
+                        Timber.tag("achievements").i(
+                            "dropped ${unlockedNames.size - it.size} reset achievement(s) from the push for appId=$appId",
+                        )
                     }
                 }
+            }
 
-                // Seed with current achievement bitmasks from server
-                for (block in userStats.achievementBlocks ?: emptyList()) {
-                    val blockId = (block.achievementId as? Number)?.toInt() ?: continue
-                    var bitmask = 0
-                    val unlockTimes = block.unlockTime ?: emptyList()
-                    for (i in unlockTimes.indices) {
-                        val t = unlockTimes[i]
-                        if ((t as? Number)?.toLong() != 0L) bitmask = bitmask or (1 shl i)
-                    }
-                    allStats[blockId] = bitmask
-                }
-
-                // Merge in newly unlocked achievements
-                for (name in unlockedNames) {
-                    val (blockId, bitIndex) = nameToBlockBit[name] ?: continue
-                    val current = allStats.getOrDefault(blockId, 0)
-                    allStats[blockId] = current or (1 shl bitIndex)
-                }
+            if (nameToBlockBit.isNotEmpty() && pushNames.isNotEmpty()) {
+                // seed the achievement blocks from the LIVE bitmasks, not the sticky unlockTime[].
+                // other stats are left to the GSE stat files below.
+                val blockIds = nameToBlockBit.values.mapTo(HashSet()) { it.first }
+                val liveStats = userStats.stats
+                    .filter { it.statId in blockIds }
+                    .associate { it.statId to it.statValue }
+                allStats.putAll(
+                    SteamAchievementCodec.encodeUnlockBitmasks(liveStats, nameToBlockBit, pushNames),
+                )
             }
 
             // Merge GSE stat files using schema from getUserStats for name->id mapping
