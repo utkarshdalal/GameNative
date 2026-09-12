@@ -1002,7 +1002,13 @@ object SteamAutoCloud {
 
                     val hasUncachedLocalFiles = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty()
                     var rehydratedSilently = false
-                    if (hasUncachedLocalFiles) {
+
+                    // also consulted with a cache present: cached prefixPath keys can drift between builds, which
+                    // getFilesDiff (path equality) reports as deleted+new despite identical SHAs.
+                    // a cached change number can return a delta (subset) manifest, which never equals the full
+                    // local set, so compare against a full fetch instead. fetched at most once.
+                    var fullManifest: AppFileChangeList? = null
+                    val computeLocalMatchesRemote: suspend () -> Boolean = {
                         // no cache but local files exist. before declaring conflict,
                         // check if local state is byte-identical to remote — this is
                         // the "cache-wiped by destructive migration, nothing actually
@@ -1017,15 +1023,22 @@ object SteamAutoCloud {
                         val localByPath = allLocalUserFiles.associate {
                             it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
                         }
-                        val remoteByPath = appFileListChange.files.associate {
-                            getFullFilePath(it, appFileListChange).toString().lowercase() to it.shaFile
+                        val manifest = if (appFileListChange.isOnlyDelta) {
+                            fullManifest ?: steamCloud.getAppFileListChange(appInfo.id, 0L).await().also { fullManifest = it }
+                        } else {
+                            appFileListChange
                         }
-                        val localMatchesRemote = localByPath.keys == remoteByPath.keys &&
+                        val remoteByPath = manifest.files.associate {
+                            getFullFilePath(it, manifest).toString().lowercase() to it.shaFile
+                        }
+                        localByPath.keys == remoteByPath.keys &&
                             localByPath.all { (path, sha) ->
                                 sha.contentEquals(remoteByPath[path])
                             }
+                    }
 
-                        if (localMatchesRemote) {
+                    if (hasUncachedLocalFiles) {
+                        if (computeLocalMatchesRemote()) {
                             Timber.i("Cache absent but local matches remote — rehydrating cache silently")
                             with(steamInstance) {
                                 db.withTransaction {
@@ -1055,6 +1068,18 @@ object SteamAutoCloud {
                         downloadUserFiles(parentScope).await()?.let {
                             return@asyncIsolated it
                         }
+                    } else if (computeLocalMatchesRemote()) {
+                        // path encoding drifted but SHAs match: no real divergence. real SHA differences never
+                        // reach here, so this can't suppress a genuine conflict.
+                        Timber.i("Cache present but local matches remote — rehydrating cache silently")
+                        with(steamInstance) {
+                            db.withTransaction {
+                                fileChangeListsDao.insert(appInfo.id, allLocalUserFiles)
+                                changeNumbersDao.insert(appInfo.id, cloudAppChangeNumber)
+                            }
+                        }
+                        syncResult = SyncResult.UpToDate
+                        filesManaged = allLocalUserFiles.size
                     } else {
                         Timber.i("Found local changes and new cloud user files, conflict resolution...")
 
