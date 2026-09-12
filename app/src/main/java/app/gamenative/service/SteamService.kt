@@ -70,6 +70,7 @@ import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
 import dagger.hilt.android.AndroidEntryPoint
 import app.gamenative.service.download.GameDownloadService
+import app.gamenative.service.download.NativeTreeDelete
 import `in`.dragonbra.javasteam.enums.EAccountType
 import `in`.dragonbra.javasteam.enums.EDepotFileFlag
 import `in`.dragonbra.javasteam.enums.ELicenseFlags
@@ -2008,7 +2009,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
                 }
 
-                File(appDirPath).deleteRecursively()
+                NativeTreeDelete.deleteTreeFast(File(appDirPath))
             }
 
             // Remove from DB
@@ -2563,7 +2564,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         Timber.i("maxDecompress: ${speedConfig.maxDecompress}")
 
                         chunkStagingRedirectDir?.apply {
-                            deleteRecursively()
+                            NativeTreeDelete.deleteTreeFast(this)
                             mkdirs()
                         }
 
@@ -2822,7 +2823,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     // handlers, and cancellations thrown out of suspension points.
                     // second call is a no-op if the inline path already removed the entry.
                     removeDownloadJob(appId)
-                    chunkStagingRedirectDir?.deleteRecursively()
+                    chunkStagingRedirectDir?.let { NativeTreeDelete.deleteTreeFast(it) }
                     if (throwable is kotlinx.coroutines.CancellationException) {
                         Timber.d(throwable, "Download canceled for app $appId")
                     }

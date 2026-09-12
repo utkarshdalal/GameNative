@@ -12,6 +12,7 @@ import app.gamenative.data.EpicGame
 import app.gamenative.service.StreamingAssembly
 import app.gamenative.service.download.GameDownloadService
 import app.gamenative.service.download.NativeEpicDownload
+import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.service.epic.manifest.ChunkPart
 import app.gamenative.service.epic.manifest.EpicManifest
 import app.gamenative.service.epic.manifest.ManifestUtils
@@ -321,7 +322,7 @@ class EpicDownloadManager @Inject constructor(
                 return@withContext downloadAndAssembleResult
             }
 
-            chunkCacheDir.deleteRecursively()
+            NativeTreeDelete.deleteTreeFast(chunkCacheDir)
 
             // Log final directory structure
             Timber.tag("Epic").i("Download completed successfully for ${game.title}")
@@ -488,7 +489,7 @@ class EpicDownloadManager @Inject constructor(
             )
             if (dlcDownloadResult.isFailure) return@withContext dlcDownloadResult
 
-            chunkCacheDir.deleteRecursively()
+            NativeTreeDelete.deleteTreeFast(chunkCacheDir)
 
             // Update database
             try {
@@ -557,7 +558,7 @@ class EpicDownloadManager @Inject constructor(
                 }.awaitAll()
 
                 results.firstOrNull { it.isFailure }?.let { failure ->
-                    chunkCacheDir.deleteRecursively()
+                    NativeTreeDelete.deleteTreeFast(chunkCacheDir)
                     return@withContext Result.failure(
                         failure.exceptionOrNull() ?: Exception("Chunk download failed"),
                     )
@@ -573,14 +574,14 @@ class EpicDownloadManager @Inject constructor(
                 }.awaitAll()
 
                 results.firstOrNull { it.isFailure }?.let { failure ->
-                    chunkCacheDir.deleteRecursively()
+                    NativeTreeDelete.deleteTreeFast(chunkCacheDir)
                     return@withContext Result.failure(
                         failure.exceptionOrNull() ?: Exception("File assembly failed"),
                     )
                 }
             }
 
-            chunkCacheDir.deleteRecursively()
+            NativeTreeDelete.deleteTreeFast(chunkCacheDir)
             Timber.tag("Epic").i("downloadOverlay completed: $installPath")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -1104,7 +1105,7 @@ class EpicDownloadManager @Inject constructor(
         // The engine assembled every pending file in-process (Rust) and deleted
         // each cache chunk after its last consumer; this is only a safety sweep
         // for stray `.part` files from older interrupted runs.
-        File(installDir, ".chunks").deleteRecursively()
+        NativeTreeDelete.deleteTreeFast(File(installDir, ".chunks"))
         Result.success(Unit)
     }
 

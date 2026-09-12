@@ -17,6 +17,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
 import app.gamenative.data.GameSource
 import app.gamenative.service.download.GameDownloadService
+import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.NotificationHelper
 import com.winlator.container.Container
@@ -242,7 +243,7 @@ class EpicService : Service() {
                 val path = if (game.installPath.isNotEmpty()) game.installPath else EpicConstants.getGameInstallPath(context, game.appName)
                 if (File(path).exists()) {
                     Timber.tag("Epic").i("Deleting installation folder: $path")
-                    val deleted = File(path).deleteRecursively()
+                    val deleted = NativeTreeDelete.deleteTreeFast(File(path))
                     if (deleted) {
                         Timber.tag("Epic").i("Successfully deleted installation folder")
                     } else {
@@ -253,7 +254,7 @@ class EpicService : Service() {
                 }
 
                 // Drop any leftover chunk cache (kept on failed downloads for resume)
-                EpicDownloadManager.chunkCacheDirFor(context, path).deleteRecursively()
+                NativeTreeDelete.deleteTreeFast(EpicDownloadManager.chunkCacheDirFor(context, path))
 
                 // Uninstall from database (keeps the entry but marks as not installed)
                 instance.epicManager.uninstall(appId)

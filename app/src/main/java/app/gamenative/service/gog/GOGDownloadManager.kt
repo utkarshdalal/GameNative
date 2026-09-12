@@ -13,6 +13,7 @@ import app.gamenative.service.gog.api.GOGManifestParser
 import app.gamenative.service.gog.api.V1DepotFile
 import app.gamenative.enums.Marker
 import app.gamenative.service.download.GameDownloadService
+import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.service.download.NativeGogDownload
 import app.gamenative.service.download.NativeGogDownloadListener
 import app.gamenative.utils.CdnRankingUtils
@@ -519,7 +520,7 @@ class GOGDownloadManager @Inject constructor(
                 return@withContext downloadAndAssembleResult
             }
 
-            chunkCacheDir.deleteRecursively()
+            NativeTreeDelete.deleteTreeFast(chunkCacheDir)
 
             // Create declared directories and symlinks (no chunks, so not handled by the assemble path).
             // Gate by base/DLC ownership the same way files are: only the base product unless DLCs are included.
@@ -547,7 +548,7 @@ class GOGDownloadManager @Inject constructor(
             }
 
             // Step 11: Cleanup
-            chunkCacheDir.deleteRecursively()
+            NativeTreeDelete.deleteTreeFast(chunkCacheDir)
 
             saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLang)
 
@@ -1065,7 +1066,7 @@ class GOGDownloadManager @Inject constructor(
             appDir.listFiles()?.forEach { child ->
                 if (child.name in supportRoots) {
                     if (moveIntoPlace(child, installDir)) {
-                        child.deleteRecursively()
+                        NativeTreeDelete.deleteTreeFast(child)
                     } else {
                         Timber.tag("GOG").e("Failed to relocate support path ${child.absolutePath}")
                         return@withContext Result.failure(
@@ -1588,7 +1589,7 @@ class GOGDownloadManager @Inject constructor(
                     continue
                 }
 
-                depotCacheDir.deleteRecursively()
+                NativeTreeDelete.deleteTreeFast(depotCacheDir)
 
                 Timber.tag("GOG").i("Successfully downloaded dependency: ${depot.readableName} to ${depotInstallDir.absolutePath}")
             }

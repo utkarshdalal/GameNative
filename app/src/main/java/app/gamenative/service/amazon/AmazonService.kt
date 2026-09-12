@@ -15,6 +15,7 @@ import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.download.GameDownloadService
+import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -640,12 +641,12 @@ class AmazonService : Service() {
                                 )
                             } catch (e: Exception) {
                                 Timber.tag("Amazon").w(e, "Manifest parse failed — falling back to recursive delete")
-                                installDir.deleteRecursively()
+                                NativeTreeDelete.deleteTreeFast(installDir)
                             }
                         } else {
                             // ── Fallback: recursive delete ───────────────────────
                             Timber.tag("Amazon").i("No cached manifest — recursive delete: $path")
-                            installDir.deleteRecursively()
+                            NativeTreeDelete.deleteTreeFast(installDir)
                         }
 
                         MarkerUtils.removeMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
@@ -654,7 +655,7 @@ class AmazonService : Service() {
                         // Remove metadata residue and ensure uninstall leaves no resumable state behind.
                         val downloadInfoDir = File(installDir, ".DownloadInfo")
                         if (downloadInfoDir.exists()) {
-                            downloadInfoDir.deleteRecursively()
+                            NativeTreeDelete.deleteTreeFast(downloadInfoDir)
                         }
 
                         if (installDir.exists()) {
@@ -664,7 +665,7 @@ class AmazonService : Service() {
                                 installCanonical.path.startsWith("${amazonRoot.path}${File.separator}")
 
                             if (isUnderAmazonRoot) {
-                                installCanonical.deleteRecursively()
+                                NativeTreeDelete.deleteTreeFast(installCanonical)
                             } else {
                                 Timber.tag("Amazon").w(
                                     "Skipping final recursive uninstall cleanup outside Amazon root: ${installCanonical.path}"
@@ -955,7 +956,7 @@ class AmazonService : Service() {
             runCatching {
                 val dir = File(installPath)
                 if (dir.exists()) {
-                    dir.deleteRecursively()
+                    NativeTreeDelete.deleteTreeFast(dir)
                 }
             }.onFailure {
                 Timber.tag("Amazon").w(it, "Failed to clean partial install dir for ${game.productId}")
