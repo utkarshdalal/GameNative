@@ -129,6 +129,7 @@ class PreInstallStepsTest {
             Marker.OPENAL_INSTALLED,
             Marker.XNA_INSTALLED,
             Marker.GOG_SCRIPT_INSTALLED,
+            Marker.STEAM_INSTALL_SCRIPT_INSTALLED,
             Marker.UBISOFT_CONNECT_INSTALLED,
         )
         assertTrue(expectedMarkers.all { marker -> File(gameDir, marker.fileName).exists() })

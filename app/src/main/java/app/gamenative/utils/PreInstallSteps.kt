@@ -30,6 +30,7 @@ object PreInstallSteps {
         XnaFrameworkStep,
         GogScriptInterpreterStep,
         GogSupportCommandsStep,
+        SteamInstallScriptStep,
         UbisoftConnectStep,
     )
 
