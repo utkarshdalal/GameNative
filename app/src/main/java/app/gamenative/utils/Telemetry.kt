@@ -138,6 +138,7 @@ object SessionTelemetry {
         try {
             putAll(configProperties(container))
             putAll(gameplayTracker.snapshot(context))
+            putAll(CrashCapture.properties())
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)
                 frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { put("fps_by_5min", it) }
@@ -274,3 +275,60 @@ class GameplayTracker {
         }
     }
 }
+
+object CrashCapture {
+
+    private const val MAX_FRAMES = 5
+
+    private val winePrefix = Regex("^(\\d+\\.\\d+:)?[0-9a-f]{4}:([0-9a-f]{4}:)?")
+    private val frame = Regex("^\\s*=?>?\\s*\\d+\\s+0x[0-9a-f]+ in (\\S+) \\(\\+0x([0-9a-f]+)\\)")
+    private val hexAddress = Regex("0x[0-9a-fA-F]+")
+
+    private val lock = Any()
+    private var exception: String? = null
+    private val frames = ArrayList<String>()
+    private var inBacktrace = false
+
+    fun reset() = synchronized(lock) {
+        exception = null
+        frames.clear()
+        inBacktrace = false
+    }
+
+    fun onLine(raw: String) {
+        val line = winePrefix.replace(raw, "").trim()
+        synchronized(lock) {
+            if (exception == null) {
+                if (line.startsWith("Unhandled exception:")) {
+                    exception = hexAddress.replace(line.removePrefix("Unhandled exception:").trim(), "").trim().take(120)
+                }
+                return
+            }
+            if (frames.size >= MAX_FRAMES) return
+            if (line.startsWith("Backtrace:")) {
+                inBacktrace = true
+                return
+            }
+            if (!inBacktrace) return
+            val m = frame.find(line)
+            if (m != null) {
+                frames.add("${m.groupValues[1]}+0x${m.groupValues[2]}")
+            } else if (frames.isNotEmpty()) {
+                inBacktrace = false
+            }
+        }
+    }
+
+    fun properties(): Map<String, Any> = synchronized(lock) {
+        val exc = exception ?: return emptyMap()
+        buildMap {
+            put("crash_exception", exc)
+            frames.firstOrNull()?.let { top ->
+                put("crash_signature", top)
+                put("crash_module", top.substringBefore("+0x"))
+            }
+            if (frames.isNotEmpty()) put("crash_frames", frames.toList())
+        }
+    }
+}
+

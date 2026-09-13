@@ -133,6 +133,7 @@ import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
+import app.gamenative.utils.CrashCapture
 import app.gamenative.utils.GameplayTracker
 import app.gamenative.utils.PerfSampler
 import app.gamenative.utils.SessionTelemetry
@@ -3916,7 +3917,9 @@ private fun setupXEnvironment(
         if (debugRun) DebugReportUtils.startLogcatCapture(context, appId)
     }
 
+    CrashCapture.reset()
     ProcessHelper.addDebugCallback { line ->
+        CrashCapture.onLine(line)
         if (captureLogs) {
             logFile?.appendText(line + "\n")
         }
