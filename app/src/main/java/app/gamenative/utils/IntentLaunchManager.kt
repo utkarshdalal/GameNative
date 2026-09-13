@@ -7,6 +7,7 @@ import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
+import com.winlator.container.ContainerManager
 import com.winlator.core.DXVKHelper
 import org.json.JSONObject
 import timber.log.Timber
@@ -20,6 +21,7 @@ object IntentLaunchManager {
 
     private const val EXTRA_GAME_SOURCE = "game_source"
     private const val EXTRA_CONTAINER_CONFIG = "container_config"
+    private const val EXTRA_EXEC_ARGS = "exec_args"
     private const val ACTION_LAUNCH_GAME = "app.gamenative.LAUNCH_GAME"
     private const val ACTION_VIEW = "android.intent.action.VIEW"
     private const val URI_SCHEME = "gamenative"
@@ -29,9 +31,10 @@ object IntentLaunchManager {
     data class LaunchRequest(
         val appId: String,
         val containerConfig: ContainerData? = null,
+        val execArgs: String? = null,
     )
 
-    fun parseLaunchIntent(intent: Intent): LaunchRequest? {
+    fun parseLaunchIntent(intent: Intent, context: Context): LaunchRequest? {
         Timber.d("[IntentLaunchManager]: Parsing intent: action=${intent.action}")
 
         if (intent.action != ACTION_LAUNCH_GAME && intent.action != ACTION_VIEW) {
@@ -41,6 +44,7 @@ object IntentLaunchManager {
         val gameId: Int
         val gameSource: String?
         val containerConfig: ContainerData?
+        val execArgs: String?
 
         if (intent.action == ACTION_VIEW) {
             val data = intent.data
@@ -50,6 +54,7 @@ object IntentLaunchManager {
             }
             gameId = data.getQueryParameter("appid")?.toIntOrNull() ?: -1
             gameSource = data.getQueryParameter("gamesource")?.uppercase(java.util.Locale.ROOT)
+            execArgs = null
             containerConfig = null
         } else {
             gameId = intent.getIntExtra(EXTRA_APP_ID, -1)
@@ -57,6 +62,8 @@ object IntentLaunchManager {
             gameSource = intent.getStringExtra(EXTRA_GAME_SOURCE)?.uppercase(java.util.Locale.ROOT)
                 ?.takeIf { source -> GameSource.entries.any { it.name == source } }
                 ?: GameSource.STEAM.name
+            execArgs = intent.getStringExtra(EXTRA_EXEC_ARGS)
+            Timber.d("[IntentLaunchManager]: Extracted exec_args: $execArgs from intent extras")
             containerConfig = intent.getStringExtra(EXTRA_CONTAINER_CONFIG)?.let { json ->
                 try {
                     parseContainerConfig(json)
@@ -81,7 +88,7 @@ object IntentLaunchManager {
         val appId = "${gameSource}_$gameId"
         Timber.d("[IntentLaunchManager]: Converted to appId: $appId")
 
-        return LaunchRequest(appId, containerConfig)
+        return LaunchRequest(appId, containerConfig, execArgs)
     }
 
     fun applyTemporaryConfigOverride(context: Context, appId: String, configOverride: ContainerData) {

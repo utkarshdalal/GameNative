@@ -406,6 +406,7 @@ private fun SyncGyroOverlaySuppression(suppressed: Boolean, viewKey: XServerRend
 fun XServerScreen(
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current,
     appId: String,
+    execArgs: String? = null,
     bootToContainer: Boolean,
     testGraphics: Boolean = false,
     diagnostics: Boolean = false,
@@ -1859,9 +1860,9 @@ fun XServerScreen(
                                 hud.getLocationOnScreen(hudLocation)
                                 val insideHud =
                                     event.rawX >= hudLocation[0] &&
-                                        event.rawX <= hudLocation[0] + hud.width &&
-                                        event.rawY >= hudLocation[1] &&
-                                        event.rawY <= hudLocation[1] + hud.height
+                                            event.rawX <= hudLocation[0] + hud.width &&
+                                            event.rawY >= hudLocation[1] &&
+                                            event.rawY <= hudLocation[1] + hud.height
                                 if (insideHud) {
                                     performanceHudTouchDownRawX = event.rawX
                                     performanceHudTouchDownRawY = event.rawY
@@ -1891,7 +1892,7 @@ fun XServerScreen(
                         }
                         MotionEvent.ACTION_POINTER_DOWN,
                         MotionEvent.ACTION_POINTER_UP,
-                        -> {
+                            -> {
                             if (isTrackingPerformanceHudTouch || isDraggingPerformanceHud) {
                                 isTrackingPerformanceHudTouch = false
                                 isDraggingPerformanceHud = false
@@ -2342,6 +2343,7 @@ fun XServerScreen(
                             PluviaApp.xEnvironment = setupXEnvironment(
                                 context,
                                 appId,
+                                execArgs,
                                 bootToContainer,
                                 testGraphics,
                                 diagnostics,
@@ -3816,6 +3818,7 @@ private fun shiftXEnvironmentToContext(
 private fun setupXEnvironment(
     context: Context,
     appId: String,
+    execArgs: String?,
     bootToContainer: Boolean,
     testGraphics: Boolean,
     diagnostics: Boolean,
@@ -3962,9 +3965,15 @@ private fun setupXEnvironment(
                 guestProgramLauncherComponent.setSteamAppId(numericAppId.toString())
             }
         }
+
+        var finalExecArgs = execArgs?.takeIf { it.isNotEmpty() } ?: container.execArgs
+        for (drive in Container.drivesIterator(container.drives)) {
+            if (drive[1].isNotEmpty()) finalExecArgs = finalExecArgs.replace(drive[1], "${drive[0]}:")
+        }
+
         gameExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
             getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent, gameSource, offline) +
-            (if (container.execArgs.isNotEmpty()) " " + container.execArgs else "")
+            (if (finalExecArgs.isNotEmpty()) " $finalExecArgs" else "")
         preInstallCommands = PreInstallSteps.getPreInstallCommands(
             container,
             appId,

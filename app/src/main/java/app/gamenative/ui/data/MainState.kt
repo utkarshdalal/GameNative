@@ -19,6 +19,7 @@ data class MainState(
     val hasCrashedLastStart: Boolean = false,
     val isSteamConnected: Boolean = false,
     val launchedAppId: String = "",
+    val execArgs: String? = null,
     val bootToContainer: Boolean = false,
     val testGraphics: Boolean = false,
     val diagnostics: Boolean = false,
