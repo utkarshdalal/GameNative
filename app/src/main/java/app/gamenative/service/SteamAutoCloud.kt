@@ -90,6 +90,24 @@ object SteamAutoCloud {
         return Paths.get(localRoot, filename.removePrefix(token).trimStart('/'))
     }
 
+    // full-prefix match (longest key wins) handles addPath, where the cloud path omits a subfolder the
+    // local path includes; root-only replacement can't express that. a BARE root-token key
+    // ("%WinAppDataLocal%", from an empty uploadPath) has NO separator after it ("%WinAppDataLocal%Default/file"),
+    // hence the endsWith("%") clause -- without it the addPath subfolder is silently dropped.
+    internal fun resolveCloudPrefixToLocal(
+        cloudPrefix: String,
+        cloudPrefixToLocalPath: Map<String, String>,
+    ): String? = cloudPrefixToLocalPath.entries
+        .filter { (cloudKey, _) ->
+            cloudPrefix == cloudKey ||
+                cloudPrefix.startsWith("$cloudKey/") ||
+                (cloudKey.endsWith("%") && cloudPrefix.startsWith(cloudKey))
+        }
+        .maxByOrNull { (cloudKey, _) -> cloudKey.length }
+        ?.let { (cloudKey, localPath) ->
+            Paths.get(localPath, cloudPrefix.removePrefix(cloudKey).trimStart('/')).pathString
+        }
+
     internal data class HashLookupResult(
         val sha: ByteArray,
         val wasCacheHit: Boolean,
@@ -241,12 +259,7 @@ object SteamAutoCloud {
                 // Cloud prefixes sometimes include a trailing slash (e.g. "%WinAppDataLocalLow%76561198035529760/save1/")
                 // but the map keys are built without one — trim before lookup so they match.
                 val cloudPrefix = prefix.trimEnd('/')
-                cloudPrefixToLocalPath.entries
-                    .filter { (cloudKey, _) -> cloudPrefix == cloudKey || cloudPrefix.startsWith("$cloudKey/") }
-                    .maxByOrNull { (cloudKey, _) -> cloudKey.length }
-                    ?.let { (cloudKey, localPath) ->
-                        Paths.get(localPath, cloudPrefix.removePrefix(cloudKey).trimStart('/')).pathString
-                    }
+                resolveCloudPrefixToLocal(cloudPrefix, cloudPrefixToLocalPath)
                     ?: run {
                         var modified = prefix
 
