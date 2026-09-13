@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.ContentObserver
 import android.graphics.Color
 import android.os.Build
+import android.os.SystemClock
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -133,7 +134,9 @@ import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
+import app.gamenative.utils.WindowActivity
 import app.gamenative.utils.PerfSampler
+import app.gamenative.utils.SessionReport
 import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
 import app.gamenative.utils.downloader.DXWrapperDownloader
 import app.gamenative.utils.downloader.GraphicsDriverDownloader
@@ -243,6 +246,7 @@ private const val ALWAYS_REEXTRACT = true
 
 // Guard to prevent duplicate game_exited events when multiple exit triggers fire simultaneously
 private val isExiting = AtomicBoolean(false)
+private val windowActivity = WindowActivity()
 
 private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
 private const val EXIT_PROCESS_POLL_INTERVAL_MS = 1_000L
@@ -446,6 +450,7 @@ fun XServerScreen(
 
     LaunchedEffect(appId) {
         isExiting.set(false)
+        runCatching { windowActivity.start(context) }
     }
 
     val container = remember(appId) {
@@ -998,6 +1003,7 @@ fun XServerScreen(
                                     appId,
                                     onExit,
                                     navigateBack,
+                                    "processes_exited",
                                 )
                             }
                             break
@@ -1429,7 +1435,7 @@ fun XServerScreen(
                     PluviaApp.xEnvironment?.resumeGameProcesses()
                 }
                 clearOverlayPauseState()
-                exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "quick_menu")
                 true
             }
 
@@ -1568,7 +1574,7 @@ fun XServerScreen(
     // Event handlers defined in composable scope to capture latest state on each recomposition
     val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
         Timber.i("onActivityDestroyed")
-        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "activity_destroyed")
     }
     val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
         val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
@@ -1711,11 +1717,11 @@ fun XServerScreen(
     }
     val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
         Timber.i("onGuestProgramTerminated")
-        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "guest_terminated")
     }
     val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
         Timber.i("onForceCloseApp")
-        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "force_close")
     }
     val onPlayingBlocked: (SteamEvent.PlayingBlocked) -> Unit = { event ->
         if (isOffline || container.isSteamOfflineMode()) {
@@ -2011,8 +2017,9 @@ fun XServerScreen(
                 applyMouseCursorVisibility()
                 renderer.setOnFrameRenderedListener {
                     if (shouldTrackDisplayedFrames.get()) {
+                        val frameTime = SystemClock.elapsedRealtime()
                         (context as? Activity)?.runOnUiThread {
-                            frameRating?.update()
+                            frameRating?.update(frameTime)
                         }
                     }
                 }
@@ -2137,6 +2144,7 @@ fun XServerScreen(
                                     )
                                 }
                                 frameRatingWindowId = -1
+                                runCatching { windowActivity.onTrackedWindow(null, rating.totalFrames) }
                                 (context as? Activity)?.runOnUiThread {
                                     rating.visibility = View.GONE
                                 }
@@ -2144,6 +2152,7 @@ fun XServerScreen(
                             }
 
                             frameRatingWindowId = nextId
+                            runCatching { windowActivity.onTrackedWindow(topmost, rating.totalFrames) }
                             Timber.i(
                                 "FrameRating tracking attached (%s) to topmost app window %s",
                                 reason,
@@ -2161,12 +2170,16 @@ fun XServerScreen(
                                 xServerState.value.winStarted = true
                             }
                             if (!getxServer().isFlatPresentationEnabled) return
+                            if (window.isApplicationWindow()) {
+                                runCatching { windowActivity.onWindowContent(window) }
+                            }
                             if (frameRatingWindowId == -1 && window.isApplicationWindow()) {
                                 refreshFrameRatingTracking("content-update")
                             }
                             if (window.id == frameRatingWindowId) {
+                                val frameTime = SystemClock.elapsedRealtime()
                                 (context as? Activity)?.runOnUiThread {
-                                    frameRating?.update()
+                                    frameRating?.update(frameTime)
                                 }
                             }
                         }
@@ -2178,6 +2191,7 @@ fun XServerScreen(
                         }
 
                         override fun onMapWindow(window: Window) {
+                            if (window.isApplicationWindow()) runCatching { windowActivity.onWindowMapped(window) }
                             Timber.i(
                                 "onMapWindow:" +
                                         "\n\twindowName: ${window.name}" +
@@ -2192,6 +2206,7 @@ fun XServerScreen(
                         }
 
                         override fun onUnmapWindow(window: Window) {
+                            runCatching { windowActivity.onWindowUnmapped(window) }
                             Timber.i(
                                 "onUnmapWindow:" +
                                         "\n\twindowName: ${window.name}" +
@@ -3016,7 +3031,7 @@ fun XServerScreen(
                 TextButton(onClick = {
                     showPlayingBlockedDialog = false
                     playingBlockedRemoteName = null
-                    exit(xServerView?.getxServer()?.winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                    exit(xServerView?.getxServer()?.winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "playing_blocked")
                 }) {
                     Text(text = stringResource(R.string.cancel))
                 }
@@ -4742,8 +4757,9 @@ private fun exit(
     appId: String,
     onExit: (onComplete: (() -> Unit)?) -> Unit,
     navigateBack: () -> Unit,
+    reason: String,
 ) {
-    Timber.i("Exit called")
+    Timber.i("Exit called: $reason")
 
     if (!isExiting.compareAndSet(false, true)) {
         Timber.i("Exit already in progress, ignoring duplicate request")
@@ -4760,8 +4776,11 @@ private fun exit(
             "session_length" to (frameRating?.sessionLengthSec ?: 0),
             "avg_fps" to (frameRating?.avgFPS ?: 0.0),
             "container_config" to container.containerJson,
-        ),
+        ) + runCatching {
+            SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
+        }.getOrElse { emptyMap() },
     )
+    runCatching { windowActivity.stop() }
 
     // Store session data in container metadata
     frameRating?.let { rating ->

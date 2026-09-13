@@ -972,6 +972,7 @@ object ContainerUtils {
         // If custom config is provided, just apply it and return
         if (customConfig?.dxwrapper != null) {
             applyToContainer(context, container, containerData)
+            SessionReport.markConfigApplied(container, if (bestConfigMap.isNullOrEmpty()) "default" else "known")
             return container
         }
 
@@ -1020,6 +1021,7 @@ object ContainerUtils {
 
         // Apply container data with the determined DX wrapper
         applyToContainer(context, container, containerData)
+        SessionReport.markConfigApplied(container, if (bestConfigMap.isNullOrEmpty()) "default" else "known")
         return container
     }
 
