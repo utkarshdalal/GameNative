@@ -12,6 +12,9 @@ import android.os.StatFs
 import android.os.SystemClock
 import android.view.Display
 import app.gamenative.BuildConfig
+import app.gamenative.PrefManager
+import com.winlator.container.Container
+import org.json.JSONObject
 import com.posthog.PostHog
 import com.winlator.core.GPUHelper
 import com.winlator.core.GPUInformation
@@ -89,14 +92,43 @@ object DeviceTelemetry {
 
 object SessionTelemetry {
 
+    private val CONFIG_DIFF_IGNORED = setOf("id", "name", "extraData", "sessionMetadata", "drives", "executablePath", "execArgs")
+
+    fun markConfigApplied(container: Container, source: String) {
+        container.putExtra("config_source", source)
+        val snapshot = JSONObject(container.containerJson)
+        CONFIG_DIFF_IGNORED.forEach { snapshot.remove(it) }
+        container.putExtra("config_applied", snapshot.toString())
+    }
+
+    fun configProperties(container: Container): Map<String, Any> = buildMap {
+        val source = container.getExtra("config_source", "")
+        put("config_source", source.ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" })
+        val applied = container.getExtra("config_applied", "")
+        if (applied.isEmpty()) return@buildMap
+        try {
+            val before = JSONObject(applied)
+            val after = JSONObject(container.containerJson)
+            val changed = after.keys().asSequence()
+                .filter { it !in CONFIG_DIFF_IGNORED && before.optString(it) != after.optString(it) }
+                .take(20)
+                .toList()
+            put("config_edited_fields", changed)
+        } catch (e: Exception) {
+            Timber.w(e, "SessionTelemetry: config diff failed")
+        }
+    }
+
     fun exitProperties(
         context: Context?,
         frameRating: FrameRating?,
         gameplayTracker: GameplayTracker,
+        container: Container,
         reason: String,
     ): Map<String, Any> = buildMap {
         put("exit_reason", reason)
         try {
+            putAll(configProperties(container))
             putAll(gameplayTracker.snapshot(context))
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)

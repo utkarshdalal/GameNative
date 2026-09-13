@@ -4769,7 +4769,7 @@ private fun exit(
             "session_length" to (frameRating?.sessionLengthSec ?: 0),
             "avg_fps" to (frameRating?.avgFPS ?: 0.0),
             "container_config" to container.containerJson,
-        ) + SessionTelemetry.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, gameplayTracker, reason),
+        ) + SessionTelemetry.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, gameplayTracker, container, reason),
     )
     gameplayTracker.stop()
 
