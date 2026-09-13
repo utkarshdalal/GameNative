@@ -46,6 +46,11 @@ object DeviceTelemetry {
         props.forEach { (key, value) -> PostHog.register(key, value) }
     }
 
+    private fun systemProperty(name: String): String? = runCatching {
+        val cls = Class.forName("android.os.SystemProperties")
+        cls.getMethod("get", String::class.java).invoke(null, name) as? String
+    }.getOrNull()?.takeIf { it.isNotBlank() }
+
     private fun deviceProperties(context: Context): Map<String, Any> = buildMap {
         put("modern_build", BuildConfig.MODERN_ANDROID)
         put("device_codename", Build.DEVICE)
@@ -55,6 +60,8 @@ object DeviceTelemetry {
         put("build_id", Build.ID)
         put("build_incremental", Build.VERSION.INCREMENTAL)
         put("security_patch", Build.VERSION.SECURITY_PATCH)
+        put("firmware_build_time", java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(Build.TIME)))
+        systemProperty("ro.product.first_api_level")?.toIntOrNull()?.let { put("first_api_level", it) }
         put("kernel_version", System.getProperty("os.version") ?: "")
         put("cpu_abi", Build.SUPPORTED_ABIS.firstOrNull() ?: "")
         put("cpu_cores", Runtime.getRuntime().availableProcessors())
