@@ -451,7 +451,7 @@ fun XServerScreen(
 
     LaunchedEffect(appId) {
         isExiting.set(false)
-        gameplayTracker.start(context)
+        runCatching { gameplayTracker.start(context) }
     }
 
     val container = remember(appId) {
@@ -2170,7 +2170,7 @@ fun XServerScreen(
                             }
                             if (!getxServer().isFlatPresentationEnabled) return
                             if (window.isApplicationWindow()) {
-                                gameplayTracker.onWindowContent(window, getxServer().screenInfo.width.toInt(), getxServer().screenInfo.height.toInt())
+                                runCatching { gameplayTracker.onWindowContent(window, getxServer().screenInfo.width.toInt(), getxServer().screenInfo.height.toInt()) }
                             }
                             if (frameRatingWindowId == -1 && window.isApplicationWindow()) {
                                 refreshFrameRatingTracking("content-update")
@@ -3920,9 +3920,9 @@ private fun setupXEnvironment(
         if (debugRun) DebugReportUtils.startLogcatCapture(context, appId)
     }
 
-    CrashCapture.reset()
+    runCatching { CrashCapture.reset() }
     ProcessHelper.addDebugCallback { line ->
-        CrashCapture.onLine(line)
+        runCatching { CrashCapture.onLine(line) }
         if (captureLogs) {
             logFile?.appendText(line + "\n")
         }
@@ -4775,9 +4775,11 @@ private fun exit(
             "session_length" to (frameRating?.sessionLengthSec ?: 0),
             "avg_fps" to (frameRating?.avgFPS ?: 0.0),
             "container_config" to container.containerJson,
-        ) + SessionTelemetry.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, gameplayTracker, container, reason),
+        ) + runCatching {
+            SessionTelemetry.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, gameplayTracker, container, reason)
+        }.getOrElse { emptyMap() },
     )
-    gameplayTracker.stop()
+    runCatching { gameplayTracker.stop() }
 
     // Store session data in container metadata
     frameRating?.let { rating ->

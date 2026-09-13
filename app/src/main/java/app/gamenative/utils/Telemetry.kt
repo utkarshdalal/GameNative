@@ -105,20 +105,24 @@ object SessionTelemetry {
     )
 
     fun markConfigApplied(container: Container, source: String) {
-        val snapshot = JSONObject(container.containerJson)
-        CONFIG_DIFF_IGNORED.forEach { snapshot.remove(it) }
-        container.setConfigSource(source)
-        container.saveData()
-        appliedConfigFile(container).writeText(snapshot.toString())
+        try {
+            val snapshot = JSONObject(container.containerJson)
+            CONFIG_DIFF_IGNORED.forEach { snapshot.remove(it) }
+            container.setConfigSource(source)
+            container.saveData()
+            appliedConfigFile(container).writeText(snapshot.toString())
+        } catch (e: Exception) {
+            Timber.w(e, "SessionTelemetry: mark config failed")
+        }
     }
 
     private fun appliedConfigFile(container: Container) = File(container.rootDir, "applied_config.json")
 
     fun configProperties(container: Container): Map<String, Any> = buildMap {
-        put("config_source", container.configSource.ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" })
-        val applied = appliedConfigFile(container).takeIf { it.exists() }?.readText().orEmpty()
-        if (applied.isEmpty()) return@buildMap
         try {
+            put("config_source", container.configSource.ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" })
+            val applied = appliedConfigFile(container).takeIf { it.exists() }?.readText().orEmpty()
+            if (applied.isEmpty()) return@buildMap
             val before = JSONObject(applied)
             val after = JSONObject(container.containerJson)
             val changed = ArrayList<String>()
@@ -200,14 +204,26 @@ class GameplayTracker {
     private val thermalTransitions = ArrayList<Pair<Long, Int>>()
     private var powerManager: PowerManager? = null
     private val thermalListener = PowerManager.OnThermalStatusChangedListener { status ->
-        synchronized(lock) {
-            if (thermalTransitions.lastOrNull()?.second != status) {
-                thermalTransitions.add((SystemClock.elapsedRealtime() - startMs) / 1000 to status)
+        try {
+            synchronized(lock) {
+                if (thermalTransitions.lastOrNull()?.second != status) {
+                    thermalTransitions.add((SystemClock.elapsedRealtime() - startMs) / 1000 to status)
+                }
             }
+        } catch (e: Exception) {
+            Timber.w(e, "GameplayTracker: thermal sample failed")
         }
     }
 
     fun start(context: Context) {
+        try {
+            begin(context)
+        } catch (e: Exception) {
+            Timber.w(e, "GameplayTracker: start failed")
+        }
+    }
+
+    private fun begin(context: Context) {
         stop()
         synchronized(lock) {
             startMs = SystemClock.elapsedRealtime()
@@ -226,8 +242,12 @@ class GameplayTracker {
     }
 
     fun stop() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            powerManager?.let { runCatching { it.removeThermalStatusListener(thermalListener) } }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                powerManager?.let { it.removeThermalStatusListener(thermalListener) }
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "GameplayTracker: stop failed")
         }
         powerManager = null
     }
@@ -237,6 +257,14 @@ class GameplayTracker {
             ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
 
     fun onWindowContent(window: Window, screenWidth: Int, screenHeight: Int) {
+        try {
+            track(window, screenWidth, screenHeight)
+        } catch (e: Exception) {
+            Timber.w(e, "GameplayTracker: sample failed")
+        }
+    }
+
+    private fun track(window: Window, screenWidth: Int, screenHeight: Int) {
         val now = SystemClock.elapsedRealtime()
         val area = window.width.toLong() * window.height.toLong()
         val isGameplaySized = area * 2 >= screenWidth.toLong() * screenHeight.toLong()
@@ -255,7 +283,14 @@ class GameplayTracker {
         }
     }
 
-    fun snapshot(context: Context?): Map<String, Any> = synchronized(lock) {
+    fun snapshot(context: Context?): Map<String, Any> = try {
+        buildSnapshot(context)
+    } catch (e: Exception) {
+        Timber.w(e, "GameplayTracker: snapshot failed")
+        emptyMap()
+    }
+
+    private fun buildSnapshot(context: Context?): Map<String, Any> = synchronized(lock) {
         val best = windows.values.maxByOrNull { it.gameplaySeconds }
         buildMap {
             val batteryEnd = context?.let { readBatteryPct(it) } ?: -1
@@ -307,6 +342,14 @@ object CrashCapture {
     }
 
     fun onLine(raw: String) {
+        try {
+            parse(raw)
+        } catch (e: Exception) {
+            Timber.w(e, "CrashCapture: parse failed")
+        }
+    }
+
+    private fun parse(raw: String) {
         if (exception == null && !raw.contains("Unhandled exception:")) return
         val line = winePrefix.replace(raw, "").trim()
         synchronized(lock) {
@@ -331,7 +374,14 @@ object CrashCapture {
         }
     }
 
-    fun properties(): Map<String, Any> = synchronized(lock) {
+    fun properties(): Map<String, Any> = try {
+        crashProperties()
+    } catch (e: Exception) {
+        Timber.w(e, "CrashCapture: properties failed")
+        emptyMap()
+    }
+
+    private fun crashProperties(): Map<String, Any> = synchronized(lock) {
         val exc = exception ?: return emptyMap()
         buildMap {
             put("crash_exception", exc)

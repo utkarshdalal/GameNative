@@ -72,12 +72,15 @@ public class FrameRating extends FrameLayout implements Runnable {
             lastTime = time;
             sessionStartTime = time;
         }
-        if (lastFrameTime != 0 && time >= lastFrameTime) {
-            int delta = (int) Math.min(time - lastFrameTime, FRAME_HIST_CAP_MS);
-            frameHistMs[delta]++;
+        try {
+            if (lastFrameTime != 0 && time >= lastFrameTime) {
+                int delta = (int) Math.min(time - lastFrameTime, FRAME_HIST_CAP_MS);
+                frameHistMs[delta]++;
+            }
+            if (time > lastFrameTime) lastFrameTime = time;
+            totalFrames++;
+        } catch (RuntimeException ignored) {
         }
-        if (time > lastFrameTime) lastFrameTime = time;
-        totalFrames++;
         if (time >= lastTime + 500) {
             lastFPS = ((float)(frameCount * 1000) / (time - lastTime));
 
@@ -87,7 +90,7 @@ public class FrameRating extends FrameLayout implements Runnable {
                 readingCount++;
                 fpsSum += currentFPS;
                 int bucket = (int) ((time - sessionStartTime) / FPS_BUCKET_MS);
-                if (bucket < MAX_FPS_BUCKETS) {
+                if (bucket >= 0 && bucket < MAX_FPS_BUCKETS) {
                     bucketFpsSum[bucket] += currentFPS;
                     bucketReadings[bucket]++;
                 }
