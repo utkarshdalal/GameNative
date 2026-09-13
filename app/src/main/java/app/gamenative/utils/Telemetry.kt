@@ -193,7 +193,7 @@ class GameplayTracker {
 
     private val lock = Any()
     private var startMs = 0L
-    private val entries = LinkedHashMap<String, Entry>()
+    private val windows = LinkedHashMap<String, Entry>()
     private val classByWindowId = HashMap<Int, String>()
     private var firstGameplayMs = 0L
     private var batteryStartPct = -1
@@ -211,7 +211,7 @@ class GameplayTracker {
         stop()
         synchronized(lock) {
             startMs = SystemClock.elapsedRealtime()
-            entries.clear()
+            windows.clear()
             classByWindowId.clear()
             firstGameplayMs = 0L
             thermalTransitions.clear()
@@ -243,7 +243,7 @@ class GameplayTracker {
         synchronized(lock) {
             if (startMs == 0L) startMs = now
             val className = classByWindowId.getOrPut(window.id) { window.className.ifBlank { "unknown" } }
-            val entry = entries.getOrPut(className) { Entry(className, now) }
+            val entry = windows.getOrPut(className) { Entry(className, now) }
             entry.lastMs = now
             if (!isGameplaySized) return
             if (firstGameplayMs == 0L) firstGameplayMs = now
@@ -256,7 +256,7 @@ class GameplayTracker {
     }
 
     fun snapshot(context: Context?): Map<String, Any> = synchronized(lock) {
-        val best = entries.values.maxByOrNull { it.gameplaySeconds }
+        val best = windows.values.maxByOrNull { it.gameplaySeconds }
         buildMap {
             val batteryEnd = context?.let { readBatteryPct(it) } ?: -1
             if (batteryStartPct >= 0 && batteryEnd >= 0) {
@@ -274,7 +274,7 @@ class GameplayTracker {
             if (firstGameplayMs > 0 && startMs > 0) put("time_to_gameplay_s", ((firstGameplayMs - startMs) / 100L) / 10.0)
             put(
                 "window_timeline",
-                entries.values.map { e ->
+                windows.values.map { e ->
                     mapOf(
                         "class" to e.className,
                         "first_s" to ((e.firstMs - startMs) / 1000),
