@@ -273,7 +273,7 @@ class GameplayTracker {
             val className = classByWindowId.getOrPut(window.id) { window.className.ifBlank { "unknown" } }
             val entry = windows.getOrPut(className) { Entry(className, now) }
             entry.lastMs = now
-            if (!isGameplaySized) return
+            if (!isGameplaySized || className.equals("explorer.exe", ignoreCase = true)) return
             if (firstGameplayMs == 0L) firstGameplayMs = now
             val second = now / 1000
             if (entry.lastCountedSecond != second) {
