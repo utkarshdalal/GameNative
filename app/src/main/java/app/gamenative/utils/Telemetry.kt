@@ -92,28 +92,36 @@ object DeviceTelemetry {
 
 object SessionTelemetry {
 
-    private val CONFIG_DIFF_IGNORED = setOf("id", "name", "extraData", "sessionMetadata", "drives", "executablePath", "execArgs")
+    private val CONFIG_DIFF_IGNORED = setOf(
+        "id", "name", "sessionMetadata", "drives", "executablePath", "execArgs", "configSource", "appliedConfigJson",
+    )
 
     fun markConfigApplied(container: Container, source: String) {
-        container.putExtra("config_source", source)
         val snapshot = JSONObject(container.containerJson)
         CONFIG_DIFF_IGNORED.forEach { snapshot.remove(it) }
-        container.putExtra("config_applied", snapshot.toString())
+        container.setAppliedConfig(source, snapshot.toString())
+        container.saveData()
     }
 
     fun configProperties(container: Container): Map<String, Any> = buildMap {
-        val source = container.getExtra("config_source", "")
-        put("config_source", source.ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" })
-        val applied = container.getExtra("config_applied", "")
+        put("config_source", container.configSource.ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" })
+        val applied = container.appliedConfigJson
         if (applied.isEmpty()) return@buildMap
         try {
             val before = JSONObject(applied)
             val after = JSONObject(container.containerJson)
-            val changed = after.keys().asSequence()
-                .filter { it !in CONFIG_DIFF_IGNORED && before.optString(it) != after.optString(it) }
-                .take(20)
-                .toList()
-            put("config_edited_fields", changed)
+            val changed = ArrayList<String>()
+            for (key in after.keys()) {
+                if (key in CONFIG_DIFF_IGNORED) continue
+                if (key == "extraData") {
+                    val b = before.optJSONObject(key) ?: JSONObject()
+                    val a = after.optJSONObject(key) ?: JSONObject()
+                    for (sub in a.keys()) if (b.optString(sub) != a.optString(sub)) changed.add("extraData.$sub")
+                } else if (before.optString(key) != after.optString(key)) {
+                    changed.add(key)
+                }
+            }
+            put("config_edited_fields", changed.take(20))
         } catch (e: Exception) {
             Timber.w(e, "SessionTelemetry: config diff failed")
         }
