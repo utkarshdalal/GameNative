@@ -160,7 +160,7 @@ object SessionTelemetry {
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)
                 frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { put("fps_by_5min", it) }
-                if (frameRating.totalFrames > 1) {
+                if (frameRating.totalFrames >= 60) {
                     put("frame_p50_ms", frameRating.getFramePercentileMs(0.50))
                     put("frame_p99_ms", frameRating.getFramePercentileMs(0.99))
                 }
