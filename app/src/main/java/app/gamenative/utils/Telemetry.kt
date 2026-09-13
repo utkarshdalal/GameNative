@@ -122,7 +122,10 @@ object SessionTelemetry {
         try {
             put("config_source", container.configSource.ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" })
             val applied = appliedConfigFile(container).takeIf { it.exists() }?.readText().orEmpty()
-            if (applied.isEmpty()) return@buildMap
+            if (applied.isEmpty()) {
+                markConfigApplied(container, container.configSource.ifEmpty { "existing" })
+                return@buildMap
+            }
             val before = JSONObject(applied)
             val after = JSONObject(container.containerJson)
             val changed = ArrayList<String>()
