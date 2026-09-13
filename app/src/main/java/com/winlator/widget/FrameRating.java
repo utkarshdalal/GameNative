@@ -72,11 +72,11 @@ public class FrameRating extends FrameLayout implements Runnable {
             lastTime = time;
             sessionStartTime = time;
         }
-        if (lastFrameTime != 0) {
+        if (lastFrameTime != 0 && time >= lastFrameTime) {
             int delta = (int) Math.min(time - lastFrameTime, FRAME_HIST_CAP_MS);
             frameHistMs[delta]++;
         }
-        lastFrameTime = time;
+        if (time > lastFrameTime) lastFrameTime = time;
         totalFrames++;
         if (time >= lastTime + 500) {
             lastFPS = ((float)(frameCount * 1000) / (time - lastTime));
