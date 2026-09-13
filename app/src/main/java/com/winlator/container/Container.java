@@ -115,6 +115,7 @@ public class Container {
     private String installPath = "";
     private JSONObject extraData;
     private JSONObject sessionMetadata;
+    private String configSource = "";
     private int rcfileId = 0;
     private String midiSoundFont = "";
     private int inputType = WinHandler.PreferredInputApi.BOTH.ordinal();
@@ -760,6 +761,7 @@ public class Container {
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
             data.put("sessionMetadata", sessionMetadata);
+            data.put("configSource", configSource);
             data.put("rcfileId", rcfileId);
             data.put("midiSoundFont", midiSoundFont);
             data.put("lc_all", lc_all);
@@ -924,6 +926,10 @@ public class Container {
                 case "extraData" : {
                     JSONObject extraData = data.getJSONObject(key);
                     setExtraData(extraData);
+                    break;
+                }
+                case "configSource" : {
+                    configSource = data.getString(key);
                     break;
                 }
                 case "sessionMetadata" : {
@@ -1198,6 +1204,14 @@ public class Container {
         this.portraitMode = portraitMode;
     }
 
+
+    public String getConfigSource() {
+        return configSource;
+    }
+
+    public void setConfigSource(String configSource) {
+        this.configSource = configSource;
+    }
 
     public String getContainerJson() {
         String content = FileUtils.readString(getConfigFile());
