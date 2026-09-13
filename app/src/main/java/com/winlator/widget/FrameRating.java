@@ -63,12 +63,15 @@ public class FrameRating extends FrameLayout implements Runnable {
     }
 
     public void update() {
+        update(SystemClock.elapsedRealtime());
+    }
+
+    public void update(long time) {
         FrameTimeRing.record();
         if (lastTime == 0) {
-            lastTime = SystemClock.elapsedRealtime();
-            sessionStartTime = SystemClock.elapsedRealtime();
+            lastTime = time;
+            sessionStartTime = time;
         }
-        long time = SystemClock.elapsedRealtime();
         if (lastFrameTime != 0) {
             int delta = (int) Math.min(time - lastFrameTime, FRAME_HIST_CAP_MS);
             frameHistMs[delta]++;

@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.ContentObserver
 import android.graphics.Color
 import android.os.Build
+import android.os.SystemClock
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -2017,8 +2018,9 @@ fun XServerScreen(
                 applyMouseCursorVisibility()
                 renderer.setOnFrameRenderedListener {
                     if (shouldTrackDisplayedFrames.get()) {
+                        val frameTime = SystemClock.elapsedRealtime()
                         (context as? Activity)?.runOnUiThread {
-                            frameRating?.update()
+                            frameRating?.update(frameTime)
                         }
                     }
                 }
@@ -2174,8 +2176,9 @@ fun XServerScreen(
                                 refreshFrameRatingTracking("content-update")
                             }
                             if (window.id == frameRatingWindowId) {
+                                val frameTime = SystemClock.elapsedRealtime()
                                 (context as? Activity)?.runOnUiThread {
-                                    frameRating?.update()
+                                    frameRating?.update(frameTime)
                                 }
                             }
                         }
