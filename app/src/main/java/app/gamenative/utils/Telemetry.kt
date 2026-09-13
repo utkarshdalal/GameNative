@@ -14,6 +14,7 @@ import android.view.Display
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import com.winlator.container.Container
+import java.io.File
 import org.json.JSONObject
 import com.posthog.PostHog
 import com.winlator.core.GPUHelper
@@ -93,19 +94,22 @@ object DeviceTelemetry {
 object SessionTelemetry {
 
     private val CONFIG_DIFF_IGNORED = setOf(
-        "id", "name", "sessionMetadata", "drives", "executablePath", "execArgs", "configSource", "appliedConfigJson",
+        "id", "name", "sessionMetadata", "drives", "executablePath", "execArgs", "configSource",
     )
 
     fun markConfigApplied(container: Container, source: String) {
         val snapshot = JSONObject(container.containerJson)
         CONFIG_DIFF_IGNORED.forEach { snapshot.remove(it) }
-        container.setAppliedConfig(source, snapshot.toString())
+        container.setConfigSource(source)
         container.saveData()
+        appliedConfigFile(container).writeText(snapshot.toString())
     }
+
+    private fun appliedConfigFile(container: Container) = File(container.rootDir, "applied_config.json")
 
     fun configProperties(container: Container): Map<String, Any> = buildMap {
         put("config_source", container.configSource.ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" })
-        val applied = container.appliedConfigJson
+        val applied = appliedConfigFile(container).takeIf { it.exists() }?.readText().orEmpty()
         if (applied.isEmpty()) return@buildMap
         try {
             val before = JSONObject(applied)
@@ -296,6 +300,7 @@ object CrashCapture {
     }
 
     fun onLine(raw: String) {
+        if (exception == null && !raw.contains("Unhandled exception:")) return
         val line = winePrefix.replace(raw, "").trim()
         synchronized(lock) {
             if (exception == null) {
