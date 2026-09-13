@@ -134,8 +134,7 @@ import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
-import app.gamenative.utils.CrashCapture
-import app.gamenative.utils.GameplayTracker
+import app.gamenative.utils.WindowTracker
 import app.gamenative.utils.PerfSampler
 import app.gamenative.utils.SessionTelemetry
 import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
@@ -247,7 +246,7 @@ private const val ALWAYS_REEXTRACT = true
 
 // Guard to prevent duplicate game_exited events when multiple exit triggers fire simultaneously
 private val isExiting = AtomicBoolean(false)
-private val gameplayTracker = GameplayTracker()
+private val windowTracker = WindowTracker()
 
 private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
 private const val EXIT_PROCESS_POLL_INTERVAL_MS = 1_000L
@@ -451,7 +450,7 @@ fun XServerScreen(
 
     LaunchedEffect(appId) {
         isExiting.set(false)
-        runCatching { gameplayTracker.start(context) }
+        runCatching { windowTracker.start(context) }
     }
 
     val container = remember(appId) {
@@ -2170,7 +2169,7 @@ fun XServerScreen(
                             }
                             if (!getxServer().isFlatPresentationEnabled) return
                             if (window.isApplicationWindow()) {
-                                runCatching { gameplayTracker.onWindowContent(window, getxServer().screenInfo.width.toInt(), getxServer().screenInfo.height.toInt()) }
+                                runCatching { windowTracker.onWindowContent(window) }
                             }
                             if (frameRatingWindowId == -1 && window.isApplicationWindow()) {
                                 refreshFrameRatingTracking("content-update")
@@ -3920,9 +3919,7 @@ private fun setupXEnvironment(
         if (debugRun) DebugReportUtils.startLogcatCapture(context, appId)
     }
 
-    runCatching { CrashCapture.reset() }
     ProcessHelper.addDebugCallback { line ->
-        runCatching { CrashCapture.onLine(line) }
         if (captureLogs) {
             logFile?.appendText(line + "\n")
         }
@@ -4776,10 +4773,10 @@ private fun exit(
             "avg_fps" to (frameRating?.avgFPS ?: 0.0),
             "container_config" to container.containerJson,
         ) + runCatching {
-            SessionTelemetry.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, gameplayTracker, container, reason)
+            SessionTelemetry.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowTracker, container, reason)
         }.getOrElse { emptyMap() },
     )
-    runCatching { gameplayTracker.stop() }
+    runCatching { windowTracker.stop() }
 
     // Store session data in container metadata
     frameRating?.let { rating ->

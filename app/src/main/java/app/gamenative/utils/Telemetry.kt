@@ -148,15 +148,14 @@ object SessionTelemetry {
     fun exitProperties(
         context: Context?,
         frameRating: FrameRating?,
-        gameplayTracker: GameplayTracker,
+        windowTracker: WindowTracker,
         container: Container,
         reason: String,
     ): Map<String, Any> = buildMap {
         put("exit_reason", reason)
         try {
             putAll(configProperties(container))
-            putAll(gameplayTracker.snapshot(context))
-            putAll(CrashCapture.properties())
+            putAll(windowTracker.snapshot(context))
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)
                 frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { put("fps_by_5min", it) }
@@ -190,19 +189,17 @@ object SessionTelemetry {
     }
 }
 
-class GameplayTracker {
+class WindowTracker {
 
     private class Entry(val className: String, val firstMs: Long) {
         var lastMs: Long = firstMs
-        var gameplaySeconds: Int = 0
-        var lastCountedSecond: Long = -1
+        var frames: Long = 0
     }
 
     private val lock = Any()
     private var startMs = 0L
     private val windows = LinkedHashMap<String, Entry>()
     private val classByWindowId = HashMap<Int, String>()
-    private var firstGameplayMs = 0L
     private var batteryStartPct = -1
     private val thermalTransitions = ArrayList<Pair<Long, Int>>()
     private var powerManager: PowerManager? = null
@@ -214,7 +211,7 @@ class GameplayTracker {
                 }
             }
         } catch (e: Exception) {
-            Timber.w(e, "GameplayTracker: thermal sample failed")
+            Timber.w(e, "WindowTracker: thermal sample failed")
         }
     }
 
@@ -222,7 +219,7 @@ class GameplayTracker {
         try {
             begin(context)
         } catch (e: Exception) {
-            Timber.w(e, "GameplayTracker: start failed")
+            Timber.w(e, "WindowTracker: start failed")
         }
     }
 
@@ -232,7 +229,6 @@ class GameplayTracker {
             startMs = SystemClock.elapsedRealtime()
             windows.clear()
             classByWindowId.clear()
-            firstGameplayMs = 0L
             thermalTransitions.clear()
             batteryStartPct = readBatteryPct(context)
         }
@@ -250,7 +246,7 @@ class GameplayTracker {
                 powerManager?.let { it.removeThermalStatusListener(thermalListener) }
             }
         } catch (e: Exception) {
-            Timber.w(e, "GameplayTracker: stop failed")
+            Timber.w(e, "WindowTracker: stop failed")
         }
         powerManager = null
     }
@@ -259,42 +255,33 @@ class GameplayTracker {
         (context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager)
             ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
 
-    fun onWindowContent(window: Window, screenWidth: Int, screenHeight: Int) {
+    fun onWindowContent(window: Window) {
         try {
-            track(window, screenWidth, screenHeight)
+            track(window)
         } catch (e: Exception) {
-            Timber.w(e, "GameplayTracker: sample failed")
+            Timber.w(e, "WindowTracker: sample failed")
         }
     }
 
-    private fun track(window: Window, screenWidth: Int, screenHeight: Int) {
+    private fun track(window: Window) {
         val now = SystemClock.elapsedRealtime()
-        val area = window.width.toLong() * window.height.toLong()
-        val isGameplaySized = area * 2 >= screenWidth.toLong() * screenHeight.toLong()
         synchronized(lock) {
             if (startMs == 0L) startMs = now
             val className = classByWindowId.getOrPut(window.id) { window.className.ifBlank { "unknown" } }
             val entry = windows.getOrPut(className) { Entry(className, now) }
             entry.lastMs = now
-            if (!isGameplaySized || className.equals("explorer.exe", ignoreCase = true)) return
-            if (firstGameplayMs == 0L) firstGameplayMs = now
-            val second = now / 1000
-            if (entry.lastCountedSecond != second) {
-                entry.lastCountedSecond = second
-                entry.gameplaySeconds++
-            }
+            entry.frames++
         }
     }
 
     fun snapshot(context: Context?): Map<String, Any> = try {
         buildSnapshot(context)
     } catch (e: Exception) {
-        Timber.w(e, "GameplayTracker: snapshot failed")
+        Timber.w(e, "WindowTracker: snapshot failed")
         emptyMap()
     }
 
     private fun buildSnapshot(context: Context?): Map<String, Any> = synchronized(lock) {
-        val best = windows.values.maxByOrNull { it.gameplaySeconds }
         buildMap {
             val batteryEnd = context?.let { readBatteryPct(it) } ?: -1
             if (batteryStartPct >= 0 && batteryEnd >= 0) {
@@ -307,114 +294,22 @@ class GameplayTracker {
                     ?.let { put("time_to_throttle_s", it.first) }
                 put("thermal_transitions", thermalTransitions.map { mapOf("t" to it.first, "status" to it.second) })
             }
-            put("gameplay_seconds", best?.gameplaySeconds ?: 0)
-            best?.takeIf { it.gameplaySeconds > 0 }?.let { put("gameplay_window_class", it.className) }
-            if (firstGameplayMs > 0 && startMs > 0) put("time_to_gameplay_s", ((firstGameplayMs - startMs) / 100L) / 10.0)
-            put(
-                "window_timeline",
-                windows.values.map { e ->
-                    mapOf(
-                        "class" to e.className,
-                        "first_s" to ((e.firstMs - startMs) / 1000),
-                        "last_s" to ((e.lastMs - startMs) / 1000),
-                        "gameplay_s" to e.gameplaySeconds,
-                    )
-                },
-            )
+            if (windows.isNotEmpty()) {
+                put("window_classes", windows.keys.joinToString(","))
+                windows.values.maxByOrNull { it.lastMs }?.let { put("last_window_class", it.className) }
+                windows.values.maxByOrNull { it.frames }?.let { put("top_window_class", it.className) }
+                put(
+                    "window_timeline",
+                    windows.values.map { e ->
+                        mapOf(
+                            "class" to e.className,
+                            "first_s" to ((e.firstMs - startMs) / 1000),
+                            "last_s" to ((e.lastMs - startMs) / 1000),
+                            "frames" to e.frames,
+                        )
+                    },
+                )
+            }
         }
     }
 }
-
-object CrashCapture {
-
-    private const val MAX_FRAMES = 5
-
-    private val winePrefix = Regex("^(\\d+\\.\\d+:)?[0-9a-f]{4}:([0-9a-f]{4}:)?")
-    private val frame = Regex("^\\s*=?>?\\s*\\d+\\s+0x[0-9a-f]+ in (\\S+) \\(\\+0x([0-9a-f]+)\\)")
-    private val hexAddress = Regex("(\\s+(to|at)\\s+)?\\(?0x[0-9a-fA-F]+\\)?")
-    private val dllInitFailed = Regex("^err:module:loader_init \"([^\"]+)\" failed to initialize")
-    private val dllInitStatus = Regex("^err:module:loader_init Initializing dlls for .* failed, status ([0-9a-f]+)")
-    private val dllNotFound = Regex("^err:module:import_dll Library (\\S+) \\(which is needed by")
-
-    private val lock = Any()
-    private var exception: String? = null
-    private val frames = ArrayList<String>()
-    private var inBacktrace = false
-
-    fun reset() = synchronized(lock) {
-        exception = null
-        frames.clear()
-        inBacktrace = false
-    }
-
-    fun onLine(raw: String) {
-        try {
-            parse(raw)
-        } catch (e: Exception) {
-            Timber.w(e, "CrashCapture: parse failed")
-        }
-    }
-
-    private fun parse(raw: String) {
-        if (exception == null && !raw.contains("Unhandled exception:") && !raw.contains("err:module:")) return
-        val line = winePrefix.replace(raw, "").trim()
-        synchronized(lock) {
-            if (line.startsWith("err:module:")) {
-                dllInitFailed.find(line)?.let { m ->
-                    if (exception == null) {
-                        exception = "dll init failed"
-                        frames.add(m.groupValues[1])
-                    }
-                }
-                dllInitStatus.find(line)?.let { m ->
-                    if (exception == "dll init failed") exception = "dll init failed, status ${m.groupValues[1]}"
-                }
-                dllNotFound.find(line)?.let { m ->
-                    if (exception == null) {
-                        exception = "dll not found"
-                        frames.add(m.groupValues[1])
-                    }
-                }
-                return
-            }
-            if (exception == null) {
-                if (line.startsWith("Unhandled exception:")) {
-                    exception = hexAddress.replace(line.removePrefix("Unhandled exception:").trim(), "").trim().take(120)
-                }
-                return
-            }
-            if (frames.size >= MAX_FRAMES) return
-            if (line.startsWith("Backtrace:")) {
-                inBacktrace = true
-                return
-            }
-            if (!inBacktrace) return
-            val m = frame.find(line)
-            if (m != null) {
-                frames.add("${m.groupValues[1]}+0x${m.groupValues[2]}")
-            } else if (frames.isNotEmpty()) {
-                inBacktrace = false
-            }
-        }
-    }
-
-    fun properties(): Map<String, Any> = try {
-        crashProperties()
-    } catch (e: Exception) {
-        Timber.w(e, "CrashCapture: properties failed")
-        emptyMap()
-    }
-
-    private fun crashProperties(): Map<String, Any> = synchronized(lock) {
-        val exc = exception ?: return emptyMap()
-        buildMap {
-            put("crash_exception", exc)
-            frames.firstOrNull()?.let { top ->
-                put("crash_signature", top)
-                put("crash_module", top.substringBefore("+0x"))
-            }
-            if (frames.isNotEmpty()) put("crash_frames", frames.toList())
-        }
-    }
-}
-
