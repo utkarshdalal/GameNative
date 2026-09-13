@@ -329,6 +329,9 @@ object CrashCapture {
     private val winePrefix = Regex("^(\\d+\\.\\d+:)?[0-9a-f]{4}:([0-9a-f]{4}:)?")
     private val frame = Regex("^\\s*=?>?\\s*\\d+\\s+0x[0-9a-f]+ in (\\S+) \\(\\+0x([0-9a-f]+)\\)")
     private val hexAddress = Regex("(\\s+(to|at)\\s+)?\\(?0x[0-9a-fA-F]+\\)?")
+    private val dllInitFailed = Regex("^err:module:loader_init \"([^\"]+)\" failed to initialize")
+    private val dllInitStatus = Regex("^err:module:loader_init Initializing dlls for .* failed, status ([0-9a-f]+)")
+    private val dllNotFound = Regex("^err:module:import_dll Library (\\S+) \\(which is needed by")
 
     private val lock = Any()
     private var exception: String? = null
@@ -350,9 +353,27 @@ object CrashCapture {
     }
 
     private fun parse(raw: String) {
-        if (exception == null && !raw.contains("Unhandled exception:")) return
+        if (exception == null && !raw.contains("Unhandled exception:") && !raw.contains("err:module:")) return
         val line = winePrefix.replace(raw, "").trim()
         synchronized(lock) {
+            if (line.startsWith("err:module:")) {
+                dllInitFailed.find(line)?.let { m ->
+                    if (exception == null) {
+                        exception = "dll init failed"
+                        frames.add(m.groupValues[1])
+                    }
+                }
+                dllInitStatus.find(line)?.let { m ->
+                    if (exception == "dll init failed") exception = "dll init failed, status ${m.groupValues[1]}"
+                }
+                dllNotFound.find(line)?.let { m ->
+                    if (exception == null) {
+                        exception = "dll not found"
+                        frames.add(m.groupValues[1])
+                    }
+                }
+                return
+            }
             if (exception == null) {
                 if (line.startsWith("Unhandled exception:")) {
                     exception = hexAddress.replace(line.removePrefix("Unhandled exception:").trim(), "").trim().take(120)

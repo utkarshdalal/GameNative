@@ -3906,7 +3906,7 @@ private fun setupXEnvironment(
             if (enableWineDebug && wineDebugChannels.isNotEmpty())
                 "+" + wineDebugChannels.replace(",", ",+")
             else
-                "-all",
+                "-all,err+all",
         )
     }
     // capture debug output to file if either Wine or Box86/64 logging is enabled
