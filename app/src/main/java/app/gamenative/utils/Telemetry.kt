@@ -282,7 +282,7 @@ object CrashCapture {
 
     private val winePrefix = Regex("^(\\d+\\.\\d+:)?[0-9a-f]{4}:([0-9a-f]{4}:)?")
     private val frame = Regex("^\\s*=?>?\\s*\\d+\\s+0x[0-9a-f]+ in (\\S+) \\(\\+0x([0-9a-f]+)\\)")
-    private val hexAddress = Regex("0x[0-9a-fA-F]+")
+    private val hexAddress = Regex("(\\s+(to|at)\\s+)?\\(?0x[0-9a-fA-F]+\\)?")
 
     private val lock = Any()
     private var exception: String? = null
