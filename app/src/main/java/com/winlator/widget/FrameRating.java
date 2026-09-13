@@ -40,6 +40,10 @@ public class FrameRating extends FrameLayout implements Runnable {
     private long lastFrameTime = 0;
     private long totalFrames = 0;
     private static final int FRAME_HIST_CAP_MS = 200;
+    private static final int FPS_BUCKET_MS = 5 * 60 * 1000;
+    private static final int MAX_FPS_BUCKETS = 48;
+    private final long[] bucketFpsSum = new long[MAX_FPS_BUCKETS];
+    private final int[] bucketReadings = new int[MAX_FPS_BUCKETS];
     private final int[] frameHistMs = new int[FRAME_HIST_CAP_MS + 1];
 
     public FrameRating(Context context) {
@@ -79,6 +83,11 @@ public class FrameRating extends FrameLayout implements Runnable {
                 int currentFPS = Math.round(lastFPS);
                 readingCount++;
                 fpsSum += currentFPS;
+                int bucket = (int) ((time - sessionStartTime) / FPS_BUCKET_MS);
+                if (bucket < MAX_FPS_BUCKETS) {
+                    bucketFpsSum[bucket] += currentFPS;
+                    bucketReadings[bucket]++;
+                }
 
                 // Track max and min FPS (min must be > 1)
                 if (currentFPS > maxFPS) {
@@ -112,6 +121,8 @@ public class FrameRating extends FrameLayout implements Runnable {
         lastFrameTime = 0;
         totalFrames = 0;
         java.util.Arrays.fill(frameHistMs, 0);
+        java.util.Arrays.fill(bucketFpsSum, 0);
+        java.util.Arrays.fill(bucketReadings, 0);
         post(() -> textView.setText(String.format(Locale.ENGLISH, "%.1f", 0f)));
     }
 
@@ -127,6 +138,14 @@ public class FrameRating extends FrameLayout implements Runnable {
 
     public long getTotalFrames() {
         return totalFrames;
+    }
+
+    public java.util.List<Integer> getFpsBy5Min() {
+        java.util.ArrayList<Integer> out = new java.util.ArrayList<>();
+        for (int i = 0; i < MAX_FPS_BUCKETS && bucketReadings[i] > 0; i++) {
+            out.add((int) (bucketFpsSum[i] / bucketReadings[i]));
+        }
+        return out;
     }
 
     public int getFramePercentileMs(double percentile) {

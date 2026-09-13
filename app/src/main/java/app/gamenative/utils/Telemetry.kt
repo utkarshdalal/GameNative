@@ -97,9 +97,10 @@ object SessionTelemetry {
     ): Map<String, Any> = buildMap {
         put("exit_reason", reason)
         try {
-            putAll(gameplayTracker.snapshot())
+            putAll(gameplayTracker.snapshot(context))
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)
+                frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { put("fps_by_5min", it) }
                 if (frameRating.totalFrames > 1) {
                     put("frame_p50_ms", frameRating.getFramePercentileMs(0.50))
                     put("frame_p99_ms", frameRating.getFramePercentileMs(0.99))
@@ -143,13 +144,45 @@ class GameplayTracker {
     private val entries = LinkedHashMap<String, Entry>()
     private val classByWindowId = HashMap<Int, String>()
     private var firstGameplayMs = 0L
-
-    fun reset() = synchronized(lock) {
-        startMs = SystemClock.elapsedRealtime()
-        entries.clear()
-        classByWindowId.clear()
-        firstGameplayMs = 0L
+    private var batteryStartPct = -1
+    private val thermalTransitions = ArrayList<Pair<Long, Int>>()
+    private var powerManager: PowerManager? = null
+    private val thermalListener = PowerManager.OnThermalStatusChangedListener { status ->
+        synchronized(lock) {
+            if (thermalTransitions.lastOrNull()?.second != status) {
+                thermalTransitions.add((SystemClock.elapsedRealtime() - startMs) / 1000 to status)
+            }
+        }
     }
+
+    fun start(context: Context) {
+        stop()
+        synchronized(lock) {
+            startMs = SystemClock.elapsedRealtime()
+            entries.clear()
+            classByWindowId.clear()
+            firstGameplayMs = 0L
+            thermalTransitions.clear()
+            batteryStartPct = readBatteryPct(context)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            powerManager = (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.also {
+                synchronized(lock) { thermalTransitions.add(0L to it.currentThermalStatus) }
+                runCatching { it.addThermalStatusListener(thermalListener) }
+            }
+        }
+    }
+
+    fun stop() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            powerManager?.let { runCatching { it.removeThermalStatusListener(thermalListener) } }
+        }
+        powerManager = null
+    }
+
+    private fun readBatteryPct(context: Context): Int =
+        (context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager)
+            ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
 
     fun onWindowContent(window: Window, screenWidth: Int, screenHeight: Int) {
         val now = SystemClock.elapsedRealtime()
@@ -170,9 +203,20 @@ class GameplayTracker {
         }
     }
 
-    fun snapshot(): Map<String, Any> = synchronized(lock) {
+    fun snapshot(context: Context?): Map<String, Any> = synchronized(lock) {
         val best = entries.values.maxByOrNull { it.gameplaySeconds }
         buildMap {
+            val batteryEnd = context?.let { readBatteryPct(it) } ?: -1
+            if (batteryStartPct >= 0 && batteryEnd >= 0) {
+                put("battery_start_pct", batteryStartPct)
+                put("battery_end_pct", batteryEnd)
+            }
+            if (thermalTransitions.isNotEmpty()) {
+                put("thermal_peak", thermalTransitions.maxOf { it.second })
+                thermalTransitions.firstOrNull { it.second >= PowerManager.THERMAL_STATUS_MODERATE }
+                    ?.let { put("time_to_throttle_s", it.first) }
+                put("thermal_transitions", thermalTransitions.map { mapOf("t" to it.first, "status" to it.second) })
+            }
             put("gameplay_seconds", best?.gameplaySeconds ?: 0)
             best?.takeIf { it.gameplaySeconds > 0 }?.let { put("gameplay_window_class", it.className) }
             if (firstGameplayMs > 0 && startMs > 0) put("time_to_gameplay_s", ((firstGameplayMs - startMs) / 100L) / 10.0)

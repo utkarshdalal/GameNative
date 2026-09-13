@@ -449,7 +449,7 @@ fun XServerScreen(
 
     LaunchedEffect(appId) {
         isExiting.set(false)
-        gameplayTracker.reset()
+        gameplayTracker.start(context)
     }
 
     val container = remember(appId) {
@@ -4771,6 +4771,7 @@ private fun exit(
             "container_config" to container.containerJson,
         ) + SessionTelemetry.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, gameplayTracker, reason),
     )
+    gameplayTracker.stop()
 
     // Store session data in container metadata
     frameRating?.let { rating ->
