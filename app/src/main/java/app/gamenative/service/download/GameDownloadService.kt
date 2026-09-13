@@ -128,6 +128,7 @@ object GameDownloadService {
             .put("fresh", isUpdateOrVerify)
             .put("max_workers", maxWorkers)
             .put("process_workers", processWorkers)
+            .put("pipeline_logs", SHOW_PIPELINE_LOGS)
             .put("servers", serversToJson(servers))
             .put("depots", depotsJson)
             .toString()
@@ -484,6 +485,14 @@ object GameDownloadService {
 
     private const val MAX_AUTO_RETRIES = 2
     private const val RETRY_BACKOFF_FIRST_MS = 30_000L
+
+    /**
+     * Hardcoded switch for native engine pipeline logs (throughput / fetch-window / staging
+     * lines). Steam emits them from Rust via android_log (tag GN_STEAM_DL) — the flag travels
+     * in the plan JSON so no JNI callback is even wired when off; Epic/GOG/Amazon forward their
+     * lines over JNI `onLog`, gated at the Timber call sites in their managers.
+     */
+    const val SHOW_PIPELINE_LOGS = true
     private const val RETRY_BACKOFF_LATER_MS = 120_000L
 
     // ── Keep the device awake while transferring ─────────────────────────────

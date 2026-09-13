@@ -968,7 +968,7 @@ class GOGDownloadManager @Inject constructor(
                     }
 
                     override fun onLog(line: String) {
-                        Timber.tag("GOG").d(line)
+                        if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag("GOG").d(line)
                     }
 
                     override fun onComplete(

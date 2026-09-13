@@ -168,7 +168,7 @@ class AmazonDownloadManager @Inject constructor(
                     }
 
                     override fun onLog(line: String) {
-                        Timber.tag(TAG).d(line)
+                        if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag(TAG).d(line)
                     }
 
                     override fun onComplete(success: Boolean, error: String, bytesWritten: Long) = Unit

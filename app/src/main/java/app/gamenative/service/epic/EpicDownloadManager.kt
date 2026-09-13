@@ -1086,7 +1086,7 @@ class EpicDownloadManager @Inject constructor(
             }
 
             override fun onLog(line: String) {
-                Timber.tag("Epic").d(line)
+                if (GameDownloadService.SHOW_PIPELINE_LOGS) Timber.tag("Epic").d(line)
             }
 
             override fun onComplete(success: Boolean, error: String, bytesCredited: Long) = Unit

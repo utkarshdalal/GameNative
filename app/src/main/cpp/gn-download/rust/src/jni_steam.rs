@@ -38,6 +38,33 @@ use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 
+// ── Pipeline diagnostics → logcat ───────────────────────────────────────────────────────────
+// The engine's throughput/window lines are opt-in via DepotLogCallback; they reach logcat only
+// when the plan carries "pipeline_logs": true (GameDownloadService.SHOW_PIPELINE_LOGS).
+
+/// logcat tag for every engine line (mirrors the GN_EPIC_DL/GN_GOG_DL store tags).
+const LOG_TAG: &str = "GN_STEAM_DL";
+
+#[cfg(target_os = "android")]
+#[link(name = "log")]
+unsafe extern "C" {
+    fn __android_log_write(prio: i32, tag: *const i8, text: *const i8) -> i32;
+}
+
+fn android_log(message: &str) {
+    #[cfg(target_os = "android")]
+    {
+        use std::ffi::CString;
+        let (Ok(tag), Ok(text)) = (CString::new(LOG_TAG), CString::new(message)) else {
+            return;
+        };
+        // 4 = ANDROID_LOG_INFO
+        unsafe { __android_log_write(4, tag.as_ptr().cast(), text.as_ptr().cast()) };
+    }
+    #[cfg(not(target_os = "android"))]
+    let _ = (LOG_TAG, message);
+}
+
 static JVM: OnceLock<JavaVM> = OnceLock::new();
 
 #[no_mangle]
@@ -333,6 +360,11 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
         .get("fresh")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
+    // Opt-in engine diagnostics → logcat (GN_STEAM_DL). Absent = silent.
+    let pipeline_logs = plan
+        .get("pipeline_logs")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let max_workers = plan
         .get("max_workers")
         .and_then(|v| v.as_u64())
@@ -371,6 +403,9 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
             (code != 0).then_some(code)
         };
         let code_refresher: depot_downloader::ManifestCodeRefresher = &code_refresher;
+        let log_fn = |line: &str| android_log(line);
+        let log_cb: Option<crate::depot_writer::DepotLogCallback<'_>> =
+            if pipeline_logs { Some(&log_fn) } else { None };
         let result = depot_downloader::download_resolved_depots_with_cancel_progress(
             &install_dir,
             &depots,
@@ -382,7 +417,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
             Some(cancel.as_ref()),
             Some(on_progress),
             Some(code_refresher),
-            None,
+            log_cb,
         );
         dispatch_complete(listener, result);
     });
