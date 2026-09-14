@@ -5,6 +5,7 @@ import app.gamenative.enums.Marker
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
 import com.winlator.core.WineRegistryEditor
+import com.winlator.xenvironment.ImageFs
 import `in`.dragonbra.javasteam.types.KeyValue
 import timber.log.Timber
 import java.io.File
@@ -30,6 +31,20 @@ object SteamInstallScriptRegistry {
     )
 
     private const val GAME_DRIVE_ROOT = "A:\\"
+    private const val DEFAULT_LANGUAGE = "english"
+    private const val USER_PROFILE = "C:\\users\\${ImageFs.USER}"
+    private val TOKEN_PATTERN = Regex("(?i)%([A-Z_]+)%([\\\\/]?)")
+
+    private fun tokens(installDir: String): Map<String, String> = mapOf(
+        "INSTALLDIR" to installDir,
+        "ROOTDRIVE" to installDir.substringBefore(':'),
+        "WINDIR" to "C:\\windows",
+        "APPDATA" to "$USER_PROFILE\\AppData\\Roaming",
+        "LOCALAPPDATA" to "$USER_PROFILE\\AppData\\Local",
+        "USER_MYDOCS" to "$USER_PROFILE\\Documents",
+        "COMMON_MYDOCS" to "C:\\users\\Public\\Documents",
+        "STEAMPATH" to "C:\\Program Files (x86)\\Steam",
+    )
 
     fun applyForLaunch(container: Container, appId: String) {
         if (ContainerUtils.extractGameSourceFromContainerId(appId) != GameSource.STEAM) return
@@ -48,7 +63,7 @@ object SteamInstallScriptRegistry {
             Timber.w("Install script $scriptName not found in ${gameDir.absolutePath}")
             return
         }
-        val entries = parse(scriptFile.readText(), GAME_DRIVE_ROOT)
+        val entries = parse(scriptFile.readText(), GAME_DRIVE_ROOT, container.language)
         write(prefixDir, entries)
         Timber.i("Applied ${entries.size} install-script registry values for app $numericAppId")
 
@@ -57,24 +72,25 @@ object SteamInstallScriptRegistry {
         runCatching { prefixStamp.createNewFile() }
     }
 
-    internal fun parse(vdf: String, installDir: String): List<Entry> {
+    internal fun parse(vdf: String, installDir: String, language: String = DEFAULT_LANGUAGE): List<Entry> {
         val root = runCatching { KeyValue.loadFromString(vdf) }.getOrNull() ?: return emptyList()
         val registry = root["InstallScript"]["Registry"].takeUnless { it === KeyValue.INVALID }
             ?: root["Registry"].takeUnless { it === KeyValue.INVALID }
             ?: return emptyList()
 
+        val tokens = tokens(installDir)
         val entries = mutableListOf<Entry>()
         for (key in registry.children) {
-            val split = splitHive(expandTokens(key.name, installDir))
+            val split = splitHive(expandTokens(key.name, tokens))
             if (split == null) {
                 Timber.d("Skipping unsupported registry key ${key.name}")
                 continue
             }
             val (hive, path) = split
             val redirected = if (hive == Hive.HKLM) redirectTo32BitView(path) else path
-            addValues(entries, hive, redirected, key["string"], ValueType.STRING, installDir)
-            addValues(entries, hive, redirected, key["expandstring"], ValueType.EXPAND_STRING, installDir)
-            addValues(entries, hive, redirected, key["dword"], ValueType.DWORD, installDir)
+            addValues(entries, hive, redirected, key["string"], ValueType.STRING, tokens, language)
+            addValues(entries, hive, redirected, key["expandstring"], ValueType.EXPAND_STRING, tokens, language)
+            addValues(entries, hive, redirected, key["dword"], ValueType.DWORD, tokens, language)
         }
         return entries
     }
@@ -114,16 +130,20 @@ object SteamInstallScriptRegistry {
         key: String,
         values: KeyValue,
         type: ValueType,
-        installDir: String,
+        tokens: Map<String, String>,
+        language: String,
     ) {
         if (values === KeyValue.INVALID) return
-        for (value in values.children) {
+        val (languageBlocks, plainValues) = values.children.partition { it.value == null && it.children.isNotEmpty() }
+        val selectedBlock = languageBlocks.firstOrNull { it.name.equals(language, ignoreCase = true) }
+            ?: languageBlocks.firstOrNull { it.name.equals(DEFAULT_LANGUAGE, ignoreCase = true) }
+        for (value in plainValues + selectedBlock?.children.orEmpty()) {
             entries += Entry(
                 hive = hive,
                 key = key,
-                name = value.name.ifEmpty { null },
+                name = value.name.takeUnless { it.isEmpty() || it.equals("(Default)", ignoreCase = true) },
                 type = type,
-                data = expandTokens(value.value.orEmpty(), installDir),
+                data = expandTokens(value.value.orEmpty(), tokens),
             )
         }
     }
@@ -148,12 +168,12 @@ object SteamInstallScriptRegistry {
         return (listOf(segments[0], "Wow6432Node") + segments.drop(1)).joinToString("\\")
     }
 
-    private fun expandTokens(value: String, installDir: String): String {
-        val normalizedDir = installDir.trimEnd('\\', '/')
-        return value
-            .replace(Regex("(?i)%INSTALLDIR%[\\\\/]")) { "$normalizedDir\\" }
-            .replace("%INSTALLDIR%", installDir, ignoreCase = true)
-    }
+    private fun expandTokens(value: String, tokens: Map<String, String>): String =
+        TOKEN_PATTERN.replace(value) { match ->
+            val replacement = tokens[match.groupValues[1].uppercase()] ?: return@replace match.value
+            val separator = match.groupValues[2]
+            if (separator.isEmpty()) replacement else replacement.trimEnd('\\', '/') + "\\"
+        }
 
     private fun resolveChildCaseInsensitive(root: File, relativePath: String): File? {
         var current = root

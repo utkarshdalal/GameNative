@@ -37,7 +37,7 @@ class SteamInstallScriptRegistryTest {
             listOf(
                 Entry(Hive.HKLM, SPORE_KEY, "InstallLoc", ValueType.STRING, "A:\\"),
                 Entry(Hive.HKLM, SPORE_KEY, "DataDir", ValueType.STRING, "A:\\Data"),
-                Entry(Hive.HKLM, SPORE_KEY, "Cache", ValueType.EXPAND_STRING, "%LOCALAPPDATA%\\Spore"),
+                Entry(Hive.HKLM, SPORE_KEY, "Cache", ValueType.EXPAND_STRING, "C:\\users\\xuser\\AppData\\Local\\Spore"),
                 Entry(Hive.HKLM, SPORE_KEY, "Installed", ValueType.DWORD, "1"),
                 Entry(Hive.HKCU, "Software\\Electronic Arts\\SPORE", "Language", ValueType.STRING, "en_US"),
             ),
@@ -74,6 +74,76 @@ class SteamInstallScriptRegistryTest {
     }
 
     @Test
+    fun parse_selectsLanguageBlockAndFallsBackToEnglish() {
+        val script = """
+            "InstallScript"
+            {
+                "Registry"
+                {
+                    "HKLM\\Software\\Foo"
+                    {
+                        "dword"
+                        {
+                            "english" { "Language" "1" }
+                            "german" { "Language" "3" }
+                            "Installed" "1"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                Entry(Hive.HKLM, "Software\\Wow6432Node\\Foo", "Installed", ValueType.DWORD, "1"),
+                Entry(Hive.HKLM, "Software\\Wow6432Node\\Foo", "Language", ValueType.DWORD, "3"),
+            ),
+            SteamInstallScriptRegistry.parse(script, "A:\\", "german"),
+        )
+        assertEquals(
+            listOf(
+                Entry(Hive.HKLM, "Software\\Wow6432Node\\Foo", "Installed", ValueType.DWORD, "1"),
+                Entry(Hive.HKLM, "Software\\Wow6432Node\\Foo", "Language", ValueType.DWORD, "1"),
+            ),
+            SteamInstallScriptRegistry.parse(script, "A:\\", "french"),
+        )
+    }
+
+    @Test
+    fun parse_expandsSteamTokensAndDefaultValueName() {
+        val script = """
+            "InstallScript"
+            {
+                "Registry"
+                {
+                    "HKCU\\Software\\Foo"
+                    {
+                        "string"
+                        {
+                            "(Default)" "%ROOTDRIVE%:\\Games"
+                            "Saves" "%USER_MYDOCS%\\Foo"
+                            "Cache" "%LOCALAPPDATA%"
+                            "Client" "%StEaMpAtH%/steam.exe"
+                            "Unknown" "%NOPE%\\x"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                Entry(Hive.HKCU, "Software\\Foo", null, ValueType.STRING, "A:\\Games"),
+                Entry(Hive.HKCU, "Software\\Foo", "Saves", ValueType.STRING, "C:\\users\\xuser\\Documents\\Foo"),
+                Entry(Hive.HKCU, "Software\\Foo", "Cache", ValueType.STRING, "C:\\users\\xuser\\AppData\\Local"),
+                Entry(Hive.HKCU, "Software\\Foo", "Client", ValueType.STRING, "C:\\Program Files (x86)\\Steam\\steam.exe"),
+                Entry(Hive.HKCU, "Software\\Foo", "Unknown", ValueType.STRING, "%NOPE%\\x"),
+            ),
+            SteamInstallScriptRegistry.parse(script, "A:\\"),
+        )
+    }
+
+    @Test
     fun parse_returnsEmptyForMalformedOrScriptWithoutRegistry() {
         assertTrue(SteamInstallScriptRegistry.parse("not a vdf {{{", "A:\\").isEmpty())
         assertTrue(SteamInstallScriptRegistry.parse("\"InstallScript\" { \"Run Process\" { } }", "A:\\").isEmpty())
@@ -93,7 +163,7 @@ class SteamInstallScriptRegistryTest {
             assertEquals("A:\\Data", editor.getStringValue(SPORE_KEY, "DataDir"))
             assertEquals(1, editor.getDwordValue(SPORE_KEY, "Installed"))
         }
-        assertTrue(systemReg.readText().contains("\"Cache\"=str(2):\"%LOCALAPPDATA%\\\\Spore\""))
+        assertTrue(systemReg.readText().contains("\"Cache\"=str(2):\"C:\\\\users\\\\xuser\\\\AppData\\\\Local\\\\Spore\""))
         WineRegistryEditor(userReg).use { editor ->
             assertEquals("en_US", editor.getStringValue("Software\\Electronic Arts\\SPORE", "Language"))
         }
