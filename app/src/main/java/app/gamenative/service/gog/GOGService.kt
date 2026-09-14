@@ -15,6 +15,7 @@ import app.gamenative.PluviaApp
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
+import com.winlator.container.Container
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -473,6 +474,8 @@ class GOGService : Service() {
             context: Context,
             appId: String,
             preferredAction: String = "none",
+            // false keeps wine cloud accretive; see GOGCloudSavesManager.syncSaves.
+            chromiumProfileSync: Boolean = false,
         ): Boolean = withContext(Dispatchers.IO) {
             try {
                 Timber.tag("GOG").d("[Cloud Saves] syncCloudSaves called for $appId with action: $preferredAction")
@@ -575,6 +578,7 @@ class GOGService : Service() {
                                 dirname = location.name,
                                 lastSyncTimestamp = timestamp,
                                 preferredAction = preferredAction,
+                                chromiumProfileSync = chromiumProfileSync,
                             )
 
                             if (newTimestamp != timestamp) {
@@ -687,6 +691,9 @@ class GOGService : Service() {
                     val timestamp = instance.gogManager
                         .getCloudSaveSyncTimestamp(appId, location.name).toLongOrNull() ?: 0L
                     val conflict = manager.detectConflict(
+                        // runtime check, not Html5Routing, keeps this service free of html5 imports.
+                        chromiumProfileSync = ContainerUtils.resolveRuntime(context, appId) ==
+                            Container.RUNTIME_WEBVIEW,
                         clientId = location.clientId,
                         clientSecret = location.clientSecret,
                         localPath = location.location,
