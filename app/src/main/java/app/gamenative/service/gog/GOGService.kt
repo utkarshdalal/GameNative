@@ -562,6 +562,8 @@ class GOGService : Service() {
             context: Context,
             appId: String,
             preferredAction: String = "none",
+            // false keeps wine cloud accretive; see GOGCloudSavesManager.syncSaves.
+            chromiumProfileSync: Boolean = false,
         ): Boolean = withContext(Dispatchers.IO) {
             try {
                 Timber.tag("GOG").d("[Cloud Saves] syncCloudSaves called for $appId with action: $preferredAction")
@@ -668,6 +670,7 @@ class GOGService : Service() {
                                 lastSyncTimestamp = timestamp,
                                 preferredAction = preferredAction,
                                 beforeOverwrite = { backupSession.ensure() },
+                                chromiumProfileSync = chromiumProfileSync,
                             )
 
                             if (newTimestamp != timestamp) {
@@ -760,6 +763,8 @@ class GOGService : Service() {
         suspend fun detectCloudSaveConflict(
             context: Context,
             appId: String,
+            // true only from the html5 pre-launch path.
+            chromiumProfileSync: Boolean = false,
         ): GogConflict? = withContext(Dispatchers.IO) {
             val instance = getInstance() ?: return@withContext null
             if (!GOGAuthManager.hasStoredCredentials(context)) return@withContext null
@@ -780,6 +785,7 @@ class GOGService : Service() {
                     val timestamp = instance.gogManager
                         .getCloudSaveSyncTimestamp(appId, location.name).toLongOrNull() ?: 0L
                     val conflict = manager.detectConflict(
+                        chromiumProfileSync = chromiumProfileSync,
                         clientId = location.clientId,
                         clientSecret = location.clientSecret,
                         localPath = location.location,
