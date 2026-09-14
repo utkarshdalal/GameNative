@@ -81,7 +81,7 @@ object SteamInstallScriptRegistry {
         val tokens = tokens(installDir)
         val entries = mutableListOf<Entry>()
         for (key in registry.children) {
-            val split = splitHive(expandTokens(key.name, tokens))
+            val split = splitHive(expandTokens(key.name.orEmpty(), tokens))
             if (split == null) {
                 Timber.d("Skipping unsupported registry key ${key.name}")
                 continue
@@ -141,7 +141,7 @@ object SteamInstallScriptRegistry {
             entries += Entry(
                 hive = hive,
                 key = key,
-                name = value.name.takeUnless { it.isEmpty() || it.equals("(Default)", ignoreCase = true) },
+                name = value.name.orEmpty().takeUnless { it.isEmpty() || it.equals("(Default)", ignoreCase = true) },
                 type = type,
                 data = expandTokens(value.value.orEmpty(), tokens),
             )
