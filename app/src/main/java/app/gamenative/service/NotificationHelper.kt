@@ -27,7 +27,6 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
         const val NOTIFICATION_ID_GOG = 2
         const val NOTIFICATION_ID_EPIC = 3
         const val NOTIFICATION_ID_AMAZON = 4
-        const val NOTIFICATION_ID_DOWNLOAD = 5
         private const val NOTIFICATION_ID_SUMMARY = 100
 
         const val ACTION_EXIT = "com.oxgames.pluvia.EXIT"
@@ -52,7 +51,6 @@ class NotificationHelper @Inject constructor(@ApplicationContext private val con
         NOTIFICATION_ID_GOG -> "GOG"
         NOTIFICATION_ID_EPIC -> "Epic Games"
         NOTIFICATION_ID_AMAZON -> "Amazon Games"
-        NOTIFICATION_ID_DOWNLOAD -> "Downloads"
         else -> context.getString(R.string.app_name)
     }
 

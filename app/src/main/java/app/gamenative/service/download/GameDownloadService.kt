@@ -18,8 +18,6 @@ import org.json.JSONObject
 import timber.log.Timber
 import android.content.Context
 import android.content.Intent
-import android.net.wifi.WifiManager
-import android.os.PowerManager
 import app.gamenative.BuildConfig
 import app.gamenative.data.GameSource
 import kotlinx.coroutines.Dispatchers
@@ -496,95 +494,6 @@ object GameDownloadService {
     val SHOW_PIPELINE_LOGS = BuildConfig.DEBUG
     private const val RETRY_BACKOFF_LATER_MS = 120_000L
 
-    // ── Keep the device awake while transferring ─────────────────────────────
-    // The store services run in the foreground, but that does NOT stop the CPU
-    // from suspending when the device sleeps: without a wake lock a multi-hour
-    // download stalls minutes after the screen turns off, and Doze can suspend
-    // the network of a non-exempt app. While at least one download is
-    // transferring (or a retry backoff is pending):
-    //   - DownloadForegroundService anchors the process (started/stopped here,
-    //     so survival does not depend on any store service), and
-    //   - a partial WakeLock + low-latency WifiLock is held — but ONLY while
-    //     the device is charging: keeping a phone awake for hours on battery
-    //     drains it hot and fast, so on battery the download degrades to
-    //     "runs while the device is awake" and resumes from its snapshot.
-    private var appContext: Context? = null
-    private var wakeLock: PowerManager.WakeLock? = null
-    private var wifiLock: WifiManager.WifiLock? = null
-    private var downloadFgRunning = false
-
-    /** Failsafe cap; normal operation releases as soon as the queue drains. */
-    private const val WAKE_LOCK_TIMEOUT_MS = 12L * 60 * 60 * 1000
-
-    private val powerStateReceiver = object : android.content.BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            synchronized(queueLock) {
-                updateWakeLockLocked()
-            }
-        }
-    }
-
-    fun init(context: Context) {
-        if (appContext == null) {
-            appContext = context.applicationContext
-            appContext!!.registerReceiver(
-                powerStateReceiver,
-                android.content.IntentFilter().apply {
-                    addAction(Intent.ACTION_POWER_CONNECTED)
-                    addAction(Intent.ACTION_POWER_DISCONNECTED)
-                },
-            )
-        }
-    }
-
-    private fun isDeviceCharging(ctx: Context): Boolean {
-        val battery: Intent? = ctx.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        val status = battery?.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1) ?: -1
-        return status == android.os.BatteryManager.BATTERY_STATUS_CHARGING ||
-            status == android.os.BatteryManager.BATTERY_STATUS_FULL
-    }
-
-    /** Must be called under [queueLock] after every mutation that can change activity. */
-    private fun updateWakeLockLocked() {
-        val ctx = appContext ?: return
-        val anyTransferring = activeDownloads.values.any { it.downloadInfo.isActive() } || retryJobs.isNotEmpty()
-
-        // Process anchor: independent of charging state.
-        if (anyTransferring && !downloadFgRunning) {
-            DownloadForegroundService.start(ctx)
-            downloadFgRunning = true
-        } else if (!anyTransferring && downloadFgRunning) {
-            DownloadForegroundService.stop(ctx)
-            downloadFgRunning = false
-        }
-
-        // CPU/Wi-Fi keep-alive: only on external power.
-        val wantWakeLock = anyTransferring && isDeviceCharging(ctx)
-        if (wantWakeLock) {
-            if (wakeLock == null) {
-                val pm = ctx.getSystemService(Context.POWER_SERVICE) as PowerManager
-                wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "GameNative::DownloadWakeLock").apply {
-                    setReferenceCounted(false)
-                    acquire(WAKE_LOCK_TIMEOUT_MS)
-                }
-                val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-                wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "GameNative:DownloadWifiLock").apply {
-                    setReferenceCounted(false)
-                    acquire()
-                }
-                Timber.i("[GameDownloadService] Wake/Wi-Fi lock acquired (download transferring, charging)")
-            }
-        } else {
-            if (wakeLock != null && anyTransferring) {
-                Timber.i("[GameDownloadService] Wake/Wi-Fi lock released (device unplugged; download runs while awake)")
-            }
-            wakeLock?.let { if (it.isHeld) it.release() }
-            wakeLock = null
-            wifiLock?.let { if (it.isHeld) it.release() }
-            wifiLock = null
-        }
-    }
-
     /**
      * Classify a failure message. Default is NOT transient: an unknown error
      * fails fast instead of looping. Permanent markers are checked first so a
@@ -661,11 +570,9 @@ object GameDownloadService {
                         Timber.i("[GameDownloadService] Auto-retrying $gameSource download for $gameId")
                         entry.downloadInfo.triggerAutoResume()
                     }
-                    updateWakeLockLocked()
-                }
+                    }
             }
             retryJobs[key] = job
-            updateWakeLockLocked()
             return true
         }
     }
@@ -695,7 +602,6 @@ object GameDownloadService {
             if (activeDownloads.values.none { it.downloadInfo.isActive() }) {
                 resumeNextLocked()
             }
-            updateWakeLockLocked()
         }
     }
 
@@ -742,7 +648,6 @@ object GameDownloadService {
             // Register the new download
             activeDownloads[key] = DownloadEntry(gameSource, gameId, downloadInfo)
             Timber.i("[GameDownloadService] Registered ${gameSource} download for $gameId")
-            updateWakeLockLocked()
         }
     }
 
@@ -767,7 +672,6 @@ object GameDownloadService {
 
             // Auto-resume the first paused download (if any)
             resumeNextLocked()
-            updateWakeLockLocked()
         }
     }
 
@@ -816,7 +720,6 @@ object GameDownloadService {
             if (activeDownloads.values.none { it.downloadInfo.isActive() }) {
                 resumeNextLocked()
             }
-            updateWakeLockLocked()
         }
     }
 
