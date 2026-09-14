@@ -55,7 +55,7 @@ class SteamInstallScriptRegistryTest {
                 {
                     "HKEY_CLASSES_ROOT\\spore"
                     {
-                        "string" { "" "URL:spore" }
+                        "string" { "(Default)" "URL:spore" }
                     }
                     "HKLM\\Software\\Wow6432Node\\Foo"
                     {
