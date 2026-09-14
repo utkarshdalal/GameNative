@@ -40,6 +40,10 @@ public:
     void PushBarriers(LsfgBarriers& barriers, uint64_t frame_count, size_t stage);
     void DispatchStage(VkCommandBuffer cmdbuf, uint64_t frame_count, size_t stage);
 
+    void ResetHistory() {
+        history_primed = false;
+    }
+
     [[nodiscard]] LsfgImageHistory& Outputs() {
         return out_images;
     }
@@ -60,6 +64,7 @@ private:
     LsfgImagePair temp3;
     LsfgImageHistory out_images;
     bool allocated{};
+    bool history_primed{};
 };
 
 }

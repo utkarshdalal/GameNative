@@ -56,15 +56,24 @@ VulkanRendererContext::~VulkanRendererContext() {
     vk_.DestroyPipelineLayout(device, pipeLayout, nullptr);
     vk_.DestroyDescriptorSetLayout(device, dsLayout, nullptr);
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vk_.DestroySemaphore(device, renderDoneSems[i], nullptr);
-        vk_.DestroySemaphore(device, imgAvailSems[i], nullptr);
+        if (i < renderDoneSems.size() && renderDoneSems[i] != VK_NULL_HANDLE) {
+            vk_.DestroySemaphore(device, renderDoneSems[i], nullptr);
+            renderDoneSems[i] = VK_NULL_HANDLE;
+        }
+        if (i < imgAvailSems.size() && imgAvailSems[i] != VK_NULL_HANDLE) {
+            vk_.DestroySemaphore(device, imgAvailSems[i], nullptr);
+            imgAvailSems[i] = VK_NULL_HANDLE;
+        }
         for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
             if (imgAvailGenSems[i][g] != VK_NULL_HANDLE) {
                 vk_.DestroySemaphore(device, imgAvailGenSems[i][g], nullptr);
                 imgAvailGenSems[i][g] = VK_NULL_HANDLE;
             }
         }
-        vk_.DestroyFence(device, inFlightFences[i], nullptr);
+        if (i < inFlightFences.size() && inFlightFences[i] != VK_NULL_HANDLE) {
+            vk_.DestroyFence(device, inFlightFences[i], nullptr);
+            inFlightFences[i] = VK_NULL_HANDLE;
+        }
     }
     vkd_unload();
     vk_.DestroyCommandPool(device, cmdPool, nullptr);
@@ -230,6 +239,12 @@ void VulkanRendererContext::createLogicalDevice() {
     VkDeviceQueueCreateInfo qi{}; qi.sType=VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     qi.queueFamilyIndex=graphicsQueueFamilyIndex; qi.queueCount=1; qi.pQueuePriorities=&p;
 
+    VkPhysicalDeviceProperties props{};
+    vk_.GetPhysicalDeviceProperties(physicalDevice, &props);
+    maxAnisotropy = props.limits.maxSamplerAnisotropy;
+
+    bool memoryModelExtSupported = false;
+    bool float16ExtSupported = false;
     PFN_vkEnumerateDeviceExtensionProperties enumDevExts =
         (PFN_vkEnumerateDeviceExtensionProperties)gipa(instance, "vkEnumerateDeviceExtensionProperties");
     { uint32_t n=0; if(enumDevExts) enumDevExts(physicalDevice,nullptr,&n,nullptr);
@@ -238,26 +253,84 @@ void VulkanRendererContext::createLogicalDevice() {
       for (auto& e:av) {
           if (strcmp(e.extensionName,"VK_EXT_filter_cubic")==0
            || strcmp(e.extensionName,"VK_IMG_filter_cubic")==0) cubicSupported=true;
+          if (strcmp(e.extensionName, VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME)==0) memoryModelExtSupported=true;
+          if (strcmp(e.extensionName, VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME)==0) float16ExtSupported=true;
       } }
     std::vector<const char*> extList = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME
     };
     if (cubicSupported) extList.push_back("VK_EXT_filter_cubic");
+    if (props.apiVersion < VK_API_VERSION_1_2 && memoryModelExtSupported) {
+        extList.push_back(VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME);
+    }
+    if (props.apiVersion < VK_API_VERSION_1_2 && float16ExtSupported) {
+        extList.push_back(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
+    }
     VkDeviceCreateInfo ci{}; ci.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     ci.pQueueCreateInfos=&qi; ci.queueCreateInfoCount=1;
+
+    VkPhysicalDeviceVulkanMemoryModelFeatures memModel{};
+    memModel.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES;
+
+    VkPhysicalDeviceShaderFloat16Int8Features fp16Features{};
+    fp16Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
+    fp16Features.pNext = &memModel;
+
+    VkPhysicalDeviceFeatures2 supportedFeatures{};
+    supportedFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    supportedFeatures.pNext = &fp16Features;
+
+    VkPhysicalDeviceVulkanMemoryModelFeatures enableMemModel{};
+    enableMemModel.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES;
+
+    VkPhysicalDeviceShaderFloat16Int8Features enableFp16{};
+    enableFp16.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
+
+    VkPhysicalDeviceFeatures2 enableFeatures2{};
+    enableFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
+    PFN_vkGetPhysicalDeviceFeatures2 getFeatures2 =
+        (PFN_vkGetPhysicalDeviceFeatures2)gipa(instance, "vkGetPhysicalDeviceFeatures2");
+    if (getFeatures2) {
+        getFeatures2(physicalDevice, &supportedFeatures);
+        const bool canEnableMemoryModel =
+            memModel.vulkanMemoryModel &&
+            (props.apiVersion >= VK_API_VERSION_1_2 || memoryModelExtSupported);
+        void** nextChain = &enableFeatures2.pNext;
+        if (canEnableMemoryModel) {
+            enableMemModel.vulkanMemoryModel = VK_TRUE;
+            *nextChain = &enableMemModel;
+            nextChain = &enableMemModel.pNext;
+        }
+        const bool canEnableFp16 =
+            fp16Features.shaderFloat16 &&
+            (props.apiVersion >= VK_API_VERSION_1_2 || float16ExtSupported);
+        if (canEnableFp16) {
+            enableFp16.shaderFloat16 = VK_TRUE;
+            *nextChain = &enableFp16;
+            nextChain = &enableFp16.pNext;
+        }
+        if (supportedFeatures.features.shaderStorageImageWriteWithoutFormat) {
+            enableFeatures2.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
+        }
+        if (supportedFeatures.features.shaderStorageImageExtendedFormats) {
+            enableFeatures2.features.shaderStorageImageExtendedFormats = VK_TRUE;
+        }
+        ci.pNext = &enableFeatures2;
+    }
+
     ci.enabledExtensionCount=(uint32_t)extList.size(); ci.ppEnabledExtensionNames=extList.data();
+
     if (vk_.CreateDevice(physicalDevice,&ci,nullptr,&device)!=VK_SUCCESS) throw std::runtime_error("device");
     vk_.GetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)gipa(instance, "vkGetDeviceProcAddr");
     loadDeviceDispatch();
-    vkd_load(instance, device, gipa);
+    if (!vkd_load(instance, device, gipa)) {
+        RLOG_E("Failed to load required Vulkan dispatch functions for LSFG");
+    }
     vk_.GetDeviceQueue(device,graphicsQueueFamilyIndex,0,&graphicsQueue);
 
     vk_.GetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-    VkPhysicalDeviceProperties props{};
-    vk_.GetPhysicalDeviceProperties(physicalDevice, &props);
-    maxAnisotropy = props.limits.maxSamplerAnisotropy;
 }
 
 void VulkanRendererContext::createSwapchain() {
@@ -881,7 +954,7 @@ void VulkanRendererContext::destroyLsfg() {
 }
 
 void VulkanRendererContext::createLsfg() {
-    if (lsfg || lsfgCachePath.empty() || !device || !physicalDevice) return;
+    if (lsfg || lsfgCachePath.empty() || !device || !physicalDevice || !vkd.CreateComputePipelines) return;
 
     lsfg = vkr_lsfg_create(device, physicalDevice, lsfgCachePath.c_str());
     if (!lsfg) {
@@ -944,9 +1017,11 @@ void VulkanRendererContext::blitCompositeToSwapchain(VkCommandBuffer cmd, const 
 
 void VulkanRendererContext::setFrameGenerationEnabled(bool enabled) {
     if (framegenRequested == enabled) return;
+    std::unique_lock<std::shared_mutex> fl(frameMutex);
     std::lock_guard<std::mutex> lk(renderMutex);
     framegenRequested = enabled;
     if (!enabled) {
+        if (device) vk_.DeviceWaitIdle(device);
         destroyLsfg();
     } else if (device && !lsfgCachePath.empty()) {
         createLsfg();
@@ -962,7 +1037,9 @@ bool VulkanRendererContext::isFrameGenerationSupported() const {
 }
 
 void VulkanRendererContext::setFrameGenerationShaders(const std::string& cachePath) {
+    std::unique_lock<std::shared_mutex> fl(frameMutex);
     std::lock_guard<std::mutex> lk(renderMutex);
+    if (device) vk_.DeviceWaitIdle(device);
     destroyLsfg();
     lsfgCachePath = cachePath;
     if (framegenRequested && device && !lsfgCachePath.empty()) {
@@ -982,6 +1059,7 @@ void VulkanRendererContext::setFrameGenerationRefreshRate(float hz) {
 }
 
 void VulkanRendererContext::setFrameGenerationMode(int multiplier, int targetRate, int flowScalePct) {
+    std::unique_lock<std::shared_mutex> fl(frameMutex);
     std::lock_guard<std::mutex> lk(renderMutex);
     const uint32_t previous_images = framegenExtraImages();
     framegenMultiplier = multiplier < 2 ? 2u : (uint32_t)multiplier;
@@ -1340,7 +1418,9 @@ void VulkanRendererContext::renderFrame() {
     if (surfaceWidth==0||surfaceHeight==0) return;
 
     if (fbResized.load()) {
-        for (auto& f:inFlightFences) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
+        for (auto& f:inFlightFences) {
+            if (f != VK_NULL_HANDLE) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
+        }
         cleanupSwapchain();
         bool ok=false;
         try{createSwapchain();createFramebuffers();createCmdBufs();currentFrame=0;imgInFlight.assign(swapchainImages.size(),VK_NULL_HANDLE);
@@ -1353,9 +1433,12 @@ ok=true;}catch(...){}
     bool toXr = xrTargetActive.load() && xrFb!=VK_NULL_HANDLE;
     bool currentFenceWaited = false;
     if (toXr) {
-        for (auto& f:inFlightFences) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
+        for (auto& f:inFlightFences) {
+            if (f != VK_NULL_HANDLE) vk_.WaitForFences(device,1,&f,VK_TRUE,UINT64_MAX);
+        }
         currentFenceWaited = true;
-    } else if (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, inFlightFences[currentFrame]) == VK_NOT_READY) {
+    } else if (inFlightFences[currentFrame] != VK_NULL_HANDLE &&
+               (!vk_.GetFenceStatus || vk_.GetFenceStatus(device, inFlightFences[currentFrame]) == VK_NOT_READY)) {
         vk_.WaitForFences(device,1,&inFlightFences[currentFrame],VK_TRUE,UINT64_MAX);
         currentFenceWaited = true;
     }
@@ -1395,7 +1478,9 @@ ok=true;}catch(...){}
         bool chain_stale = lsfg
             && vkr_lsfg_needs_rebuild(lsfg, swapchainExt.width, swapchainExt.height, swapchainFmt);
         if (composite_stale || chain_stale) {
-            for (auto& f : inFlightFences) vk_.WaitForFences(device, 1, &f, VK_TRUE, UINT64_MAX);
+            for (auto& f : inFlightFences) {
+                if (f != VK_NULL_HANDLE) vk_.WaitForFences(device, 1, &f, VK_TRUE, UINT64_MAX);
+            }
             if (!createCompositeTargets(swapchainExt.width, swapchainExt.height, composite_needed)) {
                 RLOG_E("Composite targets unavailable; frame generation path disabled");
                 framegenSupported = false;
@@ -1409,7 +1494,9 @@ ok=true;}catch(...){}
             }
         }
     } else if (compositeBuilt) {
-        for (auto& f : inFlightFences) vk_.WaitForFences(device, 1, &f, VK_TRUE, UINT64_MAX);
+        for (auto& f : inFlightFences) {
+            if (f != VK_NULL_HANDLE) vk_.WaitForFences(device, 1, &f, VK_TRUE, UINT64_MAX);
+        }
         destroyCompositeTargets();
     }
 
@@ -1419,7 +1506,7 @@ ok=true;}catch(...){}
         framegenRefreshRate = pending_mhz > 0 ? (float)pending_mhz / 1000.0f : 0.0f;
         vkr_lsfg_set_refresh_rate(lsfg, framegenRefreshRate);
         framegen_planned = vkr_lsfg_plan(lsfg, framegen_capacity,
-                                         framegenSourceFrames.load(std::memory_order_relaxed));
+                                         framegenRealFrames);
     }
 
     VkCompositeTarget* compositeTarget = via_composite ? &composite[currentFrame] : nullptr;
@@ -1573,10 +1660,53 @@ ok=true;}catch(...){}
         blitCompositeToSwapchain(cmdBufs[currentFrame], *compositeTarget, swapchainImages[imgIdx]);
     }
 
+    auto recoverAcquiredFrame = [&]() -> bool {
+        VkFence stale = inFlightFences[currentFrame];
+        for (auto& f : imgInFlight) {
+            if (f == stale) f = VK_NULL_HANDLE;
+        }
+        if (inFlightFences[currentFrame] != VK_NULL_HANDLE) {
+            vk_.DestroyFence(device, inFlightFences[currentFrame], nullptr);
+            inFlightFences[currentFrame] = VK_NULL_HANDLE;
+        }
+        VkFenceCreateInfo fi{}; fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        bool ok = (vk_.CreateFence(device, &fi, nullptr, &inFlightFences[currentFrame]) == VK_SUCCESS);
+        if (!toXr) {
+            VkSemaphoreCreateInfo sci{};
+            sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            if (imgAvailSems[currentFrame] != VK_NULL_HANDLE) {
+                vk_.DestroySemaphore(device, imgAvailSems[currentFrame], nullptr);
+                imgAvailSems[currentFrame] = VK_NULL_HANDLE;
+            }
+            if (vk_.CreateSemaphore(device, &sci, nullptr, &imgAvailSems[currentFrame]) != VK_SUCCESS) {
+                ok = false;
+            }
+            for (uint32_t g = 0; g < VKR_LSFG_MAX_GENERATIONS; g++) {
+                if (imgAvailGenSems[currentFrame][g] != VK_NULL_HANDLE) {
+                    vk_.DestroySemaphore(device, imgAvailGenSems[currentFrame][g], nullptr);
+                    imgAvailGenSems[currentFrame][g] = VK_NULL_HANDLE;
+                }
+                if (vk_.CreateSemaphore(device, &sci, nullptr, &imgAvailGenSems[currentFrame][g]) != VK_SUCCESS) {
+                    ok = false;
+                }
+            }
+        }
+        if (!ok) {
+            RLOG_E("renderFrame: failed to recreate frame synchronization objects; stopping renderer");
+            isRunning = false;
+            fbResized.store(false);
+            dirtyCV.notify_all();
+            return false;
+        }
+        fbResized.store(true);
+        return true;
+    };
+
     VkResult endStatus = vk_.EndCommandBuffer(cmdBufs[currentFrame]);
     if (endStatus != VK_SUCCESS) {
         RLOG_E("renderFrame: EndCommandBuffer failed status=%d", (int)endStatus);
-        throw std::runtime_error("end cb");
+        recoverAcquiredFrame();
+        return;
     }
 
     constexpr uint32_t MAX_FRAME_SEMAPHORES = 2 + VKR_LSFG_MAX_GENERATIONS;
@@ -1616,9 +1746,7 @@ ok=true;}catch(...){}
 
     vk_.ResetFences(device, 1, &inFlightFences[currentFrame]);
     if (vk_.QueueSubmit(graphicsQueue, 1, &si, inFlightFences[currentFrame]) != VK_SUCCESS) {
-        vk_.DestroyFence(device, inFlightFences[currentFrame], nullptr);
-        VkFenceCreateInfo fi{}; fi.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        vk_.CreateFence(device, &fi, nullptr, &inFlightFences[currentFrame]);
+        recoverAcquiredFrame();
         return;
     }
 
@@ -1768,7 +1896,6 @@ void VulkanRendererContext::updateWindowContent(int64_t id, void* px, short w, s
         auto it=texMap.find(id);
         if (it!=texMap.end()) it->second.dirty=true;
     }
-    framegenSourceFrames.fetch_add(1, std::memory_order_relaxed);
     needsRender.store(true); dirtyCV.notify_one();
 }
 
@@ -1811,7 +1938,6 @@ void VulkanRendererContext::updateWindowContentAHB(int64_t id, AHardwareBuffer* 
         wt.needsTransition  = true;
         src.needsTransition = false;
     }
-    framegenSourceFrames.fetch_add(1, std::memory_order_relaxed);
     needsRender.store(true); dirtyCV.notify_one();
 }
 
