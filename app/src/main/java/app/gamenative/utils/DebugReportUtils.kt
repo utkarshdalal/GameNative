@@ -18,6 +18,10 @@ object DebugReportUtils {
     private const val HEADER_FILE = "header.json"
     private const val LOG_FILE = "log.gz"
     private const val PERF_FILE = "perf.json"
+    private const val LOGCAT_FILE = "logcat.gz"
+
+    @Volatile
+    private var logcatProcess: Process? = null
     private const val LOG_HEAD_BYTES = 1L * 1024 * 1024
     private const val LOG_TAIL_BYTES = 7L * 1024 * 1024
     private const val LOG_MAX_BYTES = LOG_HEAD_BYTES + LOG_TAIL_BYTES
@@ -33,6 +37,38 @@ object DebugReportUtils {
     fun logFile(reportDir: File): File = File(reportDir, LOG_FILE)
 
     fun perfFile(reportDir: File): File = File(reportDir, PERF_FILE)
+
+    fun logcatFile(reportDir: File): File = File(reportDir, LOGCAT_FILE)
+
+    private fun rawLogcatFile(context: Context, appId: String): File =
+        File(context.getExternalFilesDir(null), "wine_logs/debug_run_$appId.logcat")
+
+    fun startLogcatCapture(context: Context, appId: String) {
+        stopLogcatCapture()
+        try {
+            val out = rawLogcatFile(context, appId)
+            out.parentFile?.mkdirs()
+            if (out.exists()) out.delete()
+            Runtime.getRuntime().exec(arrayOf("logcat", "-c")).waitFor()
+            logcatProcess = ProcessBuilder("logcat", "-v", "threadtime")
+                .redirectOutput(out)
+                .redirectErrorStream(true)
+                .start()
+        } catch (e: Exception) {
+            Timber.e(e, "DebugReportUtils: Failed to start logcat capture")
+            logcatProcess = null
+        }
+    }
+
+    fun stopLogcatCapture() {
+        logcatProcess?.let {
+            try {
+                it.destroy()
+            } catch (_: Exception) {
+            }
+        }
+        logcatProcess = null
+    }
 
     fun readHeader(reportDir: File): JSONObject? = try {
         val file = headerFile(reportDir)
@@ -61,6 +97,7 @@ object DebugReportUtils {
     suspend fun createPendingReport(context: Context, appId: String): File? = withContext(Dispatchers.IO) {
         var reportDir: File? = null
         val perf = PerfSampler.stop()
+        stopLogcatCapture()
         try {
             val wineLog = wineLogFile(context, appId)
             if (!wineLog.exists() || wineLog.length() == 0L) {
@@ -89,6 +126,11 @@ object DebugReportUtils {
                 perfFile(dir).writeText(perf.perf.toString())
                 header.put("perf", perf.verdict)
             }
+            val rawLogcat = rawLogcatFile(context, appId)
+            if (rawLogcat.exists() && rawLogcat.length() > 0L) {
+                compressLog(rawLogcat, logcatFile(dir))
+            }
+            rawLogcat.delete()
             headerFile(dir).writeText(header.toString())
             claimedLog.delete()
 

@@ -80,6 +80,18 @@
     <string name="branch">Branch</string>
     <string name="change_branch">Change Branch</string>
     <string name="change_branch_message">Download alternate game versions from Steam using developer-provided branches. Enter access codes to unlock private branches.</string>
+    <string name="change_preferred_copy">Change preferred copy</string>
+    <string name="change_preferred_copy_message">Choose which Steam Family member\'s copy to play. Use a family member\'s copy to access their DLC.</string>
+    <string name="loading_preferred_copy">Checking Family library copies…</string>
+    <string name="using_your_copy">Using your copy</string>
+    <string name="shared_from_name">Shared from %1$s</string>
+    <string name="preferred_copy_your_label">Your copy (%1$s)</string>
+    <string name="preferred_copy_family_label">%1$s</string>
+    <string name="preferred_copy_family_member">Family member</string>
+    <string name="preferred_copy_dlc_count">%1$d DLC</string>
+    <string name="preferred_copy_label_with_dlc">%1$s · %2$s</string>
+    <string name="preferred_copy_failed">Could not change preferred copy. Try again while connected to Steam.</string>
+    <string name="preferred_copy_confirm">Use this copy</string>
     <string name="private_branch_password_hint">Enter access code</string>
     <string name="private_branch_password_check">Check Code</string>
     <string name="private_branch_password_success">Branch unlocked!</string>
@@ -531,6 +543,8 @@
     <string name="mouse_acceleration_strength_subtitle">How quickly faster drags add extra mouse speed</string>
     <string name="mouse_acceleration_max">Max Acceleration</string>
     <string name="mouse_acceleration_max_subtitle">Upper multiplier applied during fast mouse-look drags</string>
+    <string name="win32_relative_mouse_input">Relative Mouse Input</string>
+    <string name="win32_relative_mouse_input_subtitle">Send movement directly to Wine as relative mouse input. Try this when the mouse isn\'t working in-game.</string>
     <string name="joystick_size">Joystick Size</string>
     <string name="joystick_size_subtitle">Dynamic joystick size multiplier</string>
     <string name="joystick_opacity">Joystick Opacity</string>
@@ -1127,6 +1141,8 @@
     <string name="settings_info_libraries_subtitle">See what technologies make GameNative possible</string>
     <string name="settings_info_privacy_title">Privacy Policy</string>
     <string name="settings_info_privacy_subtitle">Opens a link to GameNative\'s privacy policy</string>
+    <string name="settings_hide_ai_title">Hide AI features</string>
+    <string name="settings_hide_ai_subtitle">Hides the optional AI debugging help</string>
     <string name="settings_info_boot_ads_title">Sponsored loading screens</string>
     <string name="settings_info_boot_ads_subtitle">Keeping this on helps support GameNative\'s development. It never slows down game launches or affects you in any way.</string>
     <string name="settings_info_boot_recs_title">Game recommendations on loading screens</string>
@@ -1368,6 +1384,8 @@
     <string name="container_config_vkd3d_version">VKD3D Version</string>
     <string name="container_config_executable_path">Executable Path</string>
     <string name="container_config_executable_path_placeholder">e.g., path\\to\\exe</string>
+    <string name="container_config_executable_path_custom">Custom path…</string>
+    <string name="container_config_executable_path_custom_placeholder">e.g., C:\\Games\\game.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">Libraries Used</string>
@@ -1814,6 +1832,7 @@
     <string name="debug_prerun_title">Get AI help</string>
     <string name="debug_prerun_message_1">Runs the game with debug logging and shares the log with our AI on Discord when you quit. Run the game until you experience the issue.</string>
     <string name="debug_prerun_message_2">AI replies are for subscribers only.</string>
+    <string name="debug_trial_note">Free trial available.</string>
     <string name="debug_prerun_message_3">Anyone can share the report for human help.</string>
     <string name="diagnostics_share_title">Share diagnostics log</string>
     <string name="diagnostics_share_none">No diagnostics log yet. Use \"Diagnostic Run\" first.</string>
@@ -2261,6 +2280,8 @@
     <string name="rec_teaser_subtitle">Tap to take a look</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
     <string name="settings_interface_show_recommendations_subtitle">Show personalized recommendations. Keeping this on helps support GameNative.</string>
+    <string name="settings_interface_show_hidden_games_title">Show hidden games by default</string>
+    <string name="settings_interface_show_hidden_games_subtitle">Hidden Steam and GOG games stay visible unless you turn this off. Selecting the Hidden Steam collection always shows hidden Steam games.</string>
 
     <!-- HLTB (How Long To Beat) -->
     <string name="hltb_main_story">Main Story</string>

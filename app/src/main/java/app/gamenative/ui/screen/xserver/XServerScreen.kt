@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.ContentObserver
 import android.graphics.Color
 import android.os.Build
+import android.os.SystemClock
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -131,11 +132,14 @@ import app.gamenative.utils.AssetUtils
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.ExecutableSelectionUtils
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
+import app.gamenative.utils.WindowActivity
 import app.gamenative.utils.PerfSampler
+import app.gamenative.utils.SessionReport
 import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
 import app.gamenative.utils.downloader.DXWrapperDownloader
 import app.gamenative.utils.downloader.GraphicsDriverDownloader
@@ -246,6 +250,7 @@ private const val ALWAYS_REEXTRACT = true
 
 // Guard to prevent duplicate game_exited events when multiple exit triggers fire simultaneously
 private val isExiting = AtomicBoolean(false)
+private val windowActivity = WindowActivity()
 
 private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
 private const val EXIT_PROCESS_POLL_INTERVAL_MS = 1_000L
@@ -460,6 +465,7 @@ fun XServerScreen(
 
     LaunchedEffect(appId) {
         isExiting.set(false)
+        runCatching { windowActivity.start(context) }
     }
 
     val container = remember(appId) {
@@ -1015,6 +1021,7 @@ fun XServerScreen(
                                     appId,
                                     onExit,
                                     navigateBack,
+                                    "processes_exited",
                                 )
                             }
                             break
@@ -1446,7 +1453,7 @@ fun XServerScreen(
                     PluviaApp.xEnvironment?.resumeGameProcesses()
                 }
                 clearOverlayPauseState()
-                exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "quick_menu")
                 true
             }
 
@@ -1585,7 +1592,7 @@ fun XServerScreen(
     // Event handlers defined in composable scope to capture latest state on each recomposition
     val onActivityDestroyed: (AndroidEvent.ActivityDestroyed) -> Unit = {
         Timber.i("onActivityDestroyed")
-        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "activity_destroyed")
     }
     val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = {
         val isKeyboard = Keyboard.isKeyboardDevice(it.event.device)
@@ -1728,11 +1735,11 @@ fun XServerScreen(
     }
     val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
         Timber.i("onGuestProgramTerminated")
-        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "guest_terminated")
     }
     val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
         Timber.i("onForceCloseApp")
-        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+        exit(xServerView!!.getxServer().winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "force_close")
     }
     val onPlayingBlocked: (SteamEvent.PlayingBlocked) -> Unit = { event ->
         if (isOffline || container.isSteamOfflineMode()) {
@@ -2028,8 +2035,9 @@ fun XServerScreen(
                 applyMouseCursorVisibility()
                 renderer.setOnFrameRenderedListener {
                     if (shouldTrackDisplayedFrames.get()) {
+                        val frameTime = SystemClock.elapsedRealtime()
                         (context as? Activity)?.runOnUiThread {
-                            frameRating?.update()
+                            frameRating?.update(frameTime)
                         }
                     }
                 }
@@ -2154,6 +2162,7 @@ fun XServerScreen(
                                     )
                                 }
                                 frameRatingWindowId = -1
+                                runCatching { windowActivity.onTrackedWindow(null, rating.totalFrames) }
                                 (context as? Activity)?.runOnUiThread {
                                     rating.visibility = View.GONE
                                 }
@@ -2161,6 +2170,7 @@ fun XServerScreen(
                             }
 
                             frameRatingWindowId = nextId
+                            runCatching { windowActivity.onTrackedWindow(topmost, rating.totalFrames) }
                             Timber.i(
                                 "FrameRating tracking attached (%s) to topmost app window %s",
                                 reason,
@@ -2178,12 +2188,16 @@ fun XServerScreen(
                                 xServerState.value.winStarted = true
                             }
                             if (!getxServer().isFlatPresentationEnabled) return
+                            if (window.isApplicationWindow()) {
+                                runCatching { windowActivity.onWindowContent(window) }
+                            }
                             if (frameRatingWindowId == -1 && window.isApplicationWindow()) {
                                 refreshFrameRatingTracking("content-update")
                             }
                             if (window.id == frameRatingWindowId) {
+                                val frameTime = SystemClock.elapsedRealtime()
                                 (context as? Activity)?.runOnUiThread {
-                                    frameRating?.update()
+                                    frameRating?.update(frameTime)
                                 }
                             }
                         }
@@ -2195,6 +2209,7 @@ fun XServerScreen(
                         }
 
                         override fun onMapWindow(window: Window) {
+                            if (window.isApplicationWindow()) runCatching { windowActivity.onWindowMapped(window) }
                             Timber.i(
                                 "onMapWindow:" +
                                         "\n\twindowName: ${window.name}" +
@@ -2209,6 +2224,7 @@ fun XServerScreen(
                         }
 
                         override fun onUnmapWindow(window: Window) {
+                            runCatching { windowActivity.onWindowUnmapped(window) }
                             Timber.i(
                                 "onUnmapWindow:" +
                                         "\n\twindowName: ${window.name}" +
@@ -3033,7 +3049,7 @@ fun XServerScreen(
                 TextButton(onClick = {
                     showPlayingBlockedDialog = false
                     playingBlockedRemoteName = null
-                    exit(xServerView?.getxServer()?.winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack)
+                    exit(xServerView?.getxServer()?.winHandler, frameRating, currentAppInfo, container, appId, onExit, navigateBack, "playing_blocked")
                 }) {
                     Text(text = stringResource(R.string.cancel))
                 }
@@ -3894,7 +3910,10 @@ private fun setupXEnvironment(
     val wineDebugChannels = PrefManager.wineDebugChannels
     // explicitly enable or disable Wine debug channels
     if (debugRun) {
-        envVars.put("WINEDEBUG", "warn+seh,+loaddll,+timestamp,+pid,+tid")
+        envVars.put("WINEDEBUG", "warn+seh,+loaddll,+process,+timestamp,+pid,+tid")
+        envVars.put("DXVK_LOG_LEVEL", "info")
+        envVars.put("DXVK_LOG_PATH", "none")
+        envVars.put("VKD3D_DEBUG", "warn")
     } else if (diagnostics) {
         envVars.put("WRAPPER_DIAG", "1")
         envVars.put("WRAPPER_DIAG_APPID", appId)
@@ -3919,6 +3938,7 @@ private fun setupXEnvironment(
         wineLogDir.mkdirs()
         logFile = File(wineLogDir, if (debugRun) "debug_run_$appId.log" else "wine_debug.log")
         if (logFile.exists()) logFile.delete()
+        if (debugRun) DebugReportUtils.startLogcatCapture(context, appId)
     }
 
     ProcessHelper.addDebugCallback { line ->
@@ -4109,10 +4129,6 @@ private fun setupXEnvironment(
     guestProgramLauncherComponent.envVars = EnvVars().apply { putAll(envVars) }
 
     val gameTerminationCallback = Callback<Int> { status ->
-        if (!isExiting.get() && status != 0) {
-            container.putSessionMetadata("guest_self_exited", "true")
-            container.saveData()
-        }
         if (status != 0) {
             Timber.e("Guest program terminated with status: $status")
             onGameLaunchError?.invoke("Game terminated with error status: $status")
@@ -4327,7 +4343,7 @@ private fun getWineStartCommand(
             container.executablePath = SteamService.getInstalledExe(gameId)
             container.saveData()
         }
-        if (!container.isUseLegacyDRM){
+        if (!container.isUseLegacyDRM && !ContainerUtils.isAbsoluteWindowsPath(container.executablePath)){
             // Create ColdClientLoader.ini file
             SteamUtils.writeColdClientIni(gameId, container, appLaunchInfo)
         }
@@ -4402,7 +4418,8 @@ private fun getWineStartCommand(
 
         // Use A: drive (or the mapped drive letter) instead of Z:
         // The container setup in ContainerUtils maps the game install path to A: drive
-        val epicCommand = "A:\\$relativePath".replace("/", "\\")
+        val isAbsoluteExe = ContainerUtils.isAbsoluteWindowsPath(exePath)
+        val epicCommand = if (isAbsoluteExe) exePath else "A:\\$relativePath".replace("/", "\\")
 
         // Get Epic launch parameters
         Timber.tag("XServerScreen").d("Building Epic launch parameters for ${game.appName}...")
@@ -4416,8 +4433,10 @@ private fun getWineStartCommand(
             params
         }
         // Set working directory to the folder containing the executable
-        val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
-        guestProgramLauncherComponent.workingDir = File(executableDir)
+        if (!isAbsoluteExe) {
+            val executableDir = game.installPath + "/" + relativePath.substringBeforeLast("/", "")
+            guestProgramLauncherComponent.workingDir = File(executableDir)
+        }
 
         Timber.tag("XServerScreen").i("Epic launch command: \"$epicCommand\"")
 
@@ -4529,16 +4548,19 @@ private fun getWineStartCommand(
             Timber.tag("XServerScreen").i("Using cached Amazon executablePath: $resolvedRelativePath")
         }
 
+        val isAbsoluteExe = ContainerUtils.isAbsoluteWindowsPath(resolvedRelativePath)
         val winPath = resolvedRelativePath.replace("/", "\\")
-        val amazonCommand = "A:\\$winPath"
+        val amazonCommand = if (isAbsoluteExe) resolvedRelativePath else "A:\\$winPath"
 
-        val workDir = if (fuelCommand != null && fuelWorkingDir != null && resolvedRelativePath.replace("\\", "/") == fuelCommand.replace("\\", "/")) {
-            installPath + "/" + fuelWorkingDir.replace("\\", "/")
-        } else {
-            val exeDir = resolvedRelativePath.substringBeforeLast("/", "")
-            if (exeDir.isNotEmpty()) installPath + "/" + exeDir else installPath
+        if (!isAbsoluteExe) {
+            val workDir = if (fuelCommand != null && fuelWorkingDir != null && resolvedRelativePath.replace("\\", "/") == fuelCommand.replace("\\", "/")) {
+                installPath + "/" + fuelWorkingDir.replace("\\", "/")
+            } else {
+                val exeDir = resolvedRelativePath.substringBeforeLast("/", "")
+                if (exeDir.isNotEmpty()) installPath + "/" + exeDir else installPath
+            }
+            guestProgramLauncherComponent.workingDir = File(workDir)
         }
-        guestProgramLauncherComponent.workingDir = File(workDir)
 
         // ── Set FuelPump environment variables (P3-2) ────────────────
         // Nile reference: nile/utils/launch.py — sets these for Amazon Games SDK / FuelPump DRM.
@@ -4646,6 +4668,10 @@ private fun getWineStartCommand(
             }
         }
 
+        if (ContainerUtils.isAbsoluteWindowsPath(executablePath)) {
+            return "winhandler.exe \"$executablePath\""
+        }
+
         if (gameFolderPath == null) {
             Timber.tag("XServerScreen").e("Could not find A: drive for Custom Game: $appId")
             return "winhandler.exe \"wfm.exe\""
@@ -4664,7 +4690,9 @@ private fun getWineStartCommand(
         Timber.tag("XServerScreen").w("appLaunchInfo is null for Steam game: $appId")
         "\"wfm.exe\""
     } else {
-        if (container.isLaunchBionicSteam) {
+        if (ContainerUtils.isAbsoluteWindowsPath(container.executablePath)) {
+            "\"${container.executablePath}\""
+        } else if (container.isLaunchBionicSteam) {
             // Bionic-Steam mode: launch the game executable directly.
             // The native libsteamclient.so is already running in the Android process
             // and will monitor the game via nativeWaitAppExit.
@@ -4729,7 +4757,7 @@ private fun getWineStartCommand(
                 container.executablePath = executablePath
                 container.saveData()
             }
-            if (container.isUseLegacyDRM) {
+            if (container.isUseLegacyDRM || executablePath.endsWith(".bat", ignoreCase = true)) {
                 val appDirPath = SteamService.getAppDirPath(gameId)
                 val executableDir = appDirPath + "/" + executablePath.substringBeforeLast("/", "")
                 guestProgramLauncherComponent.workingDir = File(executableDir);
@@ -4790,8 +4818,9 @@ private fun exit(
     appId: String,
     onExit: (onComplete: (() -> Unit)?) -> Unit,
     navigateBack: () -> Unit,
+    reason: String,
 ) {
-    Timber.i("Exit called")
+    Timber.i("Exit called: $reason")
 
     if (!isExiting.compareAndSet(false, true)) {
         Timber.i("Exit already in progress, ignoring duplicate request")
@@ -4808,8 +4837,11 @@ private fun exit(
             "session_length" to (frameRating?.sessionLengthSec ?: 0),
             "avg_fps" to (frameRating?.avgFPS ?: 0.0),
             "container_config" to container.containerJson,
-        ),
+        ) + runCatching {
+            SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
+        }.getOrElse { emptyMap() },
     )
+    runCatching { windowActivity.stop() }
 
     // Store session data in container metadata
     frameRating?.let { rating ->
@@ -5054,9 +5086,9 @@ private fun unpackExecutableFile(
             val exePaths = if (container.isUnpackFiles) {
                 val scanned = ContainerUtils.scanExecutablesInADrive(container.drives)
                 val filtered = ContainerUtils.filterExesForUnpacking(scanned)
-                if (filtered.isEmpty()) listOf(container.executablePath).filter { it.isNotEmpty() } else filtered
+                if (filtered.isEmpty()) listOf(container.executablePath).filter { it.isNotEmpty() && !ContainerUtils.isAbsoluteWindowsPath(it) } else filtered
             } else {
-                listOf(container.executablePath).filter { it.isNotEmpty() }
+                listOf(container.executablePath).filter { it.isNotEmpty() && !ContainerUtils.isAbsoluteWindowsPath(it) }
             }
             if (exePaths.isEmpty()) {
                 Timber.w("No executable path set, skipping Steamless")

@@ -293,6 +293,8 @@
     <string name="container_config_drive_letter_missing">Буква диска отсутствует</string>
     <string name="container_config_executable_path">Путь исполняемого файла</string>
     <string name="container_config_executable_path_placeholder">например, path\\to\\exe</string>
+    <string name="container_config_executable_path_custom">Свой путь…</string>
+    <string name="container_config_executable_path_custom_placeholder">например, C:\\Games\\game.exe</string>
     <string name="container_config_invalid_drive_path">Неверный путь диска</string>
     <string name="container_config_tab_advanced">Дополнительно</string>
     <string name="container_config_tab_controller">Контроллер</string>
@@ -1356,6 +1358,18 @@ https://gamenative.app
     <string name="branch">Ветка</string>
     <string name="change_branch">Сменить ветку</string>
     <string name="change_branch_message">Загружайте альтернативные версии игры через ветки, предоставляемые разработчиками. Введите коды доступа, чтобы разблокировать приватные ветки.</string>
+    <string name="change_preferred_copy">Изменить предпочитаемую копию</string>
+    <string name="change_preferred_copy_message">Выберите, чью копию из Семьи Steam использовать для игры. Используйте копию члена семьи, чтобы получить доступ к его DLC.</string>
+    <string name="loading_preferred_copy">Проверка копий в семейной библиотеке…</string>
+    <string name="using_your_copy">Используется ваша копия</string>
+    <string name="shared_from_name">Поделился: %1$s</string>
+    <string name="preferred_copy_your_label">Ваша копия (%1$s)</string>
+    <string name="preferred_copy_family_label">%1$s</string>
+    <string name="preferred_copy_family_member">Член семьи</string>
+    <string name="preferred_copy_dlc_count">%1$d DLC</string>
+    <string name="preferred_copy_label_with_dlc">%1$s · %2$s</string>
+    <string name="preferred_copy_failed">Не удалось изменить предпочитаемую копию. Повторите попытку при подключении к Steam.</string>
+    <string name="preferred_copy_confirm">Использовать эту копию</string>
     <string name="private_branch_password_hint">Введите код доступа</string>
     <string name="private_branch_password_check">Проверить код</string>
     <string name="private_branch_password_success">Ветка разблокирована!</string>
@@ -1741,6 +1755,7 @@ https://gamenative.app
     <string name="debug_prerun_title">Получить помощь AI</string>
     <string name="debug_prerun_message_1">Запускает игру с отладочным журналом и после выхода отправляет журнал нашему AI в Discord. Играйте, пока не возникнет проблема.</string>
     <string name="debug_prerun_message_2">Ответы AI доступны только подписчикам.</string>
+    <string name="debug_trial_note">Доступен бесплатный пробный период.</string>
     <string name="debug_prerun_message_3">Любой может поделиться отчётом, чтобы получить помощь людей.</string>
     <string name="debug_paywall_title">Получите AI-поддержку по отладке</string>
     <string name="debug_paywall_pitch">Наш AI читает именно ваш лог и конфигурацию и говорит, что изменить, обычно меньше чем за 5 минут.</string>
@@ -2071,6 +2086,8 @@ https://gamenative.app
     <string name="mouse_acceleration_strength_subtitle">Как быстро быстрые перетаскивания добавляют скорость мыши</string>
     <string name="mouse_acceleration_max">Максимальное ускорение</string>
     <string name="mouse_acceleration_max_subtitle">Верхний множитель при быстрых перетаскиваниях обзора мышью</string>
+    <string name="win32_relative_mouse_input">Относительный ввод мыши</string>
+    <string name="win32_relative_mouse_input_subtitle">Передаёт движение напрямую в Wine как относительный ввод мыши. Попробуйте эту настройку, если мышь не работает в игре.</string>
     <string name="joystick_opacity">Непрозрачность джойстика</string>
     <string name="joystick_opacity_subtitle">Непрозрачность колец и ручек динамических джойстиков</string>
     <string name="show_shooter_runtime_toggle">Показывать кнопку в игре</string>
@@ -2374,6 +2391,8 @@ https://gamenative.app
     <string name="xr_open_composite_toggle">Совместимость со SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Запускает игры, созданные для SteamVR, через OpenComposite. Включите, если игра сообщает, что SteamVR не запущен, или остаётся плоской при включённом VR-режиме.</string>
     <string name="xr_render_scale">Масштаб рендеринга VR</string>
+    <string name="settings_hide_ai_title">Скрыть функции ИИ</string>
+    <string name="settings_hide_ai_subtitle">Скрывает необязательную помощь ИИ в отладке</string>
     <string name="settings_info_boot_ads_title">Спонсорские экраны загрузки</string>
     <string name="settings_info_boot_ads_subtitle">Если оставить это включённым, вы поддержите разработку GameNative. Это никогда не замедляет запуск игр и никак на вас не влияет.</string>
     <string name="settings_info_boot_recs_title">Рекомендации игр на экранах загрузки</string>

@@ -291,6 +291,19 @@ private fun trackMembershipPrompt(event: String, trigger: String) {
     }
 }
 
+private fun trackAiDebugOffer(event: String, appId: String, trigger: String) {
+    if (PrefManager.usageAnalyticsEnabled) {
+        PostHog.capture(
+            event = event,
+            properties = mapOf(
+                "game_name" to ContainerUtils.resolveGameName(appId),
+                "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
+                "trigger" to trigger,
+            ),
+        )
+    }
+}
+
 private fun trackGameLaunched(appId: String) {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val gameName = ContainerUtils.resolveGameName(appId)
@@ -333,6 +346,7 @@ fun PluviaMain(
     }
     var debugPaywallReason by rememberSaveable { mutableStateOf<String?>(null) }
     var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
+    var aiDebugOfferTrigger by rememberSaveable { mutableStateOf("") }
     var debugPreRunVisible by rememberSaveable { mutableStateOf(false) }
     var debugPreRunAppId by rememberSaveable { mutableStateOf("") }
     var debugPreRunOffline by rememberSaveable { mutableStateOf(false) }
@@ -717,15 +731,17 @@ fun PluviaMain(
 
                 is MainViewModel.MainUiEvent.ShowAiDebugOffer -> {
                     aiDebugOfferAppId = event.appId
-                    PrefManager.lastWarmPitchTime = System.currentTimeMillis()
+                    aiDebugOfferTrigger = event.trigger
+                    trackAiDebugOffer("ai_debug_offer_shown", event.appId, event.trigger)
+                    val offerMessage = context.getString(
+                        R.string.debug_offer_message,
+                        ContainerUtils.resolveGameName(event.appId),
+                    )
                     msgDialogState = MessageDialogState(
                         visible = true,
                         type = DialogType.AI_DEBUG_OFFER,
                         title = context.getString(R.string.debug_offer_title),
-                        message = context.getString(
-                            R.string.debug_offer_message,
-                            ContainerUtils.resolveGameName(event.appId),
-                        ),
+                        message = offerMessage + " " + context.getString(R.string.debug_trial_note),
                         confirmBtnText = context.getString(R.string.debug_offer_confirm),
                         dismissBtnText = context.getString(R.string.close),
                     )
@@ -1210,6 +1226,7 @@ fun PluviaMain(
             onConfirmClick = {
                 setMessageDialogState(MessageDialogState(false))
                 if (aiDebugOfferAppId.isNotEmpty()) {
+                    trackAiDebugOffer("ai_debug_offer_accepted", aiDebugOfferAppId, aiDebugOfferTrigger)
                     debugPreRunAppId = aiDebugOfferAppId
                     debugPreRunOffline = viewModel.isOffline.value
                     debugPreRunVisible = true
@@ -1217,9 +1234,15 @@ fun PluviaMain(
             }
             onDismissClick = {
                 setMessageDialogState(MessageDialogState(false))
+                if (aiDebugOfferAppId.isNotEmpty()) {
+                    trackAiDebugOffer("ai_debug_offer_dismissed", aiDebugOfferAppId, aiDebugOfferTrigger)
+                }
             }
             onDismissRequest = {
                 setMessageDialogState(MessageDialogState(false))
+                if (aiDebugOfferAppId.isNotEmpty()) {
+                    trackAiDebugOffer("ai_debug_offer_dismissed", aiDebugOfferAppId, aiDebugOfferTrigger)
+                }
             }
         }
 
@@ -1376,12 +1399,12 @@ fun PluviaMain(
                         // Close the dialog regardless of success
                         Timber.d("GameFeedback: Closing dialog")
                         gameFeedbackState = GameFeedbackDialogState(visible = false)
-                        viewModel.onGameFeedbackResolved(feedbackState.rating)
+                        viewModel.onGameFeedbackResolved(context, feedbackState.rating, feedbackState.selectedTags)
                     }
                 },
                 onDismiss = {
                     gameFeedbackState = GameFeedbackDialogState(visible = false)
-                    viewModel.onGameFeedbackResolved(null)
+                    viewModel.onGameFeedbackResolved(context, null)
                 },
                 onDiscordSupport = {
                     uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
@@ -1400,7 +1423,7 @@ fun PluviaMain(
 
             val shareDebugLog: () -> Unit = {
                 val reportDir = File(debugReportState.reportDir)
-                val files = listOf(DebugReportUtils.logFile(reportDir), DebugReportUtils.perfFile(reportDir))
+                val files = listOf(DebugReportUtils.logFile(reportDir), DebugReportUtils.perfFile(reportDir), DebugReportUtils.logcatFile(reportDir))
                     .filter { it.exists() }
                 if (files.isNotEmpty()) {
                     val uris = files.map { FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", it) }
@@ -1441,7 +1464,8 @@ fun PluviaMain(
                         return@launch
                     }
                     val perfFile = DebugReportUtils.perfFile(dir)
-                    when (val result = DebugReportApi.submit(header, logFile, PrefManager.discordRelayToken, perfFile)) {
+                    val logcatFile = DebugReportUtils.logcatFile(dir)
+                    when (val result = DebugReportApi.submit(header, logFile, PrefManager.discordRelayToken, perfFile, logcatFile)) {
                         is DebugReportApi.SubmitResult.Success -> {
                             withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(dir) }
                             debugReportState = debugReportState.copy(
@@ -1797,6 +1821,19 @@ fun PluviaMain(
                 /** Game Screen **/
                 composable(route = PluviaScreen.XServer.route) {
                     val xServerIsOffline by viewModel.isOffline.collectAsStateWithLifecycle()
+                    val launchedAppId = state.launchedAppId
+                    val hasContainer = remember(launchedAppId) {
+                        launchedAppId.isNotEmpty() && ContainerUtils.hasContainer(context, launchedAppId)
+                    }
+                    if (!hasContainer) {
+                        LaunchedEffect(launchedAppId) {
+                            Timber.w("XServer route entered without a container for '$launchedAppId', returning home")
+                            navController.navigate(PluviaScreen.Home.route + "?offline=$xServerIsOffline") {
+                                popUpTo(PluviaScreen.XServer.route) { inclusive = true }
+                            }
+                        }
+                        return@composable
+                    }
                     XServerScreen(
                         appId = state.launchedAppId,
                         bootToContainer = state.bootToContainer,

@@ -70,6 +70,18 @@
     <string name="branch">分支</string>
     <string name="change_branch">更改分支</string>
     <string name="change_branch_message">通过开发者提供的分支从 Steam 下载游戏的替代版本。输入访问代码以解锁私有分支。</string>
+    <string name="change_preferred_copy">更改首选副本</string>
+    <string name="change_preferred_copy_message">选择使用哪位 Steam 家庭成员的副本进行游戏。使用家庭成员的副本可访问其 DLC。</string>
+    <string name="loading_preferred_copy">正在检查家庭库副本…</string>
+    <string name="using_your_copy">正在使用您的副本</string>
+    <string name="shared_from_name">由 %1$s 共享</string>
+    <string name="preferred_copy_your_label">您的副本（%1$s）</string>
+    <string name="preferred_copy_family_label">%1$s</string>
+    <string name="preferred_copy_family_member">家庭成员</string>
+    <string name="preferred_copy_dlc_count">%1$d 个 DLC</string>
+    <string name="preferred_copy_label_with_dlc">%1$s · %2$s</string>
+    <string name="preferred_copy_failed">无法更改首选副本。请在连接到 Steam 时重试。</string>
+    <string name="preferred_copy_confirm">使用此副本</string>
     <string name="private_branch_password_hint">输入访问代码</string>
     <string name="private_branch_password_check">验证代码</string>
     <string name="private_branch_password_success">分支已解锁！</string>
@@ -1144,6 +1156,8 @@
     <string name="container_config_vkd3d_version">VKD3D 版本</string>
     <string name="container_config_executable_path">可执行文件路径</string>
     <string name="container_config_executable_path_placeholder">例如：path\\to\\exe</string>
+    <string name="container_config_executable_path_custom">自定义路径…</string>
+    <string name="container_config_executable_path_custom_placeholder">例如：C:\\Games\\game.exe</string>
 
     <!-- 使用的库对话框 -->
     <string name="libraries_title">使用的库</string>
@@ -1830,6 +1844,7 @@
     <string name="debug_prerun_title">获取 AI 帮助</string>
     <string name="debug_prerun_message_1">以调试日志运行游戏，退出后将日志分享给我们在 Discord 上的 AI。请一直运行游戏，直到出现问题。</string>
     <string name="debug_prerun_message_2">AI 回复仅限订阅者。</string>
+    <string name="debug_trial_note">提供免费试用。</string>
     <string name="debug_prerun_message_3">任何人都可以分享报告以获得人工帮助。</string>
     <string name="debug_paywall_title">获取 AI 调试支持</string>
     <string name="debug_paywall_pitch">我们的 AI 会阅读你的完整日志和配置，并告诉你需要更改什么，通常不到 5 分钟。</string>
@@ -2160,6 +2175,8 @@
     <string name="mouse_acceleration_strength_subtitle">更快拖动增加额外鼠标速度的速度</string>
     <string name="mouse_acceleration_max">最大加速</string>
     <string name="mouse_acceleration_max_subtitle">快速鼠标视角拖动时应用的最高倍率</string>
+    <string name="win32_relative_mouse_input">相对鼠标输入</string>
+    <string name="win32_relative_mouse_input_subtitle">将移动作为相对鼠标输入直接发送到 Wine。游戏内鼠标无法正常工作时可尝试启用此选项。</string>
     <string name="joystick_opacity">摇杆不透明度</string>
     <string name="joystick_opacity_subtitle">动态摇杆圆环和拇指点的不透明度</string>
     <string name="show_shooter_runtime_toggle">显示游戏内按钮</string>
@@ -2454,6 +2471,8 @@
     <string name="xr_open_composite_toggle">SteamVR (OpenVR) 兼容</string>
     <string name="xr_open_composite_toggle_desc">通过 OpenComposite 运行为 SteamVR 开发的游戏。若游戏提示 SteamVR 未运行，或开启 VR 模式后仍为平面显示，请开启此项。</string>
     <string name="xr_render_scale">VR 渲染比例</string>
+    <string name="settings_hide_ai_title">隐藏 AI 功能</string>
+    <string name="settings_hide_ai_subtitle">隐藏可选的 AI 调试帮助</string>
     <string name="settings_info_boot_ads_title">赞助加载画面</string>
     <string name="settings_info_boot_ads_subtitle">保持开启有助于支持 GameNative 的开发。它绝不会拖慢游戏启动，也不会以任何方式影响你。</string>
     <string name="settings_info_boot_recs_title">在加载画面显示游戏推荐</string>

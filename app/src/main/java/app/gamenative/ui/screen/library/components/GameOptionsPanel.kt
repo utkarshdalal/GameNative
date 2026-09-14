@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Face4
 import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Key
@@ -359,6 +360,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.ManageWorkshop -> Icons.Default.Build
         AppOptionMenuType.ManageMods -> Icons.Default.Extension
         AppOptionMenuType.ChangeBranch -> Icons.AutoMirrored.Filled.CallSplit
+        AppOptionMenuType.ChangePreferredCopy -> Icons.Filled.Face4
         AppOptionMenuType.AddToFavorites -> Icons.Filled.StarOutline
         AppOptionMenuType.RemoveFromFavorites -> Icons.Filled.Star
     }
@@ -391,6 +393,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.MoveToExternalStorage,
             AppOptionMenuType.MoveToInternalStorage,
             AppOptionMenuType.ChangeBranch,
+            AppOptionMenuType.ChangePreferredCopy,
             -> gameManagement.add(option)
 
             // Container Settings

@@ -63,7 +63,7 @@ fun DebugPreRunDialog(
                             .padding(bottom = 8.dp),
                     )
                     Text(
-                        text = stringResource(R.string.debug_prerun_message_2),
+                        text = stringResource(R.string.debug_prerun_message_2) + " " + stringResource(R.string.debug_trial_note),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier

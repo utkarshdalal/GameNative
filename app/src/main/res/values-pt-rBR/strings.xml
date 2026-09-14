@@ -19,6 +19,18 @@
     <string name="branch">Ramo</string>
     <string name="change_branch">Alterar ramo</string>
     <string name="change_branch_message">Baixe versões alternativas do jogo na Steam usando ramos fornecidos pelos desenvolvedores. Digite códigos de acesso para desbloquear ramos privados.</string>
+    <string name="change_preferred_copy">Alterar cópia preferida</string>
+    <string name="change_preferred_copy_message">Escolha a cópia de qual membro da Família Steam usar. Use a cópia de um membro da família para acessar as DLCs dele.</string>
+    <string name="loading_preferred_copy">Verificando cópias da biblioteca familiar…</string>
+    <string name="using_your_copy">Usando sua cópia</string>
+    <string name="shared_from_name">Compartilhado por %1$s</string>
+    <string name="preferred_copy_your_label">Sua cópia (%1$s)</string>
+    <string name="preferred_copy_family_label">%1$s</string>
+    <string name="preferred_copy_family_member">Membro da família</string>
+    <string name="preferred_copy_dlc_count">%1$d DLC</string>
+    <string name="preferred_copy_label_with_dlc">%1$s · %2$s</string>
+    <string name="preferred_copy_failed">Não foi possível alterar a cópia preferida. Tente novamente enquanto estiver conectado à Steam.</string>
+    <string name="preferred_copy_confirm">Usar esta cópia</string>
     <string name="private_branch_password_hint">Digite o código de acesso</string>
     <string name="private_branch_password_check">Verificar código</string>
     <string name="private_branch_password_success">Ramo desbloqueado!</string>
@@ -984,6 +996,8 @@
     <string name="container_config_vkd3d_version">Versão do VKD3D</string>
     <string name="container_config_executable_path">Caminho do executável</string>
     <string name="container_config_executable_path_placeholder">ex.: caminho\\para\\exe</string>
+    <string name="container_config_executable_path_custom">Caminho personalizado…</string>
+    <string name="container_config_executable_path_custom_placeholder">ex.: C:\\Jogos\\jogo.exe</string>
 
     <!-- TODO: Revisão manual - Diálogo de bibliotecas -->
     <string name="libraries_title">Bibliotecas utilizadas</string>
@@ -1683,6 +1697,7 @@
     <string name="debug_prerun_title">Receba ajuda da AI</string>
     <string name="debug_prerun_message_1">Executa o jogo com registro de depuração e compartilha o log com nossa AI no Discord ao sair. Jogue até que o problema aconteça.</string>
     <string name="debug_prerun_message_2">As respostas da AI são apenas para assinantes.</string>
+    <string name="debug_trial_note">Teste gratuito disponível.</string>
     <string name="debug_prerun_message_3">Qualquer pessoa pode compartilhar o relatório para receber ajuda humana.</string>
     <string name="debug_paywall_title">Obtenha suporte de depuração com AI</string>
     <string name="debug_paywall_pitch">Nossa AI lê exatamente o seu log e a sua configuração e diz o que mudar, geralmente em menos de 5 minutos.</string>
@@ -2013,6 +2028,8 @@
     <string name="mouse_acceleration_strength_subtitle">Quão rápido arrastos mais rápidos adicionam velocidade extra ao mouse</string>
     <string name="mouse_acceleration_max">Aceleração máxima</string>
     <string name="mouse_acceleration_max_subtitle">Multiplicador máximo aplicado durante arrastos rápidos do olhar com mouse</string>
+    <string name="win32_relative_mouse_input">Entrada relativa do mouse</string>
+    <string name="win32_relative_mouse_input_subtitle">Envia o movimento diretamente ao Wine como entrada relativa do mouse. Tente usar esta opção quando o mouse não funcionar dentro do jogo.</string>
     <string name="joystick_opacity">Opacidade do joystick</string>
     <string name="joystick_opacity_subtitle">Opacidade dos anéis e botões dos joysticks dinâmicos</string>
     <string name="show_shooter_runtime_toggle">Mostrar botão em jogo</string>
@@ -2310,6 +2327,8 @@
     <string name="xr_open_composite_toggle">Compatibilidade com SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Roteia jogos feitos para SteamVR pelo OpenComposite. Ative se o jogo disser que o SteamVR não está em execução ou continuar plano com o modo VR ativado.</string>
     <string name="xr_render_scale">Escala de renderização de VR</string>
+    <string name="settings_hide_ai_title">Ocultar recursos de IA</string>
+    <string name="settings_hide_ai_subtitle">Oculta a ajuda opcional de depuração por IA</string>
     <string name="settings_info_boot_ads_title">Telas de carregamento patrocinadas</string>
     <string name="settings_info_boot_ads_subtitle">Manter isso ativado ajuda a apoiar o desenvolvimento do GameNative. Nunca deixa o início dos jogos mais lento nem afeta você de forma alguma.</string>
     <string name="settings_info_boot_recs_title">Recomendações de jogos nas telas de carregamento</string>

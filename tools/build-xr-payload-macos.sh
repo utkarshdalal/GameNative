@@ -77,11 +77,11 @@ cp "$work/unixlib/gamenative_xr_unixbridge.so" "$output/"
 # The 32-bit Wine builtin stub ships prebuilt in the repo.
 cp "$source_dir/builtin/gamenative_xr_unixbridge32.dll" "$output/"
 
-# OpenComposite (pinned download, checksum-verified) for OpenVR titles.
+# OpenComposite (GameNative build with the background-apptype patch, checksum-verified) for OpenVR titles.
 if [ ! -f "$output/opencomposite_x64.dll" ]; then
-    curl -sL "https://opencomposite.znix.xyz/builds/download_build?artefact_id=JjRFMXaxas695QK-&build_id=52366409&commit=a27e7e6a64bdcd1eff6b7fba1ea2ea34bcf1273d" \
+    curl -sL "https://github.com/GameNative/opencomposite/releases/download/v2/opencomposite_x64.dll" \
         -o "$output/opencomposite_x64.dll"
-    echo "827ad85f3606a4dc4a8f5561a8ca69e4c6c1b5d2b9cd3315a461b9270b08242c  $output/opencomposite_x64.dll" \
+    echo "55dc09c465ab2bf2787b47fec74cb9787b05aa19e1951df207ffc9dd3926af2f  $output/opencomposite_x64.dll" \
         | shasum -a 256 -c - >/dev/null || { echo "OpenComposite checksum mismatch"; exit 1; }
 fi
 

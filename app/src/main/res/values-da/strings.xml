@@ -19,6 +19,18 @@
     <string name="branch">Gren</string>
     <string name="change_branch">Skift gren</string>
     <string name="change_branch_message">Download alternative spilversioner fra Steam via udvikler-grene. Indtast adgangskoder for at låse private grene op.</string>
+    <string name="change_preferred_copy">Skift foretrukken kopi</string>
+    <string name="change_preferred_copy_message">Vælg hvilket Steam-familiemedlems kopi der skal spilles. Brug et familiemedlems kopi for at få adgang til deres DLC.</string>
+    <string name="loading_preferred_copy">Tjekker familiebibliotekets kopier…</string>
+    <string name="using_your_copy">Bruger din kopi</string>
+    <string name="shared_from_name">Delt fra %1$s</string>
+    <string name="preferred_copy_your_label">Din kopi (%1$s)</string>
+    <string name="preferred_copy_family_label">%1$s</string>
+    <string name="preferred_copy_family_member">Familiemedlem</string>
+    <string name="preferred_copy_dlc_count">%1$d DLC</string>
+    <string name="preferred_copy_label_with_dlc">%1$s · %2$s</string>
+    <string name="preferred_copy_failed">Kunne ikke skifte foretrukken kopi. Prøv igen, mens du er forbundet til Steam.</string>
+    <string name="preferred_copy_confirm">Brug denne kopi</string>
     <string name="private_branch_password_hint">Indtast adgangskode</string>
     <string name="private_branch_password_check">Tjek kode</string>
     <string name="private_branch_password_success">Gren låst op!</string>
@@ -984,6 +996,8 @@
     <string name="container_config_vkd3d_version">VKD3D-version</string>
     <string name="container_config_executable_path">Sti til eksekverbar fil</string>
     <string name="container_config_executable_path_placeholder">f.eks. sti\\til\\exe</string>
+    <string name="container_config_executable_path_custom">Brugerdefineret sti…</string>
+    <string name="container_config_executable_path_custom_placeholder">f.eks. C:\\Spil\\spil.exe</string>
 
     <!-- TODO: Manual review - Libraries Dialog -->
     <string name="libraries_title">Anvendte biblioteker</string>
@@ -1683,6 +1697,7 @@
     <string name="debug_prerun_title">Få AI-hjælp</string>
     <string name="debug_prerun_message_1">Kører spillet med debug-logning og deler loggen med vores AI på Discord, når du afslutter. Spil, indtil du oplever problemet.</string>
     <string name="debug_prerun_message_2">AI-svar er kun for abonnenter.</string>
+    <string name="debug_trial_note">Gratis prøveperiode tilgængelig.</string>
     <string name="debug_prerun_message_3">Alle kan dele rapporten for at få menneskelig hjælp.</string>
     <string name="debug_paywall_title">Få AI-fejlfindingshjælp</string>
     <string name="debug_paywall_pitch">Vores AI læser din nøjagtige log og konfiguration og fortæller dig, hvad du skal ændre, som regel på under 5 minutter.</string>
@@ -2013,6 +2028,8 @@
     <string name="mouse_acceleration_strength_subtitle">Hvor hurtigt hurtigere træk giver ekstra musehastighed</string>
     <string name="mouse_acceleration_max">Maks. acceleration</string>
     <string name="mouse_acceleration_max_subtitle">Øvre multiplikator ved hurtige musekig-træk</string>
+    <string name="win32_relative_mouse_input">Relativt museinput</string>
+    <string name="win32_relative_mouse_input_subtitle">Send bevægelse direkte til Wine som relativt museinput. Prøv dette, når musen ikke virker i spillet.</string>
     <string name="joystick_opacity">Joystick-gennemsigtighed</string>
     <string name="joystick_opacity_subtitle">Gennemsigtighed for dynamiske joystick-ringe og knapper</string>
     <string name="show_shooter_runtime_toggle">Vis knap i spillet</string>
@@ -2310,6 +2327,8 @@
     <string name="xr_open_composite_toggle">SteamVR (OpenVR)-kompatibilitet</string>
     <string name="xr_open_composite_toggle_desc">Sender spil bygget til SteamVR gennem OpenComposite. Slå til, hvis spillet siger, at SteamVR ikke kører, eller forbliver fladt med VR-tilstand slået til.</string>
     <string name="xr_render_scale">VR-gengivelsesskala</string>
+    <string name="settings_hide_ai_title">Skjul AI-funktioner</string>
+    <string name="settings_hide_ai_subtitle">Skjuler den valgfrie AI-fejlfindingshjælp</string>
     <string name="settings_info_boot_ads_title">Sponsorerede indlæsningsskærme</string>
     <string name="settings_info_boot_ads_subtitle">At lade dette være slået til hjælper med at støtte udviklingen af GameNative. Det gør aldrig spilstart langsommere og påvirker dig ikke på nogen måde.</string>
     <string name="settings_info_boot_recs_title">Spilanbefalinger på indlæsningsskærme</string>

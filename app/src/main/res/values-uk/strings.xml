@@ -63,6 +63,18 @@
     <string name="branch">Гілка</string>
     <string name="change_branch">Змінити гілку</string>
     <string name="change_branch_message">Завантажуйте альтернативні версії гри зі Steam за допомогою гілок, наданих розробниками. Введіть коди доступу, щоб розблокувати приватні гілки.</string>
+    <string name="change_preferred_copy">Змінити бажану копію</string>
+    <string name="change_preferred_copy_message">Виберіть, чию копію із Сім\'ї Steam використовувати для гри. Використовуйте копію члена сім\'ї, щоб отримати доступ до його DLC.</string>
+    <string name="loading_preferred_copy">Перевірка копій у сімейній бібліотеці…</string>
+    <string name="using_your_copy">Використовується ваша копія</string>
+    <string name="shared_from_name">Поділився: %1$s</string>
+    <string name="preferred_copy_your_label">Ваша копія (%1$s)</string>
+    <string name="preferred_copy_family_label">%1$s</string>
+    <string name="preferred_copy_family_member">Член сім\'ї</string>
+    <string name="preferred_copy_dlc_count">%1$d DLC</string>
+    <string name="preferred_copy_label_with_dlc">%1$s · %2$s</string>
+    <string name="preferred_copy_failed">Не вдалося змінити бажану копію. Повторіть спробу, коли буде з\'єднання зі Steam.</string>
+    <string name="preferred_copy_confirm">Використати цю копію</string>
     <string name="private_branch_password_hint">Введіть код доступу</string>
     <string name="private_branch_password_check">Перевірити код</string>
     <string name="private_branch_password_success">Гілку розблоковано!</string>
@@ -1160,6 +1172,8 @@
     <string name="container_config_vkd3d_version">Версія VKD3D</string>
     <string name="container_config_executable_path">Шлях до виконуваного файлу</string>
     <string name="container_config_executable_path_placeholder">напр., path\\to\\exe</string>
+    <string name="container_config_executable_path_custom">Власний шлях…</string>
+    <string name="container_config_executable_path_custom_placeholder">напр., C:\\Games\\game.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">Використані бібліотеки</string>
@@ -1809,6 +1823,7 @@
     <string name="debug_prerun_title">Отримати допомогу AI</string>
     <string name="debug_prerun_message_1">Запускає гру з журналом налагодження і після виходу надсилає журнал нашому AI в Discord. Грайте, доки не виникне проблема.</string>
     <string name="debug_prerun_message_2">Відповіді AI доступні лише підписникам.</string>
+    <string name="debug_trial_note">Доступний безкоштовний пробний період.</string>
     <string name="debug_prerun_message_3">Будь-хто може поділитися звітом, щоб отримати допомогу людей.</string>
     <string name="debug_paywall_title">Отримайте AI-підтримку з налагодження</string>
     <string name="debug_paywall_pitch">Наш AI читає саме ваш лог і конфігурацію та каже, що змінити, зазвичай менше ніж за 5 хвилин.</string>
@@ -2139,6 +2154,8 @@
     <string name="mouse_acceleration_strength_subtitle">Як швидко швидші перетягування додають швидкість миші</string>
     <string name="mouse_acceleration_max">Максимальне прискорення</string>
     <string name="mouse_acceleration_max_subtitle">Верхній множник під час швидких перетягувань огляду мишею</string>
+    <string name="win32_relative_mouse_input">Відносне введення миші</string>
+    <string name="win32_relative_mouse_input_subtitle">Передає рух безпосередньо до Wine як відносне введення миші. Спробуйте, якщо миша не працює у грі.</string>
     <string name="joystick_opacity">Непрозорість джойстика</string>
     <string name="joystick_opacity_subtitle">Непрозорість кілець і ручок динамічних джойстиків</string>
     <string name="show_shooter_runtime_toggle">Показувати кнопку в грі</string>
@@ -2442,6 +2459,8 @@
     <string name="xr_open_composite_toggle">Сумісність зі SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Запускає ігри, створені для SteamVR, через OpenComposite. Увімкніть, якщо гра повідомляє, що SteamVR не запущено, або залишається пласкою з увімкненим VR-режимом.</string>
     <string name="xr_render_scale">Масштаб рендерингу VR</string>
+    <string name="settings_hide_ai_title">Приховати функції ШІ</string>
+    <string name="settings_hide_ai_subtitle">Приховує необов\'язкову допомогу ШІ у налагодженні</string>
     <string name="settings_info_boot_ads_title">Спонсорські екрани завантаження</string>
     <string name="settings_info_boot_ads_subtitle">Якщо залишити це увімкненим, ви підтримаєте розробку GameNative. Це ніколи не сповільнює запуск ігор і жодним чином на вас не впливає.</string>
     <string name="settings_info_boot_recs_title">Рекомендації ігор на екранах завантаження</string>

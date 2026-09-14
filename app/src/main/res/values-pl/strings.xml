@@ -80,6 +80,18 @@
     <string name="branch">Gałąź</string>
     <string name="change_branch">Zmień gałąź</string>
     <string name="change_branch_message">Pobieraj alternatywne wersje gry ze Steam, korzystając z gałęzi udostępnianych przez deweloperów. Wpisz kody dostępu, aby odblokować prywatne gałęzie.</string>
+    <string name="change_preferred_copy">Zmień preferowaną kopię</string>
+    <string name="change_preferred_copy_message">Wybierz, z czyjej kopii w Rodzinie Steam chcesz grać. Użyj kopii członka rodziny, aby uzyskać dostęp do jego DLC.</string>
+    <string name="loading_preferred_copy">Sprawdzanie kopii w bibliotece rodzinnej…</string>
+    <string name="using_your_copy">Używasz swojej kopii</string>
+    <string name="shared_from_name">Udostępnione przez %1$s</string>
+    <string name="preferred_copy_your_label">Twoja kopia (%1$s)</string>
+    <string name="preferred_copy_family_label">%1$s</string>
+    <string name="preferred_copy_family_member">Członek rodziny</string>
+    <string name="preferred_copy_dlc_count">%1$d DLC</string>
+    <string name="preferred_copy_label_with_dlc">%1$s · %2$s</string>
+    <string name="preferred_copy_failed">Nie udało się zmienić preferowanej kopii. Spróbuj ponownie po połączeniu ze Steam.</string>
+    <string name="preferred_copy_confirm">Użyj tej kopii</string>
     <string name="private_branch_password_hint">Wpisz kod dostępu</string>
     <string name="private_branch_password_check">Sprawdź kod</string>
     <string name="private_branch_password_success">Gałąź odblokowana!</string>
@@ -1174,6 +1186,8 @@
     <string name="container_config_vkd3d_version">Wersja VKD3D</string>
     <string name="container_config_executable_path">Ścieżka pliku wykonywalnego</string>
     <string name="container_config_executable_path_placeholder">np. ścieżka\\do\\exe</string>
+    <string name="container_config_executable_path_custom">Własna ścieżka…</string>
+    <string name="container_config_executable_path_custom_placeholder">np. C:\\Gry\\gra.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">Użyte biblioteki</string>
@@ -1813,6 +1827,7 @@
     <string name="debug_prerun_title">Uzyskaj pomoc AI</string>
     <string name="debug_prerun_message_1">Uruchamia grę z logowaniem debugowania i po wyjściu udostępnia log naszemu AI na Discordzie. Graj, aż wystąpi problem.</string>
     <string name="debug_prerun_message_2">Odpowiedzi AI są tylko dla subskrybentów.</string>
+    <string name="debug_trial_note">Dostępny bezpłatny okres próbny.</string>
     <string name="debug_prerun_message_3">Każdy może udostępnić raport, aby uzyskać pomoc od ludzi.</string>
     <string name="debug_paywall_title">Uzyskaj pomoc AI w debugowaniu</string>
     <string name="debug_paywall_pitch">Nasza AI czyta dokładnie Twój log i konfigurację i mówi, co zmienić, zwykle w niecałe 5 minut.</string>
@@ -2143,6 +2158,8 @@
     <string name="mouse_acceleration_strength_subtitle">Jak szybko szybsze przeciągnięcia dodają prędkość myszy</string>
     <string name="mouse_acceleration_max">Maks. przyspieszenie</string>
     <string name="mouse_acceleration_max_subtitle">Górny mnożnik podczas szybkich przeciągnięć rozglądania myszą</string>
+    <string name="win32_relative_mouse_input">Względne sterowanie myszą</string>
+    <string name="win32_relative_mouse_input_subtitle">Przesyła ruch bezpośrednio do Wine jako względne sterowanie myszą. Wypróbuj, gdy mysz nie działa w grze.</string>
     <string name="joystick_opacity">Nieprzezroczystość joysticka</string>
     <string name="joystick_opacity_subtitle">Nieprzezroczystość pierścieni i gałek joysticków dynamicznych</string>
     <string name="show_shooter_runtime_toggle">Pokaż przycisk w grze</string>
@@ -2446,6 +2463,8 @@
     <string name="xr_open_composite_toggle">Zgodność ze SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Kieruje gry stworzone dla SteamVR przez OpenComposite. Włącz, jeśli gra zgłasza, że SteamVR nie działa, lub pozostaje płaska przy włączonym trybie VR.</string>
     <string name="xr_render_scale">Skala renderowania VR</string>
+    <string name="settings_hide_ai_title">Ukryj funkcje AI</string>
+    <string name="settings_hide_ai_subtitle">Ukrywa opcjonalną pomoc AI w debugowaniu</string>
     <string name="settings_info_boot_ads_title">Sponsorowane ekrany ładowania</string>
     <string name="settings_info_boot_ads_subtitle">Pozostawienie tej opcji włączonej wspiera rozwój GameNative. Nigdy nie spowalnia uruchamiania gier i w żaden sposób na Ciebie nie wpływa.</string>
     <string name="settings_info_boot_recs_title">Polecane gry na ekranach ładowania</string>

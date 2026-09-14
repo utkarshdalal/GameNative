@@ -71,6 +71,18 @@
     <string name="branch">Branche</string>
     <string name="change_branch">Changer de branche</string>
     <string name="change_branch_message">Téléchargez des versions alternatives du jeu depuis Steam via les branches fournies par les développeurs. Saisissez des codes d\'accès pour débloquer les branches privées.</string>
+    <string name="change_preferred_copy">Changer la copie préférée</string>
+    <string name="change_preferred_copy_message">Choisissez la copie de quel membre de la Famille Steam utiliser. Utilisez la copie d\'un membre de la famille pour accéder à ses DLC.</string>
+    <string name="loading_preferred_copy">Vérification des copies de la bibliothèque familiale…</string>
+    <string name="using_your_copy">Utilisation de votre copie</string>
+    <string name="shared_from_name">Partagé par %1$s</string>
+    <string name="preferred_copy_your_label">Votre copie (%1$s)</string>
+    <string name="preferred_copy_family_label">%1$s</string>
+    <string name="preferred_copy_family_member">Membre de la famille</string>
+    <string name="preferred_copy_dlc_count">%1$d DLC</string>
+    <string name="preferred_copy_label_with_dlc">%1$s · %2$s</string>
+    <string name="preferred_copy_failed">Impossible de changer la copie préférée. Réessayez en étant connecté à Steam.</string>
+    <string name="preferred_copy_confirm">Utiliser cette copie</string>
     <string name="private_branch_password_hint">Saisir le code d\'accès</string>
     <string name="private_branch_password_check">Vérifier le code</string>
     <string name="private_branch_password_success">Branche débloquée !</string>
@@ -1184,6 +1196,8 @@
     <string name="container_config_vkd3d_version">Version VKD3D</string>
     <string name="container_config_executable_path">Chemin de l\'exécutable</string>
     <string name="container_config_executable_path_placeholder">ex. : chemin\\vers\\exe</string>
+    <string name="container_config_executable_path_custom">Chemin personnalisé…</string>
+    <string name="container_config_executable_path_custom_placeholder">ex. : C:\\Jeux\\jeu.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">Bibliothèques utilisées</string>
@@ -1831,6 +1845,7 @@
     <string name="debug_prerun_title">Obtenez l\'aide de l\'AI</string>
     <string name="debug_prerun_message_1">Lance le jeu avec les journaux de débogage et les partage avec notre AI sur Discord quand vous quittez. Jouez jusqu\'à ce que le problème se produise.</string>
     <string name="debug_prerun_message_2">Les réponses de l\'AI sont réservées aux abonnés.</string>
+    <string name="debug_trial_note">Essai gratuit disponible.</string>
     <string name="debug_prerun_message_3">Tout le monde peut partager le rapport pour obtenir de l\'aide humaine.</string>
     <string name="debug_paywall_title">Obtenez une assistance de débogage AI</string>
     <string name="debug_paywall_pitch">Notre AI lit votre journal et votre configuration exacts et vous dit quoi changer, généralement en moins de 5 minutes.</string>
@@ -2161,6 +2176,8 @@
     <string name="mouse_acceleration_strength_subtitle">Vitesse à laquelle les glissements rapides ajoutent de la vitesse souris</string>
     <string name="mouse_acceleration_max">Accélération maximale</string>
     <string name="mouse_acceleration_max_subtitle">Multiplicateur maximal appliqué pendant les glissements rapides du regard souris</string>
+    <string name="win32_relative_mouse_input">Entrée relative de la souris</string>
+    <string name="win32_relative_mouse_input_subtitle">Envoie les mouvements directement à Wine sous forme d’entrée relative de la souris. Essayez cette option lorsque la souris ne fonctionne pas en jeu.</string>
     <string name="joystick_opacity">Opacité du joystick</string>
     <string name="joystick_opacity_subtitle">Opacité des anneaux et boutons des joysticks dynamiques</string>
     <string name="show_shooter_runtime_toggle">Afficher le bouton en jeu</string>
@@ -2440,6 +2457,8 @@
     <string name="xr_open_composite_toggle">Compatibilité SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Fait passer les jeux conçus pour SteamVR par OpenComposite. À activer si le jeu indique que SteamVR n’est pas lancé ou reste à plat avec le mode VR activé.</string>
     <string name="xr_render_scale">Échelle de rendu VR</string>
+    <string name="settings_hide_ai_title">Masquer les fonctions IA</string>
+    <string name="settings_hide_ai_subtitle">Masque l\'aide au débogage par IA optionnelle</string>
     <string name="settings_info_boot_ads_title">Écrans de chargement sponsorisés</string>
     <string name="settings_info_boot_ads_subtitle">Laisser cette option activée aide à soutenir le développement de GameNative. Cela ne ralentit jamais le lancement des jeux et ne vous affecte en aucune façon.</string>
     <string name="settings_info_boot_recs_title">Recommandations de jeux sur les écrans de chargement</string>

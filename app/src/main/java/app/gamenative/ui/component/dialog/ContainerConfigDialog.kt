@@ -1401,6 +1401,8 @@ internal fun ExecutablePathDropdown(
     var expanded by remember { mutableStateOf(false) }
     var executables by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var showCustomPathDialog by remember { mutableStateOf(false) }
+    var customPathText by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     // Load executables from A: drive when component is first created
@@ -1449,7 +1451,7 @@ internal fun ExecutablePathDropdown(
             singleLine = true
         )
 
-        if (!isLoading && executables.isNotEmpty()) {
+        if (!isLoading) {
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
@@ -1477,7 +1479,40 @@ internal fun ExecutablePathDropdown(
                         }
                     )
                 }
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.container_config_executable_path_custom)) },
+                    onClick = {
+                        customPathText = value
+                        showCustomPathDialog = true
+                        expanded = false
+                    }
+                )
             }
         }
+    }
+
+    if (showCustomPathDialog) {
+        AlertDialog(
+            onDismissRequest = { showCustomPathDialog = false },
+            title = { Text(stringResource(R.string.container_config_executable_path_custom)) },
+            text = {
+                NoExtractOutlinedTextField(
+                    value = customPathText,
+                    onValueChange = { customPathText = it },
+                    placeholder = { Text(stringResource(R.string.container_config_executable_path_custom_placeholder)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onValueChange(customPathText.trim())
+                    showCustomPathDialog = false
+                }) { Text(stringResource(R.string.ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomPathDialog = false }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
     }
 }

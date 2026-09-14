@@ -40,5 +40,9 @@ jobs:
         uses: gradle/actions/wrapper-validation@v4
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Run unit tests
-        run: ./gradlew :app:testLegacyDebugUnitTest :app:testModernDebugUnitTest
+      - name: Run unit tests (legacy)
+        timeout-minutes: 30
+        run: ./gradlew :app:testLegacyDebugUnitTest
+      - name: Run unit tests (modern)
+        timeout-minutes: 30
+        run: ./gradlew :app:testModernDebugUnitTest

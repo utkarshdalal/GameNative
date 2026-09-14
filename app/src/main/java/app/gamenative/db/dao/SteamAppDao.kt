@@ -171,6 +171,10 @@ interface SteamAppDao {
     )
     suspend fun findHiddenDLCApps(appId: Int): List<SteamApp>?
 
+    /** All local DLC app IDs for a parent app, regardless of license (catalog only). */
+    @Query("SELECT id FROM steam_app WHERE dlc_for_app_id = :appId")
+    suspend fun findDlcAppIdsForParent(appId: Int): List<Int>
+
     @Query("DELETE from steam_app")
     suspend fun deleteAll()
 
