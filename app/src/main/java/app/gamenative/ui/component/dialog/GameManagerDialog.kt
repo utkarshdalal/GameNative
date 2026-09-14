@@ -64,6 +64,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.collections.orEmpty
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 data class InstallSizeInfo(
     val downloadSize: String,
@@ -116,7 +118,7 @@ fun GameManagerDialog(
         allDownloadableApps.clear()
 
         // Get Downloadable Depots
-        val allPossibleDownloadableDepots = SteamService.getDownloadableDepots(gameId)
+        val allPossibleDownloadableDepots = withContext(Dispatchers.IO) { SteamService.getDownloadableDepots(gameId) }
         downloadableDepots.putAll(allPossibleDownloadableDepots)
 
         // Get Optional DLC IDs

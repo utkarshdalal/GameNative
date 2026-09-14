@@ -1813,6 +1813,19 @@ fun PluviaMain(
                 /** Game Screen **/
                 composable(route = PluviaScreen.XServer.route) {
                     val xServerIsOffline by viewModel.isOffline.collectAsStateWithLifecycle()
+                    val launchedAppId = state.launchedAppId
+                    val hasContainer = remember(launchedAppId) {
+                        launchedAppId.isNotEmpty() && ContainerUtils.hasContainer(context, launchedAppId)
+                    }
+                    if (!hasContainer) {
+                        LaunchedEffect(launchedAppId) {
+                            Timber.w("XServer route entered without a container for '$launchedAppId', returning home")
+                            navController.navigate(PluviaScreen.Home.route + "?offline=$xServerIsOffline") {
+                                popUpTo(PluviaScreen.XServer.route) { inclusive = true }
+                            }
+                        }
+                        return@composable
+                    }
                     XServerScreen(
                         appId = state.launchedAppId,
                         bootToContainer = state.bootToContainer,
