@@ -608,6 +608,83 @@ class GOGCloudSavesManagerTest {
         // should update lastSyncTimestamp to 1500L, preventing this conflict on future syncs
     }
 
+    @Test
+    fun cloudFilesMissingLocally_selects_stale_cloud_generations_for_chromium_profile_sync() {
+        val local = listOf(
+            GOGCloudSavesManager.SyncFile("Local Storage/leveldb/000013.log", "/p/000013.log"),
+            GOGCloudSavesManager.SyncFile("cc.save", "/p/cc.save"),
+        )
+        val cloud = listOf(
+            GOGCloudSavesManager.CloudFile("Local Storage/leveldb/000013.log", "h1", null, 100L),
+            GOGCloudSavesManager.CloudFile("cc.save", "h2", null, 100L),
+            GOGCloudSavesManager.CloudFile("Local Storage/leveldb/000009.log", "h3", null, 50L),
+            GOGCloudSavesManager.CloudFile("Local Storage/leveldb/MANIFEST-000006", "h4", null, 50L),
+            // tombstone: already deleted server-side
+            GOGCloudSavesManager.CloudFile("old.sav", "aadd86936a80ee8a369579c3926f1b3c", null, 50L),
+            // chromium internal: excluded from sync both ways, so never deleted either
+            GOGCloudSavesManager.CloudFile("Crashpad/reports/abc.dmp", "h5", null, 50L),
+        )
+
+        val toDelete = GOGCloudSavesManager.cloudFilesMissingLocally(local, cloud, chromiumProfileSync = true)
+
+        assertEquals(
+            setOf("Local Storage/leveldb/000009.log", "Local Storage/leveldb/MANIFEST-000006"),
+            toDelete.map { it.relativePath }.toSet(),
+        )
+    }
+
+    @Test
+    fun cloudFilesMissingLocally_selects_nothing_without_chromium_profile_sync() {
+        val cloud = listOf(GOGCloudSavesManager.CloudFile("orphan.sav", "h1", null, 50L))
+
+        val toDelete = GOGCloudSavesManager.cloudFilesMissingLocally(emptyList(), cloud, chromiumProfileSync = false)
+
+        assertTrue(toDelete.isEmpty())
+    }
+
+    @Test
+    fun downloadPassTimestamp_fails_html5_sync_when_any_download_failed() {
+        assertEquals(0L, GOGCloudSavesManager.downloadPassTimestamp(chromiumProfileSync = true, failedDownloads = 1, now = 1000L))
+        assertEquals(1000L, GOGCloudSavesManager.downloadPassTimestamp(chromiumProfileSync = true, failedDownloads = 0, now = 1000L))
+    }
+
+    @Test
+    fun downloadPassTimestamp_keeps_wine_result_despite_failed_downloads() {
+        assertEquals(1000L, GOGCloudSavesManager.downloadPassTimestamp(chromiumProfileSync = false, failedDownloads = 3, now = 1000L))
+    }
+
+    @Test
+    fun localLeveldbFilesMissingInCloud_selects_stale_local_generations_only() {
+        val ls = "User Data/Default/Local Storage/leveldb"
+        val idb = "User Data/Default/IndexedDB/file__0.indexeddb.leveldb"
+        val local = listOf(
+            GOGCloudSavesManager.SyncFile("$ls/000019.log", "/p/a"),
+            GOGCloudSavesManager.SyncFile("$ls/000042.log", "/p/b"),
+            GOGCloudSavesManager.SyncFile("$ls/MANIFEST-000041", "/p/c"),
+            GOGCloudSavesManager.SyncFile("cc.save.backup2", "/p/d"),
+            // db the cloud has no CURRENT for: not a whole cloud copy, left alone
+            GOGCloudSavesManager.SyncFile("$idb/000007.ldb", "/p/e"),
+        )
+        val cloud = listOf(
+            GOGCloudSavesManager.CloudFile("$ls/CURRENT", "h1", null, 100L),
+            GOGCloudSavesManager.CloudFile("$ls/000019.log", "h2", null, 100L),
+            GOGCloudSavesManager.CloudFile("$ls/MANIFEST-000017", "h3", null, 100L),
+        )
+
+        val toDelete = GOGCloudSavesManager.localLeveldbFilesMissingInCloud(local, cloud, chromiumProfileSync = true)
+
+        assertEquals(setOf("$ls/000042.log", "$ls/MANIFEST-000041"), toDelete.map { it.relativePath }.toSet())
+    }
+
+    @Test
+    fun localLeveldbFilesMissingInCloud_selects_nothing_without_chromium_profile_sync() {
+        val ls = "Local Storage/leveldb"
+        val local = listOf(GOGCloudSavesManager.SyncFile("$ls/000042.log", "/p/a"))
+        val cloud = listOf(GOGCloudSavesManager.CloudFile("$ls/CURRENT", "h1", null, 100L))
+
+        assertTrue(GOGCloudSavesManager.localLeveldbFilesMissingInCloud(local, cloud, chromiumProfileSync = false).isEmpty())
+    }
+
     private fun snapshot(file: File): GOGCloudSavesManager.GzippedFileBody =
         GOGCloudSavesManager.GzippedFileBody.snapshot(file, File(System.getProperty("java.io.tmpdir")!!))
 
