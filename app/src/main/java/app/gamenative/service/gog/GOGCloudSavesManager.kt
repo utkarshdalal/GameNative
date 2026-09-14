@@ -1,6 +1,7 @@
 package app.gamenative.service.gog
 
 import android.content.Context
+import app.gamenative.service.cloud.SyncFileFilter
 import app.gamenative.utils.FileUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -39,12 +40,61 @@ class GOGCloudSavesManager(
     .readTimeout(30, TimeUnit.SECONDS)
     .build()
 
+    private var failedDownloads = 0
+
     companion object {
         private const val CLOUD_STORAGE_BASE_URL = "https://cloudstorage.gog.com"
         // the version Galaxy desktop reports in `x-container-meta-user-agent`. if Galaxy ever
         // rejects writes from it, fall back to Heroic's 2.0.13.27.
         private const val USER_AGENT = "GOGGalaxyCommunicationService/2.0.18.181 (Windows_32bit) dont_sync_marker/true installation_source/gog"
         private const val DELETION_MD5 = "aadd86936a80ee8a369579c3926f1b3c"
+
+        // gated: wine titles must never have save files filtered out by name.
+        private fun isExcludedFromSync(relativePath: String, chromiumProfileSync: Boolean): Boolean =
+            chromiumProfileSync && SyncFileFilter.isChromiumInternal(relativePath)
+
+        // leveldb renames files on compaction, so without mirror-deletes the cloud keeps every old generation
+        // and Galaxy sees a manifest that doesn't match its local cache. wine stays accretive.
+        internal fun cloudFilesMissingLocally(
+            localFiles: List<SyncFile>,
+            cloudFiles: List<CloudFile>,
+            chromiumProfileSync: Boolean,
+        ): List<CloudFile> {
+            if (!chromiumProfileSync) return emptyList()
+            val localPaths = localFiles.mapTo(HashSet()) { it.relativePath }
+            return cloudFiles.filter { cf ->
+                !cf.isDeleted &&
+                    !isExcludedFromSync(cf.relativePath, chromiumProfileSync) &&
+                    cf.relativePath !in localPaths
+            }
+        }
+
+        // html5 only: a failed file must not advance the sync timestamp (0 = failure) -- it would never be
+        // retried, and launch would rewrite WebView storage from a leveldb missing that file.
+        internal fun downloadPassTimestamp(chromiumProfileSync: Boolean, failedDownloads: Int, now: Long): Long {
+            if (!chromiumProfileSync || failedDownloads == 0) return now
+            Timber.tag("GOG-CloudSaves").w("$failedDownloads download(s) failed -- not advancing sync timestamp")
+            return 0L
+        }
+
+        // leveldb numbers files per device, so a stale local generation can outnumber the cloud's and get read
+        // alongside the cloud CURRENT/MANIFEST. only dirs whose CURRENT the cloud holds; a db the cloud lacks
+        // entirely is left alone.
+        internal fun localLeveldbFilesMissingInCloud(
+            localFiles: List<SyncFile>,
+            cloudFiles: List<CloudFile>,
+            chromiumProfileSync: Boolean,
+        ): List<SyncFile> {
+            if (!chromiumProfileSync) return emptyList()
+            val cloudPaths = cloudFiles.filterNot { it.isDeleted }.mapTo(HashSet()) { it.relativePath }
+            return localFiles.filter { local ->
+                val dir = local.relativePath.substringBeforeLast('/', "")
+                val dirName = dir.substringAfterLast('/')
+                (dirName == "leveldb" || dirName.endsWith(".leveldb")) &&
+                    "$dir/CURRENT" in cloudPaths &&
+                    local.relativePath !in cloudPaths
+            }
+        }
 
         // the listed md5 and the upload body both gzip through here, so they can't drift apart. MUST be
         // byte-stable for unchanged content: Galaxy uses md5(gzipped bytes) as the manifest version, and
@@ -202,8 +252,11 @@ class GOGCloudSavesManager(
         lastSyncTimestamp: Long = 0,
         preferredAction: String = "none",
         beforeOverwrite: suspend () -> Unit = {},
+        // OPT-IN mirror-delete; false keeps wine accretive (never deletes cloud).
+        chromiumProfileSync: Boolean = false,
     ): Long = withContext(Dispatchers.IO) {
         try {
+            failedDownloads = 0
             Timber.tag("GOG-CloudSaves").i("Starting sync for path: $localPath")
             Timber.tag("GOG-CloudSaves").i("Cloud dirname: $dirname")
             Timber.tag("GOG-CloudSaves").i("Cloud client ID: $clientId")
@@ -218,7 +271,7 @@ class GOGCloudSavesManager(
             }
 
             // Get local files
-            val localFiles = scanLocalFiles(syncDir)
+            val localFiles = scanLocalFiles(syncDir, chromiumProfileSync)
             Timber.tag("GOG-CloudSaves").i("Found ${localFiles.size} local file(s)")
 
             // Get game-specific authentication credentials
@@ -231,7 +284,10 @@ class GOGCloudSavesManager(
 
             // Get cloud files using game-specific clientId in URL path
             Timber.tag("GOG").d("[Cloud Saves] Fetching cloud file list for dirname: $dirname")
-            val cloudFiles = getCloudFiles(credentials.userId, clientId, dirname, credentials.accessToken) ?: run {
+            // chromium-internal files are dropped before classification, or they'd be downloaded and fed into
+            // conflict resolution. a no-op for wine.
+            val cloudFiles = getCloudFiles(credentials.userId, clientId, dirname, credentials.accessToken)
+                ?.filterNot { isExcludedFromSync(it.relativePath, chromiumProfileSync) } ?: run {
                 Timber.tag("GOG-CloudSaves").e("Failed to fetch cloud files, aborting sync")
                 return@withContext 0L
             }
@@ -259,7 +315,7 @@ class GOGCloudSavesManager(
                     downloadableCloud.forEach { file ->
                         downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
                     }
-                    return@withContext currentTimestamp()
+                    return@withContext downloadPassTimestamp(chromiumProfileSync, failedDownloads, currentTimestamp())
                 }
 
                 localFiles.isEmpty() && cloudFiles.isEmpty() -> {
@@ -275,7 +331,8 @@ class GOGCloudSavesManager(
                 downloadableCloud.forEach { file ->
                     downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
                 }
-                return@withContext currentTimestamp()
+                deleteLocalLeveldbFilesMissingInCloud(localFiles, cloudFiles, chromiumProfileSync)
+                return@withContext downloadPassTimestamp(chromiumProfileSync, failedDownloads, currentTimestamp())
             }
 
             // Explicit "keep local" choice from the conflict dialog: force-upload every local file so
@@ -285,6 +342,10 @@ class GOGCloudSavesManager(
                 localFiles.forEach { file ->
                     uploadFile(credentials.userId, clientId, dirname, file, credentials.accessToken)
                 }
+                deleteCloudFilesMissingLocally(
+                    credentials.userId, clientId, dirname, credentials.accessToken,
+                    localFiles, cloudFiles, chromiumProfileSync,
+                )
                 return@withContext currentTimestamp()
             }
 
@@ -312,6 +373,16 @@ class GOGCloudSavesManager(
                 // Deduplicate by relativePath (new files can appear in both lists)
                 val uniqueFilesToUpload = filesToUpload.distinctBy { it.relativePath }
 
+                // html5 only (0 otherwise). runs after the DOWNLOAD/CONFLICT guard, so a cloud file another device
+                // added since the last sync can't be deleted here. disjoint from the upload set (missing locally).
+                // a compaction can leave stale cloud generations with no local file newer than the sync, so a
+                // delete alone still advances the timestamp.
+                val deleted = deleteCloudFilesMissingLocally(
+                    credentials.userId, clientId, dirname, credentials.accessToken,
+                    localFiles, cloudFiles, chromiumProfileSync,
+                )
+                if (uniqueFilesToUpload.isEmpty() && deleted > 0) return@withContext currentTimestamp()
+
                 if (uniqueFilesToUpload.isNotEmpty()) {
                     Timber.tag("GOG-CloudSaves").i("Smart upload: ${uniqueFilesToUpload.size} file(s) changed since last sync (out of ${localFiles.size} total)")
                     uniqueFilesToUpload.forEach { file ->
@@ -338,6 +409,7 @@ class GOGCloudSavesManager(
                             downloadFile(credentials.userId, clientId, dirname, file, syncDir, credentials.accessToken)
                         }
                     }
+                    deleteLocalLeveldbFilesMissingInCloud(localFiles, cloudFiles, chromiumProfileSync)
                 }
 
                 SyncAction.UPLOAD -> {
@@ -421,7 +493,7 @@ class GOGCloudSavesManager(
             }
 
             Timber.tag("GOG-CloudSaves").i("Sync completed successfully")
-            return@withContext currentTimestamp()
+            return@withContext downloadPassTimestamp(chromiumProfileSync, failedDownloads, currentTimestamp())
 
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Sync failed: ${e.message}")
@@ -447,13 +519,14 @@ class GOGCloudSavesManager(
         dirname: String,
         clientId: String,
         clientSecret: String,
-        lastSyncTimestamp: Long = 0
+        lastSyncTimestamp: Long = 0,
+        chromiumProfileSync: Boolean = false,
     ): ConflictInfo? = withContext(Dispatchers.IO) {
         try {
             val syncDir = File(localPath)
             if (!syncDir.exists()) return@withContext null
 
-            val localFiles = scanLocalFiles(syncDir)
+            val localFiles = scanLocalFiles(syncDir, chromiumProfileSync)
             if (localFiles.isEmpty()) return@withContext null // nothing local => no conflict
 
             val credentials = GOGAuthManager.getGameCredentials(context, clientId, clientSecret).getOrNull()
@@ -479,15 +552,20 @@ class GOGCloudSavesManager(
     /**
      * Scan local directory for save files
      */
-    private suspend fun scanLocalFiles(directory: File): List<SyncFile> = withContext(Dispatchers.IO) {
+    private suspend fun scanLocalFiles(directory: File, chromiumProfileSync: Boolean): List<SyncFile> = withContext(Dispatchers.IO) {
         val files = mutableListOf<SyncFile>()
 
+        var skipped = 0
         fun scanRecursive(dir: File, basePath: String) {
             dir.listFiles()?.forEach { file ->
                 if (file.isFile) {
                     val relativePath = file.absolutePath.removePrefix(basePath)
                         .removePrefix("/")
                         .replace("\\", "/")
+                    if (isExcludedFromSync(relativePath, chromiumProfileSync)) {
+                        skipped++
+                        return@forEach
+                    }
                     files.add(SyncFile(relativePath, file.absolutePath))
                 } else if (file.isDirectory) {
                     scanRecursive(file, basePath)
@@ -496,6 +574,9 @@ class GOGCloudSavesManager(
         }
 
         scanRecursive(directory, directory.absolutePath)
+        if (skipped > 0) {
+            Timber.tag("GOG-CloudSaves").i("Skipped $skipped local chromium-internal file(s) — excluded from upload")
+        }
 
         // Calculate metadata for all files
         files.forEach { it.calculateMetadata() }
@@ -679,6 +760,75 @@ class GOGCloudSavesManager(
         }
     }
 
+    // skipped after a failed download: the pass already fails, and deleting would leave neither generation intact.
+    private fun deleteLocalLeveldbFilesMissingInCloud(
+        localFiles: List<SyncFile>,
+        cloudFiles: List<CloudFile>,
+        chromiumProfileSync: Boolean,
+    ) {
+        if (failedDownloads > 0) return
+        localLeveldbFilesMissingInCloud(localFiles, cloudFiles, chromiumProfileSync).forEach { stale ->
+            if (File(stale.absolutePath).delete()) {
+                Timber.tag("GOG-CloudSaves").i("Deleted local-only leveldb file: ${stale.relativePath}")
+            } else {
+                Timber.tag("GOG-CloudSaves").w("Failed to delete local-only leveldb file: ${stale.relativePath}")
+            }
+        }
+    }
+
+    private suspend fun deleteCloudFilesMissingLocally(
+        userId: String,
+        clientId: String,
+        dirname: String,
+        authToken: String,
+        localFiles: List<SyncFile>,
+        cloudFiles: List<CloudFile>,
+        chromiumProfileSync: Boolean,
+    ): Int {
+        val toDelete = cloudFilesMissingLocally(localFiles, cloudFiles, chromiumProfileSync)
+        if (toDelete.isEmpty()) return 0
+        Timber.tag("GOG-CloudSaves").i("Deleting ${toDelete.size} cloud file(s) missing from local (mirror semantic)")
+        toDelete.forEach { deleteFile(userId, clientId, dirname, it, authToken) }
+        return toDelete.size
+    }
+
+    // stale cloud objects force a conflict in Galaxy desktop, which compares the cloud manifest to its file set.
+    private suspend fun deleteFile(
+        userId: String,
+        clientId: String,
+        dirname: String,
+        file: CloudFile,
+        authToken: String
+    ) = withContext(Dispatchers.IO) {
+        try {
+            Timber.tag("GOG-CloudSaves").i("Deleting from cloud: ${file.relativePath}")
+
+            val url = cloudFileUrl(userId, clientId, dirname, file.relativePath)
+
+            val request = Request.Builder()
+                .url(url)
+                .delete()
+                .header("Authorization", "Bearer $authToken")
+                .header("User-Agent", USER_AGENT)
+                .header("X-Object-Meta-User-Agent", USER_AGENT)
+                .build()
+
+            val response = httpClient.newCall(request).execute()
+            response.use {
+                if (response.isSuccessful) {
+                    Timber.tag("GOG-CloudSaves").i("Successfully deleted: ${file.relativePath}")
+                } else {
+                    val errorBody = response.body?.string() ?: "No response body"
+                    Timber.tag("GOG-CloudSaves").e(
+                        "Failed to delete ${file.relativePath}: HTTP ${response.code}\n  body: $errorBody",
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Timber.tag("GOG-CloudSaves").e(e, "Failed to delete ${file.relativePath}")
+        }
+    }
+
     /**
      * Download file from GOG cloud storage
      */
@@ -720,10 +870,14 @@ class GOGCloudSavesManager(
                     val errorBody = response.body?.string() ?: "No response body"
                     Timber.tag("GOG-CloudSaves").e("Failed to download ${file.relativePath}: HTTP ${response.code}")
                     Timber.tag("GOG-CloudSaves").e("Download error body: $errorBody")
+                    failedDownloads++
                     return@withContext
                 }
 
-                val bytes = response.body?.bytes() ?: return@withContext
+                val bytes = response.body?.bytes() ?: run {
+                    failedDownloads++
+                    return@withContext
+                }
                 Timber.tag("GOG-CloudSaves").d("Downloaded ${bytes.size} bytes for ${file.relativePath}")
 
                 // resolve against on-disk casing to avoid creating duplicate dirs
@@ -760,6 +914,7 @@ class GOGCloudSavesManager(
 
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Failed to download ${file.relativePath}")
+            failedDownloads++
         }
     }
 
