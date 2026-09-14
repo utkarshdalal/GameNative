@@ -97,3 +97,13 @@ JNIEXPORT jboolean JNICALL LSFG_FN(nativeSupportsFrameGeneration)(JNIEnv* env, j
     free(driver);
     return supported ? JNI_TRUE : JNI_FALSE;
 }
+
+JNIEXPORT jboolean JNICALL LSFG_FN(nativeSupportsFp16)(JNIEnv* env, jclass clazz,
+                                                      jstring driverName,
+                                                      jobject context) {
+    (void)clazz;
+    char* driver = copy_utf(env, driverName);
+    const bool supported = lsfg_probe_fp16_support(env, context, driver);
+    free(driver);
+    return supported ? JNI_TRUE : JNI_FALSE;
+}

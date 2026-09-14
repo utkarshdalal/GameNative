@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 bool lsfg_probe_support(JNIEnv* env, jobject context, const char* driver_name);
+bool lsfg_probe_fp16_support(JNIEnv* env, jobject context, const char* driver_name);
 
 #ifdef __cplusplus
 }

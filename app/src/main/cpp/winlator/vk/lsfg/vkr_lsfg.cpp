@@ -16,8 +16,8 @@
 
 namespace {
 
-constexpr uint64_t LSFG_REQUIRED_FRAMES = 2;
-constexpr uint32_t LSFG_RECURRENCE_FRAMES = 2;
+constexpr uint64_t LSFG_REQUIRED_FRAMES = 3;
+constexpr uint64_t LSFG_RECURRENCE_FRAMES = 1;
 constexpr uint64_t LSFG_TELEMETRY_INTERVAL = 120;
 
 constexpr float LSFG_FLOW_SCALE_MIN = 0.25f;
@@ -48,7 +48,8 @@ void CopyPresentedFrame(VkCommandBuffer cmd, VkImage source, lsfg::LsfgImage& de
         MakeTransitionBarrier(source, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                               VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
-        MakeTransitionBarrier(destination.Handle(), VK_ACCESS_SHADER_READ_BIT,
+        MakeTransitionBarrier(destination.Handle(),
+                              destination.Layout() == VK_IMAGE_LAYOUT_UNDEFINED ? 0 : VK_ACCESS_SHADER_READ_BIT,
                               VK_ACCESS_TRANSFER_WRITE_BIT, destination.Layout(),
                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
     };
@@ -284,4 +285,7 @@ void vkr_lsfg_reset(VkrLsfg* lsfg) {
     lsfg->warm = false;
     lsfg->generated = false;
     lsfg->plan = {};
+    if (lsfg->chain) {
+        lsfg->chain->ResetHistory();
+    }
 }
