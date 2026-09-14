@@ -20,6 +20,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.wifi.WifiManager
 import android.os.PowerManager
+import app.gamenative.BuildConfig
 import app.gamenative.data.GameSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -492,7 +493,7 @@ object GameDownloadService {
      * in the plan JSON so no JNI callback is even wired when off; Epic/GOG/Amazon forward their
      * lines over JNI `onLog`, gated at the Timber call sites in their managers.
      */
-    const val SHOW_PIPELINE_LOGS = true
+    val SHOW_PIPELINE_LOGS = BuildConfig.DEBUG
     private const val RETRY_BACKOFF_LATER_MS = 120_000L
 
     // ── Keep the device awake while transferring ─────────────────────────────

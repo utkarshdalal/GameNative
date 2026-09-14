@@ -386,7 +386,12 @@ pub fn download_resolved_depots_with_cancel_progress(
     };
 
     let depots_total = depots.len() as u32;
-    for (depot_index, depot) in depots.iter().enumerate() {
+    let mut depots_done = 0u32;
+
+    // ── Phase 1: resolve ALL depot manifests before a single chunk is downloaded (the "20/20"
+    // point). Only after every depot's metadata is in hand does any file content get scheduled.
+    let mut resolved: Vec<(&ResolvedDepotSpec, ContentManifest)> = Vec::new();
+    for depot in depots {
         if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
             return DepotDownloadResult::fail("cancelled");
         }
@@ -398,17 +403,12 @@ pub fn download_resolved_depots_with_cancel_progress(
         if decide_depot_resume(fresh, &cfg, spec, clean_pause) == DepotResumeDecision::SkipInstalled
         {
             result.depots_skipped += 1;
+            depots_done += 1;
             continue;
         }
         if depot.depot_key.len() != 32 {
             return DepotDownloadResult::fail(format!(
                 "download: depot key unavailable for depot {}",
-                depot.depot_id
-            ));
-        }
-        if !cfg.begin_depot(depot.depot_id) {
-            return DepotDownloadResult::fail(format!(
-                "download: depot.config begin failed for depot {}",
                 depot.depot_id
             ));
         }
@@ -473,9 +473,35 @@ pub fn download_resolved_depots_with_cancel_progress(
                 depot.depot_id
             ));
         }
+        resolved.push((depot, manifest));
+    }
+
+    // ── CDN probe: with all manifests in hand (the probe borrows one real chunk URL), maybe
+    // merge faster unassigned caches into the server pool. Cached with TTL + bad-host early
+    // refresh; strictly additive — any failure leaves the assigned set untouched.
+    let probe_manifests: Vec<&ContentManifest> = resolved.iter().map(|(_, m)| m).collect();
+    let usable_servers = crate::cdn_probe::maybe_extend_servers(
+        install_dir,
+        ca_bundle_path,
+        &usable_servers,
+        &probe_manifests,
+        log,
+        cancel,
+    );
+
+    // ── Phase 2: all metadata resolved — download the depots in order.
+    for (depot, manifest) in resolved {
+        if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
+            return DepotDownloadResult::fail("cancelled");
+        }
+        if !cfg.begin_depot(depot.depot_id) {
+            return DepotDownloadResult::fail(format!(
+                "download: depot.config begin failed for depot {}",
+                depot.depot_id
+            ));
+        }
 
         let depot_id = depot.depot_id;
-        let depots_done = depot_index as u32;
         let chunk_progress = |done: u64, total: u64, verifying: bool| {
             if let Some(on_progress) = on_progress {
                 let progress = map_write_progress(
@@ -526,6 +552,7 @@ pub fn download_resolved_depots_with_cancel_progress(
         remove_clean_pause_marker(&config_dir, depot.depot_id, depot.manifest_id);
         result.bytes_written += write_result.bytes_written;
         result.depots_completed += 1;
+        depots_done += 1;
     }
 
     result

@@ -474,6 +474,15 @@ pub struct AsyncFetchError {
 /// and whole-body items are far below this.
 pub(crate) const MAX_WHOLE_BODY_BYTES: u64 = 128 * 1024 * 1024;
 
+/// Max silence between body pieces on a chunk fetch before the connection is declared dead.
+/// reqwest's per-request timeout stops once headers arrive, so WITHOUT this a host that stalls
+/// mid-body (the google2 freeze seen on-device: zero bytes for 90+ s, no error) hangs the request
+/// forever — and worse, its speed-ranking EWMA never updates, so the scheduler keeps feeding it.
+/// 15 s is far above real jitter (RTT spikes to ~4.5 s at full window) but short enough that a
+/// frozen host errors out, cools down, and its chunks rotate elsewhere within one probe cycle.
+pub(crate) const CHUNK_BODY_IDLE_TIMEOUT: std::time::Duration =
+    std::time::Duration::from_secs(15);
+
 /// Read a response body incrementally, rejecting it as soon as it exceeds `cap`.
 /// Prefer this over `response.bytes()` for any server-supplied body.
 /// `idle` bounds the wait between pieces, NOT the whole body — a slow link moving
@@ -540,6 +549,12 @@ pub struct AsyncCdnClient {
 }
 
 impl AsyncCdnClient {
+    /// Borrow the pooled reqwest client (the CDN probe makes its own ad-hoc requests through the
+    /// same TLS/pool configuration).
+    pub fn raw(&self) -> &reqwest::Client {
+        &self.client
+    }
+
     /// Build the shared pooled client. `pool_max_idle_per_host` is set to the per-host concurrency
     /// cap so concurrent requests to one CDN host reuse keep-alive connections. CA-bundle handling
     /// mirrors the blocking client exactly.
@@ -604,10 +619,13 @@ impl AsyncCdnClient {
             });
         }
         let content_length = response.content_length();
-        let body = match read_body_capped(response, MAX_WHOLE_BODY_BYTES, None).await {
-            Ok(body) => body,
-            Err(err) => return Err(err),
-        };
+        let body =
+            match read_body_capped(response, MAX_WHOLE_BODY_BYTES, Some(CHUNK_BODY_IDLE_TIMEOUT))
+                .await
+            {
+                Ok(body) => body,
+                Err(err) => return Err(err),
+            };
         if let Some(expected) = content_length {
             if body.len() as u64 != expected {
                 return Err(AsyncFetchError {

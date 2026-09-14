@@ -22,7 +22,7 @@ use std::sync::Arc;
 use std::thread;
 
 use jni::objects::{GlobalRef, JByteArray, JClass, JIntArray, JObject, JObjectArray, JString, JValue};
-use jni::sys::{jint, jlong, JNI_FALSE, JNI_TRUE};
+use jni::sys::{jboolean, jint, jlong, JNI_FALSE, JNI_TRUE};
 use jni::{JNIEnv, JavaVM};
 
 use super::driver::{build_plan, run_plan, EpicRequest};
@@ -207,9 +207,13 @@ fn call_on_complete(env: &mut JNIEnv, listener: &JObject, success: bool, error: 
     clear_pending_exception(env);
 }
 
-/// Log to logcat AND to the listener (Java mirrors it into `bh_epic_debug.txt`).
-fn log_both(env: &mut JNIEnv, listener: &JObject, line: &str) {
-    android_log(line);
+/// Log to the listener (Java mirrors it into `bh_epic_debug.txt`) and — only when the run
+/// carries the pipeline-logs flag (GameDownloadService.SHOW_PIPELINE_LOGS, mirroring the Steam
+/// engine's plan opt-in) — to logcat. The debug-file feed stays unconditional.
+fn log_both(env: &mut JNIEnv, listener: &JObject, pipeline_logs: bool, line: &str) {
+    if pipeline_logs {
+        android_log(line);
+    }
     call_on_log(env, listener, line);
 }
 
@@ -226,8 +230,10 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeEpicDownload_n
     ca_bundle_path: JString,
     max_workers: jint,
     process_workers: jint,
+    pipeline_logs: jboolean,
     listener: JObject,
 ) -> jlong {
+    let pipeline_logs = pipeline_logs != JNI_FALSE;
     if listener.is_null() {
         android_log("nativeStart: null listener");
         return 0;
@@ -259,6 +265,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeEpicDownload_n
     log_both(
         &mut env,
         &listener,
+        pipeline_logs,
         &format!(
             "engine=rust label=\"{label}\" install_dir={install_dir} cdns={} hosts={host_count} pending_files={} workers={max_workers} per_host_cap={host_cap} process_workers={process_workers} manifest_bytes={}",
             cdn_prefixes.len(),
@@ -291,7 +298,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeEpicDownload_n
     let plan = match build_plan(&req) {
         Ok(plan) => plan,
         Err(err) => {
-            log_both(&mut env, &listener, &format!("not started: {err}"));
+            log_both(&mut env, &listener, pipeline_logs, &format!("not started: {err}"));
             call_on_complete(&mut env, &listener, false, &err, 0);
             return 0;
         }
@@ -320,7 +327,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeEpicDownload_n
     let handle = Box::new(EpicDownloadHandle { cancel });
 
     thread::spawn(move || {
-        run_on_thread(vm, listener, plan, req, thread_cancel);
+        run_on_thread(vm, listener, plan, req, thread_cancel, pipeline_logs);
     });
 
     Box::into_raw(handle) as jlong
@@ -332,6 +339,7 @@ fn run_on_thread(
     plan: super::driver::EpicPlan,
     req: EpicRequest,
     cancel: Arc<AtomicBool>,
+    pipeline_logs: bool,
 ) {
     let bytes_total = plan.total_bytes;
     let chunks_total = plan.needed.len() as u64;
@@ -352,7 +360,9 @@ fn run_on_thread(
         );
     };
     let log = |line: &str| {
-        android_log(line);
+        if pipeline_logs {
+            android_log(line);
+        }
         let Ok(mut env) = vm.attach_current_thread_as_daemon() else {
             return;
         };

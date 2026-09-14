@@ -743,8 +743,8 @@ mod tests {
         assert_eq!(per_host_cap_for(32, 1), 32);
         assert_eq!(per_host_cap_for(32, 3), 11);
         assert_eq!(per_host_cap_for(8, 1), 8);
-        assert_eq!(per_host_cap_for(4, 1), 6);
-        assert_eq!(per_host_cap_for(0, 0), 6);
+        assert_eq!(per_host_cap_for(4, 1), 8, "floor is the core PER_HOST_CAP");
+        assert_eq!(per_host_cap_for(0, 0), 8);
     }
 
     #[test]

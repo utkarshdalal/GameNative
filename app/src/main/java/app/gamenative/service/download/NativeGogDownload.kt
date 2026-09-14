@@ -107,7 +107,8 @@ object NativeGogDownload {
         return try {
             nativeStart(
                 kind, depotManifests, cdnBase, installDir, skipPaths, caBundlePath,
-                maxWorkers, processWorkers, sortLargestFirst, label, listener,
+                maxWorkers, processWorkers, sortLargestFirst, label,
+                GameDownloadService.SHOW_PIPELINE_LOGS, listener,
             )
         } catch (t: Throwable) {
             Timber.tag(TAG).e("nativeStart threw — ${t.javaClass.simpleName}: ${t.message}")
@@ -144,6 +145,7 @@ object NativeGogDownload {
         processWorkers: Int,
         sortLargestFirst: Boolean,
         label: String,
+        pipelineLogs: Boolean,
         listener: NativeGogDownloadListener,
     ): Long
 

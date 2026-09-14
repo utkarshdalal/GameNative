@@ -121,7 +121,7 @@ object NativeEpicDownload {
         val handle: Long = try {
             nativeStart(
                 manifest, installDir, cdnPrefixes, pendingFileIdx, expectedChunks, expectedBytes,
-                caBundlePath, maxWorkers, processWorkers, inner,
+                caBundlePath, maxWorkers, processWorkers, GameDownloadService.SHOW_PIPELINE_LOGS, inner,
             )
         } catch (t: Throwable) {
             val msg = "nativeStart: ${t.javaClass.simpleName}: ${t.message}"
@@ -171,6 +171,7 @@ object NativeEpicDownload {
         caBundlePath: String,
         maxWorkers: Int,
         processWorkers: Int,
+        pipelineLogs: Boolean,
         listener: Listener,
     ): Long
 

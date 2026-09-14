@@ -1802,8 +1802,8 @@ mod tests {
 
     #[test]
     fn window_bounds_clamp_to_hosts_and_hard_cap() {
-        assert_eq!(window_bounds(64, 7, PER_HOST_CAP), (8, 2, 42));
-        assert_eq!(window_bounds(8, 1, PER_HOST_CAP), (6, 2, 6));
+        assert_eq!(window_bounds(64, 7, PER_HOST_CAP), (8, 2, 56));
+        assert_eq!(window_bounds(8, 1, PER_HOST_CAP), (8, 2, 8));
         assert_eq!(window_bounds(1, 1, PER_HOST_CAP), (1, 1, 1));
         assert_eq!(window_bounds(10_000, 100, 6), (8, 2, WINDOW_HARD_CAP));
         assert_eq!(window_bounds(0, 0, 0), (1, 1, 1));

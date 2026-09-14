@@ -8,8 +8,9 @@
 //! `JavaVM` attach; `nativeCancel` flips an `AtomicBool`; `nativeRelease` drops the Java side's
 //! reference to the handle (the worker keeps its own until it exits).
 //!
-//! Log tag `GN_GOG_DL`: every engine log line goes to logcat here AND to the listener's `onLog`
-//! (which the Java manager folds into its `bh_gog_debug.txt` buffer).
+//! Log tag `GN_GOG_DL`: engine log lines reach logcat only when `nativeStart` carries
+//! `pipeline_logs` (GameDownloadService.SHOW_PIPELINE_LOGS, mirroring the Steam engine's plan
+//! opt-in); the listener's `onLog` (folded into `bh_gog_debug.txt`) always receives them.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -60,6 +61,9 @@ pub struct GogRunHandle {
 struct JniEvents {
     vm: JavaVM,
     listener: GlobalRef,
+    /// Gate engine lines reaching logcat (GameDownloadService.SHOW_PIPELINE_LOGS, mirroring the
+    /// Steam engine's plan opt-in). The listener's `onLog` (debug-file buffer) is unconditional.
+    pipeline_logs: bool,
     /// Byte-progress throttle: fetch_core fires per piece; the JVM only needs ~5 updates/sec.
     last_bytes_emit: std::sync::Mutex<(std::time::Instant, u64)>,
 }
@@ -170,7 +174,9 @@ impl GogEvents for JniEvents {
     }
 
     fn on_log(&self, line: &str) {
-        android_log(line);
+        if self.pipeline_logs {
+            android_log(line);
+        }
         self.with_env(|env| {
             let Ok(text) = env.new_string(line) else {
                 return;
@@ -252,8 +258,10 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeGogDownload_na
     process_workers: jint,
     sort_largest_first: jboolean,
     label: JString,
+    pipeline_logs: jboolean,
     listener: JObject,
 ) -> jlong {
+    let pipeline_logs = pipeline_logs != JNI_FALSE;
     if listener.is_null() {
         android_log("nativeStart: null listener");
         return 0;
@@ -297,6 +305,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeGogDownload_na
             let events = JniEvents {
                 vm,
                 listener,
+                pipeline_logs,
                 last_bytes_emit: std::sync::Mutex::new((
                     std::time::Instant::now() - std::time::Duration::from_secs(1),
                     0,

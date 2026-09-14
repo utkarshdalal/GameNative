@@ -11,6 +11,7 @@
 
 pub mod base64;
 pub mod cdn_client;
+pub mod cdn_probe;
 pub mod content_manifest;
 pub mod crypto;
 pub mod depot_chunk;
