@@ -262,7 +262,11 @@ object PowerManager {
     fun stopPowerControl() {
         stopAutoTuning()
         FanController.stop()
-        driver.stop()
+        if (::driver.isInitialized) {
+            driver.stop()
+        } else {
+            Timber.tag("PowerManager").w("Driver not initialized, skipping stop")
+        }
     }
 
     /**

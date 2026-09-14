@@ -41,12 +41,6 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         private const val GPU_BASE_PATH = "/sys/class/kgsl/kgsl-3d0"
         private const val GPU_DEVFREQ_PATH = "$GPU_BASE_PATH/devfreq"
 
-        // CPU policies discovered at initialization (reduces redundant IPC calls)
-        private var cpuPolicies: List<CpuPolicy> = emptyList()
-
-        // CPU cluster mapping for affinity control
-        private var cpuClusters: Map<CpuCluster, List<Int>> = emptyMap()
-
         /**
          * Check if PServer service is available without maintaining connection
          */
@@ -97,6 +91,12 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
 
     // Track the stop cleanup thread to prevent race conditions
     private var stopThread: Thread? = null
+
+    // CPU policies discovered at initialization (reduces redundant IPC calls)
+    private var cpuPolicies: List<CpuPolicy> = emptyList()
+
+    // CPU cluster mapping for affinity control
+    private var cpuClusters: Map<CpuCluster, List<Int>> = emptyMap()
 
     // Track modified sysfs files for permission restoration
     private val modifiedSysfsFiles = mutableSetOf<String>()
@@ -151,19 +151,16 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 Timber.tag(TAG).d("Created PServer executor")
             }
 
-            // Start a thread to get all system values
-            Thread {
-                cpuPolicies = discoverCpuPolicies()
-                cpuClusters = identifyCpuClusters()
-                currentGovernor = getCurrentGovernor()
-                currentMinCpuFreq = getCurrentMinCpuValue()
-                currentMaxCpuFreq = getCurrentMaxCpuValue()
-                allAvailableGovernors = getAvailableGovernors()
-                allAvailableCpuFrequencies = getAvailableCpuFrequencies()
-                allAvailableGpuFrequencies = getAvailableGpuFrequencies()
-                getNumGpuPowerLevels()
-                detectTasksetMaskFormat()
-            }.start()
+            cpuPolicies = discoverCpuPolicies()
+            cpuClusters = identifyCpuClusters()
+            currentGovernor = getCurrentGovernor()
+            currentMinCpuFreq = getCurrentMinCpuValue()
+            currentMaxCpuFreq = getCurrentMaxCpuValue()
+            allAvailableGovernors = getAvailableGovernors()
+            allAvailableCpuFrequencies = getAvailableCpuFrequencies()
+            allAvailableGpuFrequencies = getAvailableGpuFrequencies()
+            getNumGpuPowerLevels()
+            detectTasksetMaskFormat()
         }
     }
 
