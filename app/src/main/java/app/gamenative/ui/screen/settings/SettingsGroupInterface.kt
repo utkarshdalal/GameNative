@@ -350,7 +350,11 @@ fun SettingsGroupInterface(
         val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions(),
         ) { result ->
-            val granted = result.values.all { it }
+            // NOT result.values.all { it }: a cancelled request (dialog dismissed, activity interrupted)
+            // comes back as an EMPTY map, and all{} on an empty collection is true — which would switch the
+            // feature on with nothing granted, the same "switch claims a feature that can't run" state the
+            // conjunction above exists to prevent. Ask the system what is actually held.
+            val granted = app.gamenative.steamcontroller.TritonBle.hasPermissions(context)
             setSteamControllerEnabled(granted)
             if (!granted) {
                 // Android stops showing the dialog once a permission is permanently denied — requestPermissions

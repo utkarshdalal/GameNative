@@ -30,8 +30,10 @@ private fun xboxGlyphRes(buttonBit: Int, swapFaceButtons: Boolean): Int? = when 
     TritonProtocol.BTN_Y -> if (swapFaceButtons) InputIcons.Xbox.buttonColorX else InputIcons.Xbox.buttonColorY
     TritonProtocol.BTN_LBUMPER -> InputIcons.Xbox.lb
     TritonProtocol.BTN_RBUMPER -> InputIcons.Xbox.rb
-    TritonProtocol.BTN_MENU -> InputIcons.Xbox.menu
-    TritonProtocol.BTN_VIEW -> InputIcons.Xbox.view
+    // Xbox's "menu" glyph is the hamburger = Start, and "view" is the two-panes = Back/Select. On the Triton
+    // BTN_VIEW is Start (it drives IDX_BUTTON_START) and BTN_MENU is Back, so the two cross over here.
+    TritonProtocol.BTN_MENU -> InputIcons.Xbox.view
+    TritonProtocol.BTN_VIEW -> InputIcons.Xbox.menu
     TritonProtocol.BTN_STEAM -> InputIcons.Xbox.guide   // no "Steam" glyph; the Guide button is the closest match
     else -> null
 }

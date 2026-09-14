@@ -529,6 +529,11 @@ public class ControllerManager {
 
     public boolean noteGamepadButton(int deviceId) {
         markActive(deviceId);
+        // A virtual controller holding Player 1 leaves slotAssignments[0] EMPTY on purpose, so the
+        // "claim an unoccupied Player 1" path below reads the reserved slot as free and hands it to the
+        // first pad whose button is pressed — putting a physical pad back on top of the Steam Controller
+        // and persisting that. The reservation is the only record that the slot is taken.
+        if (reservedSlots[0]) return false;
         int slot = getSlotForDevice(deviceId);
         if (slot == 0) return false;
         InputDevice occupant = getAssignedDeviceForSlot(0);
@@ -640,6 +645,15 @@ public class ControllerManager {
         notifySlotsChanged();
         Log.i(TAG, "Reserved Player 1 for a virtual controller");
         return 0;
+    }
+
+    /**
+     * True while a virtual controller holds this slot. Callers outside this class need it because the slot
+     * looks empty from every other angle: no InputDevice, no entry in slotAssignments. WinHandler in
+     * particular must not report the slot as a disconnected gamepad just because no pad is assigned to it.
+     */
+    public synchronized boolean isSlotReserved(int slot) {
+        return slot >= 0 && slot < MAX_SLOTS && reservedSlots[slot];
     }
 
     /** Releases a slot taken by {@link #reserveVirtualSlot}, restoring any pad it displaced. */

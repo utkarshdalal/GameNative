@@ -41,6 +41,8 @@ class TritonBle(private val context: Context) {
         // The 45-byte Triton report exceeds the default 23-byte BLE MTU, so it can't be delivered until we
         // request a large MTU (Data Length Extensions). 517 is Android's "enable DLE" magic value (per SDL).
         private const val TRITON_MTU = 517
+        // The 45-byte input report needs an ATT payload of at least that, and ATT gives (MTU - 3).
+        private const val MIN_MTU = 48
         // Resend lizard-off this often; the firmware watchdog re-enables it within ~3 s.
         private const val LIZARD_HEARTBEAT_MS = 2000L
 
@@ -79,6 +81,7 @@ class TritonBle(private val context: Context) {
     private var opBusy = false
     private var opGen = 0
     private var readyFired = false
+    @Volatile private var mtuTooSmall = false
     private var rawNotifyCount = 0
 
     private var onState: ((TritonState) -> Unit)? = null
@@ -93,11 +96,12 @@ class TritonBle(private val context: Context) {
         this.onReady = onReady
         this.onError = onError
 
+        // Never reach the BluetoothAdapter/GATT APIs ungranted: every one of them throws SecurityException on
+        // API 31+, and this runs off the game-launch path where an uncaught throw kills the launch. This check
+        // comes FIRST because isEnabled is one of those APIs (@RequiresPermission(BLUETOOTH_CONNECT) on 31+).
+        if (!hasPermissions(context)) { fail("Bluetooth permission not granted (Nearby devices)."); return }
         if (adapter == null) { fail("This device has no Bluetooth adapter."); return }
         if (!adapter.isEnabled) { fail("Bluetooth is OFF — turn it on and retry."); return }
-        // Never reach the BluetoothAdapter/GATT APIs ungranted: every one of them throws SecurityException on
-        // API 31+, and this runs off the game-launch path where an uncaught throw kills the launch.
-        if (!hasPermissions(context)) { fail("Bluetooth permission not granted (Nearby devices)."); return }
 
         // Bonded devices ONLY. An advertised name or service UUID is not authentication — both are trivially
         // spoofable, so scanning and connecting to whatever claims to be a Steam Controller would let any
@@ -127,7 +131,7 @@ class TritonBle(private val context: Context) {
 
     @Volatile private var discoverStarted = false
     private fun discoverOnce(g: BluetoothGatt) {
-        if (discoverStarted) return
+        if (discoverStarted || mtuTooSmall) return
         discoverStarted = true
         g.discoverServices()
     }
@@ -244,6 +248,15 @@ class TritonBle(private val context: Context) {
 
         override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
             Log.i(TAG, "MTU negotiated = $mtu (status=$status)")
+            // A too-small MTU is THE failure mode of this transport: every notification is truncated, so the
+            // controller connects, services discover, onReady fires and not one report decodes. Judged on the
+            // value rather than [status] because a non-success status still reports the MTU actually in use.
+            // Refusing here (and blocking the 1.5 s discover fallback) turns "connected but dead" into a message.
+            if (mtu < MIN_MTU) {
+                mtuTooSmall = true
+                fail("Bluetooth MTU is $mtu, need $MIN_MTU+ — this phone can't carry the controller's input report.")
+                return
+            }
             discoverOnce(g)
         }
 

@@ -41,6 +41,24 @@ class PadModesTest {
     }
 
     @Test
+    fun `a zero jitter floor survives a repeated identical report`() {
+        // floor 0 means "dist < floor" can't catch a zero-length delta, so the unit vector is 0/0 = NaN and the
+        // trailing anchor lands on 0 — the next real move then measures from the pad origin and the cursor leaps.
+        // Measured as a diff against the same drag without the repeat, so the mouse low-pass can't colour it.
+        fun drag(repeatAnchor: Boolean): Long {
+            val sink = RecordingSink()
+            val mode = PadMode.Mouse(sensitivity = 0.1f, invertY = false, jitterFloor = 0)
+            val interp = ProfileInterpreter(sink, ScProfile(leftPad = mode), haptics = null)
+            interp.apply(leftPadState(touch = true, x = 1000, y = 1000))
+            if (repeatAnchor) interp.apply(leftPadState(touch = true, x = 1000, y = 1000))
+            assertEquals("a repeated report is not motion", 0L, sink.mouseDx)
+            interp.apply(leftPadState(touch = true, x = 1700, y = 1000))
+            return sink.mouseDx
+        }
+        assertEquals(drag(repeatAnchor = false), drag(repeatAnchor = true))
+    }
+
+    @Test
     fun `absolute mouse maps into a screen region`() {
         val sink = RecordingSink()
         // Right half of the screen only: center 0.75, width 0.5.

@@ -307,8 +307,13 @@ class ProfileInterpreter(
         gp.thumbLX = 0f; gp.thumbLY = 0f; gp.thumbRX = 0f; gp.thumbRY = 0f
         for ((bit, b) in p.buttons) {
             when (val out = b.output) {
-                is ScOutput.GamepadButton -> gp.setPressed(out.idx, s.has(bit))
-                is ScOutput.GamepadDpad -> gp.dpad[out.index] = s.has(bit)
+                // OR into the frame, never assign: two physical inputs may share one output. This config binds
+                // gamepad A to BOTH the A button and the left rear paddle, and assigning meant whichever entry
+                // the map yielded last won — an unpressed paddle cleared a held A, so A was dead in game while
+                // X and Y (no duplicate) worked. gp is zeroed at the top of every frame, so setting only on
+                // press both combines duplicates and still releases.
+                is ScOutput.GamepadButton -> if (s.has(bit)) gp.setPressed(out.idx, true)
+                is ScOutput.GamepadDpad -> if (s.has(bit)) gp.dpad[out.index] = true
                 else -> {} // edge outputs handled below
             }
         }
@@ -984,7 +989,9 @@ class ProfileInterpreter(
         val dyRaw = (y - rt.lastY).toFloat() // raw pad space (+Y up); screen-Y handled at emit
         val floor = mode.jitterFloor.toFloat()  // per-pad (was globally overridden by ScTuningStore deadzone)
         val dist = hypot(dxRaw, dyRaw)
-        if (dist < floor) return
+        // <= 0, not < floor: a floor of 0 (the editor allows it) lets an identical repeat report through, and
+        // dxRaw/0 is NaN — which lands in the anchor as 0 and teleports the cursor on the next real move.
+        if (dist <= 0f || dist < floor) return
         val ux = dxRaw / dist
         val uy = dyRaw / dist
         rt.lastX = (x - ux * floor).roundToInt()        // anchor trails the finger by the deadzone radius

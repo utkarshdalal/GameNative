@@ -1241,7 +1241,9 @@ private enum class AnalogSurface(
     /** Behaviors offered for this surface kind. Sticks: joystick/mouse/flick + radial/touch menu + d-pad.
      *  Pads: mouse/scroll + radial/touch menu + button-pad + d-pad. (Button-pad is pad-only.) */
     fun modes(): List<AnalogMode> = if (isStick)
-        listOf(AnalogMode.JOYSTICK, AnalogMode.MOUSE, AnalogMode.FLICK_STICK, AnalogMode.RADIAL, AnalogMode.TOUCH_MENU, AnalogMode.DPAD, AnalogMode.NONE)
+        // No DPAD for sticks: EditAnalog.toStickMode() returns null for it (pad-only), and null means
+        // "inherit", so offering it here just lets the user pick a mode that silently does nothing.
+        listOf(AnalogMode.JOYSTICK, AnalogMode.MOUSE, AnalogMode.FLICK_STICK, AnalogMode.RADIAL, AnalogMode.TOUCH_MENU, AnalogMode.NONE)
     else listOf(AnalogMode.MOUSE, AnalogMode.SCROLL_WHEEL, AnalogMode.RADIAL, AnalogMode.TOUCH_MENU, AnalogMode.BUTTON_PAD, AnalogMode.DPAD, AnalogMode.NONE)
 
     companion object { val ALL = entries }
