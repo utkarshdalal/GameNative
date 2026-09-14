@@ -141,6 +141,7 @@ import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
 import app.gamenative.utils.downloader.DXWrapperDownloader
 import app.gamenative.utils.downloader.GraphicsDriverDownloader
 import app.gamenative.utils.PreInstallSteps
+import app.gamenative.utils.SteamInstallScriptRegistry
 import app.gamenative.utils.BrightnessManager
 import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.utils.SteamUtils
@@ -3956,6 +3957,11 @@ private fun setupXEnvironment(
             GameFixesRegistry.applyFor(context, appId, container)
         } catch (e: Exception) {
             Timber.tag("GameFixes").w(e, "Game fixes failed before launch")
+        }
+        try {
+            SteamInstallScriptRegistry.applyForLaunch(container, appId)
+        } catch (e: Exception) {
+            Timber.w(e, "Install-script registry apply failed before launch")
         }
         if (container.startupSelection == Container.STARTUP_SELECTION_AGGRESSIVE) {
             if (container.containerVariant.equals(Container.BIONIC)){
