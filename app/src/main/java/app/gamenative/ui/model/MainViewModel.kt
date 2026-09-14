@@ -865,8 +865,8 @@ class MainViewModel @Inject constructor(
     }
 
     private fun startBootGameExitWatch(context: Context, appId: String) = viewModelScope.launch(Dispatchers.IO) {
-        val exe = ContainerUtils.getContainer(context, appId).executablePath
-            .substringAfterLast('/').substringAfterLast('\\').lowercase()
+        val exe = runCatching { ContainerUtils.getContainer(context, appId) }.getOrNull()?.executablePath
+            ?.substringAfterLast('/')?.substringAfterLast('\\')?.lowercase() ?: return@launch
         if (!exe.endsWith(".exe")) return@launch
         var seenAt = 0L
         while (bootAwaitingGameWindow) {

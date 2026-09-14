@@ -64,6 +64,7 @@ import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
+import app.gamenative.utils.asyncIsolated
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.generateSteamApp
 import app.gamenative.workshop.WorkshopManager
@@ -149,6 +150,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import kotlin.io.path.pathString
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -293,7 +295,10 @@ class SteamService : Service(), IChallengeUrlChanged {
         },
     )
 
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val scopeExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Timber.e(throwable, "Unhandled exception in SteamService scope")
+    }
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob() + scopeExceptionHandler)
     private var reconnectJob: Job? = null
     private var offlineAchievementSyncJob: Job? = null
     private val pendingSyncAppIds: MutableSet<Int> = java.util.concurrent.ConcurrentHashMap.newKeySet()
@@ -2190,7 +2195,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
             variant: String,
             context: Context,
-        ) = parentScope.async {
+        ) = parentScope.asyncIsolated {
             Timber.i("imagefs will be downloaded")
             if (variant == Container.BIONIC) {
                 val dest = File(instance!!.filesDir, "imagefs_bionic.txz")
@@ -2211,7 +2216,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             onDownloadProgress: (Float) -> Unit,
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
             context: Context,
-        ) = parentScope.async {
+        ) = parentScope.asyncIsolated {
             Timber.i("imagefs will be downloaded")
             val dest = File(instance!!.filesDir, "imagefs_patches_gamenative.tzst")
             Timber.d("Downloading imagefs_patches_gamenative.tzst to " + dest.toString())
@@ -2223,7 +2228,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
             context: Context,
             fileName: String,
-        ) = parentScope.async {
+        ) = parentScope.asyncIsolated {
             Timber.i("$fileName will be downloaded")
             val dest = File(instance!!.filesDir, fileName)
             Timber.d("Downloading $fileName to " + dest.toString())
@@ -2234,7 +2239,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             onDownloadProgress: (Float) -> Unit,
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
             context: Context,
-        ) = parentScope.async {
+        ) = parentScope.asyncIsolated {
             Timber.i("imagefs will be downloaded")
             val dest = File(instance!!.filesDir, "steam.tzst")
             Timber.d("Downloading steam.tzst to " + dest.toString())
@@ -3104,17 +3109,17 @@ class SteamService : Service(), IChallengeUrlChanged {
             prefixToPath: (String) -> String,
             isOffline: Boolean = false,
             onProgress: ((message: String, progress: Float) -> Unit)? = null,
-        ): Deferred<PostSyncInfo> = parentScope.async {
+        ): Deferred<PostSyncInfo> = parentScope.asyncIsolated {
             if (isOffline || !isConnected) {
-                return@async PostSyncInfo(SyncResult.UpToDate)
+                return@asyncIsolated PostSyncInfo(SyncResult.UpToDate)
             }
             if (!tryAcquireSync(appId)) {
                 Timber.w("Cannot launch app when sync already in progress for appId=$appId")
-                return@async PostSyncInfo(SyncResult.InProgress)
+                return@asyncIsolated PostSyncInfo(SyncResult.InProgress)
             }
 
             try {
-                val context = instance?.applicationContext ?: return@async PostSyncInfo(SyncResult.UnknownFail)
+                val context = instance?.applicationContext ?: return@asyncIsolated PostSyncInfo(SyncResult.UnknownFail)
                 // Migrate GSE Saves to Steam userdata
                 SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
 
@@ -3187,7 +3192,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
-                return@async syncResult
+                return@asyncIsolated syncResult
             } finally {
                 releaseSync(appId)
             }
@@ -3199,14 +3204,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             preferredSave: SaveLocation = SaveLocation.None,
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
             overrideLocalChangeNumber: Long? = null,
-        ): Deferred<PostSyncInfo> = parentScope.async {
+        ): Deferred<PostSyncInfo> = parentScope.asyncIsolated {
             if (!tryAcquireSync(appId)) {
                 Timber.w("Cannot force sync when sync already in progress for appId=$appId")
-                return@async PostSyncInfo(SyncResult.InProgress)
+                return@asyncIsolated PostSyncInfo(SyncResult.InProgress)
             }
 
             try {
-                val context = instance?.applicationContext ?: return@async PostSyncInfo(SyncResult.UnknownFail)
+                val context = instance?.applicationContext ?: return@asyncIsolated PostSyncInfo(SyncResult.UnknownFail)
                 // Migrate GSE Saves to Steam userdata
                 SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
 
@@ -3249,7 +3254,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
-                return@async syncResult
+                return@asyncIsolated syncResult
             } finally {
                 releaseSync(appId)
             }
@@ -3688,10 +3693,17 @@ class SteamService : Service(), IChallengeUrlChanged {
             val steamApps = instance?._steamApps ?: return@withContext false
 
             // ── 1. Fetch the latest app header from Steam (PICS).
-            val pics = steamApps.picsGetProductInfo(
-                apps = listOf(PICSRequest(id = appId)),
-                packages = emptyList(),
-            ).await()
+            val pics = try {
+                steamApps.picsGetProductInfo(
+                    apps = listOf(PICSRequest(id = appId)),
+                    packages = emptyList(),
+                ).await()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "isUpdatePending: PICS request failed for appId=$appId")
+                return@withContext false
+            }
 
             val remoteAppInfo = pics.results
                 .firstOrNull()
@@ -4213,13 +4225,17 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         // Start up the notification early to to avoid ForegroundServiceDidNotStartInTimeException
         val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_STEAM, "Running...")
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            } else {
+                startForeground(NotificationHelper.NOTIFICATION_ID_STEAM, notification)
+            }
+            notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_STEAM)
+            notificationHelper.showIdle(NotificationHelper.NOTIFICATION_ID_STEAM)
+        } catch (e: Exception) {
+            Timber.w(e, "startForeground not allowed, continuing as a background service")
         }
-        notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_STEAM)
-        notificationHelper.showIdle(NotificationHelper.NOTIFICATION_ID_STEAM)
 
         when (intent?.action) {
             NotificationHelper.ACTION_EXIT -> {
@@ -4316,8 +4332,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     override fun onTimeout(startId: Int, fgsType: Int) {
         super.onTimeout(startId, fgsType)
-        Timber.w("Foreground service timeout reached, restarting...")
-        stopSelf()
+        Timber.w("Foreground service timeout reached, dropping foreground state")
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        notificationHelper.cancel()
     }
 
     override fun onDestroy() {
@@ -5301,10 +5318,17 @@ class SteamService : Service(), IChallengeUrlChanged {
                     if (!isLoggedIn) return@collect
                     val steamApps = instance?._steamApps ?: return@collect
 
-                    val callback = steamApps.picsGetProductInfo(
-                        apps = emptyList(),
-                        packages = packageRequests,
-                    ).await()
+                    val callback = try {
+                        steamApps.picsGetProductInfo(
+                            apps = emptyList(),
+                            packages = packageRequests,
+                        ).await()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Timber.w(e, "Could not get PICS package info for ${packageRequests.size} package(s)")
+                        return@collect
+                    }
 
                     callback.results.forEach { picsCallback ->
                         // Don't race the queue.

@@ -20,6 +20,7 @@ import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
+import app.gamenative.utils.asyncIsolated
 import `in`.dragonbra.javasteam.enums.EOSType
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.handlers.steamcloud.AppFileChangeList
@@ -152,7 +153,7 @@ object SteamAutoCloud {
         prefixToPath: (String) -> String,
         overrideLocalChangeNumber: Long? = null,
         onProgress: ((message: String, progress: Float) -> Unit)? = null,
-    ): Deferred<PostSyncInfo?> = parentScope.async {
+    ): Deferred<PostSyncInfo?> = parentScope.asyncIsolated {
         val postSyncInfo: PostSyncInfo?
 
         Timber.i("Retrieving save files of ${appInfo.name}")
@@ -489,7 +490,7 @@ object SteamAutoCloud {
         }
 
         val downloadFiles: (List<AppFileInfo>, AppFileChangeList, CoroutineScope) -> Deferred<UserFilesDownloadResult> = { filesToDownload, fileList, parentScope ->
-            parentScope.async {
+            parentScope.asyncIsolated {
                 val filesDownloaded = AtomicInteger(0)
                 val bytesDownloaded = AtomicLong(0L)
                 val totalFiles = filesToDownload.size
@@ -561,7 +562,7 @@ object SteamAutoCloud {
         }
 
         val uploadFiles: (FileChanges, CoroutineScope) -> Deferred<UserFilesUploadResult> = { fileChanges, parentScope ->
-            parentScope.async {
+            parentScope.asyncIsolated {
                 var filesUploaded = 0
                 var bytesUploaded = 0L
 
@@ -830,7 +831,7 @@ object SteamAutoCloud {
             }
 
             val downloadUserFiles: (CoroutineScope) -> Deferred<PostSyncInfo?> = { parentScope ->
-                parentScope.async {
+                parentScope.asyncIsolated {
                     Timber.i("Downloading cloud user files")
 
                     val remoteUserFiles = fileChangeListToUserFiles(appFileListChange)
@@ -875,7 +876,7 @@ object SteamAutoCloud {
 
                         syncResult = SyncResult.DownloadFail
 
-                        return@async PostSyncInfo(syncResult)
+                        return@asyncIsolated PostSyncInfo(syncResult)
                     }
 
                     with(steamInstance) {
@@ -885,12 +886,12 @@ object SteamAutoCloud {
                         }
                     }
 
-                    return@async null
+                    return@asyncIsolated null
                 }
             }
 
             val uploadUserFiles: (CoroutineScope) -> Deferred<Unit> = { parentScope ->
-                parentScope.async {
+                parentScope.asyncIsolated {
                     Timber.i("Uploading local user files")
 
                     val fileChanges = steamInstance.fileChangeListsDao.getByAppId(appInfo.id).let {
@@ -935,7 +936,7 @@ object SteamAutoCloud {
             // such a delete. Callers run this only after any local upload, so a full local rescan is
             // then the correct cache snapshot.
             val reconcileNeverSyncedCloudFiles: (CoroutineScope) -> Deferred<Int> = { parentScope ->
-                parentScope.async {
+                parentScope.asyncIsolated {
                     // Lowercased absolute paths, mirroring the silent-rehydrate comparison, since
                     // Steam Cloud and wine may disagree on case.
                     val knownKeys = (allLocalUserFiles + (cachedFileList?.userFileInfo ?: emptyList()))
@@ -1026,7 +1027,7 @@ object SteamAutoCloud {
                         Timber.i("No local changes but new cloud user files")
 
                         downloadUserFiles(parentScope).await()?.let {
-                            return@async it
+                            return@asyncIsolated it
                         }
                     } else {
                         Timber.i("Found local changes and new cloud user files, conflict resolution...")
@@ -1043,7 +1044,7 @@ object SteamAutoCloud {
                             SaveLocation.Remote -> {
                                 // overwrite local save with the remote one
                                 downloadUserFiles(parentScope).await()?.let {
-                                    return@async it
+                                    return@asyncIsolated it
                                 }
                             }
 

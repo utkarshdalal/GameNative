@@ -1348,7 +1348,14 @@ abstract class BaseAppScreen {
             hasPartialDownloadState = hasPartialDownload(context, libraryItem)
             hasLeftoverInstallState = hasLeftoverInstall(context, libraryItem)
             if (includeUpdatePending) {
-                isUpdatePendingState = isUpdatePendingSuspend(context, libraryItem)
+                isUpdatePendingState = try {
+                    isUpdatePendingSuspend(context, libraryItem)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.w(e, "Update check failed for ${libraryItem.appId}")
+                    isUpdatePendingState
+                }
             }
         }
 
@@ -1394,8 +1401,10 @@ abstract class BaseAppScreen {
         }
 
         val onEditContainer: () -> Unit = {
-            containerData = loadContainerData(context, libraryItem)
-            showConfigDialog = true
+            uiScope.launch {
+                containerData = withContext(Dispatchers.IO) { loadContainerData(context, libraryItem) }
+                showConfigDialog = true
+            }
         }
 
         // Export for Frontend launcher
