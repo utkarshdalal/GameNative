@@ -50,12 +50,14 @@ public class Container {
     public static final String DEFAULT_GRAPHICSDRIVERCONFIG = "vulkanVersion=1.3" + ",version=" + DefaultVersion.WRAPPER + ",blacklistedExtensions=" + ",maxDeviceMemory=0" + ",presentMode=mailbox" + ",syncFrame=0" + ",disablePresentWait=0" + ",resourceType=auto" + ",bcnEmulation=auto" + ",bcnEmulationType=compute" + ",bcnEmulationCache=0" + ",gpuName=Device";
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1,opengl=0";
+    public static final String DATA_ROOT = "/data/data/" + app.gamenative.BuildConfig.APPLICATION_ID;
+
     private static String resolveBaseFilesDir() {
         try {
             Context ctx = app.gamenative.PluviaApp.getAppContext();
             if (ctx != null) return ctx.getFilesDir().getAbsolutePath();
         } catch (Throwable ignored) {}
-        return "/data/data/app.gamenative/files";
+        return DATA_ROOT + "/files";
     }
 
     private static String resolveBaseStorageDir() {
@@ -68,7 +70,7 @@ public class Container {
                 }
             }
         } catch (Throwable ignored) {}
-        return "/data/data/app.gamenative/storage";
+        return DATA_ROOT + "/storage";
     }
 
     public static final String[] MEDIACONV_ENV_VARS = {
