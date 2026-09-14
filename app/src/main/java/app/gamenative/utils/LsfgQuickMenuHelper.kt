@@ -93,8 +93,6 @@ object LsfgQuickMenuHelper {
     private val applyExecutor =
         Executors.newSingleThreadExecutor { r -> Thread(r, "lsfg-apply").apply { isDaemon = true } }
 
-    fun presentMode(container: Container): String = LsfgVkManager.presentMode(container)
-
     fun targetRate(container: Container): Int = LsfgVkManager.targetRate(container)
 
     /** Hot-apply an adaptive-cap step without persisting it: the user's saved
@@ -111,16 +109,6 @@ object LsfgQuickMenuHelper {
                 fpsLimitOverride = capFps.coerceAtLeast(0),
                 targetRate = settings.targetRate,
             )
-        }
-    }
-
-    /** Persist the present mode and hot-apply it. */
-    fun applyPresentMode(container: Container, mode: String) {
-        applyExecutor.execute {
-            container.putExtra(LsfgVkManager.EXTRA_PRESENT_MODE, mode)
-            container.rendererPresentMode = mode
-            container.saveData()
-            applySettings(container, readSettings(container))
         }
     }
 

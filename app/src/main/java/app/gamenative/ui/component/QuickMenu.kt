@@ -529,10 +529,6 @@ fun QuickMenu(
     // broken D8 codegen path).
     val inviteMenu = remember(container?.id) { SteamInviteState.createIfAvailable(container) }
     var showGyroSettingsDialog by rememberSaveable(container?.id) { mutableStateOf(false) }
-    // Owned here, not plumbed through XServerScreen (register limit; see inviteMenu).
-    var lsfgPresentMode by remember(container?.id) {
-        mutableStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.presentMode(it) } ?: "fifo")
-    }
     var lsfgTargetRate by remember(container?.id) {
         mutableIntStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.targetRate(it) } ?: 0)
     }
@@ -966,13 +962,6 @@ fun QuickMenu(
                                                 onLsfgMultiplierChanged(mult)
                                             },
                                             onFlowScaleChanged = onLsfgFlowScaleChanged,
-                                            presentMode = lsfgPresentMode,
-                                            onPresentModeChanged = { mode ->
-                                                lsfgPresentMode = mode
-                                                container?.let {
-                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyPresentMode(it, mode)
-                                                }
-                                            },
                                             targetRate = lsfgTargetRate,
                                             onTargetRateChanged = { rate ->
                                                 lsfgTargetRate = rate
@@ -1640,8 +1629,6 @@ private fun PerformanceQuickMenuTab(
     flowScale: Float,
     onMultiplierChanged: (Int) -> Unit,
     onFlowScaleChanged: (Float) -> Unit,
-    presentMode: String,
-    onPresentModeChanged: (String) -> Unit,
     targetRate: Int,
     onTargetRateChanged: (Int) -> Unit,
     scrollState: ScrollState,
@@ -2079,24 +2066,6 @@ private fun PerformanceQuickMenuTab(
                 Spacer(modifier = Modifier.height(4.dp))
 
 
-                // ── Present Mode (FIFO / Mailbox) ─────────────────────────
-                QuickMenuSectionHeader(
-                    title = stringResource(R.string.lsfg_present_mode),
-                )
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    listOf("fifo" to "FIFO", "mailbox" to "Mailbox").forEach { (value, label) ->
-                        QuickMenuChoiceChip(
-                            text = label,
-                            selected = presentMode == value,
-                            accentColor = accentColor,
-                            onClick = { onPresentModeChanged(value) },
-                            modifier = Modifier.width(96.dp),
-                        )
-                    }
-                }
             }
         }
     } else {
