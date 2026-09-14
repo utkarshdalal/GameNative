@@ -69,6 +69,7 @@ import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.asyncIsolated
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.generateSteamApp
+import app.gamenative.utils.parseLaunchArguments
 import app.gamenative.workshop.WorkshopManager
 import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
@@ -281,6 +282,9 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var _steamFamilyGroups: FamilyGroups? = null
     private var _steamParental: Parental? = null
     private var _steamPlayer: Player? = null
+
+    // for GreenworksCloudClient, so greenworks shares SteamAutoCloud's handler without loosening _steamCloud.
+    internal fun steamCloudHandler(): SteamCloud? = _steamCloud
 
     private var _loginResult: LoginResult = LoginResult.Failed
 
@@ -498,6 +502,19 @@ class SteamService : Service(), IChallengeUrlChanged {
                 depotKeyPrep.remove(appId)
                 prep.owner.updateStatusMessage(null)
             }
+        }
+
+        // parallel-indexed with SteamApp.config.launch. NOT persisted to Room (would need a schema bump);
+        // repopulated from PICS on every login.
+        private val launchArgumentsCache: ConcurrentHashMap<Int, List<String>> = ConcurrentHashMap()
+
+        // first .exe launch entry for [os]; null when uncached or no match.
+        fun getLaunchArgumentsForOs(appId: Int, os: OS = OS.windows): String? {
+            val args = launchArgumentsCache[appId] ?: return null
+            val launches = getAppInfoOf(appId)?.config?.launch ?: return null
+            val idx = launches.indexOfFirst { os in it.configOS && it.executable.endsWith(".exe", ignoreCase = true) }
+            if (idx < 0 || idx >= args.size) return null
+            return args[idx].takeIf { it.isNotEmpty() }
         }
 
         internal fun notifyDownloadStarted(appId: Int) {
@@ -3237,6 +3254,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             prefixToPath: (String) -> String,
             isOffline: Boolean = false,
             onProgress: ((message: String, progress: Float) -> Unit)? = null,
+            // html5 leveldb-backed titles opt in; see SteamAutoCloud.syncUserFiles.
+            chromiumProfileSync: Boolean = false,
         ): Deferred<PostSyncInfo> = parentScope.asyncIsolated {
             if (isOffline || !isConnected) {
                 return@asyncIsolated PostSyncInfo(SyncResult.UpToDate)
@@ -3269,6 +3288,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                             parentScope = parentScope,
                                             prefixToPath = prefixToPath,
                                             onProgress = onProgress,
+                                            chromiumProfileSync = chromiumProfileSync,
                                         ).await()
 
                                         postSyncInfo?.let { info ->
@@ -3388,7 +3408,13 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        suspend fun closeApp(context: Context, appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
+        suspend fun closeApp(
+            context: Context,
+            appId: Int,
+            isOffline: Boolean,
+            chromiumProfileSync: Boolean = false,
+            prefixToPath: (String) -> String,
+        ) = withContext(Dispatchers.IO) {
             async {
                 if (isOffline || !isConnected) {
                     instance?.addPendingSyncApp(appId)
@@ -3421,6 +3447,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                 steamCloud = steamCloud,
                                                 parentScope = this,
                                                 prefixToPath = prefixToPath,
+                                                chromiumProfileSync = chromiumProfileSync,
                                             ).await()
 
                                             steamCloud.signalAppExitSyncDone(
@@ -3985,6 +4012,17 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        // null when offline or the request fails.
+        suspend fun fetchUserStatsForApp(appId: Int): UserStatsCallback? {
+            val service = instance ?: return null
+            val steamUser = service._steamUser ?: return null
+            val steamId = steamUser.steamID ?: return null
+            val handler = service._steamUserStats ?: return null
+            return runCatching { handler.getUserStats(appId, steamId).await() }
+                .onFailure { Timber.tag("SteamService").w(it, "fetchUserStatsForApp failed for appId=$appId") }
+                .getOrNull()
+        }
+
         suspend fun generateAchievements(appId: Int, configDirectory: String) {
             val steamUser = instance!!._steamUser!!
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
@@ -4195,8 +4233,20 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return coldclientSettings.absolutePath
             }
 
+            // html5 containers have neither; Html5AchievementSeed generates the mapping here instead.
+            // without this the close-time sync can't find it and never pushes html5 unlocks.
+            val gseSettings = getGseSaveDirs(context, appId).firstOrNull()?.let { gseSteamSettingsDir(it) }
+            if (gseSettings != null && File(gseSettings, "achievement_name_to_block.json").exists()) {
+                return gseSettings.absolutePath
+            }
+
             return null
         }
+
+        // steam_settings for titles with no game-side one (html5). NOT the GSE saves dir itself:
+        // generateAchievements writes its schema as achievements.json, which would overwrite the
+        // earned-state achievements.json GSE keeps there.
+        fun gseSteamSettingsDir(gseDir: File): File = File(gseDir, "steam_settings")
 
         suspend fun storeAchievementUnlocks(
             appId: Int,
@@ -5454,6 +5504,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                             ensureActive()
                             val steamAppsMap = picsCallback.apps.values.mapNotNull { app ->
+                                // EVERY pass, not gated by changeNumber: the cache isn't persisted, so a warm login needs it too.
+                                launchArgumentsCache[app.id] = app.keyValues.parseLaunchArguments()
+
                                 val appFromDb = appDao.findApp(app.id)
                                 val packageId = appFromDb?.packageId ?: INVALID_PKG_ID
                                 val packageFromDb = if (packageId != INVALID_PKG_ID) licenseDao.findLicense(packageId) else null
