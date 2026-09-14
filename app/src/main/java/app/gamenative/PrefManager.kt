@@ -869,7 +869,14 @@ object PrefManager {
     // Special: Because null value.
     private val CLIENT_ID = longPreferencesKey("client_id")
     var clientId: Long?
-        get() = runBlocking { dataStore.data.first()[CLIENT_ID] }
+        get() = runBlocking {
+            try {
+                dataStore.data.first()[CLIENT_ID]
+            } catch (e: IOException) {
+                Timber.w(e, "Failed to read client_id preference")
+                null
+            }
+        }
         set(value) {
             scope.launch {
                 dataStore.edit { pref -> pref[CLIENT_ID] = value!! }

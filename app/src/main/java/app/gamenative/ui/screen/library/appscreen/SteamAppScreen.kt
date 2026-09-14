@@ -864,11 +864,11 @@ class SteamAppScreen : BaseAppScreen() {
             AppMenuOption(
                 AppOptionMenuType.ResetDrm,
                 onClick = {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val container = ContainerUtils.getOrCreateContainer(context, appId)
-                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
-                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
-                        MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
+                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
+                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
+                    MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
+                    if (ContainerUtils.hasContainer(context, appId)) {
+                        val container = ContainerUtils.getContainer(context, appId)
                         container.isNeedsUnpacking = true
                         container.saveData()
                     }
