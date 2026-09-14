@@ -1351,7 +1351,13 @@ public class ControlElement {
                     Binding gamepadAxisBinding = findGamepadAxisBinding(bindingCombo);
                     if (gamepadAxisBinding != Binding.NONE && !bindingCombo.isSequence()) {
                         value = Mathf.clamp(Math.max(0, Math.abs(value) - 0.01f) * Mathf.sign(value) * STICK_SENSITIVITY, -1, 1);
-                        inputControlsView.handleInputEvent(gamepadAxisBinding, true, value);
+                        // a zero value goes out as a release, not a press -- see
+                        // InputControlsView.handleRightJoystickMove
+                        if (value != 0 || !bindingCombo.isSingleBinding()) {
+                            inputControlsView.handleInputEvent(gamepadAxisBinding, true, value);
+                        } else if (gamepadAxisActive[i]) {
+                            inputControlsView.handleInputEvent(gamepadAxisBinding, false, 0f);
+                        }
                         gamepadAxisActive[i] = value != 0;
                         boolean nextState = states[i];
                         if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
