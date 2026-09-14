@@ -73,6 +73,17 @@ object VcRedistStep : PreInstallStep {
             if (!hostFile.isFile) continue
             parts.add(if (args.isEmpty()) winPath else "$winPath $args")
         }
+        val covered = vcRedistMap.keys.map { it.lowercase() }.toSet()
+        File(gameDir, "_CommonRedist/vcredist").listFiles()?.sortedBy { it.name }?.forEach { yearDir ->
+            if (!yearDir.isDirectory) return@forEach
+            yearDir.listFiles()?.sortedBy { it.name }?.forEach { exe ->
+                val name = exe.name.lowercase()
+                if (!exe.isFile || !name.endsWith(".exe") || !(name.startsWith("vc_redist") || name.startsWith("vcredist"))) return@forEach
+                val winPath = "A:\\_CommonRedist\\vcredist\\${yearDir.name}\\${exe.name}"
+                if (winPath.lowercase() in covered) return@forEach
+                parts.add("$winPath /install /passive /norestart")
+            }
+        }
         return if (parts.isEmpty()) null else parts.joinToString(" & ")
     }
 }
