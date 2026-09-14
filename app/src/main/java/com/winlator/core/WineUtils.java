@@ -38,6 +38,7 @@ public abstract class WineUtils {
 
         // Auto-fix containers missing D: and E: drives
         String currentDrives = container.getDrives();
+        String pkgName = context.getPackageName();
         if (!currentDrives.contains("D:") || !currentDrives.contains("E:")) {
             Log.d("WineUtils", "Container missing D: or E: drives, adding them...");
             String missingDrives = "";
@@ -45,7 +46,7 @@ public abstract class WineUtils {
                 missingDrives += "D:" + android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
             }
             if (!currentDrives.contains("E:")) {
-                missingDrives += "E:/data/data/app.gamenative/storage";
+                missingDrives += "E:/data/data/" + pkgName + "/storage";
             }
             String updatedDrives = missingDrives + currentDrives;
             container.setDrives(updatedDrives);
@@ -57,7 +58,7 @@ public abstract class WineUtils {
         for (String[] drive : container.drivesIterator()) {
             File linkTarget = new File(drive[1]);
             String path = linkTarget.getAbsolutePath();
-            if (!linkTarget.isDirectory() && path.endsWith("/app.gamenative/storage")) {
+            if (!linkTarget.isDirectory() && (path.endsWith("/" + pkgName + "/storage") || path.endsWith("/app.gamenative/storage"))) {
                 linkTarget.mkdirs();
                 FileUtils.chmod(linkTarget, 0771);
             }
