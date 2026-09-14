@@ -139,6 +139,25 @@ public class WinHandler {
     }
 
     static {
+        try {
+            Context ctx = app.gamenative.PluviaApp.getAppContext();
+            if (ctx != null) {
+                File dir = new File(ctx.getFilesDir(), "gamepad_shm");
+                dir.mkdirs();
+                android.system.Os.setenv("EVSHIM_BASE_PATH", ctx.getFilesDir().getAbsolutePath(), true);
+            } else {
+                try {
+                    String proc = android.app.Application.getProcessName();
+                    if (proc != null && !proc.isEmpty()) {
+                        File dir = new File("/data/data/" + proc + "/files");
+                        if (dir.exists()) {
+                            new File(dir, "gamepad_shm").mkdirs();
+                            android.system.Os.setenv("EVSHIM_BASE_PATH", dir.getAbsolutePath(), true);
+                        }
+                    }
+                } catch (Throwable ignored2) {}
+            }
+        } catch (Throwable ignored) {}
         System.loadLibrary("evshim");
     }
 
