@@ -96,7 +96,7 @@ object EaAuthManager {
                 .add("code", code)
                 .add("code_verifier", verifier)
                 .add("client_id", EaConstants.CLIENT_ID)
-                .add("client_secret", EaConstants.CLIENT_SECRET)
+                .add("client_secret", EaHelperConfig.clientSecret(context))
                 .add("redirect_uri", EaConstants.REDIRECT_URI)
                 .add("token_format", "JWS")
                 .build()
@@ -126,7 +126,7 @@ object EaAuthManager {
                 .add("grant_type", "refresh_token")
                 .add("refresh_token", creds.refreshToken)
                 .add("client_id", EaConstants.CLIENT_ID)
-                .add("client_secret", EaConstants.CLIENT_SECRET)
+                .add("client_secret", EaHelperConfig.clientSecret(context))
                 .build()
             val token = postToken(form)
             val refreshed = creds.copy(

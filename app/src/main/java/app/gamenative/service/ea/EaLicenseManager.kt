@@ -30,11 +30,11 @@ object EaLicenseManager {
     fun licenseDir(prefixDriveC: File): File = File(prefixDriveC, EaConstants.LICENSE_DIR).also { it.mkdirs() }
 
     /** A licence younger than two weeks is reused, as the EA app does. */
-    fun needsUpdate(prefixDriveC: File, contentId: String): Boolean {
+    fun needsUpdate(context: Context, prefixDriveC: File, contentId: String): Boolean {
         val f = File(licenseDir(prefixDriveC), "$contentId.dlf")
         if (!f.exists() || f.length() <= 65) return true
         return runCatching {
-            val xml = String(EaCrypto.ooaDecrypt(f.readBytes().copyOfRange(65, f.length().toInt())))
+            val xml = String(EaCrypto.ooaDecrypt(EaHelperConfig.licenseKey(context), f.readBytes().copyOfRange(65, f.length().toInt())))
             val start = Regex("<StartTime>([^<]+)</StartTime>").find(xml)?.groupValues?.get(1) ?: return true
             Instant.now().toEpochMilli() - Instant.parse(start).toEpochMilli() > TimeUnit.DAYS.toMillis(14)
         }.getOrDefault(true)
@@ -97,7 +97,7 @@ object EaLicenseManager {
             val body = resp.body?.bytes() ?: ByteArray(0)
             if (!resp.isSuccessful) error("EA licence HTTP ${resp.code}: ${String(body).replace(Regex("value=\"[^\"]*\""), "value=\"…\"").take(300)}")
             val signature = resp.header("x-signature") ?: error("EA licence: missing x-signature")
-            val xml = String(EaCrypto.ooaDecrypt(body))
+            val xml = String(EaCrypto.ooaDecrypt(EaHelperConfig.licenseKey(context), body))
             fun field(name: String) = Regex("<$name>([^<]*)</$name>").find(xml)?.groupValues?.get(1)
             Timber.i("EA licence granted for $contentId (hash ${field("MachineHash")})")
             License(

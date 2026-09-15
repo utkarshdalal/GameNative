@@ -16,12 +16,6 @@ object EaCrypto {
     /** Fixed key for the LSX challenge and for "version 2" sessions. */
     val CHALLENGE_KEY: ByteArray = ByteArray(16) { it.toByte() }
 
-    /** AES-128-CBC key (zero IV) for the .dlf licence blobs. */
-    val OOA_KEY: ByteArray = byteArrayOf(
-        65, 50, 114, 45, 208.toByte(), 130.toByte(), 239.toByte(), 176.toByte(),
-        220.toByte(), 100, 87, 197.toByte(), 118, 104, 202.toByte(), 9,
-    )
-
     fun hex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it) }
 
     /** Lenient hex decode: ignores anything that is not a hex digit, empty on odd length. */
@@ -69,14 +63,15 @@ object EaCrypto {
         }
     }
 
-    fun ooaDecrypt(data: ByteArray): ByteArray =
+    /** AES-128-CBC, zero IV, with the licence key from the helper configuration. */
+    fun ooaDecrypt(key: ByteArray, data: ByteArray): ByteArray =
         Cipher.getInstance("AES/CBC/PKCS5Padding").apply {
-            init(Cipher.DECRYPT_MODE, SecretKeySpec(OOA_KEY, "AES"), IvParameterSpec(ByteArray(16)))
+            init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), IvParameterSpec(ByteArray(16)))
         }.doFinal(data)
 
-    fun ooaEncrypt(data: ByteArray): ByteArray =
+    fun ooaEncrypt(key: ByteArray, data: ByteArray): ByteArray =
         Cipher.getInstance("AES/CBC/PKCS5Padding").apply {
-            init(Cipher.ENCRYPT_MODE, SecretKeySpec(OOA_KEY, "AES"), IvParameterSpec(ByteArray(16)))
+            init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), IvParameterSpec(ByteArray(16)))
         }.doFinal(data)
 
     /** EARtPLaunchCode: date-derived handshake value the game expects in its environment. */

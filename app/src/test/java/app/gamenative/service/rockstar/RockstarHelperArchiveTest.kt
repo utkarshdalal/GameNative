@@ -33,7 +33,7 @@ class RockstarHelperArchiveTest {
         val open = { opens++; bytes.inputStream() }
         val destination = RockstarHelperArchive.ensureExtracted(files, open)
         assertTrue(RockstarHelperArchive.isReady(files))
-        assertEquals(6, destination.listFiles()!!.size)
+        assertEquals(7, destination.listFiles()!!.size)
         RockstarHelperArchive.ensureExtracted(files, open)
         assertEquals(1, opens)
         File(destination, "rgscstub.exe").writeText("edited by hand")
@@ -45,6 +45,15 @@ class RockstarHelperArchiveTest {
         RockstarHelperArchive.ensureExtracted(files, open)
         assertEquals(2, opens)
         assertTrue(RockstarHelperArchive.isReady(files))
+    }
+
+    @Test fun signInScriptIsFilledFromTheArchiveTemplate() {
+        val files = temporary.newFolder()
+        assertThrows(IllegalStateException::class.java) { RockstarSignInShim.script(files, "rdr2", "gn") }
+        RockstarHelperArchive.ensureExtracted(files) { rockstarTestArchive().inputStream() }
+        val script = RockstarSignInShim.script(files, "rdr2", "gn", "DEVICE")
+        assertTrue(script.startsWith("bridge=gn title=rdr2 fp={"))
+        assertTrue(script.contains("\"device_name\":\"DEVICE\""))
     }
 
     @Test fun installsDownloadedArchive() {

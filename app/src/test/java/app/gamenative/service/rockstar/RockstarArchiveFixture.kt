@@ -11,7 +11,10 @@ internal fun rockstarTestArchive(): ByteArray {
     System.getenv("ROCKSTAR_TEST_ARCHIVE")?.let { return File(it).readBytes() }
     val binaries = listOf("rgscstub.exe", "scpatch.dll", "bink2w64.dll", "SocialClubD3D12Renderer.dll", "SocialClubVulkanLayer.dll")
         .associateWith { "MZ-test-$it".toByteArray() }
-    val entries = binaries + mapOf("NOTICE.txt" to "Test fixture".toByteArray())
+    val entries = binaries + mapOf(
+        "NOTICE.txt" to "Test fixture".toByteArray(),
+        RockstarHelperArchive.SIGNIN_SHIM to "bridge=@BRIDGE@ title=@TITLE@ fp=@FP@".toByteArray(),
+    )
     val output = ByteArrayOutputStream()
     ZstdCompressorOutputStream(output).use { zstd ->
         TarArchiveOutputStream(zstd).use { tar ->

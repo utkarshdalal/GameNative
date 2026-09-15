@@ -2,7 +2,6 @@ package app.gamenative.service.ea
 
 object EaConstants {
     const val CLIENT_ID = "JUNO_PC_CLIENT"
-    const val CLIENT_SECRET = "4mRLtYMb6vq9qglomWEaT4ChxsXWcyqbQpuBNfMPOYOiDmYYQmjuaBsF2Zp0RyVeWkfqhE9TuGgAw7te"
     const val REDIRECT_URI = "qrc:///html/login_successful.html"
 
     const val AUTH_ENDPOINT = "https://accounts.ea.com/connect/auth"

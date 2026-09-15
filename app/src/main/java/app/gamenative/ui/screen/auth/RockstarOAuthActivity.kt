@@ -167,7 +167,7 @@ class RockstarOAuthActivity : ComponentActivity() {
                             !injected && isSignInOrigin -> {
                                 injected = true
                                 view.evaluateJavascript(
-                                    RockstarSignInShim.script(activeTitle, BRIDGE, android.os.Build.MODEL ?: "GAMENATIVE"),
+                                    RockstarSignInShim.script(filesDir, activeTitle, BRIDGE, android.os.Build.MODEL ?: "GAMENATIVE"),
                                 ) { Timber.i("Rockstar sign-in: shim installed -> %s", it) }
                                 poller.postDelayed(watchCookie, 1000)
                             }

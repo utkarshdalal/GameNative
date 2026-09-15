@@ -302,7 +302,7 @@ object EaLsxServer {
                 val ooaState = m.second["OoaState"]?.toIntOrNull() ?: 0
                 if (hash.isNotEmpty()) machineHashStore[s] = hash
                 val creds = runBlocking { EaAuthManager.launchCredentials(s.context) }
-                if (ooaState != 0 && s.contentId.isNotEmpty() && hash.isNotEmpty() && EaLicenseManager.needsUpdate(s.prefixDriveC, s.contentId)) {
+                if (ooaState != 0 && s.contentId.isNotEmpty() && hash.isNotEmpty() && EaLicenseManager.needsUpdate(s.context, s.prefixDriveC, s.contentId)) {
                     val lic = runBlocking {
                         EaLicenseManager.refreshExternalEntitlements(s.context, creds.userId)
                         runCatching { EaLicenseManager.request(s.context, s.contentId, hash) }.getOrElse { first ->

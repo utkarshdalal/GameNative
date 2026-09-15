@@ -72,6 +72,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.ea.EaLaunchSupport
 import app.gamenative.service.ea.EaLoginGate
 import app.gamenative.service.rockstar.RockstarLaunchSupport
+import app.gamenative.service.rockstar.RockstarHelperArchive
 import app.gamenative.service.rockstar.RockstarHelperDeployment
 import app.gamenative.service.rockstar.RockstarLoginGate
 import app.gamenative.service.amazon.AmazonService
@@ -2197,6 +2198,8 @@ fun preLaunchApp(
                 RockstarLaunchSupport.isRockstarTitle(File(SteamService.getAppDirPath(gameId)))
             ) {
                 val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
+                setLoadingMessage("Preparing Rockstar launcher support")
+                RockstarHelperArchive.downloadAndExtract(context) { setLoadingProgress(it) }
                 val signIn = RockstarLoginGate.ensureSignedIn(context, "launcher")
                 if (signIn.isFailure && RockstarLaunchSupport.hasUsableToken(File(SteamService.getAppDirPath(gameId)))) {
                     /* A token is already in place, so carry on rather than block a launch that works. */

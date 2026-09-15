@@ -11,11 +11,12 @@ import java.io.InputStream
 
 /** Versioned helper cache. Does not overwrite game executables, mods, INIs or credentials. */
 object RockstarHelperArchive {
-    const val VERSION = "20260915.4"
+    const val VERSION = "20260915.5"
     const val ARCHIVE = "rgschost-$VERSION.tzst"
-    private val binaries = setOf(
+    const val SIGNIN_SHIM = "rockstar-signin-shim.js"
+    private val required = setOf(
         "rgscstub.exe", "scpatch.dll", "bink2w64.dll",
-        "SocialClubD3D12Renderer.dll", "SocialClubVulkanLayer.dll",
+        "SocialClubD3D12Renderer.dll", "SocialClubVulkanLayer.dll", SIGNIN_SHIM,
     )
 
     fun directory(filesDir: File) = File(filesDir, "rockstar/rgschost-$VERSION")
@@ -35,7 +36,7 @@ object RockstarHelperArchive {
         return listOf("socialclub.dll", "socialclub64.dll").any { names[it]?.isFile == true }
     }
 
-    fun isReady(filesDir: File): Boolean = binaries.all { File(directory(filesDir), it).isFile }
+    fun isReady(filesDir: File): Boolean = required.all { File(directory(filesDir), it).isFile }
 
     suspend fun downloadAndExtract(context: Context, onProgress: (Float) -> Unit) = withContext(Dispatchers.IO) {
         if (isReady(context.filesDir)) return@withContext directory(context.filesDir)
@@ -49,7 +50,7 @@ object RockstarHelperArchive {
         return ensureExtracted(filesDir) { archive.inputStream() }
     }
 
-    /** Extract once per version; a cache with all binaries present is used as is. */
+    /** Extract once per version; a cache with every required file present is used as is. */
     @Synchronized
     fun ensureExtracted(filesDir: File, openArchive: () -> InputStream): File {
         val target = directory(filesDir)
