@@ -56,7 +56,9 @@ class PhysicalControllerHandler(
 
     private val TAG = "gncontrol"
     private val mouseMoveOffset = PointF(0f, 0f)
+    private val mouseMoveRemainder = PointF(0f, 0f)
     private val mouseMoveContributions = mutableMapOf<MouseMoveSource, Float>()
+    private val mouseMoveLock = Any()
     private val sequenceHandler = Handler(Looper.getMainLooper())
     private var mouseMoveTimer: Timer? = null
     private var scrollRepeatTimer: Timer? = null
@@ -124,6 +126,10 @@ class PhysicalControllerHandler(
         }
     }
 
+    init {
+        ExternalController.setStickTuning(profile, this)
+    }
+
     fun setProfile(profile: ControlsProfile?) {
         releaseActiveBindings(activeButtonBindings)
         releaseActiveBindings(activeTriggerBindings, fromMotion = true)
@@ -136,6 +142,7 @@ class PhysicalControllerHandler(
         activeSequenceTriggerBindings.clear()
         sendGamepadState()
         this.profile = profile
+        ExternalController.setStickTuning(profile, this)
         Log.d(TAG, "PhysicalControllerHandler: Profile set to ${profile?.name}")
     }
 
@@ -154,6 +161,7 @@ class PhysicalControllerHandler(
         showKeyboardPressed = false
         closeRadialMenuIfOpen(commit = false)
         sendGamepadState()
+        ExternalController.clearStickTuning(this)
     }
 
     fun onInputDeviceRemoved(deviceId: Int) {
@@ -349,15 +357,24 @@ class PhysicalControllerHandler(
             mouseMoveTimer = Timer()
             mouseMoveTimer?.schedule(object : TimerTask() {
                 override fun run() {
-                    // Skip injection if movement is below 8% deadzone to save CPU cycles
-                    val magnitude = Math.sqrt((mouseMoveOffset.x * mouseMoveOffset.x + mouseMoveOffset.y * mouseMoveOffset.y).toDouble())
-                    if (magnitude < 0.08) return
+                    synchronized(mouseMoveLock) {
+                        // Tuning already applies the user's chosen deadzone. Preserve sub-pixel input
+                        // across ticks instead of silently discarding low-sensitivity movement.
+                        if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f
+                        if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f
+                        if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return@synchronized
 
-                    // Look up cursor speed dynamically so it updates when profile changes
-                    val cursorSpeed = profile?.cursorSpeed ?: 1f
-                    val deltaX = (mouseMoveOffset.x * 10 * cursorSpeed).toInt()
-                    val deltaY = (mouseMoveOffset.y * 10 * cursorSpeed).toInt()
-                    xServer?.injectPointerMoveDelta(deltaX, deltaY)
+                        // Look up cursor speed dynamically so it updates when profile changes
+                        val cursorSpeed = profile?.cursorSpeed ?: 1f
+                        val scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x
+                        val scaledY = mouseMoveOffset.y * 10 * cursorSpeed + mouseMoveRemainder.y
+                        val deltaX = scaledX.toInt()
+                        val deltaY = scaledY.toInt()
+                        mouseMoveRemainder.set(scaledX - deltaX, scaledY - deltaY)
+                        if (deltaX != 0 || deltaY != 0) {
+                            xServer?.injectPointerMoveDelta(deltaX, deltaY)
+                        }
+                    }
                 }
             }, 0, 1000 / 60)
         }
@@ -391,25 +408,31 @@ class PhysicalControllerHandler(
     }
 
     private fun recalculateMouseMoveOffset() {
-        mouseMoveOffset.set(0f, 0f)
-        mouseMoveContributions.forEach { (source, contribution) ->
-            if (source.binding == Binding.MOUSE_MOVE_LEFT || source.binding == Binding.MOUSE_MOVE_RIGHT) {
-                mouseMoveOffset.x += contribution
-            } else {
-                mouseMoveOffset.y += contribution
+        synchronized(mouseMoveLock) {
+            mouseMoveOffset.set(0f, 0f)
+            mouseMoveContributions.forEach { (source, contribution) ->
+                if (source.binding == Binding.MOUSE_MOVE_LEFT || source.binding == Binding.MOUSE_MOVE_RIGHT) {
+                    mouseMoveOffset.x += contribution
+                } else {
+                    mouseMoveOffset.y += contribution
+                }
             }
-        }
-        if (mouseMoveContributions.isEmpty()) {
-            mouseMoveTimer?.cancel()
-            mouseMoveTimer = null
+            if (mouseMoveContributions.isEmpty()) {
+                mouseMoveRemainder.set(0f, 0f)
+                mouseMoveTimer?.cancel()
+                mouseMoveTimer = null
+            }
         }
     }
 
     private fun clearMouseMoveContributions() {
-        mouseMoveContributions.clear()
-        mouseMoveOffset.set(0f, 0f)
-        mouseMoveTimer?.cancel()
-        mouseMoveTimer = null
+        synchronized(mouseMoveLock) {
+            mouseMoveContributions.clear()
+            mouseMoveOffset.set(0f, 0f)
+            mouseMoveRemainder.set(0f, 0f)
+            mouseMoveTimer?.cancel()
+            mouseMoveTimer = null
+        }
     }
 
     private fun handleScrollBinding(binding: Binding, isActionDown: Boolean): Boolean {
@@ -488,14 +511,15 @@ class PhysicalControllerHandler(
             controller.state.dPadX.toFloat(),
             controller.state.dPadY.toFloat()
         )
-
         for (i in axes.indices) {
             val posKeyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], 1.toByte())
             val negKeyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], (-1).toByte())
             val positiveSource = PhysicalInputSource(deviceId, posKeyCode)
             val negativeSource = PhysicalInputSource(deviceId, negKeyCode)
 
-            if (Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE) {
+            val isActive = isPhysicalAxisActive(values[i], axes[i])
+
+            if (isActive) {
                 val activeKey = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
                 val oppositeKey = if (activeKey == posKeyCode) negKeyCode else posKeyCode
                 val activeSource = if (activeKey == posKeyCode) positiveSource else negativeSource
@@ -1069,9 +1093,7 @@ class PhysicalControllerHandler(
     ): Pair<Float, Float>? {
         val filteredX = radialSelectionComponent(x, xAxis)
         val filteredY = radialSelectionComponent(y, yAxis)
-        return if (Math.abs(filteredX) <= ControlElement.STICK_DEAD_ZONE &&
-            Math.abs(filteredY) <= ControlElement.STICK_DEAD_ZONE
-        ) {
+        return if (filteredX == 0f && filteredY == 0f) {
             null
         } else {
             filteredX to filteredY
@@ -1079,9 +1101,19 @@ class PhysicalControllerHandler(
     }
 
     private fun radialSelectionComponent(value: Float, axis: Int): Float {
-        if (Math.abs(value) <= ControlElement.STICK_DEAD_ZONE) return 0f
+        if (!isPhysicalAxisActive(value, axis)) return 0f
         val keyCode = ExternalControllerBinding.getKeyCodeForAxis(axis, Mathf.sign(value))
         return if (keyCode == radialMenuOpenerKeyCode) 0f else value
+    }
+
+    private fun isPhysicalAxisActive(value: Float, axis: Int): Boolean {
+        val isStick = axis == MotionEvent.AXIS_X || axis == MotionEvent.AXIS_Y ||
+            axis == MotionEvent.AXIS_Z || axis == MotionEvent.AXIS_RZ
+        return if (isStick && profile?.isStickTuningConfigured == true) {
+            value != 0f
+        } else {
+            Math.abs(value) > ControlElement.STICK_DEAD_ZONE
+        }
     }
 
     private fun isRadialMenuMotionOpenerPressed(controller: ExternalController): Boolean {
@@ -1103,7 +1135,7 @@ class PhysicalControllerHandler(
         )
 
         for (i in axes.indices) {
-            if (Math.abs(values[i]) <= ControlElement.STICK_DEAD_ZONE) continue
+            if (!isPhysicalAxisActive(values[i], axes[i])) continue
             val keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
             if (keyCode == radialMenuOpenerKeyCode) {
                 return true

@@ -58,6 +58,8 @@ public class InputControlsView extends View {
     private static final long SHOOTER_SPRINT_TAP_DURATION_MS = 120;
     public static final float DEFAULT_OVERLAY_OPACITY = 0.4f;
     private static final int SEQUENCE_PRESS_MS = 80;
+    // LX, LY, RX, RY - the leading entries of the axis array processed in processJoystickInput
+    private static final int PHYSICAL_STICK_AXIS_COUNT = 4;
     private boolean editMode = false;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
@@ -82,6 +84,7 @@ public class InputControlsView extends View {
     private final Bitmap[] icons = new Bitmap[40];
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
+    private final PointF mouseMoveRemainder = new PointF();
     private boolean showTouchscreenControls = true;
 
     // Shooter mode state
@@ -577,7 +580,18 @@ public class InputControlsView extends View {
             mouseMoveTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    xServer.injectPointerMoveDelta((int)(mouseMoveOffset.x * 10 * cursorSpeed), (int)(mouseMoveOffset.y * 10 * cursorSpeed));
+                    if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f;
+                    if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f;
+                    if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return;
+
+                    float scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x;
+                    float scaledY = mouseMoveOffset.y * 10 * cursorSpeed + mouseMoveRemainder.y;
+                    int deltaX = (int)scaledX;
+                    int deltaY = (int)scaledY;
+                    mouseMoveRemainder.set(scaledX - deltaX, scaledY - deltaY);
+                    if (deltaX != 0 || deltaY != 0) {
+                        xServer.injectPointerMoveDelta(deltaX, deltaY);
+                    }
                 }
             }, 0, 1000 / 60);
         }
@@ -589,7 +603,15 @@ public class InputControlsView extends View {
         final float[] values = {controller.state.thumbLX, controller.state.thumbLY, controller.state.thumbRX, controller.state.thumbRY, controller.state.getDPadX(), controller.state.getDPadY()};
 
         for (byte i = 0; i < axes.length; i++) {
-            if (Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE) {
+            // Tuned analog-stick values already include the user's chosen deadzone, so anything
+            // non-zero is live input. Untuned legacy profiles and digital hat axes retain the
+            // original fixed activation threshold.
+            boolean isStick = i < PHYSICAL_STICK_AXIS_COUNT;
+            boolean isActive = isStick && profile.isStickTuningConfigured()
+                    ? values[i] != 0
+                    : Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE;
+
+            if (isActive) {
                 controllerBinding = controller.getControllerBinding(ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i])));
                 if (controllerBinding != null) handleInputEvent(controllerBinding.getBindingCombo(), true, values[i]);
             }
