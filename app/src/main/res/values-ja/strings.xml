@@ -1645,10 +1645,8 @@
     <string name="session_drawer_frame_generation">フレーム生成</string>
     <string name="session_drawer_frame_generation_enable">フレームを生成</string>
     <string name="session_drawer_frame_generation_multiplier">倍率</string>
-    <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">適応ターゲット</string>
     <string name="session_drawer_frame_generation_target_off">固定</string>
-    <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="frame_generation_preset">品質プリセット</string>
     <string name="frame_generation_preset_ultra_performance">ウルトラパフォーマンス</string>
     <string name="frame_generation_preset_performance">パフォーマンス</string>
@@ -1663,24 +1661,9 @@
     <string name="frame_generation_preset_performance_note" formatted="false">50% 解像度で動きを推定。品質プリセットの約46%のGPU負荷で、視覚的な劣化はほぼありません。</string>
     <string name="frame_generation_preset_balanced_note" formatted="false">70% 解像度で動きを推定。品質プリセットの約61%のGPU負荷。携帯デバイスにおすすめです。</string>
     <string name="frame_generation_preset_quality_note">フル解像度で動きを推定。負荷が最も高いため、ゲームのGPU負荷に十分な余裕がある場合のみ使用してください。</string>
-    <string name="frame_generation_flow_scale">フロースケール (%1$d%%)</string>
-    <string name="session_drawer_frame_generation_note">Lossless Scaling でレンダリングされたフレーム間を補間します。動きは滑らかになりますが、1フレーム分の入力遅延が追加されます。</string>
     <string name="session_drawer_frame_generation_disabled_hint">Lossless Scaling はインストールされていますが、このコンテナではフレーム生成が無効になっています。このセッションで使用するにはコンテナ設定で有効にしてください。</string>
     <string name="session_drawer_frame_generation_missing">Lossless Scaling がインストールされていません。フレーム生成を使用するにはパフォーマンス設定（グローバル）で設定してください。</string>
-    <string name="settings_frame_generation_title">フレーム生成</string>
-    <string name="settings_frame_generation_importing">Lossless Scaling を検索中…</string>
-    <string name="settings_frame_generation_ready">Lossless Scaling シェーダーの準備完了 (%1$s)。</string>
-    <string name="settings_frame_generation_imported">%1$s からインポートしました。</string>
-    <string name="settings_frame_generation_not_found">Lossless Scaling が見つかりませんでした。Steam からインストールするか、手動で Lossless.dll を選択してください。</string>
-    <string name="settings_frame_generation_failed">Lossless.dll が見つかりましたが、シェーダーを読み取れませんでした。ファイルを確認して再試行してください。</string>
-    <string name="settings_frame_generation_updated">%1$s から更新しました。</string>
-    <string name="settings_frame_generation_not_owned">フレーム生成には Lossless Scaling のシェーダーを使用します。サインインしているアカウントで Steam から購入するか、手動で Lossless.dll を選択してください。</string>
-    <string name="settings_frame_generation_locate">Lossless.dll を選択…</string>
-    <string name="session_drawer_rail_label_frame_gen">FPS</string>
     <string name="lsfg_container_toggle_desc">このコンテナで Lossless Scaling フレーム生成を有効にします。クイック設定で倍率、プリセット、ターゲット FPS をリアルタイムで調整できます。</string>
-    <string name="lsfg_requires_global_import">Lossless Scaling のインストールが必要です</string>
-    <string name="lsfg_container_prompt_sign_in">Steam にサインインして Lossless Scaling の所有権を確認してください</string>
-    <string name="lsfg_container_prompt_buy">Steam 上の Lossless Scaling が必要です。有効にするには Steam で購入してください</string>
     <string name="lsfg_container_prompt_setup">セットアップが必要 — タップして Lossless Scaling をインストール</string>
     <string name="settings_lsfg_title">Lossless Scaling (LSFG)</string>
     <string name="settings_lsfg_installed">インストール済み (Lossless.dll 準備完了)</string>
@@ -1689,7 +1672,6 @@
     <string name="settings_lsfg_install_btn">Lossless Scaling をインストール</string>
     <string name="settings_lsfg_installed_btn">インストール済み</string>
     <string name="settings_lsfg_remove_btn">削除</string>
-    <string name="settings_lsfg_gpu_status">GPU 互換性</string>
     <string name="settings_lsfg_gpu_supported">対応 (Vulkan 1.3 および VulkanMemoryModel を検出)</string>
     <string name="settings_lsfg_gpu_unsupported">非対応 (現在のドライバーで Vulkan 1.3 または VulkanMemoryModel が検出されませんでした)</string>
     <string name="settings_lsfg_import_success">Lossless Scaling が正常にインストールされました</string>
@@ -1698,7 +1680,6 @@
     <string name="settings_lsfg_status_not_installed">未インストール</string>
     <string name="settings_lsfg_step1_downloading">ダウンロード中 (%1$d%%)…</string>
     <string name="settings_lsfg_step2_locating">シェーダーを設定中…</string>
-    <string name="settings_lsfg_step2_ready">Lossless.dll 準備完了</string>
     <string name="settings_lsfg_dll_not_found">Steam ファイル内に Lossless.dll が見つかりませんでした</string>
     <string name="settings_lsfg_license_verified">Steam ライセンス確認済み</string>
     <string name="settings_lsfg_buy_steam_btn">Steam で表示</string>

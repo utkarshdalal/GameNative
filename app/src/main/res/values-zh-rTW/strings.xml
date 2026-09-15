@@ -1684,10 +1684,8 @@
     <string name="session_drawer_frame_generation">幀生成</string>
     <string name="session_drawer_frame_generation_enable">生成幀</string>
     <string name="session_drawer_frame_generation_multiplier">倍率</string>
-    <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">自適應目標</string>
     <string name="session_drawer_frame_generation_target_off">固定</string>
-    <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="frame_generation_preset">畫質預設</string>
     <string name="frame_generation_preset_ultra_performance">超級效能</string>
     <string name="frame_generation_preset_performance">效能</string>
@@ -1702,24 +1700,9 @@
     <string name="frame_generation_preset_performance_note" formatted="false">以 50% 解析度估算運動。約佔品質預設 GPU 消耗的 46%，幾乎沒有肉眼可見的損失。</string>
     <string name="frame_generation_preset_balanced_note" formatted="false">以 70% 解析度估算運動。約佔品質預設 GPU 消耗的 61%。推薦掌機使用。</string>
     <string name="frame_generation_preset_quality_note">以全解析度估算運動。GPU 消耗最高；僅在遊戲有充裕 GPU 餘量時使用。</string>
-    <string name="frame_generation_flow_scale">光流縮放 (%1$d%%)</string>
-    <string name="session_drawer_frame_generation_note">使用 Lossless Scaling 在渲染幀之間進行補幀。畫面更流暢，但會增加一幀的輸入延遲。</string>
     <string name="session_drawer_frame_generation_disabled_hint">已安裝 Lossless Scaling，但此容器已停用幀生成。請在容器設定中啟用以在本次工作階段中使用。</string>
     <string name="session_drawer_frame_generation_missing">未安裝 Lossless Scaling。請在效能設定（全域）中進行設定以使用幀生成。</string>
-    <string name="settings_frame_generation_title">幀生成</string>
-    <string name="settings_frame_generation_importing">正在尋找 Lossless Scaling…</string>
-    <string name="settings_frame_generation_ready">Lossless Scaling 著色器已就緒 (%1$s)。</string>
-    <string name="settings_frame_generation_imported">已從 %1$s 匯入。</string>
-    <string name="settings_frame_generation_not_found">找不到 Lossless Scaling。請從 Steam 安裝或手動選取 Lossless.dll。</string>
-    <string name="settings_frame_generation_failed">已找到 Lossless.dll 但無法讀取其著色器。請檢查檔案並重試。</string>
-    <string name="settings_frame_generation_updated">已從 %1$s 更新。</string>
-    <string name="settings_frame_generation_not_owned">幀生成使用 Lossless Scaling 的著色器。請使用登入的帳戶在 Steam 上購買或手動選取 Lossless.dll。</string>
-    <string name="settings_frame_generation_locate">選取 Lossless.dll…</string>
-    <string name="session_drawer_rail_label_frame_gen">FPS</string>
     <string name="lsfg_container_toggle_desc">為此容器啟用 Lossless Scaling 幀生成。可在快捷設定中即時調整倍率、預設和目標幀率。</string>
-    <string name="lsfg_requires_global_import">需要安裝 Lossless Scaling</string>
-    <string name="lsfg_container_prompt_sign_in">登入 Steam 以驗證 Lossless Scaling 所有權</string>
-    <string name="lsfg_container_prompt_buy">需要 Steam 上的 Lossless Scaling。在 Steam 上購買以啟用</string>
     <string name="lsfg_container_prompt_setup">需要設定 — 輕觸以安裝 Lossless Scaling</string>
     <string name="settings_lsfg_title">Lossless Scaling (LSFG)</string>
     <string name="settings_lsfg_installed">已安裝 (Lossless.dll 就緒)</string>
@@ -1728,7 +1711,6 @@
     <string name="settings_lsfg_install_btn">安裝 Lossless Scaling</string>
     <string name="settings_lsfg_installed_btn">已安裝</string>
     <string name="settings_lsfg_remove_btn">移除</string>
-    <string name="settings_lsfg_gpu_status">GPU 相容性</string>
     <string name="settings_lsfg_gpu_supported">支援 (已偵測到 Vulkan 1.3 和 VulkanMemoryModel)</string>
     <string name="settings_lsfg_gpu_unsupported">不支援 (目前驅動程式未偵測到 Vulkan 1.3 或 VulkanMemoryModel)</string>
     <string name="settings_lsfg_import_success">Lossless Scaling 安裝成功</string>
@@ -1737,7 +1719,6 @@
     <string name="settings_lsfg_status_not_installed">未安裝</string>
     <string name="settings_lsfg_step1_downloading">正在下載 (%1$d%%)…</string>
     <string name="settings_lsfg_step2_locating">正在設定著色器…</string>
-    <string name="settings_lsfg_step2_ready">Lossless.dll 就緒</string>
     <string name="settings_lsfg_dll_not_found">在 Steam 檔案中找不到 Lossless.dll</string>
     <string name="settings_lsfg_license_verified">Steam 授權已驗證</string>
     <string name="settings_lsfg_buy_steam_btn">在 Steam 上查看</string>

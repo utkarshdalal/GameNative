@@ -1570,10 +1570,8 @@ https://gamenative.app
     <string name="session_drawer_frame_generation">Генерация кадров</string>
     <string name="session_drawer_frame_generation_enable">Генерировать кадры</string>
     <string name="session_drawer_frame_generation_multiplier">Множитель</string>
-    <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Адаптивная цель</string>
     <string name="session_drawer_frame_generation_target_off">Фиксировано</string>
-    <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="frame_generation_preset">Пресет качества</string>
     <string name="frame_generation_preset_ultra_performance">Ультра производительность</string>
     <string name="frame_generation_preset_performance">Производительность</string>
@@ -1588,24 +1586,9 @@ https://gamenative.app
     <string name="frame_generation_preset_performance_note" formatted="false">Оценка движения при 50% разрешения. Около 46% нагрузки на GPU от Качества, почти без видимых потерь.</string>
     <string name="frame_generation_preset_balanced_note" formatted="false">Оценка движения при 70% разрешения. Около 61% нагрузки на GPU от Качества. Рекомендуется для портативных консолей.</string>
     <string name="frame_generation_preset_quality_note">Оценка движения в полном разрешении. Наибольшая нагрузка; используйте, только если у GPU есть запас мощности.</string>
-    <string name="frame_generation_flow_scale">Масштаб потока (%1$d%%)</string>
-    <string name="session_drawer_frame_generation_note">Интерполирует между отрендеренными кадрами с помощью Lossless Scaling. Более плавное движение, но один дополнительный кадр задержки ввода.</string>
     <string name="session_drawer_frame_generation_disabled_hint">Lossless Scaling установлен, но генерация кадров отключена для этого контейнера. Включите ее в настройках контейнера, чтобы использовать в этой сессии.</string>
     <string name="session_drawer_frame_generation_missing">Lossless Scaling не установлен. Настройте его в параметрах Производительности (Глобальные) для использования генерации кадров.</string>
-    <string name="settings_frame_generation_title">Генерация кадров</string>
-    <string name="settings_frame_generation_importing">Поиск Lossless Scaling…</string>
-    <string name="settings_frame_generation_ready">Шейдеры Lossless Scaling готовы (%1$s).</string>
-    <string name="settings_frame_generation_imported">Импортировано из %1$s.</string>
-    <string name="settings_frame_generation_not_found">Lossless Scaling не найден. Установите его из Steam или выберите Lossless.dll вручную.</string>
-    <string name="settings_frame_generation_failed">Lossless.dll найден, но его шейдеры не удалось прочитать. Проверьте файл и повторите попытку.</string>
-    <string name="settings_frame_generation_updated">Обновлено из %1$s.</string>
-    <string name="settings_frame_generation_not_owned">Генерация кадров использует шейдеры из Lossless Scaling. Купите его в Steam с активного аккаунта или выберите Lossless.dll вручную.</string>
-    <string name="settings_frame_generation_locate">Выбрать Lossless.dll…</string>
-    <string name="session_drawer_rail_label_frame_gen">FPS</string>
     <string name="lsfg_container_toggle_desc">Включите генерацию кадров Lossless Scaling для этого контейнера. Настраивайте множитель, пресеты и целевой FPS прямо в Быстрых настройках.</string>
-    <string name="lsfg_requires_global_import">Требуется установленный Lossless Scaling</string>
-    <string name="lsfg_container_prompt_sign_in">Войдите в Steam для подтверждения наличия Lossless Scaling</string>
-    <string name="lsfg_container_prompt_buy">Требуется Lossless Scaling в Steam. Купите его в Steam для включения</string>
     <string name="lsfg_container_prompt_setup">Требуется настройка — нажмите для установки Lossless Scaling</string>
     <string name="settings_lsfg_title">Lossless Scaling (LSFG)</string>
     <string name="settings_lsfg_installed">Установлено (Lossless.dll готов)</string>
@@ -1614,7 +1597,6 @@ https://gamenative.app
     <string name="settings_lsfg_install_btn">Установить Lossless Scaling</string>
     <string name="settings_lsfg_installed_btn">Установлено</string>
     <string name="settings_lsfg_remove_btn">Удалить</string>
-    <string name="settings_lsfg_gpu_status">Совместимость GPU</string>
     <string name="settings_lsfg_gpu_supported">Поддерживается (Обнаружены Vulkan 1.3 и VulkanMemoryModel)</string>
     <string name="settings_lsfg_gpu_unsupported">Не поддерживается (Vulkan 1.3 или VulkanMemoryModel не обнаружены в текущем драйвере)</string>
     <string name="settings_lsfg_import_success">Lossless Scaling успешно установлен</string>
@@ -1623,7 +1605,6 @@ https://gamenative.app
     <string name="settings_lsfg_status_not_installed">Не установлено</string>
     <string name="settings_lsfg_step1_downloading">Загрузка (%1$d%%)…</string>
     <string name="settings_lsfg_step2_locating">Настройка шейдеров…</string>
-    <string name="settings_lsfg_step2_ready">Lossless.dll готов</string>
     <string name="settings_lsfg_dll_not_found">Не удалось найти Lossless.dll в файлах Steam</string>
     <string name="settings_lsfg_license_verified">Лицензия Steam подтверждена</string>
     <string name="settings_lsfg_buy_steam_btn">Открыть в Steam</string>
