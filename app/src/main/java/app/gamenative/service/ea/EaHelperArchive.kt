@@ -12,7 +12,7 @@ import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStre
 
 /** Downloaded separately from Steam and installed after the Steam tree is refreshed. */
 object EaHelperArchive {
-    const val ARCHIVE = "eahost-20260915.2.tzst"
+    const val ARCHIVE = "eahost-20260915.3.tzst"
     internal const val PREFIX_PATH = "Program Files (x86)/Steam/eastub.exe"
     internal const val EXECUTABLE = "eastub.exe"
     internal const val CONFIG = "ea-helper.properties"
@@ -21,8 +21,12 @@ object EaHelperArchive {
 
     suspend fun download(context: Context, onProgress: (Float) -> Unit) = withContext(Dispatchers.IO) {
         val archive = File(context.filesDir, ARCHIVE)
-        if (!archive.isFile) SteamService.fetchFileWithFallback(ARCHIVE, archive, context, onProgress)
-        if (!configFile(context.filesDir).isFile) extractConfig(archive, context.filesDir)
+        val fetched = !archive.isFile
+        if (fetched) SteamService.fetchFileWithFallback(ARCHIVE, archive, context, onProgress)
+        if (fetched || !configFile(context.filesDir).isFile) {
+            extractConfig(archive, context.filesDir)
+            EaHelperConfig.reset()
+        }
     }
 
     fun install(context: Context, prefixDriveC: File) = install(File(context.filesDir, ARCHIVE), prefixDriveC)
