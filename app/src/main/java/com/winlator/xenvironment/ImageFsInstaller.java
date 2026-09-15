@@ -257,7 +257,7 @@ public abstract class ImageFsInstaller {
     public static Future<Boolean> installIfNeededFuture(final Context context, AssetManager assetManager, Container container, Callback<Integer> onProgress) {
         ImageFs imageFs = ImageFs.find(context);
         String wineVersion = container.getWineVersion();
-        if (!ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, imageFs.getRootDir(), wineVersion)) {
+        if (!ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, imageFs.getRootDir())) {
             Log.w("ImageFsInstaller", "Failed to migrate legacy directories before installation.");
             return Executors.newSingleThreadExecutor().submit(() -> false);
         }
@@ -535,7 +535,7 @@ public abstract class ImageFsInstaller {
             return ContentsManager.getInstallDir(context, profile);
         }
         return new File(ImageFs.getSharedProtonDir(context), protonVersion);
-    }
+        }
 
     /**
      * Removes the current Proton symlink(s) from opt/ so it can be replaced with the current proton
@@ -558,5 +558,23 @@ public abstract class ImageFsInstaller {
                 FileUtils.delete(entry);
             }
         }
+    }
+
+    /**
+     * Migrate legacy directories if needed. After that, ensure the shared home and proton are symlinked.
+     */
+    public static boolean ensureImageFsSymlinks(Context context, File legacyImageFsRoot, Container container) {
+        if (!ImageFSLegacyMigrator.migrateLegacyDirsIfNeeded(context, legacyImageFsRoot)) {
+            return false;
+        }
+
+        String wineVersion = container.getWineVersion();
+        String variant = container.getContainerVariant();
+        ensureSharedHomeRoot(context, legacyImageFsRoot);
+        if (Container.BIONIC.equals(variant)) {
+            ensureProtonVersionSymlink(context, legacyImageFsRoot, wineVersion);
+        }
+
+        return true;
     }
 }
