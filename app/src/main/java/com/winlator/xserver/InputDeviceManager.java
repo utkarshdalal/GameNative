@@ -38,6 +38,23 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
         }
     };
 
+    /**
+     * Called when the guest process is suspended (overlay/editor pause SIGSTOPs it). A suspended guest stops draining
+     * its X socket, so the main-thread key auto-repeat ({@link #autoRepeatRunnable}) must be stopped here — otherwise
+     * its next {@code onKeyPress} -> {@code Window.sendEvent} -> blocking {@code ClientSocket.write} to the
+     * non-draining guest hangs the UI thread until an ANR. Clearing {@link #currentRepeatingKeycode} also stops the
+     * runnable re-arming itself, since it only re-posts while its own keycode is still held.
+     *
+     * Deliberately does NOT clear {@code keyboard.getPressedKeys()}: this runs on the general overlay-suspend path
+     * for every user, and dropping the held-key set desyncs the guest — {@code Keyboard.setKeyRelease} no-ops for a
+     * keycode that isn't in the set, so a key held across the overlay would never send its KeyRelease and would stay
+     * latched down inside the game. Pure local state — sends no X events. Call BEFORE suspending the guest.
+     */
+    public void onGuestSuspended() {
+        autoRepeatHandler.removeCallbacks(autoRepeatRunnable);
+        currentRepeatingKeycode = 0;
+    }
+
     public InputDeviceManager(XServer xServer) {
         this.xServer = xServer;
         pointWindow = xServer.windowManager.rootWindow;
