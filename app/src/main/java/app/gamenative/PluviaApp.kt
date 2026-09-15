@@ -213,6 +213,8 @@ class PluviaApp : SplitCompatApplication() {
         internal var onDestinationChangedListener: NavChangedListener? = null
 
         private lateinit var instance: PluviaApp
+        @JvmStatic
+        fun getAppContext(): android.content.Context? = if (::instance.isInitialized) instance.applicationContext else null
         private var cachedDefaultScreenSize: String? = null
 
         // TODO: find a way to make this saveable, this is terrible (leak that memory baby)
