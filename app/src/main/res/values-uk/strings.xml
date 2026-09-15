@@ -696,7 +696,7 @@
     <string name="achievement_position_top_right">Правий верхній</string>
     <string name="achievement_position_bottom_left">Лівий нижній</string>
     <string name="achievement_position_bottom_right">Правий нижній</string>
-    <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру, а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
+    <string name="launch_steam_client_description">Рекомендовано Headless\nПотрібно для EA, Rockstar, Ubisoft та інших лаунчерів\nВмикає мультиплеєр і виправляє проблеми з DRM та контролером</string>
     <string name="launch_bionic_steam">Увімкнути експериментальний Bionic Steam</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>

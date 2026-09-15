@@ -860,7 +860,7 @@
     <string name="local_saves_only">Local saves only</string>
     <string name="local_saves_only_description">Disable cloud save sync for this game and keep saves on device only</string>
     <string name="launch_steam_client_beta">Launch Steam Client (Beta)</string>
-    <string name="launch_steam_client_description">Reduces performance and slows down launch\nAllows online play and fixes DRM and controller issues\nNot all games work</string>
+    <string name="launch_steam_client_description">Headless is recommended\nRequired for EA, Rockstar, Ubisoft and other launchers\nEnables multiplayer and fixes DRM and controller issues</string>
     <string name="launch_bionic_steam">Enable Experimental Bionic Steam</string>
     <string name="launch_bionic_steam_description">Enables online play, improves compatibility\nDoes not always work\nBack up your saves before trying this</string>
     <string name="steam_offline_mode">Steam Offline Mode</string>
@@ -1327,6 +1327,8 @@
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_entry">Downloading %s</string>
     <string name="main_downloading_steam">Downloading Steam...</string>
+    <string name="steam_update_required_title">Update required</string>
+    <string name="steam_update_required_message">This game has an update. The Steam client cannot start it until the update is installed. Update now, then launch again.</string>
 
     <string name="main_installing_glibc">Installing glibc components...</string>
     <string name="main_installing_bionic">Installing Bionic components...</string>
@@ -1696,6 +1698,11 @@
     <string name="gog_settings_login_title">Sign in to GOG</string>
     <string name="gog_settings_login_subtitle">Sign in to your GOG account</string>
     <string name="gog_login_success_title">Login Successful</string>
+    <string name="rockstar_login_required_title">Rockstar sign-in required</string>
+    <string name="rockstar_login_failed">Rockstar sign-in failed: %1$s</string>
+    <string name="ea_login_required_title">EA sign-in required</string>
+    <string name="ea_login_success">Signed in to EA as %1$s</string>
+    <string name="ea_login_failed">EA sign-in failed: %1$s</string>
     <string name="gog_login_cancel">Cancel</string>
     <string name="gog_settings_logout_title">Sign out of GOG</string>
     <string name="gog_settings_logout_subtitle">Sign out from your GOG account</string>

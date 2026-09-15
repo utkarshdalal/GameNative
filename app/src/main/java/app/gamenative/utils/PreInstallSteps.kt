@@ -51,7 +51,8 @@ object PreInstallSteps {
         val gameDir = getGameDir(container) ?: return emptyList()
         val gameDirPath = gameDir.absolutePath
 
-        if (containerVariantChanged) resetMarkers(gameDirPath)
+        val prefixStamp = prefixStamp(container)
+        if (containerVariantChanged || (prefixStamp != null && !prefixStamp.exists())) resetMarkers(gameDirPath)
 
         val commands = mutableListOf<PreInstallCommand>()
 
@@ -79,6 +80,7 @@ object PreInstallSteps {
             }
         }
 
+        if (commands.isEmpty()) touchPrefixStamp(container)
         return commands
     }
 
@@ -88,12 +90,31 @@ object PreInstallSteps {
         for (marker in allMarkers()) {
             MarkerUtils.addMarker(gameDirPath, marker)
         }
+        touchPrefixStamp(container)
     }
 
     fun markStepDone(container: Container, marker: Marker) {
         val gameDir = getGameDir(container) ?: return
         val gameDirPath = gameDir.absolutePath
         MarkerUtils.addMarker(gameDirPath, marker)
+        touchPrefixStamp(container)
+    }
+
+    /**
+     * Pre-install steps write into the Wine prefix (registry, system32), so a recreated
+     * prefix must re-run them even though the game-dir markers survived. The stamp lives
+     * inside the prefix and disappears with it.
+     */
+    private fun prefixStamp(container: Container): File? {
+        val root = container.rootDir?.absolutePath?.takeIf { it.isNotEmpty() } ?: return null
+        val prefix = File(root, ".wine")
+        if (!prefix.isDirectory) return null
+        return File(prefix, ".gamenative_preinstall_done")
+    }
+
+    private fun touchPrefixStamp(container: Container) {
+        val stamp = prefixStamp(container) ?: return
+        runCatching { stamp.createNewFile() }
     }
 
     private fun resetMarkers(gameDirPath: String) {

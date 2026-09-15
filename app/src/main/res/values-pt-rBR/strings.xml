@@ -532,7 +532,7 @@
     <string name="achievement_position_top_right">Superior direito</string>
     <string name="achievement_position_bottom_left">Inferior esquerdo</string>
     <string name="achievement_position_bottom_right">Inferior direito</string>
-    <string name="launch_steam_client_description">Reduz o desempenho e atrasa a inicialização\nPermite jogo online e corrige problemas de DRM e de controle\nNem todos os jogos funcionam</string>
+    <string name="launch_steam_client_description">Headless é recomendado\nNecessário para EA, Rockstar, Ubisoft e outros launchers\nAtiva o multiplayer e corrige problemas de DRM e de controle</string>
     <string name="launch_bionic_steam">Ativar Bionic Steam experimental</string>
     <string name="allow_steam_updates">Permitir atualizações do Steam</string>
     <string name="allow_steam_updates_description">Atualiza o Steam para a versão mais recente. Reduz significativamente o desempenho.</string>

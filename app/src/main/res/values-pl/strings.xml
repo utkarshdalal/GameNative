@@ -710,7 +710,7 @@
     <string name="achievement_position_top_right">Prawy górny</string>
     <string name="achievement_position_bottom_left">Lewy dolny</string>
     <string name="achievement_position_bottom_right">Prawy dolny</string>
-    <string name="launch_steam_client_description">Zmniejsza wydajność i spowalnia uruchamianie\nPozwala na grę online i naprawia problemy z DRM oraz kontrolerem\nNie wszystkie gry działają</string>
+    <string name="launch_steam_client_description">Zalecany tryb Headless\nWymagany dla EA, Rockstar, Ubisoft i innych launcherów\nWłącza tryb wieloosobowy i naprawia problemy z DRM i kontrolerem</string>
     <string name="launch_bionic_steam">Włącz eksperymentalny Bionic Steam</string>
     <string name="allow_steam_updates">Zezwól na aktualizacje Steam</string>
     <string name="allow_steam_updates_description">Aktualizuje Steam do najnowszej wersji. Znacząco zmniejsza wydajność.</string>

@@ -389,6 +389,30 @@ fun GeneralTabContent(
                 }
             },
         )
+        if (config.launchRealSteam) {
+            val steamTypeItems = listOf("Headless", "Normal", "Light", "Ultra Light")
+            val currentSteamTypeIndex = when (config.steamType.lowercase()) {
+                Container.STEAM_TYPE_HEADLESS -> 0
+                Container.STEAM_TYPE_LIGHT -> 2
+                Container.STEAM_TYPE_ULTRALIGHT -> 3
+                else -> 1
+            }
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.steam_type)) },
+                value = currentSteamTypeIndex,
+                items = steamTypeItems,
+                onItemSelected = {
+                    val type = when (it) {
+                        0 -> Container.STEAM_TYPE_HEADLESS
+                        2 -> Container.STEAM_TYPE_LIGHT
+                        3 -> Container.STEAM_TYPE_ULTRALIGHT
+                        else -> Container.STEAM_TYPE_NORMAL
+                    }
+                    state.config.value = config.copy(steamType = type)
+                },
+            )
+        }
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             SettingsSwitch(
                 colors = settingsTileColorsAlt(),
@@ -424,26 +448,6 @@ fun GeneralTabContent(
             subtitle = { Text(text = stringResource(R.string.faster_external_loading_subtitle)) },
             state = config.fasterExternalLoading,
             onCheckedChange = { state.config.value = config.copy(fasterExternalLoading = it) },
-        )
-        val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
-        val currentSteamTypeIndex = when (config.steamType.lowercase()) {
-            Container.STEAM_TYPE_LIGHT -> 1
-            Container.STEAM_TYPE_ULTRALIGHT -> 2
-            else -> 0
-        }
-        SettingsListDropdown(
-            colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.steam_type)) },
-            value = currentSteamTypeIndex,
-            items = steamTypeItems,
-            onItemSelected = {
-                val type = when (it) {
-                    1 -> Container.STEAM_TYPE_LIGHT
-                    2 -> Container.STEAM_TYPE_ULTRALIGHT
-                    else -> Container.STEAM_TYPE_NORMAL
-                }
-                state.config.value = config.copy(steamType = type)
-            },
         )
         SettingsListDropdown(
             colors = settingsTileColors(),
