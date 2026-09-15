@@ -222,6 +222,10 @@
     <string name="dpad_right">D-Pad Direita</string>
     <string name="input_controls">Controle On-screen</string>
     <string name="edit_controls">Editar Controle On-screen</string>
+    <string name="on_screen_controller_settings">Configurações do controle na tela</string>
+    <string name="mouse_speed">Velocidade do mouse</string>
+    <string name="mouse_speed_subtitle">Ajuste a velocidade do ponteiro para movimentos por toque e controles atribuídos ao movimento do mouse. O modo tiro usa sua própria sensibilidade de visão.</string>
+    <string name="reset_mouse_speed">Redefinir velocidade do mouse</string>
     <string name="edit_physical_controller">Editar Controle Físico</string>
     <string name="controller_disconnected">Desconectado</string>
     <string name="reset_onscreen_controls">Redefinir Controles On-screen</string>
