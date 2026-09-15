@@ -1647,10 +1647,8 @@
     <string name="session_drawer_frame_generation">Génération d\'images</string>
     <string name="session_drawer_frame_generation_enable">Générer des images</string>
     <string name="session_drawer_frame_generation_multiplier">Multiplicateur</string>
-    <string name="session_drawer_frame_generation_multiplier_value">%1$dx</string>
     <string name="session_drawer_frame_generation_target">Cible adaptative</string>
     <string name="session_drawer_frame_generation_target_off">Fixe</string>
-    <string name="session_drawer_frame_generation_target_value">%1$d fps</string>
     <string name="frame_generation_preset">Préréglage de qualité</string>
     <string name="frame_generation_preset_ultra_performance">Ultra performance</string>
     <string name="frame_generation_preset_performance">Performance</string>
@@ -1665,24 +1663,9 @@
     <string name="frame_generation_preset_performance_note" formatted="false">Mouvement estimé à 50 % de résolution. Environ 46 % du coût GPU de Qualité, sans perte visible.</string>
     <string name="frame_generation_preset_balanced_note" formatted="false">Mouvement estimé à 70 % de résolution. Environ 61 % du coût GPU de Qualité. Recommandé pour les consoles portables.</string>
     <string name="frame_generation_preset_quality_note">Mouvement estimé en pleine résolution. Coût le plus élevé ; à utiliser uniquement si le jeu dispose d\'une marge de puissance GPU.</string>
-    <string name="frame_generation_flow_scale">Échelle de flux (%1$d%%)</string>
-    <string name="session_drawer_frame_generation_note">Interpole entre les images rendues avec Lossless Scaling. Mouvement plus fluide, mais une image de latence d\'entrée supplémentaire.</string>
     <string name="session_drawer_frame_generation_disabled_hint">Lossless Scaling est installé, mais la génération d\'images est désactivée pour ce conteneur. Activez-la dans les paramètres du conteneur pour l\'utiliser dans cette session.</string>
     <string name="session_drawer_frame_generation_missing">Lossless Scaling n\'est pas installé. Configurez-le dans les paramètres de performance (Globaux) pour utiliser la génération d\'images.</string>
-    <string name="settings_frame_generation_title">Génération d\'images</string>
-    <string name="settings_frame_generation_importing">Recherche de Lossless Scaling…</string>
-    <string name="settings_frame_generation_ready">Shaders Lossless Scaling prêts (%1$s).</string>
-    <string name="settings_frame_generation_imported">Importé depuis %1$s.</string>
-    <string name="settings_frame_generation_not_found">Lossless Scaling est introuvable. Installez-le depuis Steam ou sélectionnez Lossless.dll manuellement.</string>
-    <string name="settings_frame_generation_failed">Lossless.dll a été trouvé mais ses shaders n\'ont pas pu être lus. Vérifiez le fichier et réessayez.</string>
-    <string name="settings_frame_generation_updated">Mis à jour depuis %1$s.</string>
-    <string name="settings_frame_generation_not_owned">La génération d\'images utilise les shaders de Lossless Scaling. Achetez-le sur Steam avec le compte connecté ou sélectionnez Lossless.dll manuellement.</string>
-    <string name="settings_frame_generation_locate">Sélectionner Lossless.dll…</string>
-    <string name="session_drawer_rail_label_frame_gen">FPS</string>
     <string name="lsfg_container_toggle_desc">Activer la génération d\'images Lossless Scaling pour ce conteneur. Ajustez le multiplicateur, les préréglages et le FPS cible en direct dans les paramètres rapides.</string>
-    <string name="lsfg_requires_global_import">Nécessite Lossless Scaling installé</string>
-    <string name="lsfg_container_prompt_sign_in">Connectez-vous à Steam pour vérifier la possession de Lossless Scaling</string>
-    <string name="lsfg_container_prompt_buy">Nécessite Lossless Scaling sur Steam. Achetez-le sur Steam pour l\'activer</string>
     <string name="lsfg_container_prompt_setup">Configuration requise — appuyez pour installer Lossless Scaling</string>
     <string name="settings_lsfg_title">Lossless Scaling (LSFG)</string>
     <string name="settings_lsfg_installed">Installé (Lossless.dll prêt)</string>
@@ -1691,7 +1674,6 @@
     <string name="settings_lsfg_install_btn">Installer Lossless Scaling</string>
     <string name="settings_lsfg_installed_btn">Installé</string>
     <string name="settings_lsfg_remove_btn">Supprimer</string>
-    <string name="settings_lsfg_gpu_status">Compatibilité GPU</string>
     <string name="settings_lsfg_gpu_supported">Pris en charge (Vulkan 1.3 et VulkanMemoryModel détectés)</string>
     <string name="settings_lsfg_gpu_unsupported">Non pris en charge (Vulkan 1.3 ou VulkanMemoryModel non détecté sur le pilote actuel)</string>
     <string name="settings_lsfg_import_success">Lossless Scaling installé avec succès</string>
@@ -1700,7 +1682,6 @@
     <string name="settings_lsfg_status_not_installed">Non installé</string>
     <string name="settings_lsfg_step1_downloading">Téléchargement (%1$d%%)…</string>
     <string name="settings_lsfg_step2_locating">Configuration des shaders…</string>
-    <string name="settings_lsfg_step2_ready">Lossless.dll prêt</string>
     <string name="settings_lsfg_dll_not_found">Impossible de localiser Lossless.dll dans les fichiers Steam</string>
     <string name="settings_lsfg_license_verified">Licence Steam vérifiée</string>
     <string name="settings_lsfg_buy_steam_btn">Voir sur Steam</string>
