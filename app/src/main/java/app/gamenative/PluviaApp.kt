@@ -139,7 +139,9 @@ class PluviaApp : SplitCompatApplication() {
 
         PlayIntegrity.warmUp(this)
 
-        PowerManager.initialize(this)
+        Thread {
+            PowerManager.initialize(this)
+        }.start()
     }
 
     /**
