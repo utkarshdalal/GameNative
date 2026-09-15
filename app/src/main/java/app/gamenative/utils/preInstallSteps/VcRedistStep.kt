@@ -75,7 +75,7 @@ object VcRedistStep : PreInstallStep {
         }
         val covered = vcRedistMap.keys.map { it.lowercase() }.toSet()
         File(gameDir, "_CommonRedist/vcredist").listFiles()?.sortedBy { it.name }?.forEach { yearDir ->
-            if (!yearDir.isDirectory) return@forEach
+            if (!yearDir.isDirectory || (yearDir.name.toIntOrNull() ?: 0) >= 2022) return@forEach
             yearDir.listFiles()?.sortedBy { it.name }?.forEach { exe ->
                 val name = exe.name.lowercase()
                 if (!exe.isFile || !name.endsWith(".exe") || !(name.startsWith("vc_redist") || name.startsWith("vcredist"))) return@forEach
