@@ -87,6 +87,9 @@ fun SettingsGroupDebug() {
     var enableBox86Logs by rememberSaveable { mutableStateOf(
         if (isPreview) false else WinlatorPrefManager.getBoolean("enable_box86_64_logs", false)
     ) }
+    var verboseBootProgress by rememberSaveable {
+        mutableStateOf(if (isPreview) false else PrefManager.verboseBootProgress)
+    }
     var latestCrashFile: File? by rememberSaveable { mutableStateOf(null) }
     LaunchedEffect(Unit) {
         val crashDir = File(context.getExternalFilesDir(null), "crash_logs")
@@ -219,6 +222,18 @@ fun SettingsGroupDebug() {
                 enableBox86Logs = it
                 if (!isPreview) {
                     WinlatorPrefManager.putBoolean("enable_box86_64_logs", it)
+                }
+            },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            state = verboseBootProgress,
+            title = { Text(text = stringResource(R.string.settings_debug_verbose_boot_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_debug_verbose_boot_subtitle)) },
+            onCheckedChange = {
+                verboseBootProgress = it
+                if (!isPreview) {
+                    PrefManager.verboseBootProgress = it
                 }
             },
         )

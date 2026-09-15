@@ -20,7 +20,7 @@ interface AndroidEvent<T> : Event<T> {
     data class ShowGameFeedback(val appId: String) : AndroidEvent<Unit>
     data class ShowLaunchingOverlay(val appName: String) : AndroidEvent<Unit>
     data object HideLaunchingOverlay : AndroidEvent<Unit>
-    data class SetBootingSplashText(val text: String) : AndroidEvent<Unit>
+    data class SetBootingSplashText(val text: String, val progress: Float = -1f) : AndroidEvent<Unit>
     data object ClearBootingSplash : AndroidEvent<Unit>
     data class DownloadPausedDueToConnectivity(val appId: Int) : AndroidEvent<Unit>
     data class DownloadStatusChanged(val appId: Int, val isDownloading: Boolean) : AndroidEvent<Unit>
