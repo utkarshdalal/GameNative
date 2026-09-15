@@ -1543,6 +1543,8 @@
     <string name="review_overwhelmingly_negative">差评如潮</string>
     <string name="settings_interface_show_recommendations_title">显示游戏推荐</string>
     <string name="settings_interface_show_recommendations_subtitle">显示个性化推荐。保持开启有助于支持 GameNative。</string>
+    <string name="settings_interface_show_hidden_games_title">默认显示已隐藏的游戏</string>
+    <string name="settings_interface_show_hidden_games_subtitle">除非关闭此项，否则已隐藏的 Steam 和 GOG 游戏将保持可见。选择“已隐藏的 Steam”收藏夹始终会显示隐藏游戏。</string>
     <string name="settings_interface_library_tabs_title">游戏库标签页</string>
     <string name="settings_interface_library_tabs_subtitle">选择在游戏库中显示哪些商店标签页。</string>
     <string name="settings_interface_library_tabs_none">无商店标签页</string>
@@ -1673,6 +1675,49 @@
     <string name="lsfg_install_message">将从 Steam 下载 Lossless Scaling 以启用帧生成。</string>
     <string name="lsfg_installing">正在下载 Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">降低画质以提升吞吐量</string>
+    <string name="session_drawer_frame_generation">帧生成</string>
+    <string name="session_drawer_frame_generation_enable">生成帧</string>
+    <string name="session_drawer_frame_generation_multiplier">倍率</string>
+    <string name="session_drawer_frame_generation_target">自适应目标</string>
+    <string name="session_drawer_frame_generation_target_off">固定</string>
+    <string name="frame_generation_preset">画质预设</string>
+    <string name="frame_generation_preset_ultra_performance">超级性能</string>
+    <string name="frame_generation_preset_performance">性能</string>
+    <string name="frame_generation_preset_balanced">平衡</string>
+    <string name="frame_generation_preset_quality">质量</string>
+    <string name="frame_generation_preset_custom">自定义</string>
+    <string name="frame_generation_preset_ultra_performance_short">超级性能</string>
+    <string name="frame_generation_preset_performance_short">性能</string>
+    <string name="frame_generation_preset_balanced_short">平衡</string>
+    <string name="frame_generation_preset_quality_short">质量</string>
+    <string name="frame_generation_preset_ultra_performance_note" formatted="false">以 40% 分辨率估算运动。约占质量预设 GPU 消耗的 40%。快速运动时细节会有所弱化。</string>
+    <string name="frame_generation_preset_performance_note" formatted="false">以 50% 分辨率估算运动。约占质量预设 GPU 消耗的 46%，几乎没有肉眼可见的画质损失。</string>
+    <string name="frame_generation_preset_balanced_note" formatted="false">以 70% 分辨率估算运动。约占质量预设 GPU 消耗的 61%。推荐掌机使用。</string>
+    <string name="frame_generation_preset_quality_note">以全分辨率估算运动。GPU 消耗最高；仅在游戏有充足 GPU 余量时使用。</string>
+    <string name="session_drawer_frame_generation_disabled_hint">已安装 Lossless Scaling，但此容器已禁用帧生成。请在容器设置中启用以在本次会话中使用。</string>
+    <string name="session_drawer_frame_generation_missing">未安装 Lossless Scaling。请在性能设置（全局）中进行设置以使用帧生成。</string>
+    <string name="lsfg_container_toggle_desc">为此容器启用 Lossless Scaling 帧生成。可在快捷设置中实时调整倍率、预设和目标帧率。</string>
+    <string name="lsfg_container_prompt_setup">需要设置 — 点击以安装 Lossless Scaling</string>
+    <string name="settings_lsfg_title">Lossless Scaling (LSFG)</string>
+    <string name="settings_lsfg_installed">已安装 (Lossless.dll 就绪)</string>
+    <string name="settings_lsfg_not_installed">未安装 — 点击以设置</string>
+    <string name="settings_lsfg_dialog_desc">Lossless Scaling 为在 Bionic 容器中运行的 DirectX 和 Vulkan 游戏提供帧生成支持。</string>
+    <string name="settings_lsfg_install_btn">安装 Lossless Scaling</string>
+    <string name="settings_lsfg_installed_btn">已安装</string>
+    <string name="settings_lsfg_remove_btn">移除</string>
+    <string name="settings_lsfg_gpu_supported">支持 (已检测到 Vulkan 1.3 和 VulkanMemoryModel)</string>
+    <string name="settings_lsfg_gpu_unsupported">不支持 (当前驱动程序未检测到 Vulkan 1.3 或 VulkanMemoryModel)</string>
+    <string name="settings_lsfg_import_success">Lossless Scaling 安装成功</string>
+    <string name="settings_lsfg_import_failed">安装 Lossless Scaling 失败</string>
+    <string name="settings_lsfg_status_installed">已安装</string>
+    <string name="settings_lsfg_status_not_installed">未安装</string>
+    <string name="settings_lsfg_step1_downloading">正在下载 (%1$d%%)…</string>
+    <string name="settings_lsfg_step2_locating">正在配置着色器…</string>
+    <string name="settings_lsfg_dll_not_found">在 Steam 文件中未找到 Lossless.dll</string>
+    <string name="settings_lsfg_license_verified">Steam 许可证已验证</string>
+    <string name="settings_lsfg_buy_steam_btn">在 Steam 上查看</string>
+    <string name="settings_lsfg_sign_in_steam">登录 Steam</string>
+    <string name="settings_lsfg_ready_to_install">Lossless Scaling 将会自动下载并完成配置。</string>
     <!-- Game Launch Tips -->
     <string name="game_launch_tip_1">首次启动可能需要几分钟时间</string>
     <string name="game_launch_tip_2">提示：你可以在游戏设置中点击\"%s\"来查看游戏文件。</string>

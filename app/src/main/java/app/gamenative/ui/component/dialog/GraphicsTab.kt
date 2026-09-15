@@ -7,7 +7,9 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -19,6 +21,7 @@ import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
+import app.gamenative.service.SteamService
 import app.gamenative.utils.LsfgVkManager
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsSwitch
@@ -27,6 +30,8 @@ import com.winlator.container.Container
 import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVars
+import androidx.compose.ui.platform.LocalContext
+import com.winlator.renderer.lsfg.LosslessScaling
 import kotlin.math.roundToInt
 
 @Composable
@@ -400,10 +405,56 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             }
         }
 
-        // Frame Generation (LSFG) — hooks the Vulkan swapchain for
-        // transparent frame generation. Only effective on Bionic containers
-        // with a Vortek/Adreno graphics driver.
-        if (!default) LsfgSection(state)
+        // Frame Generation (LSFG) — only available for Bionic containers when Display Renderer is Vulkan
+        val currentDisplayRenderer = StringUtils.parseIdentifier(
+            state.displayRenderers.getOrNull(state.displayRendererIndex.value).orEmpty()
+        ).ifEmpty {
+            StringUtils.parseIdentifier(config.displayRenderer)
+        }.ifEmpty {
+            Container.DEFAULT_DISPLAY_RENDERER
+        }
+        val isVulkanRenderer = currentDisplayRenderer.equals("vulkan", ignoreCase = true)
+
+        if (!default && config.containerVariant.equals(Container.BIONIC, ignoreCase = true) && isVulkanRenderer) {
+            val context = LocalContext.current
+            var refreshKey by remember { mutableIntStateOf(0) }
+            val isDllImported = remember(refreshKey) { LosslessScaling.getDllFile(context).isFile }
+            var showLsfgDialog by rememberSaveable { mutableStateOf(false) }
+
+            val subtitleText = if (isDllImported) {
+                stringResource(R.string.lsfg_container_toggle_desc)
+            } else {
+                stringResource(R.string.lsfg_container_prompt_setup)
+            }
+
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.lsfg_enable)) },
+                subtitle = { Text(text = subtitleText) },
+                state = config.lsfgEnabled && isDllImported,
+                onCheckedChange = { checked ->
+                    if (!isDllImported) {
+                        showLsfgDialog = true
+                    } else {
+                        state.config.value = config.copy(lsfgEnabled = checked)
+                    }
+                },
+            )
+
+            if (showLsfgDialog) {
+                LosslessScalingDialog(
+                    openDialog = showLsfgDialog,
+                    onDismiss = {
+                        showLsfgDialog = false
+                        refreshKey++
+                    },
+                    onInstallSuccess = {
+                        refreshKey++
+                        state.config.value = state.config.value.copy(lsfgEnabled = true)
+                    },
+                )
+            }
+        }
 
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
@@ -551,67 +602,6 @@ private fun DxWrapperSection(state: ContainerConfigState) {
                     state.config.value = config.copy(dxwrapperConfig = currentConfig.toString())
                 },
             )
-        }
-    }
-}
-
-@Composable
-private fun LsfgSection(state: ContainerConfigState) {
-    val config = state.config.value
-    val lsfgSupported = config.containerVariant.equals(Container.BIONIC, ignoreCase = true)
-    if (!lsfgSupported) return
-
-    var dllAvailable by rememberSaveable { mutableStateOf(LsfgVkManager.isDllAvailable()) }
-    val ownsApp = LsfgVkManager.ownsLosslessScaling()
-
-    SettingsGroup {
-        when {
-            dllAvailable -> {
-                // State 1: DLL found — toggle works normally
-                SettingsSwitch(
-                    colors = settingsTileColorsAlt(),
-                    title = { Text(text = stringResource(R.string.lsfg_enable)) },
-                    subtitle = { Text(text = stringResource(R.string.lsfg_description)) },
-                    state = config.lsfgEnabled,
-                    onCheckedChange = {
-                        state.config.value = if (it) {
-                            config.copy(lsfgEnabled = true)
-                        } else {
-                            config.copy(lsfgEnabled = false)
-                        }
-                    },
-                )
-            }
-            ownsApp -> {
-                // State 2: User owns Lossless Scaling but hasn't installed it yet
-                SettingsSwitch(
-                    colors = settingsTileColorsAlt(),
-                    title = { Text(text = stringResource(R.string.lsfg_enable)) },
-                    subtitle = { Text(text = stringResource(R.string.lsfg_install_prompt)) },
-                    state = false,
-                    onCheckedChange = {
-                        state.launchSteamAppDownload(
-                            LsfgVkManager.LOSSLESS_SCALING_APP_ID,
-                            "Lossless Scaling",
-                        ) {
-                            dllAvailable = LsfgVkManager.isDllAvailable()
-                            if (dllAvailable) {
-                                state.config.value = state.config.value.copy(lsfgEnabled = true)
-                            }
-                        }
-                    },
-                )
-            }
-            else -> {
-                // State 3: User doesn't own Lossless Scaling
-                SettingsSwitch(
-                    colors = settingsTileColorsAlt(),
-                    title = { Text(text = stringResource(R.string.lsfg_enable)) },
-                    subtitle = { Text(text = stringResource(R.string.lsfg_not_in_library)) },
-                    state = false,
-                    onCheckedChange = {},
-                )
-            }
         }
     }
 }

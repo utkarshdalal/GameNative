@@ -1579,6 +1579,8 @@
     <string name="review_overwhelmingly_negative">Copleșitor de negativ</string>
     <string name="settings_interface_show_recommendations_title">Afișează recomandări de jocuri</string>
     <string name="settings_interface_show_recommendations_subtitle">Afișează recomandări personalizate. Menținerea activă ajută la susținerea GameNative.</string>
+    <string name="settings_interface_show_hidden_games_title">Afișează jocurile ascunse în mod implicit</string>
+    <string name="settings_interface_show_hidden_games_subtitle">Jocurile Steam și GOG ascunse rămân vizibile cu excepția cazului în care dezactivați această opțiune. Selectarea colecției Jocuri Steam ascunse le va afișa întotdeauna.</string>
     <string name="settings_interface_library_tabs_title">File bibliotecă</string>
     <string name="settings_interface_library_tabs_subtitle">Alege ce file de magazine apar în bibliotecă.</string>
     <string name="settings_interface_library_tabs_none">Fără file de magazine</string>
@@ -1626,6 +1628,49 @@
     <string name="lsfg_install_message">Aceasta va descărca Lossless Scaling din Steam pentru a activa generarea de cadre.</string>
     <string name="lsfg_installing">Se descarcă Lossless Scaling…</string>
 	<string name="lsfg_performance_mode_desc">Reduce calitatea pentru un debit mai mare</string>
+    <string name="session_drawer_frame_generation">Generare de cadre</string>
+    <string name="session_drawer_frame_generation_enable">Generează cadre</string>
+    <string name="session_drawer_frame_generation_multiplier">Multiplicator</string>
+    <string name="session_drawer_frame_generation_target">Țintă adaptivă</string>
+    <string name="session_drawer_frame_generation_target_off">Fix</string>
+    <string name="frame_generation_preset">Presetare de calitate</string>
+    <string name="frame_generation_preset_ultra_performance">Ultra performanță</string>
+    <string name="frame_generation_preset_performance">Performanță</string>
+    <string name="frame_generation_preset_balanced">Echilibrat</string>
+    <string name="frame_generation_preset_quality">Calitate</string>
+    <string name="frame_generation_preset_custom">Personalizat</string>
+    <string name="frame_generation_preset_ultra_performance_short">Ultra</string>
+    <string name="frame_generation_preset_performance_short">Perf.</string>
+    <string name="frame_generation_preset_balanced_short">Echilib.</string>
+    <string name="frame_generation_preset_quality_short">Calitate</string>
+    <string name="frame_generation_preset_ultra_performance_note" formatted="false">Mișcare estimată la 40% din rezoluție. Aproximativ 40% din costul GPU al profilului Calitate. Detaliile fine se estompează în mișcare rapidă.</string>
+    <string name="frame_generation_preset_performance_note" formatted="false">Mișcare estimată la 50% din rezoluție. Aproximativ 46% din costul GPU al profilului Calitate, aproape fără pierderi vizibile.</string>
+    <string name="frame_generation_preset_balanced_note" formatted="false">Mișcare estimată la 70% din rezoluție. Aproximativ 61% din costul GPU al profilului Calitate. Recomandat pentru dispozitive portabile.</string>
+    <string name="frame_generation_preset_quality_note">Mișcare estimată la rezoluție completă. Cost maxim; folosiți doar dacă jocul are resurse GPU disponibile.</string>
+    <string name="session_drawer_frame_generation_disabled_hint">Lossless Scaling este instalat, dar generarea de cadre este dezactivată pentru acest container. Activați-o în setările containerului pentru a o utiliza în această sesiune.</string>
+    <string name="session_drawer_frame_generation_missing">Lossless Scaling nu este instalat. Configurați-l în setările de Performanță (Global) pentru a utiliza generarea de cadre.</string>
+    <string name="lsfg_container_toggle_desc">Activați generarea de cadre Lossless Scaling pentru acest container. Reglați multiplicatorul, presetările și FPS-ul țintă în timp real din Setări rapide.</string>
+    <string name="lsfg_container_prompt_setup">Configurare necesară — atingeți pentru a instala Lossless Scaling</string>
+    <string name="settings_lsfg_title">Lossless Scaling (LSFG)</string>
+    <string name="settings_lsfg_installed">Instalat (Lossless.dll pregătit)</string>
+    <string name="settings_lsfg_not_installed">Neinstalat — atingeți pentru configurare</string>
+    <string name="settings_lsfg_dialog_desc">Lossless Scaling oferă generare de cadre pentru jocurile DirectX și Vulkan rulate în containere Bionic.</string>
+    <string name="settings_lsfg_install_btn">Instalează Lossless Scaling</string>
+    <string name="settings_lsfg_installed_btn">Instalat</string>
+    <string name="settings_lsfg_remove_btn">Elimină</string>
+    <string name="settings_lsfg_gpu_supported">Acceptat (Vulkan 1.3 și VulkanMemoryModel detectate)</string>
+    <string name="settings_lsfg_gpu_unsupported">Neacceptat (Vulkan 1.3 sau VulkanMemoryModel nedetectate pe driverul curent)</string>
+    <string name="settings_lsfg_import_success">Lossless Scaling s-a instalat cu succes</string>
+    <string name="settings_lsfg_import_failed">Instalarea Lossless Scaling a eșuat</string>
+    <string name="settings_lsfg_status_installed">Instalat</string>
+    <string name="settings_lsfg_status_not_installed">Neinstalat</string>
+    <string name="settings_lsfg_step1_downloading">Se descarcă (%1$d%%)…</string>
+    <string name="settings_lsfg_step2_locating">Se configurează shaderele…</string>
+    <string name="settings_lsfg_dll_not_found">Nu s-a putut găsi Lossless.dll în fișierele Steam</string>
+    <string name="settings_lsfg_license_verified">Licență Steam verificată</string>
+    <string name="settings_lsfg_buy_steam_btn">Vezi pe Steam</string>
+    <string name="settings_lsfg_sign_in_steam">Conectare la Steam</string>
+    <string name="settings_lsfg_ready_to_install">Lossless Scaling va fi descărcat și configurat automat.</string>
 	<!-- Game Launch Tips -->
 	<string name="game_launch_tip_1">Pornirea poate dura câteva minute la prima lansare</string>
 	<string name="game_launch_tip_2">Sfat: Puteți vizualiza fișierele jocului apăsând \"%s\" în setările jocului.</string>

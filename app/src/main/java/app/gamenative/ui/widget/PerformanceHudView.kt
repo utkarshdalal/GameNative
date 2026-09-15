@@ -53,6 +53,7 @@ import kotlinx.coroutines.withContext
 class PerformanceHudView(
     context: Context,
     private val fpsProvider: () -> Float,
+    private val outputFpsProvider: (() -> Float)? = null,
     initialConfig: PerformanceHudConfig = PerformanceHudConfig(),
     initialCompactMode: Boolean = false,
 ) : FrameLayout(context) {
@@ -210,8 +211,10 @@ class PerformanceHudView(
             while (isActive) {
                 val rawFps = fpsProvider()
                 val currentFps = if (rawFps.isFinite()) rawFps.coerceAtLeast(0f) else 0f
+                val rawOutputFps = outputFpsProvider?.invoke() ?: 0f
+                val currentOutputFps = if (rawOutputFps.isFinite()) rawOutputFps.coerceAtLeast(0f) else 0f
                 val snapshot = withContext(Dispatchers.IO) {
-                    collectSnapshot(currentFps)
+                    collectSnapshot(currentFps, currentOutputFps)
                 }
                 renderSnapshot(snapshot)
                 delay(UPDATE_INTERVAL_MS)
@@ -306,15 +309,20 @@ class PerformanceHudView(
         }
     }
 
-    private fun collectSnapshot(currentFps: Float): HudSnapshot {
+    private fun collectSnapshot(currentFps: Float, currentOutputFps: Float = 0f): HudSnapshot {
         val cpuPercent = cpuSampler.sample()?.percent
         val gpuPercent = gpuSampler.sample()?.percent
         val batterySnapshot = collectBatterySnapshot()
+        val fpsText = if (currentOutputFps > 0f) {
+            String.format(Locale.US, "FPS %.0f FG %.0f", currentFps, currentOutputFps)
+        } else {
+            String.format(Locale.US, "FPS %.1f", currentFps)
+        }
         return HudSnapshot(
-            fpsValue = currentFps,
+            fpsValue = if (currentOutputFps > 0f) currentOutputFps else currentFps,
             cpuValue = cpuPercent?.toFloat(),
             gpuValue = gpuPercent?.toFloat(),
-            fps = String.format(Locale.US, "FPS %.1f", currentFps),
+            fps = fpsText,
             cpu = cpuPercent?.let { "CPU $it%" },
             gpu = gpuPercent?.let { "GPU $it%" },
             ram = "RAM ${readUsedRamText()}",
