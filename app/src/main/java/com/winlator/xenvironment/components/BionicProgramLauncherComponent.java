@@ -49,7 +49,6 @@ import java.io.RandomAccessFile;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import app.gamenative.BuildConfig;
@@ -88,9 +87,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     // (PRELOAD_BIONIC_SO). When the container disables libredirect, modern falls
     // back to the W^X-only minimal shim (still required to run Wine on a strict
     // W^X kernel) and legacy preloads nothing. Returns null to preload nothing.
-    private static final List<String> DNS_V4MAPPED_CONTAINER_IDS =
-            Arrays.asList("STEAM_1174180", "STEAM_1222670", "STEAM_221380");
-
     private String resolveLibredirectPreload(ImageFs imageFs) {
         if (container != null && container.isDisableLibredirect()) {
             if (BuildConfig.MODERN_ANDROID) {
@@ -334,7 +330,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         ld_preload += ":" + evshimPath;
         String dnsV4MappedPath = context.getApplicationInfo().nativeLibraryDir + "/libgamenative_dns_v4mapped.so";
-        if (container != null && (DNS_V4MAPPED_CONTAINER_IDS.contains(container.id) || container.isLaunchRealSteam()) &&
+        if (container != null && (container.isLaunchRealSteam() || container.isLaunchBionicSteam()) &&
                 new File(dnsV4MappedPath).exists()) {
             ld_preload += ":" + dnsV4MappedPath;
         }
