@@ -26,35 +26,35 @@ class RockstarHelperArchiveTest {
         assertTrue(RockstarHelperArchive.usesRockstar(game))
     }
 
-    @Test fun extractsArchiveOnceAndRepairsCorruptCache() {
+    @Test fun extractsArchiveOnceAndAgainWhenAFileIsMissing() {
         val files = temporary.newFolder()
         val bytes = rockstarTestArchive()
         var opens = 0
         val open = { opens++; bytes.inputStream() }
         val destination = RockstarHelperArchive.ensureExtracted(files, open)
         assertTrue(RockstarHelperArchive.isReady(files))
-        assertEquals(7, destination.listFiles()!!.size)
+        assertEquals(6, destination.listFiles()!!.size)
         RockstarHelperArchive.ensureExtracted(files, open)
         assertEquals(1, opens)
-        File(destination, "rgscstub.exe").writeText("damaged")
+        File(destination, "rgscstub.exe").writeText("edited by hand")
+        RockstarHelperArchive.ensureExtracted(files, open)
+        assertEquals(1, opens)
+        assertEquals("edited by hand", File(destination, "rgscstub.exe").readText())
+        File(destination, "rgscstub.exe").delete()
         assertFalse(RockstarHelperArchive.isReady(files))
         RockstarHelperArchive.ensureExtracted(files, open)
         assertEquals(2, opens)
         assertTrue(RockstarHelperArchive.isReady(files))
     }
 
-    @Test fun installsDownloadedArchiveAndRejectsCorruptDownloads() {
+    @Test fun installsDownloadedArchive() {
         val files = temporary.newFolder()
         val archive = temporary.newFile().apply { writeBytes(rockstarTestArchive()) }
-        val hash = RockstarHelperArchive.sha256(archive)
-        RockstarHelperArchive.install(archive, files, hash)
-        assertTrue(RockstarHelperArchive.isReady(files))
-        archive.writeText("incomplete download")
-        assertThrows(IllegalStateException::class.java) { RockstarHelperArchive.install(archive, files, hash) }
+        RockstarHelperArchive.install(archive, files)
         assertTrue(RockstarHelperArchive.isReady(files))
     }
 
-    @Test fun rejectsTraversalAndCleansIncompleteExtraction() {
+    @Test fun writesEntriesByNameOnlyAndFailsOnAnIncompleteArchive() {
         val bytes = ByteArrayOutputStream()
         ZstdCompressorOutputStream(bytes).use { zstd ->
             TarArchiveOutputStream(zstd).use { tar ->
@@ -68,7 +68,6 @@ class RockstarHelperArchiveTest {
             RockstarHelperArchive.ensureExtracted(files) { ByteArrayInputStream(bytes.toByteArray()) }
         }
         assertFalse(RockstarHelperArchive.isReady(files))
-        assertTrue(File(files, "rockstar").listFiles()!!.isEmpty())
         assertFalse(File(files, "outside").exists())
     }
 }

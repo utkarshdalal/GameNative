@@ -702,7 +702,7 @@
     <string name="local_saves_only">ローカル保存のみ</string>
     <string name="local_saves_only_description">このゲームのクラウド セーブ同期を無効にし、セーブをデバイス上にのみ保存します</string>
     <string name="launch_steam_client_beta">Steam クライアント (ベータ版) を起動する</string>
-    <string name="launch_steam_client_description">パフォーマンスが低下し、起動が遅くなります\nオンライン プレイが可能になり、DRM とコントローラーの問題が修正されます\nすべてのゲームが動作するわけではありません</string>
+    <string name="launch_steam_client_description">Headless を推奨\nEA、Rockstar、Ubisoft などのランチャーに必要\nマルチプレイを有効にし、DRM とコントローラーの問題を修正</string>
     <string name="launch_bionic_steam">実験的な Bionic Steam を有効にする</string>
     <string name="launch_bionic_steam_description">オンライン プレイが可能になり、互換性が向上します\n常に機能するとは限りません\nこれを試す前にセーブデータをバックアップしてください</string>
     <string name="steam_offline_mode">Steam オフラインモード</string>

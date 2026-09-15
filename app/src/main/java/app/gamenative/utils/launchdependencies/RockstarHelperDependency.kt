@@ -22,7 +22,7 @@ object RockstarHelperDependency : LaunchDependency {
     }
 
     override fun appliesTo(container: Container, gameSource: GameSource, gameId: Int): Boolean =
-        gameSource == GameSource.STEAM && (container.isLaunchRealSteam || container.isLaunchBionicSteam) &&
+        gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
             gameDirectory(container, gameSource, gameId)?.let(RockstarHelperArchive::usesRockstar) == true
 
     override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean =

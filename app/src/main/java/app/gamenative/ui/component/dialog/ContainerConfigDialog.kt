@@ -1357,7 +1357,7 @@ private fun Preview_ContainerConfigDialog() {
             launchRealSteam = false,
             launchBionicSteam = false,
             allowSteamUpdates = false,
-            steamType = "normal",
+            steamType = Container.STEAM_TYPE_HEADLESS,
             cpuList = "0,1,2,3",
             cpuListWoW64 = "0,1,2,3",
             wow64Mode = true,

@@ -702,7 +702,7 @@
 	<string name="achievement_position_top_right">Dreapta sus</string>
 	<string name="achievement_position_bottom_left">Stânga jos</string>
 	<string name="achievement_position_bottom_right">Dreapta jos</string>
-	<string name="launch_steam_client_description">Reduce performanța și încetinește lansarea\nPermite joc online și rezolvă probleme DRM și controller\nNu toate jocurile funcționează</string>
+	<string name="launch_steam_client_description">Headless este recomandat\nNecesar pentru EA, Rockstar, Ubisoft și alte launchere\nActivează modul multiplayer și rezolvă problemele de DRM și controler</string>
 	<string name="launch_bionic_steam">Activează Bionic Steam experimental</string>
 	<string name="allow_steam_updates">Permite actualizările Steam</string>
 	<string name="allow_steam_updates_description">Actualizează Steam la ultima versiune. Reduce semnificativ performanța.</string>

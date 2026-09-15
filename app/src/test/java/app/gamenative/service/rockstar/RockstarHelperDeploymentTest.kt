@@ -9,7 +9,7 @@ import java.io.File
 class RockstarHelperDeploymentTest {
     @get:Rule val temporary = TemporaryFolder()
 
-    @Test fun stagesOnlyPrivateHelperFilesAndRepairsChangedCopies() {
+    @Test fun stagesOnlyPrivateHelperFilesAndOverwritesChangedCopies() {
         val files = temporary.newFolder()
         val game = temporary.newFolder()
         RockstarHelperArchive.ensureExtracted(files) { rockstarTestArchive().inputStream() }

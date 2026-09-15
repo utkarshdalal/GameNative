@@ -687,7 +687,7 @@
     <string name="achievement_position_top_right">右上</string>
     <string name="achievement_position_bottom_left">左下</string>
     <string name="achievement_position_bottom_right">右下</string>
-    <string name="launch_steam_client_description">降低性能并减慢启动速度\n允许在线游玩并修复 DRM 和控制器问题\n并非所有游戏都适用</string>
+    <string name="launch_steam_client_description">推荐使用 Headless\nEA、Rockstar、Ubisoft 等启动器必需\n启用多人游戏并修复 DRM 和手柄问题</string>
     <string name="launch_bionic_steam">启用实验性 Bionic Steam</string>
     <string name="allow_steam_updates">允许 Steam 更新</string>
     <string name="allow_steam_updates_description">将 Steam 更新至最新版本，会显著降低性能</string>

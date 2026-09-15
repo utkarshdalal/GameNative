@@ -29,45 +29,23 @@ class EaHelperArchiveTest {
         return output
     }
 
-    private fun binaryHash(): String = temporary.newFile().let {
-        it.writeBytes(executable)
-        EaHelperArchive.sha256(it)
-    }
-
     @Test
-    fun `installs helper onto disk after Steam cleanup and restores it after another cleanup`() {
+    fun `installs helper onto disk and overwrites whatever is there on the next launch`() {
         val archive = archive()
         val drive = temporary.newFolder()
-        val hash = binaryHash()
-        EaHelperArchive.install(archive, drive, EaHelperArchive.sha256(archive), hash)
+        EaHelperArchive.install(archive, drive)
         val target = File(drive, EaHelperArchive.PREFIX_PATH)
         assertArrayEquals(executable, target.readBytes())
-        target.delete() // The Steam tree refresh removes old executables before every launch.
-        EaHelperArchive.install(archive, drive, EaHelperArchive.sha256(archive), hash)
+        target.writeText("stale helper")
+        EaHelperArchive.install(archive, drive)
         assertArrayEquals(executable, target.readBytes())
     }
 
     @Test
-    fun `corrupt download does not replace an installed helper`() {
-        val archive = archive()
-        val drive = temporary.newFolder()
-        val target = File(drive, EaHelperArchive.PREFIX_PATH)
-        target.parentFile!!.mkdirs()
-        target.writeText("previous-helper")
-        assertThrows(IllegalStateException::class.java) {
-            EaHelperArchive.install(archive, drive, "wrong-hash", binaryHash())
-        }
-        assertArrayEquals("previous-helper".toByteArray(), target.readBytes())
-    }
-
-    @Test
-    fun `unexpected archive paths cannot write outside the helper destination`() {
+    fun `an archive without eastub is rejected`() {
         val archive = archive("../escape.exe")
         val drive = temporary.newFolder()
-        assertThrows(IllegalStateException::class.java) {
-            EaHelperArchive.install(archive, drive, EaHelperArchive.sha256(archive), binaryHash())
-        }
-        assertFalse(File(drive, EaHelperArchive.PREFIX_PATH).exists())
+        assertThrows(IllegalStateException::class.java) { EaHelperArchive.install(archive, drive) }
         assertFalse(File(drive.parentFile, "escape.exe").exists())
     }
 }

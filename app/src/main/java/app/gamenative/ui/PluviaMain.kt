@@ -155,8 +155,11 @@ private const val SNACKBAR_SHOW_TIMEOUT_MS = 15_000L
 /** Used to suspend preLaunchApp while the user decides on large workshop updates. */
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
 
+/** Used to suspend preLaunchApp while the user decides on a pending update for a real-Steam launch. */
+private var steamUpdateDeferred: CompletableDeferred<Boolean>? = null
+
 /** Valve Windows client tree (build 2026-01-29) + headless steam.exe for Real Steam mode; see extractSteamFiles. */
-const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20260911-2.tzst"
+const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20260915.tzst"
 
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,
@@ -1258,6 +1261,18 @@ fun PluviaMain(
             }
         }
 
+        DialogType.STEAM_UPDATE_PROMPT -> {
+            onConfirmClick = {
+                steamUpdateDeferred?.complete(true)
+            }
+            onDismissClick = {
+                steamUpdateDeferred?.complete(false)
+            }
+            onDismissRequest = {
+                steamUpdateDeferred?.complete(false)
+            }
+        }
+
         else -> {
             onDismissRequest = null
             onDismissClick = null
@@ -2111,7 +2126,37 @@ fun preLaunchApp(
                     "experimental-drm-20260116.tzst",
                 ).await()
             }
-            if (container.isLaunchRealSteam && !SteamService.isFileInstallable(context, REAL_STEAM_CLIENT_ARCHIVE)) {
+            if (gameSource == GameSource.STEAM && container.isLaunchRealSteam && !isOffline && !container.isSteamOfflineMode &&
+                SteamService.getInstalledApp(gameId) != null
+            ) {
+                // The Valve client refuses to start a build behind its own manifest and never
+                // downloads itself. Offline launches trust the manifest the app wrote, so they skip this.
+                val branch = SteamService.getInstalledApp(gameId)?.branch ?: "public"
+                if (SteamService.isUpdatePending(gameId, branch)) {
+                    val userChoice = CompletableDeferred<Boolean>()
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.STEAM_UPDATE_PROMPT,
+                            title = context.getString(R.string.steam_update_required_title),
+                            message = context.getString(R.string.steam_update_required_message),
+                            confirmBtnText = context.getString(R.string.main_update_button),
+                            dismissBtnText = context.getString(R.string.cancel),
+                        ),
+                    )
+                    steamUpdateDeferred = userChoice
+                    val update = userChoice.await()
+                    steamUpdateDeferred = null
+                    setMessageDialogState(MessageDialogState(false))
+                    if (update) {
+                        val dlcAppIds = SteamService.getInstalledApp(gameId)?.dlcDepots.orEmpty()
+                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, isUpdateOrVerify = true)
+                    }
+                    return@launch
+                }
+            }
+            if (container.isLaunchHeadlessSteam && !SteamService.isFileInstallable(context, REAL_STEAM_CLIENT_ARCHIVE)) {
                 setLoadingMessage(context.getString(R.string.main_downloading_steam))
                 SteamService.downloadFile(
                     onDownloadProgress = { setLoadingProgress(it / 1.0f) },
@@ -2120,12 +2165,11 @@ fun preLaunchApp(
                     REAL_STEAM_CLIENT_ARCHIVE,
                 ).await()
             }
-            if (container.isLaunchRealSteam && gameSource == GameSource.STEAM &&
+            if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM &&
                 EaLaunchSupport.isEaTitle(gameId, File(SteamService.getAppDirPath(gameId)))
             ) {
                 setLoadingMessage("Preparing EA launcher support")
                 app.gamenative.service.ea.EaHelperArchive.download(context) { setLoadingProgress(it) }
-                setLoadingMessage(context.getString(R.string.ea_login_required))
                 val signIn = EaLoginGate.ensureSignedIn(context)
                 if (signIn.isFailure) {
                     Timber.tag("preLaunchApp").w(signIn.exceptionOrNull(), "EA sign-in did not complete")
@@ -2149,11 +2193,10 @@ fun preLaunchApp(
              * Steam ownership instead was tried and refused by the server, so the account sign-in
              * is required rather than a convenience.
              */
-            if (gameSource == GameSource.STEAM && (container.isLaunchRealSteam || container.isLaunchBionicSteam) &&
+            if (gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
                 RockstarLaunchSupport.isRockstarTitle(File(SteamService.getAppDirPath(gameId)))
             ) {
                 val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
-                setLoadingMessage(context.getString(R.string.rockstar_login_required))
                 val signIn = RockstarLoginGate.ensureSignedIn(context, "launcher")
                 if (signIn.isFailure && RockstarLaunchSupport.hasUsableToken(File(SteamService.getAppDirPath(gameId)))) {
                     /* A token is already in place, so carry on rather than block a launch that works. */
@@ -2179,7 +2222,9 @@ fun preLaunchApp(
                     RockstarHelperDeployment.prepare(context.filesDir, rockstarGameDir)
                 }
             }
-            if (container.isLaunchBionicSteam && !SteamService.isFileInstallable(context, "steam.tzst")) {
+            if ((container.isLaunchBionicSteam || (container.isLaunchRealSteam && !container.isLaunchHeadlessSteam)) &&
+                !SteamService.isFileInstallable(context, "steam.tzst")
+            ) {
                 setLoadingMessage(context.getString(R.string.main_downloading_steam))
                 SteamService.downloadSteam(
                     onDownloadProgress = { setLoadingProgress(it / 1.0f) },

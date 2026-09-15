@@ -532,7 +532,7 @@
     <string name="achievement_position_top_right">Øverst til højre</string>
     <string name="achievement_position_bottom_left">Nederst til venstre</string>
     <string name="achievement_position_bottom_right">Nederst til højre</string>
-    <string name="launch_steam_client_description">Reducerer ydelse og gør opstart langsommere\nMuliggør online-spil og løser DRM- og controllerproblemer\nIkke alle spil virker</string>
+    <string name="launch_steam_client_description">Headless anbefales\nPåkrævet til EA, Rockstar, Ubisoft og andre launchere\nAktiverer multiplayer og løser DRM- og controllerproblemer</string>
     <string name="launch_bionic_steam">Aktivér eksperimentel Bionic Steam</string>
     <string name="allow_steam_updates">Tillad Steam-opdateringer</string>
     <string name="allow_steam_updates_description">Opdaterer Steam til nyeste version. Reducerer ydelsen markant.</string>
