@@ -143,12 +143,12 @@ object QuickMenuAction {
 private object QuickMenuTab {
     const val PERFORMANCE = 0
     const val HUD = 1
-    const val POWER = 2
-    const val EFFECTS = 3
-    const val CONTROLLER = 4
-    const val TOOLS = 5
-    const val IMMERSIVE = 6
-    const val INVITE = 7
+    const val EFFECTS = 2
+    const val CONTROLLER = 3
+    const val TOOLS = 4
+    const val IMMERSIVE = 5
+    const val INVITE = 6
+    const val POWER = 7
 }
 
 private class GyroQuickMenuState(private val container: Container) {
