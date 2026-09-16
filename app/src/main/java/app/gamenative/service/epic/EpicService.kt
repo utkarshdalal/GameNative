@@ -225,6 +225,10 @@ class EpicService : Service() {
         }
 
         suspend fun deleteGame(context: Context, appId: Int): Result<Unit> {
+            // join the close-time upload before touching the install dir -- see CloseSyncTracker.
+            app.gamenative.service.cloud.CloseSyncTracker.awaitIdle(
+                app.gamenative.service.cloud.CloseSyncTracker.keyOf(app.gamenative.data.GameSource.EPIC, appId),
+            )
             val instance = getInstance()
             if (instance == null) {
                 return Result.failure(Exception("Service not available"))
