@@ -81,6 +81,23 @@ pub fn inflight_budget_bytes(effective_ceiling: usize) -> u64 {
 /// How often the parallel writer emits a per-server throughput line to the debug log.
 const BANDWIDTH_LOG_INTERVAL_MS: u64 = 5_000;
 
+/// Stall watchdog poll cadence (the watchdog itself runs in 100 ms slices so teardown is prompt).
+const STALL_POLL: Duration = Duration::from_secs(5);
+/// A: zero progress for this long → dump the full pipeline state (repeats every STALL_LOG_EVERY
+/// while the stall persists). Progress = `bytes_written` advancing (write OR resume-verify).
+const STALL_LOG_AFTER: Duration = Duration::from_secs(30);
+const STALL_LOG_EVERY: Duration = Duration::from_secs(15);
+/// B: the WRITE-side lease deadline. A fetched chunk holds a budget reservation from DISPATCH until
+/// COPY-COMPLETE; fetch-side leases already die at the reqwest timeout, but a writer wedged in
+/// pwrite (exFAT/FUSE) or an unfillable out-of-order gap holds its reservation FOREVER — the
+/// signature being zero completions at err_rate=0 with the fetch window pinned at min. Zero
+/// progress for this long is unambiguous (a 16 MiB coalesced pwrite is ~0.1 s on healthy media):
+/// abort as a TRANSIENT error ("within timeout") so the store-level auto-retry resumes from the
+/// on-disk snapshot instead of hanging forever.
+const STALL_ABORT_AFTER: Duration = Duration::from_secs(120);
+/// A write-stall dump is one logcat line; cap listed files so a huge depot can't spam it.
+const STALL_DUMP_MAX_FILES: usize = 8;
+
 /// Slack below which the free-space guard will not fail (guards against small statvfs imprecision).
 const FREE_SPACE_MARGIN_BYTES: u64 = 64 * 1024 * 1024;
 
@@ -1314,6 +1331,77 @@ fn pop_contiguous(writer: &mut OrderedWriter) -> Option<PendingDecoded> {
     writer.pending.remove(&offset)
 }
 
+/// Driver-state snapshot published once per driver loop iteration for the stall watchdog (A).
+/// Diagnostics only; lock is held for a handful of integer copies, never across I/O.
+#[derive(Default)]
+struct DriverSnapshot {
+    next_job: usize,
+    ready_len: usize,
+    retry_len: usize,
+    inflight_len: usize,
+    /// Age of the oldest outstanding dispatch (completions pop the oldest entry, so this is an
+    /// approximation under out-of-order completion — bounded by the reqwest timeout anyway).
+    oldest_dispatch_ms: u64,
+}
+
+/// One unfinished file's stall state. `pending == None` means the writer mutex was HELD at sample
+/// time — during a stall that is the wedge signal: a worker is parked inside the drain/pwrite for
+/// exactly this file.
+struct FileStall {
+    file_idx: usize,
+    cursor: u64,
+    size: u64,
+    pending: Option<usize>,
+}
+
+/// The A-dump: one line capturing WHERE the pipeline is stuck when zero progress is detected —
+/// byte reservations vs budget, dispatch position, queue depths, in-flight request count, and the
+/// unfinished files with cursor / parked-chunk depth / lock state.
+fn stall_dump_line(
+    depot_id: u32,
+    idle: Duration,
+    written: u64,
+    total: u64,
+    reserved: u64,
+    budget: u64,
+    jobs_len: usize,
+    snap: &DriverSnapshot,
+    files: &[FileStall],
+) -> String {
+    const MIB: u64 = 1024 * 1024;
+    const MB: u64 = 1_000_000;
+    let mut line = format!(
+        "write-stall depot={depot_id} idle={}s written={}/{}MB reserved={}/{}MiB dispatched={}/{jobs_len} ready={} retry={} inflight_req={} oldest_req={}ms",
+        idle.as_secs(),
+        written / MB,
+        total / MB,
+        reserved / MIB,
+        budget / MIB,
+        snap.next_job,
+        snap.ready_len,
+        snap.retry_len,
+        snap.inflight_len,
+        snap.oldest_dispatch_ms,
+    );
+    for f in files {
+        match f.pending {
+            Some(pending) => line.push_str(&format!(
+                " f{}={}/{}MB pending={pending}",
+                f.file_idx,
+                f.cursor / MB,
+                f.size / MB
+            )),
+            None => line.push_str(&format!(
+                " f{}={}/{}MB lock=HELD",
+                f.file_idx,
+                f.cursor / MB,
+                f.size / MB
+            )),
+        }
+    }
+    line
+}
+
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Depot write entry point.
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -1500,6 +1588,7 @@ fn write_depot_parallel(
     let total_bytes = plan.total_bytes;
     let bytes_written = AtomicU64::new(0);
     let in_flight = AtomicU64::new(0);
+    let driver_state: Mutex<DriverSnapshot> = Mutex::new(DriverSnapshot::default());
     let error_slot: Mutex<Option<String>> = Mutex::new(None);
     let reporter_done = AtomicBool::new(false);
     let jobs = &plan.chunk_jobs;
@@ -1579,6 +1668,98 @@ host_ceiling={} budget={}MiB reason=start",
         } else {
             None
         };
+
+        // ── Stall watchdog (A: state dump, B: write-lease deadline). Always runs, even with
+        // logging off: the dump needs the log callback, the abort does not. ──
+        let driver_state = &driver_state;
+        let watchdog = scope.spawn(move || {
+            let mut last_written = bytes_written.load(Ordering::Relaxed);
+            let mut idle = Duration::ZERO;
+            let mut last_dump_idle = Duration::ZERO;
+            loop {
+                let mut waited = Duration::ZERO;
+                while waited < STALL_POLL {
+                    if reporter_done.load(Ordering::Relaxed) {
+                        return;
+                    }
+                    thread::sleep(Duration::from_millis(100));
+                    waited += Duration::from_millis(100);
+                }
+                if reporter_done.load(Ordering::Relaxed)
+                    || cancel.is_some_and(|c| c.load(Ordering::Relaxed))
+                    || error_slot.lock().expect("err slot poisoned").is_some()
+                {
+                    return;
+                }
+                let written = bytes_written.load(Ordering::Relaxed);
+                if written != last_written {
+                    last_written = written;
+                    idle = Duration::ZERO;
+                    last_dump_idle = Duration::ZERO;
+                    continue;
+                }
+                if written >= total_bytes {
+                    return; // nothing left to write; the drain is someone else's wait
+                }
+                idle += STALL_POLL;
+                if idle >= STALL_ABORT_AFTER {
+                    record_first_error(
+                        error_slot,
+                        format!(
+                            "write stall: no chunk completed within timeout ({}s idle, {} MiB \
+                             reserved) — aborting depot so the store retry resumes from the snapshot",
+                            idle.as_secs(),
+                            in_flight.load(Ordering::Relaxed) / (1024 * 1024),
+                        ),
+                    );
+                    return;
+                }
+                if idle >= STALL_LOG_AFTER && idle - last_dump_idle >= STALL_LOG_EVERY {
+                    last_dump_idle = idle;
+                    if let Some(log) = log {
+                        let snap = driver_state.lock().expect("driver state poisoned");
+                        let mut states = Vec::new();
+                        for (idx, file) in manifest.files.iter().enumerate() {
+                            let cursor = cursors
+                                .get(idx)
+                                .map(|c| c.load(Ordering::Relaxed))
+                                .unwrap_or(0);
+                            if cursor >= file.size {
+                                continue;
+                            }
+                            // try_lock failure = a worker holds this writer = it is INSIDE the
+                            // drain/pwrite for exactly this file (the wedge signal).
+                            let pending = writers
+                                .get(idx)
+                                .map(|w| w.try_lock().ok().map(|g| g.pending.len()))
+                                .unwrap_or(None);
+                            states.push(FileStall {
+                                file_idx: idx,
+                                cursor,
+                                size: file.size,
+                                pending,
+                            });
+                            if states.len() >= STALL_DUMP_MAX_FILES {
+                                break;
+                            }
+                        }
+                        let line = stall_dump_line(
+                            depot_id,
+                            idle,
+                            written,
+                            total_bytes,
+                            in_flight.load(Ordering::Relaxed),
+                            budget,
+                            jobs.len(),
+                            &snap,
+                            &states,
+                        );
+                        drop(snap);
+                        log(&line);
+                    }
+                }
+            }
+        });
 
         // ── Process pool: decrypt + decompress + positioned-write each fetched chunk. ──
         // Unchanged from B2a except the receiver is a tokio mpsc drained with `blocking_recv`.
@@ -1736,6 +1917,7 @@ host_ceiling={} budget={}MiB reason=start",
                     total_bytes,
                     budget,
                     target_dir,
+                    driver_state,
                     bootstrap,
                     win_min,
                     win_max,
@@ -1752,6 +1934,7 @@ host_ceiling={} budget={}MiB reason=start",
             let _ = handle.join();
         }
         reporter_done.store(true, Ordering::Relaxed);
+        let _ = watchdog.join();
         if let Some(reporter) = reporter {
             let _ = reporter.join();
         }
@@ -1808,6 +1991,7 @@ async fn run_async_fetch_driver(
     total_bytes: u64,
     budget: u64,
     install_dir: &str,
+    driver_state: &Mutex<DriverSnapshot>,
     bootstrap: usize,
     win_min: usize,
     win_max: usize,
@@ -1829,12 +2013,24 @@ async fn run_async_fetch_driver(
     let mut retry: VecDeque<PendingChunk> = VecDeque::new();
     let mut next_job = 0usize;
     let mut verify_since_yield: u32 = 0;
+    let mut dispatch_ages: VecDeque<Instant> = VecDeque::new();
 
     loop {
         if cancel.is_some_and(|c| c.load(Ordering::Relaxed))
             || error_slot.lock().expect("err slot poisoned").is_some()
         {
             break;
+        }
+        {
+            let mut snap = driver_state.lock().expect("driver state poisoned");
+            snap.next_job = next_job;
+            snap.ready_len = ready.len();
+            snap.retry_len = retry.len();
+            snap.inflight_len = inflight.len();
+            snap.oldest_dispatch_ms = dispatch_ages
+                .front()
+                .map(|t| t.elapsed().as_millis().min(u64::MAX as u128) as u64)
+                .unwrap_or(0);
         }
         let probe_now = Instant::now();
         if window.maybe_probe(probe_now, meter.total_bytes()) {
@@ -2013,6 +2209,7 @@ async fn run_async_fetch_driver(
                     res,
                 }
             });
+            dispatch_ages.push_back(started);
         }
         if aborted {
             break;
@@ -2031,6 +2228,7 @@ async fn run_async_fetch_driver(
         let Some(done) = inflight.next().await else {
             continue;
         };
+        dispatch_ages.pop_front();
         let now = Instant::now();
         match done.res {
             Ok(raw) => {
@@ -2841,6 +3039,65 @@ mod tests {
             .map(|j| manifest.files[j.file_idx as usize].chunks[j.chunk_idx as usize].offset)
             .collect();
         assert_eq!(offsets, vec![0, 10, 20]);
+    }
+
+    #[test]
+    fn stall_dump_line_reports_driver_and_per_file_state() {
+        let snap = DriverSnapshot {
+            next_job: 4123,
+            ready_len: 0,
+            retry_len: 0,
+            inflight_len: 0,
+            oldest_dispatch_ms: 0,
+        };
+        let files = vec![
+            FileStall {
+                file_idx: 3,
+                cursor: 440_000_000,
+                size: 31_000_000_000,
+                pending: Some(12),
+            },
+            FileStall {
+                file_idx: 7,
+                cursor: 0,
+                size: 100_000_000,
+                pending: None, // writer lock HELD — the wedge signal
+            },
+        ];
+        let line = stall_dump_line(
+            49521,
+            Duration::from_secs(35),
+            440_000_000,
+            6_953_000_000,
+            181 * 1024 * 1024,
+            256 * 1024 * 1024,
+            5231,
+            &snap,
+            &files,
+        );
+        assert!(
+            line.starts_with("write-stall depot=49521 idle=35s written=440/6953MB reserved=181/256MiB dispatched=4123/5231"),
+            "{line}"
+        );
+        assert!(line.contains("ready=0 retry=0 inflight_req=0 oldest_req=0ms"), "{line}");
+        assert!(line.contains("f3=440/31000MB pending=12"), "{line}");
+        assert!(line.contains("f7=0/100MB lock=HELD"), "{line}");
+    }
+
+    #[test]
+    fn stall_watchdog_thresholds_are_sane() {
+        // Dump must fire before the abort, and the poll must divide both cleanly.
+        assert!(STALL_LOG_AFTER < STALL_ABORT_AFTER);
+        assert_eq!(STALL_ABORT_AFTER.as_secs() % STALL_POLL.as_secs(), 0);
+        assert_eq!(STALL_LOG_AFTER.as_secs() % STALL_POLL.as_secs(), 0);
+        // The abort message must classify as TRANSIENT for the store-level auto-retry
+        // (Kotlin isTransientFailure matches on "timeout").
+        let msg = format!(
+            "write stall: no chunk completed within timeout ({}s idle, {} MiB reserved) — aborting depot so the store retry resumes from the snapshot",
+            STALL_ABORT_AFTER.as_secs(),
+            42,
+        );
+        assert!(msg.contains("timeout"), "{msg}");
     }
 
     #[test]
