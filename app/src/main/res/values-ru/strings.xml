@@ -603,6 +603,15 @@
     <string name="gog_install_game_title">Загрузить игру</string>
     <string name="gog_login_cancel">Отмена</string>
     <string name="gog_login_success_title">Вход выполнен успешно</string>
+    <string name="rockstar_login_required_title">Требуется вход в Rockstar</string>
+    <string name="rockstar_login_failed">Не удалось войти в Rockstar: %1$s</string>
+    <string name="ea_login_required_title">Требуется вход в EA</string>
+    <string name="ea_login_success">Выполнен вход в EA как %1$s</string>
+    <string name="ea_login_failed">Не удалось войти в EA: %1$s</string>
+    <string name="ea_preparing">Подготовка поддержки лаунчера EA</string>
+    <string name="rockstar_preparing">Подготовка поддержки лаунчера Rockstar</string>
+    <string name="rockstar_runtime_installing">Установка среды Social Club</string>
+    <string name="rockstar_installer_missing">В файлах игры отсутствует установщик Social Club. Проверьте файлы игры в Steam и попробуйте снова.</string>
     <string name="gog_logout_failed">Ошибка выхода: %s</string>
     <string name="gog_logout_success">Успешно вышли из GOG</string>
     <string name="gog_settings_login_title">Войти в GOG</string>
@@ -647,9 +656,7 @@
     <string name="launch_dependency_failed_message">Ошибка загрузки требуемого компонента. Пожалуйста, попробуйте позже.</string>
     <string name="launch_dependency_failed_title">Ошибка загрузки зависимости запуска</string>
     <string name="launch_steam_client_beta">Запустить Steam Client (бета)</string>
-    <string name="launch_steam_client_description">Снижает производительность и замедляет запуск
-Позволяет играть в сети и исправляет проблемы с DRM и контроллером
-Не все игры работают</string>
+    <string name="launch_steam_client_description">Рекомендуется Headless\nТребуется для EA, Rockstar, Ubisoft и других лаунчеров\nВключает мультиплеер и устраняет проблемы с DRM и контроллером</string>
     <string name="launch_bionic_steam">Включить экспериментальный Bionic Steam</string>
     <string name="left_analog_stick">Левый аналоговый джойстик</string>
     <string name="left_stick">Левый джойстик</string>
@@ -788,6 +795,8 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="main_discord_support_title">Игра работала?</string>
     <string name="main_downloading_entry">Загрузка %s</string>
     <string name="main_downloading_steam">Загрузка Steam...</string>
+    <string name="steam_update_required_title">Требуется обновление</string>
+    <string name="steam_update_required_message">Для этой игры есть обновление. Клиент Steam не сможет запустить её, пока обновление не установлено. Обновите сейчас, затем запустите снова.</string>
     <string name="main_installing_bionic">Установка компонентов Bionic...</string>
     <string name="main_installing_glibc">Установка компонентов glibc...</string>
     <string name="main_keep_local">Сохранить локальное</string>

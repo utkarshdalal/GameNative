@@ -687,7 +687,7 @@
     <string name="achievement_position_top_right">右上</string>
     <string name="achievement_position_bottom_left">左下</string>
     <string name="achievement_position_bottom_right">右下</string>
-    <string name="launch_steam_client_description">降低性能并减慢启动速度\n允许在线游玩并修复 DRM 和控制器问题\n并非所有游戏都适用</string>
+    <string name="launch_steam_client_description">推荐使用 Headless\nEA、Rockstar、Ubisoft 等启动器必需\n启用多人游戏并修复 DRM 和手柄问题</string>
     <string name="launch_bionic_steam">启用实验性 Bionic Steam</string>
     <string name="allow_steam_updates">允许 Steam 更新</string>
     <string name="allow_steam_updates_description">将 Steam 更新至最新版本，会显著降低性能</string>
@@ -1104,6 +1104,8 @@
 
     <!-- 主界面：游戏启动 -->
     <string name="main_downloading_steam">正在下载 Steam...</string>
+    <string name="steam_update_required_title">需要更新</string>
+    <string name="steam_update_required_message">此游戏有可用更新。在安装更新之前，Steam 客户端无法启动它。请立即更新，然后重新启动。</string>
     <string name="main_installing_glibc">安装 glibc 组件...</string>
     <string name="main_installing_bionic">安装Bionic组件中...</string>
     <string name="main_loading">加载中...</string>
@@ -1447,6 +1449,15 @@
     <string name="gog_settings_login_title">登录 GOG</string>
     <string name="gog_settings_login_subtitle">登录到您的 GOG 账户</string>
     <string name="gog_login_success_title">登录成功</string>
+    <string name="rockstar_login_required_title">需要登录 Rockstar</string>
+    <string name="rockstar_login_failed">Rockstar 登录失败：%1$s</string>
+    <string name="ea_login_required_title">需要登录 EA</string>
+    <string name="ea_login_success">已以 %1$s 身份登录 EA</string>
+    <string name="ea_login_failed">EA 登录失败：%1$s</string>
+    <string name="ea_preparing">正在准备 EA 启动器支持</string>
+    <string name="rockstar_preparing">正在准备 Rockstar 启动器支持</string>
+    <string name="rockstar_runtime_installing">正在安装 Social Club 运行环境</string>
+    <string name="rockstar_installer_missing">游戏文件中缺少 Social Club 安装程序。请在 Steam 中验证游戏文件后重试。</string>
     <string name="gog_login_cancel">取消</string>
     <string name="gog_settings_logout_title">退出 GOG</string>
     <string name="gog_settings_logout_subtitle">从您的 GOG 账户登出</string>

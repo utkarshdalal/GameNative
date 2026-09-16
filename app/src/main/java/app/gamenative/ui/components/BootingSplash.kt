@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import android.os.SystemClock
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -98,6 +100,7 @@ fun BootingSplash(
     progress: Float = -1f, // -1 for indeterminate, 0-1 for determinate
     heroImageUrl: String = "",
     bootAd: BootAdItem? = null,
+    onAbort: (() -> Unit)? = null,
 ) {
     // Tips rotation (no animation cost, safe outside visibility check)
     val context = LocalContext.current
@@ -248,6 +251,7 @@ fun BootingSplash(
                     BootAdVideo(
                         uri = adVideoUri,
                         fallbackImageUrl = activeAd.imageUrl,
+                        controlsStartPadding = if (onAbort != null) 60.dp else 0.dp,
                     )
                 } else Crossfade(
                     targetState = adImageIndex,
@@ -458,6 +462,22 @@ fun BootingSplash(
                     }
                 }
             }
+
+            if (onAbort != null) {
+                IconButton(
+                    onClick = onAbort,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(12.dp)
+                        .background(Color.Black.copy(alpha = 0.45f), CircleShape),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.back),
+                        tint = Color.White,
+                    )
+                }
+            }
         }
     }
 }
@@ -467,6 +487,7 @@ fun BootingSplash(
 private fun BootAdVideo(
     uri: Uri,
     fallbackImageUrl: String,
+    controlsStartPadding: Dp = 0.dp,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -546,7 +567,7 @@ private fun BootAdVideo(
             },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(12.dp)
+                .padding(start = 12.dp + controlsStartPadding, top = 12.dp)
                 .background(Color.Black.copy(alpha = 0.45f), CircleShape),
         ) {
             Icon(

@@ -710,7 +710,7 @@
     <string name="achievement_position_top_right">Prawy górny</string>
     <string name="achievement_position_bottom_left">Lewy dolny</string>
     <string name="achievement_position_bottom_right">Prawy dolny</string>
-    <string name="launch_steam_client_description">Zmniejsza wydajność i spowalnia uruchamianie\nPozwala na grę online i naprawia problemy z DRM oraz kontrolerem\nNie wszystkie gry działają</string>
+    <string name="launch_steam_client_description">Zalecany tryb Headless\nWymagany dla EA, Rockstar, Ubisoft i innych launcherów\nWłącza tryb wieloosobowy i naprawia problemy z DRM i kontrolerem</string>
     <string name="launch_bionic_steam">Włącz eksperymentalny Bionic Steam</string>
     <string name="allow_steam_updates">Zezwól na aktualizacje Steam</string>
     <string name="allow_steam_updates_description">Aktualizuje Steam do najnowszej wersji. Znacząco zmniejsza wydajność.</string>
@@ -1134,6 +1134,8 @@
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Pobieranie Steam...</string>
+    <string name="steam_update_required_title">Wymagana aktualizacja</string>
+    <string name="steam_update_required_message">Dla tej gry dostępna jest aktualizacja. Klient Steam nie może jej uruchomić, dopóki aktualizacja nie zostanie zainstalowana. Zaktualizuj teraz, a potem uruchom ponownie.</string>
     <string name="main_installing_glibc">Instalowanie komponentów glibc...</string>
     <string name="main_installing_bionic">Instalowanie komponentów Bionic...</string>
     <string name="main_loading">Ładowanie...</string>
@@ -1480,6 +1482,15 @@
     <string name="gog_settings_login_title">Zaloguj się do GOG</string>
     <string name="gog_settings_login_subtitle">Zaloguj się do swojego konta GOG</string>
     <string name="gog_login_success_title">Logowanie udane</string>
+    <string name="rockstar_login_required_title">Wymagane logowanie do Rockstar</string>
+    <string name="rockstar_login_failed">Logowanie do Rockstar nie powiodło się: %1$s</string>
+    <string name="ea_login_required_title">Wymagane logowanie do EA</string>
+    <string name="ea_login_success">Zalogowano do EA jako %1$s</string>
+    <string name="ea_login_failed">Logowanie do EA nie powiodło się: %1$s</string>
+    <string name="ea_preparing">Przygotowywanie obsługi launchera EA</string>
+    <string name="rockstar_preparing">Przygotowywanie obsługi launchera Rockstar</string>
+    <string name="rockstar_runtime_installing">Instalowanie środowiska Social Club</string>
+    <string name="rockstar_installer_missing">W plikach gry brakuje instalatora Social Club. Zweryfikuj pliki gry w Steam i spróbuj ponownie.</string>
     <string name="gog_login_cancel">Anuluj</string>
     <string name="gog_settings_logout_title">Wyloguj</string>
     <string name="gog_settings_logout_subtitle">Wyloguj się z konta GOG</string>

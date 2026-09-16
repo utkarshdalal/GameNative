@@ -1521,6 +1521,21 @@ object SteamUtils {
         })
     }
 
+    /**
+     * Per-app Steam Input preference the client reads from localconfig
+     * (UserLocalConfigStore/apps/<appid>/UseSteamControllerConfig): 2 = force on, 0 = global default.
+     */
+    private fun setSteamInputPreference(root: KeyValue, appId: String, container: Container) {
+        val useSteamInput = container.getExtra("useSteamInput", "false").toBoolean()
+        var apps = root.children.firstOrNull { it.name == "apps" }
+        if (apps == null) { apps = KeyValue("apps"); root.children.add(apps) }
+        var app = apps.children.firstOrNull { it.name == appId }
+        if (app == null) { app = KeyValue(appId); apps.children.add(app) }
+        val value = if (useSteamInput) "2" else "0"
+        val key = app.children.firstOrNull { it.name == "UseSteamControllerConfig" }
+        if (key != null) key.value = value else app.children.add(KeyValue("UseSteamControllerConfig", value))
+    }
+
     fun updateOrModifyLocalConfig(imageFs: ImageFs, container: Container, appId: String, steamUserId64: String) {
         try {
             val exeCommandLine = container.execArgs
@@ -1545,6 +1560,7 @@ object SteamUtils {
                     app.children.add(KeyValue("LaunchOptions", exeCommandLine))
                 }
 
+                setSteamInputPreference(vdfData, appId, container)
                 vdfData.saveToFile(localConfigFile, false)
             } else {
                 val vdfData = KeyValue(name = "UserLocalConfigStore")
@@ -1561,6 +1577,7 @@ object SteamUtils {
                 valve.children.add(steam)
                 software.children.add(valve)
                 vdfData.children.add(software)
+                setSteamInputPreference(vdfData, appId, container)
 
                 vdfData.saveToFile(localConfigFile, false)
             }
