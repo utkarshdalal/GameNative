@@ -808,8 +808,7 @@ object SteamAutoCloud {
 
             val cachedFileList = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)
             val cacheIsAbsentOrEmpty = cachedFileList == null || cachedFileList.userFileInfo.isEmpty()
-            val changeNumber = if (!cacheIsAbsentOrEmpty && localAppChangeNumber >= 0) localAppChangeNumber else 0L
-            val appFileListChange = steamCloud.getAppFileListChange(appInfo.id, changeNumber).await()
+            val appFileListChange = steamCloud.getAppFileListChange(appInfo.id, 0L).await()
 
             val cloudAppChangeNumber = appFileListChange.currentChangeNumber
             lastCloudAppChangeNumber = cloudAppChangeNumber
