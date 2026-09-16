@@ -52,6 +52,7 @@ import kotlin.io.path.name
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import app.gamenative.service.cloud.CloseSyncTracker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -831,6 +832,9 @@ class MainViewModel @Inject constructor(
 
         if (gameSource == GameSource.GOG) {
             Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves after close")
+            // so GOGService.deleteGame joins this upload instead of deleting the save dir under it.
+            val gogSyncJob = Job()
+            CloseSyncTracker.track(appId, gogSyncJob)
             withContext(Dispatchers.IO) {
                 try {
                     Timber.tag("GOG").d("[Cloud Saves] Starting post-game upload sync for $appId")
@@ -848,6 +852,8 @@ class MainViewModel @Inject constructor(
                     throw e
                 } catch (e: Exception) {
                     Timber.tag("GOG").e(e, "[Cloud Saves] Exception during upload sync for $appId")
+                } finally {
+                    gogSyncJob.complete()
                 }
             }
             return
@@ -855,6 +861,9 @@ class MainViewModel @Inject constructor(
 
         if (gameSource == GameSource.EPIC) {
             Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves after close")
+            // EpicService.deleteGame joins this.
+            val epicSyncJob = Job()
+            CloseSyncTracker.track(appId, epicSyncJob)
             withContext(Dispatchers.IO) {
                 try {
                     Timber.tag("Epic").d("[Cloud Saves] Starting post-game upload sync for $gameId")
@@ -872,6 +881,8 @@ class MainViewModel @Inject constructor(
                     throw e
                 } catch (e: Exception) {
                     Timber.tag("Epic").e(e, "[Cloud Saves] Exception during upload sync for $gameId")
+                } finally {
+                    epicSyncJob.complete()
                 }
             }
             return
