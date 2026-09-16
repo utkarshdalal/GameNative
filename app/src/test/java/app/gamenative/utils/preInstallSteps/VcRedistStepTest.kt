@@ -19,11 +19,28 @@ import kotlin.io.path.createTempDirectory
 class VcRedistStepTest {
     private lateinit var container: Container
     private lateinit var gameDir: File
+    private lateinit var rootDir: File
 
     @Before
     fun setUp() {
         container = mockk(relaxed = true)
         gameDir = createTempDirectory(prefix = "vcredist-step-test").toFile()
+        rootDir = createTempDirectory(prefix = "vcredist-step-root").toFile()
+        every { container.rootDir } returns rootDir
+    }
+
+    private fun build(): String? = VcRedistStep.buildCommand(
+        container = container,
+        appId = "STEAM_1",
+        gameSource = GameSource.STEAM,
+        gameDir = gameDir,
+        gameDirPath = gameDir.absolutePath,
+    )
+
+    private fun addInstaller(relativePath: String) {
+        val installer = File(gameDir, relativePath)
+        installer.parentFile?.mkdirs()
+        installer.writeText("dummy")
     }
 
     @Test
@@ -55,5 +72,34 @@ class VcRedistStepTest {
 
         val expected = "A:\\_CommonRedist\\MSVC2017\\VC_redist.x86.exe /install /passive /norestart"
         assertEquals(expected, checkNotNull(cmd))
+    }
+
+    @Test
+    fun buildCommand_queues2022Installer() {
+        addInstaller("_CommonRedist/vcredist/2022/VC_redist.x64.exe")
+
+        val expected = "A:\\_CommonRedist\\vcredist\\2022\\VC_redist.x64.exe /install /passive /norestart"
+        assertEquals(expected, checkNotNull(build()))
+    }
+
+    @Test
+    fun buildCommand_writesV140Overrides_forVcRedistInstaller() {
+        addInstaller("_CommonRedist/vcredist/2022/VC_redist.x64.exe")
+
+        build()
+
+        val userReg = File(rootDir, ".wine/user.reg").readText()
+        assertTrue(userReg.contains("\"ucrtbase\"=\"builtin\""))
+        assertTrue(userReg.contains("\"msvcp140\"=\"native,builtin\""))
+        assertTrue(userReg.contains("\"vcruntime140\"=\"native,builtin\""))
+    }
+
+    @Test
+    fun buildCommand_skipsOverrides_forPreV140Installer() {
+        addInstaller("_CommonRedist/vcredist/2013/vcredist_x86.exe")
+
+        build()
+
+        assertFalse(File(rootDir, ".wine/user.reg").exists())
     }
 }

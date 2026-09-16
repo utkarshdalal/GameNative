@@ -3,6 +3,8 @@ package app.gamenative.utils
 import app.gamenative.enums.Marker
 import app.gamenative.data.GameSource
 import com.winlator.container.Container
+import com.winlator.core.WineRegistryEditor
+import timber.log.Timber
 import java.io.File
 
 /** Windows path -> installer args, checked against host filesystem to see which exist. */
@@ -45,6 +47,20 @@ private val vcRedistMap: Map<String, String> = mapOf(
     "A:\\_CommonRedist\\VC_redist.x64.exe" to "/install /passive /norestart",
 )
 
+private const val DLL_OVERRIDES_KEY = "Software\\Wine\\DllOverrides"
+private val v140NativeDlls = listOf(
+    "concrt140",
+    "msvcp140",
+    "msvcp140_1",
+    "msvcp140_2",
+    "msvcp140_atomic_wait",
+    "msvcp140_codecvt_ids",
+    "vccorlib140",
+    "vcomp140",
+    "vcruntime140",
+    "vcruntime140_1",
+)
+
 object VcRedistStep : PreInstallStep {
     override val marker: Marker = Marker.VCREDIST_INSTALLED
 
@@ -75,7 +91,7 @@ object VcRedistStep : PreInstallStep {
         }
         val covered = vcRedistMap.keys.map { it.lowercase() }.toSet()
         File(gameDir, "_CommonRedist/vcredist").listFiles()?.sortedBy { it.name }?.forEach { yearDir ->
-            if (!yearDir.isDirectory || (yearDir.name.toIntOrNull() ?: 0) >= 2022) return@forEach
+            if (!yearDir.isDirectory) return@forEach
             yearDir.listFiles()?.sortedBy { it.name }?.forEach { exe ->
                 val name = exe.name.lowercase()
                 if (!exe.isFile || !name.endsWith(".exe") || !(name.startsWith("vc_redist") || name.startsWith("vcredist"))) return@forEach
@@ -84,7 +100,28 @@ object VcRedistStep : PreInstallStep {
                 parts.add("$winPath /install /passive /norestart")
             }
         }
-        return if (parts.isEmpty()) null else parts.joinToString(" & ")
+        if (parts.isEmpty()) return null
+        if (parts.any { isV140Installer(it) }) writeV140Overrides(container)
+        return parts.joinToString(" & ")
+    }
+
+    private fun isV140Installer(part: String): Boolean =
+        part.substringBefore(' ').substringAfterLast('\\').startsWith("vc_redist", ignoreCase = true)
+
+    private fun writeV140Overrides(container: Container) {
+        val prefixDir = File(container.rootDir, ".wine")
+        val userReg = File(prefixDir, "user.reg")
+        runCatching {
+            if (!userReg.isFile) {
+                prefixDir.mkdirs()
+                userReg.writeText("WINE REGISTRY Version 2\n\n")
+            }
+            WineRegistryEditor(userReg).use { editor ->
+                editor.setCreateKeyIfNotExist(true)
+                editor.setStringValue(DLL_OVERRIDES_KEY, "ucrtbase", "builtin")
+                for (dll in v140NativeDlls) editor.setStringValue(DLL_OVERRIDES_KEY, dll, "native,builtin")
+            }
+        }.onFailure { Timber.w(it, "Failed to write v140 DLL overrides to ${userReg.absolutePath}") }
     }
 }
 
