@@ -330,8 +330,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         ld_preload += ":" + evshimPath;
         String dnsV4MappedPath = context.getApplicationInfo().nativeLibraryDir + "/libgamenative_dns_v4mapped.so";
-        if (container != null && (container.isLaunchRealSteam() || container.isLaunchBionicSteam()) &&
-                new File(dnsV4MappedPath).exists()) {
+        if (new File(dnsV4MappedPath).exists()) {
             ld_preload += ":" + dnsV4MappedPath;
         }
         if (replacePath != null) ld_preload += ":" + replacePath;
