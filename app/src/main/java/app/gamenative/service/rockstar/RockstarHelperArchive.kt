@@ -11,7 +11,7 @@ import java.io.InputStream
 
 /** Versioned helper cache. Does not overwrite game executables, mods, INIs or credentials. */
 object RockstarHelperArchive {
-    const val VERSION = "20260915.5"
+    const val VERSION = "20260915.6"
     const val ARCHIVE = "rgschost-$VERSION.tzst"
     const val SIGNIN_SHIM = "rockstar-signin-shim.js"
     private val required = setOf(
