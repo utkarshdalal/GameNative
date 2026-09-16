@@ -405,6 +405,20 @@ for more details.
 
 Full license text: https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
 
+## LZMA SDK (7z decoder)
+
+**Library:** LZMA SDK 18.05 (7z archive reader, LZMA and BCJ2 decoders)
+**Author:** Igor Pavlov
+**Source:** https://www.7-zip.org/sdk.html
+**License:** Public domain
+
+The sources under `app/src/main/cpp/sevenzx/lzma/` are the unmodified C files of the
+LZMA SDK, which its author has placed in the public domain. They are built into
+`app/src/main/jniLibs/arm64-v8a/lib7zx.so`, a small command-line decoder the app
+runs to unpack a game's own Social Club installer (a 7z self-extractor) into the
+Wine prefix. The wrapper in `app/src/main/cpp/sevenzx/sevenzx.c` is part of this
+application and covered by its GPL-3.0 licence.
+
 ## Achievement Sound
 
 "Achievement sound from [Pixabay](https://pixabay.com), [Pixabay Content License](https://pixabay.com/service/license-summary/).

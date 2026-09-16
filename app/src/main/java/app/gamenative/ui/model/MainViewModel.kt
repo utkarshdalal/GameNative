@@ -981,4 +981,17 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** The splash's back button: hide the splash and close the guest the way a blocked session does. */
+    fun abortBoot() {
+        viewModelScope.launch {
+            Timber.tag("MainViewModel").i("Boot aborted from the splash")
+            bootAwaitingGameWindow = false
+            bootingSplashTimeoutJob?.cancel()
+            bootingSplashTimeoutJob = null
+            setShowBootingSplash(false)
+            PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+            PluviaApp.events.emit(SteamEvent.ForceCloseApp)
+        }
+    }
+
 }
