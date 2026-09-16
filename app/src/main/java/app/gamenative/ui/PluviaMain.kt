@@ -2230,13 +2230,13 @@ fun preLaunchApp(
                                 visible = true,
                                 type = DialogType.SYNC_FAIL,
                                 title = context.getString(R.string.rockstar_login_required_title),
-                                message = "The Social Club installer is missing from the game files. Verify the game files in Steam and try again.",
+                                message = context.getString(R.string.rockstar_installer_missing),
                                 dismissBtnText = context.getString(R.string.ok),
                             ),
                         )
                         return@launch
                     }
-                    setLoadingMessage("Installing the Social Club runtime")
+                    setLoadingMessage(context.getString(R.string.rockstar_runtime_installing))
                     withContext(Dispatchers.IO) { RockstarRuntime.install(context, installer, prefixDriveC) { setLoadingProgress(it) } }
                 }
                 withContext(Dispatchers.IO) {
