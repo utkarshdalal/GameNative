@@ -62,7 +62,7 @@ object IntentLaunchManager {
         } else {
             exe = intent.getStringExtra(EXTRA_EXE)
             Timber.d("[IntentLaunchManager]: Extracted exe: $exe from intent extras")
-            execArgs = intent.getStringExtra(EXTRA_EXEC_ARGS)
+            execArgs = intent.getStringExtra(EXTRA_EXEC_ARGS)?.replace("\\\"", "\"")
             Timber.d("[IntentLaunchManager]: Extracted exec_args: $execArgs from intent extras")
             gameId = intent.getIntExtra(EXTRA_APP_ID, -1)
             Timber.d("[IntentLaunchManager]: Extracted app_id: $gameId from intent extras")
