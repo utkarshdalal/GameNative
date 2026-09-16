@@ -10,7 +10,8 @@
 //! Listener (all methods run on native threads):
 //! `onPlan(int chunksTotal, long bytesTotal, String chunkDir)` once before any fetch,
 //! `onProgress(long bytesDone, long bytesTotal, int chunksDone, int chunksTotal)` per chunk,
-//! `onAssemblyProgress(long bytesWritten)` per assembled file part (after a successful fetch),
+//! `onAssemblyProgress(long bytesWritten)` per written file part (streamed: fires DURING the
+//! fetch as chunks land in the final files — there is no assembly epilogue),
 //! `onLog(String line)`, `onComplete(boolean success, String error, long bytesCredited)`.
 //!
 //! Planning (manifest parse + cross-check) runs synchronously on the calling thread so a plan

@@ -196,6 +196,44 @@ fn write_part(
     Ok(written)
 }
 
+/// In-memory variant for the streamed-write sink: decode + verify one chunk body, returning the
+/// DECOMPRESSED bytes. Same protocol/gates as [`write_verified_chunk`] (header parse, declared-size
+/// truncation gate, zlib rules, SHA-1 when verifiable, `window_size` when known) — only the output
+/// changes (Vec instead of `<final>.part` + rename), so a verified chunk can be fanned out to its
+/// consumer files with positioned writes instead of round-tripping through the chunk cache.
+pub fn decode_verified_chunk(
+    body: &[u8],
+    expected_sha1: Option<&[u8; 20]>,
+    expected_size: Option<u64>,
+) -> Result<Vec<u8>, String> {
+    let hdr = parse_chunk_header(body)?;
+    let payload = chunk_payload(body, &hdr)?;
+    let data: Vec<u8> = if hdr.is_compressed() {
+        let mut dec = flate2::read::ZlibDecoder::new(payload);
+        let mut out = Vec::with_capacity(expected_size.unwrap_or(1024 * 1024) as usize);
+        io::copy(&mut dec, &mut out).map_err(|e| format!("inflate: {e}"))?;
+        out
+    } else {
+        payload.to_vec()
+    };
+    if let Some(expected) = expected_sha1 {
+        let mut sha = Sha1::new();
+        sha.update(&data);
+        if sha.finalize().as_slice() != &expected[..] {
+            return Err("Chunk SHA-1 mismatch (streaming)".to_string());
+        }
+    }
+    if let Some(expected) = expected_size {
+        if data.len() as u64 != expected {
+            return Err(format!(
+                "Chunk size mismatch: wrote {} bytes, expected {expected}",
+                data.len()
+            ));
+        }
+    }
+    Ok(data)
+}
+
 #[cfg(test)]
 pub(crate) mod test_support {
     use super::*;
