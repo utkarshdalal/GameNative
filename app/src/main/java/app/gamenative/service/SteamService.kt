@@ -14,6 +14,7 @@ import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.util.GameInviteNotificationManager
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.callback.GameInviteCallback
+import app.gamenative.service.cloud.CloseSyncTracker
 import app.gamenative.service.handler.GameInviteHandler
 import androidx.room.withTransaction
 import app.gamenative.BuildConfig
@@ -1987,6 +1988,8 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         suspend fun deleteApp(appId: Int): Boolean = withContext(Dispatchers.IO) {
+            // the close-time cloud sync uploads out of this install dir; deleting mid-upload leaves it half sent.
+            CloseSyncTracker.awaitIdle(CloseSyncTracker.keyOf(GameSource.STEAM, appId))
             // snapshot path before marker removal (removing the marker changes resolution)
             val appInfo = getInstalledApp(appId)
             val result = if (appInfo?.isImported == true) {
@@ -3201,6 +3204,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                     releaseSync(appId)
                     instance?.removePendingSyncApp(appId)
                 }
+            }.also {
+                // reads straight out of the install dir, so deleteApp waits for it.
+                CloseSyncTracker.track(CloseSyncTracker.keyOf(GameSource.STEAM, appId), it)
             }
         }
 
