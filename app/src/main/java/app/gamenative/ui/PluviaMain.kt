@@ -75,7 +75,6 @@ import app.gamenative.service.rockstar.RockstarLaunchSupport
 import app.gamenative.service.rockstar.RockstarHelperArchive
 import app.gamenative.service.rockstar.RockstarHelperDeployment
 import app.gamenative.service.rockstar.RockstarLoginGate
-import app.gamenative.service.rockstar.RockstarRuntime
 import app.gamenative.service.amazon.AmazonService
 import com.posthog.PostHog
 import app.gamenative.ui.component.AchievementOverlay
@@ -2218,25 +2217,6 @@ fun preLaunchApp(
                         ),
                     )
                     return@launch
-                }
-                val prefixDriveC = File(container.rootDir, ".wine/drive_c")
-                if (!RockstarRuntime.isInstalled(prefixDriveC)) {
-                    val installer = RockstarRuntime.installer(rockstarGameDir)
-                    if (installer == null) {
-                        setLoadingDialogVisible(false)
-                        setMessageDialogState(
-                            MessageDialogState(
-                                visible = true,
-                                type = DialogType.SYNC_FAIL,
-                                title = context.getString(R.string.rockstar_login_required_title),
-                                message = "The Social Club installer is missing from the game files. Verify the game files in Steam and try again.",
-                                dismissBtnText = context.getString(R.string.ok),
-                            ),
-                        )
-                        return@launch
-                    }
-                    setLoadingMessage("Installing the Social Club runtime")
-                    withContext(Dispatchers.IO) { RockstarRuntime.install(installer, prefixDriveC) { setLoadingProgress(it) } }
                 }
                 withContext(Dispatchers.IO) {
                     check(RockstarLaunchSupport.placeToken(context, rockstarGameDir) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir)) {

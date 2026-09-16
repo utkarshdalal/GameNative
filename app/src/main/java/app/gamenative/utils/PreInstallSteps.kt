@@ -31,6 +31,7 @@ object PreInstallSteps {
         GogScriptInterpreterStep,
         GogSupportCommandsStep,
         UbisoftConnectStep,
+        SocialClubStep,
     )
 
     private var stepsProvider: () -> List<PreInstallStep> = { steps }
