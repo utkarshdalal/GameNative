@@ -1133,6 +1133,8 @@
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_entry">Descargando %s…</string>
     <string name="main_downloading_steam">Descargando Steam…</string>
+    <string name="steam_update_required_title">Actualización necesaria</string>
+    <string name="steam_update_required_message">Este juego tiene una actualización. El cliente de Steam no puede iniciarlo hasta que se instale. Actualiza ahora y vuelve a iniciarlo.</string>
 
     <string name="main_installing_glibc">Instalando componentes de glibc…</string>
     <string name="main_installing_bionic">Instalando componentes de Bionic…</string>
@@ -1478,6 +1480,15 @@
     <string name="gog_settings_login_title">Iniciar sesión en GOG</string>
     <string name="gog_settings_login_subtitle">Inicia sesión en tu cuenta de GOG.</string>
     <string name="gog_login_success_title">Inicio de sesión exitoso</string>
+    <string name="rockstar_login_required_title">Se requiere iniciar sesión en Rockstar</string>
+    <string name="rockstar_login_failed">Error al iniciar sesión en Rockstar: %1$s</string>
+    <string name="ea_login_required_title">Se requiere iniciar sesión en EA</string>
+    <string name="ea_login_success">Sesión iniciada en EA como %1$s</string>
+    <string name="ea_login_failed">Error al iniciar sesión en EA: %1$s</string>
+    <string name="ea_preparing">Preparando la compatibilidad con el launcher de EA</string>
+    <string name="rockstar_preparing">Preparando la compatibilidad con el launcher de Rockstar</string>
+    <string name="rockstar_runtime_installing">Instalando el entorno de Social Club</string>
+    <string name="rockstar_installer_missing">Falta el instalador de Social Club en los archivos del juego. Verifica los archivos del juego en Steam e inténtalo de nuevo.</string>
     <string name="gog_login_cancel">Cancelar</string>
     <string name="gog_settings_logout_title">Cerrar sesión de GOG</string>
     <string name="gog_settings_logout_subtitle">Cierra la sesión de tu cuenta de GOG.</string>

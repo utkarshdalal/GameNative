@@ -2171,7 +2171,7 @@ fun preLaunchApp(
             if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM &&
                 EaLaunchSupport.isEaTitle(gameId, File(SteamService.getAppDirPath(gameId)))
             ) {
-                setLoadingMessage("Preparing EA launcher support")
+                setLoadingMessage(context.getString(R.string.ea_preparing))
                 app.gamenative.service.ea.EaHelperArchive.download(context) { setLoadingProgress(it) }
                 val signIn = EaLoginGate.ensureSignedIn(context)
                 if (signIn.isFailure) {
@@ -2200,7 +2200,7 @@ fun preLaunchApp(
                 RockstarLaunchSupport.isRockstarTitle(File(SteamService.getAppDirPath(gameId)))
             ) {
                 val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
-                setLoadingMessage("Preparing Rockstar launcher support")
+                setLoadingMessage(context.getString(R.string.rockstar_preparing))
                 RockstarHelperArchive.downloadAndExtract(context) { setLoadingProgress(it) }
                 val signIn = RockstarLoginGate.ensureSignedIn(context, "launcher")
                 if (signIn.isFailure && RockstarLaunchSupport.hasUsableToken(File(SteamService.getAppDirPath(gameId)))) {

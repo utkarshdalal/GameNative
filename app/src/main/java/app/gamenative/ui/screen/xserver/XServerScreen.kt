@@ -4714,7 +4714,7 @@ private fun getWineStartCommand(
             // Valve GUI client boots and starts the game itself
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +
                     "-nobigpicture -nofriendsui -nochatui -nointro -applaunch $gameId"
-        } else if (container.isLaunchRealSteam) {
+        } else if (container.isLaunchHeadlessSteam) {
             val appDirPath = SteamService.getAppDirPath(gameId)
             // Mirror Steam's LaunchApp: the app's launch config supplies executable,
             // arguments and working dir; a user-chosen exe in the container wins,
@@ -6232,6 +6232,7 @@ private fun extractSteamFiles(
         }
     }
     if (container.isLaunchHeadlessSteam && steamhostArchive.exists()) {
+        if (headlessMarker?.takeIf { it.isFile }?.readText() == steamhostArchive.name) return
         // Current Valve client tree (build 2026-01-29) + headless host as steam.exe.
         clearClientBinaries()
         Timber.i("Extracting ${steamhostArchive.name} (Valve client 2026-01-29 + headless steam.exe)")
@@ -6241,7 +6242,7 @@ private fun extractSteamFiles(
             imageFs.getRootDir(),
             onExtractFileListener,
         )
-        headlessMarker?.createNewFile()
+        headlessMarker?.writeText(steamhostArchive.name)
         return
     }
 

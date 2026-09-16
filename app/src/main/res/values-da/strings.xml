@@ -944,6 +944,8 @@
 
     <!-- TODO: Manual review - PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Downloader Steam...</string>
+    <string name="steam_update_required_title">Opdatering påkrævet</string>
+    <string name="steam_update_required_message">Dette spil har en opdatering. Steam-klienten kan ikke starte det, før opdateringen er installeret. Opdater nu, og start derefter igen.</string>
     <string name="main_installing_glibc">Installerer glibc-komponenter...</string>
     <string name="main_installing_bionic">Installerer Bionic-komponenter...</string>
     <string name="main_loading">Indlæser...</string>
@@ -1340,6 +1342,15 @@
     <string name="gog_settings_login_title">Log ind på GOG</string>
     <string name="gog_settings_login_subtitle">Log ind på din GOG-konto</string>
     <string name="gog_login_success_title">Login lykkedes</string>
+    <string name="rockstar_login_required_title">Rockstar-login påkrævet</string>
+    <string name="rockstar_login_failed">Rockstar-login mislykkedes: %1$s</string>
+    <string name="ea_login_required_title">EA-login påkrævet</string>
+    <string name="ea_login_success">Logget ind på EA som %1$s</string>
+    <string name="ea_login_failed">EA-login mislykkedes: %1$s</string>
+    <string name="ea_preparing">Forbereder understøttelse af EA-launcheren</string>
+    <string name="rockstar_preparing">Forbereder understøttelse af Rockstar-launcheren</string>
+    <string name="rockstar_runtime_installing">Installerer Social Club-runtime</string>
+    <string name="rockstar_installer_missing">Social Club-installationsprogrammet mangler i spilfilerne. Verificer spilfilerne i Steam, og prøv igen.</string>
     <string name="gog_login_cancel">Annuller</string>
     <string name="gog_settings_logout_title">Log ud af GOG</string>
     <string name="gog_settings_logout_subtitle">Log ud fra din GOG-konto</string>

@@ -1106,6 +1106,8 @@
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">正在下載 Steam...</string>
+    <string name="steam_update_required_title">需要更新</string>
+    <string name="steam_update_required_message">此遊戲有可用的更新。在安裝更新之前，Steam 用戶端無法啟動它。請立即更新，然後重新啟動。</string>
     <string name="main_installing_glibc">安裝 glibc 組件...</string>
     <string name="main_installing_bionic">安裝Bionic元件中...</string>
     <string name="main_loading">載入中...</string>
@@ -1449,6 +1451,15 @@
     <string name="gog_settings_login_title">登入 GOG</string>
     <string name="gog_settings_login_subtitle">登入您的 GOG 帳戶</string>
     <string name="gog_login_success_title">登入成功</string>
+    <string name="rockstar_login_required_title">需要登入 Rockstar</string>
+    <string name="rockstar_login_failed">Rockstar 登入失敗：%1$s</string>
+    <string name="ea_login_required_title">需要登入 EA</string>
+    <string name="ea_login_success">已以 %1$s 身分登入 EA</string>
+    <string name="ea_login_failed">EA 登入失敗：%1$s</string>
+    <string name="ea_preparing">正在準備 EA 啟動器支援</string>
+    <string name="rockstar_preparing">正在準備 Rockstar 啟動器支援</string>
+    <string name="rockstar_runtime_installing">正在安裝 Social Club 執行環境</string>
+    <string name="rockstar_installer_missing">遊戲檔案中缺少 Social Club 安裝程式。請在 Steam 中驗證遊戲檔案後再試一次。</string>
     <string name="gog_login_cancel">取消</string>
     <string name="gog_settings_logout_title">登出 GOG</string>
     <string name="gog_settings_logout_subtitle">從您的 GOG 帳戶登出</string>

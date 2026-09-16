@@ -944,6 +944,8 @@
 
     <!-- TODO: Revisão manual - PluviaMain: Inicialização do jogo -->
     <string name="main_downloading_steam">Baixando Steam...</string>
+    <string name="steam_update_required_title">Atualização necessária</string>
+    <string name="steam_update_required_message">Este jogo tem uma atualização. O cliente Steam não consegue iniciá-lo até que a atualização seja instalada. Atualize agora e depois inicie novamente.</string>
     <string name="main_installing_glibc">Instalando componentes glibc...</string>
     <string name="main_installing_bionic">Instalando componentes Bionic...</string>
     <string name="main_loading">Carregando...</string>
@@ -1340,6 +1342,15 @@
     <string name="gog_settings_login_title">Entrar no GOG</string>
     <string name="gog_settings_login_subtitle">Entre na sua conta GOG</string>
     <string name="gog_login_success_title">Login bem-sucedido</string>
+    <string name="rockstar_login_required_title">Login na Rockstar necessário</string>
+    <string name="rockstar_login_failed">Falha no login na Rockstar: %1$s</string>
+    <string name="ea_login_required_title">Login na EA necessário</string>
+    <string name="ea_login_success">Conectado à EA como %1$s</string>
+    <string name="ea_login_failed">Falha no login na EA: %1$s</string>
+    <string name="ea_preparing">Preparando o suporte ao launcher da EA</string>
+    <string name="rockstar_preparing">Preparando o suporte ao launcher da Rockstar</string>
+    <string name="rockstar_runtime_installing">Instalando o runtime do Social Club</string>
+    <string name="rockstar_installer_missing">O instalador do Social Club está faltando nos arquivos do jogo. Verifique os arquivos do jogo no Steam e tente novamente.</string>
     <string name="gog_login_cancel">Cancelar</string>
     <string name="gog_settings_logout_title">Sair do GOG</string>
     <string name="gog_settings_logout_subtitle">Desconectar da sua conta GOG</string>

@@ -1703,6 +1703,10 @@
     <string name="ea_login_required_title">EA sign-in required</string>
     <string name="ea_login_success">Signed in to EA as %1$s</string>
     <string name="ea_login_failed">EA sign-in failed: %1$s</string>
+    <string name="ea_preparing">Preparing EA launcher support</string>
+    <string name="rockstar_preparing">Preparing Rockstar launcher support</string>
+    <string name="rockstar_runtime_installing">Installing the Social Club runtime</string>
+    <string name="rockstar_installer_missing">The Social Club installer is missing from the game files. Verify the game files in Steam and try again.</string>
     <string name="gog_login_cancel">Cancel</string>
     <string name="gog_settings_logout_title">Sign out of GOG</string>
     <string name="gog_settings_logout_subtitle">Sign out from your GOG account</string>

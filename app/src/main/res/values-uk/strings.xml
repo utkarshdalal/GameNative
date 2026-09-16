@@ -1120,6 +1120,8 @@
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Завантаження Steam...</string>
+    <string name="steam_update_required_title">Потрібне оновлення</string>
+    <string name="steam_update_required_message">Для цієї гри є оновлення. Клієнт Steam не зможе її запустити, доки оновлення не встановлено. Оновіть зараз, а потім запустіть знову.</string>
     <string name="main_installing_glibc">Інсталяція компонентів glibc...</string>
     <string name="main_installing_bionic">Інсталяція компонентів Bionic...</string>
     <string name="main_loading">Завантаження...</string>
@@ -1466,6 +1468,15 @@
     <string name="gog_settings_login_title">Увійти в GOG</string>
     <string name="gog_settings_login_subtitle">Увійдіть у свій обліковий запис GOG</string>
     <string name="gog_login_success_title">Вхід успішний</string>
+    <string name="rockstar_login_required_title">Потрібен вхід у Rockstar</string>
+    <string name="rockstar_login_failed">Не вдалося увійти в Rockstar: %1$s</string>
+    <string name="ea_login_required_title">Потрібен вхід в EA</string>
+    <string name="ea_login_success">Виконано вхід в EA як %1$s</string>
+    <string name="ea_login_failed">Не вдалося увійти в EA: %1$s</string>
+    <string name="ea_preparing">Підготовка підтримки лаунчера EA</string>
+    <string name="rockstar_preparing">Підготовка підтримки лаунчера Rockstar</string>
+    <string name="rockstar_runtime_installing">Встановлення середовища Social Club</string>
+    <string name="rockstar_installer_missing">У файлах гри відсутній інсталятор Social Club. Перевірте файли гри в Steam і спробуйте ще раз.</string>
     <string name="gog_login_cancel">Скасувати</string>
     <string name="gog_settings_logout_title">Вийти з GOG</string>
     <string name="gog_settings_logout_subtitle">Вийти з облікового запису GOG</string>

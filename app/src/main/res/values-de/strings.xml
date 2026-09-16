@@ -1079,6 +1079,8 @@
     <string name="main_downloading_entry">%s wird heruntergeladen</string>
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Steam wird heruntergeladen…</string>
+    <string name="steam_update_required_title">Update erforderlich</string>
+    <string name="steam_update_required_message">Für dieses Spiel liegt ein Update vor. Der Steam-Client kann es erst starten, wenn das Update installiert ist. Jetzt aktualisieren und dann erneut starten.</string>
     <string name="main_installing_glibc">GLIBC-Komponenten werden installiert…</string>
     <string name="main_installing_bionic">Bionic-Komponenten werden installiert…</string>
     <string name="main_loading">Lädt…</string>
@@ -1404,6 +1406,15 @@
     <string name="gog_settings_login_title">Bei GOG anmelden</string>
     <string name="gog_settings_login_subtitle">Bei deinem GOG-Konto anmelden</string>
     <string name="gog_login_success_title">Anmeldung erfolgreich</string>
+    <string name="rockstar_login_required_title">Rockstar-Anmeldung erforderlich</string>
+    <string name="rockstar_login_failed">Rockstar-Anmeldung fehlgeschlagen: %1$s</string>
+    <string name="ea_login_required_title">EA-Anmeldung erforderlich</string>
+    <string name="ea_login_success">Bei EA angemeldet als %1$s</string>
+    <string name="ea_login_failed">EA-Anmeldung fehlgeschlagen: %1$s</string>
+    <string name="ea_preparing">EA-Launcher-Unterstützung wird vorbereitet</string>
+    <string name="rockstar_preparing">Rockstar-Launcher-Unterstützung wird vorbereitet</string>
+    <string name="rockstar_runtime_installing">Social Club-Laufzeitumgebung wird installiert</string>
+    <string name="rockstar_installer_missing">Der Social Club-Installer fehlt in den Spieldateien. Überprüfe die Spieldateien in Steam und starte erneut.</string>
     <string name="gog_login_cancel">Abbrechen</string>
     <string name="gog_settings_logout_title">Von GOG abmelden</string>
     <string name="gog_settings_logout_subtitle">Von deinem GOG-Konto abmelden</string>

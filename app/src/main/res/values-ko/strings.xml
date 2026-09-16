@@ -1121,6 +1121,8 @@
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Steam 다운로드 중...</string>
+    <string name="steam_update_required_title">업데이트 필요</string>
+    <string name="steam_update_required_message">이 게임에 업데이트가 있습니다. 업데이트를 설치할 때까지 Steam 클라이언트가 게임을 시작할 수 없습니다. 지금 업데이트한 다음 다시 실행하세요.</string>
     <string name="main_installing_glibc">glibc 구성 요소 설치 중...</string>
     <string name="main_installing_bionic">Bionic 구성 요소 설치 중...</string>
     <string name="main_loading">로딩 중...</string>
@@ -1464,6 +1466,15 @@
     <string name="gog_settings_login_title">GOG 로그인</string>
     <string name="gog_settings_login_subtitle">GOG 계정에 로그인</string>
     <string name="gog_login_success_title">로그인 성공</string>
+    <string name="rockstar_login_required_title">Rockstar 로그인 필요</string>
+    <string name="rockstar_login_failed">Rockstar 로그인 실패: %1$s</string>
+    <string name="ea_login_required_title">EA 로그인 필요</string>
+    <string name="ea_login_success">%1$s(으)로 EA에 로그인했습니다</string>
+    <string name="ea_login_failed">EA 로그인 실패: %1$s</string>
+    <string name="ea_preparing">EA 런처 지원 준비 중</string>
+    <string name="rockstar_preparing">Rockstar 런처 지원 준비 중</string>
+    <string name="rockstar_runtime_installing">Social Club 런타임 설치 중</string>
+    <string name="rockstar_installer_missing">게임 파일에 Social Club 설치 프로그램이 없습니다. Steam에서 게임 파일을 검증한 후 다시 시도하세요.</string>
     <string name="gog_login_cancel">취소</string>
     <string name="gog_settings_logout_title">GOG 로그아웃</string>
     <string name="gog_settings_logout_subtitle">GOG 계정에서 로그아웃</string>

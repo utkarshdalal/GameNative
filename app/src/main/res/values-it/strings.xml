@@ -1117,6 +1117,8 @@
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Scaricamento Steam...</string>
+    <string name="steam_update_required_title">Aggiornamento richiesto</string>
+    <string name="steam_update_required_message">È disponibile un aggiornamento per questo gioco. Il client Steam non può avviarlo finché l\'aggiornamento non è installato. Aggiorna ora, poi riavvia.</string>
     <string name="main_installing_glibc">Installazione componenti glibc...</string>
     <string name="main_installing_bionic">Installazione componenti Bionic...</string>
     <string name="main_loading">Caricamento...</string>
@@ -1461,6 +1463,15 @@
     <string name="gog_settings_login_title">Accedi a GOG</string>
     <string name="gog_settings_login_subtitle">Accedi al tuo account GOG</string>
     <string name="gog_login_success_title">Login Riuscito</string>
+    <string name="rockstar_login_required_title">Accesso Rockstar richiesto</string>
+    <string name="rockstar_login_failed">Accesso Rockstar non riuscito: %1$s</string>
+    <string name="ea_login_required_title">Accesso EA richiesto</string>
+    <string name="ea_login_success">Accesso a EA effettuato come %1$s</string>
+    <string name="ea_login_failed">Accesso EA non riuscito: %1$s</string>
+    <string name="ea_preparing">Preparazione del supporto per il launcher EA</string>
+    <string name="rockstar_preparing">Preparazione del supporto per il launcher Rockstar</string>
+    <string name="rockstar_runtime_installing">Installazione del runtime Social Club</string>
+    <string name="rockstar_installer_missing">L\'installer di Social Club manca nei file del gioco. Verifica i file del gioco in Steam e riprova.</string>
     <string name="gog_login_cancel">Annulla</string>
     <string name="gog_settings_logout_title">Esci da GOG</string>
     <string name="gog_settings_logout_subtitle">Disconnettiti dal tuo account GOG</string>
