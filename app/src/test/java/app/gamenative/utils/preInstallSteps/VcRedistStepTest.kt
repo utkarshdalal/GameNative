@@ -102,4 +102,79 @@ class VcRedistStepTest {
 
         assertFalse(File(rootDir, ".wine/user.reg").exists())
     }
+
+    @Test
+    fun buildCommand_usesScriptPathAndArgs_whenInstallScriptListsRedist() {
+        addInstaller("VCRedist/vcredist_x86.exe")
+        addInstaller("_CommonRedist/vcredist/2019/VC_redist.x64.exe")
+        File(gameDir, "installscript.vdf").writeText(
+            """
+            "installscript"
+            {
+                "run process"
+                {
+                    "visual c++ 2008 sp1 redistributable package (x86)"
+                    {
+                        "process 1"		"%INSTALLDIR%\\VCRedist\\vcredist_x86.exe"
+                        "command 1"		"/q:a"
+                        "nocleanup"		"1"
+                    }
+                    "directx 9"
+                    {
+                        "process 1"		"%INSTALLDIR%\\DirectX\\DXSetup.exe"
+                        "command 1"		"/silent"
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals("A:\\VCRedist\\vcredist_x86.exe /q:a", checkNotNull(build()))
+    }
+
+    @Test
+    fun buildCommand_readsScriptsShippedUnderCommonRedist() {
+        addInstaller("_CommonRedist/vcredist/2022/VC_redist.x64.exe")
+        File(gameDir, "_CommonRedist/vcredist/2022/installscript.vdf").writeText(
+            """
+            "InstallScript"
+            {
+                "Run Process"
+                {
+                    "VCRedist2022x64"
+                    {
+                        "HasRunKey"		"HKEY_LOCAL_MACHINE\\Software\\Valve\\Steam\\Apps\\CommonRedist\\vcredist\\2022\\x64"
+                        "process 1"		"%INSTALLDIR%\\_CommonRedist\\vcredist\\2022\\VC_redist.x64.exe"
+                        "command 1"		"/install /quiet /norestart"
+                        "NoCleanUp"		"1"
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals("A:\\_CommonRedist\\vcredist\\2022\\VC_redist.x64.exe /install /quiet /norestart", checkNotNull(build()))
+        assertTrue(File(rootDir, ".wine/user.reg").readText().contains("\"ucrtbase\"=\"builtin\""))
+    }
+
+    @Test
+    fun buildCommand_ignoresScriptEntriesWhoseFileIsMissing() {
+        File(gameDir, "installscript.vdf").writeText(
+            """
+            "installscript"
+            {
+                "run process"
+                {
+                    "vc"
+                    {
+                        "process 1"		"%INSTALLDIR%\\VCRedist\\vcredist_x86.exe"
+                        "command 1"		"/q"
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(null, build())
+    }
 }

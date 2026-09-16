@@ -35,7 +35,7 @@ object SteamInstallScriptRegistry {
     private const val USER_PROFILE = "C:\\users\\${ImageFs.USER}"
     private val TOKEN_PATTERN = Regex("(?i)%([A-Z_]+)%([\\\\/]?)")
 
-    private fun tokens(installDir: String): Map<String, String> = mapOf(
+    internal fun tokens(installDir: String): Map<String, String> = mapOf(
         "INSTALLDIR" to installDir,
         "ROOTDRIVE" to installDir.substringBefore(':'),
         "WINDIR" to "C:\\windows",
@@ -168,7 +168,7 @@ object SteamInstallScriptRegistry {
         return (listOf(segments[0], "Wow6432Node") + segments.drop(1)).joinToString("\\")
     }
 
-    private fun expandTokens(value: String, tokens: Map<String, String>): String =
+    internal fun expandTokens(value: String, tokens: Map<String, String>): String =
         TOKEN_PATTERN.replace(value) { match ->
             val replacement = tokens[match.groupValues[1].uppercase()] ?: return@replace match.value
             val separator = match.groupValues[2]
