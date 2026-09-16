@@ -22,6 +22,7 @@ object IntentLaunchManager {
     private const val EXTRA_GAME_SOURCE = "game_source"
     private const val EXTRA_CONTAINER_CONFIG = "container_config"
     private const val EXTRA_EXEC_ARGS = "exec_args"
+    private const val EXTRA_EXE = "exe"
     private const val ACTION_LAUNCH_GAME = "app.gamenative.LAUNCH_GAME"
     private const val ACTION_VIEW = "android.intent.action.VIEW"
     private const val URI_SCHEME = "gamenative"
@@ -44,6 +45,7 @@ object IntentLaunchManager {
         val gameId: Int
         val gameSource: String?
         val containerConfig: ContainerData?
+        val exe: String?
         val execArgs: String?
 
         if (intent.action == ACTION_VIEW) {
@@ -54,16 +56,19 @@ object IntentLaunchManager {
             }
             gameId = data.getQueryParameter("appid")?.toIntOrNull() ?: -1
             gameSource = data.getQueryParameter("gamesource")?.uppercase(java.util.Locale.ROOT)
-            execArgs = null
+            exe = data.getQueryParameter("exe")
+            execArgs = data.getQueryParameter("execArgs")
             containerConfig = null
         } else {
+            exe = intent.getStringExtra(EXTRA_EXE)
+            Timber.d("[IntentLaunchManager]: Extracted exe: $exe from intent extras")
+            execArgs = intent.getStringExtra(EXTRA_EXEC_ARGS)
+            Timber.d("[IntentLaunchManager]: Extracted exec_args: $execArgs from intent extras")
             gameId = intent.getIntExtra(EXTRA_APP_ID, -1)
             Timber.d("[IntentLaunchManager]: Extracted app_id: $gameId from intent extras")
             gameSource = intent.getStringExtra(EXTRA_GAME_SOURCE)?.uppercase(java.util.Locale.ROOT)
                 ?.takeIf { source -> GameSource.entries.any { it.name == source } }
                 ?: GameSource.STEAM.name
-            execArgs = intent.getStringExtra(EXTRA_EXEC_ARGS)
-            Timber.d("[IntentLaunchManager]: Extracted exec_args: $execArgs from intent extras")
             containerConfig = intent.getStringExtra(EXTRA_CONTAINER_CONFIG)?.let { json ->
                 try {
                     parseContainerConfig(json)
@@ -71,6 +76,16 @@ object IntentLaunchManager {
                     Timber.e(e, "[IntentLaunchManager]: Failed to parse container configuration JSON")
                     null
                 }
+            }
+        }
+
+        if (!exe.isNullOrEmpty()) {
+            val container = ContainerManager(context).containers.find {
+                it.executablePath.equals(exe, ignoreCase = true)
+            }
+            if (container != null) {
+                Timber.d("[IntentLaunchManager]: Found container for exe: ${container.id}")
+                return LaunchRequest(container.id, containerConfig, execArgs)
             }
         }
 
