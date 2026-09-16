@@ -2579,7 +2579,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         Timber.i("Downloading game to " + defaultAppInstallPath)
 
-                        try {
+                        val downloadedDepotIds = try {
                             GameDownloadService.downloadSteamApp(
                                 appId = appId,
                                 selectedDepots = selectedDepots,
@@ -2749,14 +2749,35 @@ class SteamService : Service(), IChallengeUrlChanged {
                             }
                         }
 
-                        // Complete app download
+                        // Complete app download. Only depots Steam actually served are
+                        // marked downloaded — a depot skipped by the engine (no manifest
+                        // gid, depot key denied, e.g. an unowned DLC) must stay pending
+                        // so a later download can pick it up.
+                        val downloadedSet = downloadedDepotIds.toSet()
+                        val skippedDepots = selectedDepots.keys - downloadedSet
+                        if (skippedDepots.isNotEmpty()) {
+                            Timber.w("Depots not downloaded (skipped by engine): ${skippedDepots.sorted()}")
+                        }
                         if (mainAppDepots.isNotEmpty()) {
-                            val mainAppDepotIds = mainAppDepots.keys.sorted()
+                            val mainAppDepotIds = mainAppDepots.keys.filter { it in downloadedSet }.sorted()
+                            // A depot-backed DLC only counts as installed when its depot
+                            // actually downloaded; depotless (hidden) DLC ids carry no
+                            // depot and pass through unchanged.
+                            val depotBackedDlcIds = mainAppDepots.values
+                                .map { it.dlcAppId }
+                                .filter { it != INVALID_APP_ID }
+                                .toSet()
+                            val completedMainAppDlcIds = mainAppDlcIds.filter { dlcId ->
+                                dlcId !in depotBackedDlcIds ||
+                                    selectedDepots.any { (depotId, depot) ->
+                                        depot.dlcAppId == dlcId && depotId in downloadedSet
+                                    }
+                            }
                             completeAppDownload(
                                 downloadInfo = di,
                                 downloadingAppId = appId,
                                 entitledDepotIds = mainAppDepotIds,
-                                selectedDlcAppIds = mainAppDlcIds,
+                                selectedDlcAppIds = completedMainAppDlcIds,
                                 appDirPath = appDirPath,
                                 branch = branch,
                                 parentScope = this,
@@ -2768,9 +2789,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                             val dlcAppDepotIds = getAppInfoOf(dlcAppId)?.depots?.keys.orEmpty()
                             val dlcDepots = selectedDepots.filter { (depotId, depot) ->
                                 depot.dlcAppId == dlcAppId &&
+                                    depotId in downloadedSet &&
                                     (depotId !in mainAppDepots || depotId in dlcAppDepotIds)
                             }
                             val dlcDepotIds = dlcDepots.keys.sorted()
+                            if (dlcDepotIds.isEmpty()) {
+                                Timber.w("DLC app $dlcAppId: no depots downloaded, not marking complete")
+                                return@forEach
+                            }
                             completeAppDownload(
                                 downloadInfo = di,
                                 downloadingAppId = dlcAppId,

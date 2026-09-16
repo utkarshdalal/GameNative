@@ -57,7 +57,13 @@ object GameDownloadService {
      * [installDir], reporting progress into [downloadInfo] exactly like the old
      * `DepotDownloader` listener did (per-depot delta bytes + per-depot fraction).
      *
-     * Returns normally on success; throws [DownloadFailedException] on failure and
+     * Depots Steam refuses to serve (no manifest gid for the branch, depot key denied —
+     * e.g. a DLC the account doesn't own) are skipped, not fatal.
+     *
+     * Returns the ids of the depots that were actually downloaded, so the caller only
+     * marks those complete (a skipped depot must NOT be recorded as downloaded — it
+     * would be filtered out as "already downloaded" forever after).
+     * Throws [DownloadFailedException] when not a single depot was servable, and
      * [kotlinx.coroutines.CancellationException] when the calling job is cancelled.
      */
     suspend fun downloadSteamApp(
@@ -72,7 +78,7 @@ object GameDownloadService {
         maxWorkers: Int,
         processWorkers: Int,
         parentScope: CoroutineScope,
-    ) {
+    ): List<Int> {
         val steamClient = SteamService.instance?.steamClient
             ?: throw DownloadFailedException("Steam client not available")
         val steamApps = steamClient.getHandler(SteamApps::class.java)
@@ -94,14 +100,33 @@ object GameDownloadService {
                 continue
             }
 
-            val keyCallback = steamApps.getDepotDecryptionKey(depotId, appId).await()
+            // Depot keys are granted to the app that OWNS the depot, not necessarily
+            // the app being downloaded: DLC depots (e.g. Vampire Survivors' 2230761,
+            // owned by DLC app 2230760) are refused with FileNotFound when requested
+            // as the parent app, even though the account owns the DLC. Ask the owning
+            // app first (dlcAppId, then depotfromapp), fall back to the parent app.
+            val owningAppId = when {
+                depot.dlcAppId != SteamService.INVALID_APP_ID -> depot.dlcAppId
+                depot.depotFromApp != SteamService.INVALID_APP_ID -> depot.depotFromApp
+                else -> appId
+            }
+            var keyCallback = steamApps.getDepotDecryptionKey(depotId, owningAppId).await()
+            if ((keyCallback.result != EResult.OK || keyCallback.depotKey.size != 32) && owningAppId != appId) {
+                Timber.tag(TAG).d("Depot $depotId key denied as owning app $owningAppId (${keyCallback.result}), retrying as $appId")
+                keyCallback = steamApps.getDepotDecryptionKey(depotId, appId).await()
+            }
             if (keyCallback.result != EResult.OK || keyCallback.depotKey.size != 32) {
-                Timber.tag(TAG).w("Skipping depot $depotId: depot key denied (${keyCallback.result})")
+                val dlcNote = if (depot.dlcAppId != SteamService.INVALID_APP_ID) {
+                    " (depot belongs to DLC app ${depot.dlcAppId} — not owned by this account?)"
+                } else {
+                    ""
+                }
+                Timber.tag(TAG).w("Skipping depot $depotId: depot key denied (${keyCallback.result})$dlcNote")
                 continue
             }
 
             val requestCode = fetchManifestRequestCode(
-                steamContent, depotId, appId, gid, branch, parentScope,
+                steamContent, depotId, owningAppId, gid, branch, parentScope,
             )
 
             depotsJson.put(
@@ -116,7 +141,10 @@ object GameDownloadService {
             resolvedDepotIds.add(depotId)
         }
         if (depotsJson.length() == 0) {
-            throw DownloadFailedException("No entitled depots to download")
+            throw DownloadFailedException(
+                "No entitled depots to download " +
+                    "(all ${selectedDepots.size} selected depot(s) skipped: ${selectedDepots.keys.sorted()})",
+            )
         }
 
         val plan = JSONObject()
@@ -139,9 +167,17 @@ object GameDownloadService {
             branch = branch,
             steamContent = steamContent,
             depotIdToIndex = depotIdToIndex,
+            depotIdToOwningAppId = selectedDepots.mapValues { (_, depot) ->
+                when {
+                    depot.dlcAppId != SteamService.INVALID_APP_ID -> depot.dlcAppId
+                    depot.depotFromApp != SteamService.INVALID_APP_ID -> depot.depotFromApp
+                    else -> appId
+                }
+            },
             downloadInfo = downloadInfo,
             parentScope = parentScope,
         )
+        return resolvedDepotIds
     }
 
     private suspend fun runNativeSteamDownload(
@@ -150,6 +186,7 @@ object GameDownloadService {
         branch: String,
         steamContent: SteamContent,
         depotIdToIndex: Map<Int, Int>,
+        depotIdToOwningAppId: Map<Int, Int>,
         downloadInfo: DownloadInfo,
         parentScope: CoroutineScope,
     ) {
@@ -205,10 +242,13 @@ object GameDownloadService {
             }
 
             override fun refreshManifestRequestCode(depotId: Int, manifestId: Long): Long {
+                // Manifest request codes are app-scoped like depot keys: use the
+                // depot's owning app (DLC depots fail under the parent app id).
+                val owningAppId = depotIdToOwningAppId[depotId] ?: appId
                 return try {
                     kotlinx.coroutines.runBlocking {
                         fetchManifestRequestCode(
-                            steamContent, depotId, appId, manifestId, branch, this,
+                            steamContent, depotId, owningAppId, manifestId, branch, this,
                         )
                     }
                 } catch (e: Exception) {
