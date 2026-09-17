@@ -771,6 +771,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulering</string>
+    <string name="settings_accounts_title">Spilstarter-konti</string>
+    <string name="settings_accounts_signed_out">Ikke logget ind</string>
+    <string name="settings_accounts_ea_title">EA-konto</string>
+    <string name="settings_accounts_rockstar_title">Rockstar-konto</string>
     <string name="settings_emulation_orientations_title">Tilladte orienteringer</string>
     <string name="settings_emulation_orientations_subtitle">Vælg hvilke orienteringer der kan roteres til i spillet</string>
     <string name="settings_emulation_default_config_title">Redigér standardkonfiguration</string>

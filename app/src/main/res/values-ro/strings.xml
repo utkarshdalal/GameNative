@@ -954,6 +954,10 @@
 
 	<!-- Settings: Emulation Group -->
 	<string name="settings_emulation_title">Emulare</string>
+    <string name="settings_accounts_title">Conturi pentru lansatoarele de jocuri</string>
+    <string name="settings_accounts_signed_out">Neautentificat</string>
+    <string name="settings_accounts_ea_title">Cont EA</string>
+    <string name="settings_accounts_rockstar_title">Cont Rockstar</string>
 	<string name="settings_emulation_orientations_title">Orientări permise</string>
 	<string name="settings_emulation_orientations_subtitle">Alege orientările în care se poate roti în timpul jocului</string>
 	<string name="settings_emulation_default_config_title">Modifică configurația implicită</string>

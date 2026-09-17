@@ -1092,6 +1092,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulation</string>
+    <string name="settings_accounts_title">Game launcher accounts</string>
+    <string name="settings_accounts_signed_out">Not signed in</string>
+    <string name="settings_accounts_ea_title">EA account</string>
+    <string name="settings_accounts_rockstar_title">Rockstar account</string>
     <string name="settings_emulation_orientations_title">Allowed Orientations</string>
     <string name="settings_emulation_orientations_subtitle">Choose which orientations can be rotated to when in-game</string>
     <string name="settings_emulation_default_config_title">Modify Default Config</string>

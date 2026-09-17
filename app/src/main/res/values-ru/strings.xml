@@ -1127,6 +1127,10 @@ https://gamenative.app
     <string name="settings_emulation_orientations_subtitle">Выберите, какие ориентации можно повернуть во время игры</string>
     <string name="settings_emulation_orientations_title">Разрешённые ориентации</string>
     <string name="settings_emulation_title">Эмуляция</string>
+    <string name="settings_accounts_title">Учётные записи игровых лаунчеров</string>
+    <string name="settings_accounts_signed_out">Вход не выполнен</string>
+    <string name="settings_accounts_ea_title">Учётная запись EA</string>
+    <string name="settings_accounts_rockstar_title">Учётная запись Rockstar</string>
     <string name="settings_emulation_wine_proton_manager_subtitle">Импортировать пользовательские версии Wine/Proton (только Bionic)</string>
     <string name="settings_emulation_wine_proton_manager_title">Менеджер Wine/Proton</string>
     <string name="settings_info_libraries_subtitle">Узнайте, какие технологии делают GameNative возможным</string>

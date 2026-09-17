@@ -948,6 +948,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Емуляція</string>
+    <string name="settings_accounts_title">Облікові записи ігрових лаунчерів</string>
+    <string name="settings_accounts_signed_out">Вхід не виконано</string>
+    <string name="settings_accounts_ea_title">Обліковий запис EA</string>
+    <string name="settings_accounts_rockstar_title">Обліковий запис Rockstar</string>
     <string name="settings_emulation_orientations_title">Дозволені орієнтації екрану</string>
     <string name="settings_emulation_orientations_subtitle">Виберіть можливі орієнтації екрана під час гри.</string>
     <string name="settings_emulation_default_config_title">Змінити стандартну конфігурацію</string>
