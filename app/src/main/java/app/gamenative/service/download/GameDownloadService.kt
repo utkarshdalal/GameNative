@@ -2,9 +2,12 @@ package app.gamenative.service.download
 
 import app.gamenative.data.DepotInfo
 import app.gamenative.data.DownloadInfo
+import app.gamenative.data.SteamApp
 import app.gamenative.service.SteamService
+import app.gamenative.utils.generateSteamApp
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.cdn.Server
+import `in`.dragonbra.javasteam.steam.handlers.steamapps.PICSRequest
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.SteamApps
 import `in`.dragonbra.javasteam.steam.handlers.steamcontent.SteamContent
 import java.util.concurrent.ConcurrentHashMap
@@ -374,6 +377,11 @@ object GameDownloadService {
         }
     }
 
+    // Cache of owning-app PICS data for shared depots (e.g. Steamworks Common
+    // Redistributables app 228980), keyed by app id. Shared between depots in one run.
+    // Plain map (nulls = "fetch failed"): the depot-resolution loop is sequential.
+    private val owningAppInfoCache = HashMap<Int, SteamApp?>()
+
     /**
      * Resolves the manifest gid for [depot] on [branch], including password-protected beta
      * branches (via `checkAppBetaPassword` + `picsGetPrivateBeta`, mirroring the old
@@ -388,6 +396,23 @@ object GameDownloadService {
         branchPassword: String?,
     ): Long {
         depot.manifests[branch]?.gid?.takeIf { it != 0L }?.let { return it }
+
+        // Shared depot carrying no manifests of its own (e.g. depot 228990 Steamworks
+        // Common Redistributables, listed under the game with sharedinstall + no
+        // manifest section): the manifest data lives in the OWNING app's depot
+        // section. JavaSteam's getSteam3DepotManifest recurses into depotfromapp for
+        // exactly this case — the depot must be resolved, never skipped.
+        if (depot.manifests.isEmpty()) {
+            val owningAppId = when {
+                depot.depotFromApp != SteamService.INVALID_APP_ID -> depot.depotFromApp
+                depot.dlcAppId != SteamService.INVALID_APP_ID -> depot.dlcAppId
+                else -> appId
+            }
+            if (owningAppId != appId) {
+                resolveOwningAppManifestGid(steamApps, owningAppId, depotId, branch)
+                    ?.let { return it }
+            }
+        }
 
         if (branch.equals("public", ignoreCase = true)) {
             return 0L
@@ -414,6 +439,43 @@ object GameDownloadService {
             Timber.tag(TAG).w(e, "private beta gid resolution failed for depot $depotId")
             0L
         }
+    }
+
+    /**
+     * Resolves a shared depot's manifest gid from its OWNING app's depot section —
+     * JavaSteam's `getSteam3DepotManifest` recursion for depots with no `manifests`
+     * node but a `depotfromapp`. Reads the local app-info DB first; on a miss, makes
+     * one live PICS request for the owning app (cached per run).
+     */
+    private suspend fun resolveOwningAppManifestGid(
+        steamApps: SteamApps,
+        owningAppId: Int,
+        depotId: Int,
+        branch: String,
+    ): Long? {
+        val owningApp = owningAppInfoCache.getOrPut(owningAppId) {
+            SteamService.getAppInfoOf(owningAppId) ?: fetchAppInfoLive(steamApps, owningAppId)
+        } ?: return null
+        val manifests = owningApp.depots[depotId]?.manifests ?: return null
+        val gid = manifests[branch]?.gid ?: manifests["public"]?.gid ?: return null
+        return gid.takeIf { it != 0L }?.also {
+            Timber.tag(TAG).i("Depot $depotId: manifest gid $it resolved via owning app $owningAppId")
+        }
+    }
+
+    /** One live PICS fetch for an app missing from the local DB (shared redist apps). */
+    private suspend fun fetchAppInfoLive(
+        steamApps: SteamApps,
+        appId: Int,
+    ): SteamApp? = try {
+        steamApps.picsGetProductInfo(
+            apps = listOf(PICSRequest(id = appId)),
+            packages = emptyList(),
+        ).await().results.firstOrNull()?.apps?.values?.firstOrNull()
+            ?.keyValues?.generateSteamApp()
+    } catch (e: Exception) {
+        Timber.tag(TAG).w(e, "live PICS fetch failed for owning app $appId")
+        null
     }
 
     private fun ByteArray.toHex(): String {
