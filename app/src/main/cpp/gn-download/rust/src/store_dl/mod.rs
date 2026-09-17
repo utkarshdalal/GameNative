@@ -8,3 +8,4 @@
 pub mod amazon;
 pub mod epic;
 pub mod gog;
+pub mod ordered_drain;

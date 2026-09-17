@@ -8,8 +8,10 @@
 //! - per chunk: compressed size → compressed MD5 → inflate (stored fallback) → decompressed size →
 //!   decompressed MD5 (`fetchChunkVerified`); a mismatch is a retryable failure (Java: hard fail
 //!   ≤3 with backoff; the core: ≤5 attempts with backoff);
-//! - per file: write into `<file>.bhtmp` (positioned, so chunks may land out of order), then
-//!   whole-file size + MD5, delete any existing final, rename (`assembleDepotFile`);
+//! - per file: verified chunks park in the file's ordered drain and append to `<file>.bhtmp`
+//!   strictly in offset order (pure sequential appends — no positioned writes past EOF, the
+//!   exFAT/FUSE zero-fill risk), then whole-file size + MD5, delete any existing final, rename
+//!   (`assembleDepotFile`);
 //! - failure of any file aborts the run (`anyFailed`), cancel aborts the run; in both cases every
 //!   unfinished `.bhtmp` is deleted (Java deletes its tmp on the failing/cancelled thread).
 
@@ -23,6 +25,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::fetch_core::{run_fetch, FetchItem, FetchOptions, FetchSink, SinkError};
+use crate::store_dl::ordered_drain::{OrderedDrain, DRAIN_COALESCE_BYTES};
 
 use super::plan::{
     build_cdn_path, build_chunk_url, build_plan, host_key, parse_gen1_manifest, Gen1File,
@@ -188,6 +191,9 @@ struct FileState {
     failed: bool,
     tmp_path: PathBuf,
     out_path: PathBuf,
+    /// The ordered write queue: verified chunks park here until contiguous at the cursor, so
+    /// the tmp grows by pure sequential appends (no positioned writes past EOF).
+    drain: OrderedDrain,
 }
 
 struct SpeedSampler {
@@ -235,34 +241,31 @@ impl SpeedSampler {
     }
 }
 
-/// Positioned writer for ONE chunk's decompressed byte range inside the file's `.bhtmp`: hashes
-/// everything it is given (the decompressed MD5) and counts it, but only writes bytes inside the
-/// chunk's expected range when the size is known — an inflate overshoot then fails the size
-/// check instead of clobbering the neighbouring chunk. An I/O error is remembered so the sink can
-/// tell "disk failed" (fatal) from "stream failed" (retry).
-struct RangeWriter {
-    file: Arc<File>,
-    base: u64,
+/// In-memory assembly buffer for ONE chunk's decompressed bytes: hashes everything it is given
+/// (the decompressed MD5) and counts it, but only buffers bytes inside the chunk's expected
+/// size when known — an inflate overshoot then fails the size check instead of clobbering the
+/// neighbouring chunk. Bytes reach disk only after the WHOLE chunk verifies, through the file's
+/// ordered drain (sequential appends; the old RangeWriter's positioned writes into the tmp are
+/// gone — they were the exFAT/FUSE zero-fill risk).
+struct ChunkBuffer {
+    buf: Vec<u8>,
     expected: u64,
     written: u64,
     md5: crate::md5_small::Md5,
-    io_error: Option<String>,
 }
 
-impl RangeWriter {
-    fn new(file: Arc<File>, base: u64, expected: u64) -> Self {
+impl ChunkBuffer {
+    fn new(expected: u64) -> Self {
         Self {
-            file,
-            base,
+            buf: Vec::new(),
             expected,
             written: 0,
             md5: crate::md5_small::Md5::new(),
-            io_error: None,
         }
     }
 }
 
-impl Write for RangeWriter {
+impl Write for ChunkBuffer {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.md5.update(buf);
         let start = self.written;
@@ -270,10 +273,7 @@ impl Write for RangeWriter {
         let cap = if self.expected > 0 { self.expected } else { u64::MAX };
         if start < cap {
             let n = (end.min(cap) - start) as usize;
-            if let Err(err) = self.file.write_all_at(&buf[..n], self.base.saturating_add(start)) {
-                self.io_error = Some(err.to_string());
-                return Err(err);
-            }
+            self.buf.extend_from_slice(&buf[..n]);
         }
         self.written = end;
         Ok(buf.len())
@@ -285,8 +285,8 @@ impl Write for RangeWriter {
 }
 
 enum ChunkMode {
-    Zlib(flate2::write::ZlibDecoder<RangeWriter>),
-    Stored(RangeWriter),
+    Zlib(flate2::write::ZlibDecoder<ChunkBuffer>),
+    Stored(ChunkBuffer),
 }
 
 /// Per-item streaming state for one attempt (reset whenever a piece arrives at `offset == 0`).
@@ -297,8 +297,8 @@ struct ChunkStream {
     /// probe → zlib, else stored. The probe keeps a STORED chunk that happens to begin
     /// with 0x78 (a valid zlib CMF) from being mis-fed to the decoder until it fails.
     mode: Option<ChunkMode>,
-    /// The writer until the mode is decided (an empty body never decides).
-    writer: Option<RangeWriter>,
+    /// The buffer until the mode is decided (an empty body never decides).
+    writer: Option<ChunkBuffer>,
 }
 
 /// One-shot probe: does this piece inflate as a zlib stream? The write decoder only
@@ -310,12 +310,12 @@ fn looks_like_zlib(data: &[u8]) -> bool {
 }
 
 impl ChunkStream {
-    fn new(file: Arc<File>, base: u64, expected: u64) -> Self {
+    fn new(expected: u64) -> Self {
         Self {
             comp_md5: crate::md5_small::Md5::new(),
             comp_len: 0,
             mode: None,
-            writer: Some(RangeWriter::new(file, base, expected)),
+            writer: Some(ChunkBuffer::new(expected)),
         }
     }
 }
@@ -346,14 +346,10 @@ impl<'a> GogSink<'a> {
     }
 
     /// `assembleDepotFile` head: `parent.mkdirs(); tmpFile.delete(); new FileOutputStream(tmp)` —
-    /// once per file, on its first chunk. Returns a shared handle for positioned writes.
-    fn file_handle(&self, file_idx: usize) -> Result<Arc<File>, SinkError> {
+    /// once per file, on its first DRAINED write (lazy: files never touched by a chunk never
+    /// exist on disk). Caller holds the state lock.
+    fn open_tmp_locked(&self, file_idx: usize, st: &mut FileState) -> Result<Arc<File>, SinkError> {
         let file = &self.files[file_idx];
-        let mut st = self
-            .states
-            .get(file_idx)
-            .and_then(|m| m.lock().ok())
-            .ok_or_else(|| SinkError::Fatal("file state poisoned".to_string()))?;
         if st.failed || st.finalized {
             return Err(SinkError::Fatal(format!(
                 "chunk for a closed file: {}",
@@ -387,10 +383,18 @@ impl<'a> GogSink<'a> {
         }
     }
 
-    /// One verified chunk landed: count it; on the file's last chunk run the whole-file verify +
-    /// rename and fire the per-file progress event (Java: doneCount++, totalBytes += df.totalSize,
-    /// "Downloading: <name>  <speed>").
-    fn chunk_done(&self, file_idx: usize) -> Result<(), SinkError> {
+    /// One verified chunk complete in memory: queue it in the file's ordered drain and append
+    /// every run now contiguous at the cursor, one coalesced pwrite per batch — pure sequential
+    /// appends, so the tmp never sees a positioned write past its end. On the file's last chunk
+    /// run the whole-file verify + rename and fire the per-file progress event (Java:
+    /// doneCount++, totalBytes += df.totalSize, "Downloading: <name>  <speed>").
+    fn chunk_landed(
+        &self,
+        file_idx: usize,
+        offset: u64,
+        raw_len: u64,
+        data: Arc<[u8]>,
+    ) -> Result<(), SinkError> {
         let file = &self.files[file_idx];
         let mut st = self
             .states
@@ -403,9 +407,35 @@ impl<'a> GogSink<'a> {
                 file.relative_path
             )));
         }
-        st.chunks_done += 1;
+        st.drain.insert(offset, raw_len, Arc::clone(&data), 0, data.len());
+        let batches = st.drain.drain(DRAIN_COALESCE_BYTES);
+        for batch in batches {
+            let handle = self.open_tmp_locked(file_idx, &mut st)?;
+            if let Err(err) = handle.write_all_at(batch.bytes(), batch.offset) {
+                st.failed = true;
+                let _ = st.handle.take();
+                let _ = fs::remove_file(&st.tmp_path);
+                let msg = format!("write failed file={} err={err}", file.relative_path);
+                self.log(&msg);
+                return Err(SinkError::Fatal(msg));
+            }
+            st.chunks_done += batch.piece_lens.len();
+        }
         if st.chunks_done < file.chunks.len() {
             return Ok(());
+        }
+        // Loud invariant: a fully-counted file must have drained exactly to its size — never
+        // finalize over a gap (the stranded-pending bug class).
+        if file.total_size > 0 && st.drain.cursor() != file.total_size {
+            st.failed = true;
+            let msg = format!(
+                "file drained mismatch file={} cursor={} size={}",
+                file.relative_path,
+                st.drain.cursor(),
+                file.total_size
+            );
+            self.log(&msg);
+            return Err(SinkError::Fatal(msg));
         }
         if let Err(err) = self.finalize_file(file_idx, &mut st) {
             st.failed = true;
@@ -524,6 +554,7 @@ impl<'a> FetchSink for GogSink<'a> {
             self.log(&msg);
             return Err(SinkError::Retry(msg));
         }
+        let raw_len = body.len() as u64;
         let inflated = match inflate_zlib(&body) {
             Some(out) => out,
             None => body, // stored (non-zlib) chunk
@@ -544,20 +575,8 @@ impl<'a> FetchSink for GogSink<'a> {
             return Err(SinkError::Retry(msg));
         }
 
-        let handle = self.file_handle(file_idx)?;
-        if let Err(err) = handle.write_all_at(&inflated, chunk.offset) {
-            if let Some(mut st) = self.states.get(file_idx).and_then(|m| m.lock().ok()) {
-                st.failed = true;
-                let _ = st.handle.take();
-                let _ = fs::remove_file(&st.tmp_path);
-            }
-            let msg = format!("write failed file={} err={err}", file.relative_path);
-            self.log(&msg);
-            return Err(SinkError::Fatal(msg));
-        }
-        drop(handle);
         let credited = inflated.len() as u64;
-        self.chunk_done(file_idx)?;
+        self.chunk_landed(file_idx, chunk.offset, raw_len, Arc::from(inflated))?;
         Ok(credited)
     }
 
@@ -579,9 +598,8 @@ impl<'a> FetchSink for GogSink<'a> {
             .and_then(|m| m.lock().ok())
             .ok_or_else(|| SinkError::Fatal("chunk stream poisoned".to_string()))?;
         if offset == 0 || slot.is_none() {
-            // (Re)start of an attempt: fresh hashers + inflater; positioned writes re-cover the range.
-            let handle = self.file_handle(file_idx)?;
-            *slot = Some(ChunkStream::new(handle, chunk.offset, chunk.size));
+            // (Re)start of an attempt: fresh hashers + inflater buffer.
+            *slot = Some(ChunkStream::new(chunk.size));
         }
         let Some(stream) = slot.as_mut() else {
             return Err(SinkError::Fatal("chunk stream missing".to_string()));
@@ -603,29 +621,15 @@ impl<'a> FetchSink for GogSink<'a> {
             });
         }
         let result = match stream.mode.as_mut() {
-            Some(ChunkMode::Zlib(dec)) => dec
-                .write_all(data)
-                .map_err(|err| (err.to_string(), dec.get_ref().io_error.clone())),
-            Some(ChunkMode::Stored(w)) => w
-                .write_all(data)
-                .map_err(|err| (err.to_string(), w.io_error.clone())),
+            Some(ChunkMode::Zlib(dec)) => dec.write_all(data),
+            Some(ChunkMode::Stored(w)) => w.write_all(data),
             None => Ok(()),
         };
         match result {
             Ok(()) => Ok(()),
-            Err((_, Some(io))) => {
-                // Disk, not stream: Java's `fos.write` exception → file fails → run aborts.
-                if let Some(mut st) = self.states.get(file_idx).and_then(|m| m.lock().ok()) {
-                    st.failed = true;
-                    let _ = st.handle.take();
-                    let _ = fs::remove_file(&st.tmp_path);
-                }
-                let msg = format!("write failed file={} err={io}", file.relative_path);
-                self.log(&msg);
-                Err(SinkError::Fatal(msg))
-            }
-            Err((err, None)) => {
-                // Corrupt zlib body. Java: inflate → null → raw → decompressed-size mismatch → retry.
+            Err(err) => {
+                // Corrupt zlib body (no disk I/O happens here any more — the buffer is in
+                // memory). Java: inflate → null → raw → decompressed-size mismatch → retry.
                 let msg = format!("chunk inflate failed chunk={} err={err}", chunk.hash);
                 self.log(&msg);
                 *slot = None;
@@ -651,8 +655,9 @@ impl<'a> FetchSink for GogSink<'a> {
         let stream = match taken {
             Some(s) => s,
             // Empty body with no pieces: same checks on zero bytes.
-            None => ChunkStream::new(self.file_handle(file_idx)?, chunk.offset, chunk.size),
+            None => ChunkStream::new(chunk.size),
         };
+        let raw_len = stream.comp_len;
 
         if chunk.compressed_size > 0 && stream.comp_len != chunk.compressed_size {
             let msg = format!(
@@ -684,16 +689,6 @@ impl<'a> FetchSink for GogSink<'a> {
                 None => return Err(SinkError::Fatal("chunk writer missing".to_string())),
             },
         };
-        if let Some(io) = writer.io_error {
-            if let Some(mut st) = self.states.get(file_idx).and_then(|m| m.lock().ok()) {
-                st.failed = true;
-                let _ = st.handle.take();
-                let _ = fs::remove_file(&st.tmp_path);
-            }
-            let msg = format!("write failed file={} err={io}", file.relative_path);
-            self.log(&msg);
-            return Err(SinkError::Fatal(msg));
-        }
         if chunk.size > 0 && writer.written != chunk.size {
             let msg = format!(
                 "chunk decompressed-size mismatch chunk={} exp={} got={}",
@@ -709,11 +704,11 @@ impl<'a> FetchSink for GogSink<'a> {
             self.log(&msg);
             return Err(SinkError::Retry(msg));
         }
-        drop(writer.file);
-        self.chunk_done(file_idx)?;
+        let credited = writer.written.saturating_sub(total_len);
+        self.chunk_landed(file_idx, chunk.offset, raw_len, Arc::from(writer.buf))?;
         // Pieces credited their COMPRESSED length as they streamed in; convert to the
         // uncompressed contract by crediting the inflation delta here (stored chunks: 0).
-        Ok(writer.written.saturating_sub(total_len))
+        Ok(credited)
     }
 }
 
@@ -835,6 +830,7 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
             failed: false,
             tmp_path,
             out_path,
+            drain: OrderedDrain::default(),
         }));
         if !is_pending {
             continue;
@@ -1320,7 +1316,7 @@ mod tests {
     }
 
     /// Whole-file finalize through the sink with a synthetic body (no network): verifies the
-    /// chunk → positioned write → whole-file MD5 → rename path and the progress event shape.
+    /// chunk → ordered drain → whole-file MD5 → rename path and the progress event shape.
     #[test]
     fn sink_assembles_verifies_and_renames() {
         use flate2::write::ZlibEncoder;
@@ -1362,6 +1358,7 @@ mod tests {
                 failed: false,
                 tmp_path: tmp_path.clone(),
                 out_path: out_path.clone(),
+                drain: OrderedDrain::default(),
             })],
             streams: vec![Mutex::new(None), Mutex::new(None)],
             files_total: 1,
@@ -1373,9 +1370,11 @@ mod tests {
         };
         let item = |id: u64| FetchItem { id, urls: vec!["x".into()], reserve: 0, range: None };
 
-        // Second chunk first: positioned write must still produce the right bytes.
+        // Second chunk first: it parks in the ordered drain — the tmp is NOT written yet (a
+        // positioned write past the gap is exactly what the drain forbids); both chunks append
+        // in order once chunk 0 lands.
         assert_eq!(sink.process(&item(1), cb.clone()).unwrap(), part_b.len() as u64);
-        assert!(tmp_path.exists() && !out_path.exists(), "still staging after 1 of 2 chunks");
+        assert!(!out_path.exists(), "still staging after 1 of 2 chunks");
         // A corrupt body is a retryable failure, not fatal.
         match sink.process(&item(0), b"\x78garbage".to_vec()) {
             Err(SinkError::Retry(msg)) => assert!(msg.contains("mismatch"), "{msg}"),
@@ -1418,6 +1417,7 @@ mod tests {
                 failed: false,
                 tmp_path: tmp_path.clone(),
                 out_path: out_path.clone(),
+                drain: OrderedDrain::default(),
             })],
             streams: vec![Mutex::new(None)],
             files_total: 1,
@@ -1522,6 +1522,7 @@ mod tests {
                 failed: false,
                 tmp_path: tmp_path.clone(),
                 out_path: out_path.clone(),
+                drain: OrderedDrain::default(),
             })],
             streams: vec![Mutex::new(None), Mutex::new(None)],
             files_total: 1,
