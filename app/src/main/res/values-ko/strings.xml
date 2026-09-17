@@ -2401,6 +2401,14 @@
     <string name="power_control_fan_control_desc">팬 소음을 최소화하며 목표 온도를 유지합니다. Retroid Pocket 6에서 검증되었습니다.</string>
     <string name="power_control_game_pinning">게임 코어 고정</string>
     <string name="power_control_game_pinning_desc">게임을 빠른 CPU 코어에 고정합니다. Retroid Pocket 6에서 검증되었습니다.</string>
+    <string name="power_control_game_pinning_mode_auto">자동</string>
+    <string name="power_control_game_pinning_mode_auto_desc">게임과 백그라운드 프로세스를 자동으로 고정합니다. 기기에 따라 맞지 않을 수 있습니다.</string>
+    <string name="power_control_game_pinning_mode_off">끄기</string>
+    <string name="power_control_game_pinning_mode_off_desc">게임은 컨테이너 설정의 CPU 목록을 따릅니다. 백그라운드 프로세스는 고정되지 않습니다.</string>
+    <string name="power_control_game_pinning_mode_manual">수동</string>
+    <string name="power_control_game_pinning_mode_manual_desc">아래에서 선택한 코어에 게임과 백그라운드 프로세스를 고정합니다. 컨테이너의 CPU 목록을 재정의합니다.</string>
+    <string name="power_control_game_pinning_manual_game_cores">게임 코어</string>
+    <string name="power_control_game_pinning_manual_background_cores">백그라운드 프로세스 코어</string>
     <string name="power_control_hud_show_fan">팬 속도 표시</string>
     <string name="power_control_hud_show_tuner">튜닝 클록 상한 표시</string>
     <string name="power_control_tuning_strategy">튜닝 전략</string>

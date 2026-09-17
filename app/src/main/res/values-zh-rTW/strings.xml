@@ -2412,6 +2412,14 @@
     <string name="power_control_fan_control_desc">以最低的風扇噪音維持目標溫度。已在 Retroid Pocket 6 上驗證。</string>
     <string name="power_control_game_pinning">遊戲核心綁定</string>
     <string name="power_control_game_pinning_desc">將遊戲保持在高效能 CPU 核心上。已在 Retroid Pocket 6 上驗證。</string>
+    <string name="power_control_game_pinning_mode_auto">自動</string>
+    <string name="power_control_game_pinning_mode_auto_desc">自動綁定遊戲與背景處理程序。可能並非適合所有裝置。</string>
+    <string name="power_control_game_pinning_mode_off">關閉</string>
+    <string name="power_control_game_pinning_mode_off_desc">遊戲會遵循容器設定中指定的 CPU 清單。背景處理程序將不會被綁定。</string>
+    <string name="power_control_game_pinning_mode_manual">手動</string>
+    <string name="power_control_game_pinning_mode_manual_desc">將遊戲與背景處理程序綁定到下方選擇的核心。此設定會覆寫容器的 CPU 清單。</string>
+    <string name="power_control_game_pinning_manual_game_cores">遊戲核心</string>
+    <string name="power_control_game_pinning_manual_background_cores">背景處理程序核心</string>
     <string name="power_control_hud_show_fan">顯示風扇轉速</string>
     <string name="power_control_hud_show_tuner">顯示調整的頻率上限</string>
     <string name="power_control_tuning_strategy">調整策略</string>

@@ -2409,6 +2409,14 @@
     <string name="power_control_fan_control_desc">Підтримує задану температуру за мінімального шуму вентилятора. Перевірено на Retroid Pocket 6.</string>
     <string name="power_control_game_pinning">Закріплення гри</string>
     <string name="power_control_game_pinning_desc">Утримує гру на швидких ядрах CPU. Перевірено на Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning_mode_auto">Авто</string>
+    <string name="power_control_game_pinning_mode_auto_desc">Автоматично закріплює гру та фонові процеси. Може не підходити для всіх пристроїв.</string>
+    <string name="power_control_game_pinning_mode_off">Вимкнено</string>
+    <string name="power_control_game_pinning_mode_off_desc">Гра дотримується списку CPU, заданого в налаштуваннях контейнера. Фонові процеси залишаються незакріпленими.</string>
+    <string name="power_control_game_pinning_mode_manual">Вручну</string>
+    <string name="power_control_game_pinning_mode_manual_desc">Закріплює гру та фонові процеси на ядрах, обраних нижче. Перевизначає список CPU контейнера.</string>
+    <string name="power_control_game_pinning_manual_game_cores">Ядра гри</string>
+    <string name="power_control_game_pinning_manual_background_cores">Ядра фонових процесів</string>
     <string name="power_control_hud_show_fan">Показувати швидкість вентилятора</string>
     <string name="power_control_hud_show_tuner">Показувати межі частот налаштування</string>
     <string name="power_control_tuning_strategy">Стратегія налаштування</string>

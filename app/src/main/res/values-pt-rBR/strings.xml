@@ -2277,6 +2277,14 @@
     <string name="power_control_fan_control_desc">Mantém uma temperatura alvo com o mínimo de ruído da ventoinha. Verificado no Retroid Pocket 6.</string>
     <string name="power_control_game_pinning">Fixação do jogo</string>
     <string name="power_control_game_pinning_desc">Mantém o jogo nos núcleos rápidos da CPU. Verificado no Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning_mode_auto">Automático</string>
+    <string name="power_control_game_pinning_mode_auto_desc">Fixa o jogo e os processos em segundo plano automaticamente. Pode não ser adequado para todos os dispositivos.</string>
+    <string name="power_control_game_pinning_mode_off">Desativado</string>
+    <string name="power_control_game_pinning_mode_off_desc">O jogo segue a Lista de CPU definida nas configurações do contêiner. Os processos em segundo plano ficam sem fixação.</string>
+    <string name="power_control_game_pinning_mode_manual">Manual</string>
+    <string name="power_control_game_pinning_mode_manual_desc">Fixa o jogo e os processos em segundo plano nos núcleos escolhidos abaixo. Substitui a Lista de CPU do contêiner.</string>
+    <string name="power_control_game_pinning_manual_game_cores">Núcleos do jogo</string>
+    <string name="power_control_game_pinning_manual_background_cores">Núcleos de processos em segundo plano</string>
     <string name="power_control_hud_show_fan">Mostrar velocidade da ventoinha</string>
     <string name="power_control_hud_show_tuner">Mostrar limites de clock do ajuste</string>
     <string name="power_control_tuning_strategy">Estratégia de ajuste</string>

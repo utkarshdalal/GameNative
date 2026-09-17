@@ -6,6 +6,7 @@ import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.Parcel
 import app.gamenative.PrefManager
+import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerBaseline
 import app.gamenative.powercontrol.PowerBaselineEntry
 import app.gamenative.powercontrol.PowerBaselineScripts
@@ -1288,7 +1289,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             adaptiveFpsCapEnabled = isTestedDevice,
             enableAutoTuning = isTestedDevice,
             enablePerClusterTuning = isTestedDevice,
-            enableGamePinning = isTestedDevice,
+            gamePinningMode = if (isTestedDevice) GamePinningMode.AUTO else GamePinningMode.OFF,
             enableFanControl = isTestedDevice,
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,

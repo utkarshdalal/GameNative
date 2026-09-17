@@ -2277,6 +2277,14 @@
     <string name="power_control_fan_control_desc">Holder en måltemperatur med mindst mulig blæserstøj. Verificeret på Retroid Pocket 6.</string>
     <string name="power_control_game_pinning">Spilfastgørelse</string>
     <string name="power_control_game_pinning_desc">Holder spillet på de hurtige CPU-kerner. Verificeret på Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning_mode_auto">Auto</string>
+    <string name="power_control_game_pinning_mode_auto_desc">Fastgør automatisk spillet og baggrundsprocesser. Passer muligvis ikke til alle enheder.</string>
+    <string name="power_control_game_pinning_mode_off">Fra</string>
+    <string name="power_control_game_pinning_mode_off_desc">Spillet følger CPU-listen, der er angivet i containerindstillingerne. Baggrundsprocesser forbliver ikke-fastgjorte.</string>
+    <string name="power_control_game_pinning_mode_manual">Manuel</string>
+    <string name="power_control_game_pinning_mode_manual_desc">Fastgør spillet og baggrundsprocesser til de kerner, du vælger nedenfor. Tilsidesætter containerens CPU-liste.</string>
+    <string name="power_control_game_pinning_manual_game_cores">Spilkerner</string>
+    <string name="power_control_game_pinning_manual_background_cores">Kerner til baggrundsprocesser</string>
     <string name="power_control_hud_show_fan">Vis blæserhastighed</string>
     <string name="power_control_hud_show_tuner">Vis tunerens frekvensgrænser</string>
     <string name="power_control_tuning_strategy">Justeringsstrategi</string>
