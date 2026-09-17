@@ -286,7 +286,6 @@
     <string name="connection_reconnecting">Переподключение к Steam…</string>
     <string name="connection_retry">Повторить</string>
     <string name="connection_session_ended">Сеанс завершён</string>
-    <string name="container_config_custom_resolution_error_aspect">Ширина должна быть больше высоты</string>
     <string name="container_config_custom_resolution_error_nonzero">Ширина и высота должны быть больше 0</string>
     <string name="container_config_custom_resolution_separator">x</string>
     <string name="container_config_custom_resolution_title">Установить пользовательское разрешение</string>

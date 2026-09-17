@@ -163,7 +163,6 @@
     <string name="container_config_custom_resolution_title">Definir resolução personalizada</string>
     <string name="container_config_custom_resolution_separator">x</string>
     <string name="container_config_custom_resolution_error_nonzero">A largura e a altura devem ser maiores que 0</string>
-    <string name="container_config_custom_resolution_error_aspect">A largura deve ser maior que a altura</string>
     <string name="storage_info">Info de armazenamento</string>
     <string name="duplicate">Duplicar</string>
     <string name="reconfigure">Reconfigurar</string>

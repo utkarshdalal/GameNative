@@ -163,7 +163,6 @@
     <string name="container_config_custom_resolution_title">Angiv brugerdefineret opløsning</string>
     <string name="container_config_custom_resolution_separator">x</string>
     <string name="container_config_custom_resolution_error_nonzero">Bredde og højde skal være større end 0</string>
-    <string name="container_config_custom_resolution_error_aspect">Bredden skal være større end højden</string>
     <string name="storage_info">Lagerinformation</string>
     <string name="duplicate">Duplikér</string>
     <string name="reconfigure">Konfigurér igen</string>

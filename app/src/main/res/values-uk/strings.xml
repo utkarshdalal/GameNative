@@ -229,7 +229,6 @@
     <string name="container_config_custom_resolution_title">Встановити власну роздільну здатність</string>
     <string name="container_config_custom_resolution_separator">x</string>
     <string name="container_config_custom_resolution_error_nonzero">Ширина та висота повинні бути більшими за 0</string>
-    <string name="container_config_custom_resolution_error_aspect">Ширина повинна бути більшою за висоту</string>
     <string name="storage_info">Інформація про сховище</string>
     <string name="duplicate">Дублювати</string>
     <string name="reconfigure">Переналаштувати</string>
