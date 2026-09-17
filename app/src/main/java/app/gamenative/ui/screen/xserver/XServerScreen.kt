@@ -4754,6 +4754,7 @@ private fun getWineStartCommand(
             envVars.put("STEAMHOST_APPID", gameId.toString())
             envVars.put("STEAMHOST_GAME_CMD", gameCmd)
             envVars.put("STEAMHOST_GAME_DIR", gameDir)
+            envVars.put("STEAMHOST_INSTALL_DIR", "$steamRoot\\steamapps\\common\\$gameFolderName")
             if (isRockstar) {
                 val launcher = "$steamRoot\\steamapps\\common\\$gameFolderName\\$normalizedExe"
                 envVars.put("STEAMHOST_LAUNCH_PARAMS", "-forceLauncherPath \"$launcher\" -skipInstallers")
