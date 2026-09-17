@@ -1296,6 +1296,18 @@ struct PendingDecoded {
     data: Vec<u8>,
 }
 
+/// One buffered entry in a file's ordered queue: either a decoded chunk awaiting its write
+/// position, or an ALREADY-ON-DISK marker parked by the resume/verify skip. The marker carries
+/// the verified region's length and lets the drain walk the cursor over it IN ORDER — the one
+/// invariant this pipeline rests on. (Bumping the cursor directly at verify time assumed the
+/// verified chunks form a contiguous prefix; that breaks after the first mismatch is dispatched
+/// for re-download, and jumping the cursor past the unwritten gap strands the re-downloaded
+/// chunk in `pending` forever behind it.)
+enum PendingEntry {
+    Data(PendingDecoded),
+    Verified(u64),
+}
+
 /// Per-file in-order write state — the per-file sequential copy queue. Every chunk of a file is
 /// copied to the target at exactly `cursor` — the current end of the contiguous prefix — so the
 /// target file simply EXPANDS on each write (pure appends at EOF) on every storage type: no file
@@ -1310,8 +1322,8 @@ struct OrderedWriter {
     /// `Vec<AtomicU64>` so the fetch driver can do its head-of-line budget-bypass check without
     /// blocking on a slow copy.
     cursor: u64,
-    /// Out-of-order decoded chunks awaiting their position, keyed by chunk offset.
-    pending: std::collections::BTreeMap<u64, PendingDecoded>,
+    /// Out-of-order decoded chunks and verified markers awaiting their position, keyed by offset.
+    pending: std::collections::BTreeMap<u64, PendingEntry>,
 }
 
 /// Max bytes of one coalesced write batch: the drain below concatenates a contiguous run of
@@ -1322,13 +1334,135 @@ pub const COALESCE_WRITE_BYTES: u64 = 16 * 1024 * 1024;
 
 /// Pop the buffered chunk sitting exactly at the cursor, if any. Only a chunk at `cursor` may
 /// be copied out — anything beyond it would leave a hole, which is precisely what this pipeline
-/// forbids.
-fn pop_contiguous(writer: &mut OrderedWriter) -> Option<PendingDecoded> {
+/// forbids. (Test-only: the production drain inlines this check to peek before removing.)
+#[cfg(test)]
+fn pop_contiguous(writer: &mut OrderedWriter) -> Option<PendingEntry> {
     let (&offset, _) = writer.pending.first_key_value()?;
     if offset != writer.cursor {
         return None;
     }
     writer.pending.remove(&offset)
+}
+
+/// Drain every entry now contiguous at the writer's cursor, in order: Verified markers advance
+/// the cursor WITHOUT any write (their bytes are already on disk) and decoded chunks are
+/// coalesced into single sequential pwrites (see COALESCE_WRITE_BYTES). `complete_chunk` runs
+/// per entry in order, so whoever lands the file's last chunk — verified or downloaded — owns
+/// the exactly-once finalize (set_len + fsync + close). Caller holds the writer lock.
+#[allow(clippy::too_many_arguments)]
+fn drain_contiguous(
+    writer: &mut OrderedWriter,
+    file_idx: usize,
+    handle: &Arc<File>,
+    files: &DepotFiles,
+    cursors: &[AtomicU64],
+    in_flight: &AtomicU64,
+    bytes_written: &AtomicU64,
+    total_bytes: u64,
+    progress: Option<&(dyn Fn(u64, u64, bool) + Sync)>,
+) -> Result<(), String> {
+    loop {
+        // Verified markers first: walk the cursor over bytes already on disk.
+        loop {
+            let at_cursor = matches!(
+                writer.pending.first_key_value(),
+                Some((&offset, PendingEntry::Verified(_))) if offset == writer.cursor
+            );
+            if !at_cursor {
+                break;
+            }
+            let Some(PendingEntry::Verified(len)) = writer.pending.remove(&writer.cursor) else {
+                unreachable!("verified marker at cursor");
+            };
+            writer.cursor += len;
+            cursors[file_idx].store(writer.cursor, Ordering::Relaxed);
+            files.complete_chunk(file_idx, handle)?;
+            let total = bytes_written.fetch_add(len, Ordering::Relaxed) + len;
+            if let Some(cb) = progress {
+                cb(total, total_bytes, true);
+            }
+        }
+        // Then one coalesced batch of decoded data at the cursor.
+        let start = writer.cursor;
+        let mut batch: Vec<PendingDecoded> = Vec::new();
+        let mut batch_bytes = 0u64;
+        while batch_bytes < COALESCE_WRITE_BYTES {
+            let at_cursor = matches!(
+                writer.pending.first_key_value(),
+                Some((&offset, PendingEntry::Data(_))) if offset == writer.cursor
+            );
+            if !at_cursor {
+                break;
+            }
+            let Some(PendingEntry::Data(entry)) = writer.pending.remove(&writer.cursor) else {
+                unreachable!("data entry at cursor");
+            };
+            batch_bytes += entry.data.len() as u64;
+            batch.push(entry);
+        }
+        if batch.is_empty() {
+            // No marker walked and no data at the cursor: fully drained.
+            break;
+        }
+        let batch_len = batch.len();
+        let mut raw_total = 0u64;
+        let buf = if batch_len == 1 {
+            let entry = batch.pop().expect("one entry");
+            raw_total = entry.raw_len;
+            entry.data
+        } else {
+            let mut buf = Vec::with_capacity(batch_bytes as usize);
+            for entry in batch {
+                raw_total += entry.raw_len;
+                buf.extend_from_slice(&entry.data);
+            }
+            buf
+        };
+        if let Err(err) = pwrite_all_at(handle, start, &buf) {
+            in_flight.fetch_sub(raw_total, Ordering::Relaxed);
+            return Err(format!("write_depot: write at offset {start}: {err}"));
+        }
+        writer.cursor += batch_bytes;
+        cursors[file_idx].store(writer.cursor, Ordering::Relaxed);
+        // Free the budget on COPY-COMPLETE (actual raw bytes).
+        in_flight.fetch_sub(raw_total, Ordering::Relaxed);
+        for _ in 0..batch_len {
+            files.complete_chunk(file_idx, handle)?;
+        }
+        let total = bytes_written.fetch_add(batch_bytes, Ordering::Relaxed) + batch_bytes;
+        if let Some(cb) = progress {
+            cb(total, total_bytes, false);
+        }
+    }
+    Ok(())
+}
+
+/// Success assertion, run BEFORE finalize: every regular file's cursor must sit at its exact
+/// size with an empty reorder cushion. Catches a stranded-pending bug (verify-skip gap, lost
+/// chunk, accounting slip) LOUDLY, before `finalize_remaining`'s set_len could paper over a
+/// hole and journal a corrupt depot. Callers must report failure with resume trust UNSAFE —
+/// on-disk bytes may be missing.
+fn assert_pipeline_drained(files: &DepotFiles, writers: &[Mutex<OrderedWriter>]) -> Result<(), String> {
+    for (idx, slot) in files.slots.iter().enumerate() {
+        if !slot.is_regular {
+            continue;
+        }
+        let writer = writers
+            .get(idx)
+            .ok_or_else(|| "write_depot: writer/slot index mismatch".to_string())?
+            .lock()
+            .expect("writer poisoned");
+        if writer.cursor != slot.size || !writer.pending.is_empty() {
+            return Err(format!(
+                "write_depot: '{}' incomplete: cursor {}/{} bytes, {} chunk(s) stranded",
+                slot.path,
+                writer.cursor,
+                slot.size,
+                writer.pending.len()
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Driver-state snapshot published once per driver loop iteration for the stall watchdog (A).
@@ -1820,69 +1954,29 @@ host_ceiling={} budget={}MiB reason=start",
                     };
                     // Enqueue, then drain the contiguous run at the cursor — the per-file
                     // sequential copy. One worker may copy several queued chunks here, batching
-                    // the appends of a single file; other files copy in parallel.
+                    // the appends of a single file; other files copy in parallel. The writers
+                    // mutex serializes this file, so the cursor only moves inside the drain.
                     let mut writer = writers[file_idx].lock().expect("writer poisoned");
                     writer.pending.insert(
                         chunk.offset,
-                        PendingDecoded {
+                        PendingEntry::Data(PendingDecoded {
                             raw_len,
                             data: processed.data,
-                        },
+                        }),
                     );
-                    // Drain the contiguous run in batches, each batch coalesced into ONE
-                    // sequential pwrite at the cursor (see COALESCE_WRITE_BYTES). The writers
-                    // mutex serializes this file, so the cursor only moves here.
-                    loop {
-                        let mut batch: Vec<PendingDecoded> = Vec::new();
-                        let mut batch_bytes = 0u64;
-                        while batch_bytes < COALESCE_WRITE_BYTES {
-                            let Some(entry) = pop_contiguous(&mut writer) else {
-                                break;
-                            };
-                            batch_bytes += entry.data.len() as u64;
-                            batch.push(entry);
-                        }
-                        if batch.is_empty() {
-                            break;
-                        }
-                        let start = writer.cursor;
-                        let batch_len = batch.len();
-                        let mut raw_total = 0u64;
-                        let buf = if batch_len == 1 {
-                            let entry = batch.pop().expect("one entry");
-                            raw_total = entry.raw_len;
-                            entry.data
-                        } else {
-                            let mut buf = Vec::with_capacity(batch_bytes as usize);
-                            for entry in batch {
-                                raw_total += entry.raw_len;
-                                buf.extend_from_slice(&entry.data);
-                            }
-                            buf
-                        };
-                        if let Err(err) = pwrite_all_at(&handle, start, &buf) {
-                            in_flight.fetch_sub(raw_total, Ordering::Relaxed);
-                            record_first_error(
-                                error_slot,
-                                format!("write_depot: write at offset {start}: {err}"),
-                            );
-                            return;
-                        }
-                        writer.cursor += batch_bytes;
-                        cursors[file_idx].store(writer.cursor, Ordering::Relaxed);
-                        // Free the budget on COPY-COMPLETE (actual raw bytes).
-                        in_flight.fetch_sub(raw_total, Ordering::Relaxed);
-                        for _ in 0..batch_len {
-                            if let Err(error) = files.complete_chunk(file_idx, &handle) {
-                                record_first_error(error_slot, error);
-                                return;
-                            }
-                        }
-                        let total =
-                            bytes_written.fetch_add(batch_bytes, Ordering::Relaxed) + batch_bytes;
-                        if let Some(cb) = progress {
-                            cb(total, total_bytes, false);
-                        }
+                    if let Err(error) = drain_contiguous(
+                        &mut writer,
+                        file_idx,
+                        &handle,
+                        files,
+                        cursors,
+                        in_flight,
+                        bytes_written,
+                        total_bytes,
+                        progress,
+                    ) {
+                        record_first_error(error_slot, error);
+                        return;
                     }
                 }
             }));
@@ -1955,6 +2049,12 @@ host_ceiling={} budget={}MiB reason=start",
 
     if !scope_result.ok() {
         return scope_result;
+    }
+    // Fail loudly if anything is stranded: every file's cursor must sit at its exact size with
+    // an empty reorder cushion, BEFORE finalize_remaining's set_len could paper over a hole and
+    // journal a corrupt depot (the verify-skip gap bug class). Resume trust is unsafe here.
+    if let Err(error) = assert_pipeline_drained(&files, &writers) {
+        return DepotWriteResult::fail(error, false);
     }
     if let Err(error) = files.finalize_remaining() {
         return DepotWriteResult::fail(error, true);
@@ -2080,25 +2180,33 @@ async fn run_async_fetch_driver(
                         }
                     };
                     if existing_chunk_matches(&handle, chunk) {
-                        // Verified chunks are already on disk as a contiguous prefix (jobs are in
-                        // offset order): advance the copy cursor past them without any write, so
-                        // the first mismatching chunk becomes head-of-line and appends at EOF.
-                        {
-                            let mut w = writers[file_idx].lock().expect("writer poisoned");
-                            w.cursor += chunk.cb_original as u64;
-                            cursors[file_idx].store(w.cursor, Ordering::Relaxed);
-                        }
-                        let total = bytes_written
-                            .fetch_add(chunk.cb_original as u64, Ordering::Relaxed)
-                            + chunk.cb_original as u64;
-                        if let Some(cb) = progress {
-                            cb(total, total_bytes, true);
-                        }
-                        if let Err(error) = files.complete_chunk(file_idx, &handle) {
+                        // Already on disk: park a Verified marker at the chunk's offset and let
+                        // the normal drain walk the cursor over it IN ORDER. Never bump the
+                        // cursor here directly — that assumed verified chunks form a contiguous
+                        // prefix, which breaks once a mismatching chunk has been dispatched for
+                        // re-download: later verified chunks would jump the cursor past the
+                        // unwritten gap and strand the re-downloaded chunk in `pending` forever
+                        // (finalize would then set_len over the hole and journal a corrupt
+                        // depot).
+                        let mut w = writers[file_idx].lock().expect("writer poisoned");
+                        w.pending
+                            .insert(chunk.offset, PendingEntry::Verified(chunk.cb_original as u64));
+                        if let Err(error) = drain_contiguous(
+                            &mut w,
+                            file_idx,
+                            &handle,
+                            files,
+                            cursors,
+                            in_flight,
+                            bytes_written,
+                            total_bytes,
+                            progress,
+                        ) {
                             record_first_error(error_slot, error);
                             aborted = true;
                             break;
                         }
+                        drop(w);
                         verify_since_yield += 1;
                         // While the pipe is busy, don't let a long verify run starve in-flight
                         // fetches; with nothing in flight there is nothing to starve, so blast on.
@@ -3102,9 +3210,11 @@ mod tests {
 
     #[test]
     fn ordered_writer_releases_only_the_contiguous_prefix() {
-        let pending = |raw_len: u64, data: &[u8]| PendingDecoded {
-            raw_len,
-            data: data.to_vec(),
+        let pending = |raw_len: u64, data: &[u8]| {
+            PendingEntry::Data(PendingDecoded {
+                raw_len,
+                data: data.to_vec(),
+            })
         };
         let mut writer = OrderedWriter::default();
         // A chunk beyond the cursor must NOT be released — copying it out would leave a hole.
@@ -3112,13 +3222,148 @@ mod tests {
         assert!(pop_contiguous(&mut writer).is_none());
         // The head-of-line chunk releases first...
         writer.pending.insert(0, pending(1, b"aa"));
-        let entry = pop_contiguous(&mut writer).expect("chunk at cursor");
+        let Some(PendingEntry::Data(entry)) = pop_contiguous(&mut writer) else {
+            panic!("chunk at cursor");
+        };
         assert_eq!(entry.data, b"aa");
         writer.cursor += entry.data.len() as u64;
         // ...then its contiguous successor drains in the same pass.
-        let entry = pop_contiguous(&mut writer).expect("contiguous successor");
+        let Some(PendingEntry::Data(entry)) = pop_contiguous(&mut writer) else {
+            panic!("contiguous successor");
+        };
         assert_eq!(entry.data, b"bb");
         assert!(pop_contiguous(&mut writer).is_none());
+        // A verified marker follows the same rule: released only exactly at the cursor.
+        writer.pending.insert(4, PendingEntry::Verified(2));
+        writer.cursor = 2;
+        assert!(pop_contiguous(&mut writer).is_none());
+        writer.cursor = 4;
+        assert!(matches!(
+            pop_contiguous(&mut writer),
+            Some(PendingEntry::Verified(2))
+        ));
+    }
+
+    /// The resume/verify gap scenario: a verified marker parked BEHIND a not-yet-rewritten gap
+    /// must wait for the gap's data; when the gap lands, data drains first and the marker walks
+    /// the cursor over the verified tail — no hole, no stranding, exact final bytes.
+    #[test]
+    fn drain_walks_verified_markers_over_a_gap_in_order() {
+        let dir = temp_dir("depot_writer_drain_verified_gap");
+        fs::create_dir_all(&dir).unwrap();
+        // Old install on disk: the tail region ("cc") is still valid, the head is not.
+        fs::write(dir.join("f.bin"), b"aacc").unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::content_manifest::Metadata {
+                filenames_encrypted: false,
+                depot_id: 7,
+                ..Default::default()
+            },
+            files: vec![crate::content_manifest::FileMapping {
+                filename: "f.bin".into(),
+                size: 4,
+                chunks: vec![
+                    ChunkData {
+                        offset: 0,
+                        cb_original: 2,
+                        crc: depot_adler_hash(b"BB"),
+                        ..Default::default()
+                    },
+                    ChunkData {
+                        offset: 2,
+                        cb_original: 2,
+                        crc: depot_adler_hash(b"cc"),
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        };
+        let files = DepotFiles::prepare(&manifest, dir.to_str().unwrap());
+        let handle = files.acquire(0).expect("acquire");
+        let mut writer = OrderedWriter::default();
+        let cursors = vec![AtomicU64::new(0)];
+        let in_flight = AtomicU64::new(3);
+        let bytes_written = AtomicU64::new(0);
+        // Marker behind the gap: the drain must NOT advance the cursor over the hole.
+        writer.pending.insert(2, PendingEntry::Verified(2));
+        drain_contiguous(
+            &mut writer,
+            0,
+            &handle,
+            &files,
+            &cursors,
+            &in_flight,
+            &bytes_written,
+            4,
+            None,
+        )
+        .unwrap();
+        assert_eq!(writer.cursor, 0, "marker behind a gap must wait");
+        assert_eq!(bytes_written.load(Ordering::Relaxed), 0);
+        // The gap's re-downloaded data lands: it drains first, then the marker walks the tail.
+        writer.pending.insert(
+            0,
+            PendingEntry::Data(PendingDecoded {
+                raw_len: 3,
+                data: b"BB".to_vec(),
+            }),
+        );
+        drain_contiguous(
+            &mut writer,
+            0,
+            &handle,
+            &files,
+            &cursors,
+            &in_flight,
+            &bytes_written,
+            4,
+            None,
+        )
+        .unwrap();
+        assert_eq!(writer.cursor, 4);
+        assert!(writer.pending.is_empty());
+        assert_eq!(in_flight.load(Ordering::Relaxed), 0, "budget freed on copy");
+        assert_eq!(bytes_written.load(Ordering::Relaxed), 4);
+        drop(handle);
+        assert_eq!(fs::read(dir.join("f.bin")).unwrap(), b"BBcc");
+        assert_pipeline_drained(&files, &[Mutex::new(writer)]).unwrap();
+    }
+
+    /// The finalize assertion must catch the stranded-pending shape loudly: a cursor short of
+    /// the file size with entries still buffered is a corrupt install, never a success.
+    #[test]
+    fn assert_pipeline_drained_catches_stranded_pending() {
+        let dir = temp_dir("depot_writer_assert_stranded");
+        fs::create_dir_all(&dir).unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::content_manifest::Metadata::default(),
+            files: vec![crate::content_manifest::FileMapping {
+                filename: "f.bin".into(),
+                size: 4,
+                chunks: vec![ChunkData {
+                    offset: 0,
+                    cb_original: 4,
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            signature: Vec::new(),
+        };
+        let files = DepotFiles::prepare(&manifest, dir.to_str().unwrap());
+        let mut writer = OrderedWriter::default();
+        writer.cursor = 2;
+        writer.pending.insert(
+            2,
+            PendingEntry::Data(PendingDecoded {
+                raw_len: 1,
+                data: b"BB".to_vec(),
+            }),
+        );
+        let error = assert_pipeline_drained(&files, &[Mutex::new(writer)]).unwrap_err();
+        assert!(error.contains("incomplete"), "{error}");
+        assert!(error.contains("stranded"), "{error}");
     }
 
     #[test]
