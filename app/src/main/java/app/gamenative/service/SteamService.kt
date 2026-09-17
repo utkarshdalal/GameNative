@@ -2597,6 +2597,15 @@ class SteamService : Service(), IChallengeUrlChanged {
                             )
                         } catch (e: GameDownloadService.DownloadFailedException) {
                             Timber.e(e, "App $appId failed to download")
+                            di.persistProgressSnapshot()
+                            if (GameDownloadService.reportFailure(GameSource.STEAM, appId.toString(), e.message)) {
+                                // Transient failure (e.g. the native stall watchdog's
+                                // timeout abort): the queue holds the slot and auto-retries
+                                // with backoff; the retry marker set wasAutoPaused, so
+                                // removeDownloadJob keeps the entry (UI shows Queued).
+                                removeDownloadJob(di.gameId)
+                                return@launch
+                            }
                             di.failedToDownload()
                             // Remove the downloading app info
                             runBlocking {

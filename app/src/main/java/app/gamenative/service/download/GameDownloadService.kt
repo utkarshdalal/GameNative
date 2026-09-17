@@ -603,23 +603,24 @@ object GameDownloadService {
      */
     fun isTransientFailure(message: String?): Boolean {
         val msg = message?.lowercase() ?: return false
+        // Status codes match on DIGIT boundaries, never as bare substrings: a number inside
+        // an offset/size (e.g. "idle timeout at offset 404128") must not classify as HTTP 404.
+        val permanentStatus = Regex("""(?<!\d)(401|403|404)(?!\d)""")
         val permanent = listOf(
-            "(401", "(403", "(404", " 401", " 403", " 404",
             "no depot key", "no manifest gid", "unsafe path",
             "no space", "disk full", "enospc",
             "decrypt", "parse failed", "manifest parse",
             "cancelled", "canceled",
         )
-        if (permanent.any { msg.contains(it) }) return false
+        if (permanent.any { msg.contains(it) } || permanentStatus.containsMatchIn(msg)) return false
+        val transientStatus = Regex("""(?<!\d)(429|500|502|503|504)(?!\d)""")
         val transient = listOf(
             "timed out", "timeout", "connection reset", "connection refused",
             "connection aborted", "broken pipe", "unexpected eof", "eof while",
             "dns", "unreachable", "network", "temporarily", "stalled",
-            "(429", "(500", "(502", "(503", "(504",
-            " 429", " 500", " 502", " 503", " 504",
             "no process-pool verdict", "no cdn servers",
         )
-        return transient.any { msg.contains(it) }
+        return transient.any { msg.contains(it) } || transientStatus.containsMatchIn(msg)
     }
 
     private fun retryBackoffMs(attempt: Int): Long {
