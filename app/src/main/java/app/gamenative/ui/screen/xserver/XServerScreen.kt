@@ -3966,9 +3966,17 @@ private fun setupXEnvironment(
             }
         }
 
-        var finalExecArgs = execArgs?.takeIf { it.isNotEmpty() } ?: container.execArgs
-        for (drive in Container.drivesIterator(container.drives)) {
-            if (drive[1].isNotEmpty()) finalExecArgs = finalExecArgs.replace(drive[1], "${drive[0]}:")
+        var finalExecArgs: String
+        if (execArgs.isNullOrEmpty()){
+           finalExecArgs = container.execArgs
+        }
+        else{
+            finalExecArgs = execArgs
+            for (drive in Container.drivesIterator(container.drives)) {
+                if (drive[1].isNotEmpty()) {
+                    finalExecArgs = finalExecArgs.replace(drive[1], "${drive[0]}:")
+                }
+            }
         }
 
         gameExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
