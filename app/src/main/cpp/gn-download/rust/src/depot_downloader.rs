@@ -414,9 +414,20 @@ pub fn download_resolved_depots_with_cancel_progress(
         }
 
         let cache_path = cfg.manifest_cache_path(depot.depot_id, depot.manifest_id);
-        let raw_manifest = match read_cached_manifest(&cache_path) {
-            Some(raw) => raw,
+        // A cached manifest is only usable when it parses AND its metadata matches the
+        // requested depot/gid — a truncated write or a file sitting under the wrong key
+        // is deleted and refetched once instead of poisoning every subsequent attempt
+        // ("manifest parse failed" is a permanent error; nothing would self-heal it).
+        let cached = read_cached_manifest(&cache_path).and_then(|raw| {
+            let parsed = ContentManifest::parse(&raw)?;
+            (parsed.metadata.depot_id == depot.depot_id
+                && parsed.metadata.gid_manifest == depot.manifest_id)
+                .then_some((raw, parsed))
+        });
+        let (_, mut manifest) = match cached {
+            Some(pair) => pair,
             None => {
+                let _ = fs::remove_file(&cache_path); // no-op when absent
                 if cancel.is_some_and(|cancel| cancel.load(Ordering::Relaxed)) {
                     return DepotDownloadResult::fail("cancelled");
                 }
@@ -424,7 +435,7 @@ pub fn download_resolved_depots_with_cancel_progress(
                 let refreshed_code = code_refresher
                     .and_then(|refresh| refresh(depot.depot_id, depot.manifest_id));
                 let request_code = refreshed_code.unwrap_or(depot.manifest_request_code);
-                let mut manifest = fetch_manifest_with_retry(
+                let mut fetched = fetch_manifest_with_retry(
                     &cdn,
                     &usable_servers,
                     depot.depot_id,
@@ -433,13 +444,13 @@ pub fn download_resolved_depots_with_cancel_progress(
                     "",
                     CdnClient::default_timeout(),
                 );
-                if !manifest.ok() {
+                if !fetched.ok() {
                     // One more pass with a code obtained after the failed attempts.
                     if let Some(fresh) = code_refresher
                         .and_then(|refresh| refresh(depot.depot_id, depot.manifest_id))
                         .filter(|fresh| *fresh != request_code)
                     {
-                        manifest = fetch_manifest_with_retry(
+                        fetched = fetch_manifest_with_retry(
                             &cdn,
                             &usable_servers,
                             depot.depot_id,
@@ -450,23 +461,31 @@ pub fn download_resolved_depots_with_cancel_progress(
                         );
                     }
                 }
-                if !manifest.ok() {
+                if !fetched.ok() {
                     return DepotDownloadResult::fail(format!(
                         "download: manifest fetch failed for depot {}: {}",
-                        depot.depot_id, manifest.error
+                        depot.depot_id, fetched.error
                     ));
                 }
-                let _ = write_manifest_cache(&cache_path, &manifest.raw_manifest);
-                manifest.raw_manifest
+                let Some(parsed) = ContentManifest::parse(&fetched.raw_manifest) else {
+                    return DepotDownloadResult::fail(format!(
+                        "download: manifest parse failed for depot {}",
+                        depot.depot_id
+                    ));
+                };
+                if parsed.metadata.depot_id != depot.depot_id
+                    || parsed.metadata.gid_manifest != depot.manifest_id
+                {
+                    return DepotDownloadResult::fail(format!(
+                        "download: manifest metadata mismatch for depot {}: served depot {} gid {}",
+                        depot.depot_id, parsed.metadata.depot_id, parsed.metadata.gid_manifest
+                    ));
+                }
+                let _ = write_manifest_cache(&cache_path, &fetched.raw_manifest);
+                (fetched.raw_manifest, parsed)
             }
         };
 
-        let Some(mut manifest) = ContentManifest::parse(&raw_manifest) else {
-            return DepotDownloadResult::fail(format!(
-                "download: manifest parse failed for depot {}",
-                depot.depot_id
-            ));
-        };
         if !manifest.decrypt_filenames(&depot.depot_key) {
             return DepotDownloadResult::fail(format!(
                 "download: filename decryption failed for depot {}",
@@ -570,7 +589,13 @@ fn write_manifest_cache(path: &Path, raw_manifest: &[u8]) -> bool {
     if fs::create_dir_all(parent).is_err() {
         return false;
     }
-    fs::write(path, raw_manifest).is_ok()
+    if fs::write(path, raw_manifest).is_err() {
+        // Never leave a partial write behind: the read side already treats an
+        // unparseable/mismatched file as a cache miss, but drop it now anyway.
+        let _ = fs::remove_file(path);
+        return false;
+    }
+    true
 }
 
 #[cfg(test)]
@@ -799,6 +824,86 @@ mod tests {
         assert!(skipped.success);
         assert_eq!(skipped.depots_completed, 0);
         assert_eq!(skipped.depots_skipped, 1);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn resolved_download_rejects_bad_cache_and_refetches() {
+        let dir = temp_dir("resolved_download_bad_cache");
+        let config_dir = config_dir_path(&dir);
+        fs::create_dir_all(&config_dir).unwrap();
+        let raw = raw_layout_manifest(100, 555, "empty.bin", 5);
+        // Wrong-key cache: named for gid 999, content is gid 555 (metadata mismatch).
+        fs::write(config_dir.join("100_999.manifest"), &raw).unwrap();
+        // Truncated cache: unparseable.
+        fs::write(config_dir.join("200_555.manifest"), &raw[..raw.len() / 2]).unwrap();
+
+        let server = CContentServerDirectoryServerInfo {
+            host: "cdn.example".into(),
+            https_support: "mandatory".into(),
+            ..Default::default()
+        };
+        let spec = |depot_id: u32, manifest_id: u64| ResolvedDepotSpec {
+            depot_id,
+            manifest_id,
+            depot_key: vec![1u8; 32],
+            manifest_request_code: 0,
+        };
+
+        // Both bad caches must be treated as a miss: refetch (fails here — no real
+        // CDN) instead of failing permanently on parse, and the poison file is gone.
+        let wrong_key = download_resolved_depots(
+            dir.to_str().unwrap(),
+            &[spec(100, 999)],
+            std::slice::from_ref(&server),
+            "",
+            false,
+            4,
+            4,
+        );
+        assert!(!wrong_key.success);
+        assert!(
+            wrong_key.error.contains("manifest fetch failed"),
+            "{}",
+            wrong_key.error
+        );
+        assert!(
+            !config_dir.join("100_999.manifest").exists(),
+            "mismatched cache must be deleted"
+        );
+
+        let truncated = download_resolved_depots(
+            dir.to_str().unwrap(),
+            &[spec(200, 555)],
+            std::slice::from_ref(&server),
+            "",
+            false,
+            4,
+            4,
+        );
+        assert!(!truncated.success);
+        assert!(
+            truncated.error.contains("manifest fetch failed"),
+            "{}",
+            truncated.error
+        );
+        assert!(
+            !config_dir.join("200_555.manifest").exists(),
+            "truncated cache must be deleted"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn manifest_cache_write_roundtrips_and_replaces() {
+        let dir = temp_dir("manifest_cache_write");
+        let path = dir.join("100_555.manifest");
+        let raw = raw_layout_manifest(100, 555, "empty.bin", 5);
+        assert!(write_manifest_cache(&path, &raw));
+        assert_eq!(fs::read(&path).unwrap(), raw);
+        // Second write replaces cleanly.
+        assert!(write_manifest_cache(&path, &raw[..raw.len() / 2]));
+        assert_eq!(fs::read(&path).unwrap().len(), raw.len() / 2);
         let _ = fs::remove_dir_all(&dir);
     }
 
