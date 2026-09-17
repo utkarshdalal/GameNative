@@ -2413,6 +2413,14 @@
     <string name="power_control_fan_control_desc">Utrzymuje docelową temperaturę przy minimalnym hałasie wentylatora. Zweryfikowano na Retroid Pocket 6.</string>
     <string name="power_control_game_pinning">Przypinanie gry</string>
     <string name="power_control_game_pinning_desc">Utrzymuje grę na szybkich rdzeniach CPU. Zweryfikowano na Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning_mode_auto">Automatyczny</string>
+    <string name="power_control_game_pinning_mode_auto_desc">Automatycznie przypina grę i procesy w tle. Może nie pasować do każdego urządzenia.</string>
+    <string name="power_control_game_pinning_mode_off">Wyłączony</string>
+    <string name="power_control_game_pinning_mode_off_desc">Gra podąża za listą CPU ustawioną w konfiguracji kontenera. Procesy w tle pozostają nieprzypięte.</string>
+    <string name="power_control_game_pinning_mode_manual">Ręczny</string>
+    <string name="power_control_game_pinning_mode_manual_desc">Przypina grę i procesy w tle do rdzeni wybranych poniżej. Nadpisuje listę CPU kontenera.</string>
+    <string name="power_control_game_pinning_manual_game_cores">Rdzenie gry</string>
+    <string name="power_control_game_pinning_manual_background_cores">Rdzenie procesów w tle</string>
     <string name="power_control_hud_show_fan">Pokaż prędkość wentylatora</string>
     <string name="power_control_hud_show_tuner">Pokaż limity taktowania dostrajania</string>
     <string name="power_control_tuning_strategy">Strategia dostrajania</string>

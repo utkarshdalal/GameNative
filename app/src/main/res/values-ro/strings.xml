@@ -2401,6 +2401,14 @@
     <string name="power_control_fan_control_desc">Menține o temperatură țintă cu zgomot minim al ventilatorului. Verificat pe Retroid Pocket 6.</string>
     <string name="power_control_game_pinning">Fixare joc</string>
     <string name="power_control_game_pinning_desc">Menține jocul pe nucleele CPU rapide. Verificat pe Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning_mode_auto">Automat</string>
+    <string name="power_control_game_pinning_mode_auto_desc">Fixează automat jocul și procesele de fundal. Poate să nu fie potrivită pentru toate dispozitivele.</string>
+    <string name="power_control_game_pinning_mode_off">Dezactivat</string>
+    <string name="power_control_game_pinning_mode_off_desc">Jocul urmează Lista de CPU setată în configurările containerului. Procesele de fundal rămân nefixate.</string>
+    <string name="power_control_game_pinning_mode_manual">Manual</string>
+    <string name="power_control_game_pinning_mode_manual_desc">Fixează jocul și procesele de fundal pe nucleele alese mai jos. Suprascrie Lista de CPU a containerului.</string>
+    <string name="power_control_game_pinning_manual_game_cores">Nuclee pentru joc</string>
+    <string name="power_control_game_pinning_manual_background_cores">Nuclee pentru procesele de fundal</string>
     <string name="power_control_hud_show_fan">Afișează viteza ventilatorului</string>
     <string name="power_control_hud_show_tuner">Afișează limitele de frecvență ale reglării</string>
     <string name="power_control_tuning_strategy">Strategie de reglare</string>
