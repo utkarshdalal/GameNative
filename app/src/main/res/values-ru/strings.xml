@@ -2387,6 +2387,14 @@ https://gamenative.app
     <string name="power_control_fan_control_desc">Поддерживает заданную температуру при минимальном шуме вентилятора. Проверено на Retroid Pocket 6.</string>
     <string name="power_control_game_pinning">Закрепление игры</string>
     <string name="power_control_game_pinning_desc">Удерживает игру на быстрых ядрах CPU. Проверено на Retroid Pocket 6.</string>
+    <string name="power_control_game_pinning_mode_auto">Авто</string>
+    <string name="power_control_game_pinning_mode_auto_desc">Автоматически закрепляет игру и фоновые процессы. Может не подойти для всех устройств.</string>
+    <string name="power_control_game_pinning_mode_off">Выключено</string>
+    <string name="power_control_game_pinning_mode_off_desc">Игра следует списку CPU, заданному в настройках контейнера. Фоновые процессы не закрепляются.</string>
+    <string name="power_control_game_pinning_mode_manual">Вручную</string>
+    <string name="power_control_game_pinning_mode_manual_desc">Закрепляет игру и фоновые процессы на ядрах, выбранных ниже. Переопределяет список CPU контейнера.</string>
+    <string name="power_control_game_pinning_manual_game_cores">Ядра игры</string>
+    <string name="power_control_game_pinning_manual_background_cores">Ядра фоновых процессов</string>
     <string name="power_control_hud_show_fan">Показывать скорость вентилятора</string>
     <string name="power_control_hud_show_tuner">Показывать пределы частот настройки</string>
     <string name="power_control_tuning_strategy">Стратегия настройки</string>
