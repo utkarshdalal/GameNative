@@ -119,6 +119,28 @@ public class WinHandler {
     private static final int STANDALONE_PHONE_RUMBLE_DURATION_MS = 70;
     private static final int STANDALONE_PHONE_RUMBLE_THROTTLE_MS = 120;
 
+    /**
+     * Optional Steam-Controller rumble tap. A raw BLE Steam Controller is not an Android input device, so game
+     * rumble would otherwise only buzz the phone. When a TritonMapper session is live it registers itself for the
+     * slot it feeds (see {@link #setScRumbleForwarder}) so that slot's XInput rumble goes to the controller's own
+     * motors. Every OTHER slot keeps the stock per-device path, so a second pad still rumbles normally.
+     * Unregistered (default) = unchanged behavior for all slots.
+     */
+    public interface RumbleForwarder { void onRumble(short lowFreq, short highFreq); }
+    private static volatile RumbleForwarder scRumbleForwarder = null;
+    private static volatile int scRumbleSlot = -1;
+
+    /** Register (or clear, with a null forwarder) the Steam-Controller rumble tap for one gamepad slot. */
+    public static void setScRumbleForwarder(int slot, RumbleForwarder forwarder) {
+        scRumbleSlot = forwarder != null ? slot : -1;
+        scRumbleForwarder = forwarder;
+    }
+
+    /** The tap for {@code slot}, or null if the Steam Controller doesn't own that slot. */
+    private static RumbleForwarder scRumbleForwarderFor(int slot) {
+        return slot == scRumbleSlot ? scRumbleForwarder : null;
+    }
+
     // Add method to set InputControlsView
     public void setInputControlsView(InputControlsView view) {
         this.inputControlsView = view;
@@ -197,7 +219,7 @@ public class WinHandler {
         } else {
             Log.i(TAG, "Player 1 has no assigned connected controller");
         }
-        setGamepadSlotConnected(0, currentController != null || isVirtualGamepadActive());
+        setGamepadSlotConnected(0, currentController != null || isVirtualGamepadSlot(0));
         // Initialize Extra Players (2, 3, 4)
         for (int i = 0; i < extraControllers.length; i++) {
             // Player 2 is slot 1, which corresponds to extraControllers[0]
@@ -211,7 +233,7 @@ public class WinHandler {
             } else {
                 Log.i(TAG, "Player " + (i + 2) + " has no assigned connected controller");
             }
-            setGamepadSlotConnected(i + 1, extraControllers[i] != null);
+            setGamepadSlotConnected(i + 1, extraControllers[i] != null || isVirtualGamepadSlot(i + 1));
         }
 
         if (clearDisconnectedSlots) {
@@ -265,7 +287,11 @@ public class WinHandler {
     }
 
     private boolean isVirtualGamepadSlot(int slot) {
-        return slot == 0 && isVirtualGamepadActive();
+        // A Steam Controller reserves its slot in ControllerManager but never appears as an InputDevice, so
+        // every "is a pad assigned here?" test reads its slot as empty. Plugging in a physical pad triggers a
+        // hotplug refresh, and without this the refresh would mark the SC's slot disconnected and wipe its
+        // state — sticks and buttons dead while its trackpad/keyboard output (which bypasses the slot) lives on.
+        return (slot == 0 && isVirtualGamepadActive()) || controllerManager.isSlotReserved(slot);
     }
 
     private boolean isVirtualGamepadActive() {
@@ -585,7 +611,11 @@ public class WinHandler {
                 final ControlsProfile profile = inputControlsView.getProfile();
                 final boolean useVirtualGamepad = inputControlsView != null && profile != null && profile.isVirtualGamepad();
                 int processId = this.receiveData.getInt();
-                if (!useVirtualGamepad && ((externalController = this.currentController) == null || !externalController.isConnected())) {
+                externalController = this.currentController;
+                // ExternalController.getController(0) means "the first game controller Android reports", so a
+                // pad plugged in next to a Steam Controller would be adopted as Player 1 on top of it.
+                if (!useVirtualGamepad && !controllerManager.isSlotReserved(0)
+                        && (externalController == null || !externalController.isConnected())) {
                     this.currentController = ExternalController.getController(0);
                 }
                 boolean enabled2 = this.currentController != null || useVirtualGamepad;
@@ -842,6 +872,15 @@ public class WinHandler {
         if (slot < 0 || slot >= MAX_PLAYERS) {
             return;
         }
+        // A live Steam Controller owns rumble output for ITS slot only (its own motors); forward and skip the
+        // per-slot device path. Other slots fall through to the stock path below.
+        RumbleForwarder fwd = scRumbleForwarderFor(slot);
+        if (fwd != null) {
+            // Cancel any local buzz still in flight on this slot so it doesn't linger alongside the SC's rumble.
+            if (isRumbling[slot]) { stopDeviceVibration(rumbleDeviceIds[slot]); isRumbling[slot] = false; }
+            fwd.onRumble(lowFreq, highFreq);
+            return;
+        }
         if (startDeviceVibration(rumbleDeviceIds[slot], lowFreq, highFreq)) {
             isRumbling[slot] = true;
         }
@@ -917,6 +956,9 @@ public class WinHandler {
         if (slot < 0 || slot >= MAX_PLAYERS) {
             return;
         }
+        // A live Steam Controller owns rumble output for ITS slot; forward the stop and skip the device path.
+        RumbleForwarder fwd = scRumbleForwarderFor(slot);
+        if (fwd != null) { fwd.onRumble((short) 0, (short) 0); return; }
         if (!isRumbling[slot]) return;
         stopDeviceVibration(rumbleDeviceIds[slot]);
         isRumbling[slot] = false;
@@ -987,6 +1029,10 @@ public class WinHandler {
             }
         }
 
+        // Below here events fall through to Player 1's buffer. A pad that has no slot yet (the assignment
+        // settles ~300 ms after it connects) would land on the Steam Controller's slot, so drop it instead.
+        if (controllerManager.isSlotReserved(0)) return false;
+
         ExternalController externalController = this.currentController;
         // Adopt newly connected controller if deviceId mismatches
         if ((externalController == null || externalController.getDeviceId() != event.getDeviceId()) && ExternalController.isJoystickDevice(event)) {
@@ -1050,6 +1096,10 @@ public class WinHandler {
                 return handled;
             }
         }
+
+        // Same fall-through as onGenericMotionEvent: don't let an unassigned pad write Player 1's buffer
+        // while the Steam Controller holds that slot.
+        if (controllerManager.isSlotReserved(0)) return false;
 
         if ((externalController == null || externalController.getDeviceId() != event.getDeviceId())
                 && device != null && ExternalController.isGameController(device)

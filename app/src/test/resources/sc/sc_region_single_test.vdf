@@ -1,0 +1,107 @@
+"controller_mappings"
+{
+	"version"		"3"
+	"title"		"SC Region + SingleButton Test"
+	"description"		"Right pad = mouse_region (left-quarter, 30% wide, inverted) for B1; left pad = single_button bound to key F for B2."
+	"controller_type"		"controller_triton"
+	"group"
+	{
+		"id"		"0"
+		"mode"		"four_buttons"
+		"inputs"
+		{
+			"button_a" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button A" } } } }
+			"button_b" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button B" } } } }
+			"button_x" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button X" } } } }
+			"button_y" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button Y" } } } }
+		}
+	}
+	"group"
+	{
+		"id"		"1"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+			"click" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button JOYSTICK_LEFT" } } } }
+		}
+		"settings" { "deadzone_inner_radius" "3500" }
+	}
+	"group"
+	{
+		"id"		"2"
+		"mode"		"joystick_move"
+		"inputs"
+		{
+			"click" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button JOYSTICK_RIGHT" } } } }
+		}
+		"settings" { "deadzone_inner_radius" "3500" }
+	}
+	"group"
+	{
+		"id"		"3"
+		"mode"		"trigger"
+		"inputs" {}
+		"settings" { "output_trigger" "1" }
+	}
+	"group"
+	{
+		"id"		"4"
+		"mode"		"trigger"
+		"inputs" {}
+		"settings" { "output_trigger" "2" }
+	}
+	"group"
+	{
+		"id"		"5"
+		"mode"		"single_button"
+		"inputs"
+		{
+			"click" { "activators" { "Full_Press" { "bindings" { "binding" "key_press F" } } } }
+		}
+	}
+	"group"
+	{
+		"id"		"6"
+		"mode"		"mouse_region"
+		"inputs"
+		{
+			"click" { "activators" { "Full_Press" { "bindings" { "binding" "mouse_button LEFT" } } } }
+		}
+		"settings"
+		{
+			"position_x"		"25"
+			"position_y"		"50"
+			"scale"		"30"
+			"invert_x"		"1"
+			"invert_y"		"1"
+		}
+	}
+	"group"
+	{
+		"id"		"7"
+		"mode"		"switches"
+		"inputs"
+		{
+			"left_bumper" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button SHOULDER_LEFT" } } } }
+			"right_bumper" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button SHOULDER_RIGHT" } } } }
+			"button_menu" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button START" } } } }
+			"button_escape" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button SELECT" } } } }
+		}
+	}
+	"preset"
+	{
+		"id"		"0"
+		"name"		"Default"
+		"group_source_bindings"
+		{
+			"0"		"button_diamond active"
+			"1"		"joystick active"
+			"2"		"right_joystick active"
+			"3"		"left_trigger active"
+			"4"		"right_trigger active"
+			"5"		"left_trackpad active"
+			"6"		"right_trackpad active"
+			"7"		"switch active"
+		}
+	}
+}
