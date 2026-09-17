@@ -1,5 +1,6 @@
 package app.gamenative.utils
 
+import com.winlator.core.WineRegistryEditor
 import `in`.dragonbra.javasteam.types.KeyValue
 import timber.log.Timber
 import java.io.File
@@ -9,6 +10,7 @@ object SteamInstallScriptRunProcess {
         val winPath: String,
         val args: String,
         val hostFile: File,
+        val hasRunKey: String = syntheticHasRunKey(winPath),
     ) {
         val exeName: String get() = winPath.substringAfterLast('\\')
         val commandLine: String
@@ -20,7 +22,30 @@ object SteamInstallScriptRunProcess {
 
     private const val GAME_DRIVE_ROOT = "A:\\"
     private const val SCRIPT_NAME = "installscript.vdf"
+    private const val SYNTHETIC_KEY_ROOT = "Software\\Wow6432Node\\Valve\\Steam\\Apps\\CommonRedist\\GameNative"
     private val PROCESS_KEY = Regex("(?i)^process\\s*(\\d+)$")
+
+    fun syntheticHasRunKey(winPath: String): String =
+        SYNTHETIC_KEY_ROOT + "\\" + winPath.substringAfter(':').trim('\\')
+
+    fun hasRun(prefixDir: File, entry: Entry): Boolean {
+        val systemReg = File(prefixDir, "system.reg")
+        if (!systemReg.isFile) return false
+        return WineRegistryEditor(systemReg).use { it.hasKey(entry.hasRunKey) }
+    }
+
+    fun markRun(prefixDir: File, entries: List<Entry>) {
+        if (entries.isEmpty()) return
+        val systemReg = File(prefixDir, "system.reg")
+        if (!systemReg.isFile) {
+            prefixDir.mkdirs()
+            systemReg.writeText("WINE REGISTRY Version 2\n\n")
+        }
+        WineRegistryEditor(systemReg).use { editor ->
+            editor.setCreateKeyIfNotExist(true)
+            for (entry in entries) editor.setDwordValue(entry.hasRunKey, "Installed", 1)
+        }
+    }
 
     fun entries(gameDir: File, installDir: String = GAME_DRIVE_ROOT): List<Entry> =
         scripts(gameDir).flatMap { script ->
@@ -47,10 +72,17 @@ object SteamInstallScriptRunProcess {
                 val relative = winPath.substring(installDir.length).replace('\\', '/')
                 val hostFile = resolveCaseInsensitive(gameDir, relative) ?: continue
                 val args = SteamInstallScriptRegistry.expandTokens(block["command $index"].value.orEmpty(), tokens)
-                entries += Entry(winPath, args, hostFile)
+                val hasRunKey = block["HasRunKey"].value?.let { scriptHasRunKey(it) } ?: syntheticHasRunKey(winPath)
+                entries += Entry(winPath, args, hostFile, hasRunKey)
             }
         }
         return entries
+    }
+
+    private fun scriptHasRunKey(raw: String): String? {
+        val (hive, path) = SteamInstallScriptRegistry.splitHive(raw.trim()) ?: return null
+        if (hive != SteamInstallScriptRegistry.Hive.HKLM) return null
+        return SteamInstallScriptRegistry.redirectTo32BitView(path)
     }
 
     private fun scripts(gameDir: File): List<File> {

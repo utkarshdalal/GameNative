@@ -43,17 +43,55 @@ class VcRedistStepTest {
         installer.writeText("dummy")
     }
 
+    private fun systemReg(): String = File(rootDir, ".wine/system.reg").readText()
+
     @Test
-    fun appliesTo_returnsTrue_whenMarkerMissing() {
-        val applies = VcRedistStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath)
-        assertTrue(applies)
+    fun appliesTo_ignoresGameDirMarker() {
+        MarkerUtils.addMarker(gameDir.absolutePath, Marker.VCREDIST_INSTALLED)
+        assertTrue(VcRedistStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
     }
 
     @Test
-    fun appliesTo_returnsFalse_whenMarkerExists() {
-        MarkerUtils.addMarker(gameDir.absolutePath, Marker.VCREDIST_INSTALLED)
-        val applies = VcRedistStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath)
-        assertFalse(applies)
+    fun buildCommand_returnsNull_whenHasRunKeyAlreadyInPrefix() {
+        addInstaller("_CommonRedist/MSVC2017/VC_redist.x86.exe")
+        assertEquals("A:\\_CommonRedist\\MSVC2017\\VC_redist.x86.exe /install /passive /norestart", build())
+
+        VcRedistStep.onCompleted(container, gameDir)
+
+        assertTrue(systemReg().contains("[Software\\\\Wow6432Node\\\\Valve\\\\Steam\\\\Apps\\\\CommonRedist\\\\GameNative\\\\_CommonRedist\\\\MSVC2017\\\\VC_redist.x86.exe]"))
+        assertEquals(null, build())
+    }
+
+    @Test
+    fun onCompleted_writesScriptHasRunKeyUnderWow6432Node() {
+        addInstaller("_CommonRedist/vcredist/2022/VC_redist.x64.exe")
+        File(gameDir, "_CommonRedist/vcredist/2022/installscript.vdf").writeText(
+            """
+            "InstallScript" { "Run Process" { "vc" {
+                "HasRunKey" "HKEY_LOCAL_MACHINE\\Software\\Valve\\Steam\\Apps\\CommonRedist\\vcredist\\2022\\x64"
+                "process 1" "%INSTALLDIR%\\_CommonRedist\\vcredist\\2022\\VC_redist.x64.exe"
+                "command 1" "/install /quiet /norestart"
+            } } }
+            """.trimIndent(),
+        )
+        checkNotNull(build())
+
+        VcRedistStep.onCompleted(container, gameDir)
+
+        assertTrue(systemReg().contains("[Software\\\\Wow6432Node\\\\Valve\\\\Steam\\\\Apps\\\\CommonRedist\\\\vcredist\\\\2022\\\\x64]"))
+        assertEquals(null, build())
+    }
+
+    @Test
+    fun buildCommand_runsOnlyEntriesWithoutHasRunKey() {
+        addInstaller("_CommonRedist/vcredist/2019/VC_redist.x64.exe")
+        addInstaller("_CommonRedist/vcredist/2022/VC_redist.x64.exe")
+        checkNotNull(build())
+        VcRedistStep.onCompleted(container, gameDir)
+        File(gameDir, "_CommonRedist/vcredist/2022/VC_redist.x64.exe").delete()
+        addInstaller("_CommonRedist/vcredist/2013/vcredist_x64.exe")
+
+        assertEquals("A:\\_CommonRedist\\vcredist\\2013\\vcredist_x64.exe /install /passive /norestart", build())
     }
 
     @Test

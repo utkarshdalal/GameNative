@@ -68,9 +68,7 @@ object VcRedistStep : PreInstallStep {
         container: Container,
         gameSource: GameSource,
         gameDirPath: String,
-    ): Boolean {
-        return !MarkerUtils.hasMarker(gameDirPath, Marker.VCREDIST_INSTALLED)
-    }
+    ): Boolean = true
 
     override fun buildCommand(
         container: Container,
@@ -79,34 +77,49 @@ object VcRedistStep : PreInstallStep {
         gameDir: File,
         gameDirPath: String,
     ): String? {
-        val parts = mutableListOf<String>()
+        val pending = pendingEntries(container, gameDir)
+        if (pending.isEmpty()) return null
+        if (pending.any { isV140Installer(it.exeName) }) writeV140Overrides(container)
+        return pending.joinToString(" & ") { it.commandLine }
+    }
+
+    override fun onCompleted(container: Container, gameDir: File) {
+        val prefixDir = prefixDir(container) ?: return
+        SteamInstallScriptRunProcess.markRun(prefixDir, pendingEntries(container, gameDir))
+    }
+
+    private fun prefixDir(container: Container): File? =
+        container.rootDir?.path?.takeIf { it.isNotEmpty() }?.let { File(it, ".wine") }
+
+    private fun pendingEntries(container: Container, gameDir: File): List<SteamInstallScriptRunProcess.Entry> {
+        val prefixDir = prefixDir(container) ?: return candidates(gameDir)
+        return candidates(gameDir).filter { !SteamInstallScriptRunProcess.hasRun(prefixDir, it) }
+    }
+
+    private fun candidates(gameDir: File): List<SteamInstallScriptRunProcess.Entry> {
         val scripted = SteamInstallScriptRunProcess.entries(gameDir).filter { isVcRedistExe(it.exeName) }
-        if (scripted.isNotEmpty()) {
-            parts += scripted.map { it.commandLine }
-        } else {
-            for ((winPath, args) in vcRedistMap) {
-                if (winPath.length < 4 || winPath[1] != ':' || winPath[2] != '\\') continue
-                val rest = winPath.substring(3)
-                val lastSep = rest.lastIndexOf('\\')
-                if (lastSep < 0) continue
-                val hostFile = File(gameDir, rest.replace('\\', '/'))
-                if (!hostFile.isFile) continue
-                parts.add(if (args.isEmpty()) winPath else "$winPath $args")
-            }
-            val covered = vcRedistMap.keys.map { it.lowercase() }.toSet()
-            File(gameDir, "_CommonRedist/vcredist").listFiles()?.sortedBy { it.name }?.forEach { yearDir ->
-                if (!yearDir.isDirectory) return@forEach
-                yearDir.listFiles()?.sortedBy { it.name }?.forEach { exe ->
-                    if (!exe.isFile || !isVcRedistExe(exe.name)) return@forEach
-                    val winPath = "A:\\_CommonRedist\\vcredist\\${yearDir.name}\\${exe.name}"
-                    if (winPath.lowercase() in covered) return@forEach
-                    parts.add("$winPath /install /passive /norestart")
-                }
+        if (scripted.isNotEmpty()) return scripted
+
+        val fallback = mutableListOf<SteamInstallScriptRunProcess.Entry>()
+        for ((winPath, args) in vcRedistMap) {
+            if (winPath.length < 4 || winPath[1] != ':' || winPath[2] != '\\') continue
+            val rest = winPath.substring(3)
+            if (rest.lastIndexOf('\\') < 0) continue
+            val hostFile = File(gameDir, rest.replace('\\', '/'))
+            if (!hostFile.isFile) continue
+            fallback += SteamInstallScriptRunProcess.Entry(winPath, args, hostFile)
+        }
+        val covered = vcRedistMap.keys.map { it.lowercase() }.toSet()
+        File(gameDir, "_CommonRedist/vcredist").listFiles()?.sortedBy { it.name }?.forEach { yearDir ->
+            if (!yearDir.isDirectory) return@forEach
+            yearDir.listFiles()?.sortedBy { it.name }?.forEach { exe ->
+                if (!exe.isFile || !isVcRedistExe(exe.name)) return@forEach
+                val winPath = "A:\\_CommonRedist\\vcredist\\${yearDir.name}\\${exe.name}"
+                if (winPath.lowercase() in covered) return@forEach
+                fallback += SteamInstallScriptRunProcess.Entry(winPath, "/install /passive /norestart", exe)
             }
         }
-        if (parts.isEmpty()) return null
-        if (parts.any { isV140Installer(it) }) writeV140Overrides(container)
-        return parts.joinToString(" & ")
+        return fallback
     }
 
     private fun isVcRedistExe(name: String): Boolean {
@@ -114,12 +127,10 @@ object VcRedistStep : PreInstallStep {
         return lower.endsWith(".exe") && (lower.startsWith("vc_redist") || lower.startsWith("vcredist"))
     }
 
-    private val v140InstallerPattern = Regex("(?i)\\\\vc_redist[^\\\\]*\\.exe")
-
-    private fun isV140Installer(part: String): Boolean = v140InstallerPattern.containsMatchIn(part)
+    private fun isV140Installer(exeName: String): Boolean = exeName.startsWith("vc_redist", ignoreCase = true)
 
     private fun writeV140Overrides(container: Container) {
-        val prefixDir = File(container.rootDir, ".wine")
+        val prefixDir = prefixDir(container) ?: return
         val userReg = File(prefixDir, "user.reg")
         runCatching {
             if (!userReg.isFile) {

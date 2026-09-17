@@ -61,6 +61,10 @@ class SteamInstallScriptRunProcessTest {
         assertEquals(listOf("/q:a", "/silent"), entries.map { it.args })
         assertEquals("A:\\VCRedist\\vcredist_x86.exe /q:a", entries[0].commandLine)
         assertEquals("vcredist_x86.exe", entries[0].exeName)
+        assertEquals(
+            "Software\\Wow6432Node\\Valve\\Steam\\Apps\\CommonRedist\\GameNative\\VCRedist\\vcredist_x86.exe",
+            entries[0].hasRunKey,
+        )
     }
 
     @Test
@@ -113,5 +117,20 @@ class SteamInstallScriptRunProcessTest {
             ),
             entries.map { it.commandLine },
         )
+        assertEquals(
+            "Software\\Wow6432Node\\Valve\\Steam\\Apps\\CommonRedist\\vcredist\\2019\\x64",
+            entries[1].hasRunKey,
+        )
+    }
+
+    @Test
+    fun hasRunAndMarkRun_roundTripThroughSystemReg() {
+        touch("VCRedist/vcredist_x86.exe")
+        val prefixDir = File(gameDir, "prefix")
+        val entry = SteamInstallScriptRunProcess.Entry("A:\\VCRedist\\vcredist_x86.exe", "/q", File(gameDir, "VCRedist/vcredist_x86.exe"))
+
+        assertTrue(!SteamInstallScriptRunProcess.hasRun(prefixDir, entry))
+        SteamInstallScriptRunProcess.markRun(prefixDir, listOf(entry))
+        assertTrue(SteamInstallScriptRunProcess.hasRun(prefixDir, entry))
     }
 }

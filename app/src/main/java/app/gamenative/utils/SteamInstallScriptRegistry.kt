@@ -148,7 +148,7 @@ object SteamInstallScriptRegistry {
         }
     }
 
-    private fun splitHive(path: String): Pair<Hive, String>? {
+    internal fun splitHive(path: String): Pair<Hive, String>? {
         val separator = path.indexOf('\\')
         val hiveName = if (separator < 0) path else path.substring(0, separator)
         val rest = if (separator < 0) "" else path.substring(separator + 1).trim('\\')
@@ -161,7 +161,7 @@ object SteamInstallScriptRegistry {
         return hive to rest
     }
 
-    private fun redirectTo32BitView(path: String): String {
+    internal fun redirectTo32BitView(path: String): String {
         val segments = path.split('\\')
         if (segments.size < 2 || !segments[0].equals("Software", ignoreCase = true)) return path
         if (segments[1].equals("Wow6432Node", ignoreCase = true)) return path
