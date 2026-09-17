@@ -940,6 +940,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">模擬設定</string>
+    <string name="settings_accounts_title">遊戲啟動器帳戶</string>
+    <string name="settings_accounts_signed_out">未登入</string>
+    <string name="settings_accounts_ea_title">EA 帳戶</string>
+    <string name="settings_accounts_rockstar_title">Rockstar 帳戶</string>
     <string name="settings_emulation_orientations_title">允許的螢幕方向</string>
     <string name="settings_emulation_orientations_subtitle">選擇遊戲中可使用的螢幕方向</string>
     <string name="settings_emulation_default_config_title">修改預設配置</string>

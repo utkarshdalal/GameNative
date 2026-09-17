@@ -920,6 +920,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulation</string>
+    <string name="settings_accounts_title">Spiel-Launcher-Konten</string>
+    <string name="settings_accounts_signed_out">Nicht angemeldet</string>
+    <string name="settings_accounts_ea_title">EA-Konto</string>
+    <string name="settings_accounts_rockstar_title">Rockstar-Konto</string>
     <string name="settings_emulation_orientations_title">Erlaubte Ausrichtungen</string>
     <string name="settings_emulation_orientations_subtitle">Wähle, in welche Richtungen während des Spiels gedreht werden kann</string>
     <string name="settings_emulation_default_config_title">Standardkonfiguration ändern</string>

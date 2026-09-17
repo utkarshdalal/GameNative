@@ -1,6 +1,7 @@
 package app.gamenative.service.rockstar
 
 import android.content.Context
+import app.gamenative.service.SteamService
 import java.io.File
 import timber.log.Timber
 
@@ -8,6 +9,23 @@ import timber.log.Timber
 object RockstarLaunchSupport {
 
     fun isRockstarTitle(gameDir: File) = RockstarHelperArchive.usesRockstar(gameDir)
+
+    /**
+     * Removes tokens placeToken wrote into the game directories. Signing out has to clear these
+     * too: preLaunchApp falls back to a token already in place when a sign-in does not complete,
+     * so leaving them behind keeps the previous account working.
+     */
+    fun clearPlacedTokens() {
+        val installed = SteamService.getAllInstalledApps() ?: return
+        for (app in installed) {
+            val gameDir = File(SteamService.getAppDirPath(app.id))
+            if (!gameDir.isDirectory || !isRockstarTitle(gameDir)) continue
+            for (name in listOf(RockstarConstants.TOKEN_FILE, RockstarConstants.TOKEN_FILE + ".previous")) {
+                val file = File(gameDir, name)
+                if (file.exists() && file.delete()) Timber.i("Rockstar: removed %s from %s", name, gameDir.name)
+            }
+        }
+    }
 
     /**
      * Whether the game directory already holds a token the stub can use. A prefix set up by hand

@@ -938,6 +938,10 @@
 
     <!-- 设置：模拟组 -->
     <string name="settings_emulation_title">模拟设置</string>
+    <string name="settings_accounts_title">游戏启动器账户</string>
+    <string name="settings_accounts_signed_out">未登录</string>
+    <string name="settings_accounts_ea_title">EA 账户</string>
+    <string name="settings_accounts_rockstar_title">Rockstar 账户</string>
     <string name="settings_emulation_orientations_title">允许的屏幕方向</string>
     <string name="settings_emulation_orientations_subtitle">选择游戏中可使用的屏幕方向</string>
     <string name="settings_emulation_default_config_title">修改默认配置</string>

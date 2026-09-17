@@ -923,6 +923,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">エミュレーション</string>
+    <string name="settings_accounts_title">ゲームランチャーのアカウント</string>
+    <string name="settings_accounts_signed_out">サインインしていません</string>
+    <string name="settings_accounts_ea_title">EA アカウント</string>
+    <string name="settings_accounts_rockstar_title">Rockstar アカウント</string>
     <string name="settings_emulation_orientations_title">許可される向き</string>
     <string name="settings_emulation_orientations_subtitle">ゲーム内でどの方向に回転できるかを選択します</string>
     <string name="settings_emulation_default_config_title">デフォルト設定の変更</string>
