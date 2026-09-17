@@ -846,6 +846,8 @@
     <string name="pulseaudio_suspend_behavior_thread">Suspend via Thread (Default)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Suspend via Pactl (Powersave)</string>
     <string name="pulseaudio_low_latency">PulseAudio Low Latency Mode</string>
+    <string name="microphone_input">Microphone Input</string>
+    <string name="microphone_input_description">Expose the device microphone to Wine/Proton as a recording device. Requires the microphone permission.</string>
     <string name="show_fps">Show FPS</string>
     <string name="portrait_mode">Portrait Mode</string>
     <string name="portrait_mode_description">For 8BitDo FlipPad/GameSir Pocket Taco type controllers</string>

@@ -1,5 +1,11 @@
 package app.gamenative.ui.component.dialog
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -51,6 +57,23 @@ fun GeneralTabContent(
     aspectResolutionError: String,
 ) {
     val config = state.config.value
+
+    // Microphone input is opt-in and needs a runtime permission before it can be switched on.
+    val context = LocalContext.current
+    var micPermissionGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        micPermissionGranted = granted
+        // Only enable the option once the user actually granted access.
+        state.config.value = state.config.value.copy(micEnabled = granted)
+    }
+
     val graphicsDrivers = state.graphicsDrivers.value
     val glibcWineEntries = state.glibcWineEntries.value
     val bionicWineEntries = state.bionicWineEntries.value
@@ -332,6 +355,19 @@ fun GeneralTabContent(
                 onCheckedChange = { state.config.value = config.copy(pulseaudioLowLatency = it) },
             )
         }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.microphone_input)) },
+            subtitle = { Text(text = stringResource(R.string.microphone_input_description)) },
+            state = config.micEnabled,
+            onCheckedChange = { enabled ->
+                if (enabled && !micPermissionGranted) {
+                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                } else {
+                    state.config.value = config.copy(micEnabled = enabled)
+                }
+            },
+        )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.force_dlc)) },
