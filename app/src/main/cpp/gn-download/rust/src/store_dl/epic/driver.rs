@@ -16,10 +16,11 @@ use std::fs::{self, File};
 use std::os::unix::fs::FileExt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::fetch_core::{run_fetch, FetchItem, FetchOptions, FetchSink, SinkError};
+use crate::store_dl::ordered_drain::{OrderedDrain, DRAIN_COALESCE_BYTES};
 
 use super::manifest::{parse_manifest, Manifest};
 use super::plan::{
@@ -175,37 +176,93 @@ fn tmp_path_for(out_path: &Path) -> PathBuf {
     PathBuf::from(s)
 }
 
-/// One pending file's streamed-write state. Positioned `write_all_at` takes `&self`, so the
-/// handle is shared by the whole process pool without a lock.
+/// One pending file's streamed-write state. Parts park in the ordered drain and append to the
+/// tmp strictly in offset order — pure sequential appends, never a positioned write past EOF
+/// (the exFAT/FUSE zero-fill risk). The tmp handle opens LAZILY on the first drained write, so
+/// the run's peak open-fd count tracks files with active writes, not the whole pending set (a
+/// many-thousand-file title cannot exhaust the fd limit at setup).
 struct StreamFile {
-    handle: File,
+    handle: Mutex<Option<File>>,
+    drain: Mutex<OrderedDrain>,
     tmp_path: PathBuf,
     out_path: PathBuf,
+    size: u64,
     parts_total: u32,
     parts_written: AtomicU32,
     renamed: AtomicBool,
 }
 
 impl StreamFile {
-    /// Write one part and, when it was the last outstanding one, publish the file (delete any
-    /// stale final, rename tmp → final). Returns true when THIS write completed the file.
-    fn write_part(&self, src: &[u8], dst_off: u64) -> Result<bool, String> {
-        self.handle
-            .write_all_at(src, dst_off)
-            .map_err(|e| format!("write {}: {e}", self.tmp_path.display()))?;
-        if self.parts_written.fetch_add(1, Ordering::Relaxed) + 1 == self.parts_total {
-            let _ = fs::remove_file(&self.out_path);
-            fs::rename(&self.tmp_path, &self.out_path)
-                .map_err(|e| format!("rename {}: {e}", self.out_path.display()))?;
-            self.renamed.store(true, Ordering::Relaxed);
-            return Ok(true);
+    /// Queue one part's slice of a decoded chunk (Arc-shared — a chunk consumed by several
+    /// files is stored once), append every part now contiguous at the cursor as coalesced
+    /// sequential writes, and when the last outstanding part lands publish the file (close the
+    /// tmp, delete any stale final, rename tmp → final). Returns true when THIS call
+    /// completed the file.
+    fn enqueue_part(
+        &self,
+        data: &Arc<[u8]>,
+        src_off: u64,
+        dst_off: u64,
+        len: u64,
+    ) -> Result<bool, String> {
+        // The drain mutex serializes this file's insert → drain → append → publish sequence;
+        // different files proceed fully in parallel.
+        let mut drain = self.drain.lock().map_err(|_| "drain poisoned".to_string())?;
+        drain.insert(dst_off, len, Arc::clone(data), src_off as usize, len as usize);
+        let batches = drain.drain(DRAIN_COALESCE_BYTES);
+        for batch in &batches {
+            {
+                let mut guard = self
+                    .handle
+                    .lock()
+                    .map_err(|_| "tmp handle poisoned".to_string())?;
+                if guard.is_none() {
+                    // Lazy open: File::create also truncates any stale tmp from a crashed run.
+                    *guard = Some(File::create(&self.tmp_path).map_err(|e| {
+                        format!("create {}: {e}", self.tmp_path.display())
+                    })?);
+                }
+                guard
+                    .as_ref()
+                    .expect("tmp handle")
+                    .write_all_at(batch.bytes(), batch.offset)
+                    .map_err(|e| format!("write {}: {e}", self.tmp_path.display()))?;
+            }
+            self.parts_written
+                .fetch_add(batch.piece_lens.len() as u32, Ordering::Relaxed);
         }
-        Ok(false)
+        if self.parts_written.load(Ordering::Relaxed) != self.parts_total {
+            return Ok(false);
+        }
+        // Loud invariant: a fully-parted file must have drained exactly to its size — never
+        // publish over a gap (a part referencing a chunk that never arrived strands here).
+        if self.size > 0 && drain.cursor() != self.size {
+            return Err(format!(
+                "{}: drained {}/{} bytes with all parts counted",
+                self.out_path.display(),
+                drain.cursor(),
+                self.size
+            ));
+        }
+        drop(drain);
+        // Close before the rename so nothing keeps the tmp path busy.
+        let _ = self
+            .handle
+            .lock()
+            .map_err(|_| "tmp handle poisoned".to_string())?
+            .take();
+        let _ = fs::remove_file(&self.out_path);
+        fs::rename(&self.tmp_path, &self.out_path)
+            .map_err(|e| format!("rename {}: {e}", self.out_path.display()))?;
+        self.renamed.store(true, Ordering::Relaxed);
+        Ok(true)
     }
 }
 
-/// Sink: one downloaded body → verified in-memory decode → positioned writes into every
-/// consumer file (the GOG model: assemble during download, no assembly pass afterwards).
+/// Sink: one downloaded body → verified in-memory decode → the decoded chunk (Arc-shared) is
+/// queued into every consumer file's ordered drain, appending sequentially in offset order
+/// (the Steam/GOG model: assemble during download, no assembly pass afterwards, no positioned
+/// writes past EOF).
 struct StreamSink<'a> {
     plan: &'a EpicPlan,
     /// Chunk indices (into `manifest.unique_chunks`) of the items actually being fetched.
@@ -223,7 +280,7 @@ impl<'a> FetchSink for StreamSink<'a> {
             return Err(SinkError::Fatal(format!("item id {} out of range", item.id)));
         };
         let chunk = &self.plan.manifest.unique_chunks[ci];
-        let data = match super::chunk::decode_verified_chunk(
+        let data: Arc<[u8]> = match super::chunk::decode_verified_chunk(
             &body,
             chunk.verifiable_sha1(),
             if chunk.window_size > 0 {
@@ -232,7 +289,7 @@ impl<'a> FetchSink for StreamSink<'a> {
                 None
             },
         ) {
-            Ok(data) => data,
+            Ok(data) => Arc::from(data),
             // Every per-attempt failure in Java is "try the next CDN"; the core's Retry rotates
             // hosts and backs off the same way (bounded at its attempt cap).
             Err(reason) => return Err(SinkError::Retry(format!("{} {reason}", chunk.guid_str()))),
@@ -241,15 +298,16 @@ impl<'a> FetchSink for StreamSink<'a> {
         for t in &self.plan.consumers[ci] {
             let file = &self.files[t.file_ord];
             let end = (t.src_off + t.len) as usize;
-            let src = data.get(t.src_off as usize..end).ok_or_else(|| {
-                SinkError::Fatal(format!(
+            if end > data.len() {
+                return Err(SinkError::Fatal(format!(
                     "part slice {end} beyond chunk {} ({} bytes)",
                     chunk.guid_str(),
                     data.len()
-                ))
-            })?;
+                )));
+            }
             // A disk/FS error is not CDN-curable — fail the run instead of rotating hosts.
-            file.write_part(src, t.dst_off).map_err(SinkError::Fatal)?;
+            file.enqueue_part(&data, t.src_off, t.dst_off, t.len)
+                .map_err(SinkError::Fatal)?;
             let done = self.assembled.fetch_add(t.len, Ordering::Relaxed) + t.len;
             (self.assembly_progress)(done);
         }
@@ -370,12 +428,14 @@ pub fn run_plan(
             // already-renamed StreamFile so `files` stays 1:1 with `pending_file_indices` (the
             // plan's consumer ordinals index it directly); nothing ever writes to it.
             match File::create(&out_path) {
-                Ok(handle) => {
+                Ok(_handle) => {
                     log(&format!("empty file {}", file.filename));
                     files.push(StreamFile {
-                        handle,
+                        handle: Mutex::new(None),
+                        drain: Mutex::new(OrderedDrain::default()),
                         tmp_path: out_path.clone(),
                         out_path,
+                        size: 0,
                         parts_total: 0,
                         parts_written: AtomicU32::new(0),
                         renamed: AtomicBool::new(true),
@@ -389,23 +449,19 @@ pub fn run_plan(
             }
             continue;
         }
-        let tmp_path = tmp_path_for(&out_path);
-        // A stale tmp from a crashed run must not survive: File::create truncates it anyway.
-        match File::create(&tmp_path) {
-            Ok(handle) => files.push(StreamFile {
-                handle,
-                tmp_path,
-                out_path,
-                parts_total: file.parts.len() as u32,
-                parts_written: AtomicU32::new(0),
-                renamed: AtomicBool::new(false),
-            }),
-            Err(e) => {
-                outcome.error = format!("create {}: {e}", tmp_path.display());
-                log(&format!("FAIL {}", outcome.error));
-                return outcome;
-            }
-        }
+        // The tmp is NOT created here: it opens lazily on the file's first drained write
+        // (File::create then also truncates a stale tmp from a crashed run), so a big pending
+        // set cannot exhaust the fd limit at setup.
+        files.push(StreamFile {
+            handle: Mutex::new(None),
+            drain: Mutex::new(OrderedDrain::default()),
+            tmp_path: tmp_path_for(&out_path),
+            out_path,
+            size: file.file_size(),
+            parts_total: file.parts.len() as u32,
+            parts_written: AtomicU32::new(0),
+            renamed: AtomicBool::new(false),
+        });
     }
 
     for (i, h) in plan.hosts.iter().enumerate() {
@@ -532,6 +588,16 @@ pub fn run_plan(
         .iter()
         .filter(|f| f.renamed.load(Ordering::Relaxed))
         .count();
+    // GOG `unfinalized_pending()` parity: success requires EVERY file renamed. Anything left
+    // (e.g. a part referencing a chunk that never arrived) is a loud failure with the tmp
+    // cleaned up — never a silent `.eptmp`-forever success.
+    let unfinalized = files.len() - renamed;
+    if unfinalized > 0 {
+        outcome.error = format!("engine finished with {unfinalized} unfinalized file(s)");
+        log(&format!("FAIL {}", outcome.error));
+        cleanup_unfinished(&files);
+        return outcome;
+    }
     outcome.success = true;
     log(&format!(
         "chunksOK={} streamOK files={renamed} bytes={assembled}",
@@ -662,21 +728,22 @@ mod tests {
         let plan = build_plan(&req).unwrap();
         assert_eq!(plan.needed, vec![0, 1]);
 
-        // Mirror run_plan's StreamFile setup.
-        let mk = |name: &str, parts: u32| {
+        // Mirror run_plan's StreamFile setup (lazy tmp handle + ordered drain).
+        let mk = |name: &str, size: u64, parts: u32| {
             let out_path = dir.join(name);
             std::fs::create_dir_all(out_path.parent().unwrap()).unwrap();
-            let tmp_path = tmp_path_for(&out_path);
             StreamFile {
-                handle: File::create(&tmp_path).unwrap(),
-                tmp_path,
+                handle: Mutex::new(None),
+                drain: Mutex::new(OrderedDrain::default()),
+                tmp_path: tmp_path_for(&out_path),
                 out_path,
+                size,
                 parts_total: parts,
                 parts_written: AtomicU32::new(0),
                 renamed: AtomicBool::new(false),
             }
         };
-        let stream_files = vec![mk("Game/a.bin", 2), mk("Game/b.bin", 1)];
+        let stream_files = vec![mk("Game/a.bin", 6000, 2), mk("Game/b.bin", 500, 1)];
         let asm = Mutex::new(Vec::new());
         let assembly_progress = |b: u64| asm.lock().unwrap().push(b);
         let sink = StreamSink {
@@ -734,11 +801,12 @@ mod tests {
         let plan = build_plan(&req).unwrap();
         let out_path = dir.join("Game/x.bin");
         std::fs::create_dir_all(out_path.parent().unwrap()).unwrap();
-        let tmp_path = tmp_path_for(&out_path);
         let stream_files = vec![StreamFile {
-            handle: File::create(&tmp_path).unwrap(),
-            tmp_path,
+            handle: Mutex::new(None),
+            drain: Mutex::new(OrderedDrain::default()),
+            tmp_path: tmp_path_for(&out_path),
             out_path,
+            size: 500,
             parts_total: 1,
             parts_written: AtomicU32::new(0),
             renamed: AtomicBool::new(false),
@@ -764,9 +832,100 @@ mod tests {
     }
 
     #[test]
+    fn sink_out_of_order_parts_drain_in_offset_order() {
+        use super::super::chunk::test_support::build_chunk_body;
+        // Same shape as the fan-out test, but chunk 1 arrives FIRST: file a's second part
+        // (dst 4000) must park in the drain — not write past the gap — while file b's only
+        // part (dst 0) drains and completes immediately.
+        let d1 = vec![1u8; 4000];
+        let d2 = vec![2u8; 3000];
+        let b1 = build_chunk_body(&d1, true, 0, None);
+        let b2 = build_chunk_body(&d2, true, 0, None);
+        let chunks = vec![
+            TestChunk {
+                guid: [1, 2, 3, 4],
+                hash: 0,
+                sha1: [0; 20],
+                group: 0,
+                window: 4000,
+                file_size: b1.len() as u64,
+            },
+            TestChunk {
+                guid: [5, 6, 7, 8],
+                hash: 0,
+                sha1: [0; 20],
+                group: 0,
+                window: 3000,
+                file_size: b2.len() as u64,
+            },
+        ];
+        let files = vec![
+            TestFile {
+                name: "Game/a.bin".to_string(),
+                sha1: [0; 20],
+                tags: vec![],
+                parts: vec![(chunks[0].guid, 0, 4000), (chunks[1].guid, 0, 2000)],
+            },
+            TestFile {
+                name: "Game/b.bin".to_string(),
+                sha1: [0; 20],
+                tags: vec![],
+                parts: vec![(chunks[1].guid, 100, 500)],
+            },
+        ];
+        let manifest_bytes = build_manifest(&chunks, &files, 21, true);
+        let dir = super::super::chunk::test_support::temp_dir("ooo");
+        let mut req = request(dir.to_str().unwrap(), vec![0, 1]);
+        req.manifest_bytes = manifest_bytes;
+        let plan = build_plan(&req).unwrap();
+        let mk = |name: &str, size: u64, parts: u32| {
+            let out_path = dir.join(name);
+            std::fs::create_dir_all(out_path.parent().unwrap()).unwrap();
+            StreamFile {
+                handle: Mutex::new(None),
+                drain: Mutex::new(OrderedDrain::default()),
+                tmp_path: tmp_path_for(&out_path),
+                out_path,
+                size,
+                parts_total: parts,
+                parts_written: AtomicU32::new(0),
+                renamed: AtomicBool::new(false),
+            }
+        };
+        let stream_files = vec![mk("Game/a.bin", 6000, 2), mk("Game/b.bin", 500, 1)];
+        let sink = StreamSink {
+            plan: &plan,
+            fetch_chunks: &plan.needed,
+            files: &stream_files,
+            assembled: AtomicU64::new(0),
+            assembly_progress: &|_| {},
+        };
+        let item = |id: u64| FetchItem {
+            id,
+            urls: vec![],
+            reserve: 0,
+            range: None,
+        };
+        // Chunk 1 first: b completes; a's second part parks (no .eptmp write past the gap).
+        assert_eq!(sink.process(&item(1), b2).unwrap(), 3000);
+        assert!(dir.join("Game/b.bin").exists(), "b completed from dst 0");
+        assert!(!dir.join("Game/a.bin").exists());
+        assert!(!dir.join("Game/a.bin.eptmp").exists(), "parked part wrote nothing");
+        // Chunk 0 lands: its part appends at 0, then the parked part drains behind it.
+        assert_eq!(sink.process(&item(0), b1).unwrap(), 4000);
+        let a = std::fs::read(dir.join("Game/a.bin")).unwrap();
+        assert_eq!(&a[..4000], &d1[..]);
+        assert_eq!(&a[4000..], &d2[..2000]);
+        assert!(stream_files.iter().all(|f| f.renamed.load(Ordering::Relaxed)));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn failed_run_deletes_unfinished_tmp_files() {
-        // Unreachable CDN: the fetch fails, and the `.eptmp` created at setup must be removed
+        // Unreachable CDN: the fetch fails, and any `.eptmp` left behind must be removed
         // (GOG `.bhtmp` parity) so the next run starts clean instead of trusting a partial.
+        // (With lazy tmp creation nothing is written here at all — the invariant is what
+        // matters: no tmp, no partial final.)
         let dir = super::super::chunk::test_support::temp_dir("fail");
         let mut req = request(dir.to_str().unwrap(), vec![0]);
         req.max_workers = 1;
