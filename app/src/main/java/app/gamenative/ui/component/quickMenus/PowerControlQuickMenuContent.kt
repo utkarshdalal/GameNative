@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -51,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.powercontrol.AutoTuningStrategy
+import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerControlUiState
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.PowerProfile
@@ -71,7 +74,9 @@ fun PowerControlQuickMenuContent(
     onAdaptiveFpsCapToggled: (Boolean) -> Unit = {},
     onPowerControlToggled: (Boolean) -> Unit = {},
     onFanControlToggled: (Boolean) -> Unit = {},
-    onGamePinningToggled: (Boolean) -> Unit = {},
+    onGamePinningModeSelected: (GamePinningMode) -> Unit = {},
+    onManualGamePinCoresChanged: (String) -> Unit = {},
+    onManualBackgroundPinCoresChanged: (String) -> Unit = {},
     onAutoTuningToggled: (Boolean) -> Unit = {},
     onTuningModeSelected: (Boolean) -> Unit = {},
     onTuningStrategySelected: (AutoTuningStrategy) -> Unit = {},
@@ -109,7 +114,9 @@ fun PowerControlQuickMenuContent(
                         onAdaptiveFpsCapToggled = onAdaptiveFpsCapToggled,
                         onPowerControlToggled = onPowerControlToggled,
                         onFanControlToggled = onFanControlToggled,
-                        onGamePinningToggled = onGamePinningToggled,
+                        onGamePinningModeSelected = onGamePinningModeSelected,
+                        onManualGamePinCoresChanged = onManualGamePinCoresChanged,
+                        onManualBackgroundPinCoresChanged = onManualBackgroundPinCoresChanged,
                         onAutoTuningToggled = onAutoTuningToggled,
                         onTuningModeSelected = onTuningModeSelected,
                         onTuningStrategySelected = onTuningStrategySelected,
@@ -184,7 +191,9 @@ private fun FlowRowScope.SuccessView(
     onAdaptiveFpsCapToggled: (Boolean) -> Unit,
     onPowerControlToggled: (Boolean) -> Unit,
     onFanControlToggled: (Boolean) -> Unit,
-    onGamePinningToggled: (Boolean) -> Unit,
+    onGamePinningModeSelected: (GamePinningMode) -> Unit,
+    onManualGamePinCoresChanged: (String) -> Unit,
+    onManualBackgroundPinCoresChanged: (String) -> Unit,
     onAutoTuningToggled: (Boolean) -> Unit,
     onTuningModeSelected: (Boolean) -> Unit,
     onTuningStrategySelected: (AutoTuningStrategy) -> Unit,
@@ -202,6 +211,7 @@ private fun FlowRowScope.SuccessView(
     var isGovernorDropdownExpanded by remember { mutableStateOf(false) }
     var isTuningStrategyDropdownExpanded by remember { mutableStateOf(false) }
     var isTuningModeDropdownExpanded by remember { mutableStateOf(false) }
+    var isGamePinningModeDropdownExpanded by remember { mutableStateOf(false) }
     var selectedMinFreqIndex by remember { mutableIntStateOf(state.cpuInfo?.selectedMinFreqIndex ?: 0) }
     var selectedMaxFreqIndex by remember { mutableIntStateOf(state.cpuInfo?.selectedMaxFreqIndex ?: 0) }
     var selectedMinGpuPowerLevel by remember { mutableIntStateOf(state.gpuInfo?.minPowerLevel ?: 0) }
@@ -277,19 +287,60 @@ private fun FlowRowScope.SuccessView(
         )
 
         val isGamePinningAvailable = PowerManager.isGamePinningAvailable()
-        QuickMenuToggleRow(
-            title = stringResource(R.string.power_control_game_pinning),
-            subtitle = stringResource(R.string.power_control_game_pinning_desc),
+        Column(
             modifier = Modifier.weight(1f),
-            selectable = isDriverSupported && isGamePinningAvailable,
-            enabled = state.selectedProfile.enableGamePinning,
-            onToggle = {
-                if (isGamePinningAvailable) {
-                    onGamePinningToggled(!state.selectedProfile.enableGamePinning)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.power_control_game_pinning),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            SelectorRow(
+                valueText = stringResource(state.selectedProfile.gamePinningMode.displayNameRes),
+                descriptionText = stringResource(state.selectedProfile.gamePinningMode.descriptionRes),
+                accentColor = accentColor,
+                expanded = isGamePinningModeDropdownExpanded,
+                onExpandedChange = { expand ->
+                    if (isDriverSupported && isGamePinningAvailable) isGamePinningModeDropdownExpanded = expand
+                },
+            ) { menuFocusRequester ->
+                GamePinningMode.entries.forEachIndexed { index, mode ->
+                    SelectorMenuItem(
+                        accentColor = accentColor,
+                        focusRequester = if (index == 0) menuFocusRequester else null,
+                        onClick = {
+                            isGamePinningModeDropdownExpanded = false
+                            onGamePinningModeSelected(mode)
+                        },
+                        text = {
+                            Text(
+                                text = stringResource(mode.displayNameRes),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        },
+                    )
                 }
-            },
-            accentColor = accentColor,
-        )
+            }
+        }
+
+        if (state.selectedProfile.gamePinningMode == GamePinningMode.MANUAL) {
+            CoreCheckboxRow(
+                title = stringResource(R.string.power_control_game_pinning_manual_game_cores),
+                value = state.selectedProfile.manualGamePinCores,
+                onValueChange = onManualGamePinCoresChanged,
+                accentColor = accentColor,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            CoreCheckboxRow(
+                title = stringResource(R.string.power_control_game_pinning_manual_background_cores),
+                value = state.selectedProfile.manualBackgroundPinCores,
+                onValueChange = onManualBackgroundPinCoresChanged,
+                accentColor = accentColor,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         QuickMenuToggleRow(
             title = stringResource(R.string.power_control_auto_tuning),
@@ -697,6 +748,59 @@ private fun FlowRowScope.SuccessView(
                     }
                 }
             } // End of auto-tuning check
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CoreCheckboxRow(
+    title: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    accentColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    val coreCount = remember { Runtime.getRuntime().availableProcessors() }
+    val selectedCores = remember(value) {
+        value.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
+    }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            for (core in 0 until coreCount) {
+                val checked = selectedCores.contains(core)
+                // Keep at least one core selected at all times: once a core is the last one
+                // left checked, its checkbox is locked on (non-clickable, greyed out via the
+                // default Material3 disabled colors below).
+                val isLastRemainingCore = checked && selectedCores.size == 1
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = checked,
+                        enabled = !isLastRemainingCore,
+                        onCheckedChange = { isChecked ->
+                            if (isLastRemainingCore) return@Checkbox
+                            val newCores = if (isChecked) selectedCores + core else selectedCores - core
+                            onValueChange(newCores.sorted().joinToString(","))
+                        },
+                        colors = CheckboxDefaults.colors(checkedColor = accentColor),
+                    )
+                    Text(
+                        text = core.toString(),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
         }
     }
 }

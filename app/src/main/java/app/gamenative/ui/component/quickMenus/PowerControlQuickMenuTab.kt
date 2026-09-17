@@ -66,10 +66,26 @@ fun PowerControlQuickMenuTab(
                 PowerManager.refreshUiState()
             }
         },
-        onGamePinningToggled = { enabled ->
+        onGamePinningModeSelected = { mode ->
             coroutineScope.launch(Dispatchers.IO) {
                 PowerManager.currentProfile.let { profile ->
-                    PowerManager.setPowerProfile(profile.copy(enableGamePinning = enabled))
+                    PowerManager.setPowerProfile(profile.copy(gamePinningMode = mode))
+                }
+                PowerManager.refreshUiState()
+            }
+        },
+        onManualGamePinCoresChanged = { cores ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.currentProfile.let { profile ->
+                    PowerManager.setPowerProfile(profile.copy(manualGamePinCores = cores))
+                }
+                PowerManager.refreshUiState()
+            }
+        },
+        onManualBackgroundPinCoresChanged = { cores ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.currentProfile.let { profile ->
+                    PowerManager.setPowerProfile(profile.copy(manualBackgroundPinCores = cores))
                 }
                 PowerManager.refreshUiState()
             }
@@ -113,7 +129,7 @@ fun PowerControlQuickMenuTab(
         onProfileSelected = { profile ->
             coroutineScope.launch(Dispatchers.IO) {
                 // Update PowerManager's current profile reference immediately
-                // Preserve current enableFanControl and enableGamePinning settings
+                // Preserve current enableFanControl and game pinning settings
                 val currentProfile = PowerManager.currentProfile.copy()
                 Timber.d("Current profile: $currentProfile")
 
@@ -123,7 +139,9 @@ fun PowerControlQuickMenuTab(
                     enableAutoTuning = false,
                     enablePerClusterTuning = false,
                     enableFanControl = currentProfile.enableFanControl,
-                    enableGamePinning = currentProfile.enableGamePinning,
+                    gamePinningMode = currentProfile.gamePinningMode,
+                    manualGamePinCores = currentProfile.manualGamePinCores,
+                    manualBackgroundPinCores = currentProfile.manualBackgroundPinCores,
                 )
 
                 Timber.d("Applying profile: $updatedProfile")

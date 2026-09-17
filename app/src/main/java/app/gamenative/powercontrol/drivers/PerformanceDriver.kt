@@ -1,7 +1,7 @@
 package app.gamenative.powercontrol.drivers
 
+import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerProfile
-import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
 
@@ -181,7 +181,7 @@ abstract class PerformanceDriver {
         return PowerProfile(
             enableAutoTuning = false,
             adaptiveFpsCapEnabled = false,
-            enableGamePinning = false,
+            gamePinningMode = GamePinningMode.OFF,
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,
             minCpuFreq = 0,

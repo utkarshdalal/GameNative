@@ -2,6 +2,7 @@ package app.gamenative.powercontrol.drivers
 
 import android.content.Context
 import app.gamenative.PrefManager
+import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerProfile
 import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.profiles.CpuGovernor
@@ -265,7 +266,7 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
             adaptiveFpsCapEnabled = DeviceGate.isDeviceSupported(),
             enableAutoTuning = false,
             enablePerClusterTuning = false,
-            enableGamePinning = false,
+            gamePinningMode = GamePinningMode.OFF,
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL, // Samsung doesn't use governors, but we need a value
             minCpuFreq = 0, // CPU level 0
