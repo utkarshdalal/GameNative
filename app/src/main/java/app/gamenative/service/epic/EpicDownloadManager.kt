@@ -297,13 +297,16 @@ class EpicDownloadManager @Inject constructor(
             // Incremental download: skip files already on disk with matching size and SHA-1.
             // On a resume this hashes every completed file, which can take minutes for a
             // large install — surface it in the UI and honor cancellation between files.
-            downloadInfo.updateStatusMessage("Verifying existing files...")
+            downloadInfo.updateStatusMessage("Verifying files...")
             val pendingFiles = files.filter { file ->
                 if (!downloadInfo.isActive()) {
                     // The enclosing catch never runs on this return path, so clean up here
                     MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
+                // Whole-file SHA-1 per existing file, serial — name the file being hashed
+                // so a large resume never looks dead (same string as the native sweep).
+                downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_file, file.filename))
                 !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
             }
             downloadInfo.updateStatusMessage(null)
@@ -472,13 +475,16 @@ class EpicDownloadManager @Inject constructor(
             // Incremental download: skip files already on disk with matching size and SHA-1.
             // On a resume this hashes every completed file, which can take minutes for a
             // large install — surface it in the UI and honor cancellation between files.
-            downloadInfo.updateStatusMessage("Verifying existing files...")
+            downloadInfo.updateStatusMessage("Verifying files...")
             val pendingFiles = files.filter { file ->
                 if (!downloadInfo.isActive()) {
                     // The enclosing catch never runs on this return path, so clean up here
                     MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
+                // Whole-file SHA-1 per existing file, serial — name the file being hashed
+                // so a large resume never looks dead (same string as the native sweep).
+                downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_file, file.filename))
                 !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
             }
             downloadInfo.updateStatusMessage(null)

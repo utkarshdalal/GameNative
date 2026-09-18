@@ -302,13 +302,16 @@ class GOGDownloadManager @Inject constructor(
             // On a resume this MD5-reads every completed file, which can take minutes for
             // a large install — surface it in the UI and honor cancellation between files.
             val gameInstallDir = installPath
-            downloadInfo.updateStatusMessage("Verifying existing files...")
+            downloadInfo.updateStatusMessage("Verifying files...")
             val beforeCount = gameFiles.size
             gameFiles = gameFiles.filter { file ->
                 if (!downloadInfo.isActive()) {
                     MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
+                // Whole-file MD5 per existing file, serial — tens of minutes for a large
+                // install on SD. Name the file being hashed so the UI never looks dead.
+                downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_file, file.path))
                 val outputFile = File(gameInstallDir, file.path)
                 val expectedSize = file.chunks.sumOf { it.size }
                 !fileExistsWithCorrectSize(outputFile, expectedSize, file.md5)
@@ -321,6 +324,7 @@ class GOGDownloadManager @Inject constructor(
                     MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
+                downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_file, file.path))
                 val installRelativePath = getSupportInstallPath(file.path)
                 val outputFile = File(gameInstallDir, installRelativePath)
                 val expectedSize = file.chunks.sumOf { it.size }
