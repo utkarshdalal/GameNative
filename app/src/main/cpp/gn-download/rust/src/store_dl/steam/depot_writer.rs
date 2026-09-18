@@ -2424,7 +2424,11 @@ pub fn create_depot_layout(plan: &DepotWritePlan) -> DepotWriteResult {
         let result = match action {
             DepotFileAction::Directory { path } => create_directory(path),
             DepotFileAction::Symlink { path, target } => create_symlink(path, target),
-            DepotFileAction::Regular { path, mode, .. } => create_regular_file(path, *mode),
+            // Regular files are NOT pre-created: on FUSE/sdcardfs, one create+chmod
+            // roundtrip per manifest file stalls the download start for large depots and
+            // makes a later delete walk thousands of entries. [`DepotFiles::acquire`]
+            // creates each file on first write; `finalize_remaining` creates 0-chunk ones.
+            DepotFileAction::Regular { .. } => Ok(()),
         };
         if let Err(error) = result {
             return DepotWriteResult::fail(error, false);
@@ -2732,19 +2736,6 @@ fn create_directory(path: &str) -> Result<(), String> {
     fs::create_dir_all(path).map_err(|err| format!("write_depot: mkdir '{path}': {err}"))
 }
 
-fn create_regular_file(path: &str, mode: u32) -> Result<(), String> {
-    let path_ref = Path::new(path);
-    make_parent_dirs(path_ref)?;
-    OpenOptions::new()
-        .create(true)
-        .write(true)
-        .read(true)
-        .truncate(false)
-        .open(path_ref)
-        .map_err(|err| format!("write_depot: open '{path}': {err}"))?;
-    set_file_mode(path_ref, mode)
-}
-
 fn create_symlink(path: &str, target: &str) -> Result<(), String> {
     let path_ref = Path::new(path);
     make_parent_dirs(path_ref)?;
@@ -2979,9 +2970,12 @@ mod tests {
         let result = create_depot_layout(&plan);
         assert!(result.ok(), "{}", result.error);
         let path = dir.join("bin/game.dat");
-        assert!(path.exists());
+        assert!(dir.join("bin").is_dir());
+        // Regular files are created lazily on first write, not by the layout pass.
+        assert!(!path.exists());
 
         let file = OpenOptions::new()
+            .create(true)
             .read(true)
             .write(true)
             .open(&path)

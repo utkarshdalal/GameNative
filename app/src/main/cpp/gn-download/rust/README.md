@@ -58,7 +58,10 @@ on exFAT/FUSE SD cards forces the filesystem to zero-fill the gap, which wedges 
   (`by_offset.sort_by_key`). Arrivals park in a `BTreeMap<offset, entry>` per file; the
   writer drains the contiguous prefix from the cursor, coalescing up to 16 MiB per pwrite at
   the current EOF. File handles are opened lazily on first touch and closed on completion,
-  so peak fd usage is bounded by the active window, not the file count.
+  so peak fd usage is bounded by the active window, not the file count. The layout pass
+  creates only directories and symlinks — regular files are created on first write (and
+  0-chunk files at finalize), so download start and later deletion stay cheap on
+  FUSE/sdcardfs even for many-thousand-file depots.
 - **GOG** (`store_dl/gog/engine.rs`): chunks inflate into an in-memory buffer first
   (MD5-verified), then only *verified* chunks enter the file's `OrderedDrain`
   (`store_dl/ordered_drain.rs`) — the shared component implementing the Steam model
