@@ -249,8 +249,15 @@ class GOGService : Service() {
                 .toList()
         }
 
-        fun cleanupDownload(gameId: String) {
-            getInstance()?.activeDownloads?.remove(gameId)
+        fun cleanupDownload(gameId: String, expectedInfo: DownloadInfo? = null) {
+            val downloads = getInstance()?.activeDownloads ?: return
+            if (expectedInfo != null) {
+                // Identity-guarded: a late cleanup from a dying job must not remove a
+                // NEWER registration for the same game (pause -> immediate resume).
+                downloads.remove(gameId, expectedInfo)
+            } else {
+                downloads.remove(gameId)
+            }
         }
 
         fun cancelDownload(gameId: String): Boolean {
@@ -260,7 +267,9 @@ class GOGService : Service() {
             return if (downloadInfo != null) {
                 Timber.i("Cancelling download for game: $gameId")
                 downloadInfo.cancel()
-                instance.activeDownloads.remove(gameId)
+                // Identity-guarded remove: don't evict a newer registration that
+                // claimed the slot between the get above and now.
+                instance.activeDownloads.remove(gameId, downloadInfo)
                 Timber.d("Download cancelled for game: $gameId")
                 true
             } else {

@@ -277,6 +277,13 @@ class EpicService : Service() {
                     }
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
+                    // Belt-and-braces: a late bytes-persistence write or a partially-failed
+                    // folder delete leaves <path>/.DownloadInfo behind, and the bare folder
+                    // existing is enough for the app screen to offer Resume.
+                    NativeTreeDelete.deleteTreeFast(File(path, ".DownloadInfo"))
+                    if (File(path).exists()) {
+                        Timber.tag("Epic").w("Install folder still exists after delete: $path")
+                    }
                 }
 
                 // Drop any leftover chunk cache (kept on failed downloads for resume)

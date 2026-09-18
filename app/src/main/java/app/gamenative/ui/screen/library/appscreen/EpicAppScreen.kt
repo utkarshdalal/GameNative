@@ -816,6 +816,16 @@ class EpicAppScreen : BaseAppScreen() {
                         scope.launch(Dispatchers.IO) {
                             try {
                                 downloadInfo?.awaitCompletion()
+                                // Kill any pending debounced bytes-persistence write BEFORE the
+                                // folder delete: a late write recreating
+                                // <install>/.DownloadInfo/bytes_downloaded.txt made the screen
+                                // show Resume for a deleted game.
+                                EpicService.getEpicGameOf(gameId)?.let { game ->
+                                    val path = game.installPath.ifBlank {
+                                        EpicConstants.getGameInstallPath(context, game.appName)
+                                    }
+                                    downloadInfo?.clearPersistedBytesDownloaded(path)
+                                }
                                 EpicService.cleanupDownload(context, gameId, expectedInfo = downloadInfo)
                                 val result = EpicService.deleteGame(context, gameId)
                                 DownloadService.invalidateCache()
