@@ -119,7 +119,7 @@ class MainViewModel @Inject constructor(
         data object OnBackPressed : MainUiEvent()
         data object OnLoggedOut : MainUiEvent()
         data object LaunchApp : MainUiEvent()
-        data class ExternalGameLaunch(val appId: String) : MainUiEvent()
+        data class ExternalGameLaunch(val appId: String, val execArgs: String?) : MainUiEvent()
         data class OnLogonEnded(val result: LoginResult) : MainUiEvent()
         data class SteamDisconnected(val isTerminal: Boolean) : MainUiEvent()
         data object ShowDiscordSupportDialog : MainUiEvent()
@@ -257,7 +257,7 @@ class MainViewModel @Inject constructor(
         Timber.tag("MainViewModel").i("Received external game launch event for app ${it.appId}")
         viewModelScope.launch {
             Timber.tag("MainViewModel").i("Sending ExternalGameLaunch UI event for app ${it.appId}")
-            _uiEvent.send(MainUiEvent.ExternalGameLaunch(it.appId))
+            _uiEvent.send(MainUiEvent.ExternalGameLaunch(it.appId, it.execArgs))
         }
     }
 
@@ -557,6 +557,10 @@ class MainViewModel @Inject constructor(
         _state.update { it.copy(launchedAppId = value) }
     }
 
+    fun setExecArgs(value: String?) {
+        _state.update { it.copy(execArgs = value) }
+    }
+
     fun setBootToContainer(value: Boolean) {
         _state.update { it.copy(bootToContainer = value) }
     }
@@ -574,6 +578,10 @@ class MainViewModel @Inject constructor(
     }
 
     fun launchApp(context: Context, appId: String) {
+        launchAppWithArgs(context, appId, null)
+    }
+
+    fun launchAppWithArgs(context: Context, appId: String, execArgs: String?) {
         gameSessionStartTime = System.currentTimeMillis()
         gameWindowSeen = false
         gamePlayedThisSession = true
@@ -592,6 +600,7 @@ class MainViewModel @Inject constructor(
             // A new launch is a new impression: never reuse the previous launch's ad.
             bootAdHiddenAtMs = 0L
             setShowBootingSplash(true)
+            setExecArgs(execArgs);
             bootAwaitingGameWindow = _state.value.bootAd != null
             if (bootAwaitingGameWindow) startBootGameExitWatch(context, appId)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
