@@ -23,6 +23,12 @@ interface NativeSteamDownloadListener {
     )
 
     /**
+     * Resume/verify: fired once per file as its on-disk chunks are re-hashed against the
+     * manifest. Default no-op so existing listeners stay source-compatible.
+     */
+    fun onVerifying(path: String) {}
+
+    /**
      * Called from native worker threads when a manifest fetch needs a fresh manifest request
      * code (Steam rotates them ~every 5 min). Implementations must call
      * `SteamContent.getManifestRequestCode` and return the code (0 = unavailable, the engine

@@ -139,6 +139,12 @@ spread load, scaled by distinct CDN host count for GOG/Epic.
   behaviour); a partial file deletes on any failed/cancelled attempt (no within-file
   resume).
 
+Every verify path above reports the file it is re-hashing: Steam fires `DepotWriteOptions.status`
+once per file in the verify-skip path, GOG fires `GogEvents::on_file_verify` per file in its
+verify sweep, and Epic gets a `verify_status` closure in `run_plan`. All three surface to the
+app screen's status row as "Verifying <path>" via the JNI listeners' `onVerifying(String)`
+callback, cleared on the first real download progress.
+
 ## 5. Error handling
 
 - **Rust side**: sink-level errors classify as `Retry` (network, decompress, hash mismatch,

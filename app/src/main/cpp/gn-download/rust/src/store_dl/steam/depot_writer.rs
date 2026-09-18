@@ -191,6 +191,9 @@ pub const RATE_LIMIT_COOLDOWN_MS: u64 = 5_000;
 /// from the fetch/process pools and the reporter thread.
 pub type DepotLogCallback<'a> = &'a (dyn Fn(&str) + Sync);
 
+/// Resume/verify status line (currently verifying file path) — for the UI status row.
+pub type DepotStatusCallback<'a> = &'a (dyn Fn(&str) + Sync);
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DepotWriteResult {
     pub files_written: u64,
@@ -236,6 +239,9 @@ pub struct DepotWriteOptions<'a> {
     pub on_progress: Option<DepotChunkProgressCallback<'a>>,
     /// Diagnostics sink (throughput / fetch-window lines). `None` = silent (tests).
     pub log: Option<DepotLogCallback<'a>>,
+    /// Resume/verify status sink: fired once per file as its on-disk chunks are re-hashed.
+    /// `None` = silent (tests).
+    pub status: Option<DepotStatusCallback<'a>>,
 }
 
 impl Default for DepotWriteOptions<'_> {
@@ -248,6 +254,7 @@ impl Default for DepotWriteOptions<'_> {
             cancel: None,
             on_progress: None,
             log: None,
+            status: None,
         }
     }
 }
@@ -1618,6 +1625,7 @@ fn write_depot_single(
     let total_bytes = plan.total_bytes;
     let mut bytes_written = 0u64;
     let mut conn = cdn.open_connection();
+    let mut last_verify_file: Option<usize> = None;
     for (job_index, job) in plan.chunk_jobs.iter().enumerate() {
         if options
             .cancel
@@ -1634,6 +1642,13 @@ fn write_depot_single(
             Some(chunk) => chunk,
             None => return DepotWriteResult::fail("bad chunk index", true),
         };
+        if files.needs_verify(file_idx) && last_verify_file != Some(file_idx) {
+            // Resume/verify: report the file whose on-disk chunks are being re-hashed.
+            last_verify_file = Some(file_idx);
+            if let Some(status) = options.status {
+                status(&file.filename);
+            }
+        }
         let handle = match files.acquire(file_idx) {
             Ok(handle) => handle,
             Err(error) => return DepotWriteResult::fail(error, true),
@@ -1741,6 +1756,7 @@ fn write_depot_parallel(
     let cancel = options.cancel;
     let progress = options.on_progress;
     let log = options.log;
+    let status = options.status;
     let depot_id = manifest.metadata.depot_id;
 
     // Tier ceiling → adaptive window bounds (clamped to distinct-hosts × per-host-cap).
@@ -2005,6 +2021,7 @@ host_ceiling={} budget={}MiB reason=start",
                     progress,
                     meter,
                     log,
+                    status,
                     tx,
                     cdn_auth_token,
                     timeout,
@@ -2085,6 +2102,7 @@ async fn run_async_fetch_driver(
     progress: Option<DepotChunkProgressCallback<'_>>,
     meter: &BandwidthMeter,
     log: Option<DepotLogCallback<'_>>,
+    status: Option<DepotStatusCallback<'_>>,
     tx: tokio::sync::mpsc::UnboundedSender<(ChunkWriteJob, Vec<u8>)>,
     cdn_auth_token: &str,
     timeout: Duration,
@@ -2141,6 +2159,7 @@ async fn run_async_fetch_driver(
 
         // ── Dispatch up to the current window ──
         let mut aborted = false;
+        let mut last_verify_file: Option<usize> = None;
         while inflight.len() < window.current {
             if cancel.is_some_and(|c| c.load(Ordering::Relaxed))
                 || error_slot.lock().expect("err slot poisoned").is_some()
@@ -2159,6 +2178,15 @@ async fn run_async_fetch_driver(
                 next_job += 1;
                 let file_idx = job.file_idx as usize;
                 if files.needs_verify(file_idx) {
+                    if last_verify_file != Some(file_idx) {
+                        // Resume/verify: report the file whose on-disk chunks are being re-hashed.
+                        last_verify_file = Some(file_idx);
+                        if let (Some(status), Some(file)) =
+                            (status, manifest.files.get(file_idx))
+                        {
+                            status(&file.filename);
+                        }
+                    }
                     let handle = match files.acquire(file_idx) {
                         Ok(handle) => handle,
                         Err(error) => {

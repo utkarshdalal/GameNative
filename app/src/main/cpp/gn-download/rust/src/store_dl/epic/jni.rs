@@ -108,6 +108,24 @@ fn int_array_to_vec(env: &JNIEnv, array: &JIntArray) -> Vec<i32> {
     values
 }
 
+fn call_on_verifying(env: &mut JNIEnv, listener: &JObject, path: &str) {
+    if listener.is_null() {
+        return;
+    }
+    let Ok(s) = env.new_string(path) else {
+        clear_pending_exception(env);
+        return;
+    };
+    let obj = JObject::from(s);
+    let _ = env.call_method(
+        listener,
+        "onVerifying",
+        "(Ljava/lang/String;)V",
+        &[JValue::Object(&obj)],
+    );
+    clear_pending_exception(env);
+}
+
 fn call_on_log(env: &mut JNIEnv, listener: &JObject, line: &str) {
     if listener.is_null() {
         return;
@@ -377,7 +395,23 @@ fn run_on_thread(
         call_on_assembly_progress(&mut env, listener.as_obj(), bytes_written);
     };
 
-    let outcome = run_plan(&plan, &req, cancel.as_ref(), &progress, &assembly_progress, &log);
+    // Resume verify sweep reports from the driver's verify threads.
+    let verify_status = |path: &str| {
+        let Ok(mut env) = vm.attach_current_thread_as_daemon() else {
+            return;
+        };
+        call_on_verifying(&mut env, listener.as_obj(), path);
+    };
+
+    let outcome = run_plan(
+        &plan,
+        &req,
+        cancel.as_ref(),
+        &progress,
+        &assembly_progress,
+        &log,
+        &verify_status,
+    );
 
     let Ok(mut env) = vm.attach_current_thread_as_daemon() else {
         return;

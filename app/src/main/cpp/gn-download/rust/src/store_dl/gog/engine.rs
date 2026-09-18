@@ -117,6 +117,10 @@ pub trait GogEvents: Sync {
     /// Drives the caller's live size/ETA display; the default no-op keeps tests and non-UI
     /// consumers unchanged.
     fn on_bytes(&self, _bytes_fetched: u64) {}
+    /// A file's on-disk bytes are about to be re-hashed against the manifest (resume verify
+    /// sweep). Fired once per candidate file from the verify threads; the default no-op keeps
+    /// tests and non-UI consumers unchanged.
+    fn on_file_verify(&self, _rel_path: &str) {}
     fn on_log(&self, line: &str);
 }
 
@@ -839,6 +843,7 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
                     continue;
                 }
                 let out_path = install_dir.join(&file.relative_path);
+                events.on_file_verify(&file.relative_path);
                 if file_verified(&out_path, file.total_size, &file.md5) {
                     files_verified.fetch_add(1, Ordering::Relaxed);
                     let done = files_done.fetch_add(1, Ordering::Relaxed) + 1;

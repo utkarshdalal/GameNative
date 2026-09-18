@@ -169,6 +169,24 @@ fn call_progress(
     clear_pending_exception(env);
 }
 
+fn call_status(env: &mut JNIEnv, listener: &JObject, message: &str) {
+    if listener.is_null() {
+        return;
+    }
+    let Ok(text) = env.new_string(message) else {
+        clear_pending_exception(env);
+        return;
+    };
+    let text_obj = JObject::from(text);
+    let _ = env.call_method(
+        listener,
+        "onVerifying",
+        "(Ljava/lang/String;)V",
+        &[JValue::Object(&text_obj)],
+    );
+    clear_pending_exception(env);
+}
+
 /// Attach the current (native) thread and run `f` with the listener object.
 fn with_attached_env(listener: &GlobalRef, f: impl FnOnce(&mut JNIEnv, &JObject)) {
     let Some(vm) = JVM.get() else {
@@ -403,6 +421,11 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
             (code != 0).then_some(code)
         };
         let code_refresher: depot_downloader::ManifestCodeRefresher = &code_refresher;
+        let status_listener = listener.clone();
+        let on_status = move |path: &str| {
+            with_attached_env(&status_listener, |env, obj| call_status(env, obj, path));
+        };
+        let on_status: crate::store_dl::steam::depot_writer::DepotStatusCallback = &on_status;
         let log_fn = |line: &str| android_log(line);
         let log_cb: Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>> =
             if pipeline_logs { Some(&log_fn) } else { None };
@@ -418,6 +441,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
             Some(on_progress),
             Some(code_refresher),
             log_cb,
+            Some(on_status),
         );
         dispatch_complete(listener, result);
     });

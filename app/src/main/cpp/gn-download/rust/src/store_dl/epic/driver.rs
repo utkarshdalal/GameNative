@@ -444,6 +444,7 @@ pub fn run_plan(
     progress: &(dyn Fn(u64, u64) + Sync),
     assembly_progress: &(dyn Fn(u64) + Sync),
     log: &(dyn Fn(&str) + Sync),
+    verify_status: &(dyn Fn(&str) + Sync),
 ) -> EpicOutcome {
     let chunks_total = plan.jobs.len() as u64;
     let mut outcome = EpicOutcome {
@@ -499,6 +500,8 @@ pub fn run_plan(
                     break;
                 }
                 let file = &plan.manifest.files[req.pending_file_indices[ord]];
+                // Resume verify sweep: report the file whose on-disk bytes are being re-hashed.
+                verify_status(&file.filename);
                 let (n, bytes) =
                     verified_prefix(&install_dir.join(&file.filename), file, &plan.manifest, &by_guid);
                 resume[ord].0.store(n, Ordering::Relaxed);
@@ -1103,7 +1106,16 @@ mod tests {
         let progress = |_: u64, _: u64| {};
         let assembly_progress = |_: u64| {};
         let log = |_: &str| {};
-        let out = run_plan(&plan, &req, &cancel, &progress, &assembly_progress, &log);
+        let noop_status = |_: &str| {};
+        let out = run_plan(
+            &plan,
+            &req,
+            &cancel,
+            &progress,
+            &assembly_progress,
+            &log,
+            &noop_status,
+        );
         assert!(!out.success, "fetch must fail without a reachable CDN");
         assert!(!out.cancelled);
         let file0 = &plan.manifest.files[0].filename;
@@ -1120,7 +1132,16 @@ mod tests {
         let progress = |_: u64, _: u64| {};
         let assembly_progress = |_: u64| {};
         let log = |_: &str| {};
-        let out = run_plan(&plan, &req, &cancel, &progress, &assembly_progress, &log);
+        let noop_status = |_: &str| {};
+        let out = run_plan(
+            &plan,
+            &req,
+            &cancel,
+            &progress,
+            &assembly_progress,
+            &log,
+            &noop_status,
+        );
         assert!(out.cancelled);
         assert!(!out.success);
         let _ = std::fs::remove_dir_all(&dir);
@@ -1144,7 +1165,16 @@ mod tests {
         let progress = |_: u64, _: u64| {};
         let assembly_progress = |_: u64| {};
         let log = |_: &str| {};
-        let out = run_plan(&plan, &req, &cancel, &progress, &assembly_progress, &log);
+        let noop_status = |_: &str| {};
+        let out = run_plan(
+            &plan,
+            &req,
+            &cancel,
+            &progress,
+            &assembly_progress,
+            &log,
+            &noop_status,
+        );
         assert!(out.success);
         assert_eq!(std::fs::metadata(dir.join("Game/empty.bin")).unwrap().len(), 0);
         let _ = std::fs::remove_dir_all(&dir);
@@ -1296,7 +1326,16 @@ mod tests {
         let progress = |_: u64, _: u64| {};
         let assembly_progress = |_: u64| {};
         let log = |_: &str| {};
-        let out = run_plan(&plan, &req, &cancel, &progress, &assembly_progress, &log);
+        let noop_status = |_: &str| {};
+        let out = run_plan(
+            &plan,
+            &req,
+            &cancel,
+            &progress,
+            &assembly_progress,
+            &log,
+            &noop_status,
+        );
         assert!(out.success, "resume-complete must succeed with no CDN: {out:?}");
         assert_eq!(out.chunks_done, 0, "nothing fetched");
         assert_eq!(std::fs::read(&out_path).unwrap(), whole);

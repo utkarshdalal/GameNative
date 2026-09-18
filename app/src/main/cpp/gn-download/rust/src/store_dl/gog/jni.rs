@@ -173,6 +173,23 @@ impl GogEvents for JniEvents {
         });
     }
 
+    fn on_file_verify(&self, rel_path: &str) {
+        self.with_env(|env| {
+            let Ok(path) = env.new_string(rel_path) else {
+                return;
+            };
+            let path = JObject::from(path);
+            let _ = env.call_method(
+                self.listener.as_obj(),
+                "onVerifying",
+                "(Ljava/lang/String;)V",
+                &[JValue::Object(&path)],
+            );
+            Self::clear_exception(env);
+            let _ = env.delete_local_ref(path);
+        });
+    }
+
     fn on_log(&self, line: &str) {
         if self.pipeline_logs {
             android_log(line);

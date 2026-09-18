@@ -1,6 +1,7 @@
 package app.gamenative.service.download
 
 import app.gamenative.data.DepotInfo
+import app.gamenative.R
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.service.SteamService
@@ -200,8 +201,17 @@ object GameDownloadService {
         // First progress callback ends the "Preparing depots" key-prep phase (owner-pinned, so a
         // late callback from an unwound run cannot wipe a newer attempt's message).
         val keyPrepCleared = AtomicBoolean(false)
+        // Set while the engine is re-hashing on-disk chunks (resume/verify): the status row
+        // shows "Verifying <file>". Cleared on the first real download progress.
+        val verifyStatusActive = AtomicBoolean(false)
 
         val listener = object : NativeSteamDownloadListener {
+            override fun onVerifying(path: String) {
+                verifyStatusActive.set(true)
+                val svc = SteamService.instance ?: return
+                downloadInfo.updateStatusMessage(svc.getString(R.string.download_verifying_file, path))
+            }
+
             override fun onProgress(
                 depotId: Int,
                 depotDone: Long,
@@ -212,6 +222,10 @@ object GameDownloadService {
             ) {
                 if (keyPrepCleared.compareAndSet(false, true)) {
                     SteamService.clearDepotKeyPrep(downloadInfo.gameId, owner = downloadInfo)
+                }
+                if (!verifying && verifyStatusActive.compareAndSet(true, false)) {
+                    // Verify sweep finished, real chunks are flowing — drop the verify status.
+                    downloadInfo.updateStatusMessage(null)
                 }
                 if (verifying) {
                     // Verified-existing bytes: these were already counted in the persisted

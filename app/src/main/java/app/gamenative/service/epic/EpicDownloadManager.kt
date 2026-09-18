@@ -3,6 +3,7 @@ package app.gamenative.service.epic
 import android.content.Context
 import android.util.Log
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
@@ -1051,6 +1052,12 @@ class EpicDownloadManager @Inject constructor(
         var lastAssemblyEmitAt = 0L
         val listener = object : NativeEpicDownload.Listener {
             override fun onPlan(chunksTotal: Int, bytesTotal: Long, chunkDir: String) = Unit
+
+            override fun onVerifying(path: String) {
+                // Resume verify sweep; the first chunk progress overwrites this with the
+                // "Downloading (i/n chunks)" status.
+                downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_file, path))
+            }
 
             override fun onProgress(bytesDone: Long, bytesTotal: Long, chunksDone: Int, chunksTotal: Int) {
                 // NO byte credit on the fetch side: onAssemblyProgress credits every byte

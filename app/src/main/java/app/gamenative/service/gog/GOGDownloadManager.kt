@@ -1,6 +1,7 @@
 package app.gamenative.service.gog
 
 import android.content.Context
+import app.gamenative.R
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GameSource
 import app.gamenative.service.gog.api.DepotDirectory
@@ -933,7 +934,15 @@ class GOGDownloadManager @Inject constructor(
                 val completed = java.util.concurrent.atomic.AtomicReference<NativeGogRunCompletion?>()
                 // Per-run high-water mark for the compressed-byte stream reported via onBytes.
                 var fetchedBytes = 0L
+                // Set while the engine re-hashes on-disk bytes (resume verify sweep): the
+                // status row shows "Verifying <file>". Cleared on the first fetched byte.
+                val verifyStatusActive = java.util.concurrent.atomic.AtomicBoolean(false)
                 val listener = object : NativeGogDownloadListener {
+                    override fun onVerifying(path: String) {
+                        verifyStatusActive.set(true)
+                        downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_file, path))
+                    }
+
                     override fun onProgress(
                         bytesDone: Long,
                         bytesTotal: Long,
@@ -961,6 +970,10 @@ class GOGDownloadManager @Inject constructor(
                     }
 
                     override fun onBytes(bytesFetched: Long) {
+                        if (verifyStatusActive.compareAndSet(true, false)) {
+                            // Verify sweep finished, real bytes are flowing.
+                            downloadInfo.updateStatusMessage(null)
+                        }
                         val delta = bytesFetched - fetchedBytes
                         if (delta > 0L) {
                             fetchedBytes = bytesFetched

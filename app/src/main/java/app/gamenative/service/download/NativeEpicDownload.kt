@@ -36,6 +36,12 @@ object NativeEpicDownload {
         /** Per assembled file part (cumulative), after a successful fetch. */
         fun onAssemblyProgress(bytesWritten: Long)
 
+        /**
+         * Resume verify sweep: fired once per file as its on-disk bytes are re-hashed
+         * against the manifest. Default no-op so existing listeners stay source-compatible.
+         */
+        fun onVerifying(path: String) {}
+
         /** Engine log line. */
         fun onLog(line: String)
 
