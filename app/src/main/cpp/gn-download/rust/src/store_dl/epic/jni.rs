@@ -307,7 +307,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeEpicDownload_n
     call_on_plan(
         &mut env,
         &listener,
-        plan.needed.len() as u64,
+        plan.job_count() as u64,
         plan.total_bytes,
         &plan.manifest.chunk_dir,
     );
@@ -343,7 +343,7 @@ fn run_on_thread(
     pipeline_logs: bool,
 ) {
     let bytes_total = plan.total_bytes;
-    let chunks_total = plan.needed.len() as u64;
+    let chunks_total = plan.job_count() as u64;
 
     // Progress fires from the core's process-pool threads; attach each as a daemon like the
     // Steam engine's `dispatch_download_progress` does.

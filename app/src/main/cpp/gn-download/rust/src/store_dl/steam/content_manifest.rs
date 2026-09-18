@@ -1,9 +1,9 @@
-use crate::base64;
-use crate::crypto::{
+use crate::store_dl::steam::base64;
+use crate::store_dl::steam::crypto::{
     aes256_cbc_decrypt, aes256_ecb_decrypt_block, AesBlock, SessionKey, AES_BLOCK_BYTES,
     SESSION_KEY_LENGTH,
 };
-use crate::proto_wire::{Reader, WireType};
+use crate::store_dl::steam::proto_wire::{Reader, WireType};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ChunkData {
@@ -268,8 +268,8 @@ fn parse_signature(body: &[u8]) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::{aes256_cbc_encrypt, aes256_ecb_encrypt_block};
-    use crate::proto_wire::Writer;
+    use crate::store_dl::steam::crypto::{aes256_cbc_encrypt, aes256_ecb_encrypt_block};
+    use crate::store_dl::steam::proto_wire::Writer;
 
     #[test]
     fn parses_manifest_sections() {

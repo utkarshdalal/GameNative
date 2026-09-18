@@ -80,6 +80,15 @@ pub struct OrderedDrain {
 }
 
 impl OrderedDrain {
+    /// A drain whose cursor starts past an already-on-disk verified prefix (resume): the first
+    /// region expected is at `cursor`, and every append continues after it.
+    pub fn with_cursor(cursor: u64) -> Self {
+        Self {
+            cursor,
+            pending: BTreeMap::new(),
+        }
+    }
+
     pub fn cursor(&self) -> u64 {
         self.cursor
     }
@@ -94,7 +103,12 @@ impl OrderedDrain {
     }
 
     /// Queue one decoded region: `data[start..start + len]` belongs at `offset` in the file.
+    /// A region fully below the cursor is DROPPED: those bytes are already on disk (a resumed
+    /// file's verified prefix) and must never be rewritten.
     pub fn insert(&mut self, offset: u64, raw_len: u64, data: Arc<[u8]>, start: usize, len: usize) {
+        if offset.saturating_add(len as u64) <= self.cursor {
+            return;
+        }
         self.pending.insert(
             offset,
             PendingRegion {
@@ -220,5 +234,24 @@ mod tests {
             assert_eq!(batch.bytes(), b"ababab");
         }
         assert_eq!(drain.cursor(), 12);
+    }
+
+    #[test]
+    fn with_cursor_resumes_appends_after_a_verified_prefix() {
+        // Resume: the drain starts past an on-disk verified prefix — the first region expected
+        // sits AT the seeded cursor, and appends continue after it.
+        let mut drain = OrderedDrain::with_cursor(100);
+        // A region fully below the cursor is dropped (those bytes are the verified prefix
+        // already on disk — never rewritten).
+        drain.insert(50, 10, arc(b"0123456789"), 0, 10);
+        assert_eq!(drain.pending_count(), 0);
+        assert_eq!(drain.cursor(), 100);
+        // The region at the cursor drains normally.
+        drain.insert(100, 5, arc(b"hello"), 0, 5);
+        let batches = drain.drain(DRAIN_COALESCE_BYTES);
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].offset, 100);
+        assert_eq!(batches[0].bytes(), b"hello");
+        assert_eq!(drain.cursor(), 105);
     }
 }

@@ -1,5 +1,5 @@
-use crate::cdn_client;
-use crate::crypto::{
+use crate::store_dl::steam::cdn_client;
+use crate::store_dl::steam::crypto::{
     aes256_cbc_decrypt, aes256_ecb_decrypt_block, AesBlock, SessionKey, AES_BLOCK_BYTES,
     SESSION_KEY_LENGTH,
 };
@@ -176,7 +176,7 @@ fn fail(msg: impl Into<String>) -> DepotChunkResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::{aes256_cbc_encrypt, aes256_ecb_encrypt_block};
+    use crate::store_dl::steam::crypto::{aes256_cbc_encrypt, aes256_ecb_encrypt_block};
 
     #[test]
     fn steam_adler_hash_uses_zero_seed() {

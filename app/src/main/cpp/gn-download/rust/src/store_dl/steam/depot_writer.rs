@@ -1,7 +1,7 @@
-use crate::cdn_client::{AsyncCdnClient, AsyncFetchError, CdnClient, CdnConnection, FetchFailKind};
-use crate::content_manifest::{ChunkData, ContentManifest};
-use crate::depot_chunk::process_depot_chunk;
-use crate::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
+use crate::store_dl::steam::cdn_client::{AsyncCdnClient, AsyncFetchError, CdnClient, CdnConnection, FetchFailKind};
+use crate::store_dl::steam::content_manifest::{ChunkData, ContentManifest};
+use crate::store_dl::steam::depot_chunk::process_depot_chunk;
+use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use futures_util::stream::FuturesUnordered;
 use futures_util::StreamExt;
 use std::collections::VecDeque;
@@ -2361,11 +2361,11 @@ async fn run_async_fetch_driver(
                 // Hang signature: repeated consecutive errors on one host (the body-idle timeout
                 // makes a mid-body stall visible HERE). Mark it bad so the CDN probe re-probes a
                 // replacement before the cache TTL expires.
-                if crate::cdn_probe::should_mark_bad(
+                if crate::store_dl::steam::cdn_probe::should_mark_bad(
                     sched.health[done.server_idx].consecutive_errors,
                 ) {
                     let host = &servers[done.server_idx].host;
-                    crate::cdn_probe::mark_bad(install_dir, host);
+                    crate::store_dl::steam::cdn_probe::mark_bad(install_dir, host);
                 }
                 if window.record_err(now, err.kind) {
                     if let Some(log) = log {
@@ -2409,7 +2409,7 @@ async fn run_async_fetch_driver(
                     "cdn-zombie depot={depot_id} host={host} held={held} quiet={quiet}s cooldown=30s"
                 ));
             }
-            crate::cdn_probe::mark_bad(install_dir, host);
+            crate::store_dl::steam::cdn_probe::mark_bad(install_dir, host);
         }
     }
 
@@ -2791,7 +2791,7 @@ fn set_file_mode(_path: &Path, _mode: u32) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::{aes256_cbc_encrypt, aes256_ecb_encrypt_block, AES_BLOCK_BYTES};
+    use crate::store_dl::steam::crypto::{aes256_cbc_encrypt, aes256_ecb_encrypt_block, AES_BLOCK_BYTES};
     use std::path::PathBuf;
 
     #[test]
@@ -2845,24 +2845,24 @@ mod tests {
     #[test]
     fn depot_plan_validates_inputs_and_enumerates_actions() {
         let manifest = ContentManifest {
-            metadata: crate::content_manifest::Metadata {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
                 filenames_encrypted: false,
                 ..Default::default()
             },
             files: vec![
-                crate::content_manifest::FileMapping {
+                crate::store_dl::steam::content_manifest::FileMapping {
                     filename: "bin".into(),
                     flags: DEPOT_FILE_FLAG_DIRECTORY,
                     ..Default::default()
                 },
-                crate::content_manifest::FileMapping {
+                crate::store_dl::steam::content_manifest::FileMapping {
                     filename: "bin/game".into(),
                     size: 10,
                     flags: DEPOT_FILE_FLAG_EXECUTABLE,
-                    chunks: vec![crate::content_manifest::ChunkData::default()],
+                    chunks: vec![crate::store_dl::steam::content_manifest::ChunkData::default()],
                     ..Default::default()
                 },
-                crate::content_manifest::FileMapping {
+                crate::store_dl::steam::content_manifest::FileMapping {
                     filename: "link".into(),
                     linktarget: "bin/game".into(),
                     ..Default::default()
@@ -2904,7 +2904,7 @@ mod tests {
     #[test]
     fn depot_plan_rejects_cpp_error_cases() {
         let mut manifest = ContentManifest {
-            files: vec![crate::content_manifest::FileMapping {
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
                 filename: "../escape".into(),
                 ..Default::default()
             }],
@@ -2951,17 +2951,17 @@ mod tests {
     fn creates_layout_and_writes_chunks_at_offsets() {
         let dir = temp_dir("depot_writer_layout");
         let manifest = ContentManifest {
-            metadata: crate::content_manifest::Metadata {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
                 filenames_encrypted: false,
                 ..Default::default()
             },
             files: vec![
-                crate::content_manifest::FileMapping {
+                crate::store_dl::steam::content_manifest::FileMapping {
                     filename: "bin".into(),
                     flags: DEPOT_FILE_FLAG_DIRECTORY,
                     ..Default::default()
                 },
-                crate::content_manifest::FileMapping {
+                crate::store_dl::steam::content_manifest::FileMapping {
                     filename: "bin/game.dat".into(),
                     size: 6,
                     chunks: vec![ChunkData {
@@ -3073,12 +3073,12 @@ mod tests {
         let dir = temp_dir("depot_writer_append");
         fs::create_dir_all(&dir).unwrap();
         let manifest = ContentManifest {
-            metadata: crate::content_manifest::Metadata {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
                 filenames_encrypted: false,
                 depot_id: 7,
                 ..Default::default()
             },
-            files: vec![crate::content_manifest::FileMapping {
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
                 filename: "data.bin".into(),
                 size: 9,
                 chunks: vec![ChunkData {
@@ -3108,12 +3108,12 @@ mod tests {
         // Real manifests do NOT store a file's chunk list in offset order; the plan must dispatch
         // each file's chunks in offset order so the copy pipeline expands files front-to-back.
         let manifest = ContentManifest {
-            metadata: crate::content_manifest::Metadata {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
                 filenames_encrypted: false,
                 depot_id: 7,
                 ..Default::default()
             },
-            files: vec![crate::content_manifest::FileMapping {
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
                 filename: "a.bin".into(),
                 size: 30,
                 chunks: vec![
@@ -3254,12 +3254,12 @@ mod tests {
         // Old install on disk: the tail region ("cc") is still valid, the head is not.
         fs::write(dir.join("f.bin"), b"aacc").unwrap();
         let manifest = ContentManifest {
-            metadata: crate::content_manifest::Metadata {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
                 filenames_encrypted: false,
                 depot_id: 7,
                 ..Default::default()
             },
-            files: vec![crate::content_manifest::FileMapping {
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
                 filename: "f.bin".into(),
                 size: 4,
                 chunks: vec![
@@ -3338,8 +3338,8 @@ mod tests {
         let dir = temp_dir("depot_writer_assert_stranded");
         fs::create_dir_all(&dir).unwrap();
         let manifest = ContentManifest {
-            metadata: crate::content_manifest::Metadata::default(),
-            files: vec![crate::content_manifest::FileMapping {
+            metadata: crate::store_dl::steam::content_manifest::Metadata::default(),
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
                 filename: "f.bin".into(),
                 size: 4,
                 chunks: vec![ChunkData {
@@ -3370,18 +3370,18 @@ mod tests {
     fn sequential_write_handles_layout_only_manifest() {
         let dir = temp_dir("depot_writer_sequential_layout");
         let manifest = ContentManifest {
-            metadata: crate::content_manifest::Metadata {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
                 filenames_encrypted: false,
                 depot_id: 7,
                 ..Default::default()
             },
             files: vec![
-                crate::content_manifest::FileMapping {
+                crate::store_dl::steam::content_manifest::FileMapping {
                     filename: "empty.bin".into(),
                     size: 5,
                     ..Default::default()
                 },
-                crate::content_manifest::FileMapping {
+                crate::store_dl::steam::content_manifest::FileMapping {
                     filename: "folder".into(),
                     flags: DEPOT_FILE_FLAG_DIRECTORY,
                     ..Default::default()
@@ -3419,12 +3419,12 @@ mod tests {
 
     fn three_chunk_manifest() -> ContentManifest {
         ContentManifest {
-            metadata: crate::content_manifest::Metadata {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
                 filenames_encrypted: false,
                 depot_id: 7,
                 ..Default::default()
             },
-            files: vec![crate::content_manifest::FileMapping {
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
                 filename: "data.bin".into(),
                 size: 9,
                 chunks: vec![
@@ -3660,7 +3660,7 @@ mod tests {
     #[test]
     fn reserve_bytes_uses_compressed_or_nominal() {
         let manifest = ContentManifest {
-            files: vec![crate::content_manifest::FileMapping {
+            files: vec![crate::store_dl::steam::content_manifest::FileMapping {
                 filename: "a".into(),
                 size: 10,
                 chunks: vec![

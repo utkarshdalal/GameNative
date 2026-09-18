@@ -8,12 +8,14 @@
 //! - per chunk: compressed size → compressed MD5 → inflate (stored fallback) → decompressed size →
 //!   decompressed MD5 (`fetchChunkVerified`); a mismatch is a retryable failure (Java: hard fail
 //!   ≤3 with backoff; the core: ≤5 attempts with backoff);
-//! - per file: verified chunks park in the file's ordered drain and append to `<file>.bhtmp`
+//! - per file: verified chunks park in the file's ordered drain and append to the FINAL file
 //!   strictly in offset order (pure sequential appends — no positioned writes past EOF, the
-//!   exFAT/FUSE zero-fill risk), then whole-file size + MD5, delete any existing final, rename
-//!   (`assembleDepotFile`);
-//! - failure of any file aborts the run (`anyFailed`), cancel aborts the run; in both cases every
-//!   unfinished `.bhtmp` is deleted (Java deletes its tmp on the failing/cancelled thread).
+//!   exFAT/FUSE zero-fill risk), then whole-file size + MD5 verify in place
+//!   (`assembleDepotFile`, minus the staging tmp: there are no temp files anywhere);
+//! - failure of any file aborts the run and every file it TOUCHED is deleted; a CANCELLED run
+//!   keeps its partial final files: the next run re-hashes the on-disk bytes chunk-by-chunk
+//!   against the manifest ([`verified_prefix`]) and re-fetches only chunks past the
+//!   verified prefix, so a pause loses nothing already downloaded.
 
 use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions};
@@ -28,17 +30,15 @@ use crate::fetch_core::{run_fetch, FetchItem, FetchOptions, FetchSink, SinkError
 use crate::store_dl::ordered_drain::{OrderedDrain, DRAIN_COALESCE_BYTES};
 
 use super::plan::{
-    build_cdn_path, build_chunk_url, build_plan, host_key, parse_gen1_manifest, Gen1File,
-    PlannedFile,
+    build_cdn_path, build_chunk_url, build_plan, host_key, parse_gen1_manifest, ChunkRef,
+    Gen1File, PlannedFile,
 };
-use super::{inflate_zlib, md5_hex, md5_hex_file};
+use super::{inflate_zlib, md5_hex, md5_hex_file, to_hex};
 
 /// Per-request timeout on chunk fetches (Java: `TIMEOUT = 30_000` connect + read).
 pub const CHUNK_TIMEOUT: Duration = Duration::from_secs(30);
 /// Java sends this on every content-system / CDN request (`fetchBytesEx`).
 pub const USER_AGENT: &str = "GOG Galaxy";
-/// Java staging suffix (`assembleDepotFile`).
-pub const TMP_SUFFIX: &str = ".bhtmp";
 /// Floor for the per-host cap (the core's default); a single-host store gets the whole ceiling.
 pub const PER_HOST_CAP_FLOOR: usize = 6;
 
@@ -157,6 +157,44 @@ pub fn file_verified(path: &Path, expected_size: u64, expected_md5: &str) -> boo
     true
 }
 
+/// Cancelled-run resume: read back an unfinished file AT ITS FINAL PATH and find its longest
+/// CHUNK-VERIFIED prefix. The file is written as a strictly contiguous prefix (the ordered drain
+/// forbids holes), so walking the manifest's chunks in order and re-hashing the on-disk bytes
+/// of each — decompressed size + MD5, exactly what `fetchChunkVerified` checks after inflate —
+/// proves which chunks are already downloaded and intact. Stops at the first chunk that is
+/// unverifiable (unknown size/MD5), truncated, or mismatched; everything past the returned
+/// prefix is re-fetched. No trust is involved: every kept byte re-hashes against the manifest.
+/// Returns (verified chunk count, verified byte length).
+fn verified_prefix(path: &Path, chunks: &[ChunkRef]) -> (usize, u64) {
+    let Ok(file) = File::open(path) else {
+        return (0, 0);
+    };
+    let mut buf = vec![0u8; 256 * 1024];
+    let mut cursor = 0u64;
+    for (n, chunk) in chunks.iter().enumerate() {
+        if chunk.size == 0 || chunk.md5.is_empty() {
+            return (n, cursor);
+        }
+        let mut hasher = crate::md5_small::Md5::new();
+        let mut off = cursor;
+        let mut left = chunk.size;
+        while left > 0 {
+            let take = (buf.len() as u64).min(left) as usize;
+            match file.read_exact_at(&mut buf[..take], off) {
+                Ok(()) => hasher.update(&buf[..take]),
+                Err(_) => return (n, cursor),
+            }
+            off += take as u64;
+            left -= take as u64;
+        }
+        if !to_hex(&hasher.finalize()).eq_ignore_ascii_case(&chunk.md5) {
+            return (n, cursor);
+        }
+        cursor += chunk.size;
+    }
+    (chunks.len(), cursor)
+}
+
 /// Finds an HTTP status in a fetch-core error string (`non-200 HTTP status (403)`, `status 403`,
 /// `HTTP 403`, `http=403`, `code=403`). The link-expiry set is Java's `fetchChunkVerified` list.
 pub fn http_status_in(message: &str) -> Option<u16> {
@@ -189,10 +227,15 @@ struct FileState {
     chunks_done: usize,
     finalized: bool,
     failed: bool,
-    tmp_path: PathBuf,
+    /// The file was opened for writing this run — error cleanup deletes only touched files
+    /// (an untouched pre-existing partial keeps its verified prefix for the next resume).
+    touched: bool,
     out_path: PathBuf,
+    /// Byte length of the chunk-verified prefix already on disk (resume): the first open keeps
+    /// the file and truncates at this cursor instead of starting empty (0 = fresh).
+    resume_from: u64,
     /// The ordered write queue: verified chunks park here until contiguous at the cursor, so
-    /// the tmp grows by pure sequential appends (no positioned writes past EOF).
+    /// the file grows by pure sequential appends (no positioned writes past EOF).
     drain: OrderedDrain,
 }
 
@@ -345,10 +388,10 @@ impl<'a> GogSink<'a> {
         self.events.on_log(line);
     }
 
-    /// `assembleDepotFile` head: `parent.mkdirs(); tmpFile.delete(); new FileOutputStream(tmp)` —
-    /// once per file, on its first DRAINED write (lazy: files never touched by a chunk never
-    /// exist on disk). Caller holds the state lock.
-    fn open_tmp_locked(&self, file_idx: usize, st: &mut FileState) -> Result<Arc<File>, SinkError> {
+    /// `assembleDepotFile` head (`parent.mkdirs(); outFile.delete(); new FileOutputStream(out)`,
+    /// minus the staging tmp): once per file, on its first DRAINED write (lazy: files never
+    /// touched by a chunk never exist on disk). Caller holds the state lock.
+    fn open_out_locked(&self, file_idx: usize, st: &mut FileState) -> Result<Arc<File>, SinkError> {
         let file = &self.files[file_idx];
         if st.failed || st.finalized {
             return Err(SinkError::Fatal(format!(
@@ -359,24 +402,37 @@ impl<'a> GogSink<'a> {
         if let Some(h) = st.handle.as_ref() {
             return Ok(Arc::clone(h));
         }
-        if let Some(parent) = st.tmp_path.parent() {
+        if let Some(parent) = st.out_path.parent() {
             let _ = fs::create_dir_all(parent);
         }
-        let _ = fs::remove_file(&st.tmp_path);
-        let opened = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(&st.tmp_path);
+        let opened = if st.resume_from > 0 {
+            // Resume: the file already holds a chunk-verified prefix — keep it, drop any
+            // unverified tail past the cursor, and continue appending after it.
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&st.out_path)
+                .and_then(|f| {
+                    f.set_len(st.resume_from)?;
+                    Ok(f)
+                })
+        } else {
+            OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open(&st.out_path)
+        };
         match opened {
             Ok(h) => {
                 let h = Arc::new(h);
                 st.handle = Some(Arc::clone(&h));
+                st.touched = true;
                 Ok(h)
             }
             Err(err) => {
                 st.failed = true;
-                let msg = format!("open tmp failed file={} err={err}", file.relative_path);
+                let msg = format!("open failed file={} err={err}", file.relative_path);
                 self.log(&msg);
                 Err(SinkError::Fatal(msg))
             }
@@ -385,8 +441,8 @@ impl<'a> GogSink<'a> {
 
     /// One verified chunk complete in memory: queue it in the file's ordered drain and append
     /// every run now contiguous at the cursor, one coalesced pwrite per batch — pure sequential
-    /// appends, so the tmp never sees a positioned write past its end. On the file's last chunk
-    /// run the whole-file verify + rename and fire the per-file progress event (Java:
+    /// appends, so the file never sees a positioned write past its end. On the file's last chunk
+    /// run the whole-file verify in place and fire the per-file progress event (Java:
     /// doneCount++, totalBytes += df.totalSize, "Downloading: <name>  <speed>").
     fn chunk_landed(
         &self,
@@ -410,11 +466,11 @@ impl<'a> GogSink<'a> {
         st.drain.insert(offset, raw_len, Arc::clone(&data), 0, data.len());
         let batches = st.drain.drain(DRAIN_COALESCE_BYTES);
         for batch in batches {
-            let handle = self.open_tmp_locked(file_idx, &mut st)?;
+            let handle = self.open_out_locked(file_idx, &mut st)?;
             if let Err(err) = handle.write_all_at(batch.bytes(), batch.offset) {
                 st.failed = true;
                 let _ = st.handle.take();
-                let _ = fs::remove_file(&st.tmp_path);
+                let _ = fs::remove_file(&st.out_path);
                 let msg = format!("write failed file={} err={err}", file.relative_path);
                 self.log(&msg);
                 return Err(SinkError::Fatal(msg));
@@ -459,59 +515,52 @@ impl<'a> GogSink<'a> {
         Ok(())
     }
 
-    /// `assembleDepotFile` tail: whole-file size + MD5 on the tmp, delete existing final, rename.
+    /// `assembleDepotFile` tail, in place: whole-file size + MD5 on the final file; a mismatch
+    /// deletes it (the next run starts the file fresh).
     fn finalize_file(&self, file_idx: usize, st: &mut FileState) -> Result<(), String> {
         let file = &self.files[file_idx];
         if let Some(handle) = st.handle.take() {
             drop(handle);
         }
-        let actual = fs::metadata(&st.tmp_path).map(|m| m.len()).unwrap_or(0);
+        let actual = fs::metadata(&st.out_path).map(|m| m.len()).unwrap_or(0);
         if file.total_size > 0 && actual != file.total_size {
             self.log(&format!(
                 "FILE size mismatch file={} exp={} got={}",
                 file.relative_path, file.total_size, actual
             ));
-            let _ = fs::remove_file(&st.tmp_path);
+            let _ = fs::remove_file(&st.out_path);
             return Err(format!("file size mismatch: {}", file.relative_path));
         }
         if !file.md5.is_empty() {
-            let ok = match md5_hex_file(&st.tmp_path) {
+            let ok = match md5_hex_file(&st.out_path) {
                 Some(h) => h.eq_ignore_ascii_case(&file.md5),
                 None => false,
             };
             if !ok {
                 self.log(&format!("FILE md5 mismatch file={}", file.relative_path));
-                let _ = fs::remove_file(&st.tmp_path);
+                let _ = fs::remove_file(&st.out_path);
                 return Err(format!("file md5 mismatch: {}", file.relative_path));
             }
-        }
-        if st.out_path.exists() {
-            let _ = fs::remove_file(&st.out_path);
-        }
-        if let Err(err) = fs::rename(&st.tmp_path, &st.out_path) {
-            self.log(&format!("FILE rename failed file={} err={err}", file.relative_path));
-            let _ = fs::remove_file(&st.tmp_path);
-            return Err(format!("file rename failed: {}", file.relative_path));
         }
         st.finalized = true;
         Ok(())
     }
 
-    /// Delete every unfinished `.bhtmp` (Java: `tmpFile.delete()` on the failing/cancelled task).
+    /// Delete every file this run TOUCHED after an ERROR (cancelled runs keep their partials
+    /// for the chunk-verified resume; an untouched pre-existing partial keeps its prefix too —
+    /// the next run's zero-trust re-hash rewinds past any torn bytes anyway).
     fn cleanup_partials(&self) {
         for st in &self.states {
             let Ok(mut st) = st.lock() else {
                 continue;
             };
-            if st.finalized {
+            if st.finalized || !st.touched {
                 continue;
             }
             if let Some(handle) = st.handle.take() {
                 drop(handle);
             }
-            if st.chunks_done > 0 || st.tmp_path.exists() {
-                let _ = fs::remove_file(&st.tmp_path);
-            }
+            let _ = fs::remove_file(&st.out_path);
         }
     }
 
@@ -764,8 +813,15 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
     }
 
     // Resume / repair pass — Java does this per task on the pool threads; here it runs up front
-    // on `process_workers` threads so the fetch item list can exclude verified files.
+    // on `process_workers` threads so the fetch item list can exclude verified files. Files that
+    // fail the whole-file check get a second chance at CHUNK granularity: a partial file left at
+    // its final path by a cancelled run is re-hashed chunk-by-chunk ([`verified_prefix`]) and
+    // only the unverified tail is re-fetched.
     let pending: Vec<AtomicBool> = files.iter().map(|_| AtomicBool::new(false)).collect();
+    let prefixes: Vec<(AtomicUsize, AtomicU64)> = files
+        .iter()
+        .map(|_| (AtomicUsize::new(0), AtomicU64::new(0)))
+        .collect();
     let next = AtomicUsize::new(0);
     let verify_threads = process_workers.min(files.len().max(1));
     std::thread::scope(|scope| {
@@ -797,6 +853,9 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
                     );
                 } else {
                     pending[idx].store(true, Ordering::Relaxed);
+                    let (n, bytes) = verified_prefix(&out_path, &file.chunks);
+                    prefixes[idx].0.store(n, Ordering::Relaxed);
+                    prefixes[idx].1.store(bytes, Ordering::Relaxed);
                 }
             });
         }
@@ -812,32 +871,73 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
         };
     }
 
-    // Fetch items: one per chunk of every pending file, in plan order (chunks in manifest order).
+    // Fetch items: one per NOT-yet-verified chunk of every pending file, in plan order (chunks
+    // in manifest order). A file whose on-disk bytes verify WHOLE needs no fetching at all.
     let mut table: Vec<(usize, usize)> = Vec::new();
     let mut items: Vec<FetchItem> = Vec::new();
     let mut states: Vec<Mutex<FileState>> = Vec::new();
     let mut pending_files = 0u32;
     let mut pending_bytes = 0u64;
+    let mut resumed_chunks = 0u64;
+    let mut resumed_bytes = 0u64;
     for (file_idx, file) in files.iter().enumerate() {
         let out_path = install_dir.join(&file.relative_path);
-        let tmp_path = PathBuf::from(format!("{}{}", out_path.display(), TMP_SUFFIX));
         let is_pending = pending[file_idx].load(Ordering::Relaxed);
+        let mut resume_chunks = prefixes[file_idx].0.load(Ordering::Relaxed);
+        let mut resume_bytes = prefixes[file_idx].1.load(Ordering::Relaxed);
+        let mut already_final = !is_pending;
+        if is_pending && resume_chunks == file.chunks.len() && !file.chunks.is_empty() {
+            // Every chunk of the file re-hashed against the manifest from the bytes already at
+            // the final path: gate on size + whole-file MD5 and take it as complete in place.
+            let size_ok = file.total_size == 0
+                || fs::metadata(&out_path).map(|m| m.len()).unwrap_or(0) == file.total_size;
+            let md5_ok = file.md5.is_empty()
+                || md5_hex_file(&out_path)
+                    .map(|h| h.eq_ignore_ascii_case(&file.md5))
+                    .unwrap_or(false);
+            if size_ok && md5_ok {
+                events.on_log(&format!("resume-complete file={}", file.relative_path));
+                already_final = true;
+                resume_chunks = 0;
+                resume_bytes = 0;
+                let done = files_done.fetch_add(1, Ordering::Relaxed) + 1;
+                let bytes = bytes_done.fetch_add(file.total_size, Ordering::Relaxed)
+                    + file.total_size;
+                events.on_file_done(
+                    &file.relative_path,
+                    file.total_size,
+                    false,
+                    done,
+                    files_total,
+                    bytes,
+                    planned_bytes,
+                );
+            } else {
+                // Gate failed: delete the file and download it from scratch.
+                let _ = fs::remove_file(&out_path);
+                resume_chunks = 0;
+                resume_bytes = 0;
+            }
+        }
         states.push(Mutex::new(FileState {
             handle: None,
-            chunks_done: 0,
+            chunks_done: resume_chunks,
             // Files not pending (verified or skip-listed) are already final for this run.
-            finalized: !is_pending,
+            finalized: already_final,
             failed: false,
-            tmp_path,
+            touched: false,
             out_path,
-            drain: OrderedDrain::default(),
+            resume_from: resume_bytes,
+            drain: OrderedDrain::with_cursor(resume_bytes),
         }));
-        if !is_pending {
+        if already_final {
             continue;
         }
         pending_files += 1;
         pending_bytes = pending_bytes.saturating_add(file.total_size);
-        for (chunk_idx, chunk) in file.chunks.iter().enumerate() {
+        resumed_chunks += resume_chunks as u64;
+        resumed_bytes += resume_bytes;
+        for (chunk_idx, chunk) in file.chunks.iter().enumerate().skip(resume_chunks) {
             let url = build_chunk_url(&req.cdn_base, &build_cdn_path(&chunk.hash));
             items.push(FetchItem {
                 id: table.len() as u64,
@@ -849,11 +949,13 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
         }
     }
     events.on_log(&format!(
-        "plan verified={} pending_files={} pending_chunks={} pending_bytes={}",
+        "plan verified={} pending_files={} pending_chunks={} pending_bytes={} resumed_chunks={} resumed_bytes={}",
         files_verified.load(Ordering::Relaxed),
         pending_files,
         items.len(),
-        pending_bytes
+        pending_bytes,
+        resumed_chunks,
+        resumed_bytes
     ));
 
     if items.is_empty() {
@@ -909,7 +1011,9 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
             sink.unfinalized_pending()
         );
     }
-    if !success {
+    if !success && !cancelled {
+        // Error runs delete the files they touched; a CANCELLED run keeps its partials — the
+        // next run re-verifies each one chunk-by-chunk and resumes past the verified prefix.
         sink.cleanup_partials();
     }
     let link_expiry = !cancelled
@@ -1318,7 +1422,7 @@ mod tests {
     /// Whole-file finalize through the sink with a synthetic body (no network): verifies the
     /// chunk → ordered drain → whole-file MD5 → rename path and the progress event shape.
     #[test]
-    fn sink_assembles_verifies_and_renames() {
+    fn sink_assembles_and_verifies_in_place() {
         use flate2::write::ZlibEncoder;
         use flate2::Compression;
 
@@ -1344,7 +1448,6 @@ mod tests {
         let files = build_plan(&[manifest], true);
         assert_eq!(files.len(), 1);
         let out_path = dir.join("sub/out.bin");
-        let tmp_path = PathBuf::from(format!("{}{}", out_path.display(), TMP_SUFFIX));
         let files_done = AtomicU32::new(0);
         let bytes_done = AtomicU64::new(0);
         let rec = Recorder { events: StdMutex::new(Vec::new()) };
@@ -1356,8 +1459,9 @@ mod tests {
                 chunks_done: 0,
                 finalized: false,
                 failed: false,
-                tmp_path: tmp_path.clone(),
+                touched: false,
                 out_path: out_path.clone(),
+                resume_from: 0,
                 drain: OrderedDrain::default(),
             })],
             streams: vec![Mutex::new(None), Mutex::new(None)],
@@ -1370,11 +1474,11 @@ mod tests {
         };
         let item = |id: u64| FetchItem { id, urls: vec!["x".into()], reserve: 0, range: None };
 
-        // Second chunk first: it parks in the ordered drain — the tmp is NOT written yet (a
+        // Second chunk first: it parks in the ordered drain — nothing is written yet (a
         // positioned write past the gap is exactly what the drain forbids); both chunks append
         // in order once chunk 0 lands.
         assert_eq!(sink.process(&item(1), cb.clone()).unwrap(), part_b.len() as u64);
-        assert!(!out_path.exists(), "still staging after 1 of 2 chunks");
+        assert!(!out_path.exists(), "nothing drained after 1 of 2 chunks");
         // A corrupt body is a retryable failure, not fatal.
         match sink.process(&item(0), b"\x78garbage".to_vec()) {
             Err(SinkError::Retry(msg)) => assert!(msg.contains("mismatch"), "{msg}"),
@@ -1382,7 +1486,7 @@ mod tests {
             Ok(_) => panic!("expected Retry, got Ok"),
         }
         assert_eq!(sink.process(&item(0), ca.clone()).unwrap(), part_a.len() as u64);
-        assert!(out_path.exists() && !tmp_path.exists(), "renamed after the last chunk");
+        assert!(out_path.exists(), "verified in place after the last chunk");
         assert_eq!(fs::read(&out_path).unwrap(), whole);
         assert_eq!(files_done.load(Ordering::Relaxed), 1);
         assert_eq!(bytes_done.load(Ordering::Relaxed), whole.len() as u64);
@@ -1393,7 +1497,7 @@ mod tests {
     }
 
     #[test]
-    fn sink_whole_file_md5_mismatch_is_fatal_and_deletes_tmp() {
+    fn sink_whole_file_md5_mismatch_is_fatal_and_deletes_the_file() {
         let dir = temp_dir("sinkbad");
         let raw = b"stored chunk (not zlib)".to_vec();
         let manifest = format!(
@@ -1403,7 +1507,6 @@ mod tests {
         );
         let files = build_plan(&[manifest], false);
         let out_path = dir.join("f.bin");
-        let tmp_path = PathBuf::from(format!("{}{}", out_path.display(), TMP_SUFFIX));
         let files_done = AtomicU32::new(0);
         let bytes_done = AtomicU64::new(0);
         let rec = Recorder { events: StdMutex::new(Vec::new()) };
@@ -1415,8 +1518,9 @@ mod tests {
                 chunks_done: 0,
                 finalized: false,
                 failed: false,
-                tmp_path: tmp_path.clone(),
+                touched: false,
                 out_path: out_path.clone(),
+                resume_from: 0,
                 drain: OrderedDrain::default(),
             })],
             streams: vec![Mutex::new(None)],
@@ -1433,7 +1537,7 @@ mod tests {
             Err(SinkError::Retry(msg)) => panic!("expected Fatal, got Retry({msg})"),
             Ok(_) => panic!("expected Fatal, got Ok"),
         }
-        assert!(!tmp_path.exists() && !out_path.exists());
+        assert!(!out_path.exists(), "the failed file is deleted");
         assert_eq!(files_done.load(Ordering::Relaxed), 0);
         let _ = fs::remove_dir_all(&dir);
     }
@@ -1508,7 +1612,6 @@ mod tests {
         );
         let files = build_plan(&[manifest], true);
         let out_path = dir.join("out.bin");
-        let tmp_path = PathBuf::from(format!("{}{}", out_path.display(), TMP_SUFFIX));
         let files_done = AtomicU32::new(0);
         let bytes_done = AtomicU64::new(0);
         let rec = Recorder { events: StdMutex::new(Vec::new()) };
@@ -1520,8 +1623,9 @@ mod tests {
                 chunks_done: 0,
                 finalized: false,
                 failed: false,
-                tmp_path: tmp_path.clone(),
+                touched: false,
                 out_path: out_path.clone(),
+                resume_from: 0,
                 drain: OrderedDrain::default(),
             })],
             streams: vec![Mutex::new(None), Mutex::new(None)],
@@ -1566,7 +1670,7 @@ mod tests {
             sink.on_finish(&item(0), ca.len() as u64).unwrap(),
             part_a.len() as u64 - ca.len() as u64
         );
-        assert!(tmp_path.exists() && !out_path.exists());
+        assert!(out_path.exists(), "the partial file lives at its final path mid-run");
         // Stored chunk, one piece; wrong length first (→ Retry), then the real one.
         sink.on_chunk(&item(1), 0, &part_b[..3]).unwrap();
         match sink.on_finish(&item(1), 3) {
@@ -1575,7 +1679,7 @@ mod tests {
         }
         sink.on_chunk(&item(1), 0, &part_b).unwrap();
         assert_eq!(sink.on_finish(&item(1), part_b.len() as u64).unwrap(), 0);
-        assert!(out_path.exists() && !tmp_path.exists(), "renamed after the last chunk");
+        assert!(out_path.exists(), "verified in place after the last chunk");
         assert_eq!(fs::read(&out_path).unwrap(), whole);
         assert_eq!(files_done.load(Ordering::Relaxed), 1);
         assert_eq!(bytes_done.load(Ordering::Relaxed), whole.len() as u64);
@@ -1671,6 +1775,109 @@ mod tests {
         let res = run(&req, &cancel, &rec);
         assert!(res.cancelled && !res.success);
         assert_eq!(res.error, "cancelled");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Two stored chunks, md5s known: the on-disk read-back must keep exactly the verified prefix.
+    #[test]
+    fn prefix_verify_rewinds_to_the_last_verified_chunk() {
+        let part_a = b"hello".to_vec();
+        let part_b = b" WORLD!".to_vec();
+        let chunk = |data: &[u8], offset: u64, md5: String| ChunkRef {
+            hash: "x".to_string(),
+            compressed_md5: String::new(),
+            md5,
+            compressed_size: 0,
+            size: data.len() as u64,
+            offset,
+        };
+        let chunks = vec![
+            chunk(&part_a, 0, md5_hex(&part_a)),
+            chunk(&part_b, 5, md5_hex(&part_b)),
+        ];
+        let dir = temp_dir("gogprefix");
+        let path = dir.join("f.bin");
+        // No file → nothing verified.
+        assert_eq!(verified_prefix(&path, &chunks), (0, 0));
+        // First chunk intact + garbage tail → exactly the first chunk keeps.
+        let mut body = part_a.clone();
+        body.extend_from_slice(&[0xEE; 3]);
+        fs::write(&path, &body).unwrap();
+        assert_eq!(verified_prefix(&path, &chunks), (1, 5));
+        // Whole file → both chunks.
+        let mut whole = part_a.clone();
+        whole.extend_from_slice(&part_b);
+        fs::write(&path, &whole).unwrap();
+        assert_eq!(verified_prefix(&path, &chunks), (2, 12));
+        // Corruption inside chunk 0 rewinds to nothing.
+        let mut corrupt = whole.clone();
+        corrupt[1] ^= 0xFF;
+        fs::write(&path, &corrupt).unwrap();
+        assert_eq!(verified_prefix(&path, &chunks), (0, 0));
+        // A chunk WITHOUT a known md5 cannot re-verify: the prefix stops before it.
+        let chunks_blind = vec![
+            chunk(&part_a, 0, md5_hex(&part_a)),
+            chunk(&part_b, 5, String::new()),
+        ];
+        fs::write(&path, &whole).unwrap();
+        assert_eq!(verified_prefix(&path, &chunks_blind), (1, 5));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Sink-level resume: the state is seeded with a verified prefix (chunks_done, drain
+    /// cursor, resume_from) and the final file already holds chunk 0 — landing chunk 1 must
+    /// append after the prefix and complete the whole file in place.
+    #[test]
+    fn sink_appends_after_a_resumed_prefix() {
+        let part_a = b"hello".to_vec();
+        let part_b = b" WORLD!".to_vec();
+        let whole: Vec<u8> = part_a.iter().chain(part_b.iter()).copied().collect();
+        let dir = temp_dir("gogresume");
+        let manifest = format!(
+            r#"{{"depot":{{"items":[{{"path":"out.bin","md5":"{}","chunks":[
+                {{"compressedMd5":"{}","md5":"{}","compressedSize":{},"size":{}}},
+                {{"compressedMd5":"{}","md5":"{}","compressedSize":{},"size":{}}}]}}]}}}}"#,
+            md5_hex(&whole),
+            md5_hex(&part_a), md5_hex(&part_a), part_a.len(), part_a.len(),
+            md5_hex(&part_b), md5_hex(&part_b), part_b.len(), part_b.len(),
+        );
+        let files = build_plan(&[manifest], false);
+        assert_eq!(files.len(), 1);
+        let out_path = dir.join("out.bin");
+        // The cancelled previous run wrote chunk 0 and kept the partial file.
+        fs::write(&out_path, &part_a).unwrap();
+        let files_done = AtomicU32::new(0);
+        let bytes_done = AtomicU64::new(0);
+        let rec = Recorder { events: StdMutex::new(Vec::new()) };
+        let sink = GogSink {
+            files: &files,
+            table: vec![(0, 1)], // only chunk 1 is re-fetched
+            states: vec![Mutex::new(FileState {
+                handle: None,
+                chunks_done: 1,
+                finalized: false,
+                failed: false,
+                touched: false,
+                out_path: out_path.clone(),
+                resume_from: part_a.len() as u64,
+                drain: OrderedDrain::with_cursor(part_a.len() as u64),
+            })],
+            streams: vec![Mutex::new(None)],
+            files_total: 1,
+            bytes_total: whole.len() as u64,
+            files_done: &files_done,
+            bytes_done: &bytes_done,
+            events: &rec,
+            speed: Mutex::new(SpeedSampler::new()),
+        };
+        let item = FetchItem { id: 0, urls: vec!["x".into()], reserve: 0, range: None };
+        assert_eq!(
+            sink.process(&item, part_b.clone()).unwrap(),
+            part_b.len() as u64
+        );
+        assert!(out_path.exists(), "completed in place on the last chunk");
+        assert_eq!(fs::read(&out_path).unwrap(), whole);
+        assert_eq!(files_done.load(Ordering::Relaxed), 1);
         let _ = fs::remove_dir_all(&dir);
     }
 }

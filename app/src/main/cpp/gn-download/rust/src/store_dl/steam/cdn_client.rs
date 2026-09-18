@@ -1,4 +1,4 @@
-use crate::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
+use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use flate2::read::{DeflateDecoder, GzDecoder};
 use std::fs;
 use std::io::Read;

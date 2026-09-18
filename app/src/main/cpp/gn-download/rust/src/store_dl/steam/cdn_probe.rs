@@ -29,10 +29,10 @@ use futures_util::stream::FuturesUnordered;
 use futures_util::StreamExt;
 use sha1::Digest;
 
-use crate::cdn_client::{hex_encode, AsyncCdnClient};
-use crate::content_manifest::ContentManifest;
-use crate::depot_writer::DepotLogCallback;
-use crate::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
+use crate::store_dl::steam::cdn_client::{hex_encode, AsyncCdnClient};
+use crate::store_dl::steam::content_manifest::ContentManifest;
+use crate::store_dl::steam::depot_writer::DepotLogCallback;
+use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 
 /// Probe result validity. 6 h balances "CDN conditions drift" against "probe before every depot".
 pub const PROBE_CACHE_TTL_SECS: u64 = 6 * 3600;

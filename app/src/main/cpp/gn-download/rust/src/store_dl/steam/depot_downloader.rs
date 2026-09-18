@@ -1,8 +1,8 @@
-use crate::cdn_client::{CdnClient, CdnManifestResult};
-use crate::content_manifest::ContentManifest;
-use crate::depot_config::{DepotConfigStore, DepotProgressStore, INVALID_MANIFEST_ID};
-use crate::depot_writer::{write_depot_sequential, DepotWriteOptions};
-use crate::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
+use crate::store_dl::steam::cdn_client::{CdnClient, CdnManifestResult};
+use crate::store_dl::steam::content_manifest::ContentManifest;
+use crate::store_dl::steam::depot_config::{DepotConfigStore, DepotProgressStore, INVALID_MANIFEST_ID};
+use crate::store_dl::steam::depot_writer::{write_depot_sequential, DepotWriteOptions};
+use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -351,7 +351,7 @@ pub fn download_resolved_depots_with_cancel_progress(
     cancel: Option<&AtomicBool>,
     on_progress: Option<DepotProgressCallback<'_>>,
     code_refresher: Option<ManifestCodeRefresher<'_>>,
-    log: Option<crate::depot_writer::DepotLogCallback<'_>>,
+    log: Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>>,
 ) -> DepotDownloadResult {
     if let Err(error) = validate_resolved_download_inputs(install_dir, depots, servers) {
         return error;
@@ -499,7 +499,7 @@ pub fn download_resolved_depots_with_cancel_progress(
     // merge faster unassigned caches into the server pool. Cached with TTL + bad-host early
     // refresh; strictly additive — any failure leaves the assigned set untouched.
     let probe_manifests: Vec<&ContentManifest> = resolved.iter().map(|(_, m)| m).collect();
-    let usable_servers = crate::cdn_probe::maybe_extend_servers(
+    let usable_servers = crate::store_dl::steam::cdn_probe::maybe_extend_servers(
         install_dir,
         ca_bundle_path,
         &usable_servers,
@@ -534,7 +534,7 @@ pub fn download_resolved_depots_with_cancel_progress(
                 on_progress(&progress);
             }
         };
-        let chunk_progress: crate::depot_writer::DepotChunkProgressCallback =
+        let chunk_progress: crate::store_dl::steam::depot_writer::DepotChunkProgressCallback =
             &chunk_progress;
         let write_result = write_depot_sequential(
             &manifest,
@@ -601,8 +601,8 @@ fn write_manifest_cache(path: &Path, raw_manifest: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::content_manifest::{END_OF_MANIFEST_MAGIC, METADATA_MAGIC, PAYLOAD_MAGIC};
-    use crate::proto_wire::Writer;
+    use crate::store_dl::steam::content_manifest::{END_OF_MANIFEST_MAGIC, METADATA_MAGIC, PAYLOAD_MAGIC};
+    use crate::store_dl::steam::proto_wire::Writer;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]

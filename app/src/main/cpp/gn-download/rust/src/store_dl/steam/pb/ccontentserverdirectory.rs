@@ -1,4 +1,4 @@
-use crate::proto_wire::{Reader, WireType, Writer};
+use crate::store_dl::steam::proto_wire::{Reader, WireType, Writer};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct CContentServerDirectoryGetManifestRequestCodeRequest {

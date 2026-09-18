@@ -1,20 +1,18 @@
-//! One chunk: header parse → (zlib inflate | copy) → SHA-1 → `.part` → rename into the cache.
+//! One chunk: header parse → (zlib inflate | copy) → SHA-1 → verified decompressed bytes in memory.
 //!
 //! Port of `EpicDownloadManager.downloadChunkStreaming` minus the HTTP part (the fetch core
-//! hands us the whole response body). Java's protocol, kept exactly:
+//! hands us the whole response body). Java's verification protocol, kept exactly:
 //!  - 41-byte header: magic(4) headerVersion(4) headerSize(4) compressedSize(4) GUID(16) hash(8)
 //!    storedAs(1); payload starts at `max(headerSize, 41)` (Java never seeks back);
 //!  - payload = the next `compressedSize` bytes, or whatever the body still has (a short body
 //!    is NOT an error — the SHA-1 check decides);
 //!  - `storedAs & 1` → zlib; corrupt zlib = failure; a stream that ends early = partial output;
-//!  - the decompressed bytes go to `<final>.part`; the SHA-1 (when the manifest has one) must
-//!    match or the `.part` is deleted; then an atomic rename publishes `<final>`.
-//! A cache file therefore exists under its final name ONLY if it fully downloaded and verified,
-//! on either engine.
+//!  - the decompressed bytes must match the manifest's SHA-1 (when it has one) and, when
+//!    `window_size` is known, its length.
+//! Verified bytes stay in memory: the caller queues the parts it needs into their owning
+//! files' ordered drains, which append directly to the final target files.
 
-use std::fs::{self, File};
-use std::io::{self, BufWriter, Write};
-use std::path::{Path, PathBuf};
+use std::io;
 
 use sha1::{Digest, Sha1};
 
@@ -95,112 +93,10 @@ pub fn chunk_payload<'a>(body: &'a [u8], hdr: &ChunkHeader) -> Result<&'a [u8], 
 }
 
 /// `Writer` that mirrors `fos.write(...)` + `sha.update(...)` on every block.
-struct HashingWriter<W: Write> {
-    inner: W,
-    sha: Option<Sha1>,
-    written: u64,
-}
-
-impl<W: Write> Write for HashingWriter<W> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let n = self.inner.write(buf)?;
-        if let Some(sha) = self.sha.as_mut() {
-            sha.update(&buf[..n]);
-        }
-        self.written += n as u64;
-        Ok(n)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        self.inner.flush()
-    }
-}
-
-/// `new File(outFile.getPath() + ".part")`.
-pub fn part_path(final_path: &Path) -> PathBuf {
-    let mut s = final_path.as_os_str().to_os_string();
-    s.push(".part");
-    PathBuf::from(s)
-}
-
-/// Process one downloaded body into `final_path`. Returns the number of DECOMPRESSED bytes
-/// written. `Err(reason)` = Java's "try the next CDN" outcome; the `.part` never survives an
-/// error and `final_path` is only ever created by the rename after verification.
-/// `expected_size` (manifest `window_size` when known) guards sha1-less chunks against a
-/// truncated zlib stream ending cleanly with partial output.
-pub fn write_verified_chunk(
-    body: &[u8],
-    expected_sha1: Option<&[u8; 20]>,
-    expected_size: Option<u64>,
-    final_path: &Path,
-) -> Result<u64, String> {
-    let tmp = part_path(final_path);
-    // `tmp.delete()` — clear any stale partial from a prior interrupted attempt.
-    let _ = fs::remove_file(&tmp);
-
-    let result = write_part(body, expected_sha1, expected_size, &tmp, final_path);
-    if result.is_err() {
-        let _ = fs::remove_file(&tmp);
-    }
-    result
-}
-
-fn write_part(
-    body: &[u8],
-    expected_sha1: Option<&[u8; 20]>,
-    expected_size: Option<u64>,
-    tmp: &Path,
-    final_path: &Path,
-) -> Result<u64, String> {
-    let hdr = parse_chunk_header(body)?;
-    let payload = chunk_payload(body, &hdr)?;
-
-    let file = File::create(tmp).map_err(|e| format!("open {}: {e}", tmp.display()))?;
-    let mut out = HashingWriter {
-        inner: BufWriter::with_capacity(128 * 1024, file),
-        sha: expected_sha1.map(|_| Sha1::new()),
-        written: 0,
-    };
-
-    if hdr.is_compressed() {
-        // Java: inflate until the stream finishes or the input runs out; a corrupt stream throws
-        // (DataFormatException) → this CDN attempt fails. flate2 behaves the same way: EOF on a
-        // truncated stream is a clean end (partial output), corruption is an error.
-        let mut dec = flate2::read::ZlibDecoder::new(payload);
-        io::copy(&mut dec, &mut out).map_err(|e| format!("inflate: {e}"))?;
-    } else {
-        out.write_all(payload).map_err(|e| format!("write: {e}"))?;
-    }
-    out.flush().map_err(|e| format!("flush: {e}"))?;
-    let written = out.written;
-    let digest = out.sha.take().map(|s| s.finalize());
-    drop(out); // close the file before the rename
-
-    if let (Some(expected), Some(actual)) = (expected_sha1, digest) {
-        if actual.as_slice() != &expected[..] {
-            return Err("Chunk SHA-1 mismatch (streaming)".to_string());
-        }
-    }
-    // Size gate BEFORE the rename: a mismatch must leave neither the .part nor a
-    // published final file behind.
-    if let Some(expected) = expected_size {
-        if written != expected {
-            return Err(format!(
-                "Chunk size mismatch: wrote {written} bytes, expected {expected}"
-            ));
-        }
-    }
-
-    // Verified → publish atomically (same directory → same filesystem).
-    fs::rename(tmp, final_path).map_err(|e| format!("Chunk rename failed: {e}"))?;
-    Ok(written)
-}
-
-/// In-memory variant for the streamed-write sink: decode + verify one chunk body, returning the
-/// DECOMPRESSED bytes. Same protocol/gates as [`write_verified_chunk`] (header parse, declared-size
-/// truncation gate, zlib rules, SHA-1 when verifiable, `window_size` when known) — only the output
-/// changes (Vec instead of `<final>.part` + rename), so a verified chunk can be fanned out to its
-/// consumer files with positioned writes instead of round-tripping through the chunk cache.
+/// Decode + verify one chunk body, returning the DECOMPRESSED bytes: header parse, declared-size
+/// truncation gate, zlib rules, SHA-1 when verifiable, `window_size` when known. The streamed
+/// sink then queues the parts it needs into their owning files' ordered drains, which append
+/// directly to the final target files.
 pub fn decode_verified_chunk(
     body: &[u8],
     expected_sha1: Option<&[u8; 20]>,
@@ -237,6 +133,7 @@ pub fn decode_verified_chunk(
 #[cfg(test)]
 pub(crate) mod test_support {
     use super::*;
+    use std::io::Write;
 
     /// Build a chunk body the way the CDN serves it.
     pub fn build_chunk_body(
@@ -281,7 +178,7 @@ pub(crate) mod test_support {
         out
     }
 
-    pub fn temp_dir(tag: &str) -> PathBuf {
+    pub fn temp_dir(tag: &str) -> std::path::PathBuf {
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos())
@@ -290,7 +187,7 @@ pub(crate) mod test_support {
             "bl-epic-{tag}-{}-{nanos}",
             std::process::id()
         ));
-        fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(&dir).unwrap();
         dir
     }
 }
@@ -348,91 +245,58 @@ mod tests {
     }
 
     #[test]
-    fn compressed_chunk_is_inflated_verified_and_renamed() {
-        let dir = temp_dir("ok");
+    fn compressed_chunk_is_inflated_and_verified() {
         let data = sample_data();
         let body = build_chunk_body(&data, true, 3, None);
-        let final_path = dir.join("00000001000000020000000300000004");
-        let n = write_verified_chunk(&body, Some(&sha1_of(&data)), None, &final_path).unwrap();
-        assert_eq!(n, data.len() as u64);
-        assert_eq!(fs::read(&final_path).unwrap(), data);
-        assert!(!part_path(&final_path).exists(), ".part renamed away");
-        let _ = fs::remove_dir_all(&dir);
+        let out = decode_verified_chunk(&body, Some(&sha1_of(&data)), None).unwrap();
+        assert_eq!(out, data);
     }
 
     #[test]
     fn stored_chunk_is_copied_as_is() {
-        let dir = temp_dir("stored");
         let data = b"stored-as-is payload".to_vec();
         let body = build_chunk_body(&data, false, 0, None);
-        let final_path = dir.join("chunk");
-        let n = write_verified_chunk(&body, Some(&sha1_of(&data)), None, &final_path).unwrap();
-        assert_eq!(n, data.len() as u64);
-        assert_eq!(fs::read(&final_path).unwrap(), data);
-        let _ = fs::remove_dir_all(&dir);
+        let out = decode_verified_chunk(&body, Some(&sha1_of(&data)), None).unwrap();
+        assert_eq!(out, data);
     }
 
     #[test]
-    fn sha1_mismatch_leaves_nothing_behind() {
-        let dir = temp_dir("sha");
+    fn sha1_mismatch_is_rejected() {
         let data = sample_data();
         let body = build_chunk_body(&data, true, 0, None);
-        let final_path = dir.join("chunk");
-        let err = write_verified_chunk(&body, Some(&[0x42; 20]), None, &final_path).unwrap_err();
+        let err = decode_verified_chunk(&body, Some(&[0x42; 20]), None).unwrap_err();
         assert!(err.contains("SHA-1 mismatch"), "{err}");
-        assert!(!final_path.exists());
-        assert!(!part_path(&final_path).exists());
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn unverifiable_chunk_is_accepted_without_a_hash() {
-        let dir = temp_dir("nosha");
         let data = sample_data();
         let body = build_chunk_body(&data, true, 0, None);
-        let final_path = dir.join("chunk");
-        assert_eq!(
-            write_verified_chunk(&body, None, None, &final_path).unwrap(),
-            data.len() as u64
-        );
-        assert_eq!(fs::read(&final_path).unwrap(), data);
-        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(decode_verified_chunk(&body, None, None).unwrap(), data);
     }
 
     #[test]
     fn corrupt_zlib_fails_and_truncated_zlib_fails_the_hash() {
-        let dir = temp_dir("zlib");
         let data = sample_data();
         let mut body = build_chunk_body(&data, true, 0, None);
-        let final_path = dir.join("chunk");
         // Truncate the body: rejected up front by the declared-size gate.
         let cut = body.len() - 1000;
-        let err = write_verified_chunk(&body[..cut], Some(&sha1_of(&data)), None, &final_path).unwrap_err();
+        let err = decode_verified_chunk(&body[..cut], Some(&sha1_of(&data)), None).unwrap_err();
         assert!(
             err.contains("truncated chunk body") || err.contains("SHA-1 mismatch") || err.contains("inflate"),
             "{err}"
         );
-        assert!(!final_path.exists());
         // Corrupt the deflate stream itself.
         for b in body.iter_mut().skip(60).take(64) {
             *b ^= 0x55;
         }
-        let err = write_verified_chunk(&body, Some(&sha1_of(&data)), None, &final_path).unwrap_err();
+        let err = decode_verified_chunk(&body, Some(&sha1_of(&data)), None).unwrap_err();
         assert!(err.contains("SHA-1 mismatch") || err.contains("inflate"), "{err}");
-        assert!(!final_path.exists());
-        assert!(!part_path(&final_path).exists());
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
-    fn stale_part_file_is_cleared_before_the_attempt() {
-        let dir = temp_dir("stale");
-        let final_path = dir.join("chunk");
-        fs::write(part_path(&final_path), b"stale").unwrap();
-        let body = [0u8; 10]; // too short → header failure
-        assert!(write_verified_chunk(&body, None, None, &final_path).is_err());
-        assert!(!part_path(&final_path).exists());
-        assert!(!final_path.exists());
-        let _ = fs::remove_dir_all(&dir);
+    fn too_short_a_body_fails_the_header_parse() {
+        let body = [0u8; 10];
+        assert!(decode_verified_chunk(&body, None, None).is_err());
     }
 }

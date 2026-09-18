@@ -25,8 +25,8 @@
 //!
 //! `MB/s` here means MiB/s (1024²), matching the Steam engine's lines.
 
-use crate::cdn_client::{read_body_capped, AsyncFetchError, CdnClient, FetchFailKind, MAX_WHOLE_BODY_BYTES, USER_AGENT};
-use crate::depot_writer::{
+use crate::store_dl::steam::cdn_client::{read_body_capped, AsyncFetchError, CdnClient, FetchFailKind, MAX_WHOLE_BODY_BYTES, USER_AGENT};
+use crate::store_dl::steam::depot_writer::{
     budget_admits, inflight_budget_bytes, retry_backoff_millis, BOOTSTRAP_WINDOW,
     MAX_CHUNK_ATTEMPTS, NOMINAL_CHUNK_RESERVE_BYTES, RATE_LIMIT_COOLDOWN_MS, SERVER_EXPLORE_EVERY,
     WINDOW_BPS_EWMA_ALPHA, WINDOW_COOLDOWN_MS, WINDOW_DECLINE_EPS, WINDOW_ERR_BURST_IMMEDIATE,
@@ -103,7 +103,7 @@ impl Default for FetchOptions {
     fn default() -> Self {
         Self {
             max_workers: BOOTSTRAP_WINDOW,
-            per_host_cap: crate::depot_writer::PER_HOST_CAP,
+            per_host_cap: crate::store_dl::steam::depot_writer::PER_HOST_CAP,
             timeout: Duration::from_secs(60),
             headers: Vec::new(),
             ca_bundle_path: String::new(),
@@ -141,9 +141,9 @@ pub trait FetchSink: Send + Sync {
         Err(SinkError::Fatal("streaming not supported by this sink".to_string()))
     }
 
-    /// Stream mode: the body ended after `total_len` bytes. Finalize (rename `.tmp`, verify the
-    /// hash, …). Returns EXTRA bytes to credit (pieces were already credited as they were
-    /// written; return 0 for none).
+    /// Stream mode: the body ended after `total_len` bytes. Finalize (verify the hash, mark
+    /// the file complete, …). Returns EXTRA bytes to credit (pieces were already credited as
+    /// they were written; return 0 for none).
     fn on_finish(&self, item: &FetchItem, total_len: u64) -> Result<u64, SinkError> {
         let _ = (item, total_len);
         Err(SinkError::Fatal("streaming not supported by this sink".to_string()))
@@ -1783,7 +1783,7 @@ mod tests {
     }
 
     use super::*;
-    use crate::depot_writer::{
+    use crate::store_dl::steam::depot_writer::{
         FETCH_INFLIGHT_BUDGET_FLOOR_BYTES, FETCH_INFLIGHT_BUDGET_HARD_CAP_BYTES, PER_HOST_CAP,
     };
     use std::collections::HashMap;

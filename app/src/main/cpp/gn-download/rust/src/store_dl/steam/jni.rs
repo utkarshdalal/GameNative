@@ -25,10 +25,10 @@
 //! `Long`s; they are sent as unsigned decimal strings (`Long.toUnsignedString`) so high-bit
 //! values survive the trip (a raw JSON number would also be accepted and bit-cast).
 
-use crate::depot_downloader::{
+use crate::store_dl::steam::depot_downloader::{
     self, DepotDownloadResult, ResolvedDepotSpec,
 };
-use crate::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
+use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use jni::objects::{GlobalRef, JClass, JObject, JString, JValue};
 use jni::sys::{jint, jlong, JNI_FALSE, JNI_TRUE, JNI_VERSION_1_6};
 use jni::{JNIEnv, JavaVM};
@@ -404,7 +404,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
         };
         let code_refresher: depot_downloader::ManifestCodeRefresher = &code_refresher;
         let log_fn = |line: &str| android_log(line);
-        let log_cb: Option<crate::depot_writer::DepotLogCallback<'_>> =
+        let log_cb: Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>> =
             if pipeline_logs { Some(&log_fn) } else { None };
         let result = depot_downloader::download_resolved_depots_with_cancel_progress(
             &install_dir,

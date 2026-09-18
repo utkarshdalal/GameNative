@@ -6,15 +6,15 @@
 //!
 //! Parity contract: `docs/RUST_GOG_PARITY.md`. The adapter is fed the SAME inflated depot-manifest
 //! JSON strings Java already parsed, the SAME resolved CDN base (secure link) and the SAME
-//! install dir, and produces the SAME on-disk layout (`<file>.bhtmp` staging, atomic rename,
-//! size+MD5-verified finals) so a download can be resumed by either engine.
+//! install dir, and produces size+MD5-verified finals with NO temp files: chunks append directly
+//! to the final path in offset order, so a download can be resumed by either engine.
 //!
 //! Layout:
 //! - [`plan`]   — depot-manifest JSON → file/chunk plan (mirrors `parseDepotManifest`), CDN path
 //!                and chunk-URL builders, largest-first ordering.
 //! - [`engine`] — resume/skip pass (mirrors `fileVerified`), `FetchItem` list, the `FetchSink`
-//!                (compressed size/MD5 → inflate → decompressed size/MD5 → positioned write →
-//!                whole-file size/MD5 → rename), summary logging.
+//!                (compressed size/MD5 → inflate → decompressed size/MD5 → ordered append to the
+//!                final file → whole-file size/MD5 in place), summary logging.
 //! - [`jni`]    — `BlGogDownload` JNI exports (`nativeStart` / `nativeCancel` / `nativeRelease`).
 
 pub mod engine;

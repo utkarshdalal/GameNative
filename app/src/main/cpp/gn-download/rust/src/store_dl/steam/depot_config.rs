@@ -96,7 +96,7 @@ impl DepotConfigStore {
         else {
             return false;
         };
-        atomic_write_synced(&self.config_path(), bytes.as_bytes())
+        write_synced(&self.config_path(), bytes.as_bytes())
     }
 }
 
@@ -142,7 +142,7 @@ impl DepotProgressStore {
             return true;
         }
         let blob = serialize_progress_sidecar(&done);
-        if !atomic_write_synced(&self.path, &blob) {
+        if !write_synced(&self.path, &blob) {
             return false;
         }
         *flushed = done.len();
@@ -206,31 +206,24 @@ fn get_u32(buf: &[u8]) -> Option<u32> {
     Some(u32::from_le_bytes(buf.get(..4)?.try_into().ok()?))
 }
 
-fn atomic_write_synced(final_path: &Path, bytes: &[u8]) -> bool {
+/// Direct write + fsync (no temp file): a crash mid-write leaves a torn file that fails
+/// validation on the next read and is simply rebuilt — the safe fallback either way.
+fn write_synced(final_path: &Path, bytes: &[u8]) -> bool {
     let Some(parent) = final_path.parent() else {
         return false;
     };
     if fs::create_dir_all(parent).is_err() {
         return false;
     }
-    let tmp_path =
-        final_path.with_extension(match final_path.extension().and_then(|s| s.to_str()) {
-            Some(ext) => format!("{ext}.tmp"),
-            None => "tmp".to_string(),
-        });
-    let mut file = match File::create(&tmp_path) {
+    let mut file = match File::create(final_path) {
         Ok(file) => file,
         Err(_) => return false,
     };
     if file.write_all(bytes).is_err() || file.sync_all().is_err() {
-        let _ = fs::remove_file(&tmp_path);
+        let _ = fs::remove_file(final_path);
         return false;
     }
     drop(file);
-    if fs::rename(&tmp_path, final_path).is_err() {
-        let _ = fs::remove_file(&tmp_path);
-        return false;
-    }
     if let Ok(dir) = File::open(parent) {
         let _ = dir.sync_all();
     }

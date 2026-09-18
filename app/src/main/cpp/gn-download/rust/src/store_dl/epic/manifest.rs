@@ -37,17 +37,6 @@ impl ChunkInfo {
         guid_to_string(&self.guid)
     }
 
-    /// Java/Kotlin `guidStr`: `guid.joinToString("-") { "%08x".format(it) }` — DASHED and
-    /// LOWERCASE. This is the on-disk cache filename the Kotlin assembly stage looks for
-    /// (`File(chunkCacheDir, chunkPart.guidStr)`); using the URL form (uppercase, no dashes)
-    /// makes every chunk "missing" at assembly time.
-    pub fn cache_file_name(&self) -> String {
-        format!(
-            "{:08x}-{:08x}-{:08x}-{:08x}",
-            self.guid[0], self.guid[1], self.guid[2], self.guid[3]
-        )
-    }
-
     /// `ChunkInfo.getPath`: `"<chunkDir>/<%02d groupNum>/<%016X hash>_<GUID>.chunk"`.
     pub fn path(&self, chunk_dir: &str) -> String {
         format!(
