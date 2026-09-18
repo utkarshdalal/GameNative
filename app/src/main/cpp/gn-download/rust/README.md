@@ -156,6 +156,13 @@ callback, cleared on the first real download progress.
   done, the engine dumps a `write-stall depot=… lock=HELD` diagnostic line and aborts the
   run with a deliberate **timeout** failure — designed to be classified transient so the
   store layer auto-retries instead of hanging forever.
+- **Pool-verdict watchdog** (fetch core): if every item is dispatched and no process-pool
+  verdict arrives for 60s, the driver aborts with a *no process-pool verdict* error naming
+  the stuck `item:attempt` ids — the pool might be dead. The error is a suspicion, not a
+  verdict of its own: `run_fetch` joins the pool threads before building the outcome, and
+  if every item has an Ok verdict by then the pool merely stalled (seen on-device: two
+  exFAT/FUSE writes wedged ~60 s at the tail of a 62 GB Epic run, then completed) — the
+  stale watchdog error is downgraded to success with a log line.
 - **Kotlin side** (`GameDownloadService.isTransientFailure`): permanent markers are checked
   first (missing depot key/manifest, no space, decrypt/parse failures, cancel); transient
   markers (timeout, connection resets, EOF, DNS, stalls, 429/5xx, no CDN servers) trigger

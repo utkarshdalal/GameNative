@@ -477,12 +477,20 @@ mode={}",
     let avg_mbps = (wire_total as f64) / (1024.0 * 1024.0) / elapsed_secs;
     let peak_mbps = (meter.peak_bps() / (1024.0 * 1024.0)).max(avg_mbps);
     let cancelled = cancel.load(Ordering::Relaxed);
-    let error = error_slot.lock().expect("err slot poisoned").take();
+    let raw_error = error_slot.lock().expect("err slot poisoned").take();
+    let items_ok = items_ok.load(Ordering::Relaxed);
+    let error = reconcile_watchdog_error(raw_error.clone(), items_ok, items.len(), cancelled);
+    if raw_error.is_some() && error.is_none() {
+        log(&format!(
+            "pool-verdict watchdog fired but all {} item(s) completed during pool join; treating as success",
+            items.len()
+        ));
+    }
     let outcome = FetchOutcome {
         bytes_credited: bytes_credited.load(Ordering::Relaxed),
         error,
         cancelled,
-        items_ok: items_ok.load(Ordering::Relaxed),
+        items_ok,
     };
     let result = if cancelled {
         "cancelled"
@@ -509,6 +517,29 @@ avg_mbps={avg_mbps:.2} peak_mbps={peak_mbps:.2} result={result}",
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Pure helpers (unit-tested)
 // ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// The pool-verdict watchdog fires on SUSPICION (a worker might be dead), but `run_fetch`
+/// joins the pool threads before building the outcome. If every item has an Ok verdict by
+/// then, the pool recovered — the watchdog error is stale and the run is a success. Anything
+/// else (a real sink failure, a cancelled run, items still missing) keeps its error.
+fn reconcile_watchdog_error(
+    error: Option<String>,
+    items_ok: u64,
+    item_count: usize,
+    cancelled: bool,
+) -> Option<String> {
+    match error {
+        Some(e)
+            if !cancelled
+                && e.contains("no process-pool verdict")
+                && items_ok == item_count as u64 =>
+        {
+            None
+        }
+        other => other,
+    }
+}
+
 
 /// Bytes reserved against the in-flight budget at DISPATCH (nominal when the adapter has none).
 pub fn reserve_bytes(item: &FetchItem) -> u64 {
@@ -985,6 +1016,9 @@ async fn run_driver(ctx: DriverCtx<'_>) {
     let mut errors_logged: u32 = 0;
     // Bodies / finishes handed to the pool whose verdict has not come back yet.
     let mut outstanding = 0usize;
+    // (idx, attempts) of every submission whose verdict has not come back — purely so the
+    // watchdog's diagnostic line can name the stuck items.
+    let mut pending_verdicts: HashMap<(usize, u32), ()> = HashMap::new();
     // Watchdog for a silently-dead pool worker in stream mode (its own channel sender
     // stays connected via other workers, so Disconnected alone can't catch it).
     let mut stall_since: Option<Instant> = None;
@@ -1018,6 +1052,7 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                 }
             };
             outstanding = outstanding.saturating_sub(1);
+            pending_verdicts.remove(&(fb.idx, fb.attempts));
             // A verdict just arrived — the pool is alive, so the stall watchdog must
             // measure from THIS verdict, not from when the last item was dispatched.
             stall_since = None;
@@ -1160,9 +1195,18 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                 // A worker that died without reporting would hang us here forever.
                 let since = stall_since.get_or_insert_with(Instant::now);
                 if since.elapsed() > Duration::from_secs(60) {
+                    let mut pending: Vec<String> = pending_verdicts
+                        .keys()
+                        .take(8)
+                        .map(|(idx, att)| format!("{}:att{}", items[*idx].id, att))
+                        .collect();
+                    pending.sort();
                     record_first_error(
                         error_slot,
-                        format!("{label}: no process-pool verdict for 60s with {outstanding} item(s) outstanding"),
+                        format!(
+                            "{label}: no process-pool verdict for 60s with {outstanding} item(s) outstanding [{}]",
+                            pending.join(", ")
+                        ),
                     );
                     break;
                 }
@@ -1197,6 +1241,7 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                     in_flight.fetch_sub(done.reserve - raw_len, Ordering::Relaxed);
                 }
                 outstanding += 1;
+                pending_verdicts.insert((done.idx, done.attempts), ());
                 if txs[0]
                     .send(ProcessMsg::Body {
                         idx: done.idx,
@@ -1214,6 +1259,7 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                 sched.on_success(done.server_idx, total_len, done.elapsed);
                 window.record_ok(done.elapsed.as_secs_f64() * 1000.0);
                 outstanding += 1;
+                pending_verdicts.insert((done.idx, done.attempts), ());
                 if txs[done.idx % txs.len()]
                     .send(ProcessMsg::Finish {
                         idx: done.idx,
@@ -1771,6 +1817,24 @@ phase={} rtt={:.0}ms budget_stalls={} host_stalls={}",
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn watchdog_error_is_downgraded_only_when_the_pool_recovered() {
+        let watchdog = || {
+            Some("epic app=X: no process-pool verdict for 60s with 2 item(s) outstanding [7:att1, 9:att1]".to_string())
+        };
+        // Pool recovered: every item ok'd during the join → stale watchdog, success.
+        assert_eq!(reconcile_watchdog_error(watchdog(), 10, 10, false), None);
+        // Items still missing → the error stands.
+        assert!(reconcile_watchdog_error(watchdog(), 8, 10, false).is_some());
+        // Cancelled runs keep their error classification.
+        assert!(reconcile_watchdog_error(watchdog(), 10, 10, true).is_some());
+        // Real sink/fetch failures are never downgraded, even at full completion.
+        let real = Some("epic app=X: item 3 failed: disk full".to_string());
+        assert!(reconcile_watchdog_error(real, 10, 10, false).is_some());
+        // No error stays no error.
+        assert_eq!(reconcile_watchdog_error(None, 10, 10, false), None);
+    }
+
     #[test]
     fn client_rejection_is_4xx_but_not_429() {
         assert_eq!(rejected_status("unexpected HTTP status (403)"), Some(403));
