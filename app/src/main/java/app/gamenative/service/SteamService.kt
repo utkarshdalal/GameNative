@@ -2066,6 +2066,12 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun downloadApp(appId: Int, dlcAppIds: List<Int>, branch: String = "public", isUpdateOrVerify: Boolean): DownloadInfo? {
             if (!checkWifiOrNotify()) return null
+            // A queued (auto-paused) entry being resumed keeps showing "Queued" until the
+            // fresh DownloadInfo replaces it below, and depot resolution can take a moment;
+            // re-seed its status now so the screen reflects the resume immediately.
+            downloadJobs[appId]?.takeIf { !it.isActive() }?.let { stale ->
+                instance?.let { svc -> stale.updateStatusMessage(svc.getString(R.string.download_preparing)) }
+            }
             return getAppInfoOf(appId)?.let { appInfo ->
                 val container = ContainerManager(instance!!.applicationContext).getContainerById("STEAM_${appId}")
                 val containerLanguage = if (container != null) {

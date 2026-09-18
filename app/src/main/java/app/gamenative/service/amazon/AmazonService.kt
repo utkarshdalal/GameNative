@@ -462,12 +462,18 @@ class AmazonService : Service() {
                         Timber.tag("Amazon").w("Download already in progress for $productId")
                         return Result.success(existing)
                     }
-                    // Stale inactive entry (e.g. a queued download being resumed).
+                    // Stale inactive entry (e.g. a queued download being resumed). Re-seed
+                    // its status so the screen leaves "Queued" immediately, before the
+                    // fresh entry below swaps in.
+                    existing.updateStatusMessage(context.getString(R.string.download_preparing))
                     instance.activeDownloads.remove(productId, existing)
                 }
                 instance.activeDownloads[productId] = downloadInfo
             }
             downloadInfo.setActive(true)
+            // Seed an initial status so the resumed screen shows a status immediately,
+            // before the native engine's first progress message arrives.
+            downloadInfo.updateStatusMessage(context.getString(R.string.download_preparing))
             instance.activeDownloadPaths[productId] = installPath
 
             // Fresh install/update run should clear stale completion marker before starting

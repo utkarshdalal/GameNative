@@ -15,6 +15,7 @@ import app.gamenative.utils.MarkerUtils
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.service.download.GameDownloadService
 import app.gamenative.service.download.NativeTreeDelete
@@ -464,13 +465,21 @@ class EpicService : Service() {
                         Timber.tag("Epic").w("Download already in progress for $appId")
                         return Result.success(existing)
                     }
-                    // Stale inactive entry (e.g. a queued download being resumed).
+                    // Stale inactive entry (e.g. a queued download being resumed). Re-seed
+                    // its status so the screen leaves "Queued" immediately, before the
+                    // fresh entry below swaps in.
+                    existing.updateStatusMessage(context.getString(R.string.download_preparing))
                     instance.activeDownloads.remove(appId, existing)
                 }
                 instance.activeDownloads[appId] = downloadInfo
             }
             instance.activeDlcSelections[appId] = dlcGameIds
             downloadInfo.setActive(true)
+            // Seed an initial status and emit the start event now — not only deep in the
+            // download manager — so a resumed screen swaps to the fresh DownloadInfo and
+            // shows a status immediately.
+            downloadInfo.updateStatusMessage(context.getString(R.string.download_preparing))
+            PluviaApp.events.emitJava(AndroidEvent.DownloadStatusChanged(appId, true))
             instance.notifierOrNull?.trackDownload(downloadInfo, game.title ?: "", NotificationHelper.NOTIFICATION_ID_EPIC)
 
             // Register with centralized queue and auto-pause other downloads

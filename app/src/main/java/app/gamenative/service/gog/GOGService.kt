@@ -12,6 +12,7 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.service.download.GameDownloadService
 import app.gamenative.ui.util.SnackbarManager
@@ -372,12 +373,20 @@ class GOGService : Service() {
                         Timber.w("[Download] Already in progress for game $gameId")
                         return Result.success(existing)
                     }
-                    // Stale inactive entry (e.g. a queued download being resumed).
+                    // Stale inactive entry (e.g. a queued download being resumed). Re-seed
+                    // its status so the screen leaves "Queued" immediately, before the
+                    // fresh entry below swaps in.
+                    existing.updateStatusMessage(context.getString(R.string.download_preparing))
                     instance.activeDownloads.remove(gameId, existing)
                 }
                 // Track in activeDownloads first
                 instance.activeDownloads[gameId] = downloadInfo
             }
+            // Seed an initial status and emit the start event now — not only deep in the
+            // download manager — so a resumed screen swaps to the fresh DownloadInfo and
+            // shows a status immediately.
+            downloadInfo.updateStatusMessage(context.getString(R.string.download_preparing))
+            PluviaApp.events.emitJava(AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, true))
             instance.notifierOrNull?.trackDownload(downloadInfo, "", NotificationHelper.NOTIFICATION_ID_GOG)
 
             // Register with centralized queue and auto-pause other downloads
