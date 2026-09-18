@@ -307,14 +307,26 @@ class EpicService : Service() {
             }
         }
 
-        suspend fun cleanupDownload(context: Context, appId: Int) {
+        suspend fun cleanupDownload(context: Context, appId: Int, expectedInfo: DownloadInfo? = null) {
+            val instance = getInstance() ?: return
+            if (expectedInfo != null && instance.activeDownloads[appId] !== expectedInfo) {
+                // This cleanup belongs to a CANCELLED run that finished unwinding late
+                // (the screens fire it after awaitCompletion). A resume has already
+                // swapped in a fresh download which owns the map entry AND re-added the
+                // in-progress marker — removing either here reverts the UI to a Resume
+                // button mid-download and strips crash-recovery from the running run.
+                Timber.tag("Epic").i(
+                    "[EpicService] Skipping stale cleanupDownload for app $appId (a resumed download owns the entry)",
+                )
+                return
+            }
             withContext(Dispatchers.IO) {
-                getInstance()?.epicManager?.getGameById(appId)?.let { game ->
+                instance.epicManager.getGameById(appId)?.let { game ->
                     val path = EpicConstants.getGameInstallPath(context, game.appName)
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 }
             }
-            getInstance()?.activeDownloads?.remove(appId)
+            instance.activeDownloads.remove(appId)
         }
 
         fun cancelDownload(appId: Int): Boolean {

@@ -349,7 +349,7 @@ class EpicAppScreen : BaseAppScreen() {
             downloadInfo?.cancel()
             CoroutineScope(Dispatchers.IO).launch {
                 downloadInfo?.awaitCompletion()
-                EpicService.cleanupDownload(context, gameId)
+                EpicService.cleanupDownload(context, gameId, expectedInfo = downloadInfo)
             }
         } else if (installed) {
             // Already installed: launch game
@@ -438,7 +438,7 @@ class EpicAppScreen : BaseAppScreen() {
             downloadInfo?.cancel()
             CoroutineScope(Dispatchers.IO).launch {
                 downloadInfo?.awaitCompletion()
-                EpicService.cleanupDownload(context, gameId)
+                EpicService.cleanupDownload(context, gameId, expectedInfo = downloadInfo)
             }
         } else if (hasPartial) {
             // Resume directly (GOG/Amazon parity): no dialog — the download re-registers
@@ -816,7 +816,7 @@ class EpicAppScreen : BaseAppScreen() {
                         scope.launch(Dispatchers.IO) {
                             try {
                                 downloadInfo?.awaitCompletion()
-                                EpicService.cleanupDownload(context, gameId)
+                                EpicService.cleanupDownload(context, gameId, expectedInfo = downloadInfo)
                                 val result = EpicService.deleteGame(context, gameId)
                                 DownloadService.invalidateCache()
                                 withContext(Dispatchers.Main) {
