@@ -956,8 +956,14 @@ class EpicDownloadManager @Inject constructor(
      */
     private fun fileExistsWithCorrectHash(outputFile: File, expectedSize: Long, expectedHash: ByteArray): Boolean {
         if (!outputFile.exists()) return false
-        if (outputFile.length() != expectedSize) return false
-        if (expectedHash.all { it == 0.toByte() }) return false
+        if (outputFile.length() != expectedSize) {
+            Timber.tag("Epic").v("resume-skip miss: ${outputFile.name} size ${outputFile.length()} != $expectedSize")
+            return false
+        }
+        if (expectedHash.all { it == 0.toByte() }) {
+            Timber.tag("Epic").v("resume-skip miss: ${outputFile.name} all-zero manifest hash")
+            return false
+        }
         return try {
             val digest = MessageDigest.getInstance("SHA-1")
             outputFile.inputStream().use { input ->
@@ -967,7 +973,9 @@ class EpicDownloadManager @Inject constructor(
                     digest.update(buffer, 0, bytesRead)
                 }
             }
-            digest.digest().contentEquals(expectedHash)
+            val ok = digest.digest().contentEquals(expectedHash)
+            if (!ok) Timber.tag("Epic").v("resume-skip miss: ${outputFile.name} sha1 mismatch")
+            ok
         } catch (e: Exception) {
             Timber.tag("Epic").w(e, "Could not verify existing file ${outputFile.path}, re-downloading")
             false
@@ -1021,11 +1029,11 @@ class EpicDownloadManager @Inject constructor(
             if (cause is CancellationException) cancelFlag.set(true)
         }
 
-        // Single credit budget for the WHOLE native run (fetch + assembly):
-        // totalExpected − already-persisted bytes. The engine credits cached-skip
-        // chunks at fetch time and reports assembled bytes afterwards; routing
-        // both through this budget makes double-crediting on resume impossible
-        // (the persisted snapshot is already counted) and caps the bar at 100%.
+        // Single credit budget for the native run: totalExpected − already-persisted bytes.
+        // Only ASSEMBLY bytes (parts actually written into files) draw from it — fetch-side
+        // bytes are the same data and must not be credited twice. The persisted snapshot is
+        // already counted, which makes double-crediting on resume impossible and caps the
+        // bar at 100%.
         val remainingCredit = java.util.concurrent.atomic.AtomicLong(
             (downloadInfo.getTotalExpectedBytes() - downloadInfo.getBytesDownloaded()).coerceAtLeast(0L),
         )
@@ -1039,26 +1047,16 @@ class EpicDownloadManager @Inject constructor(
             taken
         }
 
-        var creditedBytes = 0L
         var assemblyCredited = 0L
         var lastAssemblyEmitAt = 0L
         val listener = object : NativeEpicDownload.Listener {
             override fun onPlan(chunksTotal: Int, bytesTotal: Long, chunkDir: String) = Unit
 
             override fun onProgress(bytesDone: Long, bytesTotal: Long, chunksDone: Int, chunksTotal: Int) {
-                // Native progress callbacks fire from multiple fetch-pool threads; the
-                // read-check-set on creditedBytes must be atomic or the same cumulative
-                // bytes get credited twice and progress runs ahead of reality.
-                synchronized(this) {
-                    val delta = bytesDone - creditedBytes
-                    if (delta > 0L) {
-                        creditedBytes = bytesDone
-                        val taken = takeCredit(delta)
-                        if (taken > 0L) {
-                            downloadInfo.updateBytesDownloaded(taken)
-                        }
-                    }
-                }
+                // NO byte credit on the fetch side: onAssemblyProgress credits every byte
+                // actually written into game files, and crediting here too would pay for the
+                // same bytes twice — the bar hit 100% long before the chunk counter finished
+                // (seen on-device as "7.6GB / 7.6GB" at 5950/8161 chunks).
                 if (chunksTotal > 0) {
                     downloadInfo.setProgress(chunksDone.toFloat() / chunksTotal.toFloat())
                 }

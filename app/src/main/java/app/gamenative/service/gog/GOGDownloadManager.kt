@@ -291,6 +291,12 @@ class GOGDownloadManager @Inject constructor(
             val filesToDownload = if (withDlcs) baseFiles + dlcFiles else baseFiles
             var (gameFiles, supportFiles) = parser.separateSupportFiles(filesToDownload)
 
+            // Progress total = the CONSTANT full install size (pending + already-complete),
+            // captured BEFORE the incremental filter below. The persisted byte count seeds the
+            // downloaded side on resume; sizing the total as pending+resumed double-counts the
+            // partial in-flight credit of an interrupted file on every pause/resume cycle.
+            val fullUncompressedSize = parser.calculateUncompressedSize(gameFiles + supportFiles)
+
             // Filter out files that already exist with correct size (incremental download).
             // On a resume this MD5-reads every completed file, which can take minutes for
             // a large install — surface it in the UI and honor cancellation between files.
@@ -369,8 +375,7 @@ class GOGDownloadManager @Inject constructor(
                 """.trimMargin(),
             )
 
-            val resumedBytes = downloadInfo.getBytesDownloaded()
-            downloadInfo.setTotalExpectedBytes(totalUncompressedSize + resumedBytes)
+            downloadInfo.setTotalExpectedBytes(fullUncompressedSize)
 
             // Step 7: Get secure CDN links for chunks
             downloadInfo.updateStatusMessage("Getting secure download links...")
@@ -726,6 +731,10 @@ class GOGDownloadManager @Inject constructor(
 
             var gameFiles = allV1Files.filter { !it.file.isSupport }
             var supportFiles = allV1Files.filter { it.file.isSupport }
+            // Constant full install size (pending + already-complete), captured BEFORE the
+            // incremental filter: pending+resumed would double-count interrupted files'
+            // partial credit on every pause/resume cycle.
+            val fullInstallSize = allV1Files.sumOf { it.file.size }
             gameFiles = gameFiles.filter { f ->
                 val outFile = File(installPath, f.file.path)
                 !fileExistsWithCorrectSize(outFile, f.file.size, f.file.hash.takeIf { it.isNotEmpty() })
@@ -736,10 +745,7 @@ class GOGDownloadManager @Inject constructor(
                     !fileExistsWithCorrectSize(outFile, f.file.size, f.file.hash.takeIf { it.isNotEmpty() })
                 }
             }
-            val totalSize = gameFiles.sumOf { it.file.size } +
-                if (supportDir != null) supportFiles.sumOf { it.file.size } else 0L
-            val resumedBytes = downloadInfo.getBytesDownloaded()
-            downloadInfo.setTotalExpectedBytes(totalSize + resumedBytes)
+            downloadInfo.setTotalExpectedBytes(fullInstallSize)
             downloadInfo.updateStatusMessage("Downloading files...")
             downloadInfo.setProgress(0f)
             downloadInfo.setActive(true)
@@ -800,10 +806,10 @@ class GOGDownloadManager @Inject constructor(
                                     out.write(buffer, 0, n)
                                     copiedInFile += n
                                     downloadInfo.updateBytesDownloaded(n.toLong())
-                                    if (copiedInFile >= progressInterval || downloadInfo.getBytesDownloaded() >= totalSize) {
+                                    if (copiedInFile >= progressInterval || downloadInfo.getBytesDownloaded() >= fullInstallSize) {
                                         copiedInFile = 0L
                                         downloadInfo.setProgress(
-                                            (downloadInfo.getBytesDownloaded().toFloat() / totalSize).coerceIn(0f, 1f)
+                                            (downloadInfo.getBytesDownloaded().toFloat() / fullInstallSize).coerceIn(0f, 1f)
                                         )
                                         downloadInfo.emitProgressChange()
                                     }
@@ -816,7 +822,7 @@ class GOGDownloadManager @Inject constructor(
                         if (file.hash.isNotEmpty() && md5 != file.hash) return Result.failure(Exception("MD5 mismatch ${file.path}"))
                         // bytes already reported during copy; ensure final progress is exact
                         downloadInfo.setProgress(
-                            (downloadInfo.getBytesDownloaded().toFloat() / totalSize).coerceIn(0f, 1f)
+                            (downloadInfo.getBytesDownloaded().toFloat() / fullInstallSize).coerceIn(0f, 1f)
                         )
                         downloadInfo.emitProgressChange()
                         Result.success(Unit)
@@ -2115,9 +2121,17 @@ class GOGDownloadManager @Inject constructor(
         expectedMd5: String? = null,
     ): Boolean {
         if (!outputFile.exists()) return false
-        if (outputFile.length() != expectedSize) return false
-        if (expectedMd5.isNullOrBlank()) return false
-        return calculateMd5File(outputFile).equals(expectedMd5, ignoreCase = true)
+        if (outputFile.length() != expectedSize) {
+            Timber.tag("GOG").v("resume-skip miss: ${outputFile.name} size ${outputFile.length()} != $expectedSize")
+            return false
+        }
+        if (expectedMd5.isNullOrBlank()) {
+            Timber.tag("GOG").v("resume-skip miss: ${outputFile.name} no manifest md5")
+            return false
+        }
+        val ok = calculateMd5File(outputFile).equals(expectedMd5, ignoreCase = true)
+        if (!ok) Timber.tag("GOG").v("resume-skip miss: ${outputFile.name} md5 mismatch")
+        return ok
     }
     /**
      * Calculate MD5 hash of file

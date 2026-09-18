@@ -315,11 +315,10 @@ class AmazonDownloadManager @Inject constructor(
         downloadInfo: DownloadInfo,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         val destFile = File(installDir, file.unixPath).canonicalFile
-        val tmpFile = File(installDir, "${file.unixPath}.tmp").canonicalFile
         val installDirCanonical = installDir.canonicalPath
 
         // Security check: prevent path traversal attacks
-        if (!destFile.path.startsWith(installDirCanonical) || !tmpFile.path.startsWith(installDirCanonical)) {
+        if (!destFile.path.startsWith(installDirCanonical)) {
             Timber.tag(TAG).e("Path traversal attempt blocked: ${file.unixPath}")
             return@withContext Result.failure(SecurityException("Invalid file path"))
         }
@@ -333,7 +332,6 @@ class AmazonDownloadManager @Inject constructor(
             }
 
             destFile.parentFile?.mkdirs()
-            tmpFile.parentFile?.mkdirs()
 
             // nile uses /files/{hash_hex} per downloading/manager.py, NOT the unix path
             val hashHex = file.hashBytes.joinToString("") { "%02x".format(it) }
@@ -350,8 +348,10 @@ class AmazonDownloadManager @Inject constructor(
                     )
                 }
 
+                // Direct write to the destination (no temp file): a failed/cancelled
+                // attempt deletes the partial below, matching the Rust engine.
                 response.body.byteStream().use { input ->
-                    tmpFile.outputStream().use { output ->
+                    destFile.outputStream().use { output ->
                         val buf = ByteArray(8192)
                         var read: Int
                         var bytesSinceLastEmit = 0L
@@ -376,7 +376,7 @@ class AmazonDownloadManager @Inject constructor(
             // Verify SHA-256 hash (algorithm 0) when present
             if (file.hashAlgorithm == 0 && file.hashBytes.isNotEmpty()) {
                 val digest = MessageDigest.getInstance("SHA-256")
-                tmpFile.inputStream().buffered().use { input ->
+                destFile.inputStream().buffered().use { input ->
                     val buf = ByteArray(8192)
                     var read: Int
                     while (input.read(buf).also { read = it } != -1) {
@@ -385,22 +385,19 @@ class AmazonDownloadManager @Inject constructor(
                 }
                 val computed = digest.digest()
                 if (!computed.contentEquals(file.hashBytes)) {
-                    tmpFile.delete()
+                    destFile.delete()
                     return@withContext Result.failure(
                         Exception("SHA-256 mismatch for ${file.unixPath}")
                     )
                 }
             }
 
-            if (destFile.exists()) destFile.delete()
-            tmpFile.renameTo(destFile)
-
             Result.success(Unit)
         } catch (e: CancellationException) {
-            tmpFile.delete()
+            destFile.delete()
             throw e
         } catch (e: Exception) {
-            tmpFile.delete()
+            destFile.delete()
             Timber.tag(TAG).w(e, "Error downloading ${file.unixPath}")
             Result.failure(e)
         }
