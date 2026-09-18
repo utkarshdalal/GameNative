@@ -772,15 +772,20 @@ object GameDownloadService {
      * Unregister a download when it completes or is cancelled.
      * Automatically resumes the next paused download if available.
      */
-    fun unregisterDownload(gameSource: GameSource, gameId: String) {
+    fun unregisterDownload(gameSource: GameSource, gameId: String, expectedInfo: DownloadInfo? = null) {
         val key = makeKey(gameSource, gameId)
         synchronized(queueLock) {
             // Idempotent: both the success path and the failure/cancel paths may call this for
             // the same download. Without the guard the second call would resume ANOTHER paused
             // download and break the one-at-a-time invariant.
-            if (activeDownloads.remove(key) == null) {
+            val entry = activeDownloads[key] ?: return
+            // Deferred unregistrations (manual pause/cancel waits for the job to fully stop)
+            // must not remove a NEWER registration for the same game — e.g. the user paused
+            // and immediately resumed it.
+            if (expectedInfo != null && entry.downloadInfo !== expectedInfo) {
                 return
             }
+            activeDownloads.remove(key)
             Timber.i("[GameDownloadService] Unregistered ${gameSource} download for $gameId")
             // Terminal state for this download (success, cancel, permanent
             // failure): clear retry bookkeeping and any pending backoff job.

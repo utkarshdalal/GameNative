@@ -78,14 +78,36 @@ data class DownloadInfo(
             downloadJob?.cancel(CancellationException(message))
         }
 
-        // If user manually paused (not auto-paused), unregister from queue to resume next download
-        if (!autoPaused && queueGameSource != null && queueGameId != null) {
-            app.gamenative.service.download.GameDownloadService.unregisterDownload(queueGameSource!!, queueGameId!!)
+        // If user manually paused (not auto-paused), free the queue slot once this
+        // download has FULLY stopped so the next game starts on a quiet network/disk.
+        if (!autoPaused) {
+            unregisterFromQueueWhenStopped()
         }
     }
 
     fun failedToDownload() {
         cancel("Failed to download")
+    }
+
+    /**
+     * Unregister from the download queue, deferring to job completion when a download
+     * job is still unwinding: the next queued game then starts only after this
+     * download's engine, sockets and disk writes have fully stopped. Identity-guarded
+     * so a pause followed by an immediate resume of the same game is not unregistered
+     * by the dying job. MUST be called without holding this instance's monitor
+     * (queue lock ordering: queueLock -> DownloadInfo monitor).
+     */
+    private fun unregisterFromQueueWhenStopped() {
+        val src = queueGameSource ?: return
+        val id = queueGameId ?: return
+        val job = downloadJob
+        if (job != null && !job.isCompleted) {
+            job.invokeOnCompletion {
+                app.gamenative.service.download.GameDownloadService.unregisterDownload(src, id, expectedInfo = this)
+            }
+        } else {
+            app.gamenative.service.download.GameDownloadService.unregisterDownload(src, id, expectedInfo = this)
+        }
     }
 
     fun cancel(message: String) {
@@ -98,18 +120,18 @@ data class DownloadInfo(
         // flag so nothing (UI keep-logic, queue scans) treats it as queued.
         wasAutoPaused = false
 
-        // Unregister from queue to resume next download
-        if (queueGameSource != null && queueGameId != null) {
-            app.gamenative.service.download.GameDownloadService.unregisterDownload(queueGameSource!!, queueGameId!!)
-        }
+        // Free the queue slot (and start the next game) once this download has FULLY stopped.
+        unregisterFromQueueWhenStopped()
 
-        // The snapshot write hits the (possibly saturated) install volume and the
-        // job cancel cascades through many continuations; callers include UI click
-        // handlers on the main thread, so both must run off it (ANR otherwise).
+        // Signal cancellation IMMEDIATELY: Job.cancel() only flips state (continuations
+        // resume on their own dispatchers), so this never blocks a UI click handler — and
+        // the download engine's cancel flag is seen within its poll interval, stopping
+        // network traffic right away instead of after a trip through a busy ioScope.
+        // A restarted download for the same path therefore can't overlap the dying job.
+        downloadJob?.cancel(CancellationException(message))
         ioScope.launch {
-            // Signal cancellation before the possibly-slow snapshot write, so a
-            // restarted download for the same path can't overlap the dying job.
-            downloadJob?.cancel(CancellationException(message))
+            // Only the snapshot write stays off the calling thread: it hits the
+            // (possibly saturated) install volume — ANR on the main thread otherwise.
             // Persist the most recent progress so a resume can pick up where it left off.
             persistProgressSnapshot()
         }
