@@ -441,11 +441,10 @@ class EpicAppScreen : BaseAppScreen() {
                 EpicService.cleanupDownload(context, gameId)
             }
         } else if (hasPartial) {
-            Timber.tag(TAG).i("Showing game manager for partial Epic resume via pause/resume: $gameId")
-            showGameManagerDialog(
-                gameId,
-                app.gamenative.ui.component.dialog.state.GameManagerDialogState(visible = true),
-            )
+            // Resume directly (GOG/Amazon parity): no dialog — the download re-registers
+            // with the central queue, which pauses whatever is currently downloading.
+            Timber.tag(TAG).i("Resuming partial Epic download directly via pause/resume: $gameId")
+            EpicService.resumeDownload(context, gameId)
         } else {
             // Fresh start: show DLC manager/install selection dialog.
             Timber.tag(TAG).i("Showing game manager dialog via pause/resume: $gameId")

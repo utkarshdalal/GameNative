@@ -186,6 +186,31 @@ class EpicService : Service() {
             return getInstance()?.activeDownloads?.get(appId)
         }
 
+        /**
+         * Resume a partial download directly (no dialogs), reusing the persisted install path
+         * and the in-memory DLC selection (empty after a process restart — same fallback the
+         * queue's auto-resume listener uses). [GameDownloadService.registerDownload] inside
+         * [downloadGame] auto-pauses whatever is currently downloading.
+         */
+        fun resumeDownload(context: Context, appId: Int) {
+            val instance = getInstance() ?: return
+            Timber.tag("Epic").i("[EpicService] Direct resume requested for app $appId")
+            // Capture synchronously, before launch: a cancelled download's late finally could
+            // otherwise clear the selection before the coroutine reads it.
+            val dlcGameIds = instance.activeDlcSelections[appId].orEmpty()
+            instance.scope.launch {
+                val game = instance.epicManager.getGameById(appId)
+                if (game != null) {
+                    val installPath = game.installPath.ifBlank {
+                        EpicConstants.getGameInstallPath(context, game.appName)
+                    }
+                    val container = ContainerUtils.getOrCreateContainer(context, "EPIC_$appId")
+                    val language = ContainerUtils.toContainerData(container).language
+                    downloadGame(context, appId, dlcGameIds, installPath, language)
+                }
+            }
+        }
+
         fun getActiveDownloads(): Map<Int, DownloadInfo> =
             getInstance()?.activeDownloads?.let { HashMap(it) } ?: emptyMap()
 
@@ -711,21 +736,7 @@ class EpicService : Service() {
             override fun onResumeRequested(gameSource: GameSource, gameId: String) {
                 val appId = gameId.toIntOrNull() ?: return
                 Timber.tag("Epic").i("[EpicService] Resume requested for app $appId")
-                // Capture synchronously, before launch: the queue clears the queued
-                // state before invoking this, and the cancelled download's late
-                // finally could otherwise run before the coroutine reads the map.
-                val dlcGameIds = instance?.activeDlcSelections?.get(appId).orEmpty()
-                scope.launch {
-                    val game = epicManager.getGameById(appId)
-                    if (game != null) {
-                        val installPath = game.installPath.ifBlank {
-                            EpicConstants.getGameInstallPath(applicationContext, game.appName)
-                        }
-                        val container = ContainerUtils.getOrCreateContainer(applicationContext, "EPIC_$appId")
-                        val language = ContainerUtils.toContainerData(container).language
-                        downloadGame(applicationContext, appId, dlcGameIds, installPath, language)
-                    }
-                }
+                resumeDownload(applicationContext, appId)
             }
         })
 

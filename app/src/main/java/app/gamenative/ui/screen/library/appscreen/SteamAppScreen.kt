@@ -646,7 +646,11 @@ class SteamAppScreen : BaseAppScreen() {
         val gameId = libraryItem.gameId
         val downloadInfo = SteamService.getAppDownloadInfo(gameId)
 
-        if (downloadInfo != null) {
+        // Only an active (or post-install syncing) download gets cancelled. A queued
+        // (auto-paused) entry is inactive but still present — falling through to
+        // downloadApp resumes it, re-registers with the queue, and pauses whatever
+        // is currently downloading.
+        if (downloadInfo != null && (downloadInfo.isActive() || downloadInfo.isPostInstallSyncing())) {
             downloadInfo.cancel()
         } else if (SteamService.workshopPausedApps.remove(gameId)) {
             resumeWorkshopDownload(gameId, context)
