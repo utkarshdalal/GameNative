@@ -1051,7 +1051,24 @@ class EpicDownloadManager @Inject constructor(
         var assemblyCredited = 0L
         var lastAssemblyEmitAt = 0L
         val listener = object : NativeEpicDownload.Listener {
-            override fun onPlan(chunksTotal: Int, bytesTotal: Long, chunkDir: String) = Unit
+            override fun onPlan(chunksTotal: Int, bytesTotal: Long, chunkDir: String) {
+                // The Rust plan's byte total is EXACT: the decompressed sizes of precisely the
+                // files this run will write (the base manifest fires onPlan, then each DLC
+                // manifest fires its own). Kotlin's up-front tag-filtered estimate can
+                // undershoot — seen on-device: the bar pinned at 100% from ~90% chunks because
+                // the engine wrote more bytes than the estimate. Re-anchor the grand total to
+                // (bytes already credited) + (this run's exact total) so the bar reaches 100%
+                // exactly when the last part lands. On resume, plan bytes count pending files
+                // in full while assembly only credits the re-fetched tails, so the bar then
+                // sits slightly SHORT of 100% until completion tops it up — conservative, never
+                // early.
+                if (bytesTotal > 0L) {
+                    synchronized(this) {
+                        downloadInfo.setTotalExpectedBytes(downloadInfo.getBytesDownloaded() + bytesTotal)
+                        remainingCredit.set(bytesTotal)
+                    }
+                }
+            }
 
             override fun onVerifying(path: String) {
                 // Resume verify sweep; the first chunk progress overwrites this with the

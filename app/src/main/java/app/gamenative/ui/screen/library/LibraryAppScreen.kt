@@ -581,7 +581,10 @@ internal fun AppScreenContent(
                 val secondsPart = totalSeconds % 60
                 "${minutesLeft}m ${secondsPart}s left"
             } else if (isDownloading && downloadProgress >= 1f) {
-                "Unpacking..."
+                // Bytes at 100% while the download is still active. Prefer the real status
+                // (e.g. Epic may still be fetching chunks — its byte total can saturate
+                // early); "Unpacking..." only when there is nothing more truthful to say.
+                downloadStatusMessage?.takeUnless { it.isBlank() } ?: "Unpacking..."
             } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
                 downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
             } else {
