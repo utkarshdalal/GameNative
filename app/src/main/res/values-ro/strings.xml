@@ -232,7 +232,6 @@
     <string name="container_config_custom_resolution_title">Setează rezoluție personalizată</string>
     <string name="container_config_custom_resolution_separator">x</string>
     <string name="container_config_custom_resolution_error_nonzero">Lățimea și înălțimea trebuie să fie mai mari decât 0</string>
-    <string name="container_config_custom_resolution_error_aspect">Lățimea trebuie să fie mai mare decât înălțimea</string>
     <string name="storage_info">Informații stocare</string>
     <string name="duplicate">Duplică</string>
     <string name="reconfigure">Reconfigurează</string>

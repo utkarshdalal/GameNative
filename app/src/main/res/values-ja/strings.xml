@@ -190,7 +190,6 @@
     <string name="container_config_custom_resolution_title">カスタム解像度の設定</string>
     <string name="container_config_custom_resolution_separator">×</string>
     <string name="container_config_custom_resolution_error_nonzero">幅と高さは 0 より大きくなければなりません</string>
-    <string name="container_config_custom_resolution_error_aspect">幅は高さより大きくなければなりません</string>
     <string name="storage_info">ストレージ情報</string>
     <string name="duplicate">重複</string>
     <string name="reconfigure">再構成</string>

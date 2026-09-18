@@ -1583,7 +1583,6 @@
     <string name="container_config_custom_resolution_title">設定自訂解析度</string>
     <string name="container_config_custom_resolution_separator">x</string>
     <string name="container_config_custom_resolution_error_nonzero">寬度和高度必須大於 0</string>
-    <string name="container_config_custom_resolution_error_aspect">寬度必須大於高度</string>
 
     <string name="steam_not_logged_in">您必須登入 Steam 才能使用此功能</string>
 
