@@ -5,7 +5,6 @@ import app.gamenative.data.GameSource
 import com.winlator.container.Container
 import com.winlator.core.FileUtils
 import com.winlator.core.KeyValueSet
-import com.winlator.core.TarCompressorUtils
 import com.winlator.core.envvars.EnvVars
 import timber.log.Timber
 import java.io.File
@@ -17,8 +16,6 @@ import java.io.File
  * - Injects r.SceneColorFormat=2 (PF_A8R8G8B8 8-bit integer color target) to prevent Turnip Vulkan black screen rendering.
  * - Injects WINEPATH=A:\Trover\Binaries\Win64;A:\ so Wine's DLL loader finds Trover's 64-bit DLLs in its subfolder directory.
  * - Disables VR plugins (SteamVR, OculusVR, OculusAudio) and sets VR system variables (vr.InstancedStereo=0, vr.MultiView=0, -nohmd).
- * - Extracts 64-bit DXVK (dxvk-async-1.10.3) directly into Trover/Binaries/Win64/.
- * - Extracts 64-bit wldap32.dll for LDAP stability.
  * - Configures container envVars (BOX64_AVX=1, BOX64_MMAP32=0, Turnip Vulkan driver, OPENSSL_ia32cap).
  * - Ensures Epic offline mode is false for LauncherCheck DRM authentication.
  */
@@ -274,62 +271,6 @@ val EPIC_Fix_7f6bb22e14044be880ba254f683cd928: KeyedGameFix = object : KeyedGame
                     changed = true
                 } catch (e: Exception) {
                     Timber.tag("GameFixes").e(e, "Failed to write GameUserSettings.ini at ${gameUserSettingsIni.path}")
-                }
-            }
-
-            val win64Dir = File(installPath, "Trover/Binaries/Win64")
-            if (win64Dir.exists()) {
-                val dxvkTmpDir = File(context.cacheDir, "dxvk_trover_tmp")
-                if (dxvkTmpDir.exists()) FileUtils.delete(dxvkTmpDir)
-                dxvkTmpDir.mkdirs()
-                try {
-                    TarCompressorUtils.extract(
-                        TarCompressorUtils.Type.ZSTD,
-                        context.assets,
-                        "dxwrapper/dxvk-async-1.10.3.tzst",
-                        dxvkTmpDir
-                    )
-                    val x64Dir = File(dxvkTmpDir, "x64")
-                    val sourceDir = if (x64Dir.exists()) x64Dir else dxvkTmpDir
-                    listOf("d3d11.dll", "dxgi.dll", "d3d10core.dll", "d3d12.dll").forEach { dllName ->
-                        val srcDll = File(sourceDir, dllName)
-                        val dstDll = File(win64Dir, dllName)
-                        if (srcDll.exists()) {
-                            srcDll.copyTo(dstDll, overwrite = true)
-                            changed = true
-                        }
-                    }
-                } catch (e: Exception) {
-                    Timber.tag("GameFixes").e(e, "Failed to extract DXVK directly to win64Dir")
-                } finally {
-                    FileUtils.delete(dxvkTmpDir)
-                }
-            }
-
-            if (win64Dir.exists()) {
-                val gameWldap32 = File(win64Dir, "wldap32.dll")
-                if (!gameWldap32.exists()) {
-                    try {
-                        FileUtils.copy(context, "sys_dlls/wldap32.dll", gameWldap32)
-                        FileUtils.chmod(gameWldap32, 493)
-                        changed = true
-                    } catch (e: Exception) {
-                        Timber.tag("GameFixes").e(e, "Failed to extract wldap32.dll to game directory")
-                    }
-                }
-            }
-
-            val system32Dir = File(container.getRootDir(), "home/xuser/.wine/drive_c/windows/system32")
-            if (system32Dir.exists()) {
-                val sysWldap32 = File(system32Dir, "wldap32.dll")
-                if (!sysWldap32.exists()) {
-                    try {
-                        FileUtils.copy(context, "sys_dlls/wldap32.dll", sysWldap32)
-                        FileUtils.chmod(sysWldap32, 493)
-                        changed = true
-                    } catch (e: Exception) {
-                        Timber.tag("GameFixes").e(e, "Failed to extract wldap32.dll to system32")
-                    }
                 }
             }
 
