@@ -1575,6 +1575,13 @@
     <string name="recommended_support_message">Primim un comision pentru achizițiile efectuate prin acest link.</string>
     <string name="recommended_about_heading">Despre acest joc</string>
     <string name="recommended_review_count">Pe baza a %1$s recenzii</string>
+    <string name="library_store_media_page">%1$d din %2$d</string>
+    <string name="library_store_media_fullscreen">Vizualizează conținutul media pe ecran complet</string>
+    <string name="library_store_media_close">Închide conținutul media pe ecran complet</string>
+    <string name="library_store_media_previous">Element media anterior</string>
+    <string name="library_store_media_next">Element media următor</string>
+    <string name="library_store_about_expand">Extinde Despre acest joc</string>
+    <string name="library_store_about_collapse">Restrânge Despre acest joc</string>
     <string name="review_overwhelmingly_positive">Copleșitor de pozitiv</string>
     <string name="review_very_positive">Foarte pozitiv</string>
     <string name="review_mostly_positive">Majoritar pozitiv</string>

@@ -1454,6 +1454,13 @@
     <string name="recommended_support_message">Vi modtager en provision af køb foretaget via dette link.</string>
     <string name="recommended_about_heading">Om dette spil</string>
     <string name="recommended_review_count">Baseret på %1$s anmeldelser</string>
+    <string name="library_store_media_page">%1$d af %2$d</string>
+    <string name="library_store_media_fullscreen">Vis medier i fuld skærm</string>
+    <string name="library_store_media_close">Luk fuldskærmsmedier</string>
+    <string name="library_store_media_previous">Forrige medie</string>
+    <string name="library_store_media_next">Næste medie</string>
+    <string name="library_store_about_expand">Udvid Om dette spil</string>
+    <string name="library_store_about_collapse">Skjul Om dette spil</string>
     <string name="review_overwhelmingly_positive">Overvældende positiv</string>
     <string name="review_very_positive">Meget positiv</string>
     <string name="review_mostly_positive">Overvejende positiv</string>

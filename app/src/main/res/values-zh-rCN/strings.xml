@@ -1550,6 +1550,13 @@
     <string name="recommended_support_message">通过此链接购买，我们会获得佣金。</string>
     <string name="recommended_about_heading">关于本游戏</string>
     <string name="recommended_review_count">基于 %1$s 条评价</string>
+    <string name="library_store_media_page">第 %1$d 项，共 %2$d 项</string>
+    <string name="library_store_media_fullscreen">全屏查看媒体</string>
+    <string name="library_store_media_close">关闭全屏媒体</string>
+    <string name="library_store_media_previous">上一个媒体</string>
+    <string name="library_store_media_next">下一个媒体</string>
+    <string name="library_store_about_expand">展开“关于本游戏”</string>
+    <string name="library_store_about_collapse">收起“关于本游戏”</string>
     <string name="review_overwhelmingly_positive">好评如潮</string>
     <string name="review_very_positive">特别好评</string>
     <string name="review_mostly_positive">多半好评</string>

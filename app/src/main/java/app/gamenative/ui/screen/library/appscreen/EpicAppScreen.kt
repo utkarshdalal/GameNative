@@ -21,6 +21,8 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.data.EpicGame
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.StoreGameDetails
+import app.gamenative.data.withoutTitleOnlyDescription
 import app.gamenative.service.DownloadService
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicConstants
@@ -268,7 +270,10 @@ class EpicAppScreen : BaseAppScreen() {
         val displayInfo = GameDisplayInfo(
             name = game?.title ?: libraryItem.name,
             iconUrl = game?.iconUrl ?: libraryItem.iconHash,
-            heroImageUrl = game?.artCover ?: game?.artSquare ?: libraryItem.iconHash,
+            heroImageUrl = game?.artPortrait?.takeIf { it.isNotBlank() }
+                ?: game?.artSquare?.takeIf { it.isNotBlank() }
+                ?: game?.artCover?.takeIf { it.isNotBlank() }
+                ?: libraryItem.iconHash,
             gameId = libraryItem.gameId, // Use gameId property which handles conversion
             appId = libraryItem.appId,
             releaseDate = releaseDateTimestamp,
@@ -278,6 +283,18 @@ class EpicAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            storeDetails = StoreGameDetails(
+                description = game?.description.orEmpty(),
+                tags = (game?.genres.orEmpty() + game?.tags.orEmpty())
+                    .filterNot { it.lowercase(Locale.ROOT) in setOf("games", "applications") }
+                    .map { it.substringAfterLast('/').replace('-', ' ').replace('_', ' ') }
+                    .distinct(),
+                screenshots = listOfNotNull(
+                    game?.artPortrait?.takeIf { it.isNotBlank() },
+                    game?.artSquare?.takeIf { it.isNotBlank() },
+                    game?.artCover?.takeIf { it.isNotBlank() },
+                ).distinct(),
+            ).withoutTitleOnlyDescription(game?.title ?: libraryItem.name),
         )
         Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation}")
         return displayInfo
