@@ -16,9 +16,9 @@ class LibraryCountsTest {
         installFakePrefManager(FakeDataStore()).use {
             // Fixture: hidden games that the default (off) setting filters out.
             val gogGames = listOf(
-                GOGGame(id = "g1", hidden = true),
-                GOGGame(id = "g2", hidden = false),
-                GOGGame(id = "g3", hidden = false),
+                GOGGame(id = "g1", gogComHidden = true),
+                GOGGame(id = "g2", gogComHidden = false),
+                GOGGame(id = "g3", gogComHidden = false),
             )
             val visibleGogCount = gogGames.count {
                 HiddenGameFilter.passesGog(isHidden = it.hidden, showHiddenByDefault = false)
