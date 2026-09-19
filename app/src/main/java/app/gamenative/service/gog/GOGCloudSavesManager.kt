@@ -14,6 +14,9 @@ import org.json.JSONArray
 import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
+import java.security.DigestOutputStream
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -43,10 +46,29 @@ class GOGCloudSavesManager(
 
         // MUST be byte-stable for unchanged content: Galaxy uses md5(gzipped bytes) as the manifest version.
         // GZIPOutputStream writes MTIME=0 (asserted in GOGCloudSavesManagerTest).
-        internal fun gzipBytes(input: ByteArray): ByteArray {
-            val out = ByteArrayOutputStream()
-            GZIPOutputStream(out).use { it.write(input) }
-            return out.toByteArray()
+        // every gzip path goes through here with the same chunking, so the metadata md5 and the uploaded
+        // bytes can't drift apart.
+        internal fun gzipTo(input: InputStream, out: OutputStream) {
+            GZIPOutputStream(out).use { input.copyTo(it) }
+        }
+
+        internal fun gzipBytes(input: ByteArray): ByteArray =
+            ByteArrayOutputStream().also { gzipTo(input.inputStream(), it) }.toByteArray()
+
+        internal fun gzipFile(file: File): ByteArray =
+            ByteArrayOutputStream().also { out -> file.inputStream().use { gzipTo(it, out) } }.toByteArray()
+
+        // md5 of the gzipped file without holding the file or its gzip in memory.
+        internal fun gzippedMd5Hex(file: File): String {
+            val digest = MessageDigest.getInstance("MD5")
+            file.inputStream().use { gzipTo(it, DigestOutputStream(DiscardingOutputStream, digest)) }
+            return digest.digest().joinToString("") { "%02x".format(it) }
+        }
+
+        // OutputStream.nullOutputStream() needs API 33.
+        private object DiscardingOutputStream : OutputStream() {
+            override fun write(b: Int) = Unit
+            override fun write(b: ByteArray, off: Int, len: Int) = Unit
         }
 
         internal fun md5Hex(bytes: ByteArray): String {
@@ -94,8 +116,7 @@ class GOGCloudSavesManager(
 
                 // md5 of the GZIPPED bytes -- must match the upload Etag and GOG's listing hash, or Galaxy
                 // flags a conflict.
-                val raw = file.readBytes()
-                md5Hash = md5Hex(gzipBytes(raw))
+                md5Hash = gzippedMd5Hex(file)
 
                 Timber.d("Calculated metadata for $relativePath: md5=$md5Hash, timestamp=$updateTimestamp")
             } catch (e: Exception) {
@@ -561,10 +582,9 @@ class GOGCloudSavesManager(
             .addPathSegment("v1")
             .addPathSegment(userId)
             .addPathSegment(clientId)
-        // empty dirname = Galaxy SDK fallback (no namespace prefix); an empty segment would
-        // put a stray slash in the object path.
-        if (dirname.isNotEmpty()) b.addPathSegment(dirname)
-        relativePath.replace('\\', '/').split('/').forEach { segment ->
+        // dirname can itself be nested, so split it like relativePath ('/' is a separator, not %2F). empty
+        // segments are skipped: an empty dirname is the Galaxy SDK fallback (no namespace prefix).
+        (dirname.split('/') + relativePath.replace('\\', '/').split('/')).forEach { segment ->
             if (segment.isNotEmpty()) b.addPathSegment(segment)
         }
         return b.build()
@@ -591,7 +611,7 @@ class GOGCloudSavesManager(
             // GOG stores saves gzip-compressed. Match the Galaxy/gogdl protocol: send the gzipped
             // bytes with Content-Encoding: gzip and an Etag of the compressed MD5, otherwise other
             // clients (and GOG's own validation) can't read what we upload.
-            val compressedData = gzipBytes(localFile.readBytes())
+            val compressedData = gzipFile(localFile)
             val etag = md5Hex(compressedData)
 
             val requestBody = compressedData.toRequestBody("application/octet-stream".toMediaType())
