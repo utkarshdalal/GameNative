@@ -1,17 +1,233 @@
 package app.gamenative.service.gog
 
 import android.content.Context
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.IOException
+import java.io.OutputStream
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import okio.Buffer
+import okio.ForwardingSink
+import okio.buffer
 import org.mockito.kotlin.mock
 import java.lang.reflect.Method
+import java.security.MessageDigest
+import java.util.zip.GZIPOutputStream
 
 class GOGCloudSavesManagerTest {
     private val context: Context = mock()
     private val manager = GOGCloudSavesManager(context)
+
+    // Galaxy uses the Etag we send (md5 of the gzipped body) as the manifest version, so
+    // identical content MUST gzip to identical bytes. java.util.zip writes MTIME=0 rather than
+    // wall-clock time, which is what makes that hold -- assert it rather than assume it, since
+    // a JDK that started stamping real time would silently produce a permanent conflict icon.
+    @Test
+    fun upload_body_is_byte_stable_for_identical_content() {
+        val file = tempSave("""{"slot":1,"gold":9999}""".toByteArray())
+
+        val first = snapshot(file)
+        val firstBytes = uploadBytes(first)
+        Thread.sleep(1_100) // cross a wall-clock second
+        val second = snapshot(file)
+
+        assertArrayEquals(firstBytes, uploadBytes(second))
+        assertEquals(first.etag, second.etag)
+    }
+
+    @Test
+    fun upload_body_writes_zero_mtime_header() {
+        val gzipped = uploadBytes(snapshot(tempSave("payload".toByteArray())))
+
+        // gzip header bytes 4..7 are MTIME, little-endian; gogdl sends mtime=0 and so must we.
+        assertArrayEquals(byteArrayOf(0, 0, 0, 0), gzipped.copyOfRange(4, 8))
+    }
+
+    // a failed header write (e.g. disk full) must not leak the destination, e.g. the upload temp file's handle.
+    @Test
+    fun gzipTo_closes_the_destination_when_the_header_write_fails() {
+        var closed = false
+        val failing = object : OutputStream() {
+            override fun write(b: Int) = throw IOException("disk full")
+            override fun write(b: ByteArray, off: Int, len: Int) = throw IOException("disk full")
+            override fun close() {
+                closed = true
+            }
+        }
+
+        assertThrows(IOException::class.java) {
+            GOGCloudSavesManager.gzipTo("payload".byteInputStream(), failing)
+        }
+        assertTrue("destination left open after a failed header write", closed)
+    }
+
+    // Heroic emits Python's datetime.isoformat(timespec="seconds") on a UTC-aware datetime,
+    // which renders the offset as +00:00. ISO_INSTANT (and pattern `X`) render it as Z.
+    @Test
+    fun calculateMetadata_formats_timestamp_with_explicit_offset_not_z() = runBlocking {
+        val file = File.createTempFile("gog-save", ".sav").apply {
+            writeText("save-payload")
+            setLastModified(1_775_162_040_123L)
+            deleteOnExit()
+        }
+
+        val syncFile = GOGCloudSavesManager.SyncFile(
+            relativePath = "save-1.sav",
+            absolutePath = file.absolutePath,
+        )
+        syncFile.calculateMetadata()
+
+        assertEquals("2026-04-02T20:34:00+00:00", syncFile.updateTime)
+        assertFalse(syncFile.updateTime!!.endsWith("Z"))
+        assertEquals(1_775_162_040L, syncFile.updateTimestamp)
+    }
+
+    @Test
+    fun calculateMetadata_hashes_the_gzipped_bytes_not_the_raw_bytes() = runBlocking {
+        val payload = "save-payload"
+        val file = File.createTempFile("gog-save", ".sav").apply {
+            writeText(payload)
+            deleteOnExit()
+        }
+
+        val syncFile = GOGCloudSavesManager.SyncFile(
+            relativePath = "save-1.sav",
+            absolutePath = file.absolutePath,
+        )
+        syncFile.calculateMetadata()
+
+        val expected = md5Hex(referenceGzip(payload.toByteArray()))
+        assertEquals(expected, syncFile.md5Hash)
+    }
+
+    // metadata streams the file through gzip while the upload gzips it into a buffer; the md5 GOG lists
+    // must equal the upload Etag, including across the copy buffer's chunk boundaries.
+    @Test
+    fun streamed_metadata_md5_matches_the_upload_etag_for_multi_chunk_files() = runBlocking {
+        val payload = ByteArray(200_000) { (it * 31 % 251).toByte() }
+        val file = File.createTempFile("gog-save-big", ".sav").apply {
+            writeBytes(payload)
+            deleteOnExit()
+        }
+
+        val syncFile = GOGCloudSavesManager.SyncFile(
+            relativePath = "big.sav",
+            absolutePath = file.absolutePath,
+        )
+        syncFile.calculateMetadata()
+
+        val body = snapshot(file)
+        val uploaded = uploadBytes(body)
+        assertArrayEquals(referenceGzip(payload), uploaded)
+        assertEquals(md5Hex(uploaded), body.etag)
+        assertEquals(body.etag, syncFile.md5Hash)
+        // a sized body, so the upload carries Content-Length like Galaxy/Heroic, not chunked encoding.
+        assertEquals(uploaded.size.toLong(), body.contentLength())
+    }
+
+    // OkHttp may call writeTo again on a retry, and it owns the sink: the body must not close it.
+    @Test
+    fun gzipped_file_body_rewrites_identically_and_leaves_the_sink_open() {
+        val file = File.createTempFile("gog-save-retry", ".sav").apply {
+            writeBytes(ByteArray(50_000) { (it % 97).toByte() })
+            deleteOnExit()
+        }
+        val body = snapshot(file)
+        var closed = false
+        val target = Buffer()
+        val sink = object : ForwardingSink(target) {
+            override fun close() {
+                closed = true
+                super.close()
+            }
+        }.buffer()
+
+        body.writeTo(sink)
+        sink.flush()
+        val first = target.readByteArray()
+        body.writeTo(sink)
+        sink.flush()
+        val second = target.readByteArray()
+
+        assertFalse("the body closed OkHttp's sink", closed)
+        assertArrayEquals(first, second)
+    }
+
+    // the Etag, Content-Length and bytes all come from one snapshot: a save that changes mid-upload (or
+    // between OkHttp retries) must not make the body disagree with its own Etag.
+    @Test
+    fun gzipped_file_body_is_immune_to_the_save_changing_after_the_snapshot() {
+        val file = tempSave("original save".toByteArray())
+        val body = snapshot(file)
+        val etag = body.etag
+        val length = body.contentLength()
+
+        file.writeBytes("a completely different and longer save".toByteArray())
+
+        val sent = uploadBytes(body)
+        assertArrayEquals(referenceGzip("original save".toByteArray()), sent)
+        assertEquals(etag, md5Hex(sent))
+        assertEquals(length, sent.size.toLong())
+    }
+
+    @Test
+    fun gzipped_file_body_close_deletes_its_temp_file() {
+        val tempDir = kotlin.io.path.createTempDirectory("gog-upload-test").toFile().apply { deleteOnExit() }
+        val body = GOGCloudSavesManager.GzippedFileBody.snapshot(tempSave("payload".toByteArray()), tempDir)
+        assertEquals(1, tempDir.listFiles()!!.size)
+
+        body.close()
+
+        assertEquals(0, tempDir.listFiles()!!.size)
+    }
+
+    // relativePath comes off the local filesystem and routinely contains spaces and parens
+    // (e.g. "Slot 1 (autosave).sav"), which must not go into the URL raw.
+    @Test
+    fun cloudFileUrl_percent_encodes_path_segments() {
+        val url = manager.cloudFileUrl("user-1", "client-1", "__default", "Slot 1 (autosave).sav")
+
+        assertEquals(
+            "https://cloudstorage.gog.com/v1/user-1/client-1/__default/Slot%201%20(autosave).sav",
+            url.toString(),
+        )
+        assertEquals(listOf("v1", "user-1", "client-1", "__default", "Slot 1 (autosave).sav"), url.pathSegments)
+    }
+
+    @Test
+    fun cloudFileUrl_splits_nested_relative_paths_into_segments() {
+        val url = manager.cloudFileUrl("user-1", "client-1", "__default", "profiles\\slot 2/save.dat")
+
+        assertEquals(listOf("v1", "user-1", "client-1", "__default", "profiles", "slot 2", "save.dat"), url.pathSegments)
+    }
+
+    // empty dirname is the Galaxy SDK fallback (no namespace prefix); an empty path segment
+    // would put a stray double slash in the object path and 404 the upload.
+    // master concatenated the object path, so a nested location name kept '/' as a separator.
+    @Test
+    fun cloudFileUrl_splits_a_nested_dirname_into_segments() {
+        val url = manager.cloudFileUrl("user-1", "client-1", "Documents/My Games", "save.dat")
+
+        assertEquals(
+            listOf("v1", "user-1", "client-1", "Documents", "My Games", "save.dat"),
+            url.pathSegments,
+        )
+    }
+
+    @Test
+    fun cloudFileUrl_omits_empty_dirname_segment() {
+        val url = manager.cloudFileUrl("user-1", "client-1", "", "save.dat")
+
+        assertEquals("https://cloudstorage.gog.com/v1/user-1/client-1/save.dat", url.toString())
+    }
 
     @Test
     fun parseCloudTimestamp_accepts_gog_offset_format() {
@@ -391,4 +607,23 @@ class GOGCloudSavesManagerTest {
         // The key is: after a successful download that preserves timestamps, the NEXT sync
         // should update lastSyncTimestamp to 1500L, preventing this conflict on future syncs
     }
+
+    private fun snapshot(file: File): GOGCloudSavesManager.GzippedFileBody =
+        GOGCloudSavesManager.GzippedFileBody.snapshot(file, File(System.getProperty("java.io.tmpdir")!!))
+
+    private fun uploadBytes(body: GOGCloudSavesManager.GzippedFileBody): ByteArray =
+        Buffer().also { body.writeTo(it) }.readByteArray()
+
+    // plain one-shot gzip, independent of the code under test.
+    private fun referenceGzip(bytes: ByteArray): ByteArray =
+        ByteArrayOutputStream().also { out -> GZIPOutputStream(out).use { it.write(bytes) } }.toByteArray()
+
+    private fun md5Hex(bytes: ByteArray): String =
+        MessageDigest.getInstance("MD5").digest(bytes).joinToString("") { "%02x".format(it) }
+
+    private fun tempSave(bytes: ByteArray): File =
+        File.createTempFile("gog-save", ".sav").apply {
+            writeBytes(bytes)
+            deleteOnExit()
+        }
 }
