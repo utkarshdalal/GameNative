@@ -3,6 +3,7 @@ package app.gamenative.inputcontrols
 import android.content.Context
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
+import app.gamenative.data.GyroSettings
 import com.winlator.container.Container
 import com.winlator.core.FileUtils
 import com.winlator.inputcontrols.ControlsProfile
@@ -282,6 +283,64 @@ class ControlProfileServiceTest {
             if (workingId != 0) ControlsProfile.getProfileFile(context, workingId).delete()
             firstFile.delete()
             secondFile.delete()
+            containerRoot.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun newlySavedProfile_canBeAppliedForEveryCapturedSection() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val manager = InputControlsManager(context)
+        val containerRoot = Files.createTempDirectory("control-profile-create-apply").toFile()
+        val container = Container("created-profile-game").apply {
+            rootDir = containerRoot
+            putExtra("profileId", "0")
+            setTouchscreenMode(true)
+            setShooterMode(true)
+        }
+        val sections = ControlProfileSection.entries.toSet()
+        var savedId = 0
+        var workingId = 0
+
+        try {
+            GyroSettings(
+                mode = GyroSettings.MODE_MOUSE,
+                sensitivity = 2.25f,
+            ).saveTo(container, persist = false)
+
+            val saved = ControlProfileService.saveCurrentAsProfile(
+                context,
+                container,
+                manager,
+                "Created and applied",
+                sections,
+            )
+            savedId = saved.id
+            val applied = ControlProfileService.applyProfile(
+                context,
+                container,
+                manager,
+                saved,
+                sections,
+            )
+            workingId = applied.id
+
+            assertTrue(saved.isListed)
+            assertFalse(applied.isListed)
+            assertNotEquals(saved.id, applied.id)
+            assertEquals(applied.id.toString(), container.getExtra("profileId", "0"))
+            assertEquals(
+                sections.associateWith { saved.id },
+                ControlProfileService.appliedSectionSources(context, container, manager),
+            )
+            val savedJson = ControlProfileService.readProfileJson(context, saved)
+            assertEquals(sections, ControlProfileService.sectionsOf(savedJson))
+            assertEquals(2.25, savedJson.getJSONObject("gyroSettings").getDouble("sensitivity"), 0.0)
+            assertTrue(savedJson.getJSONObject("touchscreenSettings").getBoolean("enabled"))
+            assertTrue(savedJson.getJSONObject("shooterSettings").getBoolean("enabled"))
+        } finally {
+            if (workingId != 0) ControlsProfile.getProfileFile(context, workingId).delete()
+            if (savedId != 0) ControlsProfile.getProfileFile(context, savedId).delete()
             containerRoot.deleteRecursively()
         }
     }

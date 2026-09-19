@@ -216,8 +216,9 @@ object ControlProfileService {
         manager: InputControlsManager,
         source: ControlsProfile,
         selectedSections: Set<ControlProfileSection> = sectionsOf(readProfileJson(context, source)),
-    ): ControlsProfile? {
-        val working = ensureWorkingProfile(context, container, manager) ?: return null
+    ): ControlsProfile {
+        val working = ensureWorkingProfile(context, container, manager)
+            ?: throw IOException("Unable to create a working control profile")
         val sourceJson = readProfileJson(context, source)
         val availableSections = sectionsOf(sourceJson)
         if (selectedSections.isEmpty() || !availableSections.containsAll(selectedSections)) {
@@ -239,7 +240,9 @@ object ControlProfileService {
         applyContainerSections(container, sourceJson, selectedSections)
         container.saveData()
         manager.reloadProfiles()
-        return manager.getProfile(working.id)
+        return requireNotNull(manager.getProfile(working.id)) {
+            "Unable to reload the applied control profile"
+        }
     }
 
     fun createBlank(

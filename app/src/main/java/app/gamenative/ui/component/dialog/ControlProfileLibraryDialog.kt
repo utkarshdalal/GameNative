@@ -1,36 +1,47 @@
 package app.gamenative.ui.component.dialog
 
 import android.graphics.Paint
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.displayCutoutPadding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -66,6 +77,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -133,7 +145,7 @@ internal fun fitPreviewHalfExtents(
     return rawHalfWidth * fit to rawHalfHeight * fit
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ControlProfileLibraryDialog(
     container: Container,
@@ -157,10 +169,21 @@ fun ControlProfileLibraryDialog(
     var previewAction by remember { mutableStateOf<ProfilePreviewAction?>(null) }
     var sectionAction by remember { mutableStateOf<SectionAction?>(null) }
     var createDialog by remember { mutableStateOf(false) }
+    var createName by remember { mutableStateOf("") }
+    var createFromCurrent by remember { mutableStateOf(true) }
+    var createSections by remember { mutableStateOf(ControlProfileSection.entries.toSet()) }
     var renameProfile by remember { mutableStateOf<ControlsProfile?>(null) }
     var deleteProfile by remember { mutableStateOf<ControlsProfile?>(null) }
     var pendingExport by remember {
         mutableStateOf<Pair<ControlsProfile, Set<ControlProfileSection>>?>(null)
+    }
+    val libraryListState = rememberLazyListState()
+
+    fun openCreate() {
+        createName = ""
+        createFromCurrent = true
+        createSections = ControlProfileSection.entries.toSet()
+        createDialog = true
     }
 
     fun failure(error: Throwable) {
@@ -252,35 +275,124 @@ fun ControlProfileLibraryDialog(
         }
     }
 
+    BackHandler(enabled = createDialog) { createDialog = false }
+
+    val orderedEntries = remember(entries, appliedSources) {
+        entries.sortedWith(
+            compareByDescending<ProfileLibraryEntry> { entry ->
+                entry.preview.sections.any { appliedSources[it] == entry.profile.id }
+            }.thenBy { it.profile.name.lowercase(Locale.getDefault()) },
+        )
+    }
+
     Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false),
+        onDismissRequest = { if (createDialog) createDialog = false else onDismiss() },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnClickOutside = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
         Scaffold(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .displayCutoutPadding()
+                .windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility),
             containerColor = PluviaBackground,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text(stringResource(R.string.control_profiles)) },
+                    title = {
+                        Text(
+                            stringResource(
+                                if (createDialog) R.string.control_profile_create else R.string.control_profiles,
+                            ),
+                        )
+                    },
                     navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+                        IconButton(onClick = { if (createDialog) createDialog = false else onDismiss() }) {
+                            Icon(
+                                if (createDialog) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close,
+                                contentDescription = stringResource(
+                                    if (createDialog) R.string.back else R.string.close,
+                                ),
+                            )
                         }
                     },
                     actions = {
-                        IconButton(onClick = {
-                            importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
-                        }) {
-                            Icon(Icons.Default.Download, contentDescription = stringResource(R.string.control_profile_import))
-                        }
-                        IconButton(onClick = { createDialog = true }) {
-                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.control_profile_create))
+                        if (!createDialog) {
+                            IconButton(
+                                enabled = !loading,
+                                onClick = {
+                                    importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                                },
+                            ) {
+                                Icon(
+                                    Icons.Default.Download,
+                                    contentDescription = stringResource(R.string.control_profile_import),
+                                )
+                            }
+                            IconButton(enabled = !loading, onClick = ::openCreate) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = stringResource(R.string.control_profile_create),
+                                )
+                            }
                         }
                     },
                 )
             },
         ) { padding ->
-            if (loading && entries.isEmpty()) {
+            if (createDialog) {
+                CreateControlProfileScreen(
+                    name = createName,
+                    fromCurrent = createFromCurrent,
+                    sections = createSections,
+                    loading = loading,
+                    onNameChange = { createName = it.take(InputControlsManager.MAX_PROFILE_NAME_LENGTH) },
+                    onFromCurrentChange = { createFromCurrent = it },
+                    onSectionChange = { section, checked ->
+                        createSections = if (checked) createSections + section else createSections - section
+                    },
+                    onCreate = {
+                        val name = createName.trim()
+                        val selectedSections = if (createFromCurrent) {
+                            createSections
+                        } else {
+                            setOf(ControlProfileSection.ON_SCREEN)
+                        }
+                        runIo({
+                            val saved = if (createFromCurrent) {
+                                ControlProfileService.saveCurrentAsProfile(
+                                    context,
+                                    container,
+                                    manager,
+                                    name,
+                                    selectedSections,
+                                )
+                            } else {
+                                ControlProfileService.createBlank(context, manager, name)
+                            }
+                            ControlProfileService.applyProfile(
+                                context,
+                                container,
+                                manager,
+                                saved,
+                                selectedSections,
+                            )
+                        }) { applied ->
+                            createDialog = false
+                            onProfileApplied(applied)
+                            refresh()
+                            SnackbarManager.show(
+                                context.getString(R.string.control_profile_created_applied),
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                )
+            }
+            else if (loading && entries.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center,
@@ -288,19 +400,30 @@ fun ControlProfileLibraryDialog(
                     CircularProgressIndicator()
                 }
             }
-            else if (entries.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center,
-                ) { Text(stringResource(R.string.control_profiles_empty)) }
-            }
             else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    state = libraryListState,
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(entries, key = { it.profile.id }) { entry ->
+                    item(key = "library-overview") {
+                        ControlProfileLibraryOverview(
+                            profileCount = entries.size,
+                            hasAppliedSections = appliedSources.isNotEmpty(),
+                            onCreate = ::openCreate,
+                        )
+                    }
+                    if (orderedEntries.isEmpty()) {
+                        item(key = "empty-library") {
+                            Text(
+                                stringResource(R.string.control_profiles_empty),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    }
+                    items(orderedEntries, key = { it.profile.id }) { entry ->
                         val profile = entry.profile
                         val profilePreview = entry.preview
                         val appliedSections = profilePreview.sections.filterTo(mutableSetOf()) {
@@ -326,7 +449,7 @@ fun ControlProfileLibraryDialog(
                                                 sections,
                                             )
                                         }) { applied ->
-                                            if (applied != null) onProfileApplied(applied)
+                                            onProfileApplied(applied)
                                             refresh()
                                             SnackbarManager.show(context.getString(R.string.control_profile_applied_message))
                                         }
@@ -373,33 +496,6 @@ fun ControlProfileLibraryDialog(
                 }
             }
         }
-    }
-
-    if (createDialog) {
-        CreateControlProfileDialog(
-            onDismiss = { createDialog = false },
-            onCreateBlank = { name ->
-                runIo({ ControlProfileService.createBlank(context, manager, name) }) {
-                    createDialog = false
-                    refresh()
-                }
-            },
-            onCreateFromCurrent = { name, sections ->
-                runIo({
-                    ControlProfileService.saveCurrentAsProfile(
-                        context,
-                        container,
-                        manager,
-                        name,
-                        sections,
-                    )
-                }) {
-                    createDialog = false
-                    refresh()
-                    SnackbarManager.show(context.getString(R.string.control_profile_saved))
-                }
-            },
-        )
     }
 
     val pendingRename: ControlsProfile? = renameProfile
@@ -467,6 +563,59 @@ fun ControlProfileLibraryDialog(
 }
 
 @Composable
+private fun ControlProfileLibraryOverview(
+    profileCount: Int,
+    hasAppliedSections: Boolean,
+    onCreate: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary,
+            ) {
+                Icon(
+                    Icons.Default.SportsEsports,
+                    contentDescription = null,
+                    modifier = Modifier.padding(12.dp).size(28.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    stringResource(R.string.control_profile_library_count, profileCount),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    stringResource(
+                        if (hasAppliedSections) {
+                            R.string.control_profile_library_applied_hint
+                        } else {
+                            R.string.control_profile_library_hint
+                        },
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            FilledTonalButton(onClick = onCreate) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.control_profile_create))
+            }
+        }
+    }
+}
+
+@Composable
 private fun ControlProfileCard(
     profile: ControlsProfile,
     preview: ControlProfilePreview,
@@ -482,12 +631,29 @@ private fun ControlProfileCard(
     var menuExpanded by remember { mutableStateOf(false) }
     val applied = appliedSections.isNotEmpty()
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        tonalElevation = if (applied) 5.dp else 1.dp,
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable(onClick = onPreview),
+        shape = RoundedCornerShape(18.dp),
+        color = if (applied) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
+        else MaterialTheme.colorScheme.surface,
+        border = if (applied) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+        tonalElevation = if (applied) 4.dp else 2.dp,
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (applied) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = if (applied) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                ) {
+                    Icon(
+                        Icons.Default.SportsEsports,
+                        contentDescription = null,
+                        modifier = Modifier.padding(9.dp).size(22.dp),
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = profile.name,
@@ -497,11 +663,24 @@ private fun ControlProfileCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     if (applied) {
-                        Text(
-                            stringResource(R.string.control_profile_applied),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(15.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                stringResource(
+                                    R.string.control_profile_applied_sections,
+                                    appliedSections.size,
+                                    preview.sections.size,
+                                ),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                     }
                 }
                 Box {
@@ -541,9 +720,29 @@ private fun ControlProfileCard(
                 }
             }
             ProfileSectionChips(preview.sections, appliedSections)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onPreview) { Text(stringResource(R.string.control_profile_preview)) }
-                Button(onClick = onApply) {
+            val summaries = buildList {
+                if (ControlProfileSection.ON_SCREEN in preview.sections) {
+                    add(stringResource(R.string.control_profile_controls_count, preview.elementCount))
+                }
+                if (ControlProfileSection.PHYSICAL_CONTROLLER in preview.sections) {
+                    add(stringResource(R.string.control_profile_bindings_count, preview.physicalBindingCount))
+                }
+                if (ControlProfileSection.RADIAL_MENU in preview.sections) {
+                    add(stringResource(R.string.control_profile_radial_count, preview.radialSlotCount))
+                }
+            }
+            if (summaries.isNotEmpty()) {
+                Text(
+                    summaries.joinToString(" • "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(modifier = Modifier.weight(1f), onClick = onPreview) {
+                    Text(stringResource(R.string.control_profile_preview))
+                }
+                Button(modifier = Modifier.weight(1f), onClick = onApply) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.control_profile_apply))
@@ -553,14 +752,16 @@ private fun ControlProfileCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ProfileSectionChips(
     sections: Set<ControlProfileSection>,
     appliedSections: Set<ControlProfileSection> = emptySet(),
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         ControlProfileSection.entries.filter { it in sections }.forEach { section ->
             Surface(
@@ -572,74 +773,118 @@ private fun ProfileSectionChips(
                     MaterialTheme.colorScheme.surfaceVariant
                 },
             ) {
-                Text(
-                    text = sectionLabel(section),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (section in appliedSections) {
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(text = sectionLabel(section), style = MaterialTheme.typography.labelMedium)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun CreateControlProfileDialog(
-    onDismiss: () -> Unit,
-    onCreateBlank: (String) -> Unit,
-    onCreateFromCurrent: (String, Set<ControlProfileSection>) -> Unit,
+private fun CreateControlProfileScreen(
+    name: String,
+    fromCurrent: Boolean,
+    sections: Set<ControlProfileSection>,
+    loading: Boolean,
+    onNameChange: (String) -> Unit,
+    onFromCurrentChange: (Boolean) -> Unit,
+    onSectionChange: (ControlProfileSection, Boolean) -> Unit,
+    onCreate: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    var name by remember { mutableStateOf("") }
-    var fromCurrent by remember { mutableStateOf(true) }
-    var sections by remember { mutableStateOf(ControlProfileSection.entries.toSet()) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.control_profile_create)) },
-        text = {
-            Column(
-                modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+    val listState = rememberLazyListState()
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress) focusManager.clearFocus()
+    }
+    Column(modifier = modifier) {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            state = listState,
+            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            item(key = "create-intro") {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    Text(
+                        stringResource(R.string.control_profile_create_applies_hint),
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+            item(key = "create-name") {
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it.take(InputControlsManager.MAX_PROFILE_NAME_LENGTH) },
+                    onValueChange = onNameChange,
+                    modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(R.string.control_profile_name)) },
                     singleLine = true,
                 )
+            }
+            item(key = "create-source-heading") {
+                Text(
+                    stringResource(R.string.control_profile_start_with),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            item(key = "create-current") {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.control_profile_create_current)) },
+                    supportingContent = { Text(stringResource(R.string.control_profile_create_current_hint)) },
                     leadingContent = { RadioButton(selected = fromCurrent, onClick = null) },
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { fromCurrent = true },
+                        .clickable { onFromCurrentChange(true) },
                 )
+            }
+            item(key = "create-blank") {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.control_profile_create_blank)) },
+                    supportingContent = { Text(stringResource(R.string.control_profile_create_blank_hint)) },
                     leadingContent = { RadioButton(selected = !fromCurrent, onClick = null) },
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { fromCurrent = false },
+                        .clickable { onFromCurrentChange(false) },
                 )
-                if (fromCurrent) {
+            }
+            if (fromCurrent) {
+                item(key = "create-sections-heading") {
                     Text(stringResource(R.string.control_profile_sections), fontWeight = FontWeight.SemiBold)
-                    ControlProfileSection.entries.forEach { section ->
-                        SectionCheckbox(section, section in sections) { checked ->
-                            sections = if (checked) sections + section else sections - section
-                        }
+                }
+                items(ControlProfileSection.entries, key = { "create-section-${it.wireName}" }) { section ->
+                    SectionCheckbox(section, section in sections) { checked ->
+                        onSectionChange(section, checked)
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(
-                enabled = name.isNotBlank() && (!fromCurrent || sections.isNotEmpty()),
-                onClick = {
-                    if (fromCurrent) onCreateFromCurrent(name.trim(), sections)
-                    else onCreateBlank(name.trim())
-                },
-            ) { Text(stringResource(R.string.control_profile_create)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
-    )
+        }
+        Surface(tonalElevation = 4.dp) {
+            Button(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                enabled = !loading && name.isNotBlank() && (!fromCurrent || sections.isNotEmpty()),
+                onClick = onCreate,
+            ) {
+                if (loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(stringResource(R.string.control_profile_create_and_apply))
+            }
+        }
+    }
 }
 
 @Composable
@@ -653,9 +898,11 @@ private fun ProfileSectionDialog(
         onDismissRequest = onDismiss,
         title = { Text(action.title) },
         text = {
-            Column(modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
-                Text(stringResource(R.string.control_profile_sections), fontWeight = FontWeight.SemiBold)
-                action.available.forEach { section ->
+            LazyColumn(modifier = Modifier.heightIn(max = 480.dp)) {
+                item {
+                    Text(stringResource(R.string.control_profile_sections), fontWeight = FontWeight.SemiBold)
+                }
+                items(ControlProfileSection.entries.filter { it in action.available }) { section ->
                     SectionCheckbox(section, section in sections) { checked ->
                         sections = if (checked) sections + section else sections - section
                     }
@@ -684,6 +931,7 @@ private fun SectionCheckbox(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ControlProfilePreviewDialog(
     action: ProfilePreviewAction,
@@ -693,49 +941,59 @@ private fun ControlProfilePreviewDialog(
 ) {
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(0.94f).heightIn(max = 720.dp),
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface,
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .displayCutoutPadding()
+                .windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility)
+                .padding(12.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        action.preview.name,
+            Surface(
+                modifier = Modifier.fillMaxWidth().fillMaxHeight().widthIn(max = 900.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            action.preview.name,
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+                        }
+                    }
+                    LazyColumn(
                         modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+                        contentPadding = PaddingValues(bottom = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        if (ControlProfileSection.ON_SCREEN in action.preview.sections) {
+                            item { ControlLayoutPreview(action.preview.json, screenSize) }
+                        }
+                        item { ProfileSectionChips(action.preview.sections) }
+                        if (ControlProfileSection.ON_SCREEN in action.preview.sections) {
+                            item { Text(stringResource(R.string.control_profile_controls_count, action.preview.elementCount)) }
+                        }
+                        if (ControlProfileSection.PHYSICAL_CONTROLLER in action.preview.sections) {
+                            item { Text(stringResource(R.string.control_profile_bindings_count, action.preview.physicalBindingCount)) }
+                        }
+                        if (ControlProfileSection.RADIAL_MENU in action.preview.sections) {
+                            item { Text(stringResource(R.string.control_profile_radial_count, action.preview.radialSlotCount)) }
+                        }
+                        item { ProfileSettingsSummary(action.preview) }
                     }
-                }
-                LazyColumn(
-                    modifier = Modifier.weight(1f, fill = false),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    if (ControlProfileSection.ON_SCREEN in action.preview.sections) {
-                        item { ControlLayoutPreview(action.preview.json, screenSize) }
-                    }
-                    item { ProfileSectionChips(action.preview.sections) }
-                    if (ControlProfileSection.ON_SCREEN in action.preview.sections) {
-                        item { Text(stringResource(R.string.control_profile_controls_count, action.preview.elementCount)) }
-                    }
-                    if (ControlProfileSection.PHYSICAL_CONTROLLER in action.preview.sections) {
-                        item { Text(stringResource(R.string.control_profile_bindings_count, action.preview.physicalBindingCount)) }
-                    }
-                    if (ControlProfileSection.RADIAL_MENU in action.preview.sections) {
-                        item { Text(stringResource(R.string.control_profile_radial_count, action.preview.radialSlotCount)) }
-                    }
-                    item { ProfileSettingsSummary(action.preview) }
-                }
-                HorizontalDivider()
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
-                    if (onConfirm != null && action.confirmLabel != null) {
-                        FilledTonalButton(onClick = onConfirm) { Text(action.confirmLabel) }
+                    HorizontalDivider()
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+                        if (onConfirm != null && action.confirmLabel != null) {
+                            FilledTonalButton(onClick = onConfirm) { Text(action.confirmLabel) }
+                        }
                     }
                 }
             }
@@ -745,37 +1003,141 @@ private fun ControlProfilePreviewDialog(
 
 @Composable
 private fun ProfileSettingsSummary(preview: ControlProfilePreview) {
-    val gyro = preview.json.optJSONObject("gyroSettings")
-    val touch = preview.json.optJSONObject("touchscreenSettings")
-    val shooter = preview.json.optJSONObject("shooterSettings")
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (gyro != null) {
-            Text(
-                stringResource(
-                    R.string.control_profile_gyro_summary,
-                    gyro.optInt("mode"),
-                    formatDecimal(gyro.optDouble("sensitivity", 1.0)),
+    val enabled = stringResource(R.string.enabled)
+    val disabled = stringResource(R.string.disabled)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        preview.json.optJSONObject("gyroSettings")?.let { gyroJson ->
+            SettingsSummaryCard(
+                title = sectionLabel(ControlProfileSection.GYRO),
+                status = if (gyroJson.optInt("mode") == 0) disabled else enabled,
+                rows = profileSettingRows(gyroJson, ControlProfileSection.GYRO),
+            )
+        }
+
+        preview.json.optJSONObject("touchscreenSettings")?.let { touchJson ->
+            SettingsSummaryCard(
+                title = sectionLabel(ControlProfileSection.TOUCHSCREEN),
+                status = enabledLabel(touchJson.optBoolean("enabled")),
+                rows = profileSettingRows(
+                    touchJson.optJSONObject("gestures") ?: JSONObject(),
+                    ControlProfileSection.TOUCHSCREEN,
                 ),
             )
         }
-        if (touch != null) {
-            Text(
-                stringResource(
-                    R.string.control_profile_touchscreen_summary,
-                    stringResource(if (touch.optBoolean("enabled")) R.string.enabled else R.string.disabled),
-                ),
-            )
-        }
-        if (shooter != null) {
-            Text(
-                stringResource(
-                    R.string.control_profile_shooter_summary,
-                    stringResource(if (shooter.optBoolean("enabled")) R.string.enabled else R.string.disabled),
+
+        preview.json.optJSONObject("shooterSettings")?.let { shooterJson ->
+            SettingsSummaryCard(
+                title = sectionLabel(ControlProfileSection.SHOOTER),
+                status = enabledLabel(shooterJson.optBoolean("enabled")),
+                rows = profileSettingRows(
+                    shooterJson.optJSONObject("config") ?: JSONObject(),
+                    ControlProfileSection.SHOOTER,
                 ),
             )
         }
     }
 }
+
+@Composable
+private fun SettingsSummaryCard(
+    title: String,
+    status: String,
+    rows: List<Pair<String, String>>,
+) {
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+        Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                ) {
+                    Text(
+                        status,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
+            rows.forEach { (label, value) ->
+                HorizontalDivider(modifier = Modifier.padding(vertical = 7.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        label,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        value,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun enabledLabel(enabled: Boolean): String =
+    stringResource(if (enabled) R.string.enabled else R.string.disabled)
+
+@Composable
+private fun profileSettingRows(
+    json: JSONObject,
+    section: ControlProfileSection,
+): List<Pair<String, String>> {
+    val rows = mutableListOf<Pair<String, String>>()
+    val keys = json.keys()
+    while (keys.hasNext()) {
+        val key = keys.next()
+        rows += friendlySettingName(key) to profileSettingValue(section, key, json.opt(key))
+    }
+    return rows
+}
+
+@Composable
+private fun profileSettingValue(
+    section: ControlProfileSection,
+    key: String,
+    value: Any?,
+): String = when {
+    value is Boolean -> enabledLabel(value)
+    value is Number -> when {
+        section == ControlProfileSection.GYRO && key in setOf("mode", "lastTarget") -> when (value.toInt()) {
+            0 -> stringResource(R.string.disabled)
+            1 -> stringResource(R.string.left_stick)
+            3 -> stringResource(R.string.mouse)
+            else -> stringResource(R.string.right_stick)
+        }
+        section == ControlProfileSection.GYRO && key == "activationMode" -> stringResource(
+            when (value.toInt()) {
+                1 -> R.string.gyro_activation_hold
+                2 -> R.string.gyro_activation_toggle
+                3 -> R.string.gyro_activation_ratchet
+                else -> R.string.gyro_activation_always
+            },
+        )
+        else -> formatDecimal(value.toDouble())
+    }
+    value is String -> friendlySettingValue(value)
+    else -> value?.toString().orEmpty()
+}
+
+private fun friendlySettingName(value: String): String = value
+    .replace(Regex("([a-z0-9])([A-Z])"), "$1 $2")
+    .replace('_', ' ')
+    .replaceFirstChar { it.titlecase(Locale.getDefault()) }
+
+private fun friendlySettingValue(value: String): String = value
+    .removePrefix("key_")
+    .removePrefix("KEY_")
+    .removePrefix("GAMEPAD_")
+    .replace('_', ' ')
+    .lowercase()
+    .replaceFirstChar { it.titlecase(Locale.getDefault()) }
 
 @Composable
 private fun ControlLayoutPreview(json: JSONObject, screenSize: String) {

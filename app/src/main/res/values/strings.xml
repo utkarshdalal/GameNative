@@ -285,6 +285,10 @@
     <string name="control_profiles">Control Profiles</string>
     <string name="control_profiles_empty">No control profiles are available.</string>
     <string name="control_profile_applied">Applied</string>
+    <string name="control_profile_applied_sections">Applied · %1$d of %2$d settings</string>
+    <string name="control_profile_library_count">%1$d control profiles</string>
+    <string name="control_profile_library_hint">Preview a profile or apply only the settings you want.</string>
+    <string name="control_profile_library_applied_hint">Applied settings are highlighted. Other games keep their own copies.</string>
     <string name="control_profile_apply">Apply</string>
     <string name="control_profile_preview">Preview</string>
     <string name="control_profile_duplicate">Duplicate</string>
@@ -294,6 +298,12 @@
     <string name="control_profile_create">Create</string>
     <string name="control_profile_create_blank">Blank profile</string>
     <string name="control_profile_create_current">From current controls</string>
+    <string name="control_profile_start_with">Start with</string>
+    <string name="control_profile_create_current_hint">Choose which settings to capture from this game.</string>
+    <string name="control_profile_create_blank_hint">Start with an empty on-screen layout.</string>
+    <string name="control_profile_create_applies_hint">Your new profile will be saved to the library and applied to this game immediately.</string>
+    <string name="control_profile_create_and_apply">Create and apply</string>
+    <string name="control_profile_created_applied">Control profile created and applied</string>
     <string name="control_profile_save_current">Save current controls</string>
     <string name="control_profile_update_current">Update from current controls</string>
     <string name="control_profile_name">Profile name</string>
