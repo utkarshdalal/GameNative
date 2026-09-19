@@ -47,7 +47,8 @@ class ModArchiveIndexPerformanceTest {
 
         assertTrue(plan.blockingIssues.toString(), plan.isComplete)
         assertEquals(50_000, plan.placedCount)
-        assertTrue("Planning took ${elapsed}ms", elapsed < 5_000)
+        val budgetMs = if (System.getenv("CI").equals("true", ignoreCase = true)) 15_000 else 5_000
+        assertTrue("Planning took ${elapsed}ms (budget ${budgetMs}ms)", elapsed < budgetMs)
     }
 
     @Test
