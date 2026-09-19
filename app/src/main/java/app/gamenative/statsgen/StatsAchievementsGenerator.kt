@@ -156,14 +156,16 @@ class StatsAchievementsGenerator {
         val expandedByName = userStats.getExpandedAchievements().filter { it.name != null }.associateBy { it.name!! }
         // unlocked comes from the live bitmask: expanded.isUnlocked reads unlockTime[], which Steam
         // keeps after a reset
-        val liveEarned = SteamAchievementCodec.decodeAchievementBlocks(userStats, nameToBlockBit).first
+        val (liveEarned, liveTimes) = SteamAchievementCodec.decodeAchievementBlocks(userStats, nameToBlockBit)
         val achievementsWithTimestamps = achievementsOut.map { ach ->
             val expanded = expandedByName[ach.name]
-            if (expanded != null && liveEarned[ach.name] == true) {
+            // the live bit alone decides: Steam can set it without sending the achievement's block, so
+            // there may be no expanded entry; the decoded time covers that case.
+            if (liveEarned[ach.name] == true) {
                 ach.copy(
                     unlocked = true,
-                    unlockTimestamp = expanded.unlockTimestamp,
-                    formattedUnlockTime = expanded.getFormattedUnlockTime()
+                    unlockTimestamp = expanded?.unlockTimestamp ?: liveTimes[ach.name]?.toInt(),
+                    formattedUnlockTime = expanded?.getFormattedUnlockTime(),
                 )
             } else {
                 ach
