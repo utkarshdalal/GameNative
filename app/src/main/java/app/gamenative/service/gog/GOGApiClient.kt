@@ -8,10 +8,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
+
+/** Base URLs used by the two bulk hidden-state endpoints. */
+internal data class GogHiddenEndpoints(
+    val gogComPrimaryBaseUrl: String = GOGConstants.GOG_EMBED_URL,
+    val gogComFallbackBaseUrl: String = "https://www.gog.com",
+    val galaxyBaseUrl: String = "https://galaxy-library.gog.com",
+)
 
 /**
  * Parsed/Formartted details returned by GOGApiClient.
@@ -93,6 +101,12 @@ object GOGApiClient {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    /** Narrow test seams for the hidden synchronization endpoints and credential lookup. */
+    internal var hiddenEndpoints = GogHiddenEndpoints()
+    internal var hiddenCredentialsProvider: suspend (Context) -> Result<GOGCredentials> = { context ->
+        GOGAuthManager.getStoredCredentials(context)
+    }
+
     /**
      * Fetch list of game IDs owned by the user
      *
@@ -167,116 +181,218 @@ object GOGApiClient {
         }
     }
 
-    /**
-     * Fetch IDs of games the user has hidden in their GOG library.
-     *
-     * Queries `account/getFilteredProducts?hiddenFlag=1` (all pages), where every returned product
-     * is hidden, on the embed host. A primary failure is returned as-is so callers keep their
-     * existing flags. An empty primary *success* is confirmed on the www host before concluding the
-     * account has none, so a host quirk cannot silently clear stored hidden flags.
-     *
-     * @param context Application context for auth access
-     * @return Result containing the set of hidden game IDs or error
-     */
-    suspend fun getHiddenGameIds(context: Context): Result<Set<String>> = withContext(Dispatchers.IO) {
+    /** Fetches and validates a complete hidden-state snapshot for one source. */
+    suspend fun fetchHiddenSnapshot(
+        context: Context,
+        source: GogHiddenSource,
+    ): Result<GogHiddenSnapshot> = withContext(Dispatchers.IO) {
         try {
-            Timber.tag("GOG").d("Fetching hidden GOG game IDs...")
-
-            // Get credentials from AuthManager
-            val credentialsResult = GOGAuthManager.getStoredCredentials(context)
+            val credentialsResult = hiddenCredentialsProvider(context)
             if (credentialsResult.isFailure) {
-                val error = credentialsResult.exceptionOrNull()
-                Timber.tag("GOG").e(error, "Cannot list hidden games: not authenticated")
-                return@withContext Result.failure(Exception("Not authenticated. Please log in first."))
+                return@withContext Result.failure(
+                    credentialsResult.exceptionOrNull() ?: Exception("Unable to load GOG credentials"),
+                )
             }
-
             val credentials = credentialsResult.getOrNull()
-            if (credentials == null || credentials.accessToken.isEmpty()) {
-                Timber.tag("GOG").e("No valid access token found")
-                return@withContext Result.failure(Exception("No valid credentials found"))
+            if (credentials == null || credentials.accessToken.isBlank()) {
+                return@withContext Result.failure(Exception("No valid GOG access token found"))
+            }
+            if (source == GogHiddenSource.GALAXY && credentials.userId.isBlank()) {
+                return@withContext Result.failure(Exception("No valid GOG user ID found"))
             }
 
-            val primaryResult = fetchHiddenGameIdsFrom(credentials, GOGConstants.GOG_EMBED_URL)
-            if (primaryResult.isFailure) {
-                return@withContext primaryResult
+            when (source) {
+                GogHiddenSource.GOG_COM -> fetchGogComSnapshot(credentials)
+                GogHiddenSource.GALAXY -> fetchGalaxySnapshot(credentials)
             }
-            val primaryIds = primaryResult.getOrNull() ?: emptySet()
-            if (primaryIds.isNotEmpty()) {
-                Timber.tag("GOG").i("Successfully fetched ${primaryIds.size} hidden GOG game IDs")
-                return@withContext Result.success(primaryIds)
-            }
-
-            // An empty primary response may mean "no hidden games" or that the host omitted them.
-            // Confirm on www before clearing stored flags.
-            val fallbackResult = fetchHiddenGameIdsFrom(credentials, "https://www.gog.com")
-            if (fallbackResult.isFailure) {
-                return@withContext fallbackResult
-            }
-            val mergedIds = buildSet {
-                addAll(primaryIds)
-                fallbackResult.getOrNull()?.let { addAll(it) }
-            }
-            Timber.tag("GOG").i("Successfully fetched ${mergedIds.size} hidden GOG game IDs")
-            return@withContext Result.success(mergedIds)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Timber.tag("GOG").e(e, "Exception fetching hidden GOG game IDs: ${e.message}")
-            return@withContext Result.failure(e)
+            Timber.tag("GOG").e(e, "Exception fetching ${source.name} hidden state")
+            Result.failure(e)
         }
     }
 
-    /**
-     * Paginates `account/getFilteredProducts?hiddenFlag=1` on [baseUrl] and returns every product
-     * ID (all products on those pages are hidden). Pagination is all-or-nothing: any page failure
-     * fails the whole attempt so callers can retain their previous cache.
-     */
-    private suspend fun fetchHiddenGameIdsFrom(
+    /** Fetches a complete validated gog.com hidden-game snapshot, retrying from the fallback host when needed. */
+    private suspend fun fetchGogComSnapshot(credentials: GOGCredentials): Result<GogHiddenSnapshot> {
+        val primary = fetchGogComHost(credentials, hiddenEndpoints.gogComPrimaryBaseUrl)
+        if (primary.isSuccess) {
+            return Result.success(
+                GogHiddenSnapshot(GogHiddenSource.GOG_COM, primary.getOrThrow()),
+            )
+        }
+
+        val fallback = fetchGogComHost(credentials, hiddenEndpoints.gogComFallbackBaseUrl)
+        if (fallback.isSuccess) {
+            return Result.success(
+                GogHiddenSnapshot(GogHiddenSource.GOG_COM, fallback.getOrThrow()),
+            )
+        }
+
+        val error = fallback.exceptionOrNull() ?: primary.exceptionOrNull()
+            ?: Exception("GOG website hidden-state snapshot failed")
+        primary.exceptionOrNull()?.let { primaryError ->
+            if (error !== primaryError) error.addSuppressed(primaryError)
+        }
+        return Result.failure(error)
+    }
+
+    /** Fetches and merges every page served by one gog.com host. */
+    private suspend fun fetchGogComHost(
         credentials: GOGCredentials,
         baseUrl: String,
-    ): Result<Set<String>> {
+    ): Result<Map<String, Boolean>> {
         return try {
             var page = 1
-            var totalPages = 1
-            val hiddenIds = mutableSetOf<String>()
-            while (page <= totalPages) {
-                // hiddenFlag=1 makes the account library endpoint return only hidden products;
-                // without it the response excludes hidden games entirely.
-                val url = "$baseUrl/account/getFilteredProducts?hiddenFlag=1&mediaType=1&page=$page"
-                Timber.tag("GOG").d("Requesting hidden game IDs from: $url")
-                val request = Request.Builder()
-                    .url(url)
-                    .addHeader("Authorization", "Bearer ${credentials.accessToken}")
-                    .addHeader("User-Agent", "GameNative/1.0")
-                    // GOG's embed host expects an AJAX header to return JSON for this endpoint.
-                    .addHeader("X-Requested-With", "XMLHttpRequest")
-                    .get()
+            var expectedTotalPages: Int? = null
+            val observations = linkedMapOf<String, Boolean>()
+            while (true) {
+                val url = baseUrl.toHttpUrl().newBuilder()
+                    .addPathSegment("account")
+                    .addPathSegment("getFilteredProducts")
+                    .addQueryParameter("mediaType", "1")
+                    .addQueryParameter("page", page.toString())
                     .build()
-
-                httpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        val errorBody = response.body?.string() ?: "Unknown error"
-                        Timber.tag("GOG").e("Failed to fetch hidden game IDs: HTTP ${response.code} - $errorBody")
-                        return Result.failure(
-                            Exception("Failed to fetch hidden game IDs: HTTP ${response.code}")
-                        )
-                    }
-
-                    val responseBody = response.body?.string()
-                        ?: return Result.failure(Exception("Empty response from GOG"))
-                    val parsed = GogFilteredProductsParser.parseHiddenPage(responseBody)
-                    hiddenIds.addAll(parsed.hiddenProductIds)
-                    totalPages = parsed.totalPages
+                val parsed = executeJsonPage(
+                    url = url,
+                    credentials = credentials,
+                    description = "GOG website hidden state page $page",
+                ).let(GogFilteredProductsParser::parsePage)
+                if (expectedTotalPages == null) {
+                    expectedTotalPages = parsed.totalPages
+                } else if (expectedTotalPages != parsed.totalPages) {
+                    throw IllegalArgumentException("GOG website totalPages changed during snapshot")
                 }
+                mergeObservations(observations, parsed.observations, "GOG website")
+                if (parsed.totalPages == 0 || page >= parsed.totalPages) break
                 page++
             }
-
-            Timber.tag("GOG").d("Fetched ${hiddenIds.size} hidden GOG game IDs from $baseUrl")
-            Result.success(hiddenIds)
+            Result.success(observations)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /** Fetches and validates the complete Galaxy hidden-game snapshot. */
+    private suspend fun fetchGalaxySnapshot(credentials: GOGCredentials): Result<GogHiddenSnapshot> {
+        return try {
+            var nextPageToken: String? = null
+            val seenPageTokens = mutableSetOf<String>()
+            var expectedTotalCount: Int? = null
+            var rawItemCount = 0
+            val observations = linkedMapOf<String, Boolean>()
+            val releaseObservations = linkedMapOf<
+                GogGalaxyReleasesParser.ReleaseIdentity,
+                GogGalaxyReleasesParser.ReleaseObservation,
+            >()
+
+            while (true) {
+                val urlBuilder = hiddenEndpoints.galaxyBaseUrl.toHttpUrl().newBuilder()
+                    .addPathSegment("users")
+                    .addPathSegment(credentials.userId)
+                    .addPathSegment("releases")
+                nextPageToken?.let { urlBuilder.addQueryParameter("page_token", it) }
+                val parsed = executeJsonPage(
+                    url = urlBuilder.build(),
+                    credentials = credentials,
+                    description = "Galaxy hidden state page",
+                ).let(GogGalaxyReleasesParser::parsePage)
+
+                rawItemCount += parsed.rawItemCount
+                if (parsed.totalCount != null) {
+                    if (expectedTotalCount == null) {
+                        expectedTotalCount = parsed.totalCount
+                    } else if (expectedTotalCount != parsed.totalCount) {
+                        throw IllegalArgumentException("Galaxy total_count changed during snapshot")
+                    }
+                }
+                mergeGalaxyReleaseObservations(releaseObservations, parsed.releaseObservations)
+                mergeObservations(observations, parsed.observations, "Galaxy")
+
+                val followingToken = parsed.nextPageToken
+                if (followingToken == null) break
+                if (!seenPageTokens.add(followingToken)) {
+                    throw IllegalArgumentException("Galaxy releases pagination repeated page token")
+                }
+                nextPageToken = followingToken
+            }
+
+            expectedTotalCount?.let { totalCount ->
+                if (rawItemCount != totalCount) {
+                    throw IllegalArgumentException(
+                        "Galaxy total_count $totalCount did not match raw item count $rawItemCount",
+                    )
+                }
+            }
+            Result.success(GogHiddenSnapshot(GogHiddenSource.GALAXY, observations))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /** Adds gog.com page observations and rejects conflicting duplicate product IDs. */
+    private fun mergeObservations(
+        target: MutableMap<String, Boolean>,
+        incoming: Map<String, Boolean>,
+        sourceName: String,
+    ) {
+        incoming.forEach { (id, hidden) ->
+            val previous = target[id]
+            if (previous != null && previous != hidden) {
+                throw IllegalArgumentException(
+                    "$sourceName snapshot has conflicting observations for product ID $id",
+                )
+            }
+            target[id] = hidden
+        }
+    }
+
+    /** Adds Galaxy page observations and rejects conflicting duplicate releases. */
+    private fun mergeGalaxyReleaseObservations(
+        target: MutableMap<
+            GogGalaxyReleasesParser.ReleaseIdentity,
+            GogGalaxyReleasesParser.ReleaseObservation,
+        >,
+        incoming: Map<
+            GogGalaxyReleasesParser.ReleaseIdentity,
+            GogGalaxyReleasesParser.ReleaseObservation,
+        >,
+    ) {
+        incoming.forEach { (identity, observation) ->
+            val previous = target[identity]
+            if (previous != null && previous != observation) {
+                throw IllegalArgumentException(
+                    "Galaxy snapshot has conflicting observations for $identity",
+                )
+            }
+            target[identity] = observation
+        }
+    }
+
+    /** Executes an authenticated JSON request for one hidden-game page. */
+    private fun executeJsonPage(
+        url: okhttp3.HttpUrl,
+        credentials: GOGCredentials,
+        description: String,
+    ): String {
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer ${credentials.accessToken}")
+            .addHeader("User-Agent", "GameNative/1.0")
+            .addHeader("X-Requested-With", "XMLHttpRequest")
+            .get()
+            .build()
+        httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: "Unknown error"
+                throw Exception("Failed to fetch $description: HTTP ${response.code} - $errorBody")
+            }
+            return response.body?.string()
+                ?: throw Exception("Empty response from GOG while fetching $description")
         }
     }
 

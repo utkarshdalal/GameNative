@@ -463,7 +463,7 @@ class ModMaterializerTest {
         )
         val conflict = ModPlacementConflict(
             sourcePath = File(extracted, "config.ini").absolutePath,
-            targetPath = target.absolutePath,
+            targetPath = target.canonicalPath,
             directory = false,
         )
 

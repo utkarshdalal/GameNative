@@ -59,6 +59,7 @@ androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref =
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room-runtime" }
 androidx-room-paging = { module = "androidx.room:room-paging", version.ref = "room-runtime" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room-runtime" }
+androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "room-runtime" }
 
 # TODO: Remove 'version' once 1.8.0 is rolled into stable BOM, see https://developer.android.com/jetpack/androidx/releases/compose-ui
 #   This fixes `Placement happened before lookahead` crash when animating lists items.

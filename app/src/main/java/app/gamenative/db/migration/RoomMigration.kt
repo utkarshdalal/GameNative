@@ -27,6 +27,67 @@ internal val ROOM_MIGRATION_V24_to_V25 = object : Migration(24, 25) {
     }
 }
 
+/**
+ * Splits the legacy aggregate GOG hidden flag into the two independent source flags.
+ *
+ * Room cannot express this change as an add/drop-column migration because the old aggregate
+ * hidden column must be removed. Rebuilding the table also keeps this migration valid on SQLite
+ * versions where dropping a column is unavailable.
+ */
+internal val ROOM_MIGRATION_V26_to_V27 = object : Migration(26, 27) {
+    /** Migrates the v26 schema to v27 while splitting legacy hidden state into source-specific flags. */
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE `gog_games_v27` (
+                `id` TEXT NOT NULL,
+                `title` TEXT NOT NULL,
+                `slug` TEXT NOT NULL,
+                `download_size` INTEGER NOT NULL,
+                `install_size` INTEGER NOT NULL,
+                `is_installed` INTEGER NOT NULL,
+                `install_path` TEXT NOT NULL,
+                `image_url` TEXT NOT NULL,
+                `icon_url` TEXT NOT NULL,
+                `background_url` TEXT NOT NULL DEFAULT '',
+                `vertical_cover_url` TEXT NOT NULL DEFAULT '',
+                `description` TEXT NOT NULL,
+                `release_date` TEXT NOT NULL,
+                `developer` TEXT NOT NULL,
+                `publisher` TEXT NOT NULL,
+                `genres` TEXT NOT NULL,
+                `languages` TEXT NOT NULL,
+                `last_played` INTEGER NOT NULL,
+                `play_time` INTEGER NOT NULL,
+                `type` INTEGER NOT NULL,
+                `exclude` INTEGER NOT NULL DEFAULT 0,
+                `gog_com_hidden` INTEGER NOT NULL DEFAULT 0,
+                `galaxy_hidden` INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent(),
+        )
+        connection.execSQL(
+            """
+            INSERT INTO `gog_games_v27` (
+                `id`, `title`, `slug`, `download_size`, `install_size`, `is_installed`,
+                `install_path`, `image_url`, `icon_url`, `background_url`, `vertical_cover_url`,
+                `description`, `release_date`, `developer`, `publisher`, `genres`, `languages`,
+                `last_played`, `play_time`, `type`, `exclude`, `gog_com_hidden`, `galaxy_hidden`
+            )
+            SELECT
+                `id`, `title`, `slug`, `download_size`, `install_size`, `is_installed`,
+                `install_path`, `image_url`, `icon_url`, `background_url`, `vertical_cover_url`,
+                `description`, `release_date`, `developer`, `publisher`, `genres`, `languages`,
+                `last_played`, `play_time`, `type`, `exclude`, `hidden`, 0
+            FROM `gog_games`
+            """.trimIndent(),
+        )
+        connection.execSQL("DROP TABLE `gog_games`")
+        connection.execSQL("ALTER TABLE `gog_games_v27` RENAME TO `gog_games`")
+    }
+}
+
 private fun migrateManagedModSourcesToV25(connection: SQLiteConnection) {
     connection.execSQL(
         """
