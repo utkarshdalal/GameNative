@@ -31,10 +31,10 @@ class GOGCloudSavesManagerTest {
     fun upload_body_is_byte_stable_for_identical_content() {
         val file = tempSave("""{"slot":1,"gold":9999}""".toByteArray())
 
-        val first = GOGCloudSavesManager.GzippedFileBody(file)
+        val first = snapshot(file)
         val firstBytes = uploadBytes(first)
         Thread.sleep(1_100) // cross a wall-clock second
-        val second = GOGCloudSavesManager.GzippedFileBody(file)
+        val second = snapshot(file)
 
         assertArrayEquals(firstBytes, uploadBytes(second))
         assertEquals(first.etag, second.etag)
@@ -42,7 +42,7 @@ class GOGCloudSavesManagerTest {
 
     @Test
     fun upload_body_writes_zero_mtime_header() {
-        val gzipped = uploadBytes(GOGCloudSavesManager.GzippedFileBody(tempSave("payload".toByteArray())))
+        val gzipped = uploadBytes(snapshot(tempSave("payload".toByteArray())))
 
         // gzip header bytes 4..7 are MTIME, little-endian; gogdl sends mtime=0 and so must we.
         assertArrayEquals(byteArrayOf(0, 0, 0, 0), gzipped.copyOfRange(4, 8))
@@ -103,7 +103,7 @@ class GOGCloudSavesManagerTest {
         )
         syncFile.calculateMetadata()
 
-        val body = GOGCloudSavesManager.GzippedFileBody(file)
+        val body = snapshot(file)
         val uploaded = uploadBytes(body)
         assertArrayEquals(referenceGzip(payload), uploaded)
         assertEquals(md5Hex(uploaded), body.etag)
@@ -119,7 +119,7 @@ class GOGCloudSavesManagerTest {
             writeBytes(ByteArray(50_000) { (it % 97).toByte() })
             deleteOnExit()
         }
-        val body = GOGCloudSavesManager.GzippedFileBody(file)
+        val body = snapshot(file)
         var closed = false
         val target = Buffer()
         val sink = object : ForwardingSink(target) {
@@ -138,6 +138,34 @@ class GOGCloudSavesManagerTest {
 
         assertFalse("the body closed OkHttp's sink", closed)
         assertArrayEquals(first, second)
+    }
+
+    // the Etag, Content-Length and bytes all come from one snapshot: a save that changes mid-upload (or
+    // between OkHttp retries) must not make the body disagree with its own Etag.
+    @Test
+    fun gzipped_file_body_is_immune_to_the_save_changing_after_the_snapshot() {
+        val file = tempSave("original save".toByteArray())
+        val body = snapshot(file)
+        val etag = body.etag
+        val length = body.contentLength()
+
+        file.writeBytes("a completely different and longer save".toByteArray())
+
+        val sent = uploadBytes(body)
+        assertArrayEquals(referenceGzip("original save".toByteArray()), sent)
+        assertEquals(etag, md5Hex(sent))
+        assertEquals(length, sent.size.toLong())
+    }
+
+    @Test
+    fun gzipped_file_body_close_deletes_its_temp_file() {
+        val tempDir = kotlin.io.path.createTempDirectory("gog-upload-test").toFile().apply { deleteOnExit() }
+        val body = GOGCloudSavesManager.GzippedFileBody.snapshot(tempSave("payload".toByteArray()), tempDir)
+        assertEquals(1, tempDir.listFiles()!!.size)
+
+        body.close()
+
+        assertEquals(0, tempDir.listFiles()!!.size)
     }
 
     // relativePath comes off the local filesystem and routinely contains spaces and parens
@@ -558,6 +586,9 @@ class GOGCloudSavesManagerTest {
         // The key is: after a successful download that preserves timestamps, the NEXT sync
         // should update lastSyncTimestamp to 1500L, preventing this conflict on future syncs
     }
+
+    private fun snapshot(file: File): GOGCloudSavesManager.GzippedFileBody =
+        GOGCloudSavesManager.GzippedFileBody.snapshot(file, File(System.getProperty("java.io.tmpdir")!!))
 
     private fun uploadBytes(body: GOGCloudSavesManager.GzippedFileBody): ByteArray =
         Buffer().also { body.writeTo(it) }.readByteArray()
