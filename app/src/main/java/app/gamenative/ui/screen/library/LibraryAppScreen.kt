@@ -161,6 +161,7 @@ import app.gamenative.ui.screen.library.appscreen.EpicAppScreen
 import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
 import app.gamenative.ui.screen.library.components.GameOptionsPanel
+import app.gamenative.utils.FormatUtils
 import app.gamenative.utils.HltbService
 import app.gamenative.ui.theme.PluviaTheme
 import com.skydoves.landscapist.ImageOptions
@@ -501,21 +502,6 @@ fun AppScreen(
     )
 }
 
-/**
- * Formats bytes into a human-readable string (KB, MB, GB).
- * Uses binary units (1024 base).
- */
-private fun formatBytes(bytes: Long): String {
-    val kb = 1024.0
-    val mb = kb * 1024
-    val gb = mb * 1024
-    return when {
-        bytes >= gb -> String.format("%.1f GB", bytes / gb)
-        bytes >= mb -> String.format("%.1f MB", bytes / mb)
-        bytes >= kb -> String.format("%.1f KB", bytes / kb)
-        else -> "$bytes B"
-    }
-}
 
 internal data class ImmersiveModeUiState(
     val isSupported: Boolean = false,
@@ -581,7 +567,10 @@ internal fun AppScreenContent(
                 val secondsPart = totalSeconds % 60
                 "${minutesLeft}m ${secondsPart}s left"
             } else if (isDownloading && downloadProgress >= 1f) {
-                "Unpacking..."
+                // Bytes at 100% while the download is still active. Prefer the real status
+                // (e.g. Epic may still be fetching chunks — its byte total can saturate
+                // early); "Unpacking..." only when there is nothing more truthful to say.
+                downloadStatusMessage?.takeUnless { it.isBlank() } ?: "Unpacking..."
             } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
                 downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
             } else {
@@ -647,9 +636,9 @@ internal fun AppScreenContent(
     val downloadSizeText = remember(displayInfo.gameId, downloadProgress, downloadInfo) {
         val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
         if (bytesTotal > 0L) {
-            "${formatBytes(bytesDone)} / ${formatBytes(bytesTotal)}"
+            "${FormatUtils.formatBytes(bytesDone)} / ${FormatUtils.formatBytes(bytesTotal)}"
         } else if (bytesDone > 0L) {
-            formatBytes(bytesDone)
+            FormatUtils.formatBytes(bytesDone)
         } else {
             downloadingLabel
         }
