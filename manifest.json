@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-06-30",
+  "updatedAt": "2026-09-13",
   "items": {
     "driver": [
       {
@@ -849,6 +849,12 @@
       }
     ],
     "fexcore": [
+      {
+        "id": "2609-0",
+        "name": "FEX 2609",
+        "url": "https://downloads.gamenative.app/FEXCore-2609.wcp",
+        "variant": "bionic"
+      },
       {
         "id": "2607-0",
         "name": "FEX 2607",

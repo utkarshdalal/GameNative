@@ -702,7 +702,7 @@
 	<string name="achievement_position_top_right">Dreapta sus</string>
 	<string name="achievement_position_bottom_left">Stânga jos</string>
 	<string name="achievement_position_bottom_right">Dreapta jos</string>
-	<string name="launch_steam_client_description">Reduce performanța și încetinește lansarea\nPermite joc online și rezolvă probleme DRM și controller\nNu toate jocurile funcționează</string>
+	<string name="launch_steam_client_description">Headless este recomandat\nNecesar pentru EA, Rockstar, Ubisoft și alte launchere\nActivează modul multiplayer și rezolvă problemele de DRM și controler</string>
 	<string name="launch_bionic_steam">Activează Bionic Steam experimental</string>
 	<string name="allow_steam_updates">Permite actualizările Steam</string>
 	<string name="allow_steam_updates_description">Actualizează Steam la ultima versiune. Reduce semnificativ performanța.</string>
@@ -954,6 +954,10 @@
 
 	<!-- Settings: Emulation Group -->
 	<string name="settings_emulation_title">Emulare</string>
+    <string name="settings_accounts_title">Conturi pentru lansatoarele de jocuri</string>
+    <string name="settings_accounts_signed_out">Neautentificat</string>
+    <string name="settings_accounts_ea_title">Cont EA</string>
+    <string name="settings_accounts_rockstar_title">Cont Rockstar</string>
 	<string name="settings_emulation_orientations_title">Orientări permise</string>
 	<string name="settings_emulation_orientations_subtitle">Alege orientările în care se poate roti în timpul jocului</string>
 	<string name="settings_emulation_default_config_title">Modifică configurația implicită</string>
@@ -2587,4 +2591,15 @@
     <string name="nexus_review_placement">Verifică plasarea</string>
     <string name="nexus_everything_folder_layout">Folderele de nivel superior își păstrează numele; fișierele rădăcină ajung direct la destinație</string>
     <string name="nexus_fomod_defaults_replaced">%1$d fișier(e) implicit(e) înlocuit(e) de opțiunile FOMOD</string>
+    <string name="steam_update_required_title">Actualizare necesară</string>
+    <string name="steam_update_required_message">Acest joc are o actualizare. Clientul Steam nu îl poate porni până când actualizarea nu este instalată. Actualizează acum, apoi pornește din nou.</string>
+    <string name="rockstar_login_required_title">Autentificare Rockstar necesară</string>
+    <string name="rockstar_login_failed">Autentificarea Rockstar a eșuat: %1$s</string>
+    <string name="ea_login_required_title">Autentificare EA necesară</string>
+    <string name="ea_login_success">Autentificat la EA ca %1$s</string>
+    <string name="ea_login_failed">Autentificarea EA a eșuat: %1$s</string>
+    <string name="ea_preparing">Se pregătește suportul pentru launcherul EA</string>
+    <string name="rockstar_preparing">Se pregătește suportul pentru launcherul Rockstar</string>
+    <string name="rockstar_runtime_installing">Se instalează runtime-ul Social Club</string>
+    <string name="rockstar_installer_missing">Programul de instalare Social Club lipsește din fișierele jocului. Verifică fișierele jocului în Steam și încearcă din nou.</string>
 </resources>

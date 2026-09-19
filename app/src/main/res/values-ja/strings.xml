@@ -702,7 +702,7 @@
     <string name="local_saves_only">ローカル保存のみ</string>
     <string name="local_saves_only_description">このゲームのクラウド セーブ同期を無効にし、セーブをデバイス上にのみ保存します</string>
     <string name="launch_steam_client_beta">Steam クライアント (ベータ版) を起動する</string>
-    <string name="launch_steam_client_description">パフォーマンスが低下し、起動が遅くなります\nオンライン プレイが可能になり、DRM とコントローラーの問題が修正されます\nすべてのゲームが動作するわけではありません</string>
+    <string name="launch_steam_client_description">Headless を推奨\nEA、Rockstar、Ubisoft などのランチャーに必要\nマルチプレイを有効にし、DRM とコントローラーの問題を修正</string>
     <string name="launch_bionic_steam">実験的な Bionic Steam を有効にする</string>
     <string name="launch_bionic_steam_description">オンライン プレイが可能になり、互換性が向上します\n常に機能するとは限りません\nこれを試す前にセーブデータをバックアップしてください</string>
     <string name="steam_offline_mode">Steam オフラインモード</string>
@@ -923,6 +923,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">エミュレーション</string>
+    <string name="settings_accounts_title">ゲームランチャーのアカウント</string>
+    <string name="settings_accounts_signed_out">サインインしていません</string>
+    <string name="settings_accounts_ea_title">EA アカウント</string>
+    <string name="settings_accounts_rockstar_title">Rockstar アカウント</string>
     <string name="settings_emulation_orientations_title">許可される向き</string>
     <string name="settings_emulation_orientations_subtitle">ゲーム内でどの方向に回転できるかを選択します</string>
     <string name="settings_emulation_default_config_title">デフォルト設定の変更</string>
@@ -1153,6 +1157,8 @@
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_entry">%sをダウンロード中</string>
     <string name="main_downloading_steam">Steam をダウンロード中...</string>
+    <string name="steam_update_required_title">アップデートが必要です</string>
+    <string name="steam_update_required_message">このゲームにはアップデートがあります。アップデートをインストールするまで Steam クライアントは起動できません。今すぐ更新してから、もう一度起動してください。</string>
 
     <string name="main_installing_glibc">glibc コンポーネントをインストールしています...</string>
     <string name="main_installing_bionic">Bionic コンポーネントをインストールしています...</string>
@@ -1511,6 +1517,15 @@
     <string name="gog_settings_login_title">GOGにサインインする</string>
     <string name="gog_settings_login_subtitle">GOG アカウントにサインインする</string>
     <string name="gog_login_success_title">ログイン成功</string>
+    <string name="rockstar_login_required_title">Rockstar へのサインインが必要です</string>
+    <string name="rockstar_login_failed">Rockstar へのサインインに失敗しました: %1$s</string>
+    <string name="ea_login_required_title">EA へのサインインが必要です</string>
+    <string name="ea_login_success">%1$s として EA にサインインしました</string>
+    <string name="ea_login_failed">EA へのサインインに失敗しました: %1$s</string>
+    <string name="ea_preparing">EA ランチャーのサポートを準備中</string>
+    <string name="rockstar_preparing">Rockstar ランチャーのサポートを準備中</string>
+    <string name="rockstar_runtime_installing">Social Club ランタイムをインストール中</string>
+    <string name="rockstar_installer_missing">ゲームファイルに Social Club のインストーラーがありません。Steam でゲームファイルを検証してから、もう一度起動してください。</string>
     <string name="gog_login_cancel">キャンセル</string>
     <string name="gog_settings_logout_title">GOGからサインアウトする</string>
     <string name="gog_settings_logout_subtitle">GOG アカウントからサインアウトする</string>

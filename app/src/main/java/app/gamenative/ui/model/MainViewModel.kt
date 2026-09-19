@@ -865,8 +865,8 @@ class MainViewModel @Inject constructor(
     }
 
     private fun startBootGameExitWatch(context: Context, appId: String) = viewModelScope.launch(Dispatchers.IO) {
-        val exe = ContainerUtils.getContainer(context, appId).executablePath
-            .substringAfterLast('/').substringAfterLast('\\').lowercase()
+        val exe = runCatching { ContainerUtils.getContainer(context, appId) }.getOrNull()?.executablePath
+            ?.substringAfterLast('/')?.substringAfterLast('\\')?.lowercase() ?: return@launch
         if (!exe.endsWith(".exe")) return@launch
         var seenAt = 0L
         while (bootAwaitingGameWindow) {
@@ -978,6 +978,19 @@ class MainViewModel @Inject constructor(
 
             // You could also show an error dialog here if needed
             Timber.tag("MainViewModel").e("Game launch error: $error")
+        }
+    }
+
+    /** The splash's back button: hide the splash and close the guest the way a blocked session does. */
+    fun abortBoot() {
+        viewModelScope.launch {
+            Timber.tag("MainViewModel").i("Boot aborted from the splash")
+            bootAwaitingGameWindow = false
+            bootingSplashTimeoutJob?.cancel()
+            bootingSplashTimeoutJob = null
+            setShowBootingSplash(false)
+            PluviaApp.events.emit(AndroidEvent.ClearBootingSplash)
+            PluviaApp.events.emit(SteamEvent.ForceCloseApp)
         }
     }
 

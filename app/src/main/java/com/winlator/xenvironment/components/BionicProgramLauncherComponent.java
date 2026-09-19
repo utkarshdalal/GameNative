@@ -26,6 +26,7 @@ import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
 import com.winlator.core.DefaultVersion;
+import com.winlator.core.envvars.EnvVarRedaction;
 import com.winlator.core.envvars.EnvVars;
 import com.winlator.core.FileUtils;
 import com.winlator.core.GPUInformation;
@@ -46,6 +47,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -306,7 +308,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
             // Check if the dnsServers list is not empty before getting an item
             if (!dnsServers.isEmpty()) {
-                primaryDNS = dnsServers.get(0).toString().substring(1);
+                InetAddress selectedDNS = dnsServers.get(0);
+                for (InetAddress dnsServer : dnsServers) {
+                    if (dnsServer instanceof Inet4Address) {
+                        selectedDNS = dnsServer;
+                        break;
+                    }
+                }
+                primaryDNS = selectedDNS.getHostAddress();
             }
         }
         envVars.put("ANDROID_RESOLV_DNS", primaryDNS);
@@ -321,6 +330,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
 
         ld_preload += ":" + evshimPath;
+        String dnsV4MappedPath = context.getApplicationInfo().nativeLibraryDir + "/libgamenative_dns_v4mapped.so";
+        if (new File(dnsV4MappedPath).exists()) {
+            ld_preload += ":" + dnsV4MappedPath;
+        }
         if (replacePath != null) ld_preload += ":" + replacePath;
 
         envVars.put("LD_PRELOAD", ld_preload);
@@ -381,7 +394,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             LsfgVkManager.applyLaunchEnv(container, envVars);
         }
 
-        Log.d("BionicProgramLauncherComponent", "env vars are " + envVars.toString());
+        Log.d("BionicProgramLauncherComponent", "env vars are " + EnvVarRedaction.redact(envVars));
 
         String emulator = container.getEmulator();
 

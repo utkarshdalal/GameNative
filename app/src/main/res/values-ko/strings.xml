@@ -706,7 +706,7 @@
     <string name="achievement_position_top_right">우측 상단</string>
     <string name="achievement_position_bottom_left">좌측 하단</string>
     <string name="achievement_position_bottom_right">우측 하단</string>
-    <string name="launch_steam_client_description">성능이 저하되고 실행 속도가 느려집니다\n온라인 플레이를 허용하고 DRM 및 컨트롤러 문제를 해결합니다\n모든 게임이 작동하는 것은 아닙니다</string>
+    <string name="launch_steam_client_description">Headless 권장\nEA, Rockstar, Ubisoft 및 기타 런처에 필요\n멀티플레이를 활성화하고 DRM 및 컨트롤러 문제를 해결</string>
     <string name="allow_steam_updates">Steam 업데이트 허용</string>
     <string name="allow_steam_updates_description">Steam을 최신 버전으로 업데이트합니다. 성능이 크게 저하될 수 있습니다.</string>
     <string name="steam_type">Steam 유형</string>
@@ -954,6 +954,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">에뮬레이션</string>
+    <string name="settings_accounts_title">게임 런처 계정</string>
+    <string name="settings_accounts_signed_out">로그인하지 않음</string>
+    <string name="settings_accounts_ea_title">EA 계정</string>
+    <string name="settings_accounts_rockstar_title">Rockstar 계정</string>
     <string name="settings_emulation_orientations_title">허용된 방향</string>
     <string name="settings_emulation_orientations_subtitle">게임 중 회전할 수 있는 방향 선택</string>
     <string name="settings_emulation_default_config_title">기본 설정 수정</string>
@@ -1121,6 +1125,8 @@
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Steam 다운로드 중...</string>
+    <string name="steam_update_required_title">업데이트 필요</string>
+    <string name="steam_update_required_message">이 게임에 업데이트가 있습니다. 업데이트를 설치할 때까지 Steam 클라이언트가 게임을 시작할 수 없습니다. 지금 업데이트한 다음 다시 실행하세요.</string>
     <string name="main_installing_glibc">glibc 구성 요소 설치 중...</string>
     <string name="main_installing_bionic">Bionic 구성 요소 설치 중...</string>
     <string name="main_loading">로딩 중...</string>
@@ -1464,6 +1470,15 @@
     <string name="gog_settings_login_title">GOG 로그인</string>
     <string name="gog_settings_login_subtitle">GOG 계정에 로그인</string>
     <string name="gog_login_success_title">로그인 성공</string>
+    <string name="rockstar_login_required_title">Rockstar 로그인 필요</string>
+    <string name="rockstar_login_failed">Rockstar 로그인 실패: %1$s</string>
+    <string name="ea_login_required_title">EA 로그인 필요</string>
+    <string name="ea_login_success">%1$s(으)로 EA에 로그인했습니다</string>
+    <string name="ea_login_failed">EA 로그인 실패: %1$s</string>
+    <string name="ea_preparing">EA 런처 지원 준비 중</string>
+    <string name="rockstar_preparing">Rockstar 런처 지원 준비 중</string>
+    <string name="rockstar_runtime_installing">Social Club 런타임 설치 중</string>
+    <string name="rockstar_installer_missing">게임 파일에 Social Club 설치 프로그램이 없습니다. Steam에서 게임 파일을 검증한 후 다시 시도하세요.</string>
     <string name="gog_login_cancel">취소</string>
     <string name="gog_settings_logout_title">GOG 로그아웃</string>
     <string name="gog_settings_logout_subtitle">GOG 계정에서 로그아웃</string>

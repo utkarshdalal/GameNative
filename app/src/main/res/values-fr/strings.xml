@@ -719,7 +719,7 @@
     <string name="achievement_position_top_right">En haut à droite</string>
     <string name="achievement_position_bottom_left">En bas à gauche</string>
     <string name="achievement_position_bottom_right">En bas à droite</string>
-    <string name="launch_steam_client_description">Réduit les performances et ralentit le lancement\nPermet le jeu en ligne et corrige les problèmes de DRM et de contrôleur\nTous les jeux ne fonctionnent pas</string>
+    <string name="launch_steam_client_description">Headless est recommandé\nRequis pour EA, Rockstar, Ubisoft et les autres lanceurs\nActive le multijoueur et corrige les problèmes de DRM et de manette</string>
     <string name="launch_bionic_steam">Activer Bionic Steam expérimental</string>
     <string name="allow_steam_updates">Autoriser les mises à jour Steam</string>
     <string name="allow_steam_updates_description">Met à jour Steam vers la dernière version. Réduit considérablement les performances.</string>
@@ -971,6 +971,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Émulation</string>
+    <string name="settings_accounts_title">Comptes de lanceurs de jeux</string>
+    <string name="settings_accounts_signed_out">Non connecté</string>
+    <string name="settings_accounts_ea_title">Compte EA</string>
+    <string name="settings_accounts_rockstar_title">Compte Rockstar</string>
     <string name="settings_emulation_orientations_title">Orientations autorisées</string>
     <string name="settings_emulation_orientations_subtitle">Choisir les orientations vers lesquelles pivoter en jeu</string>
     <string name="settings_emulation_default_config_title">Modifier la configuration par défaut</string>
@@ -1144,6 +1148,8 @@
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Téléchargement de Steam…</string>
+    <string name="steam_update_required_title">Mise à jour requise</string>
+    <string name="steam_update_required_message">Une mise à jour est disponible pour ce jeu. Le client Steam ne peut pas le lancer tant qu\'elle n\'est pas installée. Mettez à jour, puis relancez.</string>
     <string name="main_installing_glibc">Installation des composants glibc…</string>
     <string name="main_installing_bionic">Installation des composants Bionic…</string>
     <string name="main_loading">Chargement…</string>
@@ -1488,6 +1494,15 @@
     <string name="gog_settings_login_title">Se connecter à GOG</string>
     <string name="gog_settings_login_subtitle">Connectez-vous à votre compte GOG</string>
     <string name="gog_login_success_title">Connexion réussie</string>
+    <string name="rockstar_login_required_title">Connexion Rockstar requise</string>
+    <string name="rockstar_login_failed">Échec de la connexion Rockstar : %1$s</string>
+    <string name="ea_login_required_title">Connexion EA requise</string>
+    <string name="ea_login_success">Connecté à EA en tant que %1$s</string>
+    <string name="ea_login_failed">Échec de la connexion EA : %1$s</string>
+    <string name="ea_preparing">Préparation de la prise en charge du launcher EA</string>
+    <string name="rockstar_preparing">Préparation de la prise en charge du launcher Rockstar</string>
+    <string name="rockstar_runtime_installing">Installation de l\'environnement Social Club</string>
+    <string name="rockstar_installer_missing">L\'installateur Social Club est absent des fichiers du jeu. Vérifiez les fichiers du jeu dans Steam et réessayez.</string>
     <string name="gog_login_cancel">Annuler</string>
     <string name="gog_settings_logout_title">Se déconnecter de GOG</string>
     <string name="gog_settings_logout_subtitle">Se déconnecter de votre compte GOG</string>

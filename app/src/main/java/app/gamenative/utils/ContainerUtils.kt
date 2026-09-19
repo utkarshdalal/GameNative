@@ -54,7 +54,7 @@ object ContainerUtils {
             DefaultVersion.DXVK = if (GPUInformation.isAdreno6xx(context)) "1.11.1-sarek" else "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.WRAPPER = WRAPPER_TURNIP_CAPABLE
-            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
+            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_HEADLESS
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdrenoA12(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
@@ -63,7 +63,7 @@ object ContainerUtils {
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.WRAPPER = WRAPPER_ADRENO_A12
-            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
+            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_HEADLESS
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdreno8EliteGen5(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
@@ -72,7 +72,7 @@ object ContainerUtils {
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.WRAPPER = WRAPPER_ADRENO_8ELITE_GEN5
-            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
+            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_HEADLESS
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdreno8Elite(context)) {
             DefaultVersion.VARIANT = Container.BIONIC
@@ -81,7 +81,7 @@ object ContainerUtils {
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.WRAPPER = WRAPPER_ADRENO_8ELITE
-            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_NORMAL
+            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_HEADLESS
             DefaultVersion.ASYNC_CACHE = "1"
         } else {
             DefaultVersion.VARIANT = Container.BIONIC
@@ -90,7 +90,7 @@ object ContainerUtils {
                 if (GPUInformation.isAdrenoGPU(context)) "Wrapper" else "Wrapper-gamenative"
             DefaultVersion.DXVK = "async-1.10.3"
             DefaultVersion.VKD3D = "2.14.1"
-            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_LIGHT
+            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_HEADLESS
             DefaultVersion.ASYNC_CACHE = "0"
         }
     }
@@ -972,6 +972,7 @@ object ContainerUtils {
         // If custom config is provided, just apply it and return
         if (customConfig?.dxwrapper != null) {
             applyToContainer(context, container, containerData)
+            SessionReport.markConfigApplied(container, if (bestConfigMap.isNullOrEmpty()) "default" else "known")
             return container
         }
 
@@ -1020,6 +1021,7 @@ object ContainerUtils {
 
         // Apply container data with the determined DX wrapper
         applyToContainer(context, container, containerData)
+        SessionReport.markConfigApplied(container, if (bestConfigMap.isNullOrEmpty()) "default" else "known")
         return container
     }
 
