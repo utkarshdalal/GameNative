@@ -19,9 +19,11 @@ import java.util.List;
 import java.util.Locale;
 
 public class ControlsProfile implements Comparable<ControlsProfile> {
+    public static final float DEFAULT_CURSOR_SPEED = 1.0f;
+
     public final int id;
     private String name;
-    private float cursorSpeed = 1.0f;
+    private volatile float cursorSpeed = DEFAULT_CURSOR_SPEED;
     private final ArrayList<ControlElement> elements = new ArrayList<>();
     private final ArrayList<ExternalController> controllers = new ArrayList<>();
     private final ArrayList<RadialMenu> radialMenus = new ArrayList<>();
@@ -51,7 +53,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     }
 
     public void setCursorSpeed(float cursorSpeed) {
-        this.cursorSpeed = cursorSpeed;
+        this.cursorSpeed = Float.isFinite(cursorSpeed) && cursorSpeed > 0.0f
+                ? cursorSpeed
+                : DEFAULT_CURSOR_SPEED;
     }
 
     public boolean isVirtualGamepad() {
