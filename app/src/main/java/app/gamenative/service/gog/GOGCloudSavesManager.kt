@@ -49,8 +49,10 @@ class GOGCloudSavesManager(
         // the listed md5 and the upload body both gzip through here, so they can't drift apart. MUST be
         // byte-stable for unchanged content: Galaxy uses md5(gzipped bytes) as the manifest version, and
         // GZIPOutputStream writes MTIME=0 (asserted in GOGCloudSavesManagerTest).
+        // owns `out`: GZIPOutputStream's constructor already writes the header, so it can throw before its
+        // own use {} would close anything.
         internal fun gzipTo(input: InputStream, out: OutputStream) {
-            GZIPOutputStream(out).use { input.copyTo(it) }
+            out.use { GZIPOutputStream(it).use { gz -> input.copyTo(gz) } }
         }
 
         // md5 of the gzipped file without holding the file or its gzip in memory.
