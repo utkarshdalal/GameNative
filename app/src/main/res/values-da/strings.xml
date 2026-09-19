@@ -1462,6 +1462,8 @@
     <string name="review_overwhelmingly_negative">Overvældende negativ</string>
     <string name="settings_interface_show_recommendations_title">Vis spilanbefalinger</string>
     <string name="settings_interface_show_recommendations_subtitle">Vis personlige anbefalinger. At holde dette slået til hjælper med at støtte GameNative.</string>
+    <string name="settings_interface_show_hidden_games_title">Vis skjulte spil som standard</string>
+    <string name="settings_interface_show_hidden_games_subtitle">Skjulte Steam- og GOG-spil forbliver synlige, medmindre du deaktiverer dette. Valg af samlingen Skjulte Steam-spil viser altid skjulte spil.</string>
     <string name="settings_interface_library_tabs_title">Bibliotekfaner</string>
     <string name="settings_interface_library_tabs_subtitle">Vælg, hvilke butiksfaner der vises i biblioteket.</string>
     <string name="settings_interface_library_tabs_none">Ingen butiksfaner</string>
@@ -1509,6 +1511,49 @@
     <string name="lsfg_install_message">Dette downloader Lossless Scaling fra Steam for at aktivere billedgenerering.</string>
     <string name="lsfg_installing">Downloader Lossless Scaling…</string>
     <string name="lsfg_performance_mode_desc">Reducerer kvalitet for højere gennemstrømning</string>
+    <string name="session_drawer_frame_generation">Billedgenerering</string>
+    <string name="session_drawer_frame_generation_enable">Generer billeder</string>
+    <string name="session_drawer_frame_generation_multiplier">Multiplikator</string>
+    <string name="session_drawer_frame_generation_target">Adaptivt mål</string>
+    <string name="session_drawer_frame_generation_target_off">Fast</string>
+    <string name="frame_generation_preset">Kvalitetsforudindstilling</string>
+    <string name="frame_generation_preset_ultra_performance">Ultra ydeevne</string>
+    <string name="frame_generation_preset_performance">Ydeevne</string>
+    <string name="frame_generation_preset_balanced">Balanceret</string>
+    <string name="frame_generation_preset_quality">Kvalitet</string>
+    <string name="frame_generation_preset_custom">Brugerdefineret</string>
+    <string name="frame_generation_preset_ultra_performance_short">Ultra</string>
+    <string name="frame_generation_preset_performance_short">Ydeevne</string>
+    <string name="frame_generation_preset_balanced_short">Balanc.</string>
+    <string name="frame_generation_preset_quality_short">Kvalitet</string>
+    <string name="frame_generation_preset_ultra_performance_note" formatted="false">Bevægelse estimeret ved 40 % opløsning. Ca. 40 % af GPU-omkostningen ved Kvalitet. Fine detaljer blødgøres under hurtig bevægelse.</string>
+    <string name="frame_generation_preset_performance_note" formatted="false">Bevægelse estimeret ved 50 % opløsning. Ca. 46 % af GPU-omkostningen ved Kvalitet, næsten uden synligt tab.</string>
+    <string name="frame_generation_preset_balanced_note" formatted="false">Bevægelse estimeret ved 70 % opløsning. Ca. 61 % af GPU-omkostningen ved Kvalitet. Anbefales til håndholdte enheder.</string>
+    <string name="frame_generation_preset_quality_note">Bevægelse estimeret ved fuld opløsning. Højeste omkostning; brug kun hvis spillet har ledig GPU-kapacitet.</string>
+    <string name="session_drawer_frame_generation_disabled_hint">Lossless Scaling er installeret, men billedgenerering er deaktiveret for denne container. Aktivér den i containerindstillinger for at bruge den i denne session.</string>
+    <string name="session_drawer_frame_generation_missing">Lossless Scaling er ikke installeret. Konfigurer det i Ydeevneindstillinger (Global) for at bruge billedgenerering.</string>
+    <string name="lsfg_container_toggle_desc">Aktivér Lossless Scaling-billedgenerering for denne container. Juster multiplikator, forudindstillinger og mål-FPS direkte i Hurtige indstillinger.</string>
+    <string name="lsfg_container_prompt_setup">Opsætning påkrævet — tryk for at installere Lossless Scaling</string>
+    <string name="settings_lsfg_title">Lossless Scaling (LSFG)</string>
+    <string name="settings_lsfg_installed">Installeret (Lossless.dll klar)</string>
+    <string name="settings_lsfg_not_installed">Ikke installeret — tryk for at konfigurere</string>
+    <string name="settings_lsfg_dialog_desc">Lossless Scaling giver billedgenerering til DirectX- og Vulkan-spil, der kører i Bionic-containere.</string>
+    <string name="settings_lsfg_install_btn">Installer Lossless Scaling</string>
+    <string name="settings_lsfg_installed_btn">Installeret</string>
+    <string name="settings_lsfg_remove_btn">Fjern</string>
+    <string name="settings_lsfg_gpu_supported">Understøttet (Vulkan 1.3 og VulkanMemoryModel fundet)</string>
+    <string name="settings_lsfg_gpu_unsupported">Ikke understøttet (Vulkan 1.3 eller VulkanMemoryModel ikke fundet på aktuel driver)</string>
+    <string name="settings_lsfg_import_success">Lossless Scaling blev installeret</string>
+    <string name="settings_lsfg_import_failed">Kunne ikke installere Lossless Scaling</string>
+    <string name="settings_lsfg_status_installed">Installeret</string>
+    <string name="settings_lsfg_status_not_installed">Ikke installeret</string>
+    <string name="settings_lsfg_step1_downloading">Downloader (%1$d%%)…</string>
+    <string name="settings_lsfg_step2_locating">Konfigurerer shadere…</string>
+    <string name="settings_lsfg_dll_not_found">Kunne ikke finde Lossless.dll i Steam-filer</string>
+    <string name="settings_lsfg_license_verified">Steam-licens bekræftet</string>
+    <string name="settings_lsfg_buy_steam_btn">Vis på Steam</string>
+    <string name="settings_lsfg_sign_in_steam">Log ind på Steam</string>
+    <string name="settings_lsfg_ready_to_install">Lossless Scaling downloades og konfigureres automatisk.</string>
     <!-- Game Launch Tips -->
     <string name="game_launch_tip_1">Opstart kan tage et par minutter ved første lancering</string>
     <string name="game_launch_tip_2">Tip: Du kan se spilfilerne ved at trykke på \"%s\" i spilindstillingerne.</string>
