@@ -1387,6 +1387,9 @@ fun NexusModsDialog(
                     ownershipByInstallId = ownershipByInstallId,
                 )
                 val game = BethesdaPluginManager.detectGame(libraryItem.name)
+                val pluginFiles = game?.let {
+                    BethesdaPluginManager.pluginFiles(winePrefix, it, libraryItem.gameSource)
+                }
                 val detectedPlugins = game?.let {
                     BethesdaPluginManager.detectPlugins(
                         installs = usableInstalls,
@@ -1394,7 +1397,7 @@ fun NexusModsDialog(
                         prioritiesByInstallId = priorities,
                         gameRootDir = gameRootDir,
                         winePrefix = winePrefix,
-                        pluginsFile = BethesdaPluginManager.pluginsFile(winePrefix, it),
+                        pluginsFile = pluginFiles?.stateFile,
                         ownershipByInstallId = ownershipByInstallId,
                     )
                 }.orEmpty()
@@ -1410,7 +1413,7 @@ fun NexusModsDialog(
                             managedPlugins = detectedPlugins,
                             game = it,
                             gameRootDir = gameRootDir,
-                            pluginsFile = BethesdaPluginManager.pluginsFile(winePrefix, it),
+                            pluginsFile = pluginFiles?.stateFile,
                         )
                     }.orEmpty(),
                     pluginAssetIssues = if (game != null) BethesdaPluginManager.diagnosePluginAssets(detectedPlugins) else emptyList(),
@@ -1584,7 +1587,7 @@ fun NexusModsDialog(
 
     fun writePluginState(updated: List<BethesdaPlugin>) {
         val game = bethesdaGame ?: return
-        val pluginsFile = BethesdaPluginManager.pluginsFile(winePrefix, game) ?: return
+        val pluginsFile = BethesdaPluginManager.pluginFiles(winePrefix, game, libraryItem.gameSource)?.targetFile ?: return
         scope.launch {
             val issues = withContext(Dispatchers.IO) {
                 BethesdaPluginManager.updateManagedPluginsTxt(
@@ -1702,6 +1705,9 @@ fun NexusModsDialog(
                         transition = overlayTransition,
                     )
                     val game = BethesdaPluginManager.detectGame(libraryItem.name)
+                    val pluginFiles = game?.let {
+                        BethesdaPluginManager.pluginFiles(winePrefix, it, libraryItem.gameSource)
+                    }
                     val plugins = game?.let {
                         BethesdaPluginManager.detectPlugins(
                             installs = configuredInstalls,
@@ -1709,7 +1715,7 @@ fun NexusModsDialog(
                             prioritiesByInstallId = stateByInstallId.mapValues { state -> state.value.priority },
                             gameRootDir = gameRootDir,
                             winePrefix = winePrefix,
-                            pluginsFile = BethesdaPluginManager.pluginsFile(winePrefix, it),
+                            pluginsFile = pluginFiles?.stateFile,
                             ownershipByInstallId = ownershipByInstallId,
                             defaultEnabled = true,
                         )
@@ -1720,7 +1726,7 @@ fun NexusModsDialog(
                             managedPlugins = plugins,
                             game = it,
                             gameRootDir = gameRootDir,
-                            pluginsFile = BethesdaPluginManager.pluginsFile(winePrefix, it),
+                            pluginsFile = pluginFiles?.stateFile,
                         )
                     }.orEmpty()
                     val pluginAssetIssues = if (game != null) BethesdaPluginManager.diagnosePluginAssets(plugins) else emptyList()
@@ -1918,8 +1924,8 @@ fun NexusModsDialog(
                         }
                         val game = BethesdaPluginManager.detectGame(libraryItem.name)
                         if (errors == 0 && game != null) {
-                            val pluginsFile = BethesdaPluginManager.pluginsFile(winePrefix, game)
-                            if (pluginsFile != null) {
+                            val pluginFiles = BethesdaPluginManager.pluginFiles(winePrefix, game, libraryItem.gameSource)
+                            if (pluginFiles != null) {
                                 val appliedInstalls = plan.configuredInstalls.map { it.copy(status = ModInstallStatus.APPLIED.name) }
                                 val appliedOwnership = plan.ownershipByInstallId.toMutableMap().apply {
                                     plan.installsToApply.forEach { install ->
@@ -1936,14 +1942,14 @@ fun NexusModsDialog(
                                         prioritiesByInstallId = plan.stateByInstallId.mapValues { it.value.priority },
                                         gameRootDir = gameRootDir,
                                         winePrefix = winePrefix,
-                                        pluginsFile = pluginsFile,
+                                        pluginsFile = pluginFiles.stateFile,
                                         ownershipByInstallId = appliedOwnership,
                                         defaultEnabled = true,
                                     ),
                                     collectionPluginOrder,
                                 )
                                 BethesdaPluginManager.updateManagedPluginsTxt(
-                                    file = pluginsFile,
+                                    file = pluginFiles.targetFile,
                                     managedPlugins = detectedPlugins,
                                     game = game,
                                     gameRootDir = gameRootDir,
@@ -1952,7 +1958,7 @@ fun NexusModsDialog(
                                     managedPlugins = detectedPlugins,
                                     game = game,
                                     gameRootDir = gameRootDir,
-                                    pluginsFile = pluginsFile,
+                                    pluginsFile = pluginFiles.targetFile,
                                 )
                                 ProfileOrderApplyResult(
                                     errors = errors,
@@ -2045,7 +2051,9 @@ fun NexusModsDialog(
                             installer = installer,
                             gameName = libraryItem.name,
                             gameRootDir = gameRootDir,
-                            pluginsFile = game?.let { BethesdaPluginManager.pluginsFile(winePrefix, it) },
+                            pluginsFile = game?.let {
+                                BethesdaPluginManager.pluginFiles(winePrefix, it, libraryItem.gameSource)?.stateFile
+                            },
                         )
                     } ?: FomodEnvironmentSnapshot(),
                 )
@@ -2803,7 +2811,9 @@ fun NexusModsDialog(
                                 installer = installer,
                                 gameName = libraryItem.name,
                                 gameRootDir = gameRootDir,
-                                pluginsFile = BethesdaPluginManager.pluginsFile(winePrefix, game),
+                                pluginsFile = BethesdaPluginManager
+                                    .pluginFiles(winePrefix, game, libraryItem.gameSource)
+                                    ?.stateFile,
                             )
                         }
                         withContext(Dispatchers.Default) {

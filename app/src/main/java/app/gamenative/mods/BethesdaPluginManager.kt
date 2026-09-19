@@ -1,5 +1,6 @@
 package app.gamenative.mods
 
+import app.gamenative.data.GameSource
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallStatus
 import app.gamenative.data.ModPlacementRecipe
@@ -24,6 +25,11 @@ enum class BethesdaGame(
     FALLOUT4_VR("Fallout 4 VR", "Fallout4VR"),
     STARFIELD("Starfield", "Starfield"),
 }
+
+data class BethesdaPluginFiles(
+    val targetFile: File,
+    val stateFile: File,
+)
 
 data class BethesdaPlugin(
     val fileName: String,
@@ -238,10 +244,30 @@ object BethesdaPluginManager {
         }.getOrDefault(emptyList())
     }
 
-    fun pluginsFile(winePrefix: String, game: BethesdaGame): File? {
+    fun pluginFiles(
+        winePrefix: String,
+        game: BethesdaGame,
+        gameSource: GameSource,
+    ): BethesdaPluginFiles? {
         if (winePrefix.isBlank()) return null
         val userHome = ModContainerResolver.getWineUserHome(winePrefix)
-        return File(userHome, "AppData/Local/${game.localAppDataDir}/plugins.txt")
+        val isGogSkyrimSpecialEdition =
+            game == BethesdaGame.SKYRIM_SPECIAL_EDITION && gameSource == GameSource.GOG
+        val localAppDataDir = if (isGogSkyrimSpecialEdition) {
+            "Skyrim Special Edition GOG"
+        } else {
+            game.localAppDataDir
+        }
+        val targetFile = File(userHome, "AppData/Local/$localAppDataDir/plugins.txt")
+        val legacyFile = if (isGogSkyrimSpecialEdition) {
+            File(userHome, "AppData/Local/${game.localAppDataDir}/plugins.txt")
+        } else {
+            null
+        }
+        val stateFile = legacyFile
+            ?.takeIf { shouldUseLegacyPluginState(targetFile, it) }
+            ?: targetFile
+        return BethesdaPluginFiles(targetFile = targetFile, stateFile = stateFile)
     }
 
     fun updateManagedPluginsTxt(
@@ -297,6 +323,13 @@ object BethesdaPluginManager {
             .flatMap { existingFile -> if (existingFile.isFile) existingFile.readLines() else emptyList() }
             .mapNotNull { parsePluginLine(it, game) }
             .distinctBy { it.fileName.lowercase() }
+
+    private fun shouldUseLegacyPluginState(targetFile: File, legacyFile: File): Boolean {
+        if (!legacyFile.isFile) return false
+        val targetLoadOrder = File(targetFile.parentFile, "loadorder.txt")
+        val legacyLoadOrder = File(legacyFile.parentFile, "loadorder.txt")
+        return !targetLoadOrder.isFile && legacyLoadOrder.isFile
+    }
 
     private fun parsePluginLine(line: String, game: BethesdaGame?): PluginEntry? {
         val trimmed = line.trim()
