@@ -3,12 +3,15 @@ package app.gamenative.service.gog
 import android.content.Context
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
+import java.io.OutputStream
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import okio.Buffer
@@ -46,6 +49,24 @@ class GOGCloudSavesManagerTest {
 
         // gzip header bytes 4..7 are MTIME, little-endian; gogdl sends mtime=0 and so must we.
         assertArrayEquals(byteArrayOf(0, 0, 0, 0), gzipped.copyOfRange(4, 8))
+    }
+
+    // a failed header write (e.g. disk full) must not leak the destination, e.g. the upload temp file's handle.
+    @Test
+    fun gzipTo_closes_the_destination_when_the_header_write_fails() {
+        var closed = false
+        val failing = object : OutputStream() {
+            override fun write(b: Int) = throw IOException("disk full")
+            override fun write(b: ByteArray, off: Int, len: Int) = throw IOException("disk full")
+            override fun close() {
+                closed = true
+            }
+        }
+
+        assertThrows(IOException::class.java) {
+            GOGCloudSavesManager.gzipTo("payload".byteInputStream(), failing)
+        }
+        assertTrue("destination left open after a failed header write", closed)
     }
 
     // Heroic emits Python's datetime.isoformat(timespec="seconds") on a UTC-aware datetime,
