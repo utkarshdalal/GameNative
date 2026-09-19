@@ -633,6 +633,14 @@ object SteamAutoCloud {
                         uploadBatchId = uploadBatchResponse.batchID,
                     ).await()
 
+                    // Steam dedupes by SHA: empty blockRequests = cloud already has this blob. it's still in the
+                    // batch manifest so it counts as uploaded; commitFileUpload would only log file_committed=false.
+                    if (uploadInfo.blockRequests.isEmpty()) {
+                        Timber.i("File ${file.prefixPath} already in cloud (SHA dedup) — skipping commit")
+                        filesUploaded++
+                        return@forEachIndexed
+                    }
+
                     var uploadFileSuccess = true
                     var bytesUploadedForFile = 0L
                     var lastReportedProgress = -1f
