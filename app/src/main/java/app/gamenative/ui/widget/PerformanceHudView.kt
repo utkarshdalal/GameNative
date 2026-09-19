@@ -9,8 +9,10 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.BatteryManager
+import android.os.Build
 import android.text.TextUtils
 import android.text.format.DateFormat
 import android.util.TypedValue
@@ -43,6 +45,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.hardware.BatteryState
+import android.view.InputDevice
+import androidx.annotation.RequiresApi
+import kotlin.math.roundToInt
+import android.media.AudioManager
+import android.media.ToneGenerator
+
 
 /**
  * Lightweight floating HUD shown above the in-game surface.
@@ -114,6 +123,12 @@ class PerformanceHudView(
     private val fanMetric = createMetricViews(MetricId.FAN, 0xFF80DEEA.toInt())
     private val tuneMetric = createMetricViews(MetricId.TUNE, 0xFFCE93D8.toInt())
 
+    private var currentBackgroundColor = (backgroundDrawable as? GradientDrawable)
+        ?.color?.defaultColor ?: Color.BLACK
+
+    private val backupBackgroundColor = currentBackgroundColor
+    private val batteryLevelBackgroundColor = BATTERY_LEVEL_WARNING_BACKGROUND_COLOR
+    private val batteryTempBackgroundColor = BATTERY_TEMP_WARNING_BACKGROUND_COLOR
     private val allMetrics = listOf(
         fpsMetric,
         cpuMetric,
@@ -135,6 +150,16 @@ class PerformanceHudView(
 
     private val cpuSampler = CpuUsageSampler()
     private val gpuSampler = GpuUsageSampler()
+
+    private var toneGenerator: ToneGenerator? = null
+
+    private fun getToneGenerator(): ToneGenerator =
+        toneGenerator ?: ToneGenerator(AudioManager.STREAM_ALARM, 100).also { toneGenerator = it }
+
+    private fun releaseToneGenerator() {
+        toneGenerator?.release()
+        toneGenerator = null
+    }
 
     init {
         background = backgroundDrawable
@@ -193,6 +218,7 @@ class PerformanceHudView(
 
     override fun onDetachedFromWindow() {
         stopUpdates()
+        releaseToneGenerator()
         super.onDetachedFromWindow()
     }
 
@@ -214,6 +240,33 @@ class PerformanceHudView(
                     collectSnapshot(currentFps)
                 }
                 renderSnapshot(snapshot)
+
+                val levelWarning =  snapshot.batteryPercent != null && config.batteryLevelWarningEnabled &&
+                        snapshot.batteryPercent < (config.batteryLevelWarningLimit * 100)
+
+                val tempWarning = snapshot.batteryTempValue != null && config.batteryTemperatureWarningEnabled &&
+                        snapshot.batteryTempValue >= (config.batteryTemperatureWarningLimit * 100)
+
+                if (levelWarning) {
+                    getToneGenerator().startTone(ToneGenerator.TONE_PROP_ACK, 150)
+                }
+                if (tempWarning) {
+                    getToneGenerator().startTone(ToneGenerator.TONE_CDMA_PIP, 150)
+                }
+
+                val warningColor = when {
+                    tempWarning -> batteryTempBackgroundColor
+                    levelWarning -> batteryLevelBackgroundColor
+                    else -> null
+                }
+
+                currentBackgroundColor = if (warningColor != null) {
+                    if (currentBackgroundColor == backupBackgroundColor) warningColor else backupBackgroundColor
+                } else {
+                    backupBackgroundColor
+                }
+                backgroundDrawable.setColor(currentBackgroundColor)
+
                 delay(UPDATE_INTERVAL_MS)
             }
         }
@@ -319,11 +372,13 @@ class PerformanceHudView(
             gpu = gpuPercent?.let { "GPU $it%" },
             ram = "RAM ${readUsedRamText()}",
             battery = batterySnapshot.percent?.let { "BAT $it%" },
+            batteryPercent = batterySnapshot.percent,
             power = batterySnapshot.powerWatts?.let { watts ->
                 String.format(Locale.US, "PWR %.1fW", watts)
             },
             runtime = batterySnapshot.runtimeText,
             batteryTemp = batterySnapshot.temperatureC?.let { "BAT TEMP ${it}°C" },
+            batteryTempValue = batterySnapshot.temperatureC,
             clock = readClockText(),
             cpuTemp = SystemMetricsSources.readTemperatureC(SystemMetricsSources.cpuTempPaths())
                 ?.let { "CPU TEMP ${it}°C" },
@@ -918,5 +973,7 @@ class PerformanceHudView(
         const val MIN_HUD_TEXT_SHADOW_RADIUS_PX = 1.5f
         const val MAX_HUD_TEXT_SHADOW_RADIUS_PX = 4f
         val HUD_TEXT_SHADOW_COLOR: Int = Color.argb(220, 0, 0, 0)
+        val BATTERY_LEVEL_WARNING_BACKGROUND_COLOR: Int = Color.argb(102, 128, 0, 0)
+        val BATTERY_TEMP_WARNING_BACKGROUND_COLOR: Int = Color.argb(102, 128, 0, 128)
     }
 }
