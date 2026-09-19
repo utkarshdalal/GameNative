@@ -41,6 +41,7 @@ import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
 import app.gamenative.ui.component.dialog.CommunityConfigsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.ControlProfileLibraryDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
@@ -663,6 +664,14 @@ abstract class BaseAppScreen {
     }
 
     @Composable
+    protected open fun getControlProfilesOption(
+        onOpenControlProfiles: () -> Unit,
+    ): AppMenuOption = AppMenuOption(
+        optionType = AppOptionMenuType.ControlProfiles,
+        onClick = onOpenControlProfiles,
+    )
+
+    @Composable
     protected open fun getExportSavesOption(
         context: Context,
         libraryItem: LibraryItem,
@@ -1173,6 +1182,7 @@ abstract class BaseAppScreen {
         onTestGraphics: () -> Unit,
         onPlayWithDiagnostics: () -> Unit,
         onAiDebugRun: () -> Unit,
+        onOpenControlProfiles: () -> Unit,
         exportFrontendLauncher: ActivityResultLauncher<String>,
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
@@ -1183,6 +1193,7 @@ abstract class BaseAppScreen {
 
         if (isInstalled) {
             // Options only available when game is installed
+            menuOptions.add(getControlProfilesOption(onOpenControlProfiles))
             getRunContainerOption(context, libraryItem, onClickPlay)?.let { menuOptions.add(it) }
             getTestGraphicsOption(context, libraryItem, onTestGraphics)?.let { menuOptions.add(it) }
             getPlayWithDiagnosticsOption(context, libraryItem, onPlayWithDiagnostics)?.let { menuOptions.add(it) }
@@ -1625,7 +1636,20 @@ abstract class BaseAppScreen {
                 }
         }
 
-        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, onPlayWithDiagnostics, onAiDebugRun, exportFrontendLauncher)
+        var showControlProfiles by remember(appId) { mutableStateOf(false) }
+
+        val optionsMenu = getOptionsMenu(
+            context,
+            libraryItem,
+            onEditContainer,
+            onBack,
+            onClickPlay,
+            onTestGraphics,
+            onPlayWithDiagnostics,
+            onAiDebugRun,
+            { showControlProfiles = true },
+            exportFrontendLauncher,
+        )
 
         // Get download info based on game source for progress tracking
         val downloadInfo = when (libraryItem.gameSource) {
@@ -1711,7 +1735,7 @@ abstract class BaseAppScreen {
             onBack = onBack,
             achievements = achievementsState,
             optionsMenu = optionsMenu,
-            dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested,
+            dialogOpen = showConfigDialog || showControlProfiles || communityConfigsRequested || manageModsRequested,
         )
 
         if (showReadiness && launchActivity != null) {
@@ -1737,6 +1761,13 @@ abstract class BaseAppScreen {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
                 },
+            )
+        }
+
+        if (showControlProfiles) {
+            ControlProfileLibraryDialog(
+                container = ContainerUtils.getOrCreateContainer(context, appId),
+                onDismiss = { showControlProfiles = false },
             )
         }
 

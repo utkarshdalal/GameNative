@@ -1,10 +1,7 @@
 package com.winlator.inputcontrols;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.res.AssetManager;
-import android.media.MediaScannerConnection;
-import android.os.Environment;
 import android.util.JsonReader;
 import android.util.Log;
 
@@ -46,8 +43,14 @@ public class InputControlsManager {
     }
 
     public ArrayList<ControlsProfile> getProfiles(boolean ignoreTemplates) {
-        if (!profilesLoaded) loadProfiles(ignoreTemplates);
-        return profiles;
+        if (!profilesLoaded) loadProfiles(false);
+        ArrayList<ControlsProfile> visibleProfiles = new ArrayList<>();
+        for (ControlsProfile profile : profiles) {
+            if (!profile.isListed()) continue;
+            if (ignoreTemplates && profile.isTemplate()) continue;
+            visibleProfiles.add(profile);
+        }
+        return visibleProfiles;
     }
 
     private void copyAssetProfilesIfNeeded() {
@@ -144,7 +147,7 @@ public class InputControlsManager {
             for (File file : files) {
                 ControlsProfile profile = loadProfile(context, file);
                 if (profile == null) continue;
-                if (!(ignoreTemplates && profile.isTemplate())) profiles.add(profile);
+                profiles.add(profile);
                 maxProfileId = Math.max(maxProfileId, profile.id);
             }
         }
@@ -154,7 +157,19 @@ public class InputControlsManager {
         profilesLoaded = true;
     }
 
+    public void reloadProfiles() {
+        profilesLoaded = false;
+        maxProfileId = 0;
+        loadProfiles(false);
+    }
+
+    public int nextProfileId() {
+        if (!profilesLoaded) loadProfiles(false);
+        return ++maxProfileId;
+    }
+
     public ControlsProfile createProfile(String name) {
+        if (!profilesLoaded) loadProfiles(false);
         ControlsProfile profile = new ControlsProfile(context, ++maxProfileId);
         profile.setName(name);
         profile.save();
@@ -163,6 +178,7 @@ public class InputControlsManager {
     }
 
     public ControlsProfile duplicateProfile(ControlsProfile source) {
+        if (!profilesLoaded) loadProfiles(false);
         String newName;
         for (int i = 1;;i++) {
             newName = source.getName() + " ("+i+")";
@@ -184,6 +200,9 @@ public class InputControlsManager {
             data.put("id", newId);
             data.put("name", newName);
             if (data.has("template")) data.remove("template");
+            data.put("listed", true);
+            data.remove("libraryProfileId");
+            data.remove("gameOwnerId");
             FileUtils.writeString(newFile, data.toString());
         }
         catch (JSONException e) {}
@@ -200,26 +219,25 @@ public class InputControlsManager {
 
     public ControlsProfile importProfile(JSONObject data) {
         try {
-            if (!data.has("id") || !data.has("name")) return null;
+            if (!data.has("name")) return null;
+            if (!profilesLoaded) loadProfiles(false);
             int newId = ++maxProfileId;
             File newFile = ControlsProfile.getProfileFile(context, newId);
             data.put("id", newId);
+            data.put("listed", true);
+            data.remove("libraryProfileId");
+            data.remove("gameOwnerId");
+
+            String baseName = data.optString("name", "Imported Profile").trim();
+            if (baseName.isEmpty()) baseName = "Imported Profile";
+            String uniqueName = baseName;
+            for (int suffix = 1; hasVisibleProfileNamed(uniqueName); suffix++) {
+                uniqueName = baseName + " (" + suffix + ")";
+            }
+            data.put("name", uniqueName);
             FileUtils.writeString(newFile, data.toString());
             ControlsProfile newProfile = loadProfile(context, newFile);
-
-            int foundIndex = -1;
-            for (int i = 0; i < profiles.size(); i++) {
-                ControlsProfile profile = profiles.get(i);
-                if (profile.getName().equals(newProfile.getName())) {
-                    foundIndex = i;
-                    break;
-                }
-            }
-
-            if (foundIndex != -1) {
-                profiles.set(foundIndex, newProfile);
-            }
-            else profiles.add(newProfile);
+            if (newProfile != null) profiles.add(newProfile);
             return newProfile;
         }
         catch (JSONException e) {
@@ -227,12 +245,11 @@ public class InputControlsManager {
         }
     }
 
-    public File exportProfile(ControlsProfile profile) {
-        File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File destination = new File(downloadsDir, "Winlator/profiles/"+profile.getName()+".icp");
-        FileUtils.copy(ControlsProfile.getProfileFile(context, profile.id), destination);
-        MediaScannerConnection.scanFile(context, new String[]{destination.getAbsolutePath()}, null, null);
-        return destination.isFile() ? destination : null;
+    private boolean hasVisibleProfileNamed(String name) {
+        for (ControlsProfile profile : profiles) {
+            if (profile.isListed() && profile.getName().equalsIgnoreCase(name)) return true;
+        }
+        return false;
     }
 
     public static ControlsProfile loadProfile(Context context, File file) {
@@ -248,8 +265,10 @@ public class InputControlsManager {
         try (JsonReader reader = new JsonReader(new InputStreamReader(inStream, StandardCharsets.UTF_8))) {
             int profileId = 0;
             String profileName = null;
-            float cursorSpeed = Float.NaN;
-            int fieldsRead = 0;
+            float cursorSpeed = ControlsProfile.DEFAULT_CURSOR_SPEED;
+            boolean listed = true;
+            int libraryProfileId = -1;
+            String gameOwnerId = "";
 
             reader.beginObject();
             while (reader.hasNext()) {
@@ -257,18 +276,23 @@ public class InputControlsManager {
 
                 if (name.equals("id")) {
                     profileId = reader.nextInt();
-                    fieldsRead++;
                 }
                 else if (name.equals("name")) {
                     profileName = reader.nextString();
-                    fieldsRead++;
                 }
                 else if (name.equals("cursorSpeed")) {
                     cursorSpeed = (float) reader.nextDouble();
-                    fieldsRead++;
+                }
+                else if (name.equals("listed")) {
+                    listed = reader.nextBoolean();
+                }
+                else if (name.equals("libraryProfileId")) {
+                    libraryProfileId = reader.nextInt();
+                }
+                else if (name.equals("gameOwnerId")) {
+                    gameOwnerId = reader.nextString();
                 }
                 else {
-                    if (fieldsRead == 3) break;
                     reader.skipValue();
                 }
             }
@@ -276,6 +300,9 @@ public class InputControlsManager {
             ControlsProfile profile = new ControlsProfile(context, profileId);
             profile.setName(profileName);
             profile.setCursorSpeed(cursorSpeed);
+            profile.setListed(listed);
+            profile.setLibraryProfileId(libraryProfileId);
+            profile.setGameOwnerId(gameOwnerId);
             return profile;
         }
         catch (IOException e) {
@@ -284,7 +311,8 @@ public class InputControlsManager {
     }
 
     public ControlsProfile getProfile(int id) {
-        for (ControlsProfile profile : getProfiles()) if (profile.id == id) return profile;
+        if (!profilesLoaded) loadProfiles(false);
+        for (ControlsProfile profile : profiles) if (profile.id == id) return profile;
         return null;
     }
 }

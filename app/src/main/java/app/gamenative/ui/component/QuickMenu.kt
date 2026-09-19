@@ -102,6 +102,7 @@ import app.gamenative.R
 import app.gamenative.data.GyroSettings
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.ui.component.dialog.GyroSettingsDialog
+import app.gamenative.ui.component.dialog.ControlProfileLibraryDialog
 import app.gamenative.ui.component.quickMenus.PowerControlQuickMenuTab
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
@@ -128,6 +129,7 @@ object QuickMenuAction {
     const val SHOOTER_MODE = 9
     const val RADIAL_MENU = 10
     const val GYRO = 11
+    const val CONTROL_PROFILES = 12
 }
 
 private object QuickMenuTab {
@@ -481,6 +483,14 @@ fun QuickMenu(
         )
         add(
             QuickMenuItem(
+                id = QuickMenuAction.CONTROL_PROFILES,
+                icon = Icons.Default.Gamepad,
+                labelResId = R.string.control_profiles,
+                accentColor = PluviaTheme.colors.accentPurple,
+            )
+        )
+        add(
+            QuickMenuItem(
                 id = QuickMenuAction.TOUCHSCREEN_MODE,
                 icon = Icons.Default.Fingerprint,
                 labelResId = R.string.touchscreen_mode,
@@ -522,6 +532,7 @@ fun QuickMenu(
     // broken D8 codegen path).
     val inviteMenu = remember(container?.id) { SteamInviteState.createIfAvailable(container) }
     var showGyroSettingsDialog by rememberSaveable(container?.id) { mutableStateOf(false) }
+    var showControlProfiles by rememberSaveable(container?.id) { mutableStateOf(false) }
     // Owned here, not plumbed through XServerScreen (register limit; see inviteMenu).
     var lsfgPresentMode by remember(container?.id) {
         mutableStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.presentMode(it) } ?: "mailbox")
@@ -1076,39 +1087,53 @@ fun QuickMenu(
                                         ) {
                                             val gyroEnabled = gyroMenu?.settings?.mode
                                                 ?.let { it != GyroSettings.MODE_DISABLED } == true
+                                            val touchscreenEnabled = container?.isTouchscreenMode ?: isTouchscreenModeActive
+                                            val shooterEnabled = container?.isShooterMode ?: isShooterModeActive
                                             controllerItems.forEachIndexed { index, item ->
                                                 QuickMenuItemRow(
                                                     item = item,
                                                     isActive = if (item.id == QuickMenuAction.GYRO) {
                                                         gyroEnabled
+                                                    } else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE) {
+                                                        touchscreenEnabled
+                                                    } else if (item.id == QuickMenuAction.SHOOTER_MODE) {
+                                                        shooterEnabled
                                                     } else {
                                                         item.id in activeToggleIds
                                                     },
                                                     onClick = {
                                                         if (item.id == QuickMenuAction.GYRO && gyroMenu != null) {
                                                             gyroMenu.setEnabled(!gyroEnabled)
+                                                        } else if (item.id == QuickMenuAction.CONTROL_PROFILES) {
+                                                            showControlProfiles = true
                                                         } else if (onItemSelected(item.id)) {
                                                             onDismiss()
                                                         }
                                                     },
                                                     focusRequester = if (index == 0) controllerItemFocusRequester else null,
-                                                    secondaryIcon = if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && isTouchscreenModeActive)
+                                                    secondaryIcon = if (item.id == QuickMenuAction.INPUT_CONTROLS && item.id in activeToggleIds)
                                                         Icons.Default.Settings
-                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && isShooterModeActive)
+                                                    else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
+                                                        Icons.Default.Settings
+                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && shooterEnabled)
                                                         Icons.Default.Settings
                                                     else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
                                                         Icons.Default.Settings
                                                     else null,
-                                                    secondaryContentDescriptionResId = if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && isTouchscreenModeActive)
+                                                    secondaryContentDescriptionResId = if (item.id == QuickMenuAction.INPUT_CONTROLS && item.id in activeToggleIds)
+                                                        R.string.on_screen_controller_settings
+                                                    else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
                                                         R.string.gesture_settings_title
-                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && isShooterModeActive)
+                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && shooterEnabled)
                                                         R.string.shooter_mode_settings_title
                                                     else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
                                                         R.string.gyro_settings_title
                                                     else null,
-                                                    onSecondaryClick = if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && isTouchscreenModeActive)
+                                                    onSecondaryClick = if (item.id == QuickMenuAction.INPUT_CONTROLS && item.id in activeToggleIds)
+                                                        onInputControlsSettingsClick
+                                                    else if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
                                                         onTouchGestureSettingsClick
-                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && isShooterModeActive)
+                                                    else if (item.id == QuickMenuAction.SHOOTER_MODE && shooterEnabled)
                                                         onShooterModeSettingsClick
                                                     else if (item.id == QuickMenuAction.GYRO && gyroEnabled)
                                                         ({ showGyroSettingsDialog = true })
@@ -1143,6 +1168,31 @@ fun QuickMenu(
                 gyroMenu.persistSettings(settings)
                 showGyroSettingsDialog = false
                 if (onItemSelected(QuickMenuAction.EDIT_CONTROLS)) onDismiss()
+            },
+        )
+    }
+
+    if (showControlProfiles && container != null) {
+        ControlProfileLibraryDialog(
+            container = container,
+            onDismiss = { showControlProfiles = false },
+            onProfileApplied = { profile ->
+                PluviaApp.inputControlsView?.let { view ->
+                    view.setGyroSettings(GyroSettings.fromContainer(container))
+                    view.setContainerShooterMode(container.isShooterMode)
+                    view.setShooterModeConfigJson(container.shooterConfig)
+                    view.setProfilePreservingOverlayVisibility(profile)
+                    view.post {
+                        profile.loadElements(view)
+                        view.invalidate()
+                    }
+                }
+                PluviaApp.touchpadView?.setSensitivity(profile.cursorSpeed)
+                PluviaApp.touchpadView?.setTouchscreenMode(container.isTouchscreenMode)
+                PluviaApp.touchpadView?.setGestureConfig(
+                    app.gamenative.data.TouchGestureConfig.fromJson(container.gestureConfig),
+                )
+                PluviaApp.radialMenuCoordinator?.setProfile(profile)
             },
         )
     }

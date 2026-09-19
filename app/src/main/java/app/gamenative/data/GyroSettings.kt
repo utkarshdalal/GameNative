@@ -1,6 +1,7 @@
 package app.gamenative.data
 
 import com.winlator.container.Container
+import org.json.JSONObject
 
 /** Per-container gyro aiming configuration. */
 data class GyroSettings(
@@ -61,6 +62,25 @@ data class GyroSettings(
         container.putExtra(EXTRA_INVERT_X, value.invertX)
         container.putExtra(EXTRA_INVERT_Y, value.invertY)
         container.saveData()
+    }
+
+    fun toJsonObject(): JSONObject {
+        val value = normalized()
+        return JSONObject().apply {
+            put("mode", value.mode)
+            put("lastTarget", value.lastTarget)
+            put("activationMode", value.activationMode)
+            put("sensitivity", value.sensitivity.toDouble())
+            put("verticalScale", value.verticalScale.toDouble())
+            put("steadyingDegreesPerSecond", value.steadyingDegreesPerSecond.toDouble())
+            put("smoothingMilliseconds", value.smoothingMilliseconds.toDouble())
+            put("stickAntiDeadzone", value.stickAntiDeadzone.toDouble())
+            put("tiltSteeringEnabled", value.tiltSteeringEnabled)
+            put("tiltFullScaleDegrees", value.tiltFullScaleDegrees.toDouble())
+            put("tiltDeadzoneDegrees", value.tiltDeadzoneDegrees.toDouble())
+            put("invertX", value.invertX)
+            put("invertY", value.invertY)
+        }
     }
 
     companion object {
@@ -131,6 +151,32 @@ data class GyroSettings(
                 tiltDeadzoneDegrees = floatExtra(EXTRA_TILT_DEADZONE, DEFAULT_TILT_DEADZONE_DEGREES),
                 invertX = booleanExtra(EXTRA_INVERT_X, false),
                 invertY = booleanExtra(EXTRA_INVERT_Y, false),
+            ).normalized()
+        }
+
+        @JvmStatic
+        fun fromJsonObject(obj: JSONObject?): GyroSettings {
+            if (obj == null) return GyroSettings()
+            return GyroSettings(
+                mode = obj.optInt("mode", MODE_DISABLED),
+                lastTarget = obj.optInt("lastTarget", MODE_RIGHT_STICK),
+                activationMode = obj.optInt("activationMode", ACTIVATION_ALWAYS),
+                sensitivity = obj.optDouble("sensitivity", 1.0).toFloat(),
+                verticalScale = obj.optDouble("verticalScale", 1.0).toFloat(),
+                steadyingDegreesPerSecond = obj.optDouble("steadyingDegreesPerSecond", 1.0).toFloat(),
+                smoothingMilliseconds = obj.optDouble("smoothingMilliseconds", 0.0).toFloat(),
+                stickAntiDeadzone = obj.optDouble("stickAntiDeadzone", 0.0).toFloat(),
+                tiltSteeringEnabled = obj.optBoolean("tiltSteeringEnabled", false),
+                tiltFullScaleDegrees = obj.optDouble(
+                    "tiltFullScaleDegrees",
+                    DEFAULT_TILT_FULL_SCALE_DEGREES.toDouble(),
+                ).toFloat(),
+                tiltDeadzoneDegrees = obj.optDouble(
+                    "tiltDeadzoneDegrees",
+                    DEFAULT_TILT_DEADZONE_DEGREES.toDouble(),
+                ).toFloat(),
+                invertX = obj.optBoolean("invertX", false),
+                invertY = obj.optBoolean("invertY", false),
             ).normalized()
         }
 

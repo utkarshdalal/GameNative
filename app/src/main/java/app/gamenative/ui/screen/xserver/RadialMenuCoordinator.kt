@@ -141,6 +141,7 @@ class RadialMenuCoordinator(
     fun setProfile(profile: ControlsProfile?) {
         cancelBindingDispatches()
         activeControlsProfile = profile
+        physicalControllerHandler?.setProfile(profile)
     }
 
     fun showSettingsDialog(): Boolean {

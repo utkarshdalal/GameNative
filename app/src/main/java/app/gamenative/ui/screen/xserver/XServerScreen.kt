@@ -97,6 +97,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.GyroSettings
 import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.gamefixes.GameInputCompatibility
+import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.ShooterModeConfig
@@ -2503,6 +2504,9 @@ fun XServerScreen(
             touchpadHost.addView(PluviaApp.touchpadView)
 
             PluviaApp.inputControlsManager = InputControlsManager(context)
+            PluviaApp.inputControlsManager?.let { manager ->
+                ControlProfileService.ensureWorkingProfile(context, container, manager)
+            }
             RadialMenuCoordinator.install(
                 context = context,
                 host = mainRoot,
@@ -2931,9 +2935,15 @@ fun XServerScreen(
             ),
             hasPhysicalController = hasPhysicalController,
             isTouchscreenModeActive = isTouchscreenModeActive,
-            onTouchGestureSettingsClick = { showTouchGestureDialog = true },
+            onTouchGestureSettingsClick = {
+                currentGestureConfig = app.gamenative.data.TouchGestureConfig.fromJson(container.gestureConfig)
+                showTouchGestureDialog = true
+            },
             isShooterModeActive = isShooterModeActive,
-            onShooterModeSettingsClick = { showShooterModeDialog = true },
+            onShooterModeSettingsClick = {
+                currentShooterConfig = ShooterModeConfig.fromJson(container.shooterConfig)
+                showShooterModeDialog = true
+            },
             activeToggleIds = buildSet {
                 if (areControlsVisible) add(QuickMenuAction.INPUT_CONTROLS)
                 if (isTouchscreenModeActive) add(QuickMenuAction.TOUCHSCREEN_MODE)

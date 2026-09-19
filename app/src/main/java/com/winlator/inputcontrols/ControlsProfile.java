@@ -30,6 +30,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     private boolean controllersLoaded = false;
     private boolean radialMenusLoaded = false;
     private boolean virtualGamepad = false;
+    private boolean listed = true;
+    private int libraryProfileId = -1;
+    private String gameOwnerId = "";
     private final Context context;
     private GamepadState gamepadState;
 
@@ -60,6 +63,30 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setVirtualGamepad(boolean isVirtualGamepad) {
         virtualGamepad = isVirtualGamepad;
+    }
+
+    public boolean isListed() {
+        return listed;
+    }
+
+    public void setListed(boolean listed) {
+        this.listed = listed;
+    }
+
+    public int getLibraryProfileId() {
+        return libraryProfileId;
+    }
+
+    public void setLibraryProfileId(int libraryProfileId) {
+        this.libraryProfileId = libraryProfileId;
+    }
+
+    public String getGameOwnerId() {
+        return gameOwnerId;
+    }
+
+    public void setGameOwnerId(String gameOwnerId) {
+        this.gameOwnerId = gameOwnerId != null ? gameOwnerId : "";
     }
 
     public GamepadState getGamepadState() {
@@ -131,10 +158,20 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         Log.d("ControlsProfile", "Saving profile: " + name + " (ID: " + id + ") to " + file.getAbsolutePath());
 
         try {
-            JSONObject data = new JSONObject();
+            // Preserve profile sections and metadata managed outside this runtime model.
+            // Rebuilding from an empty object would silently discard them whenever the
+            // on-screen editor saves a profile.
+            JSONObject data = file.isFile()
+                    ? new JSONObject(FileUtils.readString(file))
+                    : new JSONObject();
             data.put("id", id);
             data.put("name", name);
             data.put("cursorSpeed", Float.valueOf(cursorSpeed));
+            data.put("listed", listed);
+            if (libraryProfileId >= 0) data.put("libraryProfileId", libraryProfileId);
+            else data.remove("libraryProfileId");
+            if (!gameOwnerId.isEmpty()) data.put("gameOwnerId", gameOwnerId);
+            else data.remove("gameOwnerId");
 
             JSONArray elementsJSONArray = new JSONArray();
             if (!elementsLoaded && file.isFile()) {
@@ -156,6 +193,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 }
             }
             if (controllersJSONArray.length() > 0) data.put("controllers", controllersJSONArray);
+            else if (controllersLoaded) data.remove("controllers");
 
             JSONArray radialMenusJSONArray = new JSONArray();
             if (!radialMenusLoaded && file.isFile()) {
@@ -170,6 +208,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 }
             }
             if (radialMenusJSONArray.length() > 0) data.put("radialMenus", radialMenusJSONArray);
+            else if (radialMenusLoaded) data.remove("radialMenus");
 
             FileUtils.writeString(file, data.toString());
             Log.d("ControlsProfile", "Profile saved successfully: " + name + " (controllers: " + controllersJSONArray.length() + ", elements: " + elementsJSONArray.length() + ")");
@@ -378,12 +417,38 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 if (!virtualGamepad && hasGamepadBinding) virtualGamepad = true;
                 elements.add(element);
             }
+            fitElementsToBounds(inputControlsView);
             elementsLoaded = true;
             Log.d("ControlsProfile", "Loaded " + elements.size() + " elements for profile: " + name + " (virtualGamepad: " + virtualGamepad + ")");
         }
         catch (JSONException e) {
             Log.e("ControlsProfile", "Failed to load elements for profile: " + name + " (ID: " + id + ")", e);
             e.printStackTrace();
+        }
+    }
+
+    private void fitElementsToBounds(InputControlsView inputControlsView) {
+        int maxWidth = inputControlsView.getMaxWidth();
+        int maxHeight = inputControlsView.getMaxHeight();
+        if (maxWidth <= 0 || maxHeight <= 0) return;
+
+        for (ControlElement element : elements) {
+            android.graphics.Rect bounds = element.getBoundingBox();
+            if (bounds.width() > maxWidth || bounds.height() > maxHeight) {
+                float fitScale = Math.min(
+                        (float)maxWidth / Math.max(1, bounds.width()),
+                        (float)maxHeight / Math.max(1, bounds.height())
+                );
+                element.setScale(Math.max(0.1f, element.getScale() * fitScale));
+                bounds = element.getBoundingBox();
+            }
+
+            int dx = bounds.left < 0 ? -bounds.left :
+                    (bounds.right > maxWidth ? maxWidth - bounds.right : 0);
+            int dy = bounds.top < 0 ? -bounds.top :
+                    (bounds.bottom > maxHeight ? maxHeight - bounds.bottom : 0);
+            if (dx != 0) element.setX(element.getX() + dx);
+            if (dy != 0) element.setY(element.getY() + dy);
         }
     }
 }

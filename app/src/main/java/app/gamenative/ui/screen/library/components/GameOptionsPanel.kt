@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Face4
 import androidx.compose.material.icons.filled.Feedback
+import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Link
@@ -332,6 +333,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.CopyLaunchLink -> Icons.Default.Link
         AppOptionMenuType.RunContainer -> Icons.Default.PlayArrow
         AppOptionMenuType.EditContainer -> Icons.Default.Settings
+        AppOptionMenuType.ControlProfiles -> Icons.Default.Gamepad
         AppOptionMenuType.ResetToDefaults -> Icons.Default.RestartAlt
         AppOptionMenuType.GetSupport -> Icons.AutoMirrored.Filled.Help
         AppOptionMenuType.SubmitFeedback -> Icons.Default.Feedback
@@ -377,6 +379,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
         when (option.optionType) {
             // Quick Actions
             AppOptionMenuType.EditContainer,
+            AppOptionMenuType.ControlProfiles,
             AppOptionMenuType.RunContainer,
             AppOptionMenuType.AiDebugRun,
             AppOptionMenuType.CreateShortcut,
