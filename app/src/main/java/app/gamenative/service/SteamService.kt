@@ -3204,9 +3204,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     releaseSync(appId)
                     instance?.removePendingSyncApp(appId)
                 }
-            }.also {
-                // reads straight out of the install dir, so deleteApp waits for it.
-                CloseSyncTracker.track(CloseSyncTracker.keyOf(GameSource.STEAM, appId), it)
             }
         }
 
