@@ -72,6 +72,42 @@ object SteamAutoCloud {
 
     private const val MAX_USER_FILE_RETRIES = 3
 
+    // a leading "%Root%" token Steam sometimes inlines into an otherwise-prefixless filename.
+    private val EMBEDDED_ROOT_TOKEN = Regex("^%[^%]+%")
+
+    // Steam sometimes returns prefix="" with the root token inlined in the filename ("%GameInstall%save0.dat").
+    // without decoding it the file lands literally-named under userdata/remote and the game never finds it.
+    // prefers the game's rootoverride map. null when there's no token or it names an unknown root.
+    internal fun resolveEmbeddedRootPath(
+        filename: String,
+        cloudPrefixToLocalPath: Map<String, String>,
+        prefixToPath: (String) -> String,
+    ): Path? {
+        val token = EMBEDDED_ROOT_TOKEN.find(filename)?.value ?: return null
+        val localRoot = cloudPrefixToLocalPath[token]
+            ?: runCatching { PathType.valueOf(token.trim('%')) }.getOrNull()?.let { prefixToPath(it.name) }
+            ?: return null
+        return Paths.get(localRoot, filename.removePrefix(token).trimStart('/'))
+    }
+
+    // full-prefix match (longest key wins) handles addPath, where the cloud path omits a subfolder the
+    // local path includes; root-only replacement can't express that. a BARE root-token key
+    // ("%WinAppDataLocal%", from an empty uploadPath) has NO separator after it ("%WinAppDataLocal%Default/file"),
+    // hence the endsWith("%") clause -- without it the addPath subfolder is silently dropped.
+    internal fun resolveCloudPrefixToLocal(
+        cloudPrefix: String,
+        cloudPrefixToLocalPath: Map<String, String>,
+    ): String? = cloudPrefixToLocalPath.entries
+        .filter { (cloudKey, _) ->
+            cloudPrefix == cloudKey ||
+                cloudPrefix.startsWith("$cloudKey/") ||
+                (cloudKey.endsWith("%") && cloudPrefix.startsWith(cloudKey))
+        }
+        .maxByOrNull { (cloudKey, _) -> cloudKey.length }
+        ?.let { (cloudKey, localPath) ->
+            Paths.get(localPath, cloudPrefix.removePrefix(cloudKey).trimStart('/')).pathString
+        }
+
     internal data class HashLookupResult(
         val sha: ByteArray,
         val wasCacheHit: Boolean,
@@ -223,12 +259,7 @@ object SteamAutoCloud {
                 // Cloud prefixes sometimes include a trailing slash (e.g. "%WinAppDataLocalLow%76561198035529760/save1/")
                 // but the map keys are built without one — trim before lookup so they match.
                 val cloudPrefix = prefix.trimEnd('/')
-                cloudPrefixToLocalPath.entries
-                    .filter { (cloudKey, _) -> cloudPrefix == cloudKey || cloudPrefix.startsWith("$cloudKey/") }
-                    .maxByOrNull { (cloudKey, _) -> cloudKey.length }
-                    ?.let { (cloudKey, localPath) ->
-                        Paths.get(localPath, cloudPrefix.removePrefix(cloudKey).trimStart('/')).pathString
-                    }
+                resolveCloudPrefixToLocal(cloudPrefix, cloudPrefixToLocalPath)
                     ?: run {
                         var modified = prefix
 
@@ -270,21 +301,8 @@ object SteamAutoCloud {
         val hashCacheDao = steamInstance.db.steamFileHashCacheDao()
 
         val getFullFilePath: (AppFileInfo, AppFileChangeList) -> Path = getFullFilePath@{ file, fileList ->
-            val gameInstallPrefix = "%${PathType.GameInstall.name}%"
-            if (file.filename.startsWith(gameInstallPrefix)) {
-                // Steam API sometimes returns prefix="" and filename="%GameInstall%save0.dat" instead of splitting correctly.
-                // Strip the embedded prefix (and any leading slash) to get the bare filename.
-                val stripped = file.filename.removePrefix(gameInstallPrefix).trimStart('/')
-                // If a Windows rootoverride remaps GameInstall → another directory (e.g.
-                // Danganronpa 2: WinMyDocuments/My Games/Danganronpa2/), download there instead
-                // of the raw game-install folder so the game can find its saves.
-                val remapped = cloudPrefixToLocalPath[gameInstallPrefix]
-                return@getFullFilePath if (remapped != null) {
-                    Paths.get(remapped, stripped)
-                } else {
-                    Paths.get(prefixToPath(PathType.GameInstall.name), stripped)
-                }
-            }
+            resolveEmbeddedRootPath(file.filename, cloudPrefixToLocalPath, prefixToPath)
+                ?.let { return@getFullFilePath it }
 
             val convertedPrefixes = convertPrefixes(fileList)
 
