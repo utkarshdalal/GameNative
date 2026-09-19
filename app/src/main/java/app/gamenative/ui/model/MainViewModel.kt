@@ -49,6 +49,7 @@ import javax.inject.Inject
 import kotlin.io.path.name
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import app.gamenative.service.cloud.CloseSyncTracker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -596,6 +597,16 @@ class MainViewModel @Inject constructor(
             if (bootAwaitingGameWindow) startBootGameExitWatch(context, appId)
             PluviaApp.events.emit(AndroidEvent.SetAllowedOrientation(PrefManager.allowedOrientation))
 
+            // html5 dismisses the splash here: there's no onWindowMapped equivalent. Open Container FORCES
+            // wine prep even for html5 so the user can browse saves in the wine file manager.
+            val forceWineForOpenContainer = _state.value.bootToContainer
+            if (!forceWineForOpenContainer && app.gamenative.html5.host.Html5Routing.isHtml5App(context, appId)) {
+                delay(100)
+                _uiEvent.send(MainUiEvent.LaunchApp)
+                setShowBootingSplash(false)
+                return@launch
+            }
+
             val heroUrl = withContext(Dispatchers.IO) {
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
                 val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
@@ -672,6 +683,15 @@ class MainViewModel @Inject constructor(
     }
 
     fun exitSteamApp(context: Context, appId: String, onComplete: (() -> Unit)? = null) {
+        // the close-time sync uploads straight out of the install dir, so the store's delete joins this.
+        // reserved HERE, before the launch, so an uninstall started right after exit can't miss it.
+        val closeSyncKey = runCatching {
+            CloseSyncTracker.keyOf(
+                ContainerUtils.extractGameSourceFromContainerId(appId),
+                ContainerUtils.extractGameIdFromContainerId(appId),
+            )
+        }.getOrDefault(appId)
+        val closeSync = CloseSyncTracker.reserve(closeSyncKey)
         viewModelScope.launch {
             try {
                 Timber.tag("Exit").i("Exiting, getting feedback for appId: $appId")
@@ -688,6 +708,7 @@ class MainViewModel @Inject constructor(
                 ActiveGameRegistry.clearIfMatches(gameId)
                 SteamService.notifyRunningProcesses()
                 handleExitCloudSync(context, appId, gameId)
+                closeSync.complete()
 
                 // Prompt user to save temporary container configuration if one was applied
                 if (hadTemporaryOverride) {
@@ -761,10 +782,17 @@ class MainViewModel @Inject constructor(
             } finally {
                 onComplete?.invoke()
             }
+        }.invokeOnCompletion {
+            // backstop: a launch cancelled before it runs, or one that throws before the sync, must not
+            // leave the delete waiting forever.
+            closeSync.complete()
         }
     }
 
     private suspend fun maybeOfferAiDebugRun(context: Context, appId: String, sessionLengthMs: Long): Boolean {
+        // the debug run only captures wine logs, and html5 never maps an X window, so without this the
+        // offer would fire after every html5 session and produce an empty report.
+        if (app.gamenative.html5.host.Html5Routing.isHtml5App(context, appId)) return false
         val trigger = when {
             !gameWindowSeen -> "no_window"
             sessionLengthMs in 1 until SHORT_SESSION_MS -> "short_session"
@@ -805,10 +833,13 @@ class MainViewModel @Inject constructor(
             withContext(Dispatchers.IO) {
                 try {
                     Timber.tag("GOG").d("[Cloud Saves] Starting post-game upload sync for $appId")
+                    // mirror-delete only for html5; wine stays accretive.
+                    val isHtml5 = app.gamenative.html5.host.Html5Routing.isHtml5App(context, appId)
                     val syncSuccess = app.gamenative.service.gog.GOGService.syncCloudSaves(
                         context = context,
                         appId = appId,
                         preferredAction = "upload",
+                        chromiumProfileSync = isHtml5,
                     )
                     if (syncSuccess) {
                         Timber.tag("GOG").i("[Cloud Saves] Upload sync completed successfully for $appId")
@@ -850,10 +881,18 @@ class MainViewModel @Inject constructor(
 
         if (gameSource == GameSource.STEAM) {
             try {
+                // leveldb churns files on compaction; propagate deletes so cloud doesn't keep stale
+                // .ldb/MANIFEST-* that break desktop. wine keeps the accretive default.
+                val isHtml5 = app.gamenative.html5.host.Html5Routing.isHtml5App(context, appId)
                 val container = withContext(Dispatchers.IO) {
                     ContainerUtils.getContainer(context, appId)
                 }
-                SteamService.closeApp(context, gameId, isOffline.value) { prefix ->
+                SteamService.closeApp(
+                    context = context,
+                    appId = gameId,
+                    isOffline = isOffline.value,
+                    chromiumProfileSync = isHtml5,
+                ) { prefix ->
                     PathType.from(prefix).toAbsPath(container, gameId, SteamService.userSteamId!!.accountID)
                 }.await()
             } catch (e: CancellationException) {

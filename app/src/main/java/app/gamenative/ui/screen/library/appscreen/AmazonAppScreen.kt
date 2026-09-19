@@ -200,6 +200,7 @@ class AmazonAppScreen : BaseAppScreen() {
             playtimeText = null,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            runtime = app.gamenative.utils.ContainerUtils.resolveRuntime(context, libraryItem.appId),
         )
     }
 
@@ -266,12 +267,16 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                 }
                 val installBytes = game?.installSize ?: 0L
 
-                val downloadSize = if (downloadBytes > 0L)
+                val downloadSize = if (downloadBytes > 0L) {
                     app.gamenative.utils.StorageUtils.formatBinarySize(downloadBytes)
-                else "Unknown"
-                val installSize = if (installBytes > 0L)
+                } else {
+                    "Unknown"
+                }
+                val installSize = if (installBytes > 0L) {
                     app.gamenative.utils.StorageUtils.formatBinarySize(installBytes)
-                else "Unknown"
+                } else {
+                    "Unknown"
+                }
 
                 val installDir = AmazonConstants.getGameInstallPath(context, game?.title ?: libraryItem.name)
                 val availableBytes = app.gamenative.utils.StorageUtils.getAvailableSpace(AmazonConstants.defaultAmazonGamesPath(context))
@@ -628,6 +633,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
@@ -775,13 +781,11 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         return ContainerUtils.toContainerData(container)
     }
 
-    override fun saveContainerConfig(
+    override suspend fun saveContainerConfig(
         context: Context,
         libraryItem: LibraryItem,
         config: ContainerData,
-    ) {
-        ContainerUtils.applyToContainer(context, libraryItem.appId, config)
-    }
+    ): Boolean = ContainerUtils.applyToContainerGated(context, libraryItem.appId, config)
 
     override fun supportsContainerConfig(): Boolean = true
 }

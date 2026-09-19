@@ -292,3 +292,7 @@ fun KeyValue.printAllKeyValues(depth: Int = 0) {
         Timber.i("$tabString${parent.name}: ${parent.value}")
     }
 }
+
+// parallel-indexed with config.launch; kept in memory (SteamService.launchArgumentsCache) to avoid a Room schema bump.
+fun KeyValue.parseLaunchArguments(): List<String> =
+    this["config"]["launch"].children.map { it["arguments"].value.orEmpty() }

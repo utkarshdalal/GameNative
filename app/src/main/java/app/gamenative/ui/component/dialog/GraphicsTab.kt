@@ -6,7 +6,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -22,17 +24,29 @@ import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.LsfgVkManager
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsSwitch
+import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
+import com.winlator.container.Container.CONTAINER_VARIANT_HTML5
 import com.winlator.contents.ContentProfile
 import com.winlator.container.Container
 import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVars
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @Composable
-fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
+fun GraphicsTabContent(
+    state: ContainerConfigState,
+    // editing the GLOBAL default config: hides per-container-only options like "follow global".
+    default: Boolean = false,
+    // greys out wine-only items; renderScale is the only Graphics control that affects the WebView.
+    isHtml5: Boolean = false,
+) {
     val config = state.config.value
-    SettingsGroup() {
+    SettingsGroup {
+        CompositionLocalProvider(
+            LocalSettingsGroupEnabled provides !isHtml5,
+        ) {
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             // Bionic: Graphics Driver (Wrapper/Wrapper-v2)
             SettingsListDropdown(
@@ -413,7 +427,61 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             onCheckedChange = {
                 state.config.value = config.copy(useDRI3 = it)
             },
-        )
+            )
+        } // renderScale below stays enabled for html5
+
+        // html5 DPR override. -1f = follow global (per-container only), 0f = device-native.
+        if (default || config.containerVariant.equals(CONTAINER_VARIANT_HTML5, ignoreCase = true)) {
+            // sub-1 DPRs shrink the canvas backing store for engines that size it from devicePixelRatio;
+            // chromium scales it back up. DOM/CSS/text stay at physical res.
+            val renderScaleValues = if (default) {
+                listOf(0f, 0.5f, 0.75f, 1f, 1.5f, 2f, 3f, 4f)
+            } else {
+                listOf(-1f, 0f, 0.5f, 0.75f, 1f, 1.5f, 2f, 3f, 4f)
+            }
+            val renderScaleLabels = if (default) {
+                listOf(
+                    stringResource(R.string.render_scale_device),
+                    stringResource(R.string.render_scale_0_5x),
+                    stringResource(R.string.render_scale_0_75x),
+                    stringResource(R.string.render_scale_1x),
+                    stringResource(R.string.render_scale_1_5x),
+                    stringResource(R.string.render_scale_2x),
+                    stringResource(R.string.render_scale_3x),
+                    stringResource(R.string.render_scale_4x),
+                )
+            } else {
+                listOf(
+                    stringResource(R.string.render_scale_follow_global),
+                    stringResource(R.string.render_scale_device),
+                    stringResource(R.string.render_scale_0_5x),
+                    stringResource(R.string.render_scale_0_75x),
+                    stringResource(R.string.render_scale_1x),
+                    stringResource(R.string.render_scale_1_5x),
+                    stringResource(R.string.render_scale_2x),
+                    stringResource(R.string.render_scale_3x),
+                    stringResource(R.string.render_scale_4x),
+                )
+            }
+            // tolerance match: Float identity bites at 1.5f vs persisted bits.
+            val renderScaleIndex = rememberSaveable {
+                mutableIntStateOf(
+                    renderScaleValues.indexOfFirst { abs(it - config.renderScale) < 0.001f }
+                        .coerceAtLeast(0),
+                )
+            }
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.render_scale_label)) },
+                subtitle = { Text(text = stringResource(R.string.render_scale_description)) },
+                value = renderScaleIndex.value,
+                items = renderScaleLabels,
+                onItemSelected = { idx ->
+                    renderScaleIndex.value = idx
+                    state.config.value = config.copy(renderScale = renderScaleValues[idx])
+                },
+            )
+        }
     }
 }
 @Composable

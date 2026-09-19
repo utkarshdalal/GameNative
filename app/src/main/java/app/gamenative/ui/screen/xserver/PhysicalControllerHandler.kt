@@ -766,6 +766,11 @@ class PhysicalControllerHandler(
         sendGamepadState()
     }
 
+    // html5 input pipeline entry; same routing as physical KeyEvents.
+    fun applyBinding(binding: Binding, isActionDown: Boolean, offset: Float = 0f) {
+        handleInputEvent(binding, isActionDown, offset)
+    }
+
     private fun handleInputEvent(
         binding: Binding,
         isActionDown: Boolean,

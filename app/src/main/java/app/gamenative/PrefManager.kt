@@ -29,9 +29,11 @@ import com.winlator.core.DefaultVersion
 import `in`.dragonbra.javasteam.enums.EPersonaState
 import java.io.IOException
 import java.util.EnumSet
+import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -44,12 +46,18 @@ import timber.log.Timber
  */
 object PrefManager {
 
+    // NOT Dispatchers.IO: getPref runBlocking-waits on the datastore from IO threads, so if the read also
+    // needed an IO thread, enough concurrent readers would starve the pool and deadlock.
+    private val dataStoreDispatcher =
+        Executors.newSingleThreadExecutor { r -> Thread(r, "PrefDataStore") }.asCoroutineDispatcher()
+
     private val Context.datastore by preferencesDataStore(
         name = "PluviaPreferences",
         corruptionHandler = ReplaceFileCorruptionHandler {
             Timber.e("Preferences (somehow got) corrupted, resetting.")
             emptyPreferences()
         },
+        scope = CoroutineScope(dataStoreDispatcher + SupervisorJob()),
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -540,6 +548,23 @@ object PrefManager {
         set(value) {
             setPref(SHOW_CONTROLLER_DEBUG_MENU, value)
         }
+
+    // one-shot wipe of the shared app_webview/Default storage subtrees; set true only AFTER a successful wipe.
+    private val HTML5_DEFAULT_PROFILE_WIPED = booleanPreferencesKey("html5_default_profile_wiped")
+    var html5DefaultProfileWiped: Boolean
+        get() = getPref(HTML5_DEFAULT_PROFILE_WIPED, false)
+        set(value) {
+            setPref(HTML5_DEFAULT_PROFILE_WIPED, value)
+        }
+
+    // global html5 devicePixelRatio override; 0f = device-native. WebViewContainer.renderScale -1f follows this.
+    private val HTML5_RENDER_SCALE = floatPreferencesKey("html5_render_scale")
+    var html5RenderScale: Float
+        get() = getPref(HTML5_RENDER_SCALE, 0f)
+        set(value) {
+            setPref(HTML5_RENDER_SCALE, value)
+        }
+
     private val LAUNCH_BIONIC_STEAM = booleanPreferencesKey("launch_bionic_steam")
     var launchBionicSteam: Boolean
         get() = getPref(LAUNCH_BIONIC_STEAM, false)
@@ -1532,6 +1557,13 @@ object PrefManager {
                 }
             }
         }
+
+    // Effekseer WASM stub for the chromium-109 audio CHECK crash. "auto" = stub below
+    // EffekseerWasmGate.AFFECTED_BELOW_MAJOR, "on" = always (no particle effects), "off" = never.
+    private val HTML5_EFFEKSEER_WASM_STUB_MODE = stringPreferencesKey("html5_effekseer_wasm_stub_mode")
+    var html5EffekseerWasmStubMode: String
+        get() = getPref(HTML5_EFFEKSEER_WASM_STUB_MODE, "auto")
+        set(value) = setPref(HTML5_EFFEKSEER_WASM_STUB_MODE, value)
 
     // Add new setting for Wine debug logging
     private val ENABLE_WINE_DEBUG = booleanPreferencesKey("enable_wine_debug")

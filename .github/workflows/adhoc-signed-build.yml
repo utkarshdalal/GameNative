@@ -26,6 +26,12 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: gh pr checkout ${{ inputs.pr }}
+    - name: Check out leveldb + snappy submodules
+      run: |
+        # after the PR checkout so the pins match the PR; PRs that predate these submodules don't have them
+        if git config -f .gitmodules submodule.iq80-leveldb/upstream.path >/dev/null; then
+          git submodule update --init --recursive iq80-leveldb/upstream snappy-java/upstream
+        fi
     - name: Compute artifact suffix
       id: meta
       run: |
