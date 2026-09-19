@@ -680,6 +680,15 @@ class MainViewModel @Inject constructor(
     }
 
     fun exitSteamApp(context: Context, appId: String, onComplete: (() -> Unit)? = null) {
+        // the close-time sync uploads straight out of the install dir, so the store's delete joins this.
+        // reserved HERE, before the launch, so an uninstall started right after exit can't miss it.
+        val closeSyncKey = runCatching {
+            CloseSyncTracker.keyOf(
+                ContainerUtils.extractGameSourceFromContainerId(appId),
+                ContainerUtils.extractGameIdFromContainerId(appId),
+            )
+        }.getOrDefault(appId)
+        val closeSync = CloseSyncTracker.reserve(closeSyncKey)
         viewModelScope.launch {
             try {
                 Timber.tag("Exit").i("Exiting, getting feedback for appId: $appId")
@@ -696,6 +705,7 @@ class MainViewModel @Inject constructor(
                 ActiveGameRegistry.clearIfMatches(gameId)
                 SteamService.notifyRunningProcesses()
                 handleExitCloudSync(context, appId, gameId)
+                closeSync.complete()
 
                 // Prompt user to save temporary container configuration if one was applied
                 if (hadTemporaryOverride) {
@@ -769,6 +779,10 @@ class MainViewModel @Inject constructor(
             } finally {
                 onComplete?.invoke()
             }
+        }.invokeOnCompletion {
+            // backstop: a launch cancelled before it runs, or one that throws before the sync, must not
+            // leave the delete waiting forever.
+            closeSync.complete()
         }
     }
 
@@ -810,9 +824,6 @@ class MainViewModel @Inject constructor(
 
         if (gameSource == GameSource.GOG) {
             Timber.tag("GOG").i("[Cloud Saves] GOG Game detected for $appId — syncing cloud saves after close")
-            // so GOGService.deleteGame joins this upload instead of deleting the save dir under it.
-            val gogSyncJob = Job()
-            CloseSyncTracker.track(appId, gogSyncJob)
             withContext(Dispatchers.IO) {
                 try {
                     Timber.tag("GOG").d("[Cloud Saves] Starting post-game upload sync for $appId")
@@ -830,8 +841,6 @@ class MainViewModel @Inject constructor(
                     throw e
                 } catch (e: Exception) {
                     Timber.tag("GOG").e(e, "[Cloud Saves] Exception during upload sync for $appId")
-                } finally {
-                    gogSyncJob.complete()
                 }
             }
             return
@@ -839,9 +848,6 @@ class MainViewModel @Inject constructor(
 
         if (gameSource == GameSource.EPIC) {
             Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves after close")
-            // EpicService.deleteGame joins this.
-            val epicSyncJob = Job()
-            CloseSyncTracker.track(appId, epicSyncJob)
             withContext(Dispatchers.IO) {
                 try {
                     Timber.tag("Epic").d("[Cloud Saves] Starting post-game upload sync for $gameId")
@@ -859,8 +865,6 @@ class MainViewModel @Inject constructor(
                     throw e
                 } catch (e: Exception) {
                     Timber.tag("Epic").e(e, "[Cloud Saves] Exception during upload sync for $gameId")
-                } finally {
-                    epicSyncJob.complete()
                 }
             }
             return
