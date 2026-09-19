@@ -456,6 +456,8 @@ class GOGService : Service() {
          * Delegates to GOGManager.deleteGame
          */
         suspend fun deleteGame(context: Context, libraryItem: LibraryItem): Result<Unit> {
+            // the close-time upload reads the dir we are about to delete; see CloseSyncTracker.
+            app.gamenative.service.cloud.CloseSyncTracker.awaitIdle(libraryItem.appId)
             return getInstance()?.gogManager?.deleteGame(context, libraryItem)
                 ?: Result.failure(Exception("Service not available"))
         }
