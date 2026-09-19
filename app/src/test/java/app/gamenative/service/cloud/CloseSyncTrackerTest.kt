@@ -9,8 +9,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -44,7 +42,7 @@ class CloseSyncTrackerTest {
     @Test
     fun awaitIdle_returnsImmediatelyWhenNothingInFlight() = runTest {
         CloseSyncTracker.awaitIdle("STEAM_offset1")
-        assertNull(CloseSyncTracker.inFlight("STEAM_offset1"))
+        assertTrue(CloseSyncTracker.inFlight("STEAM_offset1").isEmpty())
     }
 
     @Test
@@ -64,7 +62,7 @@ class CloseSyncTrackerTest {
     fun completedSyncIsNotReportedInFlight() = runBlocking {
         val done = Job().apply { complete() }
         CloseSyncTracker.track("STEAM_offset3", done)
-        assertNull("a settled sync must not gate a delete", CloseSyncTracker.inFlight("STEAM_offset3"))
+        assertTrue("a settled sync must not gate a delete", CloseSyncTracker.inFlight("STEAM_offset3").isEmpty())
     }
 
     @Test
@@ -78,9 +76,56 @@ class CloseSyncTrackerTest {
 
         first.complete()
 
-        assertSame("second sync must still gate the delete", second, CloseSyncTracker.inFlight("STEAM_offset4"))
+        assertEquals("second sync must still gate the delete", listOf(second), CloseSyncTracker.inFlight("STEAM_offset4"))
         second.complete()
-        assertNull(CloseSyncTracker.inFlight("STEAM_offset4"))
+        assertTrue(CloseSyncTracker.inFlight("STEAM_offset4").isEmpty())
+    }
+
+    @Test
+    fun awaitIdle_waitsForAnEarlierSyncWhenALaterOneFinishesFirst() = runTest {
+        // overlapping exits: the later sync bails at once (one already running) but the earlier one is still
+        // uploading. the delete must wait for BOTH, not just the newest entry.
+        val earlier = Job()
+        val later = Job()
+        CloseSyncTracker.track("STEAM_offset8", earlier)
+        CloseSyncTracker.track("STEAM_offset8", later)
+        later.complete()
+
+        val delete = async { CloseSyncTracker.awaitIdle("STEAM_offset8") }
+        delay(50)
+        assertFalse("delete ran while the earlier sync was still uploading", delete.isCompleted)
+
+        earlier.complete()
+        delete.await()
+        assertTrue(CloseSyncTracker.inFlight("STEAM_offset8").isEmpty())
+    }
+
+    @Test
+    fun awaitIdle_propagatesCancellationOfTheCaller() = runTest {
+        // a cancelled uninstall must not fall through to its delete.
+        val sync = Job()
+        CloseSyncTracker.track("STEAM_offset9", sync)
+        var fellThrough = false
+
+        val delete = async {
+            CloseSyncTracker.awaitIdle("STEAM_offset9")
+            fellThrough = true
+        }
+        delay(50)
+        delete.cancel()
+        delete.join()
+
+        assertTrue(delete.isCancelled)
+        assertFalse("delete continued after its caller was cancelled", fellThrough)
+        sync.complete()
+    }
+
+    @Test
+    fun reserve_gatesTheDeleteUntilCompleted() = runBlocking {
+        val closeSync = CloseSyncTracker.reserve("GOG_offset10")
+        assertEquals(listOf(closeSync), CloseSyncTracker.inFlight("GOG_offset10"))
+        closeSync.complete()
+        assertTrue(CloseSyncTracker.inFlight("GOG_offset10").isEmpty())
     }
 
     @Test
@@ -100,8 +145,8 @@ class CloseSyncTrackerTest {
         val other = Job()
         CloseSyncTracker.track("STEAM_offset6", other)
 
-        assertNull("unrelated appId must not see another game's sync", CloseSyncTracker.inFlight("STEAM_offset7"))
-        assertSame(other, CloseSyncTracker.inFlight("STEAM_offset6"))
+        assertTrue("unrelated appId must not see another game's sync", CloseSyncTracker.inFlight("STEAM_offset7").isEmpty())
+        assertEquals(listOf(other), CloseSyncTracker.inFlight("STEAM_offset6"))
         other.complete()
     }
 
@@ -115,12 +160,12 @@ class CloseSyncTrackerTest {
         CloseSyncTracker.track("STEAM_$COLLIDING_NUMERIC", steam)
         CloseSyncTracker.track("GOG_$COLLIDING_NUMERIC", gog)
 
-        assertSame(steam, CloseSyncTracker.inFlight("STEAM_$COLLIDING_NUMERIC"))
-        assertSame(gog, CloseSyncTracker.inFlight("GOG_$COLLIDING_NUMERIC"))
+        assertEquals(listOf(steam), CloseSyncTracker.inFlight("STEAM_$COLLIDING_NUMERIC"))
+        assertEquals(listOf(gog), CloseSyncTracker.inFlight("GOG_$COLLIDING_NUMERIC"))
 
         steam.complete()
-        assertNull("steam settling must not release the GOG entry", CloseSyncTracker.inFlight("STEAM_$COLLIDING_NUMERIC"))
-        assertSame("GOG upload still gates its own delete", gog, CloseSyncTracker.inFlight("GOG_$COLLIDING_NUMERIC"))
+        assertTrue("steam settling must not release the GOG entry", CloseSyncTracker.inFlight("STEAM_$COLLIDING_NUMERIC").isEmpty())
+        assertEquals("GOG upload still gates its own delete", listOf(gog), CloseSyncTracker.inFlight("GOG_$COLLIDING_NUMERIC"))
         gog.complete()
     }
 
@@ -137,10 +182,10 @@ class CloseSyncTrackerTest {
         listOf("STEAM_1", "GOG_2", "EPIC_3").forEach { id ->
             val sync = Job()
             CloseSyncTracker.track(id, sync)
-            assertSame(sync, CloseSyncTracker.inFlight(id))
+            assertEquals(listOf(sync), CloseSyncTracker.inFlight(id))
             sync.complete()
             CloseSyncTracker.awaitIdle(id)
-            assertNull(CloseSyncTracker.inFlight(id))
+            assertTrue(CloseSyncTracker.inFlight(id).isEmpty())
         }
     }
 
