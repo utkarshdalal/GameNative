@@ -882,6 +882,7 @@ internal data class ImmersiveModeUiState(
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
     displayInfo: GameDisplayInfo,
+    resetHeroOnFirstArtworkChange: Boolean = false,
     downloadDisplayDetails: DownloadDisplayDetails,
     downloadInfo: app.gamenative.data.DownloadInfo? = null,
     onDownloadInstallClick: () -> Unit,
@@ -920,6 +921,12 @@ internal fun AppScreenContent(
     val videoFallback = displayInfo.heroImageUrl
         ?: displayInfo.storeDetails.screenshots.firstOrNull().orEmpty()
     var fullscreenHeroPage by rememberSaveable(displayInfo.appId) { mutableStateOf<Int?>(null) }
+    var previousHeroImageUrl by remember(displayInfo.appId) {
+        mutableStateOf(displayInfo.heroImageUrl)
+    }
+    var didResetForFirstArtworkChange by remember(displayInfo.appId) {
+        mutableStateOf(false)
+    }
     var heroHeightPx by remember { mutableIntStateOf(0) }
     val heroPlaybackVisible by remember(scrollState) {
         derivedStateOf { heroHeightPx > 0 && scrollState.value < heroHeightPx }
@@ -956,13 +963,34 @@ internal fun AppScreenContent(
         }
     }
 
-    // Amazon initially renders its library icon while the full catalog record is loaded.
-    // Reset when the preferred hero changes so the pager does not preserve that temporary
-    // image's stable key at its later position in the completed media list.
-    LaunchedEffect(displayInfo.appId, displayInfo.heroImageUrl) {
+    LaunchedEffect(displayInfo.appId) {
         scrollState.scrollTo(0)
         heroPagerState.scrollToPage(0)
         fullscreenHeroPage = null
+    }
+
+    // Amazon initially renders its library icon while the full catalog record is loaded.
+    // Reset once when that icon is replaced so the pager does not preserve its stable key at
+    // a later position. Other artwork refreshes must not discard the user's current position.
+    LaunchedEffect(
+        displayInfo.appId,
+        resetHeroOnFirstArtworkChange,
+        displayInfo.heroImageUrl,
+    ) {
+        val currentHeroImageUrl = displayInfo.heroImageUrl
+        val heroChanged = currentHeroImageUrl != previousHeroImageUrl
+        previousHeroImageUrl = currentHeroImageUrl
+        if (
+            resetHeroOnFirstArtworkChange &&
+            !didResetForFirstArtworkChange &&
+            heroChanged &&
+            !currentHeroImageUrl.isNullOrBlank()
+        ) {
+            didResetForFirstArtworkChange = true
+            scrollState.scrollTo(0)
+            heroPagerState.scrollToPage(0)
+            fullscreenHeroPage = null
+        }
     }
 
     LaunchedEffect(heroMedia.size) {

@@ -198,6 +198,11 @@ private fun ExoVideoHero(
                 color = Color.White,
                 modifier = Modifier.size(34.dp),
             )
+        } else if (playbackFailed && fallbackImageUrl.isBlank()) {
+            VideoPlaceholder(
+                contentDescription = contentDescription,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }

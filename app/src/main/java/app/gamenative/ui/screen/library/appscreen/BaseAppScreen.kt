@@ -37,6 +37,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.FavoritesManager
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreDetailsRepository
+import app.gamenative.data.withoutTitleOnlyDescription
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
@@ -1264,20 +1265,22 @@ abstract class BaseAppScreen {
 
         // Enrich the locally synced catalog record with public storefront description,
         // reviews, tags, screenshots, and trailers. The local record remains the fallback.
+        val localStoreDetails = displayInfoBase.storeDetails
+            .withoutTitleOnlyDescription(libraryItem.name)
         var storeDetails by remember(appId) {
-            mutableStateOf(displayInfoBase.storeDetails)
+            mutableStateOf(localStoreDetails)
         }
         val storeLocale = context.resources.configuration.locales[0]
-        LaunchedEffect(appId, displayInfoBase.storeDetails, storeLocale.toLanguageTag()) {
+        LaunchedEffect(appId, localStoreDetails, storeLocale.toLanguageTag()) {
             storeDetails = StoreDetailsRepository.getDetails(
                 libraryItem = libraryItem,
-                fallback = displayInfoBase.storeDetails,
+                fallback = localStoreDetails,
                 locale = storeLocale,
             )
         }
         val displayInfo = displayInfoBase.copy(
             hltbStats = hltbStats,
-            storeDetails = storeDetails.mergedWith(displayInfoBase.storeDetails),
+            storeDetails = storeDetails.mergedWith(localStoreDetails),
         )
 
         // Use composable state for values that change over time
@@ -1682,6 +1685,7 @@ abstract class BaseAppScreen {
         // Render the common UI
         app.gamenative.ui.screen.library.AppScreenContent(
             displayInfo = displayInfo,
+            resetHeroOnFirstArtworkChange = libraryItem.gameSource == GameSource.AMAZON,
             downloadDisplayDetails = app.gamenative.ui.data.DownloadDisplayDetails(
                 isInstalled = isInstalledState,
                 isValidToDownload = isValidToDownloadState,
