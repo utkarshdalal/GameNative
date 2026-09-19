@@ -1587,20 +1587,21 @@ fun NexusModsDialog(
 
     fun writePluginState(updated: List<BethesdaPlugin>) {
         val game = bethesdaGame ?: return
-        val pluginsFile = BethesdaPluginManager.pluginFiles(winePrefix, game, libraryItem.gameSource)?.targetFile ?: return
+        val pluginFiles = BethesdaPluginManager.pluginFiles(winePrefix, game, libraryItem.gameSource) ?: return
         scope.launch {
             val issues = withContext(Dispatchers.IO) {
                 BethesdaPluginManager.updateManagedPluginsTxt(
-                    file = pluginsFile,
+                    file = pluginFiles.targetFile,
                     managedPlugins = updated,
                     game = game,
                     gameRootDir = gameRootDir,
+                    migrationSourceFile = pluginFiles.stateFile,
                 )
                 BethesdaPluginManager.diagnosePluginMasters(
                     managedPlugins = updated,
                     game = game,
                     gameRootDir = gameRootDir,
-                    pluginsFile = pluginsFile,
+                    pluginsFile = pluginFiles.targetFile,
                 )
             }
             bethesdaPlugins = updated
@@ -1953,6 +1954,7 @@ fun NexusModsDialog(
                                     managedPlugins = detectedPlugins,
                                     game = game,
                                     gameRootDir = gameRootDir,
+                                    migrationSourceFile = pluginFiles.stateFile,
                                 )
                                 val issues = BethesdaPluginManager.diagnosePluginMasters(
                                     managedPlugins = detectedPlugins,

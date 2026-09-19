@@ -275,13 +275,14 @@ object BethesdaPluginManager {
         managedPlugins: List<BethesdaPlugin>,
         game: BethesdaGame? = null,
         gameRootDir: File? = null,
+        migrationSourceFile: File? = null,
     ) {
         file.parentFile?.mkdirs()
         val managedByName = managedPlugins.associateBy { it.fileName.lowercase() }
         val usesMarkers = usesAsteriskEnabledMarkers(game)
         val basePlugins = gameRootDir?.let { root -> baseGamePlugins(game, root, managedByName.keys) }.orEmpty()
         val baseByName = basePlugins.map { it.lowercase() }.toSet()
-        val retainedLines = pluginFileVariants(file)
+        val targetRetainedLines = pluginFileVariants(file)
             .flatMap { existingFile -> if (existingFile.isFile) existingFile.readLines() else emptyList() }
             .filter { line ->
                 val entry = parsePluginLine(line, game) ?: return@filter true
@@ -289,6 +290,21 @@ object BethesdaPluginManager {
             }
             .map { if (usesMarkers) it else normalizePluginLineForNoMarkerGame(it) }
             .distinctPluginLines(game)
+        val targetRetainedNames = targetRetainedLines
+            .mapNotNull { parsePluginLine(it, game)?.fileName?.lowercase() }
+            .toSet()
+        val migratedRetainedLines = migrationSourceFile
+            ?.takeUnless { it.absolutePath.equals(file.absolutePath, ignoreCase = true) }
+            ?.let { source -> readPluginEntries(source, game) }
+            .orEmpty()
+            .filter { entry ->
+                val key = entry.fileName.lowercase()
+                key !in targetRetainedNames && key !in managedByName && key !in baseByName
+            }
+            .map { entry ->
+                if (entry.enabled) enabledPluginLine(entry.fileName, usesMarkers) else entry.fileName
+            }
+        val retainedLines = (targetRetainedLines + migratedRetainedLines).distinctPluginLines(game)
         val baseLines = basePlugins.map { enabledPluginLine(it, usesMarkers) }
         val managedLines = managedPlugins
             .distinctBy { it.fileName.lowercase() }

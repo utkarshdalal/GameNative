@@ -63,12 +63,12 @@ class BethesdaPluginManagerTest {
         val localAppData = File(winePrefix, "drive_c/users/steamuser/AppData/Local")
         val legacyFile = File(localAppData, "Skyrim Special Edition/plugins.txt").apply {
             parentFile?.mkdirs()
-            writeText("*SkyUI_SE.esp\n")
+            writeText("# legacy comment\n*SkyUI_SE.esp\n*LegacyOnly.esp\n*External.esp\n")
         }
-        File(legacyFile.parentFile, "loadorder.txt").writeText("SkyUI_SE.esp\n")
+        File(legacyFile.parentFile, "loadorder.txt").writeText("SkyUI_SE.esp\nLegacyOnly.esp\nExternal.esp\n")
         val targetFile = File(localAppData, "Skyrim Special Edition GOG/plugins.txt").apply {
             parentFile?.mkdirs()
-            writeText("SkyUI_SE.esp\n*External.esp\n")
+            writeText("SkyUI_SE.esp\nExternal.esp\n*TargetOnly.esp\n# target comment\n")
         }
         val legacyText = legacyFile.readText()
 
@@ -87,6 +87,7 @@ class BethesdaPluginManagerTest {
                 BethesdaPlugin("SkyUI_SE.esp", "skyui", "SkyUI", "", enabled = true, priority = 0),
             ),
             game = BethesdaGame.SKYRIM_SPECIAL_EDITION,
+            migrationSourceFile = pending.stateFile,
         )
 
         val migrated = BethesdaPluginManager.pluginFiles(
@@ -95,7 +96,14 @@ class BethesdaPluginManagerTest {
             gameSource = GameSource.GOG,
         )!!
         assertEquals(targetFile.absolutePath, migrated.stateFile.absolutePath)
-        assertEquals("*External.esp\n*SkyUI_SE.esp\n", targetFile.readText())
+        assertEquals(
+            "External.esp\n*TargetOnly.esp\n# target comment\n*LegacyOnly.esp\n*SkyUI_SE.esp\n",
+            targetFile.readText(),
+        )
+        assertEquals(
+            "External.esp\nTargetOnly.esp\nLegacyOnly.esp\nSkyUI_SE.esp\n",
+            File(targetFile.parentFile, "loadorder.txt").readText(),
+        )
         assertEquals(legacyText, legacyFile.readText())
     }
 
