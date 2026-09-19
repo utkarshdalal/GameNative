@@ -53,25 +53,16 @@ public class PulseAudioComponent extends EnvironmentComponent {
     private final AtomicBoolean isPauseResumeRunning = new AtomicBoolean(false);
     private final AtomicBoolean isPaused = new AtomicBoolean(false);
     private boolean lowLatency = false;
-    private final boolean micEnabled;
-    /** When true the AAudio sink is not loaded: the server only provides microphone capture. */
-    private final boolean micOnly;
+    private final boolean enableAudioOutput;
+    private final boolean enableAudioInput;
 
     private final ExecutorService singleThreadExecutor = Executors.newSingleThreadExecutor();
 
-    public PulseAudioComponent(UnixSocketConfig socketConfig, boolean lowLatency) {
-        this(socketConfig, lowLatency, false, false);
-    }
-
-    public PulseAudioComponent(UnixSocketConfig socketConfig, boolean lowLatency, boolean micEnabled) {
-        this(socketConfig, lowLatency, micEnabled, false);
-    }
-
-    public PulseAudioComponent(UnixSocketConfig socketConfig, boolean lowLatency, boolean micEnabled, boolean micOnly) {
+    public PulseAudioComponent(UnixSocketConfig socketConfig, boolean lowLatency, boolean enableAudioInput, boolean enableAudioOutput) {
         this.socketConfig = socketConfig;
         this.lowLatency = lowLatency;
-        this.micEnabled = micEnabled;
-        this.micOnly = micOnly;
+        this.enableAudioInput = enableAudioInput;
+        this.enableAudioOutput = enableAudioOutput;
     }
 
     /** Working directory the bundled PulseAudio server runs from. */
@@ -205,27 +196,34 @@ public class PulseAudioComponent extends EnvironmentComponent {
         }
 
         File configFile = new File(workingDir, "default.pa");
-        String sinkParams = "volume=" + this.volume + " performance_mode=" + ((int) this.performanceMode);
-        if (lowLatency) {
-            sinkParams += " low_latency=true";
-        }
 
         List<String> configLines = new ArrayList<>();
         configLines.add("load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=false socket=\""+socketConfig.path+"\"");
-        if (!micOnly) {
+
+        // Add config for audio input
+        if (enableAudioInput) {
+            configLines.addAll(buildMicConfigLines(context, workingDir));
+        }
+
+        // Add config for audio output
+        if (enableAudioOutput) {
+            String sinkParams = "volume=" + this.volume + " performance_mode=" + ((int) this.performanceMode);
+
+            if (lowLatency) {
+                sinkParams += " low_latency=true";
+            }
+
             configLines.add("load-module module-aaudio-sink " + sinkParams);
         }
-        configLines.addAll(buildMicConfigLines(context, workingDir));
+
         FileUtils.writeString(configFile, String.join("\n", configLines));
 
-        String archName = AppUtils.getArchName();
         File modulesDir = new File(workingDir, "modules");
 
         EnvVars envVars = new EnvVars();
         envVars.put("LD_LIBRARY_PATH", "/system/lib64:"+nativeLibraryDir+":"+modulesDir);
         envVars.put("HOME", workingDir);
         envVars.put("TMPDIR", XEnvironment.getTmpDir(context));
-
 
         String command = nativeLibraryDir+"/libpulseaudio.so";
         command += " --system=false";
@@ -256,7 +254,6 @@ public class PulseAudioComponent extends EnvironmentComponent {
      */
     private List<String> buildMicConfigLines(Context context, File workingDir) {
         List<String> lines = new ArrayList<>();
-        if (!micEnabled) return lines;
 
         if (!isMicModuleAvailable(context)) {
             Timber.tag("PulseAudioComponent").w(

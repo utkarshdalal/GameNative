@@ -4126,7 +4126,7 @@ private fun setupXEnvironment(
                 UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.PULSE_SERVER_PATH),
                 container.pulseaudioLowLatency,
                 true,
-                true
+                false
             ))
         }
     } else if (xServerState.value.audioDriver == "pulseaudio") {
@@ -4134,7 +4134,8 @@ private fun setupXEnvironment(
         environment.addComponent(PulseAudioComponent(
             UnixSocketConfig.createSocket(imageFs.getRootDir().getPath(), UnixSocketConfig.PULSE_SERVER_PATH),
             container.pulseaudioLowLatency,
-            micEnabled
+            micEnabled,
+            true
         ))
     }
 

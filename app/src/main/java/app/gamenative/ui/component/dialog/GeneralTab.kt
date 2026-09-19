@@ -19,11 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -58,20 +55,18 @@ fun GeneralTabContent(
 ) {
     val config = state.config.value
 
-    // Microphone input is opt-in and needs a runtime permission before it can be switched on.
+    // Microphone input is opt-in. The RECORD_AUDIO runtime permission is only requested when
+    // the user turns the toggle on (never at screen entry), and only when it isn't already
+    // granted. The grant state is checked fresh at toggle time rather than cached, so a
+    // permission revoked in system settings is picked up correctly.
     val context = LocalContext.current
-    var micPermissionGranted by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
-                PackageManager.PERMISSION_GRANTED,
-        )
-    }
     val micPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        micPermissionGranted = granted
         // Only enable the option once the user actually granted access.
-        state.config.value = state.config.value.copy(micEnabled = granted)
+        if (granted) {
+            state.config.value = state.config.value.copy(micEnabled = true)
+        }
     }
 
     val graphicsDrivers = state.graphicsDrivers.value
@@ -361,7 +356,13 @@ fun GeneralTabContent(
             subtitle = { Text(text = stringResource(R.string.microphone_input_description)) },
             state = config.micEnabled,
             onCheckedChange = { enabled ->
-                if (enabled && !micPermissionGranted) {
+                val hasMicPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.RECORD_AUDIO,
+                ) == PackageManager.PERMISSION_GRANTED
+                if (enabled && !hasMicPermission) {
+                    // Ask only now that the user explicitly wants mic input; the launcher
+                    // callback flips the switch on if they grant.
                     micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 } else {
                     state.config.value = config.copy(micEnabled = enabled)
