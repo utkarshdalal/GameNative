@@ -1,6 +1,7 @@
 package app.gamenative.service.gog
 
 import android.content.Context
+import java.io.ByteArrayOutputStream
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
@@ -10,8 +11,13 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import okio.Buffer
+import okio.ForwardingSink
+import okio.buffer
 import org.mockito.kotlin.mock
 import java.lang.reflect.Method
+import java.security.MessageDigest
+import java.util.zip.GZIPOutputStream
 
 class GOGCloudSavesManagerTest {
     private val context: Context = mock()
@@ -22,20 +28,21 @@ class GOGCloudSavesManagerTest {
     // wall-clock time, which is what makes that hold -- assert it rather than assume it, since
     // a JDK that started stamping real time would silently produce a permanent conflict icon.
     @Test
-    fun gzipBytes_is_byte_stable_for_identical_content() {
-        val payload = """{"slot":1,"gold":9999}""".toByteArray()
+    fun upload_body_is_byte_stable_for_identical_content() {
+        val file = tempSave("""{"slot":1,"gold":9999}""".toByteArray())
 
-        val first = GOGCloudSavesManager.gzipBytes(payload)
+        val first = GOGCloudSavesManager.GzippedFileBody(file)
+        val firstBytes = uploadBytes(first)
         Thread.sleep(1_100) // cross a wall-clock second
-        val second = GOGCloudSavesManager.gzipBytes(payload)
+        val second = GOGCloudSavesManager.GzippedFileBody(file)
 
-        assertArrayEquals(first, second)
-        assertEquals(GOGCloudSavesManager.md5Hex(first), GOGCloudSavesManager.md5Hex(second))
+        assertArrayEquals(firstBytes, uploadBytes(second))
+        assertEquals(first.etag, second.etag)
     }
 
     @Test
-    fun gzipBytes_writes_zero_mtime_header() {
-        val gzipped = GOGCloudSavesManager.gzipBytes("payload".toByteArray())
+    fun upload_body_writes_zero_mtime_header() {
+        val gzipped = uploadBytes(GOGCloudSavesManager.GzippedFileBody(tempSave("payload".toByteArray())))
 
         // gzip header bytes 4..7 are MTIME, little-endian; gogdl sends mtime=0 and so must we.
         assertArrayEquals(byteArrayOf(0, 0, 0, 0), gzipped.copyOfRange(4, 8))
@@ -76,9 +83,7 @@ class GOGCloudSavesManagerTest {
         )
         syncFile.calculateMetadata()
 
-        val expected = GOGCloudSavesManager.md5Hex(
-            GOGCloudSavesManager.gzipBytes(payload.toByteArray()),
-        )
+        val expected = md5Hex(referenceGzip(payload.toByteArray()))
         assertEquals(expected, syncFile.md5Hash)
     }
 
@@ -98,9 +103,41 @@ class GOGCloudSavesManagerTest {
         )
         syncFile.calculateMetadata()
 
-        val uploaded = GOGCloudSavesManager.gzipFile(file)
-        assertEquals(GOGCloudSavesManager.md5Hex(uploaded), syncFile.md5Hash)
-        assertArrayEquals(GOGCloudSavesManager.gzipBytes(payload), uploaded)
+        val body = GOGCloudSavesManager.GzippedFileBody(file)
+        val uploaded = uploadBytes(body)
+        assertArrayEquals(referenceGzip(payload), uploaded)
+        assertEquals(md5Hex(uploaded), body.etag)
+        assertEquals(body.etag, syncFile.md5Hash)
+        // a sized body, so the upload carries Content-Length like Galaxy/Heroic, not chunked encoding.
+        assertEquals(uploaded.size.toLong(), body.contentLength())
+    }
+
+    // OkHttp may call writeTo again on a retry, and it owns the sink: the body must not close it.
+    @Test
+    fun gzipped_file_body_rewrites_identically_and_leaves_the_sink_open() {
+        val file = File.createTempFile("gog-save-retry", ".sav").apply {
+            writeBytes(ByteArray(50_000) { (it % 97).toByte() })
+            deleteOnExit()
+        }
+        val body = GOGCloudSavesManager.GzippedFileBody(file)
+        var closed = false
+        val target = Buffer()
+        val sink = object : ForwardingSink(target) {
+            override fun close() {
+                closed = true
+                super.close()
+            }
+        }.buffer()
+
+        body.writeTo(sink)
+        sink.flush()
+        val first = target.readByteArray()
+        body.writeTo(sink)
+        sink.flush()
+        val second = target.readByteArray()
+
+        assertFalse("the body closed OkHttp's sink", closed)
+        assertArrayEquals(first, second)
     }
 
     // relativePath comes off the local filesystem and routinely contains spaces and parens
@@ -521,4 +558,20 @@ class GOGCloudSavesManagerTest {
         // The key is: after a successful download that preserves timestamps, the NEXT sync
         // should update lastSyncTimestamp to 1500L, preventing this conflict on future syncs
     }
+
+    private fun uploadBytes(body: GOGCloudSavesManager.GzippedFileBody): ByteArray =
+        Buffer().also { body.writeTo(it) }.readByteArray()
+
+    // plain one-shot gzip, independent of the code under test.
+    private fun referenceGzip(bytes: ByteArray): ByteArray =
+        ByteArrayOutputStream().also { out -> GZIPOutputStream(out).use { it.write(bytes) } }.toByteArray()
+
+    private fun md5Hex(bytes: ByteArray): String =
+        MessageDigest.getInstance("MD5").digest(bytes).joinToString("") { "%02x".format(it) }
+
+    private fun tempSave(bytes: ByteArray): File =
+        File.createTempFile("gog-save", ".sav").apply {
+            writeBytes(bytes)
+            deleteOnExit()
+        }
 }
