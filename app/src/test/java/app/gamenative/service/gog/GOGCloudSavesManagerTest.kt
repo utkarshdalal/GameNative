@@ -82,6 +82,27 @@ class GOGCloudSavesManagerTest {
         assertEquals(expected, syncFile.md5Hash)
     }
 
+    // metadata streams the file through gzip while the upload gzips it into a buffer; the md5 GOG lists
+    // must equal the upload Etag, including across the copy buffer's chunk boundaries.
+    @Test
+    fun streamed_metadata_md5_matches_the_upload_etag_for_multi_chunk_files() = runBlocking {
+        val payload = ByteArray(200_000) { (it * 31 % 251).toByte() }
+        val file = File.createTempFile("gog-save-big", ".sav").apply {
+            writeBytes(payload)
+            deleteOnExit()
+        }
+
+        val syncFile = GOGCloudSavesManager.SyncFile(
+            relativePath = "big.sav",
+            absolutePath = file.absolutePath,
+        )
+        syncFile.calculateMetadata()
+
+        val uploaded = GOGCloudSavesManager.gzipFile(file)
+        assertEquals(GOGCloudSavesManager.md5Hex(uploaded), syncFile.md5Hash)
+        assertArrayEquals(GOGCloudSavesManager.gzipBytes(payload), uploaded)
+    }
+
     // relativePath comes off the local filesystem and routinely contains spaces and parens
     // (e.g. "Slot 1 (autosave).sav"), which must not go into the URL raw.
     @Test
@@ -104,6 +125,17 @@ class GOGCloudSavesManagerTest {
 
     // empty dirname is the Galaxy SDK fallback (no namespace prefix); an empty path segment
     // would put a stray double slash in the object path and 404 the upload.
+    // master concatenated the object path, so a nested location name kept '/' as a separator.
+    @Test
+    fun cloudFileUrl_splits_a_nested_dirname_into_segments() {
+        val url = manager.cloudFileUrl("user-1", "client-1", "Documents/My Games", "save.dat")
+
+        assertEquals(
+            listOf("v1", "user-1", "client-1", "Documents", "My Games", "save.dat"),
+            url.pathSegments,
+        )
+    }
+
     @Test
     fun cloudFileUrl_omits_empty_dirname_segment() {
         val url = manager.cloudFileUrl("user-1", "client-1", "", "save.dat")
