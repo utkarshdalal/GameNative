@@ -1255,6 +1255,47 @@ fun XServerScreen(
                 true
             }
 
+            QuickMenuAction.CONTROL_PROFILE_APPLIED -> {
+                val manager = PluviaApp.inputControlsManager
+                val profileId = container.getExtra("profileId", "0").toIntOrNull() ?: 0
+                val profile = manager?.getProfile(profileId)
+                if (profile == null) {
+                    Timber.w("Applied control profile %d could not be loaded", profileId)
+                    false
+                }
+                else {
+                    currentGestureConfig = app.gamenative.data.TouchGestureConfig.fromJson(container.gestureConfig)
+                    currentShooterConfig = ShooterModeConfig.fromJson(container.shooterConfig)
+                    isTouchscreenModeActive = container.isTouchscreenMode
+                    isShooterModeActive = container.isShooterMode
+
+                    PluviaApp.touchpadView?.setSensitivity(profile.cursorSpeed)
+                    PluviaApp.touchpadView?.setTouchscreenMode(isTouchscreenModeActive)
+                    PluviaApp.touchpadView?.setGestureConfig(currentGestureConfig)
+                    PluviaApp.inputControlsView?.setGyroSettings(GyroSettings.fromContainer(container))
+                    PluviaApp.inputControlsView?.setContainerShooterMode(isShooterModeActive)
+                    PluviaApp.inputControlsView?.setShooterModeConfig(currentShooterConfig)
+                    physicalControllerHandler?.setProfile(profile)
+                    PluviaApp.radialMenuCoordinator?.setProfile(profile)
+
+                    val winHandler = xServerView?.getxServer()?.winHandler
+                    if (isTouchscreenModeActive) {
+                        if (areControlsVisible) hideInputControls()
+                        areControlsVisible = false
+                        loadInputControlsProfilePreservingVisibility(profile, winHandler)
+                    }
+                    else if ((areControlsVisible || isShooterModeActive) && winHandler != null) {
+                        showInputControls(profile, winHandler, container)
+                        areControlsVisible = true
+                    }
+                    else {
+                        loadInputControlsProfilePreservingVisibility(profile, winHandler)
+                    }
+                    applyMouseCursorVisibility()
+                    false
+                }
+            }
+
             QuickMenuAction.DISABLE_MOUSE -> {
                 val newValue = !isDisableMouseInput
                 isDisableMouseInput = newValue
@@ -1275,47 +1316,17 @@ fun XServerScreen(
 
                 // Get or create profile for this container
                 val manager = PluviaApp.inputControlsManager ?: InputControlsManager(context)
-                val allProfiles = manager.getProfiles(false)
-
-                val profileIdStr = container.getExtra("profileId", "0")
-                val profileId = profileIdStr.toIntOrNull() ?: 0
-
-                var activeProfile = if (profileId != 0) {
-                    manager.getProfile(profileId)
-                } else {
+                val activeProfile = try {
+                    ControlProfileService.ensureWorkingProfile(context, container, manager)
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to create working controls profile for %s", container.name)
                     null
                 }
 
-                // If no custom profile exists, create one automatically
-                if (activeProfile == null) {
-                    val sourceProfile = manager.getProfile(0)
-                        ?: allProfiles.firstOrNull { it.id == 2 }
-                        ?: allProfiles.firstOrNull()
-
-                    if (sourceProfile != null) {
-                        try {
-                            // Create game-specific profile by duplicating Profile 0
-                            activeProfile = manager.duplicateProfile(sourceProfile)
-
-                            // Rename to game name
-                            val gameName = currentAppInfo?.name ?: container.name
-                            activeProfile.setName("$gameName - Controls")
-                            activeProfile.save()
-
-                            // Associate with container using extraData and save
-                            container.putExtra("profileId", activeProfile.id.toString())
-                            container.saveData()
-
-                            // Apply the new profile to InputControlsView
-                            PluviaApp.inputControlsView?.setProfile(activeProfile)
-                            PluviaApp.radialMenuCoordinator?.setProfile(activeProfile)
-                            physicalControllerHandler?.setProfile(activeProfile)
-                        } catch (e: Exception) {
-                            Timber.e(e, "Failed to auto-create profile for container %s", container.name)
-                            // Fallback to existing profile
-                            activeProfile = sourceProfile
-                        }
-                    }
+                if (activeProfile != null) {
+                    PluviaApp.inputControlsView?.setProfilePreservingOverlayVisibility(activeProfile)
+                    PluviaApp.radialMenuCoordinator?.setProfile(activeProfile)
+                    physicalControllerHandler?.setProfile(activeProfile)
                 }
 
                 // Enable edit mode and show controls if not visible
@@ -2504,9 +2515,6 @@ fun XServerScreen(
             touchpadHost.addView(PluviaApp.touchpadView)
 
             PluviaApp.inputControlsManager = InputControlsManager(context)
-            PluviaApp.inputControlsManager?.let { manager ->
-                ControlProfileService.ensureWorkingProfile(context, container, manager)
-            }
             RadialMenuCoordinator.install(
                 context = context,
                 host = mainRoot,
@@ -3081,41 +3089,11 @@ fun XServerScreen(
         // Get profile from container settings, not from InputControlsView
         // (InputControlsView.profile is null when on-screen controls are hidden)
         val manager = PluviaApp.inputControlsManager ?: InputControlsManager(context)
-        val profileIdStr = container.getExtra("profileId", "0")
-        val profileId = profileIdStr.toIntOrNull() ?: 0
-
-        // Get profile, but don't load profile 0 directly (will duplicate if needed)
-        var profile = if (profileId != 0) {
-            manager.getProfile(profileId)
-        } else {
-            null  // Will create new profile below
-        }
-
-        // Auto-create profile if using default (profile 0)
-        if (profile == null) {
-            val allProfiles = manager.getProfiles(false)
-            val sourceProfile = manager.getProfile(0)
-                ?: allProfiles.firstOrNull { it.id == 2 }
-                ?: allProfiles.firstOrNull()
-
-            if (sourceProfile != null) {
-                try {
-                    // Duplicate profile 0 to create game-specific profile
-                    profile = manager.duplicateProfile(sourceProfile)
-
-                    // Rename to game name
-                    val gameName = currentAppInfo?.name ?: container.name
-                    profile.setName("$gameName - Physical Controller")
-                    profile.save()
-
-                    // Associate with container
-                    container.putExtra("profileId", profile.id.toString())
-                    container.saveData()
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to auto-create profile for container ${container.name}")
-                    profile = sourceProfile  // Fallback
-                }
-            }
+        val profile = try {
+            ControlProfileService.ensureWorkingProfile(context, container, manager)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to create working controls profile for ${container.name}")
+            null
         }
 
         if (profile != null) {
@@ -3340,7 +3318,6 @@ private fun EditModeToolbar(
 }
 
 private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, container: Container) {
-    profile.setVirtualGamepad(true)
     PluviaApp.radialMenuCoordinator?.setProfile(profile)
 
     PluviaApp.inputControlsView?.let { icView ->
@@ -3359,6 +3336,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
                     icView.setVisibility(View.VISIBLE)
                     icView.requestFocus()
                     icView.invalidate()
+                    ensureVirtualGamepadSlot(profile, container, winHandler)
                     winHandler.refreshControllerMappings()
                 }
             } else {
@@ -3370,6 +3348,7 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
                 icView.setVisibility(View.VISIBLE)
                 icView.requestFocus()
                 icView.invalidate()
+                ensureVirtualGamepadSlot(profile, container, winHandler)
                 winHandler.refreshControllerMappings()
             }
         } else {
@@ -3380,13 +3359,34 @@ private fun showInputControls(profile: ControlsProfile, winHandler: WinHandler, 
             icView.setVisibility(View.VISIBLE)
             icView.requestFocus()
             icView.invalidate()
+            ensureVirtualGamepadSlot(profile, container, winHandler)
             winHandler.refreshControllerMappings()
         }
     }
 
     PluviaApp.touchpadView?.setSensitivity(profile.getCursorSpeed() * 1.0f)
 
-    // If the selected profile is a virtual gamepad, we must enable the P1 slot.
+}
+
+private fun loadInputControlsProfilePreservingVisibility(
+    profile: ControlsProfile,
+    winHandler: WinHandler?,
+) {
+    PluviaApp.inputControlsView?.let { controlsView ->
+        controlsView.post {
+            profile.loadElements(controlsView)
+            controlsView.setProfilePreservingOverlayVisibility(profile)
+            controlsView.invalidate()
+            winHandler?.refreshControllerMappingsForHotplug()
+        }
+    }
+}
+
+private fun ensureVirtualGamepadSlot(
+    profile: ControlsProfile,
+    container: Container,
+    winHandler: WinHandler,
+) {
     if (container.containerVariant.equals(Container.BIONIC) && profile.isVirtualGamepad()) {
         val controllerManager: ControllerManager = ControllerManager.getInstance()
 

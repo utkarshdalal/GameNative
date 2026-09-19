@@ -9,7 +9,6 @@ import com.winlator.PrefManager;
 import com.winlator.core.AppUtils;
 import com.winlator.core.FileUtils;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -23,6 +22,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 public class InputControlsManager {
+    public static final int MAX_PROFILE_NAME_LENGTH = 80;
+    private static final int MAX_PROFILE_ID = 1_000_000_000;
+
     private final Context context;
     private ArrayList<ControlsProfile> profiles;
     private int maxProfileId;
@@ -43,7 +45,7 @@ public class InputControlsManager {
     }
 
     public ArrayList<ControlsProfile> getProfiles(boolean ignoreTemplates) {
-        if (!profilesLoaded) loadProfiles(false);
+        if (!profilesLoaded) loadProfiles();
         ArrayList<ControlsProfile> visibleProfiles = new ArrayList<>();
         for (ControlsProfile profile : profiles) {
             if (!profile.isListed()) continue;
@@ -51,6 +53,11 @@ public class InputControlsManager {
             visibleProfiles.add(profile);
         }
         return visibleProfiles;
+    }
+
+    public ArrayList<ControlsProfile> getAllProfiles() {
+        if (!profilesLoaded) loadProfiles();
+        return new ArrayList<>(profiles);
     }
 
     private void copyAssetProfilesIfNeeded() {
@@ -77,7 +84,12 @@ public class InputControlsManager {
             int nextNewId = 0;
             for (File f : files) {
                 ControlsProfile p = loadProfile(context, f);
-                if (p != null) nextNewId = Math.max(nextNewId, p.id + 1);
+                if (p != null) {
+                    nextNewId = Math.max(
+                            nextNewId,
+                            Math.max(p.id, p.getMaxReferencedProfileId()) + 1
+                    );
+                }
             }
 
             for (String assetFile : assetFiles) {
@@ -113,13 +125,18 @@ public class InputControlsManager {
                             }
                         }
                         if (!alreadyExists) {
+                            if (nextNewId > MAX_PROFILE_ID) {
+                                throw new IOException("Control profile ID limit reached");
+                            }
                             int newId = nextNewId++;
                             File freeFile = ControlsProfile.getProfileFile(context, newId);
                             try {
                                 String json = FileUtils.readString(context, assetPath);
                                 JSONObject data = new JSONObject(json);
                                 data.put("id", newId);
-                                FileUtils.writeString(freeFile, data.toString());
+                                if (!FileUtils.writeString(freeFile, data.toString())) {
+                                    throw new IOException("Unable to write built-in control profile");
+                                }
                             } catch (Exception e) {
                                 Log.w("InputControlsManager", "Failed to create profile '" + originProfile.getName() + "' (newId=" + newId + ", file=" + freeFile + ")", e);
                             }
@@ -137,18 +154,19 @@ public class InputControlsManager {
         catch (IOException e) {}
     }
 
-    public void loadProfiles(boolean ignoreTemplates) {
+    private void loadProfiles() {
         File profilesDir = InputControlsManager.getProfilesDir(context);
         copyAssetProfilesIfNeeded();
 
         ArrayList<ControlsProfile> profiles = new ArrayList<>();
+        maxProfileId = 0;
         File[] files = profilesDir.listFiles();
         if (files != null) {
             for (File file : files) {
                 ControlsProfile profile = loadProfile(context, file);
                 if (profile == null) continue;
                 profiles.add(profile);
-                maxProfileId = Math.max(maxProfileId, profile.id);
+                maxProfileId = Math.max(maxProfileId, Math.max(profile.id, profile.getMaxReferencedProfileId()));
             }
         }
 
@@ -159,40 +177,46 @@ public class InputControlsManager {
 
     public void reloadProfiles() {
         profilesLoaded = false;
-        maxProfileId = 0;
-        loadProfiles(false);
+        loadProfiles();
     }
 
-    public int nextProfileId() {
-        if (!profilesLoaded) loadProfiles(false);
-        return ++maxProfileId;
+    public synchronized int nextProfileId() {
+        if (!profilesLoaded) loadProfiles();
+        do {
+            if (maxProfileId >= MAX_PROFILE_ID) {
+                throw new IllegalStateException("Control profile ID limit reached");
+            }
+            maxProfileId++;
+        } while (ControlsProfile.getProfileFile(context, maxProfileId).exists());
+        return maxProfileId;
     }
 
-    public ControlsProfile createProfile(String name) {
-        if (!profilesLoaded) loadProfiles(false);
-        ControlsProfile profile = new ControlsProfile(context, ++maxProfileId);
-        profile.setName(name);
-        profile.save();
+    public synchronized ControlsProfile createProfile(String name) {
+        if (!profilesLoaded) loadProfiles();
+        String normalizedName = normalizeProfileName(name);
+        if (hasVisibleProfileNamed(normalizedName, -1)) {
+            throw new IllegalArgumentException("A control profile with that name already exists");
+        }
+        ControlsProfile profile = new ControlsProfile(context, nextProfileId());
+        profile.setName(normalizedName);
+        if (!profile.save()) throw new IllegalStateException("Unable to save control profile");
         profiles.add(profile);
         return profile;
     }
 
-    public ControlsProfile duplicateProfile(ControlsProfile source) {
-        if (!profilesLoaded) loadProfiles(false);
+    public synchronized ControlsProfile duplicateProfile(ControlsProfile source) {
+        if (source == null) throw new IllegalArgumentException("Missing source control profile");
+        if (!profilesLoaded) loadProfiles();
         String newName;
         for (int i = 1;;i++) {
-            newName = source.getName() + " ("+i+")";
-            boolean found = false;
-            for (ControlsProfile profile : profiles) {
-                if (profile.getName().equals(newName)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) break;
+            String suffix = " (" + i + ")";
+            int baseLimit = Math.max(1, MAX_PROFILE_NAME_LENGTH - suffix.length());
+            String baseName = source.getName().substring(0, Math.min(source.getName().length(), baseLimit));
+            newName = baseName + suffix;
+            if (!hasVisibleProfileNamed(newName, -1)) break;
         }
 
-        int newId = ++maxProfileId;
+        int newId = nextProfileId();
         File newFile = ControlsProfile.getProfileFile(context, newId);
 
         try {
@@ -203,53 +227,85 @@ public class InputControlsManager {
             data.put("listed", true);
             data.remove("libraryProfileId");
             data.remove("gameOwnerId");
-            FileUtils.writeString(newFile, data.toString());
+            data.remove("sectionSources");
+            if (!FileUtils.writeString(newFile, data.toString())) {
+                throw new IOException("Unable to write duplicated control profile");
+            }
+
+            ControlsProfile profile = loadProfile(context, newFile);
+            if (profile == null) throw new IOException("Unable to read duplicated control profile");
+            profiles.add(profile);
+            return profile;
         }
-        catch (JSONException e) {}
-
-        ControlsProfile profile = loadProfile(context, newFile);
-        profiles.add(profile);
-        return profile;
+        catch (Exception e) {
+            if (newFile.isFile() && !newFile.delete()) {
+                Log.w("InputControlsManager", "Unable to remove incomplete duplicate " + newFile);
+            }
+            throw new IllegalStateException("Unable to duplicate control profile", e);
+        }
     }
 
-    public void removeProfile(ControlsProfile profile) {
+    public synchronized boolean removeProfile(ControlsProfile profile) {
+        if (profile == null) return false;
+        if (!profilesLoaded) loadProfiles();
         File file = ControlsProfile.getProfileFile(context, profile.id);
-        if (file.isFile() && file.delete()) profiles.remove(profile);
+        if (!file.isFile() || !file.delete()) return false;
+        profiles.removeIf(candidate -> candidate.id == profile.id);
+        return true;
     }
 
-    public ControlsProfile importProfile(JSONObject data) {
+    public synchronized ControlsProfile importProfile(JSONObject data) {
         try {
             if (!data.has("name")) return null;
-            if (!profilesLoaded) loadProfiles(false);
-            int newId = ++maxProfileId;
+            if (!profilesLoaded) loadProfiles();
+            data = new JSONObject(data.toString());
+            int newId = nextProfileId();
             File newFile = ControlsProfile.getProfileFile(context, newId);
             data.put("id", newId);
             data.put("listed", true);
             data.remove("libraryProfileId");
             data.remove("gameOwnerId");
+            data.remove("sectionSources");
 
-            String baseName = data.optString("name", "Imported Profile").trim();
-            if (baseName.isEmpty()) baseName = "Imported Profile";
+            String baseName = normalizeProfileName(data.optString("name", "Imported Profile"));
             String uniqueName = baseName;
-            for (int suffix = 1; hasVisibleProfileNamed(uniqueName); suffix++) {
-                uniqueName = baseName + " (" + suffix + ")";
+            for (int suffix = 1; hasVisibleProfileNamed(uniqueName, -1); suffix++) {
+                String suffixText = " (" + suffix + ")";
+                int baseLimit = Math.max(1, MAX_PROFILE_NAME_LENGTH - suffixText.length());
+                uniqueName = baseName.substring(0, Math.min(baseName.length(), baseLimit)) + suffixText;
             }
             data.put("name", uniqueName);
-            FileUtils.writeString(newFile, data.toString());
+            if (!FileUtils.writeString(newFile, data.toString())) {
+                throw new IOException("Unable to write imported control profile");
+            }
             ControlsProfile newProfile = loadProfile(context, newFile);
-            if (newProfile != null) profiles.add(newProfile);
+            if (newProfile == null) {
+                if (!newFile.delete()) Log.w("InputControlsManager", "Unable to remove invalid import " + newFile);
+                throw new IOException("Unable to read imported control profile");
+            }
+            profiles.add(newProfile);
             return newProfile;
         }
-        catch (JSONException e) {
-            return null;
+        catch (Exception e) {
+            throw new IllegalStateException("Unable to import control profile", e);
         }
     }
 
-    private boolean hasVisibleProfileNamed(String name) {
+    public boolean hasVisibleProfileNamed(String name, int excludingId) {
+        if (!profilesLoaded) loadProfiles();
         for (ControlsProfile profile : profiles) {
-            if (profile.isListed() && profile.getName().equalsIgnoreCase(name)) return true;
+            if (profile.id != excludingId && profile.isListed() && profile.getName().equalsIgnoreCase(name)) return true;
         }
         return false;
+    }
+
+    public static String normalizeProfileName(String value) {
+        String normalized = value == null ? "" : value.replaceAll("[\\p{Cntrl}]", " ").trim();
+        if (normalized.length() > MAX_PROFILE_NAME_LENGTH) {
+            normalized = normalized.substring(0, MAX_PROFILE_NAME_LENGTH).trim();
+        }
+        if (normalized.isEmpty()) throw new IllegalArgumentException("Control profile name cannot be empty");
+        return normalized;
     }
 
     public static ControlsProfile loadProfile(Context context, File file) {
@@ -268,6 +324,7 @@ public class InputControlsManager {
             float cursorSpeed = ControlsProfile.DEFAULT_CURSOR_SPEED;
             boolean listed = true;
             int libraryProfileId = -1;
+            int maxReferencedProfileId = -1;
             String gameOwnerId = "";
 
             reader.beginObject();
@@ -288,6 +345,15 @@ public class InputControlsManager {
                 }
                 else if (name.equals("libraryProfileId")) {
                     libraryProfileId = reader.nextInt();
+                    maxReferencedProfileId = Math.max(maxReferencedProfileId, libraryProfileId);
+                }
+                else if (name.equals("sectionSources")) {
+                    reader.beginObject();
+                    while (reader.hasNext()) {
+                        reader.nextName();
+                        maxReferencedProfileId = Math.max(maxReferencedProfileId, reader.nextInt());
+                    }
+                    reader.endObject();
                 }
                 else if (name.equals("gameOwnerId")) {
                     gameOwnerId = reader.nextString();
@@ -296,22 +362,30 @@ public class InputControlsManager {
                     reader.skipValue();
                 }
             }
+            reader.endObject();
+
+            if (profileId < 0 || profileId > MAX_PROFILE_ID || maxReferencedProfileId > MAX_PROFILE_ID || profileName == null ||
+                    profileName.trim().isEmpty() || !Float.isFinite(cursorSpeed)) {
+                return null;
+            }
 
             ControlsProfile profile = new ControlsProfile(context, profileId);
-            profile.setName(profileName);
+            profile.setName(normalizeProfileName(profileName));
             profile.setCursorSpeed(cursorSpeed);
             profile.setListed(listed);
             profile.setLibraryProfileId(libraryProfileId);
+            profile.setMaxReferencedProfileId(maxReferencedProfileId);
             profile.setGameOwnerId(gameOwnerId);
             return profile;
         }
-        catch (IOException e) {
+        catch (Exception e) {
+            Log.w("InputControlsManager", "Ignoring malformed control profile", e);
             return null;
         }
     }
 
     public ControlsProfile getProfile(int id) {
-        if (!profilesLoaded) loadProfiles(false);
+        if (!profilesLoaded) loadProfiles();
         for (ControlsProfile profile : profiles) if (profile.id == id) return profile;
         return null;
     }

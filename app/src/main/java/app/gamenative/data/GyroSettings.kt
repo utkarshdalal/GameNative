@@ -46,7 +46,7 @@ data class GyroSettings(
         )
     }
 
-    fun saveTo(container: Container) {
+    fun saveTo(container: Container, persist: Boolean = true) {
         val value = normalized()
         container.putExtra(EXTRA_MODE, value.mode)
         container.putExtra(EXTRA_LAST_TARGET, value.lastTarget)
@@ -61,7 +61,7 @@ data class GyroSettings(
         container.putExtra(EXTRA_TILT_DEADZONE, value.tiltDeadzoneDegrees)
         container.putExtra(EXTRA_INVERT_X, value.invertX)
         container.putExtra(EXTRA_INVERT_Y, value.invertY)
-        container.saveData()
+        if (persist) container.saveData()
     }
 
     fun toJsonObject(): JSONObject {

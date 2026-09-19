@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -31,10 +33,10 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,9 +53,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,6 +83,12 @@ import com.winlator.container.Container
 import com.winlator.inputcontrols.ControlElement
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import kotlin.math.min
 
@@ -96,6 +106,33 @@ private data class ProfilePreviewAction(
     val onConfirm: (() -> Unit)? = null,
 )
 
+private data class ProfileLibraryEntry(
+    val profile: ControlsProfile,
+    val preview: ControlProfilePreview,
+    val builtIn: Boolean,
+)
+
+private data class ProfileLibrarySnapshot(
+    val entries: List<ProfileLibraryEntry>,
+    val appliedSources: Map<ControlProfileSection, Int>,
+)
+
+internal fun fitPreviewHalfExtents(
+    rawHalfWidth: Float,
+    rawHalfHeight: Float,
+    canvasWidth: Float,
+    canvasHeight: Float,
+): Pair<Float, Float> {
+    if (canvasWidth <= 0f || canvasHeight <= 0f) return 0f to 0f
+    val rawFit = minOf(
+        1f,
+        canvasWidth / (rawHalfWidth * 2f).coerceAtLeast(1f),
+        canvasHeight / (rawHalfHeight * 2f).coerceAtLeast(1f),
+    )
+    val fit = if (rawFit < 1f) rawFit * 0.98f else 1f
+    return rawHalfWidth * fit to rawHalfHeight * fit
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ControlProfileLibraryDialog(
@@ -111,10 +148,12 @@ fun ControlProfileLibraryDialog(
             InputControlsManager(context)
         }
     }
-    var profiles by remember { mutableStateOf(manager.getProfiles(false).toList()) }
-    var appliedProfileId by remember {
-        mutableStateOf(ControlProfileService.appliedLibraryProfileId(container, manager))
+    val scope = rememberCoroutineScope()
+    var entries by remember(container.id) { mutableStateOf<List<ProfileLibraryEntry>>(emptyList()) }
+    var appliedSources by remember(container.id) {
+        mutableStateOf<Map<ControlProfileSection, Int>>(emptyMap())
     }
+    var loading by remember(container.id) { mutableStateOf(true) }
     var previewAction by remember { mutableStateOf<ProfilePreviewAction?>(null) }
     var sectionAction by remember { mutableStateOf<SectionAction?>(null) }
     var createDialog by remember { mutableStateOf(false) }
@@ -124,49 +163,92 @@ fun ControlProfileLibraryDialog(
         mutableStateOf<Pair<ControlsProfile, Set<ControlProfileSection>>?>(null)
     }
 
-    fun refresh() {
-        profiles = manager.getProfiles(false).toList()
-        appliedProfileId = ControlProfileService.appliedLibraryProfileId(container, manager)
-    }
-
     fun failure(error: Throwable) {
         SnackbarManager.show(
             context.getString(R.string.control_profile_failed, error.message ?: error.javaClass.simpleName),
         )
     }
 
+    suspend fun loadSnapshot(): ProfileLibrarySnapshot = withContext(Dispatchers.IO) {
+        ControlProfileService.reconcileWorkingProfiles(context, manager)
+        manager.reloadProfiles()
+        val builtIns = ControlProfileService.builtInProfileKeys(context)
+        ProfileLibrarySnapshot(
+            entries = manager.getProfiles(false).mapNotNull { profile ->
+                runCatching {
+                    ProfileLibraryEntry(
+                        profile = profile,
+                        preview = ControlProfileService.preview(context, profile),
+                        builtIn = profile.id to profile.name in builtIns,
+                    )
+                }.getOrNull()
+            },
+            appliedSources = ControlProfileService.appliedSectionSources(context, container, manager),
+        )
+    }
+
+    fun refresh() {
+        if (loading) return
+        loading = true
+        scope.launch {
+            runCatching { loadSnapshot() }
+                .onSuccess { snapshot ->
+                    entries = snapshot.entries
+                    appliedSources = snapshot.appliedSources
+                }
+                .onFailure(::failure)
+            loading = false
+        }
+    }
+
+    fun <T> runIo(operation: () -> T, onSuccess: (T) -> Unit = {}) {
+        if (loading) return
+        loading = true
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching(operation) }
+            loading = false
+            result.onSuccess(onSuccess).onFailure(::failure)
+        }
+    }
+
+    LaunchedEffect(container.id) {
+        runCatching { loadSnapshot() }
+            .onSuccess { snapshot ->
+                entries = snapshot.entries
+                appliedSources = snapshot.appliedSources
+            }
+            .onFailure(::failure)
+        loading = false
+    }
+
     val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json"),
+        ActivityResultContracts.CreateDocument("application/octet-stream"),
     ) { uri ->
         val request = pendingExport
         pendingExport = null
         if (uri != null && request != null) {
-            runCatching {
+            runIo({
                 ControlProfileService.exportProfile(context, request.first, request.second, uri)
-            }.onSuccess {
+            }) {
                 SnackbarManager.show(context.getString(R.string.control_profile_exported))
-            }.onFailure(::failure)
+            }
         }
     }
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
-            runCatching { ControlProfileService.importProfile(context, uri) }
-                .onSuccess { imported ->
-                    previewAction = ProfilePreviewAction(
-                        preview = imported,
-                        confirmLabel = context.getString(R.string.control_profile_import_confirm),
-                        onConfirm = {
-                            runCatching { ControlProfileService.installImported(manager, imported) }
-                                .onSuccess {
-                                    refresh()
-                                    SnackbarManager.show(context.getString(R.string.control_profile_imported))
-                                }
-                                .onFailure(::failure)
-                        },
-                    )
-                }
-                .onFailure(::failure)
+            runIo({ ControlProfileService.importProfile(context, uri) }) { imported ->
+                previewAction = ProfilePreviewAction(
+                    preview = imported,
+                    confirmLabel = context.getString(R.string.control_profile_import_confirm),
+                    onConfirm = {
+                        runIo({ ControlProfileService.installImported(manager, imported) }) {
+                            refresh()
+                            SnackbarManager.show(context.getString(R.string.control_profile_imported))
+                        }
+                    },
+                )
+            }
         }
     }
 
@@ -198,31 +280,36 @@ fun ControlProfileLibraryDialog(
                 )
             },
         ) { padding ->
-            if (profiles.isEmpty()) {
+            if (loading && entries.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(stringResource(R.string.control_profiles_empty))
+                    CircularProgressIndicator()
                 }
-            } else {
+            }
+            else if (entries.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentAlignment = Alignment.Center,
+                ) { Text(stringResource(R.string.control_profiles_empty)) }
+            }
+            else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    items(profiles, key = { it.id }) { profile ->
-                        val profilePreview = remember(profile.id, profiles) {
-                            runCatching { ControlProfileService.preview(context, profile) }.getOrNull()
+                    items(entries, key = { it.profile.id }) { entry ->
+                        val profile = entry.profile
+                        val profilePreview = entry.preview
+                        val appliedSections = profilePreview.sections.filterTo(mutableSetOf()) {
+                            appliedSources[it] == profile.id
                         }
-                        if (profilePreview != null) {
-                            val builtIn = remember(profile.id, profiles) {
-                                ControlProfileService.isBuiltIn(context, profile)
-                            }
-                            ControlProfileCard(
+                        ControlProfileCard(
                                 profile = profile,
                                 preview = profilePreview,
-                                applied = profile.id == appliedProfileId,
+                                appliedSections = appliedSections,
                                 onPreview = { previewAction = ProfilePreviewAction(profilePreview) },
                                 onApply = {
                                     sectionAction = SectionAction(
@@ -230,7 +317,7 @@ fun ControlProfileLibraryDialog(
                                         available = profilePreview.sections,
                                         confirmLabel = context.getString(R.string.control_profile_apply),
                                     ) { sections ->
-                                        runCatching {
+                                        runIo({
                                             ControlProfileService.applyProfile(
                                                 context,
                                                 container,
@@ -238,21 +325,21 @@ fun ControlProfileLibraryDialog(
                                                 profile,
                                                 sections,
                                             )
-                                        }.onSuccess { applied ->
+                                        }) { applied ->
                                             if (applied != null) onProfileApplied(applied)
                                             refresh()
                                             SnackbarManager.show(context.getString(R.string.control_profile_applied_message))
-                                        }.onFailure(::failure)
+                                        }
                                     }
                                 },
-                                onSaveCurrent = if (profile.id == appliedProfileId && !builtIn) ({
+                                onSaveCurrent = if (appliedSections.isNotEmpty() && !entry.builtIn) ({
                                     sectionAction = SectionAction(
                                         title = context.getString(R.string.control_profile_update_current),
-                                        available = ControlProfileSection.entries.toSet(),
-                                        selected = profilePreview.sections,
+                                        available = appliedSections,
+                                        selected = appliedSections,
                                         confirmLabel = context.getString(R.string.save),
                                     ) { sections ->
-                                        runCatching {
+                                        runIo({
                                             ControlProfileService.updateFromCurrent(
                                                 context,
                                                 container,
@@ -260,21 +347,16 @@ fun ControlProfileLibraryDialog(
                                                 profile,
                                                 sections,
                                             )
-                                        }.onSuccess {
+                                        }) {
                                             refresh()
                                             SnackbarManager.show(context.getString(R.string.control_profile_saved))
-                                        }.onFailure(::failure)
+                                        }
                                     }
                                 }) else null,
                                 onDuplicate = {
-                                    runCatching { manager.duplicateProfile(profile) }
-                                        .onSuccess {
-                                            manager.reloadProfiles()
-                                            refresh()
-                                        }
-                                        .onFailure(::failure)
+                                    runIo({ manager.duplicateProfile(profile) }) { refresh() }
                                 },
-                                onRename = if (builtIn) null else ({ renameProfile = profile }),
+                                onRename = if (entry.builtIn) null else ({ renameProfile = profile }),
                                 onExport = {
                                     sectionAction = SectionAction(
                                         title = context.getString(R.string.control_profile_export),
@@ -285,9 +367,8 @@ fun ControlProfileLibraryDialog(
                                         exportLauncher.launch(safeFileName(profile.name) + ".icp")
                                     }
                                 },
-                                onDelete = if (builtIn) null else ({ deleteProfile = profile }),
+                                onDelete = if (entry.builtIn) null else ({ deleteProfile = profile }),
                             )
-                        }
                     }
                 }
             }
@@ -298,15 +379,13 @@ fun ControlProfileLibraryDialog(
         CreateControlProfileDialog(
             onDismiss = { createDialog = false },
             onCreateBlank = { name ->
-                runCatching { ControlProfileService.createBlank(context, manager, name) }
-                    .onSuccess {
-                        createDialog = false
-                        refresh()
-                    }
-                    .onFailure(::failure)
+                runIo({ ControlProfileService.createBlank(context, manager, name) }) {
+                    createDialog = false
+                    refresh()
+                }
             },
             onCreateFromCurrent = { name, sections ->
-                runCatching {
+                runIo({
                     ControlProfileService.saveCurrentAsProfile(
                         context,
                         container,
@@ -314,28 +393,28 @@ fun ControlProfileLibraryDialog(
                         name,
                         sections,
                     )
-                }.onSuccess {
+                }) {
                     createDialog = false
                     refresh()
                     SnackbarManager.show(context.getString(R.string.control_profile_saved))
-                }.onFailure(::failure)
+                }
             },
         )
     }
 
     val pendingRename: ControlsProfile? = renameProfile
     pendingRename?.let { profile: ControlsProfile ->
-        ControlProfileNameDialog(
+        ProfileNameDialog(
             title = stringResource(R.string.control_profile_rename),
             initialName = profile.name,
+            labelResId = R.string.control_profile_name,
+            maxLength = InputControlsManager.MAX_PROFILE_NAME_LENGTH,
             onDismiss = { renameProfile = null },
             onConfirm = { name: String ->
-                runCatching { ControlProfileService.rename(context, manager, profile, name) }
-                    .onSuccess {
-                        renameProfile = null
-                        refresh()
-                    }
-                    .onFailure(::failure)
+                runIo({ ControlProfileService.rename(context, manager, profile, name) }) {
+                    renameProfile = null
+                    refresh()
+                }
             },
         )
     }
@@ -347,9 +426,10 @@ fun ControlProfileLibraryDialog(
             text = { Text(stringResource(R.string.control_profile_delete_message)) },
             confirmButton = {
                 TextButton(onClick = {
-                    manager.removeProfile(profile)
-                    deleteProfile = null
-                    refresh()
+                    runIo({ ControlProfileService.deleteProfile(context, container, manager, profile) }) {
+                        deleteProfile = null
+                        refresh()
+                    }
                 }) {
                     Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
@@ -390,7 +470,7 @@ fun ControlProfileLibraryDialog(
 private fun ControlProfileCard(
     profile: ControlsProfile,
     preview: ControlProfilePreview,
-    applied: Boolean,
+    appliedSections: Set<ControlProfileSection>,
     onPreview: () -> Unit,
     onApply: () -> Unit,
     onSaveCurrent: (() -> Unit)?,
@@ -400,6 +480,7 @@ private fun ControlProfileCard(
     onDelete: (() -> Unit)?,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    val applied = appliedSections.isNotEmpty()
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -459,7 +540,7 @@ private fun ControlProfileCard(
                     }
                 }
             }
-            ProfileSectionChips(preview.sections)
+            ProfileSectionChips(preview.sections, appliedSections)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onPreview) { Text(stringResource(R.string.control_profile_preview)) }
                 Button(onClick = onApply) {
@@ -473,13 +554,30 @@ private fun ControlProfileCard(
 }
 
 @Composable
-private fun ProfileSectionChips(sections: Set<ControlProfileSection>) {
+private fun ProfileSectionChips(
+    sections: Set<ControlProfileSection>,
+    appliedSections: Set<ControlProfileSection> = emptySet(),
+) {
     Row(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         ControlProfileSection.entries.filter { it in sections }.forEach { section ->
-            AssistChip(onClick = {}, label = { Text(sectionLabel(section)) })
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = if (section in appliedSections) {
+                    MaterialTheme.colorScheme.primaryContainer
+                }
+                else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+            ) {
+                Text(
+                    text = sectionLabel(section),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
         }
     }
 }
@@ -497,22 +595,29 @@ private fun CreateControlProfileDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.control_profile_create)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = { name = it.take(InputControlsManager.MAX_PROFILE_NAME_LENGTH) },
                     label = { Text(stringResource(R.string.control_profile_name)) },
                     singleLine = true,
                 )
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.control_profile_create_current)) },
-                    leadingContent = { RadioButton(selected = fromCurrent, onClick = { fromCurrent = true }) },
-                    modifier = Modifier.clip(RoundedCornerShape(8.dp)),
+                    leadingContent = { RadioButton(selected = fromCurrent, onClick = null) },
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { fromCurrent = true },
                 )
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.control_profile_create_blank)) },
-                    leadingContent = { RadioButton(selected = !fromCurrent, onClick = { fromCurrent = false }) },
-                    modifier = Modifier.clip(RoundedCornerShape(8.dp)),
+                    leadingContent = { RadioButton(selected = !fromCurrent, onClick = null) },
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { fromCurrent = false },
                 )
                 if (fromCurrent) {
                     Text(stringResource(R.string.control_profile_sections), fontWeight = FontWeight.SemiBold)
@@ -538,34 +643,6 @@ private fun CreateControlProfileDialog(
 }
 
 @Composable
-private fun ControlProfileNameDialog(
-    title: String,
-    initialName: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
-) {
-    var name by remember(initialName) { mutableStateOf(initialName) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text(stringResource(R.string.control_profile_name)) },
-                singleLine = true,
-            )
-        },
-        confirmButton = {
-            TextButton(enabled = name.isNotBlank(), onClick = { onConfirm(name.trim()) }) {
-                Text(stringResource(R.string.save))
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
-    )
-}
-
-@Composable
 private fun ProfileSectionDialog(
     action: SectionAction,
     onDismiss: () -> Unit,
@@ -576,7 +653,7 @@ private fun ProfileSectionDialog(
         onDismissRequest = onDismiss,
         title = { Text(action.title) },
         text = {
-            Column {
+            Column(modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
                 Text(stringResource(R.string.control_profile_sections), fontWeight = FontWeight.SemiBold)
                 action.available.forEach { section ->
                     SectionCheckbox(section, section in sections) { checked ->
@@ -602,7 +679,8 @@ private fun SectionCheckbox(
 ) {
     ListItem(
         headlineContent = { Text(sectionLabel(section)) },
-        trailingContent = { Checkbox(checked = checked, onCheckedChange = onCheckedChange) },
+        trailingContent = { Checkbox(checked = checked, onCheckedChange = null) },
+        modifier = Modifier.fillMaxWidth().clickable { onCheckedChange(!checked) },
     )
 }
 
@@ -718,6 +796,7 @@ private fun ControlLayoutPreview(json: JSONObject, screenSize: String) {
             .background(Color(0xFF15181D)),
     ) {
         if (elements == null) return@Canvas
+        if (size.width <= 0f || size.height <= 0f) return@Canvas
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = foreground
             textAlign = Paint.Align.CENTER
@@ -725,21 +804,27 @@ private fun ControlLayoutPreview(json: JSONObject, screenSize: String) {
         }
         for (index in 0 until elements.length()) {
             val element = elements.optJSONObject(index) ?: continue
-            val scale = element.optDouble("scale", 1.0).toFloat().coerceIn(0.25f, 4f)
+            val scale = element.optDouble("scale", 1.0).toFloat().coerceIn(0.1f, 5f)
             val base = size.width / 30f
             val type = element.optString("type", "BUTTON")
             val shape = element.optString("shape", "CIRCLE")
-            val halfWidth = base * scale * when (type) {
+            val rawHalfWidth = base * scale * when (type) {
                 "D_PAD" -> 2.2f
                 "STICK", "TRACKPAD" -> 1.9f
                 "RANGE_BUTTON" -> 2.3f
                 else -> if (shape == "RECT" || shape == "ROUND_RECT") 1.35f else 1f
             }
-            val halfHeight = base * scale * when (type) {
+            val rawHalfHeight = base * scale * when (type) {
                 "D_PAD" -> 2.2f
                 "STICK", "TRACKPAD" -> 1.9f
                 else -> 1f
             }
+            val (halfWidth, halfHeight) = fitPreviewHalfExtents(
+                rawHalfWidth,
+                rawHalfHeight,
+                size.width,
+                size.height,
+            )
             val cx = (element.optDouble("x", 0.5).toFloat() * size.width)
                 .coerceIn(halfWidth, size.width - halfWidth)
             val cy = (element.optDouble("y", 0.5).toFloat() * size.height)
@@ -798,13 +883,16 @@ private fun bindingLabel(value: Any?): String = when (value) {
 }
 
 private fun safeFileName(value: String): String =
-    value.trim().replace(Regex("[\\\\/:*?\"<>|]"), "_").ifBlank { "control-profile" }
+    value.trim()
+        .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_")
+        .trim('.', ' ')
+        .take(InputControlsManager.MAX_PROFILE_NAME_LENGTH)
+        .ifBlank { "control-profile" }
 
-private fun formatDecimal(value: Double): String = if (value % 1.0 == 0.0) {
-    value.toInt().toString()
-} else {
-    "%.2f".format(value).trimEnd('0').trimEnd('.')
-}
+private fun formatDecimal(value: Double): String = DecimalFormat(
+    "0.##",
+    DecimalFormatSymbols.getInstance(Locale.getDefault()),
+).format(value)
 
 private fun Color.toArgbCompat(): Int = android.graphics.Color.argb(
     (alpha * 255).toInt(),

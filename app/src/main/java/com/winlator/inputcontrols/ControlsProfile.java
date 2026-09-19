@@ -15,13 +15,16 @@ import org.json.JSONObject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 
 public class ControlsProfile implements Comparable<ControlsProfile> {
+    public static final float DEFAULT_CURSOR_SPEED = 1.0f;
+
     public final int id;
     private String name;
-    private float cursorSpeed = 1.0f;
+    private float cursorSpeed = DEFAULT_CURSOR_SPEED;
     private final ArrayList<ControlElement> elements = new ArrayList<>();
     private final ArrayList<ExternalController> controllers = new ArrayList<>();
     private final ArrayList<RadialMenu> radialMenus = new ArrayList<>();
@@ -32,9 +35,37 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     private boolean virtualGamepad = false;
     private boolean listed = true;
     private int libraryProfileId = -1;
+    private int maxReferencedProfileId = -1;
     private String gameOwnerId = "";
     private final Context context;
     private GamepadState gamepadState;
+    private final IdentityHashMap<ControlElement, AutoFitLayout> autoFitLayouts = new IdentityHashMap<>();
+
+    private static final class AutoFitLayout {
+        final double sourceX;
+        final double sourceY;
+        final float sourceScale;
+        int fittedX;
+        int fittedY;
+        float fittedScale;
+
+        AutoFitLayout(double sourceX, double sourceY, float sourceScale) {
+            this.sourceX = sourceX;
+            this.sourceY = sourceY;
+            this.sourceScale = sourceScale;
+        }
+
+        void captureFitted(ControlElement element) {
+            fittedX = element.getX();
+            fittedY = element.getY();
+            fittedScale = element.getScale();
+        }
+
+        boolean matchesFitted(ControlElement element) {
+            return element.getX() == fittedX && element.getY() == fittedY &&
+                    Float.compare(element.getScale(), fittedScale) == 0;
+        }
+    }
 
     public ControlsProfile(Context context, int id) {
         this.context = context;
@@ -79,6 +110,14 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public void setLibraryProfileId(int libraryProfileId) {
         this.libraryProfileId = libraryProfileId;
+    }
+
+    public int getMaxReferencedProfileId() {
+        return maxReferencedProfileId;
+    }
+
+    public void setMaxReferencedProfileId(int maxReferencedProfileId) {
+        this.maxReferencedProfileId = maxReferencedProfileId;
     }
 
     public String getGameOwnerId() {
@@ -153,7 +192,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         return elementsLoaded;
     }
 
-    public void save() {
+    public boolean save() {
         File file = getProfileFile(context, id);
         Log.d("ControlsProfile", "Saving profile: " + name + " (ID: " + id + ") to " + file.getAbsolutePath());
 
@@ -175,16 +214,32 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
             JSONArray elementsJSONArray = new JSONArray();
             if (!elementsLoaded && file.isFile()) {
-                JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-                elementsJSONArray = profileJSONObject.getJSONArray("elements");
+                JSONArray storedElements = data.optJSONArray("elements");
+                if (storedElements != null) elementsJSONArray = storedElements;
             }
-            else for (ControlElement element : elements) elementsJSONArray.put(element.toJSONObject());
+            else for (ControlElement element : elements) {
+                JSONObject elementJson = element.toJSONObject();
+                AutoFitLayout fitted = autoFitLayouts.get(element);
+                if (fitted != null) {
+                    if (fitted.matchesFitted(element)) {
+                        elementJson.put("x", fitted.sourceX);
+                        elementJson.put("y", fitted.sourceY);
+                        elementJson.put("scale", fitted.sourceScale);
+                    }
+                    else {
+                        // The user deliberately edited the fitted layout, so its current
+                        // geometry becomes the new authored layout from this point on.
+                        autoFitLayouts.remove(element);
+                    }
+                }
+                elementsJSONArray.put(elementJson);
+            }
             data.put("elements", elementsJSONArray);
 
             JSONArray controllersJSONArray = new JSONArray();
             if (!controllersLoaded && file.isFile()) {
-                JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-                if (profileJSONObject.has("controllers")) controllersJSONArray = profileJSONObject.getJSONArray("controllers");
+                JSONArray storedControllers = data.optJSONArray("controllers");
+                if (storedControllers != null) controllersJSONArray = storedControllers;
             }
             else {
                 for (ExternalController controller : controllers) {
@@ -197,8 +252,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
             JSONArray radialMenusJSONArray = new JSONArray();
             if (!radialMenusLoaded && file.isFile()) {
-                JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-                JSONArray storedRadialMenus = profileJSONObject.optJSONArray("radialMenus");
+                JSONArray storedRadialMenus = data.optJSONArray("radialMenus");
                 if (storedRadialMenus != null) radialMenusJSONArray = storedRadialMenus;
             }
             else {
@@ -210,11 +264,16 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             if (radialMenusJSONArray.length() > 0) data.put("radialMenus", radialMenusJSONArray);
             else if (radialMenusLoaded) data.remove("radialMenus");
 
-            FileUtils.writeString(file, data.toString());
+            if (!FileUtils.writeString(file, data.toString())) {
+                Log.e("ControlsProfile", "Failed to write profile: " + name + " (ID: " + id + ")");
+                return false;
+            }
             Log.d("ControlsProfile", "Profile saved successfully: " + name + " (controllers: " + controllersJSONArray.length() + ", elements: " + elementsJSONArray.length() + ")");
+            return true;
         }
-        catch (JSONException e) {
+        catch (Exception e) {
             Log.e("ControlsProfile", "Failed to save profile: " + name + " (ID: " + id + ")", e);
+            return false;
         }
     }
 
@@ -282,7 +341,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             }
             radialMenusLoaded = true;
         }
-        catch (JSONException e) {
+        catch (Exception e) {
             Log.e("ControlsProfile", "Failed to load radial menus for profile: " + name + " (ID: " + id + ")", e);
             radialMenus.add(RadialMenu.createDefault());
             radialMenusLoaded = true;
@@ -307,6 +366,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
             if (!profileJSONObject.has("controllers")) {
                 Log.d("ControlsProfile", "No controllers section in profile: " + name);
+                controllersLoaded = true;
                 return controllers;
             }
             JSONArray controllersJSONArray = profileJSONObject.getJSONArray("controllers");
@@ -335,7 +395,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             controllersLoaded = true;
             Log.d("ControlsProfile", "Loaded " + controllers.size() + " controllers for profile: " + name);
         }
-        catch (JSONException e) {
+        catch (Exception e) {
             Log.e("ControlsProfile", "Failed to load controllers for profile: " + name + " (ID: " + id + ")", e);
             e.printStackTrace();
         }
@@ -346,6 +406,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         elements.clear();
         elementsLoaded = false;
         virtualGamepad = false;
+        autoFitLayouts.clear();
 
         // Check if view has valid dimensions before loading
         if (inputControlsView.getMaxWidth() == 0 || inputControlsView.getMaxHeight() == 0) {
@@ -364,7 +425,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
         try {
             JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
-            JSONArray elementsJSONArray = profileJSONObject.getJSONArray("elements");
+            JSONArray elementsJSONArray = profileJSONObject.optJSONArray("elements");
+            if (elementsJSONArray == null) elementsJSONArray = new JSONArray();
+            IdentityHashMap<ControlElement, AutoFitLayout> sourceLayouts = new IdentityHashMap<>();
             for (int i = 0; i < elementsJSONArray.length(); i++) {
                 JSONObject elementJSONObject = elementsJSONArray.getJSONObject(i);
                 ControlElement element = new ControlElement(inputControlsView);
@@ -382,9 +445,12 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 }
                 element.setShape(ControlElement.Shape.valueOf(elementJSONObject.getString("shape")));
                 element.setToggleSwitch(elementJSONObject.getBoolean("toggleSwitch"));
-                element.setX((int)(elementJSONObject.getDouble("x") * inputControlsView.getMaxWidth()));
-                element.setY((int)(elementJSONObject.getDouble("y") * inputControlsView.getMaxHeight()));
-                element.setScale((float)elementJSONObject.getDouble("scale"));
+                double sourceX = elementJSONObject.getDouble("x");
+                double sourceY = elementJSONObject.getDouble("y");
+                float sourceScale = (float)elementJSONObject.getDouble("scale");
+                element.setX((int)(sourceX * inputControlsView.getMaxWidth()));
+                element.setY((int)(sourceY * inputControlsView.getMaxHeight()));
+                element.setScale(sourceScale);
                 element.setText(elementJSONObject.getString("text"));
                 element.setIconId(elementJSONObject.getInt("iconId"));
                 if (elementJSONObject.has("range")) element.setRange(ControlElement.Range.valueOf(elementJSONObject.getString("range")));
@@ -416,23 +482,30 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
                 if (!virtualGamepad && hasGamepadBinding) virtualGamepad = true;
                 elements.add(element);
+                sourceLayouts.put(element, new AutoFitLayout(sourceX, sourceY, sourceScale));
             }
-            fitElementsToBounds(inputControlsView);
+            fitElementsToBounds(inputControlsView, sourceLayouts);
             elementsLoaded = true;
             Log.d("ControlsProfile", "Loaded " + elements.size() + " elements for profile: " + name + " (virtualGamepad: " + virtualGamepad + ")");
         }
-        catch (JSONException e) {
+        catch (Exception e) {
             Log.e("ControlsProfile", "Failed to load elements for profile: " + name + " (ID: " + id + ")", e);
             e.printStackTrace();
         }
     }
 
-    private void fitElementsToBounds(InputControlsView inputControlsView) {
+    private void fitElementsToBounds(
+            InputControlsView inputControlsView,
+            IdentityHashMap<ControlElement, AutoFitLayout> sourceLayouts
+    ) {
         int maxWidth = inputControlsView.getMaxWidth();
         int maxHeight = inputControlsView.getMaxHeight();
         if (maxWidth <= 0 || maxHeight <= 0) return;
 
         for (ControlElement element : elements) {
+            int originalX = element.getX();
+            int originalY = element.getY();
+            float originalScale = element.getScale();
             android.graphics.Rect bounds = element.getBoundingBox();
             if (bounds.width() > maxWidth || bounds.height() > maxHeight) {
                 float fitScale = Math.min(
@@ -449,6 +522,14 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     (bounds.bottom > maxHeight ? maxHeight - bounds.bottom : 0);
             if (dx != 0) element.setX(element.getX() + dx);
             if (dy != 0) element.setY(element.getY() + dy);
+            if (element.getX() != originalX || element.getY() != originalY ||
+                    Float.compare(element.getScale(), originalScale) != 0) {
+                AutoFitLayout layout = sourceLayouts.get(element);
+                if (layout != null) {
+                    layout.captureFitted(element);
+                    autoFitLayouts.put(element, layout);
+                }
+            }
         }
     }
 }

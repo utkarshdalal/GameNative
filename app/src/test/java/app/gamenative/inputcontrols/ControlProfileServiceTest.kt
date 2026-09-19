@@ -1,16 +1,23 @@
 package app.gamenative.inputcontrols
 
 import android.content.Context
+import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import com.winlator.container.Container
 import com.winlator.core.FileUtils
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
+import com.winlator.widget.InputControlsView
 import java.io.ByteArrayInputStream
 import java.nio.file.Files
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -155,5 +162,299 @@ class ControlProfileServiceTest {
         assertFalse(profile.isListed)
         assertEquals(7, profile.libraryProfileId)
         assertEquals("game-123", profile.gameOwnerId)
+    }
+
+    @Test
+    fun validation_rejectsUnknownNestedControlEnums() {
+        val profile = JSONObject().apply {
+            put("schemaVersion", ControlProfileService.SCHEMA_VERSION)
+            put("name", "Malformed")
+            put("includedSections", JSONArray().put("onScreen"))
+            put(
+                "elements",
+                JSONArray().put(
+                    JSONObject().apply {
+                        put("type", "BUTTON")
+                        put("shape", "NOT_A_SHAPE")
+                        put("toggleSwitch", false)
+                        put("x", 0.5)
+                        put("y", 0.5)
+                        put("scale", 1.0)
+                        put("text", "")
+                        put("iconId", 0)
+                        put("bindings", JSONArray().put("NONE"))
+                    },
+                ),
+            )
+        }
+
+        assertThrows(IllegalArgumentException::class.java) {
+            ControlProfileService.validate(profile)
+        }
+    }
+
+    @Test
+    fun profileLoader_ignoresMalformedFieldTypes() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val malformed = """{"id":42,"name":{},"elements":[]}"""
+
+        assertNull(
+            InputControlsManager.loadProfile(
+                context,
+                ByteArrayInputStream(malformed.toByteArray()),
+            ),
+        )
+    }
+
+    @Test
+    fun partialApplications_trackEachSectionSource() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val manager = InputControlsManager(context)
+        val firstId = manager.nextProfileId()
+        val secondId = manager.nextProfileId()
+        val firstFile = ControlsProfile.getProfileFile(context, firstId)
+        val secondFile = ControlsProfile.getProfileFile(context, secondId)
+        val containerRoot = Files.createTempDirectory("control-profile-sections").toFile()
+        val container = Container("section-game").apply {
+            rootDir = containerRoot
+            putExtra("profileId", "0")
+        }
+
+        try {
+            FileUtils.writeString(
+                firstFile,
+                JSONObject().apply {
+                    put("id", firstId)
+                    put("name", "Layout source")
+                    put("listed", true)
+                    put("includedSections", JSONArray().put("onScreen").put("gyro"))
+                    put("cursorSpeed", 1.5)
+                    put("elements", JSONArray())
+                    put("gyroSettings", JSONObject().put("sensitivity", 0.75))
+                }.toString(),
+            )
+            FileUtils.writeString(
+                secondFile,
+                JSONObject().apply {
+                    put("id", secondId)
+                    put("name", "Gyro source")
+                    put("listed", true)
+                    put("includedSections", JSONArray().put("gyro"))
+                    put("gyroSettings", JSONObject().put("sensitivity", 2.0))
+                }.toString(),
+            )
+            manager.reloadProfiles()
+
+            ControlProfileService.applyProfile(
+                context,
+                container,
+                manager,
+                manager.getProfile(firstId)!!,
+                setOf(ControlProfileSection.ON_SCREEN),
+            )
+            ControlProfileService.applyProfile(
+                context,
+                container,
+                manager,
+                manager.getProfile(secondId)!!,
+                setOf(ControlProfileSection.GYRO),
+            )
+
+            val sources = ControlProfileService.appliedSectionSources(context, container, manager)
+            assertEquals(firstId, sources[ControlProfileSection.ON_SCREEN])
+            assertEquals(secondId, sources[ControlProfileSection.GYRO])
+            val working = manager.getProfile(container.getExtra("profileId", "0").toInt())!!
+            val workingJson = ControlProfileService.readProfileJson(context, working)
+            assertEquals(1.5, workingJson.getDouble("cursorSpeed"), 0.0)
+            assertEquals(2.0, workingJson.getJSONObject("gyroSettings").getDouble("sensitivity"), 0.0)
+
+            ControlProfileService.updateFromCurrent(
+                context,
+                container,
+                manager,
+                manager.getProfile(firstId)!!,
+                setOf(ControlProfileSection.ON_SCREEN),
+            )
+            val updatedSource = JSONObject(FileUtils.readString(firstFile))
+            assertEquals(0.75, updatedSource.getJSONObject("gyroSettings").getDouble("sensitivity"), 0.0)
+        } finally {
+            val workingId = container.getExtra("profileId", "0").toIntOrNull() ?: 0
+            if (workingId != 0) ControlsProfile.getProfileFile(context, workingId).delete()
+            firstFile.delete()
+            secondFile.delete()
+            containerRoot.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun migration_givesEachLegacyContainerAnIndependentCopy() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val manager = InputControlsManager(context)
+        val sourceId = manager.nextProfileId()
+        val sourceFile = ControlsProfile.getProfileFile(context, sourceId)
+        val firstRoot = Files.createTempDirectory("control-profile-first").toFile()
+        val secondRoot = Files.createTempDirectory("control-profile-second").toFile()
+        val first = Container("first-game").apply {
+            rootDir = firstRoot
+            putExtra("profileId", sourceId.toString())
+        }
+        val second = Container("second-game").apply {
+            rootDir = secondRoot
+            putExtra("profileId", sourceId.toString())
+        }
+
+        try {
+            FileUtils.writeString(
+                sourceFile,
+                JSONObject().apply {
+                    put("id", sourceId)
+                    put("name", "Shared legacy profile")
+                    put("listed", true)
+                    put("elements", JSONArray())
+                }.toString(),
+            )
+            manager.reloadProfiles()
+
+            assertEquals(
+                2,
+                ControlProfileService.migrateReferencedLibraryProfiles(
+                    context,
+                    manager,
+                    listOf(first, second),
+                ),
+            )
+            val firstWorkingId = first.getExtra("profileId", "0").toInt()
+            val secondWorkingId = second.getExtra("profileId", "0").toInt()
+            assertNotEquals(sourceId, firstWorkingId)
+            assertNotEquals(sourceId, secondWorkingId)
+            assertNotEquals(firstWorkingId, secondWorkingId)
+            assertEquals("first-game", manager.getProfile(firstWorkingId)?.gameOwnerId)
+            assertEquals("second-game", manager.getProfile(secondWorkingId)?.gameOwnerId)
+        } finally {
+            listOf(first, second).forEach {
+                val id = it.getExtra("profileId", "0").toIntOrNull() ?: 0
+                if (id != sourceId && id != 0) ControlsProfile.getProfileFile(context, id).delete()
+            }
+            sourceFile.delete()
+            firstRoot.deleteRecursively()
+            secondRoot.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun automaticFit_doesNotRewriteAuthoredLayout() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val profileId = 900_002
+        val file = ControlsProfile.getProfileFile(context, profileId)
+        val profileJson = JSONObject().apply {
+            put("id", profileId)
+            put("name", "Large control")
+            put(
+                "elements",
+                JSONArray().put(
+                    JSONObject().apply {
+                        put("type", "D_PAD")
+                        put("shape", "CIRCLE")
+                        put("bindings", JSONArray().put("NONE").put("NONE").put("NONE").put("NONE"))
+                        put("scale", 5.0)
+                        put("x", 0.5)
+                        put("y", 0.5)
+                        put("toggleSwitch", false)
+                        put("text", "")
+                        put("iconId", 0)
+                    },
+                ),
+            )
+        }
+
+        try {
+            assertTrue(FileUtils.writeString(file, profileJson.toString()))
+            val profile = InputControlsManager.loadProfile(context, file)!!
+            val view = InputControlsView(context).apply { layout(0, 0, 600, 120) }
+
+            profile.loadElements(view)
+            assertTrue(profile.save())
+
+            val savedElement = JSONObject(FileUtils.readString(file))
+                .getJSONArray("elements")
+                .getJSONObject(0)
+            assertEquals(0.5, savedElement.getDouble("x"), 0.0)
+            assertEquals(0.5, savedElement.getDouble("y"), 0.0)
+            assertEquals(5.0, savedElement.getDouble("scale"), 0.0)
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun exportedProfile_importsWithTheSameSelectedSections() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val manager = InputControlsManager(context)
+        val profileId = manager.nextProfileId()
+        val profileFile = ControlsProfile.getProfileFile(context, profileId)
+        val exportFile = Files.createTempFile("control-profile-roundtrip", ".icp").toFile()
+
+        try {
+            assertTrue(
+                FileUtils.writeString(
+                    profileFile,
+                    JSONObject().apply {
+                        put("id", profileId)
+                        put("name", "Round trip")
+                        put("listed", true)
+                        put("includedSections", JSONArray().put("onScreen").put("gyro"))
+                        put("cursorSpeed", 1.25)
+                        put("elements", JSONArray())
+                        put("gyroSettings", JSONObject().put("sensitivity", 1.75))
+                    }.toString(),
+                ),
+            )
+            manager.reloadProfiles()
+            val profile = manager.getProfile(profileId)!!
+
+            ControlProfileService.exportProfile(
+                context,
+                profile,
+                setOf(ControlProfileSection.GYRO),
+                Uri.fromFile(exportFile),
+            )
+            val imported = ControlProfileService.importProfile(context, Uri.fromFile(exportFile))
+
+            assertEquals(setOf(ControlProfileSection.GYRO), imported.sections)
+            assertEquals(1.75, imported.json.getJSONObject("gyroSettings").getDouble("sensitivity"), 0.0)
+            assertFalse(imported.json.has("elements"))
+        } finally {
+            profileFile.delete()
+            exportFile.delete()
+        }
+    }
+
+    @Test
+    fun profileIds_areNotReusedWhileWorkingCopiesReferenceThem() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val workingId = 900_003
+        val referencedId = 950_000
+        val file = ControlsProfile.getProfileFile(context, workingId)
+
+        try {
+            assertTrue(
+                FileUtils.writeString(
+                    file,
+                    JSONObject().apply {
+                        put("id", workingId)
+                        put("name", "Working copy")
+                        put("listed", false)
+                        put("gameOwnerId", "game")
+                        put("sectionSources", JSONObject().put("onScreen", referencedId))
+                        put("elements", JSONArray())
+                    }.toString(),
+                ),
+            )
+            val manager = InputControlsManager(context)
+
+            assertTrue(manager.nextProfileId() > referencedId)
+        } finally {
+            file.delete()
+        }
     }
 }

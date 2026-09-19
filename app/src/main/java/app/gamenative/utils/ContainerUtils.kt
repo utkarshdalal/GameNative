@@ -6,6 +6,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
+import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
@@ -1169,6 +1170,8 @@ object ContainerUtils {
             manager.removeContainerAsync(
                 manager.getContainerById(appId),
             ) {
+                runCatching { ControlProfileService.deleteWorkingProfilesForContainer(context, appId) }
+                    .onFailure { Timber.w(it, "Unable to remove control profiles for container $appId") }
                 Timber.i("[ContainerDeletion] Successfully deleted container for appId=$appId")
             }
         } else {

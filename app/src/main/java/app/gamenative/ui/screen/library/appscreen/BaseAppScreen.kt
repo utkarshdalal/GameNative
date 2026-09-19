@@ -61,6 +61,7 @@ import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
+import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.core.GPUInformation
 import java.io.File
@@ -1637,6 +1638,25 @@ abstract class BaseAppScreen {
         }
 
         var showControlProfiles by remember(appId) { mutableStateOf(false) }
+        var controlProfilesContainer by remember(appId) { mutableStateOf<Container?>(null) }
+
+        LaunchedEffect(appId, showControlProfiles) {
+            if (!showControlProfiles) return@LaunchedEffect
+            controlProfilesContainer = null
+            runCatching {
+                withContext(Dispatchers.IO) { ContainerUtils.getOrCreateContainer(context, appId) }
+            }.onSuccess {
+                controlProfilesContainer = it
+            }.onFailure { error ->
+                showControlProfiles = false
+                SnackbarManager.show(
+                    context.getString(
+                        R.string.control_profile_failed,
+                        error.message ?: error.javaClass.simpleName,
+                    ),
+                )
+            }
+        }
 
         val optionsMenu = getOptionsMenu(
             context,
@@ -1764,10 +1784,22 @@ abstract class BaseAppScreen {
             )
         }
 
-        if (showControlProfiles) {
+        val profileContainer = controlProfilesContainer
+        if (showControlProfiles && profileContainer != null) {
             ControlProfileLibraryDialog(
-                container = ContainerUtils.getOrCreateContainer(context, appId),
-                onDismiss = { showControlProfiles = false },
+                container = profileContainer,
+                onDismiss = {
+                    showControlProfiles = false
+                    controlProfilesContainer = null
+                },
+            )
+        }
+        else if (showControlProfiles) {
+            LoadingDialog(
+                visible = true,
+                onDismissRequest = { showControlProfiles = false },
+                progress = -1f,
+                message = stringResource(R.string.working),
             )
         }
 

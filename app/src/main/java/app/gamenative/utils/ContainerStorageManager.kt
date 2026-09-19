@@ -16,6 +16,7 @@ import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.enums.AppType
 import app.gamenative.enums.OSArch
 import app.gamenative.events.AndroidEvent
+import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonConstants
@@ -381,6 +382,8 @@ object ContainerStorageManager {
 
         if (deleted) {
             relinkActiveSymlinkIfNeeded(homeDir, containerDir)
+            runCatching { ControlProfileService.deleteWorkingProfilesForContainer(context, containerId) }
+                .onFailure { Timber.tag("ContainerStorageManager").w(it, "Unable to remove control profiles for %s", containerId) }
             Timber.tag("ContainerStorageManager").i("Removed container %s successfully", containerId)
         } else {
             Timber.tag("ContainerStorageManager").w("Container removal reported failure for %s", containerId)

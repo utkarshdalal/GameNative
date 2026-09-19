@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.platform.findViewTreeCompositionContext
 import app.gamenative.PluviaApp
+import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.ui.component.dialog.RadialMenuSettingsContent
 import app.gamenative.ui.theme.PluviaTheme
 import com.winlator.container.Container
@@ -329,26 +330,11 @@ class RadialMenuCoordinator(
         val manager = PluviaApp.inputControlsManager ?: InputControlsManager(context).also {
             PluviaApp.inputControlsManager = it
         }
-        val profileId = container.getExtra("profileId", "0").toIntOrNull() ?: 0
-        var profile = if (profileId != 0) manager.getProfile(profileId) else null
-        if (profile == null) {
-            val allProfiles = manager.getProfiles(false)
-            val sourceProfile = manager.getProfile(0)
-                ?: allProfiles.firstOrNull { it.id == 2 }
-                ?: allProfiles.firstOrNull()
-            if (sourceProfile != null) {
-                profile = try {
-                    val duplicate = manager.duplicateProfile(sourceProfile)
-                    duplicate.setName("${gameNameProvider()} - Controls")
-                    duplicate.save()
-                    container.putExtra("profileId", duplicate.id.toString())
-                    container.saveData()
-                    duplicate
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to auto-create controls profile for ${container.name}")
-                    null
-                }
-            }
+        val profile = try {
+            ControlProfileService.ensureWorkingProfile(context, container, manager)
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to create working controls profile for ${container.name}")
+            null
         }
         applyProfile(profile)
         return profile
