@@ -37,12 +37,12 @@ for lib in ws2_32 kernel32 ntdll dxgi; do
     "$bin/llvm-dlltool" -m i386 -k -d "$source_dir/${lib}_x86.def" -l "$work/lib${lib}_x86.a"
 done
 
-# The two OpenXR runtime DLLs (CRT-less PE, built with the NDK's clang).
-"$bin/clang" --target=x86_64-w64-windows-gnu -shared -nostdlib -Wl,-e,DllMain -I "$work/inc" \
+# Release optimization; freestanding keeps our CRT-less memory helpers from recursing.
+"$bin/clang" --target=x86_64-w64-windows-gnu -shared -nostdlib -ffreestanding -O2 -Wl,-e,DllMain -I "$work/inc" \
     -o "$output/gamenative_openxr_runtime64.dll" \
     "$source_dir/gamenative_openxr_runtime.c" "$source_dir/gamenative_openxr_runtime_x64.def" \
     "$work/libws2_32_x64.a" "$work/libkernel32_x64.a" "$work/libntdll_x64.a" "$work/libdxgi_x64.a"
-"$bin/clang" --target=i686-w64-windows-gnu -shared -nostdlib -Wl,-e,DllMain -I "$work/inc" \
+"$bin/clang" --target=i686-w64-windows-gnu -shared -nostdlib -ffreestanding -O2 -Wl,-e,DllMain -I "$work/inc" \
     -o "$output/gamenative_openxr_runtime32.dll" \
     "$source_dir/gamenative_openxr_runtime.c" "$source_dir/gamenative_openxr_runtime_x86.def" \
     "$work/libws2_32_x86.a" "$work/libkernel32_x86.a" "$work/libntdll_x86.a" "$work/libdxgi_x86.a"
