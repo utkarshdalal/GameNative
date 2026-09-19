@@ -286,9 +286,6 @@
     <string name="control_profiles_empty">No control profiles are available.</string>
     <string name="control_profile_applied">Applied</string>
     <string name="control_profile_applied_sections">Applied · %1$d of %2$d settings</string>
-    <string name="control_profile_library_count">%1$d control profiles</string>
-    <string name="control_profile_library_hint">Preview a profile or apply only the settings you want.</string>
-    <string name="control_profile_library_applied_hint">Applied settings are highlighted. Other games keep their own copies.</string>
     <string name="control_profile_apply">Apply</string>
     <string name="control_profile_preview">Preview</string>
     <string name="control_profile_duplicate">Duplicate</string>

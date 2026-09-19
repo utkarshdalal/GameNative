@@ -407,13 +407,6 @@ fun ControlProfileLibraryDialog(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    item(key = "library-overview") {
-                        ControlProfileLibraryOverview(
-                            profileCount = entries.size,
-                            hasAppliedSections = appliedSources.isNotEmpty(),
-                            onCreate = ::openCreate,
-                        )
-                    }
                     if (orderedEntries.isEmpty()) {
                         item(key = "empty-library") {
                             Text(
@@ -559,59 +552,6 @@ fun ControlProfileLibraryDialog(
                 }
             },
         )
-    }
-}
-
-@Composable
-private fun ControlProfileLibraryOverview(
-    profileCount: Int,
-    hasAppliedSections: Boolean,
-    onCreate: () -> Unit,
-) {
-    Surface(
-        shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.secondary,
-                contentColor = MaterialTheme.colorScheme.onSecondary,
-            ) {
-                Icon(
-                    Icons.Default.SportsEsports,
-                    contentDescription = null,
-                    modifier = Modifier.padding(12.dp).size(28.dp),
-                )
-            }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    stringResource(R.string.control_profile_library_count, profileCount),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    stringResource(
-                        if (hasAppliedSections) {
-                            R.string.control_profile_library_applied_hint
-                        } else {
-                            R.string.control_profile_library_hint
-                        },
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            FilledTonalButton(onClick = onCreate) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(R.string.control_profile_create))
-            }
-        }
     }
 }
 
