@@ -10,8 +10,10 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.OkHttpClient
 import okio.BufferedSink
+import okio.source
 import org.json.JSONArray
 import timber.log.Timber
+import java.io.Closeable
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -51,55 +53,52 @@ class GOGCloudSavesManager(
             GZIPOutputStream(out).use { input.copyTo(it) }
         }
 
-        // md5 and length of the gzipped file in one streaming pass, without holding the file or its gzip in memory.
-        internal fun gzippedDigest(file: File): Pair<String, Long> {
+        // md5 of the gzipped file without holding the file or its gzip in memory.
+        internal fun gzippedMd5Hex(file: File): String {
             val digest = MessageDigest.getInstance("MD5")
-            val counter = CountingOutputStream()
-            file.inputStream().use { gzipTo(it, DigestOutputStream(counter, digest)) }
-            return digest.digest().joinToString("") { "%02x".format(it) } to counter.count
+            file.inputStream().use { gzipTo(it, DigestOutputStream(DiscardingOutputStream, digest)) }
+            return digest.digest().joinToString("") { "%02x".format(it) }
         }
 
-        internal fun gzippedMd5Hex(file: File): String = gzippedDigest(file).first
-
-        // discards and counts. OutputStream.nullOutputStream() needs API 33.
-        private class CountingOutputStream : OutputStream() {
-            var count = 0L
-                private set
-            override fun write(b: Int) {
-                count++
-            }
-            override fun write(b: ByteArray, off: Int, len: Int) {
-                count += len
-            }
+        // OutputStream.nullOutputStream() needs API 33.
+        private object DiscardingOutputStream : OutputStream() {
+            override fun write(b: Int) = Unit
+            override fun write(b: ByteArray, off: Int, len: Int) = Unit
         }
     }
 
-    // streams the gzipped file into the request instead of holding it in memory. the length is known up
-    // front, so the upload still carries Content-Length like Galaxy/Heroic, not chunked encoding.
-    internal class GzippedFileBody(private val file: File) : RequestBody() {
-        val etag: String
-        private val length: Long
-
-        init {
-            val (md5, size) = gzippedDigest(file)
-            etag = md5
-            length = size
-        }
+    // the save gzipped ONCE into a temp file: the Etag, Content-Length and every byte sent (retries included)
+    // come from that one snapshot even if the save changes mid-upload, and nothing is held in memory. the
+    // length is known up front, so the upload carries Content-Length like Galaxy/Heroic, not chunked encoding.
+    internal class GzippedFileBody private constructor(
+        private val gzipped: File,
+        val etag: String,
+    ) : RequestBody(), Closeable {
 
         override fun contentType() = "application/octet-stream".toMediaType()
 
-        override fun contentLength() = length
+        override fun contentLength() = gzipped.length()
 
-        // gzipTo closes the stream it writes to; OkHttp owns the sink, so only flush it.
         override fun writeTo(sink: BufferedSink) {
-            val out = sink.outputStream()
-            val keepOpen = object : OutputStream() {
-                override fun write(b: Int) = out.write(b)
-                override fun write(b: ByteArray, off: Int, len: Int) = out.write(b, off, len)
-                override fun flush() = out.flush()
-                override fun close() = out.flush()
+            gzipped.source().use { sink.writeAll(it) }
+        }
+
+        override fun close() {
+            gzipped.delete()
+        }
+
+        companion object {
+            fun snapshot(file: File, tempDir: File): GzippedFileBody {
+                val gzipped = File.createTempFile("gog-upload", ".gz", tempDir)
+                try {
+                    val digest = MessageDigest.getInstance("MD5")
+                    file.inputStream().use { gzipTo(it, DigestOutputStream(gzipped.outputStream(), digest)) }
+                    return GzippedFileBody(gzipped, digest.digest().joinToString("") { "%02x".format(it) })
+                } catch (t: Throwable) {
+                    gzipped.delete()
+                    throw t
+                }
             }
-            file.inputStream().use { gzipTo(it, keepOpen) }
         }
     }
 
@@ -626,6 +625,7 @@ class GOGCloudSavesManager(
         file: SyncFile,
         authToken: String
     ) = withContext(Dispatchers.IO) {
+        var requestBody: GzippedFileBody? = null
         try {
             val localFile = File(file.absolutePath)
             val fileSize = localFile.length()
@@ -637,12 +637,12 @@ class GOGCloudSavesManager(
             // GOG stores saves gzip-compressed. Match the Galaxy/gogdl protocol: send the gzipped
             // bytes with Content-Encoding: gzip and an Etag of the compressed MD5, otherwise other
             // clients (and GOG's own validation) can't read what we upload.
-            val requestBody = GzippedFileBody(localFile)
-            val etag = requestBody.etag
+            val body = GzippedFileBody.snapshot(localFile, context.cacheDir).also { requestBody = it }
+            val etag = body.etag
 
             val requestBuilder = Request.Builder()
                 .url(url)
-                .put(requestBody)
+                .put(body)
                 .header("Authorization", "Bearer $authToken")
                 .header("User-Agent", USER_AGENT)
                 .header("X-Object-Meta-User-Agent", USER_AGENT)
@@ -668,6 +668,8 @@ class GOGCloudSavesManager(
 
         } catch (e: Exception) {
             Timber.tag("GOG-CloudSaves").e(e, "Failed to upload ${file.relativePath}")
+        } finally {
+            requestBody?.close()
         }
     }
 
