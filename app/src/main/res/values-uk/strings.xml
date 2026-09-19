@@ -1580,6 +1580,13 @@
     <string name="recommended_support_message">Ми отримуємо комісію з покупок, здійснених за цим посиланням.</string>
     <string name="recommended_about_heading">Про цю гру</string>
     <string name="recommended_review_count">На основі %1$s відгуків</string>
+    <string name="library_store_media_page">%1$d з %2$d</string>
+    <string name="library_store_media_fullscreen">Переглянути медіа на весь екран</string>
+    <string name="library_store_media_close">Закрити повноекранний перегляд</string>
+    <string name="library_store_media_previous">Попередній медіафайл</string>
+    <string name="library_store_media_next">Наступний медіафайл</string>
+    <string name="library_store_about_expand">Розгорнути розділ «Про цю гру»</string>
+    <string name="library_store_about_collapse">Згорнути розділ «Про цю гру»</string>
     <string name="review_overwhelmingly_positive">Надзвичайно позитивні</string>
     <string name="review_very_positive">Дуже позитивні</string>
     <string name="review_mostly_positive">Переважно позитивні</string>

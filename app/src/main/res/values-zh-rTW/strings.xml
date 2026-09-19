@@ -1552,6 +1552,13 @@
     <string name="recommended_support_message">透過此連結購買，我們會獲得佣金。</string>
     <string name="recommended_about_heading">關於本遊戲</string>
     <string name="recommended_review_count">基於 %1$s 則評價</string>
+    <string name="library_store_media_page">第 %1$d 項，共 %2$d 項</string>
+    <string name="library_store_media_fullscreen">以全螢幕檢視媒體</string>
+    <string name="library_store_media_close">關閉全螢幕媒體</string>
+    <string name="library_store_media_previous">上一個媒體</string>
+    <string name="library_store_media_next">下一個媒體</string>
+    <string name="library_store_about_expand">展開「關於本遊戲」</string>
+    <string name="library_store_about_collapse">收合「關於本遊戲」</string>
     <string name="review_overwhelmingly_positive">壓倒性好評</string>
     <string name="review_very_positive">極度好評</string>
     <string name="review_mostly_positive">大多好評</string>

@@ -51,6 +51,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.PreferredCopyOption
 import app.gamenative.enums.LoginResult
+import app.gamenative.data.StoreGameDetails
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
 import app.gamenative.enums.SyncResult
@@ -452,6 +453,9 @@ class SteamAppScreen : BaseAppScreen() {
             onChangePreferredCopy = { showPreferredCopyDialog(gameId) },
             isLoadingPreferredCopy = preferredCopyUi?.isLoading == true ||
                 (preferredCopyUi == null && familyGroupId != 0L),
+            storeDetails = StoreGameDetails(
+                reviewPercentage = appInfo.reviewPercentage.toInt().takeIf { it in 1..100 },
+            ),
         )
     }
 
