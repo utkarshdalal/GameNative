@@ -2,6 +2,7 @@ package app.gamenative.data
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.PrimaryKey
 import app.gamenative.enums.AppType
 
@@ -75,9 +76,17 @@ data class GOGGame(
     @ColumnInfo(name = "exclude", defaultValue = "0")
     val exclude: Boolean = false,
 
-    @ColumnInfo(name = "hidden", defaultValue = "0")
-    val hidden: Boolean = false,
+    @ColumnInfo(name = "gog_com_hidden", defaultValue = "0")
+    val gogComHidden: Boolean = false,
+
+    @ColumnInfo(name = "galaxy_hidden", defaultValue = "0")
+    val galaxyHidden: Boolean = false,
 ) {
+    /** Effective hidden state across the independent GOG website and Galaxy sources. */
+    @get:Ignore
+    val hidden: Boolean
+        get() = gogComHidden || galaxyHidden
+
     companion object {
         const val GOG_IMAGE_BASE_URL = "https://images.gog.com/images"
     }

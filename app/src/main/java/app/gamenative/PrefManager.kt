@@ -1351,6 +1351,51 @@ object PrefManager {
             setPref(SHOW_HIDDEN_GAMES_BY_DEFAULT, value)
         }
 
+    private val LAST_SUCCESSFUL_GOG_COM_HIDDEN_SYNC =
+        longPreferencesKey("lastSuccessfulGogComHiddenSync")
+    private val LAST_SUCCESSFUL_GALAXY_HIDDEN_SYNC =
+        longPreferencesKey("lastSuccessfulGalaxyHiddenSync")
+
+    /** Returns the last completed website hidden-state sync, or zero before first success. */
+    suspend fun getLastSuccessfulGogComHiddenSync(): Long =
+        try {
+            dataStore.data.first()[LAST_SUCCESSFUL_GOG_COM_HIDDEN_SYNC] ?: 0L
+        } catch (e: IOException) {
+            Timber.w(e, "Failed to read preference ${LAST_SUCCESSFUL_GOG_COM_HIDDEN_SYNC.name}, using default")
+            0L
+        }
+
+    /** Persists a website hidden-state success timestamp after the Room commit has completed. */
+    suspend fun setLastSuccessfulGogComHiddenSync(value: Long) {
+        dataStore.edit { preferences ->
+            preferences[LAST_SUCCESSFUL_GOG_COM_HIDDEN_SYNC] = value
+        }
+    }
+
+    /** Returns the last completed Galaxy hidden-state sync, or zero before first success. */
+    suspend fun getLastSuccessfulGalaxyHiddenSync(): Long =
+        try {
+            dataStore.data.first()[LAST_SUCCESSFUL_GALAXY_HIDDEN_SYNC] ?: 0L
+        } catch (e: IOException) {
+            Timber.w(e, "Failed to read preference ${LAST_SUCCESSFUL_GALAXY_HIDDEN_SYNC.name}, using default")
+            0L
+        }
+
+    /** Persists a Galaxy hidden-state success timestamp after the Room commit has completed. */
+    suspend fun setLastSuccessfulGalaxyHiddenSync(value: Long) {
+        dataStore.edit { preferences ->
+            preferences[LAST_SUCCESSFUL_GALAXY_HIDDEN_SYNC] = value
+        }
+    }
+
+    /** Clears both source timestamps during GOG account cleanup. */
+    suspend fun clearHiddenSyncTimestamps() {
+        dataStore.edit { preferences ->
+            preferences.remove(LAST_SUCCESSFUL_GOG_COM_HIDDEN_SYNC)
+            preferences.remove(LAST_SUCCESSFUL_GALAXY_HIDDEN_SYNC)
+        }
+    }
+
     private val REC_DISCLOSURE_SHOWN = booleanPreferencesKey("rec_disclosure_shown")
 
     // Cached in memory because the DataStore write is async: consumers read this back
