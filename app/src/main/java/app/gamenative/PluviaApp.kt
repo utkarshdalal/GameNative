@@ -103,8 +103,12 @@ class PluviaApp : SplitCompatApplication() {
         }
 
         // Preload all container files in the background
-        appScope.launch {
-            ContainerFilesDownloader.preloadAllContainerFiles(applicationContext)
+        // not under Robolectric: every test boots a fresh app with a fresh filesDir, so this re-downloaded
+        // every container archive per test. code that needs a file still fetches it on demand.
+        if (Build.FINGERPRINT != "robolectric") {
+            appScope.launch {
+                ContainerFilesDownloader.preloadAllContainerFiles(applicationContext)
+            }
         }
 
         // Clear any stale temporary config overrides from previous app sessions
