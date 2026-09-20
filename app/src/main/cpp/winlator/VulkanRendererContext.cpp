@@ -1412,6 +1412,39 @@ ok=true;}catch(...){}
         return;
     }
 
+    if (!framegenArmed) {
+        VkSemaphore wSem[]={imgAvailSems[currentFrame]}, sSem[]={renderDoneSems[currentFrame]};
+        VkPipelineStageFlags wStage[]={VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        VkSubmitInfo si{}; si.sType=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        if (!toXr) {
+            si.waitSemaphoreCount=1; si.pWaitSemaphores=wSem; si.pWaitDstStageMask=wStage;
+            si.signalSemaphoreCount=1; si.pSignalSemaphores=sSem;
+        }
+        si.commandBufferCount=1; si.pCommandBuffers=&cmdBufs[currentFrame];
+
+        vk_.ResetFences(device,1,&inFlightFences[currentFrame]);
+        if (vk_.QueueSubmit(graphicsQueue,1,&si,inFlightFences[currentFrame])!=VK_SUCCESS) {
+            vk_.DestroyFence(device,inFlightFences[currentFrame],nullptr);
+            VkFenceCreateInfo fi{}; fi.sType=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags=VK_FENCE_CREATE_SIGNALED_BIT;
+            vk_.CreateFence(device,&fi,nullptr,&inFlightFences[currentFrame]);
+            return;
+        }
+        if (!toXr) {
+            VkSwapchainKHR scs[]={swapchain};
+            VkPresentInfoKHR pi{}; pi.sType=VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+            pi.waitSemaphoreCount=1; pi.pWaitSemaphores=sSem; pi.swapchainCount=1; pi.pSwapchains=scs; pi.pImageIndices=&imgIdx;
+            res=vk_.QueuePresentKHR(graphicsQueue,&pi);
+            if (res==VK_ERROR_OUT_OF_DATE_KHR||res==VK_ERROR_SURFACE_LOST_KHR) fbResized.store(true);
+        } else {
+            // The XR session samples xrAhb from its own GL context with no fence handoff;
+            // blocking here means the buffer is fully written whenever this thread is idle,
+            // leaving only the active write window unsynchronized (a tear, not stale data).
+            vk_.WaitForFences(device,1,&inFlightFences[currentFrame],VK_TRUE,UINT64_MAX);
+        }
+        currentFrame=(currentFrame+1)%MAX_FRAMES_IN_FLIGHT;
+        return;
+    }
+
     constexpr uint32_t MAX_FRAME_SEMAPHORES = 2 + VKR_LSFG_MAX_GENERATIONS;
     VkSemaphore waitSems[MAX_FRAME_SEMAPHORES];
     VkPipelineStageFlags waitStages[MAX_FRAME_SEMAPHORES];
@@ -1450,12 +1483,6 @@ ok=true;}catch(...){}
 
     vk_.ResetFences(device, 1, &inFlightFences[currentFrame]);
     if (vk_.QueueSubmit(graphicsQueue, 1, &si, inFlightFences[currentFrame]) != VK_SUCCESS) {
-        if (!framegenArmed) {
-            vk_.DestroyFence(device,inFlightFences[currentFrame],nullptr);
-            VkFenceCreateInfo fi{}; fi.sType=VK_STRUCTURE_TYPE_FENCE_CREATE_INFO; fi.flags=VK_FENCE_CREATE_SIGNALED_BIT;
-            vk_.CreateFence(device,&fi,nullptr,&inFlightFences[currentFrame]);
-            return;
-        }
         recoverAcquiredFrame();
         return;
     }
