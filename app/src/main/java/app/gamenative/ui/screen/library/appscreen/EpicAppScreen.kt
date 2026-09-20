@@ -662,13 +662,13 @@ class EpicAppScreen : BaseAppScreen() {
                                 dismissBtnText = context.getString(R.string.cancel),
                             ),
                         )
+                    },
+                ),
+            )
             options.add(
                 AppMenuOption(
                     optionType = AppOptionMenuType.Update,
                     onClick = { onUpdateClick(context, libraryItem) },
-                ),
-            )
-                    },
                 ),
             )
         }
