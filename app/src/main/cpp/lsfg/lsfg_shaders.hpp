@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <map>
 #include <string>
-#include "../vk_dispatch.h"
+#include "vk_dispatch.h"
 
 namespace lsfg {
 

@@ -50,30 +50,29 @@ add_library(vulkan_renderer SHARED
             winlator/vulkan_jni.cpp
             winlator/VulkanRendererContext.cpp
             winlator/VulkanRendererScanout.cpp
-            winlator/vk/vk_dispatch.c
-            winlator/vk/lsfg/lsfg_dll.c
-            winlator/vk/lsfg/lsfg_dxbc.cpp
-            winlator/vk/lsfg/lsfg_probe.c
-            winlator/vk/lsfg/lsfg_jni.c
-            winlator/vk/lsfg/lsfg_common.cpp
-            winlator/vk/lsfg/lsfg_shaders.cpp
-            winlator/vk/lsfg/lsfg_mipmaps.cpp
-            winlator/vk/lsfg/lsfg_generate.cpp
-            winlator/vk/lsfg/lsfg_alpha.cpp
-            winlator/vk/lsfg/lsfg_beta.cpp
-            winlator/vk/lsfg/lsfg_gamma.cpp
-            winlator/vk/lsfg/lsfg_delta.cpp
-            winlator/vk/lsfg/lsfg_chain.cpp
-            winlator/vk/lsfg/lsfg_pacer.cpp
-            winlator/vk/lsfg/vkr_lsfg.cpp
+            lsfg/vk_dispatch.c
+            lsfg/lsfg_dll.c
+            lsfg/lsfg_dxbc.cpp
+            lsfg/lsfg_probe.c
+            lsfg/lsfg_jni.c
+            lsfg/lsfg_common.cpp
+            lsfg/lsfg_shaders.cpp
+            lsfg/lsfg_mipmaps.cpp
+            lsfg/lsfg_generate.cpp
+            lsfg/lsfg_alpha.cpp
+            lsfg/lsfg_beta.cpp
+            lsfg/lsfg_gamma.cpp
+            lsfg/lsfg_delta.cpp
+            lsfg/lsfg_chain.cpp
+            lsfg/lsfg_pacer.cpp
+            lsfg/vkr_lsfg.cpp
             ${CMAKE_CURRENT_BINARY_DIR}/window_vert.h
             ${CMAKE_CURRENT_BINARY_DIR}/window_frag.h)
 
 target_include_directories(vulkan_renderer PRIVATE
                            ${CMAKE_CURRENT_BINARY_DIR}
                            ${CMAKE_CURRENT_SOURCE_DIR}/winlator
-                           ${CMAKE_CURRENT_SOURCE_DIR}/winlator/vk
-                           ${CMAKE_CURRENT_SOURCE_DIR}/winlator/vk/lsfg)
+                           ${CMAKE_CURRENT_SOURCE_DIR}/lsfg)
 
 set_target_properties(vulkan_renderer PROPERTIES
                       CXX_STANDARD 17

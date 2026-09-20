@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "../vk_dispatch.h"
+#include "vk_dispatch.h"
 
 #ifdef __cplusplus
 extern "C" {
