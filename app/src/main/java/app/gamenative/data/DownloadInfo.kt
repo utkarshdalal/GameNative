@@ -17,12 +17,11 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.Volatile
 
-data class DownloadInfo(
+class DownloadInfo(
     val jobCount: Int = 1,
     val gameId: Int,
     var downloadingAppIds: CopyOnWriteArrayList<Int>,
 ) {
-    @Volatile
     private var downloadJob: Job? = null
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val downloadProgressListeners = CopyOnWriteArrayList<(Float) -> Unit>()
@@ -52,62 +51,8 @@ data class DownloadInfo(
     private var currentStatusMessage: String = ""
     private val postInstallSyncing = MutableStateFlow(false)
 
-    private var wasAutoPaused: Boolean = false
-    private var autoResumeCallback: (() -> Unit)? = null
-
-    // For GameDownloadService integration
-    private var queueGameSource: GameSource? = null
-    private var queueGameId: String? = null
-
     fun cancel() {
         cancel("Cancelled by user")
-    }
-
-    fun pause(message: String = "Paused", autoPaused: Boolean = false) {
-        persistProgressSnapshot()
-        setPostInstallSyncing(false)
-        resetSpeedTracking()
-        wasAutoPaused = autoPaused
-        if (autoPaused) {
-            updateStatusMessage("Queued")
-        }
-        // Synchronized with setDownloadJob so deactivate+job-cancel is atomic
-        // against a job assignment happening on another dispatcher.
-        synchronized(this) {
-            setActive(false)
-            downloadJob?.cancel(CancellationException(message))
-        }
-
-        // If user manually paused (not auto-paused), free the queue slot once this
-        // download has FULLY stopped so the next game starts on a quiet network/disk.
-        if (!autoPaused) {
-            unregisterFromQueueWhenStopped()
-        }
-    }
-
-    fun failedToDownload() {
-        cancel("Failed to download")
-    }
-
-    /**
-     * Unregister from the download queue, deferring to job completion when a download
-     * job is still unwinding: the next queued game then starts only after this
-     * download's engine, sockets and disk writes have fully stopped. Identity-guarded
-     * so a pause followed by an immediate resume of the same game is not unregistered
-     * by the dying job. MUST be called without holding this instance's monitor
-     * (queue lock ordering: queueLock -> DownloadInfo monitor).
-     */
-    private fun unregisterFromQueueWhenStopped() {
-        val src = queueGameSource ?: return
-        val id = queueGameId ?: return
-        val job = downloadJob
-        if (job != null && !job.isCompleted) {
-            job.invokeOnCompletion {
-                app.gamenative.service.download.GameDownloadService.unregisterDownload(src, id, expectedInfo = this)
-            }
-        } else {
-            app.gamenative.service.download.GameDownloadService.unregisterDownload(src, id, expectedInfo = this)
-        }
     }
 
     fun cancel(message: String) {
@@ -116,41 +61,20 @@ data class DownloadInfo(
         setActive(false)
         setPostInstallSyncing(false)
         resetSpeedTracking()
-        // A cancelled download is no longer queue-managed: clear the auto-paused
-        // flag so nothing (UI keep-logic, queue scans) treats it as queued.
-        wasAutoPaused = false
-
-        // Free the queue slot (and start the next game) once this download has FULLY stopped.
-        unregisterFromQueueWhenStopped()
-
-        // Signal cancellation IMMEDIATELY: Job.cancel() only flips state (continuations
-        // resume on their own dispatchers), so this never blocks a UI click handler — and
-        // the download engine's cancel flag is seen within its poll interval, stopping
-        // network traffic right away instead of after a trip through a busy ioScope.
-        // A restarted download for the same path therefore can't overlap the dying job.
-        downloadJob?.cancel(CancellationException(message))
+        // The snapshot write hits the (possibly saturated) install volume and the
+        // job cancel cascades through many continuations; callers include UI click
+        // handlers on the main thread, so both must run off it (ANR otherwise).
         ioScope.launch {
-            // Only the snapshot write stays off the calling thread: it hits the
-            // (possibly saturated) install volume — ANR on the main thread otherwise.
+            // Signal cancellation before the possibly-slow snapshot write, so a
+            // restarted download for the same path can't overlap the dying job.
+            downloadJob?.cancel(CancellationException(message))
             // Persist the most recent progress so a resume can pick up where it left off.
             persistProgressSnapshot()
         }
     }
 
     fun setDownloadJob(job: Job) {
-        // Race guard: the queue may have auto-paused (or the user paused/cancelled) this
-        // download AFTER the coroutine launched but BEFORE the job was assigned here.
-        // pause()/cancel() then found a null job and cancelled nothing — cancel it now
-        // on assignment so the two-downloads-at-once window can't happen. Synchronized
-        // with pause()'s deactivate-and-cancel so the two can never interleave: either
-        // pause wins and this cancels on assignment, or assignment wins and pause
-        // cancels the live job.
-        synchronized(this) {
-            downloadJob = job
-            if (!isActive) {
-                job.cancel(CancellationException(if (wasAutoPaused) "Paused for new download" else "Paused"))
-            }
-        }
+        downloadJob = job
     }
 
     suspend fun awaitCompletion(timeoutMs: Long = 5000L) {
@@ -269,55 +193,6 @@ data class DownloadInfo(
         if (!active) {
             resetSpeedTracking()
         }
-    }
-
-    fun wasAutoPaused(): Boolean = wasAutoPaused
-
-    /**
-     * Queue-managed retry marker: like an auto-pause, but WITHOUT touching the
-     * download job. Called from the queue's failure-retry path, which runs inside
-     * the failing job's own catch block — cancelling the job there would cancel
-     * the very coroutine that is still handling the failure. The job is already
-     * finishing; only the queued-state and the UI status need to change.
-     */
-    fun markQueuedForRetry(statusMessage: String) {
-        setActive(false)
-        setPostInstallSyncing(false)
-        wasAutoPaused = true
-        updateStatusMessage(statusMessage)
-    }
-
-    /**
-     * Terminal success: clear the queue-managed paused state. A completed
-     * download must never remain queued — every keep-entry path (store
-     * finally blocks, Steam's removeDownloadJob) keys off wasAutoPaused,
-     * and a stray auto-pause landing in a post-install race window would
-     * otherwise leave a completed game stuck as a Paused row forever.
-     */
-    fun clearQueuedState() {
-        wasAutoPaused = false
-        autoResumeCallback = null
-    }
-
-    fun setAutoResumeCallback(callback: () -> Unit) {
-        autoResumeCallback = callback
-    }
-
-    fun triggerAutoResume() {
-        if (wasAutoPaused) {
-            wasAutoPaused = false
-            autoResumeCallback?.invoke()
-            autoResumeCallback = null
-        }
-    }
-
-    /**
-     * Set the queue identifiers for this download.
-     * This allows the DownloadInfo to unregister itself from the queue when paused/cancelled.
-     */
-    fun setQueueIdentifiers(gameSource: GameSource, gameId: String) {
-        queueGameSource = gameSource
-        queueGameId = gameId
     }
 
     fun isActive(): Boolean = isActive

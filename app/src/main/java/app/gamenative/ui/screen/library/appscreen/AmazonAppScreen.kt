@@ -211,8 +211,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
             AmazonService.getDownloadInfoByAppId(libraryItem.gameId) == null
 
     override fun isDownloading(context: Context, libraryItem: LibraryItem): Boolean =
-        AmazonService.getDownloadInfoByAppId(libraryItem.gameId)
-            ?.let { it.isPostInstallSyncing() || it.isActive() } == true
+        AmazonService.getDownloadInfoByAppId(libraryItem.gameId) != null
 
     override fun getDownloadProgress(context: Context, libraryItem: LibraryItem): Float =
         AmazonService.getDownloadInfoByAppId(libraryItem.gameId)?.getProgress() ?: 0f
@@ -317,11 +316,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
 
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
         val appId = libraryItem.gameId
-        val downloadInfo = AmazonService.getDownloadInfoByAppId(appId)
-        // Only an active (or post-install syncing) download gets cancelled. A queued
-        // (auto-paused) entry is inactive but still present — falling through to
-        // performDownload resumes it and pauses whatever is currently downloading.
-        if (downloadInfo != null && (downloadInfo.isActive() || downloadInfo.isPostInstallSyncing())) {
+        if (AmazonService.getDownloadInfoByAppId(appId) != null) {
             Timber.tag(TAG).i("Cancelling download for appId=$appId")
             AmazonService.cancelDownloadByAppId(appId)
         } else {

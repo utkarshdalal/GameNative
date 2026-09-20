@@ -24,11 +24,16 @@ import android.content.Context
 import android.content.Intent
 import app.gamenative.BuildConfig
 import app.gamenative.data.GameSource
+import app.gamenative.service.amazon.AmazonService
+import app.gamenative.service.epic.EpicService
+import app.gamenative.service.gog.GOGService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Single entry point for ALL store game downloads in GameNative.
@@ -82,7 +87,7 @@ object GameDownloadService {
         maxWorkers: Int,
         processWorkers: Int,
         parentScope: CoroutineScope,
-    ): List<Int> {
+    ) {
         val steamClient = SteamService.instance?.steamClient
             ?: throw DownloadFailedException("Steam client not available")
         val steamApps = steamClient.getHandler(SteamApps::class.java)
@@ -181,7 +186,6 @@ object GameDownloadService {
             downloadInfo = downloadInfo,
             parentScope = parentScope,
         )
-        return resolvedDepotIds
     }
 
     private suspend fun runNativeSteamDownload(
@@ -576,30 +580,15 @@ object GameDownloadService {
     data class DownloadEntry(
         val gameSource: GameSource,
         val gameId: String,
-        val downloadInfo: DownloadInfo
+        val downloadInfo: DownloadInfo,
+        val dlcGameIds: List<Int>,
+        val installPath: String?,
+        val containerLanguage: String?,
     )
 
-    /**
-     * Listener interface for services to handle resume requests.
-     */
-    interface ResumeListener {
-        fun onResumeRequested(gameSource: GameSource, gameId: String)
-    }
-
-    private val activeDownloads = ConcurrentHashMap<String, DownloadEntry>()
-    private val resumeListeners = ConcurrentHashMap<GameSource, ResumeListener>()
-
-    // ── Automatic retry of transient failures ────────────────────────────────
-    // A download that fails with a TRANSIENT error (timeout, reset, 5xx/429)
-    // is restarted automatically up to MAX_AUTO_RETRIES times with backoff,
-    // keeping its queue slot. Permanent errors (404/401/403, no depot key,
-    // disk full, parse/decrypt, …) fail immediately, as before.
-    private val retryScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val retryAttempts = ConcurrentHashMap<String, Int>()
-    private val retryJobs = ConcurrentHashMap<String, Job>()
-
-    private const val MAX_AUTO_RETRIES = 2
-    private const val RETRY_BACKOFF_FIRST_MS = 30_000L
+    private var currentDownloadingKey: String? = null
+    private val downloadQueue = CopyOnWriteArrayList<String>()
+    private val registeredDownloads = ConcurrentHashMap<String, DownloadEntry>()
 
     /**
      * Hardcoded switch for native engine pipeline logs (throughput / fetch-window / staging
@@ -608,91 +597,6 @@ object GameDownloadService {
      * lines over JNI `onLog`, gated at the Timber call sites in their managers.
      */
     val SHOW_PIPELINE_LOGS = BuildConfig.DEBUG
-    private const val RETRY_BACKOFF_LATER_MS = 120_000L
-
-    /**
-     * Classify a failure message. Default is NOT transient: an unknown error
-     * fails fast instead of looping. Permanent markers are checked first so a
-     * message containing both (e.g. "non-200 HTTP status (404)") fails fast.
-     */
-    fun isTransientFailure(message: String?): Boolean {
-        val msg = message?.lowercase() ?: return false
-        // Status codes match on DIGIT boundaries, never as bare substrings: a number inside
-        // an offset/size (e.g. "idle timeout at offset 404128") must not classify as HTTP 404.
-        val permanentStatus = Regex("""(?<!\d)(401|403|404)(?!\d)""")
-        val permanent = listOf(
-            "no depot key", "no manifest gid", "unsafe path",
-            "no space", "disk full", "enospc",
-            "decrypt", "parse failed", "manifest parse",
-            "cancelled", "canceled",
-        )
-        if (permanent.any { msg.contains(it) } || permanentStatus.containsMatchIn(msg)) return false
-        val transientStatus = Regex("""(?<!\d)(429|500|502|503|504)(?!\d)""")
-        val transient = listOf(
-            "timed out", "timeout", "connection reset", "connection refused",
-            "connection aborted", "broken pipe", "unexpected eof", "eof while",
-            "dns", "unreachable", "network", "temporarily", "stalled",
-            "no process-pool verdict", "no cdn servers",
-        )
-        return transient.any { msg.contains(it) } || transientStatus.containsMatchIn(msg)
-    }
-
-    private fun retryBackoffMs(attempt: Int): Long {
-        return if (attempt <= 1) RETRY_BACKOFF_FIRST_MS else RETRY_BACKOFF_LATER_MS
-    }
-
-    /**
-     * Report a download failure. Returns true when an automatic retry was
-     * scheduled — the caller must then KEEP the queue entry (and its active-map
-     * entry, so the UI shows the download as Queued) and skip its own
-     * failure/unregister handling. Returns false for permanent failures and
-     * after [MAX_AUTO_RETRIES] attempts; the caller then fails the download
-     * exactly as before (which unregisters and advances the queue).
-     *
-     * Must be called BEFORE the store removes its active-map entry: the retry
-     * marker sets wasAutoPaused, which is what keeps that entry.
-     */
-    fun reportFailure(gameSource: GameSource, gameId: String, errorMessage: String?): Boolean {
-        val key = makeKey(gameSource, gameId)
-        synchronized(queueLock) {
-            val entry = activeDownloads[key] ?: return false
-            if (!isTransientFailure(errorMessage)) {
-                retryAttempts.remove(key)
-                return false
-            }
-            val attempt = (retryAttempts[key] ?: 0) + 1
-            val listener = resumeListeners[gameSource]
-            if (attempt > MAX_AUTO_RETRIES || listener == null) {
-                Timber.w("[GameDownloadService] Not retrying $gameSource $gameId (attempt $attempt): $errorMessage")
-                retryAttempts.remove(key)
-                return false
-            }
-            retryAttempts[key] = attempt
-            val backoffMs = retryBackoffMs(attempt)
-            Timber.i("[GameDownloadService] Transient failure for $gameSource $gameId; auto-retry $attempt/$MAX_AUTO_RETRIES in ${backoffMs}ms: $errorMessage")
-            entry.downloadInfo.markQueuedForRetry("Download interrupted — retrying in ${backoffMs / 1000}s ($attempt/$MAX_AUTO_RETRIES)")
-            entry.downloadInfo.setAutoResumeCallback {
-                listener.onResumeRequested(gameSource, gameId)
-            }
-            val job = retryScope.launch {
-                delay(backoffMs)
-                synchronized(queueLock) {
-                    retryJobs.remove(key)
-                    // Fire only if the entry is still registered (user may have
-                    // cancelled during the backoff) and nothing else is active.
-                    // Otherwise it stays queued and normal progression resumes it.
-                    if (activeDownloads[key] == entry &&
-                        activeDownloads.values.none { it.downloadInfo.isActive() }
-                    ) {
-                        Timber.i("[GameDownloadService] Auto-retrying $gameSource download for $gameId")
-                        entry.downloadInfo.triggerAutoResume()
-                    }
-                    }
-            }
-            retryJobs[key] = job
-            return true
-        }
-    }
 
     /**
      * Serializes every queue state transition (pause-all + register, remove + resume).
@@ -706,172 +610,133 @@ object GameDownloadService {
     }
 
     /**
-     * Register a resume listener for a specific game source.
-     * Each service should register its own listener to handle resume requests.
-     */
-    fun registerResumeListener(gameSource: GameSource, listener: ResumeListener) {
-        resumeListeners[gameSource] = listener
-        Timber.i("[GameDownloadService] Registered resume listener for $gameSource")
-        synchronized(queueLock) {
-            // A queued entry of this source may have been waiting for this listener
-            // (service was restarted while queued). Only resume when nothing else is
-            // active, or the one-at-a-time contract breaks.
-            if (activeDownloads.values.none { it.downloadInfo.isActive() }) {
-                resumeNextLocked()
-            }
-        }
-    }
-
-    /**
-     * Unregister a resume listener for a specific game source.
-     */
-    fun unregisterResumeListener(gameSource: GameSource) {
-        resumeListeners.remove(gameSource)
-        Timber.i("[GameDownloadService] Unregistered resume listener for $gameSource")
-    }
-
-    /**
      * Register a new download. This will auto-pause all other active downloads.
+     * Should only be called by Each Service once (4 callees)
      */
     fun registerDownload(
         gameSource: GameSource,
         gameId: String,
-        downloadInfo: DownloadInfo
+        downloadInfo: DownloadInfo,
+        dlcGameIds: List<Int> = emptyList(),
+        installPath: String? = null,
+        containerLanguage: String? = null,
     ) {
         val key = makeKey(gameSource, gameId)
 
         synchronized(queueLock) {
-            // Set queue identifiers on the DownloadInfo so it can unregister itself
-            downloadInfo.setQueueIdentifiers(gameSource, gameId)
-
-            // A fresh registration supersedes any pending retry of the previous
-            // entry for this key. Attempt history is intentionally KEPT: the
-            // auto-retry's own resume listener re-registers through this path,
-            // and resetting here would retry forever.
-            retryJobs.remove(key)?.cancel()
-
             // Auto-pause all other active downloads. Skip entries whose transfer is
             // already done and which are only syncing saves (post-install): pausing
             // one kills its finishing job while the entry stays queued, and the later
             // auto-resume re-runs the whole download (verify 1/N back to 100%) even
             // though the game was complete.
-            activeDownloads.forEach { (existingKey, entry) ->
+            registeredDownloads.forEach { (existingKey, entry) ->
                 if (existingKey != key && entry.downloadInfo.isActive() && !entry.downloadInfo.isPostInstallSyncing()) {
                     Timber.i("[GameDownloadService] Auto-pausing ${entry.gameSource} download for ${entry.gameId}")
-                    entry.downloadInfo.pause(message = "Paused for new download", autoPaused = true)
+                    entry.downloadInfo.cancel(message = "Paused for new download")
                 }
             }
 
             // Register the new download
-            activeDownloads[key] = DownloadEntry(gameSource, gameId, downloadInfo)
-            Timber.i("[GameDownloadService] Registered ${gameSource} download for $gameId")
+            registeredDownloads[key] = DownloadEntry(
+                gameSource = gameSource,
+                gameId = gameId,
+                downloadInfo = downloadInfo,
+                dlcGameIds = dlcGameIds,
+                installPath =installPath,
+                containerLanguage = containerLanguage
+            )
+            downloadQueue.add(key)
+            currentDownloadingKey = key
+            Timber.i("[GameDownloadService] Registered $gameSource download for $gameId")
         }
     }
 
     /**
-     * Unregister a download when it completes or is cancelled.
+     * Unregister a download when it completed.
+     * Should only be called by Each Service once (4 callees)
      * Automatically resumes the next paused download if available.
      */
-    fun unregisterDownload(gameSource: GameSource, gameId: String, expectedInfo: DownloadInfo? = null) {
+    fun unregisterDownload(context: Context, gameSource: GameSource, gameId: String) {
         val key = makeKey(gameSource, gameId)
+
         synchronized(queueLock) {
-            // Idempotent: both the success path and the failure/cancel paths may call this for
-            // the same download. Without the guard the second call would resume ANOTHER paused
-            // download and break the one-at-a-time invariant.
-            val entry = activeDownloads[key] ?: return
-            // Deferred unregistrations (manual pause/cancel waits for the job to fully stop)
-            // must not remove a NEWER registration for the same game — e.g. the user paused
-            // and immediately resumed it.
-            if (expectedInfo != null && entry.downloadInfo !== expectedInfo) {
-                return
-            }
-            activeDownloads.remove(key)
-            Timber.i("[GameDownloadService] Unregistered ${gameSource} download for $gameId")
-            // Terminal state for this download (success, cancel, permanent
-            // failure): clear retry bookkeeping and any pending backoff job.
-            retryAttempts.remove(key)
-            retryJobs.remove(key)?.cancel()
+            registeredDownloads.remove(key)
+            downloadQueue.remove(key)
+            Timber.i("[GameDownloadService] Unregistered $gameSource download for $gameId")
 
-            // Auto-resume the first paused download (if any)
-            resumeNextLocked()
+            resumeNextDownload(context)
         }
     }
 
     /**
-     * Resume the first auto-paused entry whose service has a resume listener installed.
-     * Caller must hold [queueLock]. Entries without a listener stay queued — they are
-     * retried when that service registers its listener (service restart path).
+     * Remove download when pressing delete button
+     * Should only be called by Each Service once (4 callees)
      */
-    private fun resumeNextLocked() {
-        // Only advance the queue when nothing is transferring: unregistering an
-        // inactive (queued) entry while the active download is still running
-        // must not start another download — the queue advances when the active
-        // one finishes. Without this, dequeueing one of several queued entries
-        // resumes the next queued entry and preempts the active download.
-        if (activeDownloads.values.any { it.downloadInfo.isActive() }) return
-        val nextDownload = activeDownloads.values.firstOrNull { entry ->
-            entry.downloadInfo.wasAutoPaused() && resumeListeners.containsKey(entry.gameSource)
-        } ?: return
+    fun removeDownload(context: Context, gameSource: GameSource, gameId: String) {
+        val key = makeKey(gameSource, gameId)
 
-        Timber.i("[GameDownloadService] Auto-resuming ${nextDownload.gameSource} download for ${nextDownload.gameId}")
-        val listener = resumeListeners[nextDownload.gameSource] ?: return
-        nextDownload.downloadInfo.setAutoResumeCallback {
-            listener.onResumeRequested(nextDownload.gameSource, nextDownload.gameId)
-        }
-        nextDownload.downloadInfo.triggerAutoResume()
-    }
-
-    /**
-     * Remove every entry belonging to a service being torn down. If the removed set
-     * included the only ACTIVE download, advance the queue: removed entries can no
-     * longer be selected, so the resume can only land on another (live) source —
-     * without it, a queued download would wait forever for an unregister that
-     * already happened.
-     */
-    fun unregisterAllForSource(gameSource: GameSource) {
         synchronized(queueLock) {
-            val keys = activeDownloads.filterValues { it.gameSource == gameSource }.keys
-            keys.forEach {
-                activeDownloads.remove(it)
-                retryAttempts.remove(it)
-                retryJobs.remove(it)?.cancel()
+            var shouldResume = false
+
+            // If currentEntry is downloading, cancel it, and resume
+            if (currentDownloadingKey == key) {
+                val currentEntry = registeredDownloads[currentDownloadingKey]
+                currentEntry?.downloadInfo?.cancel()
+                shouldResume = true
             }
-            if (keys.isNotEmpty()) {
-                Timber.i("[GameDownloadService] Removed ${keys.size} $gameSource queue entr(ies) on service teardown")
-            }
-            if (activeDownloads.values.none { it.downloadInfo.isActive() }) {
-                resumeNextLocked()
+
+            registeredDownloads.remove(key)
+            downloadQueue.remove(key)
+            Timber.i("[GameDownloadService] Removed $gameSource download for $gameId")
+
+            if (shouldResume) {
+                resumeNextDownload(context)
             }
         }
     }
 
     /**
-     * Get all currently active downloads across all services.
+     * Resume next pending download
      */
-    fun getActiveDownloads(): Map<String, DownloadEntry> {
-        return HashMap(activeDownloads)
+    private fun resumeNextDownload(context: Context) {
+        val nextKey = downloadQueue.firstOrNull()
+        if (nextKey != null) {
+            val nextEntry = registeredDownloads[nextKey]
+            if (nextEntry != null) {
+                currentDownloadingKey = makeKey(nextEntry.gameSource, nextEntry.gameId)
+                Timber.i("[GameDownloadService] Resuming ${nextEntry.gameSource} download for ${nextEntry.gameId}")
+                when (nextEntry.gameSource) {
+                    GameSource.STEAM -> SteamService.downloadApp(
+                        appId = nextEntry.gameId.toInt()
+                    )
+                    GameSource.AMAZON -> AmazonService.downloadGame(
+                        context = context,
+                        productId = nextEntry.gameId,
+                        installPath = nextEntry.installPath!!
+                    )
+                    GameSource.GOG -> GOGService.downloadGame(
+                        context = context,
+                        gameId = nextEntry.gameId,
+                        installPath = nextEntry.installPath!!,
+                        containerLanguage = nextEntry.containerLanguage!!
+                    )
+                    GameSource.EPIC -> EpicService.downloadGame(
+                        context = context,
+                        appId = nextEntry.gameId.toInt(),
+                        dlcGameIds = nextEntry.dlcGameIds,
+                        installPath = nextEntry.installPath!!,
+                        containerLanguage = nextEntry.containerLanguage!!
+                    )
+                    // Do Nothing for Custom Game
+                    GameSource.CUSTOM_GAME -> {}
+                }
+            }
+        }
     }
 
-    /**
-     * Get the count of active downloads.
-     */
-    fun getActiveDownloadCount(): Int {
-        return activeDownloads.count { it.value.downloadInfo.isActive() }
-    }
 
-    /**
-     * Check if a specific download is registered.
-     */
-    fun isDownloadRegistered(gameSource: GameSource, gameId: String): Boolean {
+    fun isPaused(gameSource: GameSource, gameId: String) : Boolean {
         val key = makeKey(gameSource, gameId)
-        return activeDownloads.containsKey(key)
-    }
-
-    /**
-     * Get download info for a specific game.
-     */
-    fun getDownloadInfo(gameSource: GameSource, gameId: String): DownloadInfo? {
-        val key = makeKey(gameSource, gameId)
-        return activeDownloads[key]?.downloadInfo
+        return registeredDownloads.contains(key) && currentDownloadingKey != key
     }
 }

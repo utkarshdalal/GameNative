@@ -471,11 +471,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun removeDownloadJob(appId: Int) {
             clearDepotKeyPrep(appId)
-            // Keep an auto-paused (queued) entry so the downloads UI keeps showing it
-            // as Queued (same as Epic/GOG/Amazon) instead of falling back to a partial
-            // "Ready to Resume" row with a manual resume button. downloadApp replaces
-            // the stale entry when the queue resumes it.
-            downloadJobs[appId]?.let { if (it.wasAutoPaused()) return }
             val removed = downloadJobs.remove(appId)
             if (removed != null) {
                 notifyDownloadStopped(appId)
@@ -2002,6 +1997,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 true
             } else {
+                // Remove download from GameDownloadService
+                GameDownloadService.removeDownload(instance?.applicationContext!!, GameSource.STEAM, appId.toString())
+
                 val appDirPath = getAppDirPath(appId)
                 val appDir = File(appDirPath)
 
@@ -2406,13 +2404,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             val appDirPath = getAppDirPath(appId)
 
             if (!checkWifiOrNotify()) return null
-            // An ACTIVE download keeps its existing DownloadInfo; a stale inactive entry
-            // (e.g. an auto-paused/queued download kept for UI visibility) is replaced.
-            val existingInfo = downloadJobs[appId]
-            if (existingInfo != null) {
-                if (existingInfo.isActive()) return existingInfo
-                downloadJobs.remove(appId, existingInfo)
-            }
+            if (downloadJobs.contains(appId)) return getAppDownloadInfo(appId)
             Timber.d("depots is empty? " + downloadableDepots.isEmpty())
             if (downloadableDepots.isEmpty()) return null
 
@@ -2540,13 +2532,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 val chunkStagingRedirectDir = File(DownloadService.baseCacheDirPath, "depot_chunks/$appId")
                     .takeIf { !appDirPath.startsWith(DownloadService.baseDataDirPath) }
 
-                // Register with centralized queue and auto-pause other downloads
-                GameDownloadService.registerDownload(
-                    gameSource = GameSource.STEAM,
-                    gameId = appId.toString(),
-                    downloadInfo = di
-                )
-
                 val downloadJob = instance!!.scope.launch {
                     try {
                         if (isUpdateOrVerify) {
@@ -2557,10 +2542,15 @@ class SteamService : Service(), IChallengeUrlChanged {
                         val licenses = getLicensesFromDb()
                         if (licenses.isEmpty()) {
                             Timber.w("No licenses available for download")
-                            // Free the queue slot so a queued download isn't stranded
-                            GameDownloadService.unregisterDownload(GameSource.STEAM, appId.toString())
                             return@launch
                         }
+
+                        // Register with centralized queue and auto-pause other downloads
+                        GameDownloadService.registerDownload(
+                            gameSource = GameSource.STEAM,
+                            gameId = appId.toString(),
+                            downloadInfo = di
+                        )
 
                         // All Steam bytes are moved by the Rust engine in libgndownload.so via
                         // GameDownloadService; JavaSteam stays the CM client (keys/codes/servers).
@@ -2585,52 +2575,24 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                         Timber.i("Downloading game to " + defaultAppInstallPath)
 
-                        val downloadedDepotIds = try {
-                            GameDownloadService.downloadSteamApp(
-                                appId = appId,
-                                selectedDepots = selectedDepots,
-                                branch = branch,
-                                branchPassword = branchPassword,
-                                installDir = getAppDirPath(appId),
-                                isUpdateOrVerify = isUpdateOrVerify,
-                                depotIdToIndex = depotIdToIndex,
-                                downloadInfo = di,
-                                // Adaptive-window ceiling (ramps up only while the link delivers);
-                                // process pool stays core-scaled.
-                                maxWorkers = speedConfig.maxDownloads,
-                                processWorkers = speedConfig.maxDecompress,
-                                parentScope = this,
-                            )
-                        } catch (e: GameDownloadService.DownloadFailedException) {
-                            Timber.e(e, "App $appId failed to download")
-                            di.persistProgressSnapshot()
-                            if (GameDownloadService.reportFailure(GameSource.STEAM, appId.toString(), e.message)) {
-                                // Transient failure (e.g. the native stall watchdog's
-                                // timeout abort): the queue holds the slot and auto-retries
-                                // with backoff; the retry marker set wasAutoPaused, so
-                                // removeDownloadJob keeps the entry (UI shows Queued).
-                                removeDownloadJob(di.gameId)
-                                return@launch
-                            }
-                            di.failedToDownload()
-                            // Remove the downloading app info
-                            runBlocking {
-                                instance?.downloadingAppInfoDao?.deleteApp(di.gameId)
-                            }
-                            removeDownloadJob(di.gameId)
-                            instance?.let { service ->
-                                SnackbarManager.show(service.getString(R.string.download_failed_try_again))
-                            }
-                            return@launch
-                        }
+                        GameDownloadService.downloadSteamApp(
+                            appId = appId,
+                            selectedDepots = selectedDepots,
+                            branch = branch,
+                            branchPassword = branchPassword,
+                            installDir = getAppDirPath(appId),
+                            isUpdateOrVerify = isUpdateOrVerify,
+                            depotIdToIndex = depotIdToIndex,
+                            downloadInfo = di,
+                            // Adaptive-window ceiling (ramps up only while the link delivers);
+                            // process pool stays core-scaled.
+                            maxWorkers = speedConfig.maxDownloads,
+                            processWorkers = speedConfig.maxDecompress,
+                            parentScope = this,
+                        )
 
-                        // Transfer is complete — free the queue slot BEFORE post-install
-                        // work (controller config, markers, save sync) so the next queued
-                        // download can start. Holding the slot through post-install also
-                        // lets a newly registered download auto-pause this finished one;
-                        // its later auto-resume re-verifies every file (progress shows
-                        // the game restarting after reaching 100%).
-                        GameDownloadService.unregisterDownload(GameSource.STEAM, appId.toString())
+                        // Transfer is complete - unregister from GameDownloadService
+                        GameDownloadService.unregisterDownload(instance?.applicationContext!!, GameSource.STEAM, appId.toString())
 
                         val appConfig = getAppInfoOf(appId)?.config
                         if (appConfig?.steamControllerTemplateIndex == 1) {
@@ -2764,35 +2726,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                             }
                         }
 
-                        // Complete app download. Only depots Steam actually served are
-                        // marked downloaded — a depot skipped by the engine (no manifest
-                        // gid, depot key denied, e.g. an unowned DLC) must stay pending
-                        // so a later download can pick it up.
-                        val downloadedSet = downloadedDepotIds.toSet()
-                        val skippedDepots = selectedDepots.keys - downloadedSet
-                        if (skippedDepots.isNotEmpty()) {
-                            Timber.w("Depots not downloaded (skipped by engine): ${skippedDepots.sorted()}")
-                        }
+                        // Complete app download
                         if (mainAppDepots.isNotEmpty()) {
-                            val mainAppDepotIds = mainAppDepots.keys.filter { it in downloadedSet }.sorted()
-                            // A depot-backed DLC only counts as installed when its depot
-                            // actually downloaded; depotless (hidden) DLC ids carry no
-                            // depot and pass through unchanged.
-                            val depotBackedDlcIds = mainAppDepots.values
-                                .map { it.dlcAppId }
-                                .filter { it != INVALID_APP_ID }
-                                .toSet()
-                            val completedMainAppDlcIds = mainAppDlcIds.filter { dlcId ->
-                                dlcId !in depotBackedDlcIds ||
-                                    selectedDepots.any { (depotId, depot) ->
-                                        depot.dlcAppId == dlcId && depotId in downloadedSet
-                                    }
-                            }
+                            val mainAppDepotIds = mainAppDepots.keys.sorted()
                             completeAppDownload(
                                 downloadInfo = di,
                                 downloadingAppId = appId,
                                 entitledDepotIds = mainAppDepotIds,
-                                selectedDlcAppIds = completedMainAppDlcIds,
+                                selectedDlcAppIds = mainAppDlcIds,
                                 appDirPath = appDirPath,
                                 branch = branch,
                                 parentScope = this,
@@ -2804,14 +2745,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                             val dlcAppDepotIds = getAppInfoOf(dlcAppId)?.depots?.keys.orEmpty()
                             val dlcDepots = selectedDepots.filter { (depotId, depot) ->
                                 depot.dlcAppId == dlcAppId &&
-                                    depotId in downloadedSet &&
                                     (depotId !in mainAppDepots || depotId in dlcAppDepotIds)
                             }
                             val dlcDepotIds = dlcDepots.keys.sorted()
-                            if (dlcDepotIds.isEmpty()) {
-                                Timber.w("DLC app $dlcAppId: no depots downloaded, not marking complete")
-                                return@forEach
-                            }
                             completeAppDownload(
                                 downloadInfo = di,
                                 downloadingAppId = dlcAppId,
@@ -2823,12 +2759,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             )
                         }
 
-                        // Remove the job here — Play button becomes visible after this.
-                        // clearQueuedState: a completed download must not survive as a
-                        // queued/paused entry if a stray auto-pause landed in a
-                        // post-install race window (removeDownloadJob keeps
-                        // wasAutoPaused entries).
-                        di.clearQueuedState()
+                        // Remove the job here — Play button becomes visible after this
                         removeDownloadJob(appId)
                         PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(appId, GameSource.STEAM))
 
@@ -2840,22 +2771,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                     } catch (e: Exception) {
                         Timber.e(e, "Download failed for app $appId")
                         di.persistProgressSnapshot()
-                        if (GameDownloadService.reportFailure(GameSource.STEAM, appId.toString(), e.message)) {
-                            // Transient failure: the queue holds the slot and
-                            // auto-retries with backoff. The retry marker set
-                            // wasAutoPaused, so removeDownloadJob keeps the entry
-                            // and the UI shows the download as Queued.
-                            removeDownloadJob(appId)
-                        } else {
-                            // Mark all depots as failed
-                            selectedDepots.keys.sorted().forEachIndexed { idx, _ ->
-                                di.setWeight(idx, 0)
-                                di.setProgress(1f, idx)
-                            }
-                            removeDownloadJob(appId)
-                            // Unregister from queue so a paused download can resume
-                            GameDownloadService.unregisterDownload(GameSource.STEAM, appId.toString())
+                        // Mark all depots as failed
+                        selectedDepots.keys.sorted().forEachIndexed { idx, _ ->
+                            di.setWeight(idx, 0)
+                            di.setProgress(1f, idx)
                         }
+                        removeDownloadJob(appId)
                     }
                 }
                 downloadJob.invokeOnCompletion { throwable ->
@@ -4119,24 +4040,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
-        // Register resume listener with GameDownloadService
-        GameDownloadService.registerResumeListener(GameSource.STEAM, object : GameDownloadService.ResumeListener {
-            override fun onResumeRequested(gameSource: GameSource, gameId: String) {
-                val appId = gameId.toIntOrNull() ?: return
-                Timber.i("[SteamService] Resume requested for app $appId")
-                scope.launch {
-                    // The auto-paused job may still be unwinding (snapshot write, finally
-                    // blocks); downloadApp() early-returns while downloadJobs still holds
-                    // it, so wait for it to finish and clear itself first.
-                    val old = downloadJobs[appId]
-                    if (old != null && !old.isActive()) {
-                        old.awaitCompletion(10_000)
-                    }
-                    downloadApp(appId)
-                }
-            }
-        })
-
         // clear stale download records (completed games) but keep interrupted ones (preserves DLC selection)
         scope.launch {
             for (record in downloadingAppInfoDao.getAll()) {
@@ -4311,11 +4214,6 @@ class SteamService : Service(), IChallengeUrlChanged {
         notificationHelper.cancel()
 
         connectivityManager.unregisterNetworkCallback(networkCallback)
-
-        // Drop this source's queue entries before removing the listener that resumes them
-        GameDownloadService.unregisterAllForSource(GameSource.STEAM)
-        // Unregister resume listener from GameDownloadService
-        GameDownloadService.unregisterResumeListener(GameSource.STEAM)
 
         scope.launch { stop() }
     }

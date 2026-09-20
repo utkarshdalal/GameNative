@@ -349,7 +349,7 @@ class EpicAppScreen : BaseAppScreen() {
             downloadInfo?.cancel()
             CoroutineScope(Dispatchers.IO).launch {
                 downloadInfo?.awaitCompletion()
-                EpicService.cleanupDownload(context, gameId, expectedInfo = downloadInfo)
+                EpicService.cleanupDownload(context, gameId)
             }
         } else if (installed) {
             // Already installed: launch game
@@ -438,13 +438,14 @@ class EpicAppScreen : BaseAppScreen() {
             downloadInfo?.cancel()
             CoroutineScope(Dispatchers.IO).launch {
                 downloadInfo?.awaitCompletion()
-                EpicService.cleanupDownload(context, gameId, expectedInfo = downloadInfo)
+                EpicService.cleanupDownload(context, gameId)
             }
         } else if (hasPartial) {
-            // Resume directly (GOG/Amazon parity): no dialog — the download re-registers
-            // with the central queue, which pauses whatever is currently downloading.
-            Timber.tag(TAG).i("Resuming partial Epic download directly via pause/resume: $gameId")
-            EpicService.resumeDownload(context, gameId)
+            Timber.tag(TAG).i("Showing game manager for partial Epic resume via pause/resume: $gameId")
+            showGameManagerDialog(
+                gameId,
+                app.gamenative.ui.component.dialog.state.GameManagerDialogState(visible = true),
+            )
         } else {
             // Fresh start: show DLC manager/install selection dialog.
             Timber.tag(TAG).i("Showing game manager dialog via pause/resume: $gameId")
@@ -816,17 +817,7 @@ class EpicAppScreen : BaseAppScreen() {
                         scope.launch(Dispatchers.IO) {
                             try {
                                 downloadInfo?.awaitCompletion()
-                                // Kill any pending debounced bytes-persistence write BEFORE the
-                                // folder delete: a late write recreating
-                                // <install>/.DownloadInfo/bytes_downloaded.txt made the screen
-                                // show Resume for a deleted game.
-                                EpicService.getEpicGameOf(gameId)?.let { game ->
-                                    val path = game.installPath.ifBlank {
-                                        EpicConstants.getGameInstallPath(context, game.appName)
-                                    }
-                                    downloadInfo?.clearPersistedBytesDownloaded(path)
-                                }
-                                EpicService.cleanupDownload(context, gameId, expectedInfo = downloadInfo)
+                                EpicService.cleanupDownload(context, gameId)
                                 val result = EpicService.deleteGame(context, gameId)
                                 DownloadService.invalidateCache()
                                 withContext(Dispatchers.Main) {

@@ -12,6 +12,7 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
+import app.gamenative.service.download.GameDownloadService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.MarkerUtils
@@ -541,6 +542,9 @@ class GOGManager @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val gameId = libraryItem.gameId.toString()
+
+                // Remove download from GameDownloadService
+                GameDownloadService.removeDownload(context, GameSource.GOG, gameId)
 
                 val game = getGameFromDbById(gameId)
                 val storedPath = game?.installPath?.takeIf { it.isNotBlank() }

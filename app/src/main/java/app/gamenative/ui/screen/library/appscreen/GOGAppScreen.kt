@@ -701,7 +701,7 @@ class GOGAppScreen : BaseAppScreen() {
                                     (downloadInfo.getProgress() ?: 0f) < 1f
                                 downloadInfo?.cancel()
                                 downloadInfo?.awaitCompletion()
-                                GOGService.cleanupDownload(gameId, expectedInfo = downloadInfo)
+                                GOGService.cleanupDownload(gameId)
 
                                 val isInstalledAfterCancel = GOGService.isGameInstalled(gameId)
                                 if (isInstalledAfterCancel) {

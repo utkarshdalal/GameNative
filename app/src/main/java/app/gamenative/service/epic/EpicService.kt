@@ -187,31 +187,6 @@ class EpicService : Service() {
             return getInstance()?.activeDownloads?.get(appId)
         }
 
-        /**
-         * Resume a partial download directly (no dialogs), reusing the persisted install path
-         * and the in-memory DLC selection (empty after a process restart — same fallback the
-         * queue's auto-resume listener uses). [GameDownloadService.registerDownload] inside
-         * [downloadGame] auto-pauses whatever is currently downloading.
-         */
-        fun resumeDownload(context: Context, appId: Int) {
-            val instance = getInstance() ?: return
-            Timber.tag("Epic").i("[EpicService] Direct resume requested for app $appId")
-            // Capture synchronously, before launch: a cancelled download's late finally could
-            // otherwise clear the selection before the coroutine reads it.
-            val dlcGameIds = instance.activeDlcSelections[appId].orEmpty()
-            instance.scope.launch {
-                val game = instance.epicManager.getGameById(appId)
-                if (game != null) {
-                    val installPath = game.installPath.ifBlank {
-                        EpicConstants.getGameInstallPath(context, game.appName)
-                    }
-                    val container = ContainerUtils.getOrCreateContainer(context, "EPIC_$appId")
-                    val language = ContainerUtils.toContainerData(container).language
-                    downloadGame(context, appId, dlcGameIds, installPath, language)
-                }
-            }
-        }
-
         fun getActiveDownloads(): Map<Int, DownloadInfo> =
             getInstance()?.activeDownloads?.let { HashMap(it) } ?: emptyMap()
 
@@ -266,6 +241,9 @@ class EpicService : Service() {
                     return Result.failure(Exception("Game not found: $appId"))
                 }
 
+                // Remove download from GameDownloadService
+                GameDownloadService.removeDownload(context, GameSource.EPIC, appId.toString())
+
                 val path = if (game.installPath.isNotEmpty()) game.installPath else EpicConstants.getGameInstallPath(context, game.appName)
                 if (File(path).exists()) {
                     Timber.tag("Epic").i("Deleting installation folder: $path")
@@ -277,13 +255,6 @@ class EpicService : Service() {
                     }
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
-                    // Belt-and-braces: a late bytes-persistence write or a partially-failed
-                    // folder delete leaves <path>/.DownloadInfo behind, and the bare folder
-                    // existing is enough for the app screen to offer Resume.
-                    NativeTreeDelete.deleteTreeFast(File(path, ".DownloadInfo"))
-                    if (File(path).exists()) {
-                        Timber.tag("Epic").w("Install folder still exists after delete: $path")
-                    }
                 }
 
                 // Drop any leftover chunk cache (kept on failed downloads for resume)
@@ -314,26 +285,14 @@ class EpicService : Service() {
             }
         }
 
-        suspend fun cleanupDownload(context: Context, appId: Int, expectedInfo: DownloadInfo? = null) {
-            val instance = getInstance() ?: return
-            if (expectedInfo != null && instance.activeDownloads[appId] !== expectedInfo) {
-                // This cleanup belongs to a CANCELLED run that finished unwinding late
-                // (the screens fire it after awaitCompletion). A resume has already
-                // swapped in a fresh download which owns the map entry AND re-added the
-                // in-progress marker — removing either here reverts the UI to a Resume
-                // button mid-download and strips crash-recovery from the running run.
-                Timber.tag("Epic").i(
-                    "[EpicService] Skipping stale cleanupDownload for app $appId (a resumed download owns the entry)",
-                )
-                return
-            }
+        suspend fun cleanupDownload(context: Context, appId: Int) {
             withContext(Dispatchers.IO) {
-                instance.epicManager.getGameById(appId)?.let { game ->
+                getInstance()?.epicManager?.getGameById(appId)?.let { game ->
                     val path = EpicConstants.getGameInstallPath(context, game.appName)
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 }
             }
-            instance.activeDownloads.remove(appId)
+            getInstance()?.activeDownloads?.remove(appId)
         }
 
         fun cancelDownload(appId: Int): Boolean {
@@ -462,6 +421,12 @@ class EpicService : Service() {
                 ?: return Result.failure(Exception("Game not found for appId: $appId"))
             val gameId = game.id ?: return Result.failure(Exception("Game ID not found for appId: $appId"))
 
+            // Check if already downloading
+            if (instance.activeDownloads.containsKey(appId)) {
+                Timber.tag("Epic").w("Download already in progress for $appId")
+                return Result.success(instance.activeDownloads[appId]!!)
+            }
+
             // Create DownloadInfo before claiming (avoids holding the lock during I/O)
             val downloadInfo = DownloadInfo(
                 jobCount = 1,
@@ -475,25 +440,7 @@ class EpicService : Service() {
                 downloadInfo.initializeBytesDownloaded(persistedBytes)
             }
 
-            // Atomically claim appId: check, stale-entry replacement, and publication
-            // under one lock so concurrent downloadGame calls cannot both start a job.
-            synchronized(instance.activeDownloads) {
-                val existing = instance.activeDownloads[appId]
-                if (existing != null) {
-                    if (existing.isActive()) {
-                        Timber.tag("Epic").w("Download already in progress for $appId")
-                        return Result.success(existing)
-                    }
-                    // Stale inactive entry (e.g. a queued download being resumed). Re-seed
-                    // its status so the screen leaves "Queued" immediately, before the
-                    // fresh entry below swaps in.
-                    existing.updateStatusMessage(context.getString(R.string.download_preparing))
-                    instance.activeDownloads.remove(appId, existing)
-                }
-                instance.activeDownloads[appId] = downloadInfo
-            }
-            instance.activeDlcSelections[appId] = dlcGameIds
-            downloadInfo.setActive(true)
+            instance.activeDownloads[appId] = downloadInfo
             // Seed an initial status and emit the start event now — not only deep in the
             // download manager — so a resumed screen swaps to the fresh DownloadInfo and
             // shows a status immediately.
@@ -505,7 +452,10 @@ class EpicService : Service() {
             GameDownloadService.registerDownload(
                 gameSource = GameSource.EPIC,
                 gameId = appId.toString(),
-                downloadInfo = downloadInfo
+                downloadInfo = downloadInfo,
+                dlcGameIds = dlcGameIds,
+                installPath = installPath,
+                containerLanguage = containerLanguage
             )
 
             // Start download in background
@@ -529,17 +479,8 @@ class EpicService : Service() {
                     if (result.isSuccess) {
                         Timber.i("[Download] Completed successfully for game $gameId")
 
-                        // A completed download must never remain queued: clear the
-                        // paused state so the finally below drops the active-map
-                        // entry even if a stray auto-pause landed in a race window.
-                        downloadInfo.clearQueuedState()
-
-                        // Transfer is complete — free the queue slot BEFORE post-install
-                        // sync so the next queued download can start. Holding the slot
-                        // through sync also lets a newly registered download auto-pause
-                        // this finished one; its later auto-resume re-verifies every
-                        // file ("1/N again" after reaching 100%).
-                        GameDownloadService.unregisterDownload(GameSource.EPIC, appId.toString())
+                        // Transfer is complete - unregister from GameDownloadService
+                        GameDownloadService.unregisterDownload(context, GameSource.EPIC, appId.toString())
 
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
@@ -567,25 +508,12 @@ class EpicService : Service() {
 
                         SnackbarManager.show("Download completed successfully!")
                         downloadInfo.setProgress(1.0f)
-                        downloadInfo.setActive(false)
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
-                        downloadInfo.setActive(false)
 
-                        if (GameDownloadService.reportFailure(GameSource.EPIC, appId.toString(), error?.message)) {
-                            // Transient failure: the queue holds the slot and
-                            // auto-retries with backoff. The retry marker set
-                            // wasAutoPaused, so the finally below keeps the
-                            // active-map entry (UI shows Queued) and the DLC
-                            // selection for the resumed run.
-                        } else {
-                            downloadInfo.setProgress(-1.0f)
-                            SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
-
-                            // Unregister from queue so a paused download can resume
-                            GameDownloadService.unregisterDownload(GameSource.EPIC, appId.toString())
-                        }
+                        downloadInfo.setProgress(1.0f)
+                        SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     }
                 } catch (e: CancellationException) {
                     downloadInfo.setPostInstallSyncing(false)
@@ -597,33 +525,11 @@ class EpicService : Service() {
                     downloadInfo.setPostInstallSyncing(false)
                     downloadInfo.updateStatusMessage(null)
                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, false))
-                    downloadInfo.setActive(false)
-
-                    if (GameDownloadService.reportFailure(GameSource.EPIC, appId.toString(), e.message)) {
-                        // Transient failure: the queue holds the slot and
-                        // auto-retries with backoff. The retry marker set
-                        // wasAutoPaused, so the finally below keeps the
-                        // active-map entry (UI shows Queued) and the DLC
-                        // selection for the resumed run.
-                    } else {
-                        downloadInfo.setProgress(-1.0f)
-                        SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
-
-                        // Unregister from queue so a paused download can resume
-                        GameDownloadService.unregisterDownload(GameSource.EPIC, appId.toString())
-                    }
+                    downloadInfo.setProgress(-1.0f)
+                    SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
                 } finally {
-                    // Keep an auto-paused (queued) entry in the map so the downloads UI
-                    // keeps showing it as Queued and the resume listener can recover its
-                    // DLC selection. remove(key, value) so a late finally never removes
-                    // the fresh entry of an already-resumed download.
-                    if (!downloadInfo.wasAutoPaused()) {
-                        instance.activeDownloads.remove(appId, downloadInfo)
-                        // remove(key, value): a stale finally must not wipe the DLC
-                        // selection a resumed download already stored for this app.
-                        instance.activeDlcSelections.remove(appId, dlcGameIds)
-                    }
-                    Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
+                    instance.activeDownloads.remove(appId)
+                    Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}")
                 }
             }
             downloadInfo.setDownloadJob(job)
@@ -745,8 +651,6 @@ class EpicService : Service() {
 
     // Track active downloads by GameNative Int ID
     private val activeDownloads = ConcurrentHashMap<Int, DownloadInfo>()
-    /** DLC selection per active download, so a queue-resumed download keeps its DLC. */
-    private val activeDlcSelections = ConcurrentHashMap<Int, List<Int>>()
 
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = { stop() }
 
@@ -758,16 +662,6 @@ class EpicService : Service() {
         // Initialize notification helper for foreground service
         notificationHelper = NotificationHelper(applicationContext)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
-
-        // Register resume listener with GameDownloadService
-        GameDownloadService.registerResumeListener(GameSource.EPIC, object : GameDownloadService.ResumeListener {
-            override fun onResumeRequested(gameSource: GameSource, gameId: String) {
-                val appId = gameId.toIntOrNull() ?: return
-                Timber.tag("Epic").i("[EpicService] Resume requested for app $appId")
-                resumeDownload(applicationContext, appId)
-            }
-        })
-
         PluviaApp.events.emit(AndroidEvent.ServiceReady)
     }
 
@@ -868,12 +762,6 @@ class EpicService : Service() {
         scope.cancel() // Cancel any ongoing operations
         stopForeground(STOP_FOREGROUND_REMOVE)
         notificationHelper.cancel(NotificationHelper.NOTIFICATION_ID_EPIC)
-
-        // Drop this source's queue entries before removing the listener that resumes them
-        GameDownloadService.unregisterAllForSource(GameSource.EPIC)
-        // Unregister resume listener from GameDownloadService
-        GameDownloadService.unregisterResumeListener(GameSource.EPIC)
-
         instance = null
     }
 

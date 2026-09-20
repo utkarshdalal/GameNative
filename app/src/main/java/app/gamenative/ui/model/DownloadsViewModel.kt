@@ -16,6 +16,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonConstants
 import app.gamenative.service.amazon.AmazonService
+import app.gamenative.service.download.GameDownloadService
 import app.gamenative.service.epic.EpicConstants
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGConstants
@@ -287,9 +288,9 @@ class DownloadsViewModel @Inject constructor(
         val statusMessage = normalizeStatusMessage(info.getCurrentStatusMessage())
         val isRunning = info.isActive() || info.isPostInstallSyncing()
         val status = when {
+            GameDownloadService.isPaused(gameSource, appId) -> DownloadItemStatus.PAUSED
             rawProgress < 0f || statusMessage?.startsWith("Failed", ignoreCase = true) == true -> DownloadItemStatus.FAILED
             isRunning -> DownloadItemStatus.DOWNLOADING
-            info.wasAutoPaused() -> DownloadItemStatus.QUEUED
             else -> DownloadItemStatus.PAUSED
         }
 
@@ -361,29 +362,15 @@ class DownloadsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * A live-map entry whose game is already installed, which is not running,
-     * not syncing, and not queue-managed is a stale zombie (e.g. a pause raced
-     * the completion job before clearQueuedState existed). Dropping it from the
-     * live rows lets the disappeared-keys path file it under COMPLETED.
-     */
-    private suspend fun isStaleCompletedEntry(gameSource: GameSource, appId: String, info: DownloadInfo): Boolean {
-        return !info.isActive() &&
-            !info.isPostInstallSyncing() &&
-            !info.wasAutoPaused() &&
-            isInstalled(gameSource, appId)
-    }
-
     private fun sortDownloads(items: Collection<DownloadItemState>): LinkedHashMap<String, DownloadItemState> {
         val sortedItems = items.sortedWith(
             compareBy<DownloadItemState> { item ->
                 when {
                     item.status == DownloadItemStatus.DOWNLOADING -> 0
-                    item.status == DownloadItemStatus.QUEUED -> 1
-                    item.isPartial -> 2
-                    item.status == DownloadItemStatus.COMPLETED -> 3
-                    item.status == DownloadItemStatus.CANCELLED -> 4
-                    else -> 5
+                    item.isPartial || item.status == DownloadItemStatus.PAUSED -> 1
+                    item.status == DownloadItemStatus.COMPLETED -> 2
+                    item.status == DownloadItemStatus.CANCELLED -> 3
+                    else -> 4
                 }
             }
                 .thenByDescending { item -> if (item.isFinished) item.updatedAtMs else 0L }
@@ -475,7 +462,6 @@ class DownloadsViewModel @Inject constructor(
 
             for ((appId, info) in SteamService.getActiveDownloads()) {
                 val appIdString = appId.toString()
-                if (isStaleCompletedEntry(GameSource.STEAM, appIdString, info)) continue
                 val (name, icon) = getSteamMetadata(appId)
                 val item = buildActiveDownloadItem(appIdString, GameSource.STEAM, name, icon, info)
                 liveDownloads[item.uniqueId] = item
@@ -492,7 +478,6 @@ class DownloadsViewModel @Inject constructor(
 
             for ((appId, info) in EpicService.getActiveDownloads()) {
                 val appIdString = appId.toString()
-                if (isStaleCompletedEntry(GameSource.EPIC, appIdString, info)) continue
                 val (name, icon) = getEpicMetadata(appId)
                 val item = buildActiveDownloadItem(appIdString, GameSource.EPIC, name, icon, info)
                 liveDownloads[item.uniqueId] = item
@@ -508,7 +493,6 @@ class DownloadsViewModel @Inject constructor(
             }
 
             for ((gameId, info) in GOGService.getActiveDownloads()) {
-                if (isStaleCompletedEntry(GameSource.GOG, gameId, info)) continue
                 val (name, icon) = getGOGMetadata(gameId)
                 val item = buildActiveDownloadItem(gameId, GameSource.GOG, name, icon, info)
                 liveDownloads[item.uniqueId] = item
@@ -523,7 +507,6 @@ class DownloadsViewModel @Inject constructor(
             }
 
             for ((productId, info) in AmazonService.getActiveDownloads()) {
-                if (isStaleCompletedEntry(GameSource.AMAZON, productId, info)) continue
                 val (name, icon) = getAmazonMetadata(productId)
                 val item = buildActiveDownloadItem(productId, GameSource.AMAZON, name, icon, info)
                 liveDownloads[item.uniqueId] = item
@@ -680,24 +663,9 @@ class DownloadsViewModel @Inject constructor(
     }
 
     fun onPauseAll() {
-        val items = state.value.downloads.values
-        val queued = items.filter { it.status == DownloadItemStatus.QUEUED }
-        val active = items.filter { it.canPause }
-        if (queued.isEmpty() && active.isEmpty()) return
-
-        (queued + active).forEach {
-            pausedDownloads.add(it.uniqueId)
-            recentFailureMessages.remove(it.uniqueId)
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            // Dequeue queued entries FIRST: pausing the active download advances
-            // the queue, so the queue must be empty before that happens — one
-            // queue transition per entry would otherwise chain (ANR) and
-            // pause-all would end up starting the next queued download.
-            queued.forEach { pauseOnStore(it) }
-            active.forEach { pauseOnStore(it) }
-            scheduleRefreshDownloads()
-        }
+        state.value.downloads.values
+            .filter { it.canPause }
+            .forEach(::onPauseDownload)
     }
 
     fun onResumeAll() {
