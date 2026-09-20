@@ -183,7 +183,7 @@ fun ControlProfileLibraryDialog(
         )
     }
 
-    fun refresh() {
+    fun refresh(scrollToTop: Boolean = false) {
         if (loading) return
         loading = true
         scope.launch {
@@ -191,6 +191,7 @@ fun ControlProfileLibraryDialog(
                 .onSuccess { snapshot ->
                     entries = snapshot.entries
                     appliedSources = snapshot.appliedSources
+                    if (scrollToTop) libraryListState.requestScrollToItem(0)
                 }
                 .onFailure(::failure)
             loading = false
@@ -348,7 +349,7 @@ fun ControlProfileLibraryDialog(
                         }) { applied ->
                             createDialog = false
                             onProfileApplied(applied)
-                            refresh()
+                            refresh(scrollToTop = true)
                             SnackbarManager.show(
                                 context.getString(R.string.control_profile_created_applied),
                             )
@@ -408,7 +409,7 @@ fun ControlProfileLibraryDialog(
                                             )
                                         }) { applied ->
                                             onProfileApplied(applied)
-                                            refresh()
+                                            refresh(scrollToTop = true)
                                             SnackbarManager.show(context.getString(R.string.control_profile_applied_message))
                                         }
                                     }
