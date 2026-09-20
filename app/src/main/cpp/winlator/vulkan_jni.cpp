@@ -53,7 +53,7 @@ static void* openAdrenotoolsDriver(const char* driverPath, const char* libraryNa
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_winlator_renderer_VulkanRenderer_nativeInit(
     JNIEnv* env, jobject, jobject surface, jint w, jint h,
-    jstring jDriverPath, jstring jLibraryName, jstring jNativeLibDir)
+    jstring jDriverPath, jstring jLibraryName, jstring jNativeLibDir, jboolean frameGenArmed)
 {
     ANativeWindow* win = ANativeWindow_fromSurface(env, surface);
     if (!win) return 0;
@@ -67,7 +67,7 @@ Java_com_winlator_renderer_VulkanRenderer_nativeInit(
         env->ReleaseStringUTFChars(jLibraryName,  lib);
         env->ReleaseStringUTFChars(jNativeLibDir, nld);
     }
-    try { return reinterpret_cast<jlong>(new VulkanRendererContext(win, w, h, adrenotoolsHandle)); }
+    try { return reinterpret_cast<jlong>(new VulkanRendererContext(win, w, h, adrenotoolsHandle, frameGenArmed == JNI_TRUE)); }
     catch (...) {
         ANativeWindow_release(win);
         if (adrenotoolsHandle) dlclose(adrenotoolsHandle);

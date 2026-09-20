@@ -152,8 +152,8 @@ object LsfgVkManager {
      * container, or the native pipeline in the host renderer.
      */
     fun backend(container: Container): String =
-        container.getExtra(EXTRA_BACKEND, BACKEND_LEGACY)
-            .takeIf { it == BACKEND_NATIVE } ?: BACKEND_LEGACY
+        container.getExtra(EXTRA_BACKEND, BACKEND_NATIVE)
+            .takeIf { it == BACKEND_LEGACY } ?: BACKEND_NATIVE
 
     @JvmStatic
     fun isNativeBackend(container: Container): Boolean =

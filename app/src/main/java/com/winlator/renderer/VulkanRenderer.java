@@ -70,6 +70,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
     private volatile long xrTargetAhbPtr = 0;
     private volatile boolean flatPresentationEnabled = true;
     private final java.util.concurrent.atomic.AtomicLong sourceFrames = new java.util.concurrent.atomic.AtomicLong();
+    private volatile boolean frameGenArmed = false;
 
     public void setFlatPresentationEnabled(boolean enabled) {
         if (flatPresentationEnabled == enabled) return;
@@ -144,7 +145,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
         } catch (Exception e) { return null; }
     }
 
-    private native long nativeInit(Surface surface, int screenWidth, int screenHeight, String driverPath, String libraryName, String nativeLibDir);
+    private native long nativeInit(Surface surface, int screenWidth, int screenHeight, String driverPath, String libraryName, String nativeLibDir, boolean frameGenArmed);
     private native void nativeResize(long handle, int width, int height);
     private native void nativeDestroy(long handle);
     private native void nativeUpdateWindowContent(long handle, long id, java.nio.ByteBuffer pixels,
@@ -236,7 +237,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                         return;
                     }
                 }
-                nativeHandle = nativeInit(surface, xServer.screenInfo.width, xServer.screenInfo.height, driverPath, driverLibraryName, nativeLibDir);
+                nativeHandle = nativeInit(surface, xServer.screenInfo.width, xServer.screenInfo.height, driverPath, driverLibraryName, nativeLibDir, frameGenArmed);
                 if (nativeHandle != 0) {
                     nativeSetPresentMode(nativeHandle, pendingPresentMode);
                     nativeSetFilterMode(nativeHandle, pendingFilterMode);
@@ -525,7 +526,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                 long ahbPtr = g.getHardwareBufferPtr();
                 if (ahbPtr != 0) {
                     if (nativeMode && pixmap.isDirectScanout() && nativeIsScanoutActive(nativeHandle)) {
-                        setSourceFrameCount(sourceFrames.incrementAndGet());
+                        if (frameGenArmed) setSourceFrameCount(sourceFrames.incrementAndGet());
                         int fenceFd = g.unlock();
                         nativeScanoutSetBuffer(nativeHandle, ahbPtr,
                             rx, ry, pixmap.width, pixmap.height, fenceFd);
@@ -539,7 +540,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                             xrFrameBridge.onScanoutBuffer(ahbPtr, pixmap.width, pixmap.height);
                             return;
                         }
-                        setSourceFrameCount(sourceFrames.incrementAndGet());
+                        if (frameGenArmed) setSourceFrameCount(sourceFrames.incrementAndGet());
                         nativeUpdateWindowContentAHB(nativeHandle, targetId, ahbPtr,
                             pixmap.width, pixmap.height, rx, ry);
                     }
@@ -548,7 +549,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                 java.nio.ByteBuffer vd = g.getVirtualData();
                 if (vd != null) {
                     short s = g.getStride() > 0 ? g.getStride() : pixmap.width;
-                    setSourceFrameCount(sourceFrames.incrementAndGet());
+                    if (frameGenArmed) setSourceFrameCount(sourceFrames.incrementAndGet());
                     nativeUpdateWindowContent(nativeHandle, targetId, vd,
                         pixmap.width, pixmap.height, s, rx, ry);
                     return;
@@ -557,7 +558,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             java.nio.ByteBuffer buf = pixmap.getBuffer();
             if (buf == null) return;
             short stride = (short)(buf.capacity() / (pixmap.height * 4));
-            setSourceFrameCount(sourceFrames.incrementAndGet());
+            if (frameGenArmed) setSourceFrameCount(sourceFrames.incrementAndGet());
             nativeUpdateWindowContent(nativeHandle, targetId, buf,
                 pixmap.width, pixmap.height, stride, rx, ry);
         }
@@ -588,7 +589,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                 if (ahbPtr != 0) {
                     boolean scanoutNow = nativeMode && nativeIsScanoutActive(handle);
                     if (nativeMode && drawable.isDirectScanout() && scanoutNow) {
-                        setSourceFrameCount(sourceFrames.incrementAndGet());
+                        if (frameGenArmed) setSourceFrameCount(sourceFrames.incrementAndGet());
                         boolean wasDelivered = nativeIsGameFrameDelivered(handle);
                         int fenceFd = g.unlock();
                         nativeScanoutSetBuffer(handle, ahbPtr,
@@ -600,7 +601,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                             xRenderingPausedForScanout = true;
                         }
                     } else if (!scanoutNow) {
-                        setSourceFrameCount(sourceFrames.incrementAndGet());
+                        if (frameGenArmed) setSourceFrameCount(sourceFrames.incrementAndGet());
                         nativeUpdateWindowContentAHB(handle, drawableId, ahbPtr,
                             drawable.width, drawable.height, rx, ry);
                     }
@@ -609,7 +610,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                 java.nio.ByteBuffer vd = g.getVirtualData();
                 if (vd != null) {
                     short s = g.getStride() > 0 ? g.getStride() : drawable.width;
-                    setSourceFrameCount(sourceFrames.incrementAndGet());
+                    if (frameGenArmed) setSourceFrameCount(sourceFrames.incrementAndGet());
                     nativeUpdateWindowContent(handle, drawableId, vd,
                         drawable.width, drawable.height, s, rx, ry);
                     return;
@@ -618,7 +619,7 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
             java.nio.ByteBuffer buf = drawable.getBuffer();
             if (buf == null) return;
             short stride = (short)(buf.capacity() / (drawable.height * 4));
-            setSourceFrameCount(sourceFrames.incrementAndGet());
+            if (frameGenArmed) setSourceFrameCount(sourceFrames.incrementAndGet());
             nativeUpdateWindowContent(handle, drawableId, buf,
                 drawable.width, drawable.height, stride, rx, ry);
         }
@@ -918,6 +919,10 @@ public class VulkanRenderer implements WindowManager.OnWindowModificationListene
                 nativeSetFrameGenerationRefreshRate(nativeHandle, hz);
             }
         }
+    }
+
+    public void setFrameGenerationArmed(boolean armed) {
+        frameGenArmed = armed;
     }
 
     public void setSourceFrameCount(long count) {

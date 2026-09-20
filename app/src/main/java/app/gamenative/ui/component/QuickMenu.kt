@@ -527,7 +527,7 @@ fun QuickMenu(
         mutableStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.presentMode(it) } ?: "mailbox")
     }
     var lsfgBackend by remember(container?.id) {
-        mutableStateOf(container?.let { app.gamenative.utils.LsfgVkManager.backend(it) } ?: "legacy")
+        mutableStateOf(container?.let { app.gamenative.utils.LsfgVkManager.backend(it) } ?: "native")
     }
 
     var selectedTab by rememberSaveable {
@@ -1786,8 +1786,8 @@ private fun LsfgQuickMenuTab(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     listOf(
-                        "legacy" to stringResource(R.string.lsfg_backend_legacy),
                         "native" to stringResource(R.string.lsfg_backend_native),
+                        "legacy" to stringResource(R.string.lsfg_backend_legacy),
                     ).forEach { (value, label) ->
                         QuickMenuChoiceChip(
                             text = label,

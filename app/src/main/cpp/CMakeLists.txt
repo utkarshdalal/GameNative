@@ -50,6 +50,7 @@ add_library(vulkan_renderer SHARED
             winlator/vulkan_jni.cpp
             winlator/VulkanRendererContext.cpp
             winlator/VulkanRendererScanout.cpp
+            winlator/VulkanRendererLsfg.cpp
             lsfg/vk_dispatch.c
             lsfg/lsfg_dll.c
             lsfg/lsfg_dxbc.cpp
