@@ -861,7 +861,7 @@ private fun TouchActionComboPicker(
             title = { Text(dialogTitle) },
             text = {
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                    item {
+                    item(key = "selected-actions") {
                         val selectedLabels = mutableListOf<String>()
                         for (action in selectedActions) selectedLabels += actionLabel(action)
                         Text(
@@ -875,7 +875,7 @@ private fun TouchActionComboPicker(
                         )
                     }
                     if (canChooseMode) {
-                        item {
+                        item(key = "combination-mode") {
                             SingleChoiceSegmentedButtonRow(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -896,7 +896,7 @@ private fun TouchActionComboPicker(
                             }
                         }
                         if (selectedSequence) {
-                            item {
+                            item(key = "sequence-delay") {
                                 DelayTextField(
                                     label = stringResource(R.string.binding_sequence_delay_ms),
                                     value = selectedSequenceDelayMs,
@@ -907,8 +907,8 @@ private fun TouchActionComboPicker(
                             }
                         }
                     }
-                    categories.forEach { category ->
-                        item {
+                    categories.forEachIndexed { categoryIndex, category ->
+                        item(key = "category-$categoryIndex") {
                             Text(
                                 text = category.header,
                                 style = MaterialTheme.typography.labelMedium,
@@ -917,7 +917,7 @@ private fun TouchActionComboPicker(
                                 modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                             )
                         }
-                        items(category.actions) { (actionKey, actionText) ->
+                        items(category.actions, key = { "action-$categoryIndex-${it.first}" }) { (actionKey, actionText) ->
                             val isSelected = actionKey in selectedActions
                             val replacesRequiredAction = actionKey in requiredSingleSelectionActions &&
                                 selectedActions.any { it in requiredSingleSelectionActions }
