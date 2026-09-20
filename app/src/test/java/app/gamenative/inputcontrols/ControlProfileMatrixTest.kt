@@ -1,5 +1,6 @@
 package app.gamenative.inputcontrols
 
+import android.app.Application
 import android.content.Context
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
@@ -17,9 +18,11 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /** Exercises every non-empty selection, not just individual categories or all six. */
 @RunWith(ParameterizedRobolectricTestRunner::class)
+@Config(application = Application::class)
 class ControlProfileMatrixTest(private val mask: Int) {
     companion object {
         @JvmStatic

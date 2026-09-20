@@ -1,5 +1,6 @@
 package app.gamenative.inputcontrols
 
+import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -26,8 +27,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
+@Config(application = Application::class)
 class ControlProfileServiceTest {
     @Test
     fun saveCurrentAddsNewCategoriesAndRoundTripsWithoutChangingAnotherGame() {
