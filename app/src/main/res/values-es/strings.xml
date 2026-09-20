@@ -240,7 +240,6 @@
     <string name="remove">Eliminar</string>
     <string name="add">Añadir</string>
     <string name="delete">Borrar</string>
-    <string name="copy_from">Copiar de</string>
     <string name="ok">Aceptar</string>
     <string name="container_config_custom_resolution_title">Establecer resolución personalizada</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -514,7 +513,6 @@
     <string name="not_set">No asignado</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Controles restablecidos.</string>
     <string name="toast_failed_log_save">Error al guardar el logcat en el destino.</string>
 
     <!-- Settings -->

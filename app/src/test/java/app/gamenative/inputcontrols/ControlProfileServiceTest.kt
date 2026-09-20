@@ -542,6 +542,7 @@ class ControlProfileServiceTest {
         val profileJson = JSONObject().apply {
             put("id", profileId)
             put("name", "Large control")
+            put(ControlsProfile.KEY_AUTO_FIT_LAYOUT, true)
             put(
                 "elements",
                 JSONArray().put(

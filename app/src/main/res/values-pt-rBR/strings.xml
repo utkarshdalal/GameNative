@@ -158,7 +158,6 @@
     <string name="remove">Remover</string>
     <string name="add">Adicionar</string>
     <string name="delete">Excluir</string>
-    <string name="copy_from">Copiar de</string>
     <string name="ok">Ok</string>
     <string name="container_config_custom_resolution_title">Definir resolução personalizada</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -1316,7 +1315,6 @@
     <string name="custom_game_delete_message">Tem certeza de que deseja excluir este jogo? Isso removerá os arquivos do jogo e todos os dados associados.</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Controles redefinidos</string>
     <string name="toast_failed_log_save">Falha ao salvar logcat no destino</string>
 
     <!-- Adições de configurações -->

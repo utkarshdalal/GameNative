@@ -110,7 +110,12 @@ internal fun createControlLayoutPreviewView(context: Context, json: JSONObject) 
             ControlsProfile(context, PREVIEW_PROFILE_ID).apply {
                 name = json.optString("name")
                 isListed = false
-                loadElementsFromJson(this@previewView, json)
+                // Preview the fitted result of applying this layout, without
+                // enabling fitting on the installed source or current game.
+                loadElementsFromJson(
+                    this@previewView,
+                    JSONObject(json.toString()).put(ControlsProfile.KEY_AUTO_FIT_LAYOUT, true),
+                )
             },
         )
     }

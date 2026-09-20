@@ -224,7 +224,6 @@
     <string name="remove">Видалити</string>
     <string name="add">Додати</string>
     <string name="delete">Видалити</string>
-    <string name="copy_from">Копіювати з</string>
     <string name="ok">ОК</string>
     <string name="container_config_custom_resolution_title">Встановити власну роздільну здатність</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -465,7 +464,6 @@
     <string name="not_set">Не задано</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Елементи керування скинуто</string>
     <string name="toast_failed_log_save">Не вдалося зберегти logcat у місце призначення</string>
 
     <!-- Settings -->

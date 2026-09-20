@@ -185,7 +185,6 @@
     <string name="edit">編集</string>
     <string name="remove">取り除く</string>
     <string name="add">追加</string>
-    <string name="copy_from">コピー元</string>
     <string name="ok">わかりました</string>
     <string name="container_config_custom_resolution_title">カスタム解像度の設定</string>
     <string name="container_config_custom_resolution_separator">×</string>
@@ -491,7 +490,6 @@
     <string name="not_set">未設定</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">コントロールのリセット</string>
     <string name="toast_failed_log_save">logcat を宛先に保存できませんでした</string>
 
     <!-- Settings -->

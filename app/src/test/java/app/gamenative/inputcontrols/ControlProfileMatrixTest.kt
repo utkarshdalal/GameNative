@@ -60,7 +60,7 @@ class ControlProfileMatrixTest(private val mask: Int) {
             payloadKeys.forEach { (section, keys) ->
                 keys.forEach { key -> assertEquals("export $key", section in selected, exported.json.has(key)) }
             }
-            listOf("listed", "libraryProfileId", "gameOwnerId", "sectionSources").forEach {
+            listOf("listed", "libraryProfileId", "gameOwnerId", "sectionSources", ControlsProfile.KEY_AUTO_FIT_LAYOUT).forEach {
                 assertFalse("private metadata $it", exported.json.has(it))
             }
             val imported = install(exported.json)

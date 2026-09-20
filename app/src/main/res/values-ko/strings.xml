@@ -238,7 +238,6 @@
     <string name="remove">제거</string>
     <string name="add">추가</string>
     <string name="delete">삭제</string>
-    <string name="copy_from">복사 위치</string>
     <string name="ok">확인</string>
     <string name="container_config_custom_resolution_title">사용자 지정 해상도 설정</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -476,7 +475,6 @@
     <string name="not_set">설정 안 됨</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">컨트롤 재설정됨</string>
     <string name="toast_failed_log_save">대상에 logcat 저장 실패</string>
 
     <!-- Settings -->

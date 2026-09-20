@@ -80,6 +80,28 @@ class ControlLayoutPreviewTest {
     }
 
     @Test
+    fun previewFitsLegacyEdgeControlsWithoutEnablingFittingOnTheSource() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val source = profile().apply {
+            getJSONArray("elements").getJSONObject(0).put("x", 0.0).put("y", 0.0).put("scale", 5.0)
+        }
+        val original = source.toString()
+        val view = createControlLayoutPreviewView(context, source)
+        val bitmap = Bitmap.createBitmap(600, 120, Bitmap.Config.ARGB_8888)
+        try {
+            view.layout(0, 0, bitmap.width, bitmap.height)
+            view.draw(Canvas(bitmap))
+            val bounds = view.profile.elements.single().boundingBox
+            assertTrue(bounds.left >= 0 && bounds.top >= 0)
+            assertTrue(bounds.right <= bitmap.width && bounds.bottom <= bitmap.height)
+            assertEquals(original, source.toString())
+            assertFalse(source.has(ControlsProfile.KEY_AUTO_FIT_LAYOUT))
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
+    @Test
     fun unavailableImportedIconDoesNotCrashRendering() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val bitmap = Bitmap.createBitmap(600, 300, Bitmap.Config.ARGB_8888)

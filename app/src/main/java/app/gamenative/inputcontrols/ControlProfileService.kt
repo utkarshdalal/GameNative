@@ -218,6 +218,9 @@ object ControlProfileService {
         }
         val workingJson = readProfileJson(context, working)
         copySections(sourceJson, workingJson, selectedSections)
+        if (ControlProfileSection.ON_SCREEN in selectedSections) {
+            workingJson.put(ControlsProfile.KEY_AUTO_FIT_LAYOUT, true)
+        }
         workingJson.put(KEY_SCHEMA_VERSION, SCHEMA_VERSION)
         workingJson.put(KEY_LISTED, false)
         workingJson.put(KEY_GAME_OWNER_ID, container.id)
@@ -365,6 +368,8 @@ object ControlProfileService {
         val installed = JSONObject(preview.json.toString()).apply {
             put(KEY_SCHEMA_VERSION, SCHEMA_VERSION)
             put(KEY_INCLUDED_SECTIONS, sectionArray(preview.sections))
+            remove(ControlsProfile.KEY_AUTO_FIT_LAYOUT)
+            if (ControlProfileSection.ON_SCREEN in preview.sections) put(ControlsProfile.KEY_AUTO_FIT_LAYOUT, true)
         }
         validate(installed)
         return requireNotNull(manager.importProfile(installed))

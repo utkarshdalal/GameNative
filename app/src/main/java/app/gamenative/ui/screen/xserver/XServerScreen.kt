@@ -38,8 +38,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -2902,20 +2900,6 @@ fun XServerScreen(
                     keepPausedForEditor = false
                     resumeIfAllowedAfterOverlay()
                 },
-                onDuplicate = { id ->
-                    val manager = PluviaApp.inputControlsManager
-                    val profile = manager?.getProfile(id)
-                    val currentProfile = PluviaApp.inputControlsView?.profile
-                    if (profile != null && currentProfile != null) {
-                        // Wait for view to be laid out before loading elements
-                        PluviaApp.inputControlsView?.let { icView ->
-                            icView.post {
-                                copyInputControlsProfileElements(profile, currentProfile, icView)
-                                SnackbarManager.show(context.getString(R.string.toast_controls_reset))
-                            }
-                        }
-                    }
-                }
             )
         }
 
@@ -3220,9 +3204,7 @@ private fun EditModeToolbar(
     onDelete: () -> Unit,
     onSave: () -> Unit,
     onClose: () -> Unit,
-    onDuplicate: (Int) -> Unit
 ) {
-    var duplicateProfileOpen by remember { mutableStateOf(false) }
     var toolbarOffsetX by remember { mutableStateOf(0f) }
     var toolbarOffsetY by remember { mutableStateOf(0f) }
     val density = LocalDensity.current
@@ -3280,33 +3262,6 @@ private fun EditModeToolbar(
                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = androidx.compose.ui.graphics.Color.White)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(stringResource(R.string.delete), color = androidx.compose.ui.graphics.Color.White)
-            }
-
-            // Duplicate button with dropdown
-            Box {
-                TextButton(onClick = { duplicateProfileOpen = !duplicateProfileOpen }) {
-                    Icon(Icons.Filled.ContentCopy, contentDescription = "Copy From", tint = androidx.compose.ui.graphics.Color.White)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.copy_from), color = androidx.compose.ui.graphics.Color.White)
-                }
-
-                val knownProfiles = PluviaApp.inputControlsManager?.getProfiles(false) ?: emptyList()
-                if (knownProfiles.isNotEmpty()) {
-                    DropdownMenu(
-                        expanded = duplicateProfileOpen,
-                        onDismissRequest = { duplicateProfileOpen = false }
-                    ) {
-                        for (knownProfile in knownProfiles) {
-                            DropdownMenuItem(
-                                text = { Text(knownProfile.name) },
-                                onClick = {
-                                    onDuplicate(knownProfile.id)
-                                    duplicateProfileOpen = false
-                                },
-                            )
-                        }
-                    }
-                }
             }
 
             // Save button

@@ -158,7 +158,6 @@
     <string name="remove">Fjern</string>
     <string name="add">Tilføj</string>
     <string name="delete">Slet</string>
-    <string name="copy_from">Kopiér fra</string>
     <string name="ok">Ok</string>
     <string name="container_config_custom_resolution_title">Angiv brugerdefineret opløsning</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -1316,7 +1315,6 @@
     <string name="custom_game_delete_message">Er du sikker på, at du vil slette dette spil? Dette vil fjerne spilfiler og alle tilhørende data.</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Kontroller nulstillet</string>
     <string name="toast_failed_log_save">Kunne ikke gemme logcat til destination</string>
 
     <!-- Settings additions -->

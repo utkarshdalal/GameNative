@@ -21,6 +21,7 @@ import java.util.Locale;
 
 public class ControlsProfile implements Comparable<ControlsProfile> {
     public static final float DEFAULT_CURSOR_SPEED = 1.0f;
+    public static final String KEY_AUTO_FIT_LAYOUT = "autoFitLayout";
 
     public final int id;
     private String name;
@@ -467,6 +468,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         try {
             JSONArray elementsJSONArray = profileJSONObject.optJSONArray("elements");
             if (elementsJSONArray == null) elementsJSONArray = new JSONArray();
+            // Existing layouts, including migrated working copies, keep their
+            // authored geometry until the user explicitly imports/applies a layout.
+            boolean autoFitLayout = profileJSONObject.optBoolean(KEY_AUTO_FIT_LAYOUT, false);
             IdentityHashMap<ControlElement, AutoFitLayout> sourceLayouts = new IdentityHashMap<>();
             for (int i = 0; i < elementsJSONArray.length(); i++) {
                 JSONObject elementJSONObject = elementsJSONArray.getJSONObject(i);
@@ -522,9 +526,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
                 if (!virtualGamepad && hasGamepadBinding) virtualGamepad = true;
                 elements.add(element);
-                sourceLayouts.put(element, new AutoFitLayout(sourceX, sourceY, sourceScale));
+                if (autoFitLayout) sourceLayouts.put(element, new AutoFitLayout(sourceX, sourceY, sourceScale));
             }
-            fitElementsToBounds(inputControlsView, sourceLayouts);
+            if (autoFitLayout) fitElementsToBounds(inputControlsView, sourceLayouts);
             elementsLoaded = true;
             Log.d("ControlsProfile", "Loaded " + elements.size() + " elements for profile: " + name + " (virtualGamepad: " + virtualGamepad + ")");
         }

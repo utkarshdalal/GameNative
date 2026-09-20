@@ -340,7 +340,6 @@
     <string name="continue_offline">Продолжить в автономном режиме</string>
     <string name="controller_disconnected">Отключено</string>
     <string name="copy">Копировать</string>
-    <string name="copy_from">Копировать из</string>
     <string name="copy_size_from_element">Скопировать размер из элемента</string>
     <string name="copy_toast_msg">Ссылка скопирована в буфер обмена</string>
     <string name="cpu_label">CPU%d</string>
@@ -1357,7 +1356,6 @@ https://gamenative.app
     <string name="thumbstick_buttons">Кнопки джойстика</string>
     <string name="thumbstick_buttons_category">Кнопки джойстика</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
-    <string name="toast_controls_reset">Управления сброшены</string>
     <string name="toast_copied_size">Скопирован размер: %.2fx</string>
     <string name="toast_failed_log_save">Ошибка сохранения logcat в место назначения</string>
     <string name="toast_no_elements_to_copy">Нет других доступных элементов для копирования размера из</string>

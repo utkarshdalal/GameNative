@@ -222,7 +222,6 @@
     <string name="remove">Entfernen</string>
     <string name="add">Hinzufügen</string>
     <string name="delete">Löschen</string>
-    <string name="copy_from">Kopieren von</string>
     <string name="ok">OK</string>
     <string name="container_config_custom_resolution_title">Eigene Auflösung festlegen</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -459,7 +458,6 @@
     <string name="reset_to_default_bindings">Auf Standardbelegung zurücksetzen</string>
     <string name="not_set">Nicht gesetzt</string>
     <!-- Toast -->
-    <string name="toast_controls_reset">Steuerung zurückgesetzt</string>
     <string name="toast_failed_log_save">Logcat konnte nicht gespeichert werden</string>
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Speichert einen Logcat-Snapshot nur für diese App</string>

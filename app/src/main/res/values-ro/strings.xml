@@ -227,7 +227,6 @@
     <string name="remove">Elimină</string>
     <string name="add">Adaugă</string>
     <string name="delete">Șterge</string>
-    <string name="copy_from">Copiază din</string>
     <string name="ok">OK</string>
     <string name="container_config_custom_resolution_title">Setează rezoluție personalizată</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -468,7 +467,6 @@
     <string name="not_set">Nesetat</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Controalele au fost resetate</string>
     <string name="toast_failed_log_save">Nu s-a putut salva logcat la destinație</string>
 
     <!-- Settings -->

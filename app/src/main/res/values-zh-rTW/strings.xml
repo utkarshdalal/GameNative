@@ -227,7 +227,6 @@
     <string name="remove">刪除</string>
     <string name="add">添加</string>
     <string name="delete">刪除</string>
-    <string name="copy_from">從...複製</string>
     <string name="ok">確認</string>
     <string name="storage_info">存儲信息</string>
     <string name="duplicate">複製</string>
@@ -462,7 +461,6 @@
     <string name="not_set">未設定</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">控制器已重置</string>
     <string name="toast_failed_log_save">無法將 logcat 保存到目標</string>
 
     <!-- Settings -->
