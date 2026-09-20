@@ -111,6 +111,7 @@ data class ContainerData(
     val sharpnessDenoise: Int = 100,
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
+    val lsfgBackend: String = "native",
     val lsfgMultiplier: Int = 2,
     val lsfgFlowScale: Float = 0.70f,
     val lsfgPreset: String = "BALANCED",
@@ -192,6 +193,7 @@ data class ContainerData(
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
                     "lsfgEnabled" to state.lsfgEnabled,
+                    "lsfgBackend" to state.lsfgBackend,
                     "lsfgMultiplier" to state.lsfgMultiplier,
                     "lsfgFlowScale" to state.lsfgFlowScale,
                     "lsfgPreset" to state.lsfgPreset,
@@ -272,6 +274,7 @@ data class ContainerData(
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
+                    lsfgBackend = (savedMap["lsfgBackend"] as? String) ?: "native",
                     lsfgMultiplier = (savedMap["lsfgMultiplier"] as? Int) ?: 2,
                     lsfgFlowScale = (savedMap["lsfgFlowScale"] as? Float) ?: 0.70f,
                     lsfgPreset = (savedMap["lsfgPreset"] as? String) ?: "BALANCED",

@@ -2262,6 +2262,13 @@
     <string name="lsfg_performance_mode">Performance mode</string>
     <string name="lsfg_present_mode">Present mode</string>
     <string name="lsfg_present_mode_desc">Mailbox is recommended. FIFO also works when the output frame rate (fps cap × multiplier) matches the screen refresh rate; below the refresh rate FIFO can look shaky.</string>
+    <string name="lsfg_backend">Backend</string>
+    <string name="lsfg_backend_desc">Legacy runs the lsfg-vk layer inside the game; Native runs frame generation in the GameNative renderer</string>
+    <string name="lsfg_backend_legacy">Legacy (layer)</string>
+    <string name="lsfg_backend_native">Native (renderer)</string>
+    <string name="lsfg_mode_off">Off</string>
+    <string name="lsfg_mode_legacy">Legacy</string>
+    <string name="lsfg_mode_native">Native (Default)</string>
     <string name="lsfg_not_supported">Frame generation requires a Bionic container</string>
     <string name="lsfg_install_prompt">Lossless Scaling not installed. Tap to install. Only known to work on Adreno 6xx and above.</string>
     <string name="lsfg_not_in_library">Lossless Scaling not in your Steam library</string>

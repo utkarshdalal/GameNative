@@ -374,6 +374,7 @@ object ContainerUtils {
             sharpnessDenoise = container.getExtra("sharpnessDenoise", "100").toIntOrNull() ?: 100,
             // LSFG Vulkan frame generation
             lsfgEnabled = container.getExtra(LsfgVkManager.EXTRA_ARMED, "false").toBoolean() || container.getExtra("frameGen", "0") == "1",
+            lsfgBackend = container.getExtra(LsfgVkManager.EXTRA_BACKEND, LsfgVkManager.BACKEND_NATIVE).takeIf { it == LsfgVkManager.BACKEND_LEGACY } ?: LsfgVkManager.BACKEND_NATIVE,
             lsfgMultiplier = container.getExtra(LsfgVkManager.EXTRA_MULTIPLIER, container.getExtra("frameGenMultiplier", "2")).toIntOrNull()?.let { if (it == 0) 0 else it.coerceIn(2, 4) } ?: 2,
             lsfgFlowScale = container.getExtra("frameGenFlowScale", null)?.toIntOrNull()?.let { it / 100f }
                 ?: (container.getExtra(LsfgVkManager.EXTRA_FLOW_SCALE, "0.70").toFloatOrNull()?.coerceIn(0.25f, 1.0f) ?: 0.70f),
@@ -571,6 +572,7 @@ object ContainerUtils {
         // LSFG Vulkan frame generation
         container.putExtra(LsfgVkManager.EXTRA_ARMED, containerData.lsfgEnabled.toString())
         container.putExtra("frameGen", if (containerData.lsfgEnabled) "1" else "0")
+        container.putExtra(LsfgVkManager.EXTRA_BACKEND, containerData.lsfgBackend)
         container.putExtra(LsfgVkManager.EXTRA_MULTIPLIER, containerData.lsfgMultiplier.toString())
         container.putExtra("frameGenMultiplier", containerData.lsfgMultiplier.toString())
         container.putExtra(LsfgVkManager.EXTRA_FLOW_SCALE, String.format(java.util.Locale.US, "%.2f", containerData.lsfgFlowScale))

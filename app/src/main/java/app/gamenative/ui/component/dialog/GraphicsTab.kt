@@ -421,22 +421,51 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             val isDllImported = remember(refreshKey) { LosslessScaling.getDllFile(context).isFile }
             var showLsfgDialog by rememberSaveable { mutableStateOf(false) }
 
-            val subtitleText = if (isDllImported) {
-                stringResource(R.string.lsfg_container_toggle_desc)
-            } else {
-                stringResource(R.string.lsfg_container_prompt_setup)
+            var pendingBackend by remember { mutableStateOf(LsfgVkManager.BACKEND_NATIVE) }
+
+            val lsfgModes = listOf(
+                stringResource(R.string.lsfg_mode_off),
+                stringResource(R.string.lsfg_mode_legacy),
+                stringResource(R.string.lsfg_mode_native),
+            )
+            val currentModeIndex = when {
+                !config.lsfgEnabled || !isDllImported -> 0
+                config.lsfgBackend == LsfgVkManager.BACKEND_LEGACY -> 1
+                else -> 2
             }
 
-            SettingsSwitch(
+            SettingsListDropdown(
                 colors = settingsTileColorsAlt(),
-                title = { Text(text = stringResource(R.string.lsfg_enable)) },
-                subtitle = { Text(text = subtitleText) },
-                state = config.lsfgEnabled && isDllImported,
-                onCheckedChange = { checked ->
-                    if (!isDllImported) {
-                        showLsfgDialog = true
-                    } else {
-                        state.config.value = config.copy(lsfgEnabled = checked)
+                title = { Text(text = stringResource(R.string.session_drawer_frame_generation)) },
+                value = currentModeIndex,
+                items = lsfgModes,
+                onItemSelected = { index ->
+                    when (index) {
+                        0 -> {
+                            state.config.value = state.config.value.copy(lsfgEnabled = false)
+                        }
+                        1 -> {
+                            if (!isDllImported) {
+                                pendingBackend = LsfgVkManager.BACKEND_LEGACY
+                                showLsfgDialog = true
+                            } else {
+                                state.config.value = state.config.value.copy(
+                                    lsfgEnabled = true,
+                                    lsfgBackend = LsfgVkManager.BACKEND_LEGACY,
+                                )
+                            }
+                        }
+                        2 -> {
+                            if (!isDllImported) {
+                                pendingBackend = LsfgVkManager.BACKEND_NATIVE
+                                showLsfgDialog = true
+                            } else {
+                                state.config.value = state.config.value.copy(
+                                    lsfgEnabled = true,
+                                    lsfgBackend = LsfgVkManager.BACKEND_NATIVE,
+                                )
+                            }
+                        }
                     }
                 },
             )
@@ -450,7 +479,10 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     },
                     onInstallSuccess = {
                         refreshKey++
-                        state.config.value = state.config.value.copy(lsfgEnabled = true)
+                        state.config.value = state.config.value.copy(
+                            lsfgEnabled = true,
+                            lsfgBackend = pendingBackend,
+                        )
                     },
                 )
             }

@@ -79,6 +79,7 @@ object LsfgQuickMenuHelper {
         val multiplier: Int,
         val flowScale: Float,
         val targetRate: Int = 0,
+        val backend: String = LsfgVkManager.BACKEND_NATIVE,
     )
 
     fun isAvailable(container: Container): Boolean =
@@ -88,12 +89,25 @@ object LsfgQuickMenuHelper {
         multiplier = LsfgVkManager.multiplier(container),
         flowScale = LsfgVkManager.flowScale(container),
         targetRate = LsfgVkManager.targetRate(container),
+        backend = LsfgVkManager.backend(container),
     )
 
     private val applyExecutor =
         Executors.newSingleThreadExecutor { r -> Thread(r, "lsfg-apply").apply { isDaemon = true } }
 
     fun targetRate(container: Container): Int = LsfgVkManager.targetRate(container)
+
+    fun backend(container: Container): String = LsfgVkManager.backend(container)
+
+    /** Persist the backend and hot-apply it. */
+    fun applyBackend(container: Container, backend: String) {
+        applyExecutor.execute {
+            container.putExtra(LsfgVkManager.EXTRA_BACKEND, backend)
+            container.saveData()
+            val settings = readSettings(container).copy(backend = backend)
+            applySettings(container, settings)
+        }
+    }
 
     /** Hot-apply an adaptive-cap step without persisting it: the user's saved
      *  limiter target survives interrupted sessions. */
@@ -139,6 +153,7 @@ object LsfgQuickMenuHelper {
         val multiplier = sanitizeMultiplier(settings.multiplier)
         val flowScale = sanitizeFlowScale(settings.flowScale)
         val targetRate = settings.targetRate
+        val backend = settings.backend
 
         val flowScalePct = (flowScale * 100).roundToInt()
         val preset = FrameGenPreset.fromFlowScale(flowScalePct)
@@ -148,6 +163,7 @@ object LsfgQuickMenuHelper {
         container.putExtra(LsfgVkManager.EXTRA_FLOW_SCALE, String.format(Locale.US, "%.2f", flowScale))
         container.putExtra(LsfgVkManager.EXTRA_TARGET_RATE, targetRate.toString())
         container.putExtra(LsfgVkManager.EXTRA_PRESET, presetName)
+        container.putExtra(LsfgVkManager.EXTRA_BACKEND, backend)
         container.saveData()
 
         val effectiveEnabled = multiplier >= 2 || targetRate > 0

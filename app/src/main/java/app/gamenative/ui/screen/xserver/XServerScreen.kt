@@ -646,6 +646,7 @@ fun XServerScreen(
     val initialLsfgSettings = remember(container.id) { LsfgQuickMenuHelper.readSettings(container) }
     var lsfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialLsfgSettings.multiplier) }
     var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
+    val lsfgBackend = initialLsfgSettings.backend
     val lsfgFpsCounter = remember { app.gamenative.utils.RollingFpsCounter() }
 
     fun persistFpsLimiterState() {
@@ -771,6 +772,7 @@ fun XServerScreen(
                 multiplier = lsfgMultiplier,
                 flowScale = lsfgFlowScale,
                 targetRate = LsfgQuickMenuHelper.targetRate(container),
+                backend = lsfgBackend,
             ),
         )
     }
@@ -2142,7 +2144,8 @@ fun XServerScreen(
                 keyboard = Keyboard(getxServer())
                 if (renderer is com.winlator.renderer.VulkanRenderer) {
                     val isFrameGen = LsfgVkManager.isArmed(container)
-                    val cache = if (isFrameGen) {
+                    val isNative = LsfgVkManager.isNativeBackend(container)
+                    val cache = if (isFrameGen && isNative) {
                         com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(context, container, true)
                     } else {
                         null
@@ -2157,10 +2160,10 @@ fun XServerScreen(
                     renderer.setFrameGenerationRefreshRate(refreshRate)
                     renderer.setFrameGenerationMode(
                         if (multiplier >= 2) multiplier else 2,
-                        targetRate,
+                        if (isNative) targetRate else 0,
                         Math.round(flowScale * 100f)
                     )
-                    renderer.setFrameGenerationEnabled(isFrameGen && (multiplier >= 2 || targetRate > 0))
+                    renderer.setFrameGenerationEnabled(isFrameGen && isNative && (multiplier >= 2 || targetRate > 0))
                 }
                 if (!bootToContainer) {
                     renderer.setUnviewableWMClasses("explorer.exe")

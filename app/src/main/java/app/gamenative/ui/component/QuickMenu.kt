@@ -2063,9 +2063,6 @@ private fun PerformanceQuickMenuTab(
                     accentColor = accentColor,
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-
             }
         }
     } else {

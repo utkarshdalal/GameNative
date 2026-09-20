@@ -395,9 +395,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
 
         if (LsfgVkManager.isSupported(container)) {
-            LsfgVkManager.disableLayerInContainer(container);
+            LsfgVkManager.ensureRuntimeInstalled(environment.getContext(), container);
+            LsfgVkManager.writeConfig(container);
+            LsfgVkManager.applyLaunchEnv(container, envVars);
             if (LsfgVkManager.isArmed(container)) {
-                com.winlator.renderer.lsfg.LosslessScaling.resolveOrBuildCache(context, container, true);
+                final Context lsfgContext = environment.getContext();
+                new Thread(() -> LsfgVkManager.prepareNativeCache(lsfgContext, container),
+                    "lsfg-native-cache").start();
             }
         }
 

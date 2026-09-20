@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Connexion utilisateur</string>
     <string name="login_2fa">Authentification à deux facteurs</string>
@@ -1652,6 +1652,13 @@
     <string name="lsfg_performance_mode">Mode performance</string>
     <string name="lsfg_present_mode">Mode de présentation</string>
     <string name="lsfg_present_mode_desc">Mailbox est recommandé. FIFO fonctionne aussi lorsque la cadence de sortie (limite fps × multiplicateur) correspond au taux de rafraîchissement de l\'écran ; en dessous, FIFO peut sembler instable.</string>
+    <string name="lsfg_backend">Backend</string>
+    <string name="lsfg_backend_desc">Legacy exécute la couche lsfg-vk dans le jeu ; Natif exécute la génération d\'images dans le moteur de rendu GameNative</string>
+    <string name="lsfg_backend_legacy">Legacy (couche)</string>
+    <string name="lsfg_backend_native">Natif (rendu)</string>
+    <string name="lsfg_mode_off">Désactivé</string>
+    <string name="lsfg_mode_legacy">Hérité</string>
+    <string name="lsfg_mode_native">Natif (Par défaut)</string>
     <string name="lsfg_not_supported">La génération d\'images nécessite un conteneur Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling n\'est pas installé. Appuyez pour installer. Fonctionne uniquement sur Adreno 6xx et supérieur, à notre connaissance.</string>
     <string name="lsfg_not_in_library">Lossless Scaling n\'est pas dans votre bibliothèque Steam</string>

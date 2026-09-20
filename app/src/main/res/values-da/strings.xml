@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">Brugerlogin</string>
     <string name="login_2fa">Tofaktorgodkendelse</string>
@@ -1504,6 +1504,13 @@
     <string name="lsfg_performance_mode">Ydelsestilstand</string>
     <string name="lsfg_present_mode">Præsentationstilstand</string>
     <string name="lsfg_present_mode_desc">Mailbox anbefales. FIFO fungerer også, når outputbilledraten (fps-grænse × multiplikator) matcher skærmens opdateringshastighed; under opdateringshastigheden kan FIFO se hakkende ud.</string>
+    <string name="lsfg_backend">Backend</string>
+    <string name="lsfg_backend_desc">Legacy kører lsfg-vk-laget inde i spillet; Native kører billedgenerering i GameNative-rendereren</string>
+    <string name="lsfg_backend_legacy">Legacy (lag)</string>
+    <string name="lsfg_backend_native">Native (renderer)</string>
+    <string name="lsfg_mode_off">Fra</string>
+    <string name="lsfg_mode_legacy">Legacy</string>
+    <string name="lsfg_mode_native">Native (Standard)</string>
     <string name="lsfg_not_supported">Billedgenerering kræver en Bionic-container</string>
     <string name="lsfg_install_prompt">Lossless Scaling er ikke installeret. Tryk for at installere. Virkede kun på Adreno 6xx og nyere, så vidt vides.</string>
     <string name="lsfg_not_in_library">Lossless Scaling er ikke i dit Steam-bibliotek</string>
