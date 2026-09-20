@@ -100,7 +100,6 @@ class EpicAppScreen : BaseAppScreen() {
             return result
         }
 
-        // Shared state for update/verify operation - map of gameId to AppOptionMenuType
         private val pendingUpdateVerifyOperations = mutableStateMapOf<Int, AppOptionMenuType>()
 
         fun setPendingUpdateVerifyOperation(gameId: Int, operation: AppOptionMenuType?) {
@@ -548,20 +547,15 @@ class EpicAppScreen : BaseAppScreen() {
         )
     }
 
-    override suspend fun isUpdatePendingSuspend(context: Context, libraryItem: LibraryItem): Boolean {
-        if (!isInstalled(context, libraryItem)) return false
-        val game = EpicService.getEpicGameOf(libraryItem.gameId) ?: return false
+    override suspend fun isUpdatePendingSuspend(context: Context, libraryItem: LibraryItem): Boolean = withContext(Dispatchers.IO) {
+        if (!isInstalled(context, libraryItem)) return@withContext false
+        val game = EpicService.getEpicGameOf(libraryItem.gameId) ?: return@withContext false
         val latestVersion = game.version
-        if (latestVersion.isEmpty()) return false
-        val installedVersion = EpicInstallState.read(game.installPath)?.buildVersion
-        return installedVersion != latestVersion
+        if (latestVersion.isEmpty()) return@withContext false
+        val installedVersion = EpicInstallState.read(game.installPath)?.buildVersion ?: return@withContext false
+        installedVersion != latestVersion
     }
 
-    /**
-     * Runs the download against the current manifest and container language. Files the previous
-     * install recorded but the new selection drops are removed by the download manager, so this
-     * serves update, verify and language change alike.
-     */
     private fun triggerEpicUpdateDownload(
         context: Context,
         libraryItem: LibraryItem,
@@ -571,7 +565,10 @@ class EpicAppScreen : BaseAppScreen() {
         CoroutineScope(Dispatchers.IO).launch {
             val gameId = libraryItem.gameId
             if (!EpicService.isGameInstalled(context, gameId)) return@launch
-            if (EpicService.getDownloadInfo(gameId)?.isActive() == true) return@launch
+            if (EpicService.getDownloadInfo(gameId)?.isActive() == true) {
+                SnackbarManager.show(context.getString(R.string.epic_update_download_busy))
+                return@launch
+            }
 
             val game = EpicService.getEpicGameOf(gameId) ?: return@launch
             val installPath = game.installPath.takeIf { it.isNotEmpty() }

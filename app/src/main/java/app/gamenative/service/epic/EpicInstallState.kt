@@ -5,16 +5,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 
-/**
- * Install state recorded in the game directory after a successful Epic install, update or
- * language change. Kept on disk (not in Room) so it travels with the files and needs no migration.
- *
- * [files] are manifest-relative paths of everything the last download selected, and is the only
- * set of files an update is allowed to delete.
- */
 data class EpicInstallState(
+    val appName: String,
     val buildVersion: String,
-    val language: String,
     val files: Set<String>,
 ) {
     companion object {
@@ -35,8 +28,8 @@ data class EpicInstallState(
                     }
                 }
                 EpicInstallState(
+                    appName = json.optString("appName", ""),
                     buildVersion = json.optString("buildVersion", ""),
-                    language = json.optString("language", ""),
                     files = files,
                 )
             } catch (e: Exception) {
@@ -49,26 +42,28 @@ data class EpicInstallState(
             if (installPath.isEmpty()) return
             try {
                 val json = JSONObject()
+                    .put("appName", state.appName)
                     .put("buildVersion", state.buildVersion)
-                    .put("language", state.language)
                     .put("files", JSONArray(state.files.toList()))
-                stateFile(installPath).writeText(json.toString())
+                val target = stateFile(installPath)
+                val tmp = File(target.parentFile, target.name + ".tmp")
+                tmp.writeText(json.toString())
+                if (!tmp.renameTo(target)) {
+                    target.writeText(json.toString())
+                    tmp.delete()
+                }
             } catch (e: Exception) {
                 Timber.tag("Epic").w(e, "Could not write install state at $installPath")
             }
         }
 
-        /**
-         * Deletes files the previous install recorded that the current download no longer selects
-         * (files dropped by an update, or belonging to the previously installed language).
-         * Files that were never recorded — saves, user files, DLC and anything else — are left alone.
-         */
         fun removeFilesNoLongerSelected(
             installPath: String,
+            appName: String,
             previous: EpicInstallState?,
             currentFiles: Set<String>,
         ): Int {
-            if (previous == null || installPath.isEmpty()) return 0
+            if (previous == null || installPath.isEmpty() || previous.appName != appName) return 0
             val stale = previous.files - currentFiles
             if (stale.isEmpty()) return 0
 

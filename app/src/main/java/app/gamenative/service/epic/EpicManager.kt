@@ -260,10 +260,6 @@ class EpicManager @Inject constructor(
         }
     }
 
-    /**
-     * Fetches the latest Live build version of every owned app in one call, keyed by app name.
-     * Stored on the game row during a library refresh so update checks never hit the network.
-     */
     suspend fun fetchAssetBuildVersions(accessToken: String): Map<String, String> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()

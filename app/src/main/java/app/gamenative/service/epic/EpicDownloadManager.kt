@@ -344,12 +344,12 @@ class EpicDownloadManager @Inject constructor(
                 }
             }
             val selectedFilenames = files.map { it.filename }.toSet()
-            EpicInstallState.removeFilesNoLongerSelected(installPath, previousInstallState, selectedFilenames)
+            EpicInstallState.removeFilesNoLongerSelected(installPath, game.appName, previousInstallState, selectedFilenames)
             EpicInstallState.write(
                 installPath,
                 EpicInstallState(
+                    appName = game.appName,
                     buildVersion = manifest.meta?.buildVersion ?: "",
-                    language = containerLanguage,
                     files = selectedFilenames,
                 ),
             )
