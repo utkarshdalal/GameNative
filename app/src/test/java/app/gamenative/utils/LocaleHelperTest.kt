@@ -19,7 +19,7 @@ import org.robolectric.annotation.Config
 import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
-@Config(application = Application::class, sdk = [28])
+@Config(application = Application::class)
 class LocaleHelperTest {
     private val originalLocale = Locale.getDefault()
 
