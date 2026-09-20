@@ -566,7 +566,7 @@ class EpicAppScreen : BaseAppScreen() {
             val gameId = libraryItem.gameId
             if (!EpicService.isGameInstalled(context, gameId)) return@launch
             if (EpicService.getDownloadInfo(gameId)?.isActive() == true) {
-                SnackbarManager.show(context.getString(R.string.epic_update_download_busy))
+                Timber.tag(TAG).w("Download already active for $gameId, skipping update download")
                 return@launch
             }
 
@@ -662,6 +662,12 @@ class EpicAppScreen : BaseAppScreen() {
                                 dismissBtnText = context.getString(R.string.cancel),
                             ),
                         )
+            options.add(
+                AppMenuOption(
+                    optionType = AppOptionMenuType.Update,
+                    onClick = { onUpdateClick(context, libraryItem) },
+                ),
+            )
                     },
                 ),
             )
