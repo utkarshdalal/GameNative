@@ -176,7 +176,6 @@ class EpicDownloadManager @Inject constructor(
             }
 
             val chunkDir = manifest.getChunkDir()
-            val previousInstallState = EpicInstallState.read(installPath)
 
             // chunks can be empty when every file is zero-chunk (e.g. empty
             // config stubs); files.isEmpty() is the real error condition
@@ -343,14 +342,11 @@ class EpicDownloadManager @Inject constructor(
                     // Don't fail the base game download if DLC fails
                 }
             }
-            val selectedFilenames = files.map { it.filename }.toSet()
-            EpicInstallState.removeFilesNoLongerSelected(installPath, game.appName, previousInstallState, selectedFilenames)
             EpicInstallState.write(
                 installPath,
                 EpicInstallState(
-                    appName = game.appName,
                     buildVersion = manifest.meta?.buildVersion ?: "",
-                    files = selectedFilenames,
+                    language = containerLanguage,
                 ),
             )
 
