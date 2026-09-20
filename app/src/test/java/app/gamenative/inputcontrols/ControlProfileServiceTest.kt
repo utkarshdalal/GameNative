@@ -1,6 +1,8 @@
 package app.gamenative.inputcontrols
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.data.GyroSettings
@@ -25,6 +27,51 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class ControlProfileServiceTest {
+    @Test
+    fun inMemoryProfileElementsReloadWithoutCreatingAProfileFile() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val profileId = -1
+        val profileFile = ControlsProfile.getProfileFile(context, profileId)
+        val profile = ControlsProfile(context, profileId).apply { name = "Preview" }
+        val source = JSONObject().apply {
+            put(
+                "elements",
+                JSONArray().put(
+                    JSONObject().apply {
+                        put("type", "BUTTON")
+                        put("shape", "CIRCLE")
+                        put("bindings", JSONArray().put("GAMEPAD_BUTTON_A"))
+                        put("scale", 1.0)
+                        put("x", 0.5)
+                        put("y", 0.5)
+                        put("toggleSwitch", false)
+                        put("text", "")
+                        put("iconId", 0)
+                    },
+                ),
+            )
+        }
+        val bitmap = Bitmap.createBitmap(600, 300, Bitmap.Config.ARGB_8888)
+        val view = InputControlsView(context).apply {
+            layout(0, 0, bitmap.width, bitmap.height)
+            draw(Canvas(bitmap))
+        }
+
+        try {
+            profileFile.delete()
+            profile.loadElementsFromJson(view, source)
+            assertEquals(1, profile.elements.size)
+
+            profile.loadElements(view)
+
+            assertEquals(1, profile.elements.size)
+            assertFalse(profileFile.exists())
+        } finally {
+            bitmap.recycle()
+            profileFile.delete()
+        }
+    }
+
     @Test
     fun runtimeProfileSave_preservesExtendedIcpSections() {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -405,6 +452,7 @@ class ControlProfileServiceTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val profileId = 900_002
         val file = ControlsProfile.getProfileFile(context, profileId)
+        val bitmap = Bitmap.createBitmap(600, 120, Bitmap.Config.ARGB_8888)
         val profileJson = JSONObject().apply {
             put("id", profileId)
             put("name", "Large control")
@@ -429,9 +477,17 @@ class ControlProfileServiceTest {
         try {
             assertTrue(FileUtils.writeString(file, profileJson.toString()))
             val profile = InputControlsManager.loadProfile(context, file)!!
-            val view = InputControlsView(context).apply { layout(0, 0, 600, 120) }
+            val view = InputControlsView(context).apply {
+                layout(0, 0, bitmap.width, bitmap.height)
+                draw(Canvas(bitmap))
+            }
 
             profile.loadElements(view)
+            val fittedBounds = profile.elements.single().boundingBox
+            assertTrue(fittedBounds.left >= 0)
+            assertTrue(fittedBounds.top >= 0)
+            assertTrue(fittedBounds.right <= view.maxWidth)
+            assertTrue(fittedBounds.bottom <= view.maxHeight)
             assertTrue(profile.save())
 
             val savedElement = JSONObject(FileUtils.readString(file))
@@ -441,6 +497,7 @@ class ControlProfileServiceTest {
             assertEquals(0.5, savedElement.getDouble("y"), 0.0)
             assertEquals(5.0, savedElement.getDouble("scale"), 0.0)
         } finally {
+            bitmap.recycle()
             file.delete()
         }
     }

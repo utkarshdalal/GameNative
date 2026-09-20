@@ -1,12 +1,9 @@
 package app.gamenative.ui.component.dialog
 
-import android.graphics.Paint
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +14,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -73,9 +69,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
@@ -92,7 +85,6 @@ import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.ui.theme.PluviaBackground
 import app.gamenative.ui.util.SnackbarManager
 import com.winlator.container.Container
-import com.winlator.inputcontrols.ControlElement
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
 import java.text.DecimalFormat
@@ -102,7 +94,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import kotlin.math.min
 
 private data class SectionAction(
     val title: String,
@@ -128,22 +119,6 @@ private data class ProfileLibrarySnapshot(
     val entries: List<ProfileLibraryEntry>,
     val appliedSources: Map<ControlProfileSection, Int>,
 )
-
-internal fun fitPreviewHalfExtents(
-    rawHalfWidth: Float,
-    rawHalfHeight: Float,
-    canvasWidth: Float,
-    canvasHeight: Float,
-): Pair<Float, Float> {
-    if (canvasWidth <= 0f || canvasHeight <= 0f) return 0f to 0f
-    val rawFit = minOf(
-        1f,
-        canvasWidth / (rawHalfWidth * 2f).coerceAtLeast(1f),
-        canvasHeight / (rawHalfHeight * 2f).coerceAtLeast(1f),
-    )
-    val fit = if (rawFit < 1f) rawFit * 0.98f else 1f
-    return rawHalfWidth * fit to rawHalfHeight * fit
-}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -1080,93 +1055,6 @@ private fun friendlySettingValue(value: String): String = value
     .replaceFirstChar { it.titlecase(Locale.getDefault()) }
 
 @Composable
-private fun ControlLayoutPreview(json: JSONObject, screenSize: String) {
-    val dimensions = screenSize.lowercase().split("x").mapNotNull { it.trim().toFloatOrNull() }
-    val ratio = if (dimensions.size == 2 && dimensions[1] > 0f) {
-        (dimensions[0] / dimensions[1]).coerceIn(0.6f, 2.5f)
-    } else {
-        16f / 9f
-    }
-    val elements = json.optJSONArray("elements")
-    val foreground = MaterialTheme.colorScheme.onSurface.toArgbCompat()
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(ratio)
-            .heightIn(max = 320.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF15181D)),
-    ) {
-        if (elements == null) return@Canvas
-        if (size.width <= 0f || size.height <= 0f) return@Canvas
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = foreground
-            textAlign = Paint.Align.CENTER
-            textSize = min(size.width, size.height) * 0.035f
-        }
-        for (index in 0 until elements.length()) {
-            val element = elements.optJSONObject(index) ?: continue
-            val scale = element.optDouble("scale", 1.0).toFloat().coerceIn(0.1f, 5f)
-            val base = size.width / 30f
-            val type = element.optString("type", "BUTTON")
-            val shape = element.optString("shape", "CIRCLE")
-            val rawHalfWidth = base * scale * when (type) {
-                "D_PAD" -> 2.2f
-                "STICK", "TRACKPAD" -> 1.9f
-                "RANGE_BUTTON" -> 2.3f
-                else -> if (shape == "RECT" || shape == "ROUND_RECT") 1.35f else 1f
-            }
-            val rawHalfHeight = base * scale * when (type) {
-                "D_PAD" -> 2.2f
-                "STICK", "TRACKPAD" -> 1.9f
-                else -> 1f
-            }
-            val (halfWidth, halfHeight) = fitPreviewHalfExtents(
-                rawHalfWidth,
-                rawHalfHeight,
-                size.width,
-                size.height,
-            )
-            val cx = (element.optDouble("x", 0.5).toFloat() * size.width)
-                .coerceIn(halfWidth, size.width - halfWidth)
-            val cy = (element.optDouble("y", 0.5).toFloat() * size.height)
-                .coerceIn(halfHeight, size.height - halfHeight)
-            val colorValue = ControlElement.parseRgbColor(
-                element.opt("buttonColor"),
-                ControlElement.DEFAULT_BUTTON_COLOR,
-            )
-            val color = Color(0xFF000000 or colorValue.toLong()).copy(alpha = 0.72f)
-            when {
-                type == "D_PAD" -> {
-                    drawRoundRect(color, androidx.compose.ui.geometry.Offset(cx - halfWidth, cy - halfHeight / 2), androidx.compose.ui.geometry.Size(halfWidth * 2, halfHeight))
-                    drawRoundRect(color, androidx.compose.ui.geometry.Offset(cx - halfWidth / 2, cy - halfHeight), androidx.compose.ui.geometry.Size(halfWidth, halfHeight * 2))
-                }
-                shape == "CIRCLE" || type == "STICK" || type == "SHOOTER_MODE" -> drawCircle(color, radius = min(halfWidth, halfHeight), center = androidx.compose.ui.geometry.Offset(cx, cy))
-                else -> drawRoundRect(
-                    color,
-                    androidx.compose.ui.geometry.Offset(cx - halfWidth, cy - halfHeight),
-                    androidx.compose.ui.geometry.Size(halfWidth * 2, halfHeight * 2),
-                    androidx.compose.ui.geometry.CornerRadius(base * 0.3f),
-                )
-            }
-            val label = element.optString("text").ifBlank {
-                bindingLabel(element.optJSONArray("bindings")?.opt(0))
-            }.take(8)
-            if (label.isNotBlank()) {
-                drawIntoCanvas { canvas ->
-                    canvas.nativeCanvas.drawText(
-                        label,
-                        cx,
-                        cy - (textPaint.descent() + textPaint.ascent()) / 2f,
-                        textPaint,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun sectionLabel(section: ControlProfileSection): String = stringResource(
     when (section) {
         ControlProfileSection.ON_SCREEN -> R.string.control_profile_section_on_screen
@@ -1177,12 +1065,6 @@ private fun sectionLabel(section: ControlProfileSection): String = stringResourc
         ControlProfileSection.SHOOTER -> R.string.control_profile_section_shooter
     },
 )
-
-private fun bindingLabel(value: Any?): String = when (value) {
-    is String -> value.removePrefix("GAMEPAD_").removePrefix("KEY_").replace('_', ' ')
-    is JSONObject -> value.optJSONArray("bindings")?.optString(0).orEmpty().replace('_', ' ')
-    else -> ""
-}
 
 private fun safeFileName(value: String): String =
     value.trim()
@@ -1195,10 +1077,3 @@ private fun formatDecimal(value: Double): String = DecimalFormat(
     "0.##",
     DecimalFormatSymbols.getInstance(Locale.getDefault()),
 ).format(value)
-
-private fun Color.toArgbCompat(): Int = android.graphics.Color.argb(
-    (alpha * 255).toInt(),
-    (red * 255).toInt(),
-    (green * 255).toInt(),
-    (blue * 255).toInt(),
-)

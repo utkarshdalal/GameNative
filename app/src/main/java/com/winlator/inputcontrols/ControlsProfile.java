@@ -37,6 +37,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     private int libraryProfileId = -1;
     private int maxReferencedProfileId = -1;
     private String gameOwnerId = "";
+    private JSONObject elementSourceOverride;
     private final Context context;
     private GamepadState gamepadState;
     private final IdentityHashMap<ControlElement, AutoFitLayout> autoFitLayouts = new IdentityHashMap<>();
@@ -403,10 +404,44 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     }
 
     public void loadElements(InputControlsView inputControlsView) {
+        if (elementSourceOverride != null) {
+            loadElementsFromJsonInternal(inputControlsView, elementSourceOverride);
+            return;
+        }
+
+        File file = getProfileFile(context, id);
+        Log.d("ControlsProfile", "Loading elements for profile: " + name + " (ID: " + id + ") from " + file.getAbsolutePath());
+
+        if (!file.isFile()) {
+            resetElements();
+            Log.d("ControlsProfile", "Profile file does not exist: " + name);
+            return;
+        }
+
+        try {
+            loadElementsFromJsonInternal(inputControlsView, new JSONObject(FileUtils.readString(file)));
+        }
+        catch (Exception e) {
+            resetElements();
+            Log.e("ControlsProfile", "Failed to load profile JSON: " + name + " (ID: " + id + ")", e);
+        }
+    }
+
+    /** Retains and loads an in-memory profile so previews can resize without temporary files. */
+    public void loadElementsFromJson(InputControlsView inputControlsView, JSONObject profileJSONObject) {
+        elementSourceOverride = profileJSONObject;
+        loadElementsFromJsonInternal(inputControlsView, profileJSONObject);
+    }
+
+    private void resetElements() {
         elements.clear();
         elementsLoaded = false;
         virtualGamepad = false;
         autoFitLayouts.clear();
+    }
+
+    private void loadElementsFromJsonInternal(InputControlsView inputControlsView, JSONObject profileJSONObject) {
+        resetElements();
 
         // Check if view has valid dimensions before loading
         if (inputControlsView.getMaxWidth() == 0 || inputControlsView.getMaxHeight() == 0) {
@@ -415,16 +450,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             return;
         }
 
-        File file = getProfileFile(context, id);
-        Log.d("ControlsProfile", "Loading elements for profile: " + name + " (ID: " + id + ") from " + file.getAbsolutePath());
-
-        if (!file.isFile()) {
-            Log.d("ControlsProfile", "Profile file does not exist: " + name);
-            return;
-        }
-
         try {
-            JSONObject profileJSONObject = new JSONObject(FileUtils.readString(file));
             JSONArray elementsJSONArray = profileJSONObject.optJSONArray("elements");
             if (elementsJSONArray == null) elementsJSONArray = new JSONArray();
             IdentityHashMap<ControlElement, AutoFitLayout> sourceLayouts = new IdentityHashMap<>();
