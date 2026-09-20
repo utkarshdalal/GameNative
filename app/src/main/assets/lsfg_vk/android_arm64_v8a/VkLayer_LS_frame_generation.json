@@ -1,0 +1,18 @@
+{
+  "file_format_version": "1.0.0",
+  "layer": {
+    "name": "VK_LAYER_LS_frame_generation",
+    "type": "GLOBAL",
+    "api_version": "1.4.313",
+    "library_path": "../../../lib/liblsfg-vk-layer.so",
+    "implementation_version": "1",
+    "description": "Lossless Scaling frame generation layer",
+    "functions": {
+      "vkGetInstanceProcAddr": "layer_vkGetInstanceProcAddr",
+      "vkGetDeviceProcAddr": "layer_vkGetDeviceProcAddr"
+    },
+    "disable_environment": {
+      "DISABLE_LSFG": "1"
+    }
+  }
+}

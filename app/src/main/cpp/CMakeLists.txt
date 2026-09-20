@@ -7,7 +7,7 @@ set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -s")
 
 #add_subdirectory(proot)
 add_subdirectory(virglrenderer)
-add_subdirectory(thirdparty/dxbc EXCLUDE_FROM_ALL)
+add_subdirectory(lsfg-vk-android/thirdparty/dxbc EXCLUDE_FROM_ALL)
 add_subdirectory(patchelf)
 if (ANDROID_ABI STREQUAL "arm64-v8a")
     add_subdirectory(extras/adrenotools)
