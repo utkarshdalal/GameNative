@@ -324,7 +324,7 @@
     <string name="control_profile_saved">Control profile saved</string>
     <string name="control_profile_failed">Control profile operation failed: %1$s</string>
     <string name="control_profile_delete_title">Delete control profile?</string>
-    <string name="control_profile_delete_message">This removes the library profile. Games already configured from it will keep their controls.</string>
+    <string name="control_profile_delete_message">Remove “%1$s” from the library? Games already configured from it will keep their controls.</string>
     <string name="more_options">More options</string>
     <string name="controller_disconnected">Disconnected</string>
     <string name="reset_onscreen_controls">Reset On-Screen Controls</string>

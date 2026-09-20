@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,7 +52,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -79,6 +79,7 @@ import app.gamenative.R
 import app.gamenative.inputcontrols.ControlProfilePreview
 import app.gamenative.inputcontrols.ControlProfileSection
 import app.gamenative.inputcontrols.ControlProfileService
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.theme.PluviaBackground
 import app.gamenative.ui.util.SnackbarManager
 import com.winlator.container.Container
@@ -476,7 +477,7 @@ fun ControlProfileLibraryDialog(
         AlertDialog(
             onDismissRequest = { deleteProfile = null },
             title = { Text(stringResource(R.string.control_profile_delete_title)) },
-            text = { Text(stringResource(R.string.control_profile_delete_message)) },
+            text = { Text(stringResource(R.string.control_profile_delete_message, profile.name)) },
             confirmButton = {
                 TextButton(onClick = {
                     runIo({ ControlProfileService.deleteProfile(context, container, manager, profile) }) {
@@ -693,7 +694,7 @@ private fun ProfileSectionChips(
 }
 
 @Composable
-private fun CreateControlProfileScreen(
+internal fun CreateControlProfileScreen(
     name: String,
     fromCurrent: Boolean,
     sections: Set<ControlProfileSection>,
@@ -706,78 +707,78 @@ private fun CreateControlProfileScreen(
 ) {
     val listState = rememberLazyListState()
     val focusManager = LocalFocusManager.current
-    LaunchedEffect(listState.isScrollInProgress) {
-        if (listState.isScrollInProgress) focusManager.clearFocus()
+    val isDragged by listState.interactionSource.collectIsDraggedAsState()
+    LaunchedEffect(isDragged) {
+        // Keyboard/bring-into-view scrolling must not dismiss the focused name field.
+        if (isDragged) focusManager.clearFocus()
     }
-    Column(modifier = modifier) {
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            state = listState,
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            item(key = "create-intro") {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                ) {
-                    Text(
-                        stringResource(R.string.control_profile_create_applies_hint),
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-            item(key = "create-name") {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = onNameChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.control_profile_name)) },
-                    singleLine = true,
-                )
-            }
-            item(key = "create-source-heading") {
+    LazyColumn(
+        modifier = modifier,
+        state = listState,
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item(key = "create-intro") {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+            ) {
                 Text(
-                    stringResource(R.string.control_profile_start_with),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    stringResource(R.string.control_profile_create_applies_hint),
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            item(key = "create-current") {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.control_profile_create_current)) },
-                    supportingContent = { Text(stringResource(R.string.control_profile_create_current_hint)) },
-                    leadingContent = { RadioButton(selected = fromCurrent, onClick = null) },
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { onFromCurrentChange(true) },
-                )
+        }
+        item(key = "create-name") {
+            NoExtractOutlinedTextField(
+                value = name,
+                onValueChange = onNameChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.control_profile_name)) },
+                singleLine = true,
+            )
+        }
+        item(key = "create-source-heading") {
+            Text(
+                stringResource(R.string.control_profile_start_with),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        item(key = "create-current") {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.control_profile_create_current)) },
+                supportingContent = { Text(stringResource(R.string.control_profile_create_current_hint)) },
+                leadingContent = { RadioButton(selected = fromCurrent, onClick = null) },
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onFromCurrentChange(true) },
+            )
+        }
+        item(key = "create-blank") {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.control_profile_create_blank)) },
+                supportingContent = { Text(stringResource(R.string.control_profile_create_blank_hint)) },
+                leadingContent = { RadioButton(selected = !fromCurrent, onClick = null) },
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onFromCurrentChange(false) },
+            )
+        }
+        if (fromCurrent) {
+            item(key = "create-sections-heading") {
+                Text(stringResource(R.string.control_profile_sections), fontWeight = FontWeight.SemiBold)
             }
-            item(key = "create-blank") {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.control_profile_create_blank)) },
-                    supportingContent = { Text(stringResource(R.string.control_profile_create_blank_hint)) },
-                    leadingContent = { RadioButton(selected = !fromCurrent, onClick = null) },
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { onFromCurrentChange(false) },
-                )
-            }
-            if (fromCurrent) {
-                item(key = "create-sections-heading") {
-                    Text(stringResource(R.string.control_profile_sections), fontWeight = FontWeight.SemiBold)
-                }
-                items(ControlProfileSection.entries, key = { "create-section-${it.wireName}" }) { section ->
-                    SectionCheckbox(section, section in sections) { checked ->
-                        onSectionChange(section, checked)
-                    }
+            items(ControlProfileSection.entries, key = { "create-section-${it.wireName}" }) { section ->
+                SectionCheckbox(section, section in sections) { checked ->
+                    onSectionChange(section, checked)
                 }
             }
         }
-        Surface(tonalElevation = 4.dp) {
+        item(key = "create-action") {
             Button(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                 enabled = !loading && name.isNotBlank() && (!fromCurrent || sections.isNotEmpty()),
                 onClick = onCreate,
             ) {
@@ -852,7 +853,7 @@ private fun ControlProfilePreviewDialog(
             contentAlignment = Alignment.Center,
         ) {
             Surface(
-                modifier = Modifier.fillMaxWidth().fillMaxHeight().widthIn(max = 900.dp),
+                modifier = Modifier.widthIn(max = 900.dp).fillMaxWidth().fillMaxHeight(),
                 shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surface,
             ) {

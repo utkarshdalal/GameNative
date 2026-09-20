@@ -1155,7 +1155,7 @@ public class ControlElement {
             elementJSONObject.put("y", (float)y / inputControlsView.getMaxHeight());
             elementJSONObject.put("toggleSwitch", toggleSwitch);
             elementJSONObject.put("text", text);
-            elementJSONObject.put("iconId", iconId);
+            elementJSONObject.put("iconId", Byte.toUnsignedInt(iconId));
 
             if (type == Type.RANGE_BUTTON && range != null) {
                 elementJSONObject.put("range", range.name());
