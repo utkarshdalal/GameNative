@@ -784,6 +784,9 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
         pc.gamma = activeGamma;
         pc.outW = std::max(1.0f, (float)d.w * sx / cw * (float)tgtExt.width);
         pc.outH = std::max(1.0f, (float)d.h * sy / ch * (float)tgtExt.height);
+        pc.barrelStrength = activeBarrelStrength;
+        pc.barrelHeight = activeBarrelHeight;
+        pc.barrelCylindricalRatio = activeBarrelCylindricalRatio;
         vk_.CmdPushConstants(cb, pipeLayout, VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         vk_.CmdDraw(cb, 4, 1, 0, 0);
     }
@@ -806,6 +809,9 @@ void VulkanRendererContext::recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
         cpc.gamma = 1.0f;
         cpc.outW = (float)std::max(1, (int)curW);
         cpc.outH = (float)std::max(1, (int)curH);
+        cpc.barrelStrength = 0.0f;
+        cpc.barrelHeight = 0.176327f;
+        cpc.barrelCylindricalRatio = 0.5f;
         vk_.CmdPushConstants(cb, pipeLayout, VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(cpc), &cpc);
         vk_.CmdDraw(cb, 4, 1, 0, 0);
     }
@@ -1406,15 +1412,22 @@ void VulkanRendererContext::setSwapRB(bool enabled) {
 
 }
 
-void VulkanRendererContext::setEffect(int effectId, float sharpness, int effectMask, float brightness, float contrast, float gamma) {
+void VulkanRendererContext::setEffect(int effectId, float sharpness, int effectMask,
+                                         float brightness, float contrast, float gamma,
+                                         float barrelStrength, float barrelHeight,
+                                         float barrelCylindricalRatio) {
     activeEffectId = effectId;
     activeSharpness = std::max(0.0f, std::min(1.0f, sharpness));
     activeEffectMask = effectMask;
     activeBrightness = std::max(-1.0f, std::min(1.0f, brightness));
     activeContrast = std::max(-1.0f, std::min(1.0f, contrast));
     activeGamma = std::max(0.1f, std::min(4.0f, gamma));
-    RLOG("setEffect: id=%d sharpness=%.3f mask=%d brightness=%.3f contrast=%.3f gamma=%.3f",
-        activeEffectId, activeSharpness, activeEffectMask, activeBrightness, activeContrast, activeGamma);
+    activeBarrelStrength = std::max(0.0f, std::min(1.0f, barrelStrength));
+    activeBarrelHeight = std::max(0.05f, barrelHeight);
+    activeBarrelCylindricalRatio = std::max(0.5f, std::min(1.5f, barrelCylindricalRatio));
+    RLOG("setEffect: id=%d sharpness=%.3f mask=%d brightness=%.3f contrast=%.3f gamma=%.3f barrelStrength=%.3f barrelHeight=%.4f barrelCylindricalRatio=%.3f",
+        activeEffectId, activeSharpness, activeEffectMask, activeBrightness, activeContrast, activeGamma,
+        activeBarrelStrength, activeBarrelHeight, activeBarrelCylindricalRatio);
     needsRender.store(true);
     dirtyCV.notify_one();
 }
