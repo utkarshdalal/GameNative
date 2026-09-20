@@ -402,6 +402,10 @@ class EpicService : Service() {
                 ?: Result.failure(Exception("Service not available"))
         }
 
+        suspend fun backfillInstallState(context: Context, appId: Int, installPath: String, containerLanguage: String): EpicInstallState? {
+            return getInstance()?.epicManager?.backfillInstallState(context, appId, installPath, containerLanguage)
+        }
+
         suspend fun fetchManifestSizes(context: Context, appId: Int): EpicManager.ManifestSizes {
             return getInstance()?.epicManager?.fetchManifestSizes(context, appId)
                 ?: EpicManager.ManifestSizes(installSize = 0L, downloadSize = 0L)

@@ -552,8 +552,15 @@ class EpicAppScreen : BaseAppScreen() {
         val game = EpicService.getEpicGameOf(libraryItem.gameId) ?: return@withContext false
         val latestVersion = game.version
         if (latestVersion.isEmpty()) return@withContext false
-        val installedVersion = EpicInstallState.read(game.installPath)?.buildVersion ?: return@withContext false
-        installedVersion != latestVersion
+        val state = EpicInstallState.read(game.installPath)
+            ?: if (EpicService.getDownloadInfo(libraryItem.gameId)?.isActive() == true) {
+                return@withContext false
+            } else {
+                val language = ContainerUtils.getContainer(context, libraryItem.appId).language
+                EpicService.backfillInstallState(context, libraryItem.gameId, game.installPath, language)
+                    ?: return@withContext false
+            }
+        state.buildVersion != latestVersion
     }
 
     private fun triggerEpicUpdateDownload(
