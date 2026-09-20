@@ -1635,6 +1635,10 @@
     <string name="lsfg_performance_mode">パフォーマンスモード</string>
     <string name="lsfg_present_mode">プレゼントモード</string>
     <string name="lsfg_present_mode_desc">Mailbox を推奨します。FIFO は出力フレームレート（fps上限×倍率）が画面のリフレッシュレートと一致する場合にも使えますが、リフレッシュレートを下回ると揺れて見えることがあります。</string>
+    <string name="lsfg_backend">バックエンド</string>
+    <string name="lsfg_backend_desc">Legacy はゲーム内で lsfg-vk レイヤーを実行します。Native は GameNative のレンダラーでフレーム生成を実行します。</string>
+    <string name="lsfg_backend_legacy">Legacy（レイヤー）</string>
+    <string name="lsfg_backend_native">Native（レンダラー）</string>
     <string name="lsfg_not_supported">フレーム生成には Bionic コンテナが必要です</string>
     <string name="lsfg_install_prompt">Lossless Scaling がインストールされていません。タップしてインストールしてください。Adreno 6xx 以降でのみ動作確認されています。</string>
     <string name="lsfg_not_in_library">Lossless Scaling が Steam ライブラリにありません</string>

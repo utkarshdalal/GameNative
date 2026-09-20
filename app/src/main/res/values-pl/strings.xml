@@ -1632,6 +1632,10 @@
     <string name="lsfg_performance_mode">Tryb wydajności</string>
     <string name="lsfg_present_mode">Tryb prezentacji</string>
     <string name="lsfg_present_mode_desc">Zalecany jest Mailbox. FIFO działa również, gdy wyjściowa liczba klatek (limit fps × mnożnik) odpowiada częstotliwości odświeżania ekranu; poniżej niej FIFO może wyglądać niestabilnie.</string>
+    <string name="lsfg_backend">Backend</string>
+    <string name="lsfg_backend_desc">Legacy uruchamia warstwę lsfg-vk wewnątrz gry; Native generuje klatki w rendererze GameNative</string>
+    <string name="lsfg_backend_legacy">Legacy (warstwa)</string>
+    <string name="lsfg_backend_native">Native (renderer)</string>
     <string name="lsfg_not_supported">Generowanie klatek wymaga kontenera Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling nie jest zainstalowany. Dotknij, aby zainstalować. Wiadomo, że działa tylko na Adreno 6xx i nowszych.</string>
     <string name="lsfg_not_in_library">Lossless Scaling nie jest w Twojej bibliotece Steam</string>

@@ -1558,6 +1558,10 @@ https://gamenative.app
     <string name="lsfg_performance_mode">Режим производительности</string>
     <string name="lsfg_present_mode">Режим вывода</string>
     <string name="lsfg_present_mode_desc">Рекомендуется Mailbox. FIFO также подходит, когда выходная частота кадров (лимит fps × множитель) совпадает с частотой обновления экрана; ниже неё FIFO может выглядеть неровно.</string>
+    <string name="lsfg_backend">Бэкенд</string>
+    <string name="lsfg_backend_desc">Legacy запускает слой lsfg-vk внутри игры; Native выполняет генерацию кадров в рендерере GameNative</string>
+    <string name="lsfg_backend_legacy">Legacy (слой)</string>
+    <string name="lsfg_backend_native">Native (рендерер)</string>
     <string name="lsfg_not_supported">Для генерации кадров требуется контейнер Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling не установлен. Нажмите для установки. Известно, что работает только на Adreno 6xx и новее.</string>
     <string name="lsfg_not_in_library">Lossless Scaling нет в вашей библиотеке Steam</string>

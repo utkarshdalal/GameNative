@@ -12,6 +12,9 @@ import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import com.winlator.core.FileUtils
 import com.winlator.core.envvars.EnvVars
+import com.winlator.renderer.VulkanRenderer
+import com.winlator.renderer.lsfg.LosslessScaling
+import java.lang.ref.WeakReference
 import java.io.File
 import java.util.Locale
 import timber.log.Timber
@@ -66,6 +69,10 @@ object LsfgVkManager {
     const val EXTRA_FLOW_SCALE = "lsfgFlowScale"
     const val EXTRA_PERFORMANCE_MODE = "lsfgPerformanceMode"
     const val EXTRA_PRESENT_MODE = "lsfgPresentMode"
+    const val EXTRA_BACKEND = "lsfgBackend"
+
+    const val BACKEND_LEGACY = "legacy"
+    const val BACKEND_NATIVE = "native"
 
     // FPS limiter extras (owned by XServerScreen)
     private const val EXTRA_FPS_LIMITER_ENABLED = "fpsLimiterEnabled"
@@ -141,6 +148,18 @@ object LsfgVkManager {
             .takeIf { it == "fifo" || it == "mailbox" } ?: "mailbox"
 
     /**
+     * Frame-generation backend: the legacy lsfg-vk Vulkan layer inside the
+     * container, or the native pipeline in the host renderer.
+     */
+    fun backend(container: Container): String =
+        container.getExtra(EXTRA_BACKEND, BACKEND_NATIVE)
+            .takeIf { it == BACKEND_LEGACY } ?: BACKEND_NATIVE
+
+    @JvmStatic
+    fun isNativeBackend(container: Container): Boolean =
+        backend(container) == BACKEND_NATIVE
+
+    /**
      * Base fps cap for the layer's limiter (0 = uncapped). The layer
      * phase-locks its schedule to the vsync grid published by
      * [startVsyncClock]; without that file it falls back to free-running.
@@ -207,8 +226,35 @@ object LsfgVkManager {
     @Volatile private var cachedMeasuredFps: Float? = null
     @Volatile private var lastStatsReadMs: Long = 0L
 
+    @Volatile private var lastPresentedFrames: Long = -1L
+    @Volatile private var lastPresentedAtMs: Long = 0L
+
+    private fun readNativeMeasuredFps(): Float? {
+        val renderer = rendererRef?.get() ?: return null
+        val now = System.currentTimeMillis()
+        val frames = try {
+            renderer.presentedFrameCount
+        } catch (t: Throwable) {
+            return null
+        }
+        val prevFrames = lastPresentedFrames
+        val prevAt = lastPresentedAtMs
+        if (prevFrames < 0 || frames < prevFrames) {
+            lastPresentedFrames = frames
+            lastPresentedAtMs = now
+            return null
+        }
+        val elapsed = now - prevAt
+        if (elapsed < 500L) return cachedMeasuredFps
+        lastPresentedFrames = frames
+        lastPresentedAtMs = now
+        cachedMeasuredFps = ((frames - prevFrames) * 1000.0 / elapsed).toFloat()
+        return cachedMeasuredFps
+    }
+
     /** Served from a cache refreshed off the main thread; callers poll ~1/s. */
     fun readMeasuredFps(container: Container): Float? {
+        if (isNativeBackend(container)) return readNativeMeasuredFps()
         val now = System.currentTimeMillis()
         if (now - lastStatsReadMs >= 500L) {
             lastStatsReadMs = now
@@ -231,6 +277,70 @@ object LsfgVkManager {
             }
         }
         return cachedMeasuredFps
+    }
+
+    // ---- Native backend ----------------------------------------------------
+
+    @Volatile private var nativeCachePath: String? = null
+    @Volatile private var rendererRef: WeakReference<VulkanRenderer>? = null
+    @Volatile private var appContext: Context? = null
+
+    /**
+     * Compile (or reuse) the SPIR-V shader cache the native pipeline needs,
+     * derived from the container's copy of Lossless.dll. Takes ~200 ms on a
+     * cold build, so callers should keep it off the launch-critical path.
+     */
+    @JvmStatic
+    @Synchronized
+    fun prepareNativeCache(context: Context, container: Container): String? {
+        val dll = containerDllPath(container)?.let { File(it) } ?: findSteamDll()
+        if (dll == null || !dll.isFile) return null
+        val driverName = LosslessScaling.getDriverName(container)
+        val cache = LosslessScaling.resolveOrBuildCache(context, dll, driverName)
+        nativeCachePath = cache?.absolutePath
+        return nativeCachePath
+    }
+
+    private fun displayRefreshRate(context: Context): Float = runCatching {
+        (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)
+            ?.defaultDisplay?.refreshRate
+    }.getOrNull()?.takeIf { it > 1f } ?: 60f
+
+    /** Push the container's LSFG settings into the host renderer's native pipeline. */
+    @JvmStatic
+    fun applyNativeRuntime(renderer: VulkanRenderer, container: Container, context: Context) {
+        rendererRef = WeakReference(renderer)
+        appContext = context.applicationContext
+        val multiplier = multiplier(container)
+        val enabled = isArmed(container) && isNativeBackend(container) && multiplier >= 2
+
+        renderer.setFrameGenerationMode(
+            multiplier.coerceAtLeast(2),
+            0,
+            (flowScale(container) * 100f).toInt(),
+        )
+        renderer.setFrameGenerationRefreshRate(displayRefreshRate(context))
+
+        val cachePath = nativeCachePath
+        if (cachePath == null && enabled) {
+            val ctx = context.applicationContext
+            vsyncWriteExecutor.execute {
+                val built = prepareNativeCache(ctx, container)
+                if (built != null) renderer.setFrameGenerationShaders(built)
+                renderer.setFrameGenerationEnabled(built != null)
+            }
+            return
+        }
+
+        if (cachePath != null) renderer.setFrameGenerationShaders(cachePath)
+        renderer.setFrameGenerationEnabled(enabled)
+    }
+
+    /** Re-push settings to the renderer captured by [applyNativeRuntime], if any. */
+    fun refreshNativeRuntime(container: Container) {
+        val renderer = rendererRef?.get() ?: return
+        val context = appContext ?: return
+        applyNativeRuntime(renderer, container, context)
     }
 
     /**
@@ -356,7 +466,7 @@ object LsfgVkManager {
             val dllPath = containerDllPath(container)
             val savedMultiplier = multiplier(container)
             val frameGenActive = parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
-                dllPath != null && savedMultiplier >= 2
+                dllPath != null && savedMultiplier >= 2 && !isNativeBackend(container)
             val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
             val configText = buildConfigToml(
                 dllPath = dllPath,
@@ -629,7 +739,7 @@ object LsfgVkManager {
         }
 
         return try {
-            val frameGenActive = enabled && dllPath != null
+            val frameGenActive = enabled && dllPath != null && !isNativeBackend(container)
             val configText = buildConfigToml(
                 dllPath = dllPath,
                 enabled = frameGenActive,

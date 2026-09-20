@@ -1623,6 +1623,10 @@
     <string name="lsfg_performance_mode">Mod performanță</string>
     <string name="lsfg_present_mode">Mod de prezentare</string>
     <string name="lsfg_present_mode_desc">Mailbox este recomandat. FIFO funcționează și când rata de cadre de ieșire (limita fps × multiplicator) corespunde ratei de reîmprospătare a ecranului; sub aceasta, FIFO poate părea instabil.</string>
+    <string name="lsfg_backend">Backend</string>
+    <string name="lsfg_backend_desc">Legacy rulează stratul lsfg-vk în joc; Nativ rulează generarea de cadre în randorul GameNative</string>
+    <string name="lsfg_backend_legacy">Legacy (strat)</string>
+    <string name="lsfg_backend_native">Nativ (randor)</string>
     <string name="lsfg_not_supported">Generarea de cadre necesită un container Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling nu este instalat. Atingeți pentru a instala. Se știe că funcționează doar pe Adreno 6xx și mai nou.</string>
     <string name="lsfg_not_in_library">Lossless Scaling nu este în biblioteca dumneavoastră Steam</string>
