@@ -625,27 +625,30 @@ object GameDownloadService {
 
         synchronized(queueLock) {
             // Auto-pause all other active downloads. Skip entries whose transfer is
-            // already done and which are only syncing saves (post-install): pausing
-            // one kills its finishing job while the entry stays queued, and the later
-            // auto-resume re-runs the whole download (verify 1/N back to 100%) even
-            // though the game was complete.
+            // already done and which are only syncing saves (post-install)
             registeredDownloads.forEach { (existingKey, entry) ->
-                if (existingKey != key && entry.downloadInfo.isActive() && !entry.downloadInfo.isPostInstallSyncing()) {
+                if (existingKey != key && currentDownloadingKey != key && !entry.downloadInfo.isPostInstallSyncing()) {
                     Timber.i("[GameDownloadService] Auto-pausing ${entry.gameSource} download for ${entry.gameId}")
                     entry.downloadInfo.cancel(message = "Paused for new download")
                 }
             }
 
-            // Register the new download
+            // Register / Update the download hash map
             registeredDownloads[key] = DownloadEntry(
                 gameSource = gameSource,
                 gameId = gameId,
                 downloadInfo = downloadInfo,
                 dlcGameIds = dlcGameIds,
-                installPath =installPath,
+                installPath = installPath,
                 containerLanguage = containerLanguage
             )
-            downloadQueue.add(key)
+
+            // Add to the queue if it is not there
+            if (!downloadQueue.contains(key)) {
+                downloadQueue.add(key)
+            }
+
+            // Always set current download key
             currentDownloadingKey = key
             Timber.i("[GameDownloadService] Registered $gameSource download for $gameId")
         }
