@@ -395,6 +395,15 @@ pub fn plan_depot_write(
         }
         let path = join_target_path(target_dir, &file.filename);
         if !file.linktarget.is_empty() {
+            // Path-traversal guard: symlinks are created up front (before any file write),
+            // so an unchecked `sub -> ../../..` target lets a later `sub/x` write escape the
+            // install dir. Validate the target with the same relative-path rule.
+            if !crate::store_dl::rel_path_is_safe(&file.linktarget) {
+                return Err(DepotWriteResult::fail(
+                    format!("write_depot: unsafe linktarget '{}'", file.linktarget),
+                    false,
+                ));
+            }
             plan.actions.push(DepotFileAction::Symlink {
                 path,
                 target: file.linktarget.clone(),

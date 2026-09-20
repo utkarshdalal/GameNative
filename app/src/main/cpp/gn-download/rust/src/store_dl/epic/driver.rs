@@ -113,6 +113,14 @@ pub struct EpicOutcome {
 /// then runs its own pool, since nothing has been fetched yet.
 pub fn build_plan(req: &EpicRequest) -> Result<EpicPlan, String> {
     let manifest = parse_manifest(&req.manifest_bytes).map_err(|e| format!("plan: {e}"))?;
+    // Path-traversal guard: filenames come from the server manifest and are joined onto
+    // `install_dir` verbatim (`Path::join` even lets an ABSOLUTE path replace the base), and
+    // error cleanup `remove_file`s those paths — reject the whole manifest up front.
+    for file in &manifest.files {
+        if !crate::store_dl::rel_path_is_safe(&file.filename) {
+            return Err(format!("plan: unsafe path '{}'", file.filename));
+        }
+    }
     for &i in &req.pending_file_indices {
         if i >= manifest.files.len() {
             return Err(format!(

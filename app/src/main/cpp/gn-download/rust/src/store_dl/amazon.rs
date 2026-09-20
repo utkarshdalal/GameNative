@@ -76,8 +76,7 @@ pub fn parse_plan(json: &str) -> Result<Vec<PlanEntry>, String> {
         }
         // Path-traversal guard: the plan is server/manifest-influenced, and dest_path
         // concatenates textually. Reject anything that could escape install_dir.
-        // (Backslash checks are unnecessary: unix_path() already mapped '\\' to '/'.)
-        if rel_path.starts_with('/') || rel_path.split('/').any(|seg| seg == "..") {
+        if !crate::store_dl::rel_path_is_safe(&rel_path) {
             return Err(format!(
                 "plan json: entry {index} unsafe relPath: {rel_path}"
             ));

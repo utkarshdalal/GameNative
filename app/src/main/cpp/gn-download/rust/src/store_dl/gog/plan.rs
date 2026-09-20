@@ -89,11 +89,16 @@ pub fn parse_depot_manifest(json: &str, out: &mut Vec<PlannedFile>) {
         if let Some(stripped) = path.strip_prefix('/') {
             path = stripped.to_string();
         }
+        // Path-traversal guard: after the single-strip above `//abs` is still absolute (and
+        // `Path::join` would let it REPLACE the install dir), and `..` segments escape it.
+        if !crate::store_dl::rel_path_is_safe(&path) {
+            continue;
+        }
         let chunks = entry.get("chunks").and_then(Value::as_array);
         let Some(chunks) = chunks else {
             continue;
         };
-        if path.is_empty() || chunks.is_empty() {
+        if chunks.is_empty() {
             continue;
         }
         let file_md5 = opt_string(entry, "md5");
