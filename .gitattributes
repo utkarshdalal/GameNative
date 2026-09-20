@@ -1,2 +1,0 @@
-# Mark vendored third-party libraries to collapse them in PR diffs and exclude from language stats
-app/src/main/cpp/thirdparty/** linguist-vendored

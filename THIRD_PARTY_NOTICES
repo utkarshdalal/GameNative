@@ -371,79 +371,27 @@ SOFTWARE.
 
 ---
 
-## Lossless Scaling Frame Generation (LSFG) Native Pipeline
+## LSFG native pipeline (libvulkan_renderer.so)
 
-**Component:** Native Vulkan LSFG pipeline (`libvulkan_renderer.so`)
-**Authors & Contributors:**
-- **Camille LaVey & the Eden Emulator Team**: Pioneer of direct `Lossless.dll` shader extraction and Vulkan compute pipeline implementation on Android / emulator architectures ([Eden PR #4263](https://git.eden-emu.dev/eden-emu/eden/pulls/4263))
-- **WinNative / WinNative-Emu Team**: Winlator adaptation and Turnip/DXVK integration of direct `Lossless.dll` frame generation ([WinNative PR #697](https://github.com/WinNative-Emu/WinNative/pull/697))
-- **PancakeTAS and contributors**: Foundational reverse engineering and Vulkan frame generation analysis ([lsfg-vk](https://lsfg-vk.dev/))
-- **FrankBarretta & xXJSONDeruloXx**: Prior Android port and Turnip compatibility research
+**Component:** `app/src/main/cpp/winlator/vk/lsfg/`
+**Derived from:** lsfg-vk (PancakeTAS and contributors), the Eden Emulator LSFG port
+(Camille LaVey), and WinNative's Winlator adaptation
+**License:** GPL-3.0-or-later (same as this application)
 
-GameNative implements a native Vulkan compute pipeline that intercepts `vkQueuePresentKHR`
-to interpolate and pace generated frames using Optical Flow. The compute shaders are
-extracted at runtime from the user's legally owned `Lossless.dll` (from Lossless Scaling on Steam)
-and compiled to SPIR-V bytecode. `Lossless.dll` is proprietary software owned by THPhlash
-and is **not** distributed or bundled with GameNative.
+The frame-generation compute passes are built from shaders extracted at runtime from the
+user's own `Lossless.dll` (Lossless Scaling on Steam). The DLL and its shaders are not
+distributed with GameNative.
 
-### License: GNU General Public License v3.0 or later (GPL-3.0-or-later)
+## dxbc (DXVK shader translator)
 
-Copyright (c) 2025 lsfg-vk contributors
-Copyright (c) 2026 Eden Emulator Project
-Copyright (c) 2026 WinNative contributors
+**Library:** dxbc, DXVK's DXBC-to-SPIR-V compiler extracted as a standalone library
+**Authors:** Philip Rebohle and DXVK contributors; extraction by PancakeTAS
+**Source:** https://github.com/PancakeTAS/dxbc (upstream https://github.com/doitsujin/dxvk)
+**License:** zlib/libpng
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
----
-
-## DXVK (DXBC to SPIR-V Translator)
-
-**Component:** `dxbc` static library
-**Location:** `app/src/main/cpp/thirdparty/dxbc/`
-**Authors:** Philip Rebohle (doitsujin), Joshua Ashton, Robin Kertels, Jeffrey Ellison, and DXVK contributors
-**Source:** https://github.com/doitsujin/dxvk
-**License:** zlib/libpng License
-
-Used for translating DirectX Bytecode (DXBC) compute shader blobs extracted from
-`Lossless.dll` into SPIR-V shader modules for Vulkan pipeline creation.
-
-### License Text: zlib/libpng
-
-Copyright (c) 2017 Philip Rebohle
-Copyright (c) 2019 Joshua Ashton
-Copyright (c) 2019 Robin Kertels
-Copyright (c) 2023 Jeffrey Ellison
-
-This software is provided 'as-is', without any express or implied
-warranty. In no event will the authors be held liable for any damages
-arising from the use of this software.
-
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it
-freely, subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not
-   claim that you wrote the original software. If you use this software
-   in a product, an acknowledgment in the product documentation would be
-   appreciated but is not required.
-
-2. Altered source versions must be plainly marked as such, and must not
-   be misrepresented as being the original software.
-
-3. This notice may not be removed or altered from any source distribution.
-
----
+Built from the `thirdparty/dxbc` submodule inside `app/src/main/cpp/lsfg-vk-android` into
+`libvulkan_renderer.so` to translate the `Lossless.dll` compute shaders to SPIR-V.
+The zlib licence text is in `LICENSE.md` of that submodule.
 
 ## OpenAL Soft
 
