@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -870,25 +871,28 @@ private fun ControlProfilePreviewDialog(
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                         }
                     }
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(bottom = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        if (ControlProfileSection.ON_SCREEN in action.preview.sections) {
-                            item { ControlLayoutPreview(action.preview.json, screenSize) }
+                    BoxWithConstraints(Modifier.weight(1f)) {
+                        val previewHeight = maxHeight
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(bottom = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            if (ControlProfileSection.ON_SCREEN in action.preview.sections) {
+                                item { ControlLayoutPreview(action.preview.json, screenSize, maxHeight = previewHeight) }
+                            }
+                            item { ProfileSectionChips(action.preview.sections) }
+                            if (ControlProfileSection.ON_SCREEN in action.preview.sections) {
+                                item { Text(stringResource(R.string.control_profile_controls_count, action.preview.elementCount)) }
+                            }
+                            if (ControlProfileSection.PHYSICAL_CONTROLLER in action.preview.sections) {
+                                item { Text(stringResource(R.string.control_profile_bindings_count, action.preview.physicalBindingCount)) }
+                            }
+                            if (ControlProfileSection.RADIAL_MENU in action.preview.sections) {
+                                item { Text(stringResource(R.string.control_profile_radial_count, action.preview.radialSlotCount)) }
+                            }
+                            item { ProfileSettingsSummary(action.preview) }
                         }
-                        item { ProfileSectionChips(action.preview.sections) }
-                        if (ControlProfileSection.ON_SCREEN in action.preview.sections) {
-                            item { Text(stringResource(R.string.control_profile_controls_count, action.preview.elementCount)) }
-                        }
-                        if (ControlProfileSection.PHYSICAL_CONTROLLER in action.preview.sections) {
-                            item { Text(stringResource(R.string.control_profile_bindings_count, action.preview.physicalBindingCount)) }
-                        }
-                        if (ControlProfileSection.RADIAL_MENU in action.preview.sections) {
-                            item { Text(stringResource(R.string.control_profile_radial_count, action.preview.radialSlotCount)) }
-                        }
-                        item { ProfileSettingsSummary(action.preview) }
                     }
                     HorizontalDivider()
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {

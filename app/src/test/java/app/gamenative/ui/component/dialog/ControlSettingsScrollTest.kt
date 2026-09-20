@@ -82,6 +82,24 @@ class ControlSettingsScrollTest {
     }
 
     @Test
+    fun previewFitsShortViewportWithoutCroppingItsLayout() {
+        compose.setContent {
+            MaterialTheme {
+                LazyColumn(Modifier.fillMaxSize()) {
+                    item {
+                        ControlLayoutPreview(
+                            JSONObject("{\"elements\":[]}"), "1280x960",
+                            Modifier.testTag("preview"), maxHeight = 140.dp,
+                        )
+                    }
+                }
+            }
+        }
+        compose.onNodeWithTag("preview").assertHeightIsEqualTo(140.dp)
+            .assertWidthIsEqualTo((140f * 4f / 3f).dp)
+    }
+
+    @Test
     fun createNameKeepsFocusAndTextWhenViewportShrinks() {
         val name = mutableStateOf("")
         val height = mutableStateOf(360.dp)

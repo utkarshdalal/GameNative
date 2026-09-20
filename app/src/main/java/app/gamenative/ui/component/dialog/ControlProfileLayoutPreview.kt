@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.winlator.inputcontrols.ControlsProfile
@@ -26,7 +27,12 @@ import com.winlator.widget.InputControlsView
 import org.json.JSONObject
 
 @Composable
-internal fun ControlLayoutPreview(json: JSONObject, screenSize: String, modifier: Modifier = Modifier) {
+internal fun ControlLayoutPreview(
+    json: JSONObject,
+    screenSize: String,
+    modifier: Modifier = Modifier,
+    maxHeight: Dp = 320.dp,
+) {
     val dimensions = screenSize.lowercase().split("x").mapNotNull { it.trim().toFloatOrNull() }
     val ratio = if (dimensions.size == 2 && dimensions.all { it.isFinite() && it > 0f }) {
         (dimensions[0] / dimensions[1]).coerceIn(0.6f, 2.5f)
@@ -41,7 +47,7 @@ internal fun ControlLayoutPreview(json: JSONObject, screenSize: String, modifier
         Surface(
             modifier = modifier
                 // Constrain width before fixing the aspect ratio, so the height cap is effective.
-                .widthIn(max = 320.dp * ratio)
+                .widthIn(max = minOf(320.dp, maxHeight) * ratio)
                 .fillMaxWidth()
                 .aspectRatio(ratio),
             shape = RoundedCornerShape(14.dp),
