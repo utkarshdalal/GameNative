@@ -17,6 +17,8 @@ import com.winlator.inputcontrols.RadialMenu
 import com.winlator.xenvironment.ImageFs
 import java.io.File
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -118,12 +120,16 @@ object ControlProfileService {
         container: Container,
         manager: InputControlsManager,
     ): ControlsProfile? {
-        val selectedId = container.getExtra("profileId", "0").toIntOrNull() ?: 0
-        val selected = manager.getProfile(selectedId) ?: manager.getProfile(0) ?: manager.profiles.firstOrNull()
+        val selected = selectedProfile(container, manager)
         if (selected != null && !selected.isListed && selected.gameOwnerId == container.id) return selected
         selected ?: return null
 
         return createWorkingProfile(context, container, manager, selected)
+    }
+
+    private fun selectedProfile(container: Container, manager: InputControlsManager): ControlsProfile? {
+        val selectedId = container.getExtra("profileId", "0").toIntOrNull() ?: 0
+        return manager.getProfile(selectedId) ?: manager.getProfile(0) ?: manager.profiles.firstOrNull()
     }
 
     private fun createWorkingProfile(
@@ -143,7 +149,19 @@ object ControlProfileService {
         manager: InputControlsManager,
         selected: ControlsProfile,
     ): Int {
+        val json = workingProfileJson(context, container, manager, selected)
+        saveWorkingProfile(context, container, json)
+        return json.getInt("id")
+    }
+
+    private fun workingProfileJson(
+        context: Context,
+        container: Container,
+        manager: InputControlsManager,
+        selected: ControlsProfile,
+    ): JSONObject {
         val sourceJson = readProfileJson(context, selected)
+        if (!selected.isListed && selected.gameOwnerId == container.id) return sourceJson
         val newId = manager.nextProfileId()
         sourceJson.put("id", newId)
         sourceJson.put(KEY_SCHEMA_VERSION, SCHEMA_VERSION)
@@ -155,11 +173,7 @@ object ControlProfileService {
             allStoredSections(sourceJson).forEach { inheritedSources[it] = selected.id }
         }
         writeSectionSources(sourceJson, inheritedSources)
-        writeProfileJson(context, newId, sourceJson)
-
-        container.putExtra("profileId", newId.toString())
-        container.saveData()
-        return newId
+        return sourceJson
     }
 
     /** Migrates pre-library containers away from directly referencing editable global profiles. */
@@ -209,14 +223,15 @@ object ControlProfileService {
         source: ControlsProfile,
         selectedSections: Set<ControlProfileSection> = sectionsOf(readProfileJson(context, source)),
     ): ControlsProfile {
-        val working = ensureWorkingProfile(context, container, manager)
-            ?: throw IOException("Unable to create a working control profile")
         val sourceJson = readProfileJson(context, source)
         val availableSections = sectionsOf(sourceJson)
         if (selectedSections.isEmpty() || !availableSections.containsAll(selectedSections)) {
             throw IllegalArgumentException("Selected settings are not available in this control profile")
         }
-        val workingJson = readProfileJson(context, working)
+        val selected = selectedProfile(container, manager)
+            ?: throw IOException("Unable to create a working control profile")
+        val workingJson = workingProfileJson(context, container, manager, selected)
+        val workingId = workingJson.getInt("id")
         copySections(sourceJson, workingJson, selectedSections)
         if (ControlProfileSection.ON_SCREEN in selectedSections) {
             workingJson.put(ControlsProfile.KEY_AUTO_FIT_LAYOUT, true)
@@ -226,11 +241,11 @@ object ControlProfileService {
         workingJson.put(KEY_GAME_OWNER_ID, container.id)
         workingJson.put(KEY_INCLUDED_SECTIONS, sectionArray(allStoredSections(workingJson)))
         recordSectionSource(workingJson, selectedSections, source.id)
-        writeProfileJson(context, working.id, workingJson)
-        applyContainerSections(container, sourceJson, selectedSections)
-        container.saveData()
+        saveWorkingProfile(context, container, workingJson) {
+            applyContainerSections(container, sourceJson, selectedSections)
+        }
         manager.reloadProfiles()
-        return requireNotNull(manager.getProfile(working.id)) {
+        return requireNotNull(manager.getProfile(workingId)) {
             "Unable to reload the applied control profile"
         }
     }
@@ -300,13 +315,14 @@ object ControlProfileService {
             remove(KEY_GAME_OWNER_ID)
             remove(KEY_SECTION_SOURCES)
         }
-        writeProfileJson(context, target.id, json)
         // Saving newly selected categories also makes this library entry their source
         // for this game. Other games keep their independent working copies.
         copySections(captured, workingJson, sections)
         workingJson.put(KEY_INCLUDED_SECTIONS, sectionArray(sectionsOf(workingJson) + sections))
         recordSectionSource(workingJson, sections, target.id)
-        writeProfileJson(context, working.id, workingJson)
+        withProfileWrite(context, target.id, json) {
+            writeProfileJson(context, working.id, workingJson)
+        }
         manager.reloadProfiles()
         return requireNotNull(manager.getProfile(target.id))
     }
@@ -852,6 +868,72 @@ object ControlProfileService {
 
     private fun deepCopyObject(value: JSONObject?): JSONObject =
         if (value == null) JSONObject() else JSONObject(value.toString())
+
+    /** Commit the profile first, then the atomic container write; restore both live state and profile on failure. */
+    private fun saveWorkingProfile(
+        context: Context,
+        container: Container,
+        json: JSONObject,
+        updateSettings: () -> Unit = {},
+    ) {
+        val oldExtraData = container.extraData?.let { JSONObject(it.toString()) }
+        val oldTouchscreen = container.isTouchscreenMode
+        val oldGestures = container.gestureConfig
+        val oldShooter = container.isShooterMode
+        val oldShooterConfig = container.shooterConfig
+        try {
+            withProfileWrite(context, json.getInt("id"), json) {
+                container.putExtra("profileId", json.getInt("id").toString())
+                updateSettings()
+                if (!container.saveDataChecked()) throw IOException("Unable to save control settings to the container")
+            }
+        } catch (error: Exception) {
+            container.extraData = oldExtraData
+            container.setTouchscreenMode(oldTouchscreen)
+            container.gestureConfig = oldGestures
+            container.setShooterMode(oldShooter)
+            container.shooterConfig = oldShooterConfig
+            throw error
+        }
+    }
+
+    /** A disk backup lets rollback use a rename even when the subsequent save fails for lack of space. */
+    private fun <T> withProfileWrite(context: Context, id: Int, json: JSONObject, operation: () -> T): T {
+        val file = ControlsProfile.getProfileFile(context, id)
+        // Keep backups outside the library: its legacy loader reads every file, regardless of extension.
+        val backup = if (file.exists()) File.createTempFile("control-profile-$id-", ".rollback", context.filesDir) else null
+        var written = false
+        var keepBackup = false
+        try {
+            if (backup != null) Files.copy(file.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            writeProfileJson(context, id, json)
+            written = true
+            return operation()
+        } catch (error: Exception) {
+            if (written) {
+                try {
+                    if (backup != null) {
+                        Files.move(backup.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                    } else {
+                        Files.delete(file.toPath())
+                    }
+                } catch (rollbackError: Exception) {
+                    keepBackup = true
+                    val message = if (backup != null) {
+                        "Save failed and the previous control profile could not be restored. Backup: ${backup.name}"
+                    } else {
+                        "Save failed and the incomplete control profile could not be removed"
+                    }
+                    throw IOException(message, error).apply {
+                        addSuppressed(rollbackError)
+                    }
+                }
+            }
+            throw error
+        } finally {
+            if (!keepBackup) backup?.delete()
+        }
+    }
 
     private fun writeProfileJson(context: Context, id: Int, json: JSONObject) {
         if (!FileUtils.writeString(ControlsProfile.getProfileFile(context, id), json.toString())) {

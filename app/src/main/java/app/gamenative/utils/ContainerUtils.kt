@@ -24,6 +24,7 @@ import com.winlator.core.WineThemeManager
 import com.winlator.winhandler.WinHandler.PreferredInputApi
 import com.winlator.xenvironment.ImageFs
 import java.io.File
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -672,12 +673,34 @@ object ContainerUtils {
         }
     }
 
+    /** Profile browsing must not run drive maintenance or repair an unreadable container. */
+    internal fun getOrCreateControlProfileContainer(
+        context: Context,
+        appId: String,
+        create: (ContainerManager) -> Container = { manager ->
+            createNewContainer(context, appId, appId, manager, repairCorrupted = false).also {
+                if (!it.saveDataChecked()) throw IOException("Unable to save the new container")
+            }
+        },
+    ): Container {
+        val manager = ContainerManager(context)
+        manager.containers.firstOrNull { it.id == appId }?.let { return it }
+        val homeDir = File(ImageFs.find(context).rootDir, "home")
+        val entries = homeDir.list()
+        if (homeDir.exists() && entries == null) throw IOException("Unable to read the container directory")
+        if (entries?.contains("${ImageFs.USER}-$appId") == true) {
+            throw IOException("Unable to read this game's container configuration. Its files have been left unchanged.")
+        }
+        return create(manager)
+    }
+
     private fun createNewContainer(
         context: Context,
         appId: String,
         containerId: String,
         containerManager: ContainerManager,
         customConfig: ContainerData? = null,
+        repairCorrupted: Boolean = true,
     ): Container {
          // Determine game source
         val gameSource = extractGameSourceFromContainerId(appId)
@@ -789,6 +812,8 @@ object ContainerUtils {
 
         // Create the actual container
         var container = containerManager.createContainerFuture(containerId, data).get()
+        // Also guards a directory appearing between the profile lookup and creation.
+        if (container == null && !repairCorrupted) throw IOException("Unable to create the container; existing files have been left unchanged")
 
         // If container creation failed, it might be because directory already exists but is corrupted
         // Try to clean it up and retry once

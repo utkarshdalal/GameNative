@@ -1644,7 +1644,7 @@ abstract class BaseAppScreen {
             if (!showControlProfiles) return@LaunchedEffect
             controlProfilesContainer = null
             runCatching {
-                withContext(Dispatchers.IO) { ContainerUtils.getOrCreateContainer(context, appId) }
+                withContext(Dispatchers.IO) { ContainerUtils.getOrCreateControlProfileContainer(context, appId) }
             }.onSuccess {
                 controlProfilesContainer = it
             }.onFailure { error ->
