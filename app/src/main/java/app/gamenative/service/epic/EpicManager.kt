@@ -1134,7 +1134,8 @@ class EpicManager @Inject constructor(
         appId: Int,
         installPath: String,
         containerLanguage: String,
-    ): EpicInstallState? = withContext(Dispatchers.IO) {
+    ): EpicInstallState? = withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+        if (!backfillsInFlight.add(appId)) return@withContext null
         try {
             val game = getGameById(appId) ?: return@withContext null
             val manifestResult = fetchManifestFromEpic(context, game.namespace, game.catalogId, game.appName)
@@ -1154,12 +1155,19 @@ class EpicManager @Inject constructor(
             )
             EpicInstallState.write(installPath, state)
             Timber.tag("Epic").i("Backfilled install state for ${game.appName}: matchesLatest=$matches version=${state.buildVersion}")
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(appId, false),
+            )
             state
         } catch (e: Exception) {
             Timber.tag("Epic").w(e, "Failed to backfill install state for appId $appId")
             null
+        } finally {
+            backfillsInFlight.remove(appId)
         }
     }
+
+    private val backfillsInFlight = java.util.Collections.synchronizedSet(mutableSetOf<Int>())
 
     suspend fun fetchManifestSizes(context: Context, appId: Int): ManifestSizes = withContext(Dispatchers.IO) {
         try {
