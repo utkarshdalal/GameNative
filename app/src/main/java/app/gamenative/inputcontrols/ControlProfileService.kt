@@ -14,6 +14,8 @@ import com.winlator.inputcontrols.ControlElement
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.inputcontrols.RadialMenu
+import com.winlator.xenvironment.ImageFs
+import java.io.File
 import java.io.IOException
 import org.json.JSONArray
 import org.json.JSONObject
@@ -183,28 +185,18 @@ object ControlProfileService {
         return migrated
     }
 
-    fun cleanupOrphanedWorkingProfiles(context: Context, manager: InputControlsManager): Int {
-        val containerIds = ContainerManager(context).containers.mapTo(mutableSetOf()) { it.id }
-        return cleanupOrphanedWorkingProfiles(manager, containerIds)
-    }
-
     fun reconcileWorkingProfiles(context: Context, manager: InputControlsManager) {
-        val containers = ContainerManager(context).containers
-        migrateReferencedLibraryProfiles(context, manager, containers)
-        cleanupOrphanedWorkingProfiles(manager, containers.mapTo(mutableSetOf()) { it.id })
-    }
-
-    private fun cleanupOrphanedWorkingProfiles(
-        manager: InputControlsManager,
-        containerIds: Set<String>,
-    ): Int {
-        val orphans = manager.allProfiles.filter {
-            !it.isListed && it.gameOwnerId.isNotBlank() && it.gameOwnerId !in containerIds
-        }
-        return orphans.count { manager.removeProfile(it) }
+        // An unreadable container config is not evidence of deletion. Browsing
+        // the library must never remove working profiles for skipped containers.
+        migrateReferencedLibraryProfiles(context, manager)
     }
 
     fun deleteWorkingProfilesForContainer(context: Context, containerId: String): Int {
+        // Called only by explicit container deletion. Its async callback can also
+        // run after a failed deletion, so require a successful directory listing
+        // that confirms the container entry (including any symlink) is gone.
+        val containerEntries = File(ImageFs.find(context).rootDir, "home").list() ?: return 0
+        if ("${ImageFs.USER}-$containerId" in containerEntries) return 0
         val manager = InputControlsManager(context)
         val matches = manager.allProfiles.filter { !it.isListed && it.gameOwnerId == containerId }
         return matches.count { manager.removeProfile(it) }

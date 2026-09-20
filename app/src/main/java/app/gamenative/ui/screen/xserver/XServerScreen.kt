@@ -1264,6 +1264,7 @@ fun XServerScreen(
                     false
                 }
                 else {
+                    val wasTouchscreenMode = isTouchscreenModeActive
                     currentGestureConfig = app.gamenative.data.TouchGestureConfig.fromJson(container.gestureConfig)
                     currentShooterConfig = ShooterModeConfig.fromJson(container.shooterConfig)
                     isTouchscreenModeActive = container.isTouchscreenMode
@@ -1284,7 +1285,15 @@ fun XServerScreen(
                         areControlsVisible = false
                         loadInputControlsProfilePreservingVisibility(profile, winHandler)
                     }
-                    else if ((areControlsVisible || isShooterModeActive) && winHandler != null) {
+                    else if (winHandler != null && shouldShowControlsAfterProfileApply(
+                            wereControlsVisible = areControlsVisible,
+                            wasTouchscreenMode = wasTouchscreenMode,
+                            isTouchscreenMode = isTouchscreenModeActive,
+                            isShooterMode = isShooterModeActive,
+                            hasOtherInputDevice = hasPhysicalController || hasPhysicalKeyboard ||
+                                hasPhysicalMouse || hasInternalTouchpad,
+                        )
+                    ) {
                         showInputControls(profile, winHandler, container)
                         areControlsVisible = true
                     }
