@@ -1,7 +1,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "VulkanRendererContext.h"
-#include "vk/vk_dispatch.h"
+#include "../lsfg/vk_dispatch.h"
 #include <chrono>
 #include <stdexcept>
 #include <cstdlib>

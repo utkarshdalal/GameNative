@@ -113,7 +113,7 @@ struct VkTable {
 
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
-#include "vk/lsfg/vkr_lsfg.h"
+#include "../lsfg/vkr_lsfg.h"
 
 struct VkCompositeTarget {
     VkImage        image = VK_NULL_HANDLE;

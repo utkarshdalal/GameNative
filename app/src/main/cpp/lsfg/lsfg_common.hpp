@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 
-#include "../vk_dispatch.h"
+#include "vk_dispatch.h"
 
 namespace lsfg {
 
