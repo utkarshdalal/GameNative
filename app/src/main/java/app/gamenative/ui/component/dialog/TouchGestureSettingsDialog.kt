@@ -19,8 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.data.TouchGestureConfig
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_LEFT_CLICK
@@ -72,14 +70,7 @@ fun TouchGestureSettingsDialog(
 ) {
     var config by remember { mutableStateOf(gestureConfig) }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            dismissOnBackPress = true,
-            dismissOnClickOutside = false,
-        ),
-    ) {
+    ControlSettingsDialog(onDismiss = onDismiss) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = PluviaBackground,

@@ -28,8 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.data.GyroSettings
 import app.gamenative.ui.theme.PluviaBackground
@@ -58,14 +56,7 @@ fun GyroSettingsDialog(
     val needsGyroControl = config.activationMode != GyroSettings.ACTIVATION_ALWAYS &&
         !hasGyroControlAssigned(config.activationMode)
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            dismissOnBackPress = true,
-            dismissOnClickOutside = false,
-        ),
-    ) {
+    ControlSettingsDialog(onDismiss = onDismiss) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = PluviaBackground,

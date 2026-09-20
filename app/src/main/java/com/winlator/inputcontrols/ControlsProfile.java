@@ -194,6 +194,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     }
 
     public boolean save() {
+        if (elementSourceOverride != null) return false;
         File file = getProfileFile(context, id);
         Log.d("ControlsProfile", "Saving profile: " + name + " (ID: " + id + ") to " + file.getAbsolutePath());
 
@@ -248,7 +249,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     if (controllerJSONObject != null) controllersJSONArray.put(controllerJSONObject);
                 }
             }
-            if (controllersJSONArray.length() > 0) data.put("controllers", controllersJSONArray);
+            if (controllersJSONArray.length() > 0 || includesSection(data, "physicalController")) {
+                data.put("controllers", controllersJSONArray);
+            }
             else if (controllersLoaded) data.remove("controllers");
 
             JSONArray radialMenusJSONArray = new JSONArray();
@@ -262,7 +265,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                     if (menuJSONObject != null) radialMenusJSONArray.put(menuJSONObject);
                 }
             }
-            if (radialMenusJSONArray.length() > 0) data.put("radialMenus", radialMenusJSONArray);
+            if (radialMenusJSONArray.length() > 0 || includesSection(data, "radialMenu")) {
+                data.put("radialMenus", radialMenusJSONArray);
+            }
             else if (radialMenusLoaded) data.remove("radialMenus");
 
             if (!FileUtils.writeString(file, data.toString())) {
@@ -276,6 +281,15 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
             Log.e("ControlsProfile", "Failed to save profile: " + name + " (ID: " + id + ")", e);
             return false;
         }
+    }
+
+    private static boolean includesSection(JSONObject data, String section) {
+        JSONArray included = data.optJSONArray("includedSections");
+        if (included == null) return false;
+        for (int i = 0; i < included.length(); i++) {
+            if (section.equals(included.optString(i))) return true;
+        }
+        return false;
     }
 
     public static File getProfileFile(Context context, int id) {

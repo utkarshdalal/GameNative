@@ -14,17 +14,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -52,6 +49,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -68,6 +66,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -75,8 +74,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.inputcontrols.ControlProfilePreview
@@ -260,19 +257,11 @@ fun ControlProfileLibraryDialog(
         )
     }
 
-    Dialog(
-        onDismissRequest = { if (createDialog) createDialog = false else onDismiss() },
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            dismissOnClickOutside = false,
-            decorFitsSystemWindows = false,
-        ),
+    ControlSettingsDialog(
+        onDismiss = { if (createDialog) createDialog = false else onDismiss() },
     ) {
         Scaffold(
-            modifier = Modifier
-                .fillMaxSize()
-                .displayCutoutPadding()
-                .windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility),
+            modifier = Modifier.fillMaxSize(),
             containerColor = PluviaBackground,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
@@ -426,7 +415,7 @@ fun ControlProfileLibraryDialog(
                                 onSaveCurrent = if (appliedSections.isNotEmpty() && !entry.builtIn) ({
                                     sectionAction = SectionAction(
                                         title = context.getString(R.string.control_profile_update_current),
-                                        available = appliedSections,
+                                        available = ControlProfileSection.entries.toSet(),
                                         selected = appliedSections,
                                         confirmLabel = context.getString(R.string.save),
                                     ) { sections ->
@@ -841,6 +830,7 @@ private fun SectionCheckbox(
 ) {
     ListItem(
         headlineContent = { Text(sectionLabel(section)) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         trailingContent = { Checkbox(checked = checked, onCheckedChange = null) },
         modifier = Modifier.fillMaxWidth().clickable { onCheckedChange(!checked) },
     )
@@ -854,15 +844,10 @@ private fun ControlProfilePreviewDialog(
     onDismiss: () -> Unit,
     onConfirm: (() -> Unit)?,
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-    ) {
+    ControlSettingsDialog(onDismiss = onDismiss) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .displayCutoutPadding()
-                .windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility)
                 .padding(12.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -921,7 +906,7 @@ private fun ProfileSettingsSummary(preview: ControlProfilePreview) {
     val enabled = stringResource(R.string.enabled)
     val disabled = stringResource(R.string.disabled)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        preview.json.optJSONObject("gyroSettings")?.let { gyroJson ->
+        preview.json.optJSONObject("gyroSettings")?.takeIf { ControlProfileSection.GYRO in preview.sections }?.let { gyroJson ->
             SettingsSummaryCard(
                 title = sectionLabel(ControlProfileSection.GYRO),
                 status = if (gyroJson.optInt("mode") == 0) disabled else enabled,
@@ -929,7 +914,7 @@ private fun ProfileSettingsSummary(preview: ControlProfilePreview) {
             )
         }
 
-        preview.json.optJSONObject("touchscreenSettings")?.let { touchJson ->
+        preview.json.optJSONObject("touchscreenSettings")?.takeIf { ControlProfileSection.TOUCHSCREEN in preview.sections }?.let { touchJson ->
             SettingsSummaryCard(
                 title = sectionLabel(ControlProfileSection.TOUCHSCREEN),
                 status = enabledLabel(touchJson.optBoolean("enabled")),
@@ -940,7 +925,7 @@ private fun ProfileSettingsSummary(preview: ControlProfilePreview) {
             )
         }
 
-        preview.json.optJSONObject("shooterSettings")?.let { shooterJson ->
+        preview.json.optJSONObject("shooterSettings")?.takeIf { ControlProfileSection.SHOOTER in preview.sections }?.let { shooterJson ->
             SettingsSummaryCard(
                 title = sectionLabel(ControlProfileSection.SHOOTER),
                 status = enabledLabel(shooterJson.optBoolean("enabled")),

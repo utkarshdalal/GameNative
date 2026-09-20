@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import android.content.Context
 import android.graphics.Color.TRANSPARENT
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -26,7 +27,7 @@ import org.json.JSONObject
 @Composable
 internal fun ControlLayoutPreview(json: JSONObject, screenSize: String) {
     val dimensions = screenSize.lowercase().split("x").mapNotNull { it.trim().toFloatOrNull() }
-    val ratio = if (dimensions.size == 2 && dimensions[1] > 0f) {
+    val ratio = if (dimensions.size == 2 && dimensions.all { it.isFinite() && it > 0f }) {
         (dimensions[0] / dimensions[1]).coerceIn(0.6f, 2.5f)
     }
     else {
@@ -81,26 +82,27 @@ internal fun ControlLayoutPreview(json: JSONObject, screenSize: String) {
             key(jsonKey) {
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
-                    factory = { context ->
-                        InputControlsView(context).apply previewView@ {
-                            isEnabled = false
-                            isClickable = false
-                            isFocusable = false
-                            setBackgroundColor(TRANSPARENT)
-                            setOverlayOpacity(InputControlsView.DEFAULT_OVERLAY_OPACITY)
-                            setProfile(
-                                ControlsProfile(context, PREVIEW_PROFILE_ID).apply {
-                                    name = json.optString("name")
-                                    isListed = false
-                                    loadElementsFromJson(this@previewView, json)
-                                },
-                            )
-                        }
-                    },
+                    factory = { context -> createControlLayoutPreviewView(context, json) },
                 )
             }
         }
     }
 }
+
+internal fun createControlLayoutPreviewView(context: Context, json: JSONObject) =
+    InputControlsView(context).apply previewView@ {
+        isEnabled = false
+        isClickable = false
+        isFocusable = false
+        setBackgroundColor(TRANSPARENT)
+        setOverlayOpacity(InputControlsView.DEFAULT_OVERLAY_OPACITY)
+        setProfile(
+            ControlsProfile(context, PREVIEW_PROFILE_ID).apply {
+                name = json.optString("name")
+                isListed = false
+                loadElementsFromJson(this@previewView, json)
+            },
+        )
+    }
 
 private const val PREVIEW_PROFILE_ID = -1

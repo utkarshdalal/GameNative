@@ -6,6 +6,8 @@ import android.graphics.Canvas
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.data.GyroSettings
+import app.gamenative.data.ShooterModeConfig
+import app.gamenative.data.TouchGestureConfig
 import com.winlator.container.Container
 import com.winlator.core.FileUtils
 import com.winlator.inputcontrols.ControlsProfile
@@ -27,6 +29,87 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class ControlProfileServiceTest {
+    @Test
+    fun saveCurrentAddsNewCategoriesAndRoundTripsWithoutChangingAnotherGame() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val manager = InputControlsManager(context)
+        val root = Files.createTempDirectory("profile-category-update").toFile()
+        val first = Container("category-first").apply { rootDir = root.resolve("first").apply { mkdirs() } }
+        val other = Container("category-other").apply {
+            rootDir = root.resolve("other").apply { mkdirs() }
+            setShooterMode(false)
+            setTouchscreenMode(false)
+        }
+        val ids = mutableSetOf<Int>()
+        try {
+            val target = ControlProfileService.createBlank(context, manager, "Add categories").also { ids += it.id }
+            val firstWorking = ControlProfileService.applyProfile(context, first, manager, target).also { ids += it.id }
+            val otherWorking = ControlProfileService.applyProfile(context, other, manager, target).also { ids += it.id }
+            val otherBefore = ControlProfileService.readProfileJson(context, otherWorking).toString()
+            val gyro = GyroSettings(mode = GyroSettings.MODE_MOUSE, lastTarget = GyroSettings.MODE_MOUSE,
+                sensitivity = 2.25f, invertY = true, activationMode = GyroSettings.ACTIVATION_TOGGLE)
+            val shooter = ShooterModeConfig(lookSensitivityX = 2.5f, invertLookY = true, movementZoneSplit = 0.4f)
+            val touch = TouchGestureConfig(longPressEnabled = true, longPressDelay = 700)
+            gyro.saveTo(first, persist = false)
+            first.setShooterMode(true)
+            first.setShooterConfig(shooter.toJson())
+            first.setTouchscreenMode(true)
+            first.setGestureConfig(touch.toJson())
+            val added = setOf(ControlProfileSection.GYRO, ControlProfileSection.SHOOTER, ControlProfileSection.TOUCHSCREEN)
+            val saved = ControlProfileService.updateFromCurrent(context, first, manager, target, added)
+            val expectedSections = added + ControlProfileSection.ON_SCREEN
+            assertEquals(expectedSections, ControlProfileService.sectionsOf(ControlProfileService.readProfileJson(context, saved)))
+            val sources = ControlProfileService.appliedSectionSources(context, first, manager)
+            expectedSections.forEach { assertEquals(saved.id, sources[it]) }
+            assertEquals(firstWorking.id.toString(), first.getExtra("profileId", "0"))
+            assertEquals(otherBefore, ControlProfileService.readProfileJson(context, otherWorking).toString())
+            assertEquals(GyroSettings.MODE_DISABLED, GyroSettings.fromContainer(other).mode)
+
+            val uri = Uri.fromFile(root.resolve("roundtrip.icp"))
+            ControlProfileService.exportProfile(context, saved, expectedSections, uri)
+            val imported = ControlProfileService.importProfile(context, uri)
+            assertEquals(gyro, GyroSettings.fromJsonObject(imported.json.getJSONObject("gyroSettings")))
+            assertEquals(shooter, ShooterModeConfig.fromJson(imported.json.getJSONObject("shooterSettings").getJSONObject("config").toString()))
+            assertEquals(touch, TouchGestureConfig.fromJson(imported.json.getJSONObject("touchscreenSettings").getJSONObject("gestures").toString()))
+
+            // Applying just gyro must not import shooter or touchscreen settings with it.
+            ControlProfileService.applyProfile(context, other, manager, saved, setOf(ControlProfileSection.GYRO))
+            assertEquals(gyro, GyroSettings.fromContainer(other))
+            assertFalse(other.isShooterMode)
+            assertFalse(other.isTouchscreenMode)
+        } finally {
+            ids.forEach { ControlsProfile.getProfileFile(context, it).delete() }
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun runtimeSaveKeepsExplicitEmptyCategoriesValid() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val file = ControlsProfile.getProfileFile(context, 900_007)
+        try {
+            FileUtils.writeString(file, JSONObject().apply {
+                put("id", 900_007)
+                put("name", "Empty categories")
+                put("schemaVersion", ControlProfileService.SCHEMA_VERSION)
+                put("includedSections", JSONArray().put("onScreen").put("physicalController").put("radialMenu"))
+                put("elements", JSONArray())
+                put("controllers", JSONArray())
+                put("radialMenus", JSONArray())
+            }.toString())
+            val profile = InputControlsManager.loadProfile(context, file)!!
+            profile.controllers.clear()
+            profile.loadRadialMenus().clear()
+            assertTrue(profile.save())
+            val json = JSONObject(FileUtils.readString(file))
+            ControlProfileService.validate(json)
+            assertEquals(0, json.getJSONArray("controllers").length())
+            assertEquals(0, json.getJSONArray("radialMenus").length())
+        } finally {
+            file.delete()
+        }
+    }
+
     @Test
     fun inMemoryProfileElementsReloadWithoutCreatingAProfileFile() {
         val context = ApplicationProvider.getApplicationContext<Context>()

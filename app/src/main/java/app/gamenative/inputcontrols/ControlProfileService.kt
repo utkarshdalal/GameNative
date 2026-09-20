@@ -230,12 +230,7 @@ object ControlProfileService {
         workingJson.put(KEY_LISTED, false)
         workingJson.put(KEY_GAME_OWNER_ID, container.id)
         workingJson.put(KEY_INCLUDED_SECTIONS, sectionArray(allStoredSections(workingJson)))
-        val sectionSources = sectionSourcesOf(workingJson).toMutableMap()
-        selectedSections.forEach { sectionSources[it] = source.id }
-        writeSectionSources(workingJson, sectionSources)
-        val distinctSources = sectionSources.values.toSet()
-        if (distinctSources.size == 1) workingJson.put(KEY_LIBRARY_PROFILE_ID, distinctSources.first())
-        else workingJson.remove(KEY_LIBRARY_PROFILE_ID)
+        recordSectionSource(workingJson, selectedSections, source.id)
         writeProfileJson(context, working.id, workingJson)
         applyContainerSections(container, sourceJson, selectedSections)
         container.saveData()
@@ -295,19 +290,28 @@ object ControlProfileService {
         if (sections.isEmpty()) throw IllegalArgumentException("Select at least one control profile section")
         ensureDirectReferenceIsolated(context, container, manager, target.id)
         migrateReferencedLibraryProfiles(context, manager)
+        val working = ensureWorkingProfile(context, container, manager)
+            ?: throw IOException("Unable to load the working control profile")
+        val workingJson = readProfileJson(context, working)
         val captured = captureCurrentJson(context, container, manager, target.name, sections)
         val json = readProfileJson(context, target).apply {
             copySections(captured, this, sections)
             put("id", target.id)
             put("name", target.name)
             put(KEY_SCHEMA_VERSION, SCHEMA_VERSION)
-            put(KEY_INCLUDED_SECTIONS, sectionArray(allStoredSections(this)))
+            put(KEY_INCLUDED_SECTIONS, sectionArray(sectionsOf(this) + sections))
             put(KEY_LISTED, true)
             remove(KEY_LIBRARY_PROFILE_ID)
             remove(KEY_GAME_OWNER_ID)
             remove(KEY_SECTION_SOURCES)
         }
         writeProfileJson(context, target.id, json)
+        // Saving newly selected categories also makes this library entry their source
+        // for this game. Other games keep their independent working copies.
+        copySections(captured, workingJson, sections)
+        workingJson.put(KEY_INCLUDED_SECTIONS, sectionArray(sectionsOf(workingJson) + sections))
+        recordSectionSource(workingJson, sections, target.id)
+        writeProfileJson(context, working.id, workingJson)
         manager.reloadProfiles()
         return requireNotNull(manager.getProfile(target.id))
     }
@@ -545,6 +549,15 @@ object ControlProfileService {
             if (legacySource >= 0) allStoredSections(json).forEach { result[it] = legacySource }
         }
         return result
+    }
+
+    private fun recordSectionSource(json: JSONObject, sections: Set<ControlProfileSection>, sourceId: Int) {
+        val sources = sectionSourcesOf(json).toMutableMap()
+        sections.forEach { sources[it] = sourceId }
+        writeSectionSources(json, sources)
+        val distinctSources = sources.values.toSet()
+        if (distinctSources.size == 1) json.put(KEY_LIBRARY_PROFILE_ID, distinctSources.first())
+        else json.remove(KEY_LIBRARY_PROFILE_ID)
     }
 
     private fun writeSectionSources(
