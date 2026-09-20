@@ -140,6 +140,7 @@ fun ControlProfileLibraryDialog(
         mutableStateOf<Map<ControlProfileSection, Int>>(emptyMap())
     }
     var loading by remember(container.id) { mutableStateOf(true) }
+    var failureMessage by remember(container.id) { mutableStateOf<String?>(null) }
     var previewAction by remember { mutableStateOf<ProfilePreviewAction?>(null) }
     var sectionAction by remember { mutableStateOf<SectionAction?>(null) }
     var createDialog by remember { mutableStateOf(false) }
@@ -161,9 +162,8 @@ fun ControlProfileLibraryDialog(
     }
 
     fun failure(error: Throwable) {
-        SnackbarManager.show(
-            context.getString(R.string.control_profile_failed, error.message ?: error.javaClass.simpleName),
-        )
+        // The library owns a separate window, above the activity's snackbar host.
+        failureMessage = context.getString(R.string.control_profile_failed, error.message ?: error.javaClass.simpleName)
     }
 
     suspend fun loadSnapshot(): ProfileLibrarySnapshot = withContext(Dispatchers.IO) {
@@ -517,6 +517,16 @@ fun ControlProfileLibraryDialog(
                     previewAction = null
                     confirm()
                 }
+            },
+        )
+    }
+
+    failureMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { failureMessage = null },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { failureMessage = null }) { Text(stringResource(android.R.string.ok)) }
             },
         )
     }
