@@ -1630,6 +1630,10 @@
     <string name="lsfg_performance_mode">Modo de rendimiento</string>
     <string name="lsfg_present_mode">Modo de presentación</string>
     <string name="lsfg_present_mode_desc">Se recomienda Mailbox. FIFO también funciona cuando la tasa de fotogramas de salida (límite de fps × multiplicador) coincide con la tasa de refresco de la pantalla; por debajo de ella, FIFO puede verse inestable.</string>
+    <string name="lsfg_backend">Backend</string>
+    <string name="lsfg_backend_desc">Legacy ejecuta la capa lsfg-vk dentro del juego; Nativo ejecuta la generación de fotogramas en el renderizador de GameNative</string>
+    <string name="lsfg_backend_legacy">Legacy (capa)</string>
+    <string name="lsfg_backend_native">Nativo (renderizador)</string>
     <string name="lsfg_not_supported">La generación de fotogramas requiere un contenedor Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling no está instalado. Toca para instalar. Solo se sabe que funciona en Adreno 6xx y posteriores.</string>
     <string name="lsfg_not_in_library">Lossless Scaling no está en tu biblioteca de Steam</string>

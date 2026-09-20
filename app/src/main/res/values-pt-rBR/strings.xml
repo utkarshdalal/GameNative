@@ -1502,6 +1502,10 @@
     <string name="lsfg_performance_mode">Modo de desempenho</string>
     <string name="lsfg_present_mode">Modo de apresentação</string>
     <string name="lsfg_present_mode_desc">Mailbox é recomendado. FIFO também funciona quando a taxa de quadros de saída (limite de fps × multiplicador) corresponde à taxa de atualização da tela; abaixo dela, FIFO pode parecer trêmulo.</string>
+    <string name="lsfg_backend">Backend</string>
+    <string name="lsfg_backend_desc">Legacy executa a camada lsfg-vk dentro do jogo; Nativo executa a geração de quadros no renderizador do GameNative</string>
+    <string name="lsfg_backend_legacy">Legacy (camada)</string>
+    <string name="lsfg_backend_native">Nativo (renderizador)</string>
     <string name="lsfg_not_supported">A geração de quadros requer um contêiner Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling não instalado. Toque para instalar. Funciona apenas em Adreno 6xx e posteriores, conforme se sabe.</string>
     <string name="lsfg_not_in_library">Lossless Scaling não está na sua biblioteca Steam</string>

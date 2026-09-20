@@ -718,7 +718,10 @@ fun XServerScreen(
     LaunchedEffect(xServerView?.renderer) {
         val screenEffectsConfig = loadScreenEffectsConfig(container)
         when (val renderer = xServerView?.renderer) {
-            is VulkanRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
+            is VulkanRenderer -> {
+                applyScreenEffectsConfig(renderer, screenEffectsConfig)
+                if (isLsfgAvailable) LsfgVkManager.applyNativeRuntime(renderer, container, context)
+            }
             is GLRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
         }
     }
