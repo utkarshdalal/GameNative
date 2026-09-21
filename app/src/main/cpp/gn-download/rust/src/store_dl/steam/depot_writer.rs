@@ -1836,6 +1836,9 @@ fn write_depot_parallel(
     let total_bytes = plan.total_bytes;
     let bytes_written = AtomicU64::new(0);
     let in_flight = AtomicU64::new(0);
+    let fetched_pending = AtomicU64::new(0);
+    let reported = AtomicU64::new(0);
+    let last_written = Mutex::new(0u64);
     let driver_state: Mutex<DriverSnapshot> = Mutex::new(DriverSnapshot::default());
     let error_slot: Mutex<Option<String>> = Mutex::new(None);
     let reporter_done = AtomicBool::new(false);
@@ -1882,6 +1885,30 @@ host_ceiling={} budget={}MiB reason=start",
         ));
     }
 
+    let fetched_pending = &fetched_pending;
+    let reported = &reported;
+    let last_written = &last_written;
+    let pool_progress = move |total: u64, total_bytes: u64, verifying: bool| {
+        let shown = {
+            let mut last = last_written.lock().expect("progress lock poisoned");
+            if !verifying {
+                let delta = total.saturating_sub(*last);
+                let prev = fetched_pending.load(Ordering::Relaxed);
+                fetched_pending.store(prev.saturating_sub(delta), Ordering::Relaxed);
+            }
+            *last = (*last).max(total);
+            (total + fetched_pending.load(Ordering::Relaxed)).min(total_bytes)
+        };
+        if let Some(cb) = progress {
+            if verifying {
+                cb(total, total_bytes, true);
+            } else {
+                let prev = reported.fetch_max(shown, Ordering::Relaxed);
+                cb(prev.max(shown), total_bytes, false);
+            }
+        }
+    };
+    let pool_progress: Option<&(dyn Fn(u64, u64, bool) + Sync)> = Some(&pool_progress);
     let scope_result = thread::scope(|scope| -> DepotWriteResult {
         // Async(fetch) → sync(process) hand-off: a tokio unbounded mpsc. The fetch side uses the
         // non-blocking `send` (never parks a tokio worker); the process side drains with
@@ -2090,7 +2117,7 @@ host_ceiling={} budget={}MiB reason=start",
                         in_flight,
                         bytes_written,
                         total_bytes,
-                        progress,
+                        pool_progress,
                     ) {
                         record_first_error(error_slot, error);
                         return;
@@ -2120,6 +2147,8 @@ host_ceiling={} budget={}MiB reason=start",
                     error_slot,
                     cancel,
                     progress,
+                    fetched_pending,
+                    reported,
                     meter,
                     log,
                     status,
@@ -2204,6 +2233,8 @@ async fn run_async_fetch_driver(
     error_slot: &Mutex<Option<String>>,
     cancel: Option<&AtomicBool>,
     progress: Option<DepotChunkProgressCallback<'_>>,
+    fetched_pending: &AtomicU64,
+    reported: &AtomicU64,
     meter: &BandwidthMeter,
     log: Option<DepotLogCallback<'_>>,
     status: Option<DepotStatusCallback<'_>>,
@@ -2537,6 +2568,15 @@ async fn run_async_fetch_driver(
                     in_flight.fetch_add(raw_len - done.reserve, Ordering::Relaxed);
                 } else {
                     in_flight.fetch_sub(done.reserve - raw_len, Ordering::Relaxed);
+                }
+                let original = manifest.files[done.job.file_idx as usize].chunks
+                    [done.job.chunk_idx as usize]
+                    .cb_original as u64;
+                let pending = fetched_pending.fetch_add(original, Ordering::Relaxed) + original;
+                if let Some(cb) = progress {
+                    let shown = (bytes_written.load(Ordering::Relaxed) + pending).min(total_bytes);
+                    let prev = reported.fetch_max(shown, Ordering::Relaxed);
+                    cb(prev.max(shown), total_bytes, false);
                 }
                 if tx.send((done.job, raw)).is_err() {
                     break; // process side gone
