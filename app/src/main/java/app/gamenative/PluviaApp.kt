@@ -3,6 +3,7 @@ package app.gamenative
 import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.StrictMode
+import android.system.Os
 import android.util.DisplayMetrics
 import android.view.Display
 import androidx.compose.runtime.getValue
@@ -62,6 +63,7 @@ class PluviaApp : SplitCompatApplication() {
         instance = this
 
         preloadSystemLibraries()
+        setEvshimBasePath()
 
         // Allows to find resource streams not closed within GameNative and JavaSteam
         if (BuildConfig.DEBUG) {
@@ -371,5 +373,23 @@ class PluviaApp : SplitCompatApplication() {
             }
         }
         Timber.w("[PluviaApp]: Could not preload system libjpeg.so (none of the candidate paths worked)")
+    }
+
+    /**
+     * Native evshim.c is loaded in-process by WinHandler's `System.loadLibrary("evshim")`
+     * static initializer (physical-controller state + rumble JNI) and falls back to a
+     * hardcoded "/data/data/app.gamenative/files" base path for its gamepad shared-memory
+     * files whenever EVSHIM_BASE_PATH is unset -- wrong for any build variant whose real
+     * package isn't literally "app.gamenative" (e.g. the VOTV launcher's ".votv"
+     * applicationIdSuffix). With no shared-memory mapping, WinHandler's always-running
+     * rumble-poller threads busy-spin at ~100% CPU each instead of blocking on their futex,
+     * starving the UI thread and causing ANRs. Must run before any code touches WinHandler.
+     */
+    private fun setEvshimBasePath() {
+        try {
+            Os.setenv("EVSHIM_BASE_PATH", filesDir.absolutePath, true)
+        } catch (e: Throwable) {
+            Timber.w(e, "[PluviaApp]: Failed to set EVSHIM_BASE_PATH")
+        }
     }
 }
