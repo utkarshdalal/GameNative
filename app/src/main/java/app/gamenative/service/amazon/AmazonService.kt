@@ -464,6 +464,7 @@ class AmazonService : Service() {
             }
 
             downloadInfo.setActive(true)
+            instance.activeDownloads[productId] = downloadInfo
             instance.activeDownloadPaths[productId] = installPath
 
             // Seed an initial status so the resumed screen shows a status immediately,
@@ -481,7 +482,8 @@ class AmazonService : Service() {
             GameDownloadService.registerDownload(
                 gameSource = GameSource.AMAZON,
                 gameId = productId,
-                downloadInfo = downloadInfo
+                downloadInfo = downloadInfo,
+                installPath = installPath,
             )
 
             val job = instance.serviceScope.launch {

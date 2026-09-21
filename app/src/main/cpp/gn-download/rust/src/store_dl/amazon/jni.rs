@@ -53,6 +53,11 @@ unsafe fn from_handle<'a>(handle: jlong) -> Option<&'a AmazonRun> {
     }
 }
 
+/// Progress emits are throttled at the JNI boundary (see [`crate::progress_gate`]): bytes keep
+/// accruing natively; the UI gets the first callback, ~5 updates/sec, every file completion
+/// (status text stays fresh), and the 100% marker before `onComplete`.
+use crate::progress_gate::ProgressGate;
+
 fn call_log(env: &mut JNIEnv, listener: &JObject, line: &str) {
     let Ok(text) = env.new_string(line) else {
         clear_pending_exception(env);
@@ -176,7 +181,11 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeAmazonDownload
             with_attached_env(&log_listener, |env, obj| call_log(env, obj, line));
         };
         let progress_listener = listener.clone();
+        let progress_gate = ProgressGate::new();
         let progress = move |bytes_done: u64, bytes_total: u64, files_done: u64, files_total: u64| {
+            if !progress_gate.should_emit(bytes_done, bytes_total, files_done, false) {
+                return; // throttled — bytes still accrue natively, the UI gets ~5 updates/sec
+            }
             with_attached_env(&progress_listener, |env, obj| {
                 call_progress(env, obj, bytes_done, bytes_total, files_done, files_total)
             });

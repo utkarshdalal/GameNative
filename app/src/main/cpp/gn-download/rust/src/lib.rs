@@ -14,5 +14,6 @@
 pub mod fetch_core;
 pub mod jni_tree_delete;
 pub mod md5_small;
+pub(crate) mod progress_gate;
 pub mod store_dl;
 pub mod tree_delete;

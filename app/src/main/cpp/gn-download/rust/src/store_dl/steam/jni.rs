@@ -447,7 +447,20 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
             return;
         }
         let progress_listener = listener.clone();
+        // Throttle the JNI crossing (~200ms): progress fires per fetched chunk (~30/sec at
+        // speed), each one a Compose fan-out on the Kotlin side. Milestones always pass:
+        // `verifying` markers (the Kotlin resume-crediting logic keys off them — never merge
+        // them away), depots_done changes, and the 100% marker before onComplete.
+        let progress_gate = crate::progress_gate::ProgressGate::new();
         let on_progress = move |progress: &depot_downloader::DepotDownloadProgress| {
+            if !progress_gate.should_emit(
+                progress.depot_done,
+                progress.depot_total,
+                progress.depots_done as u64,
+                progress.verifying,
+            ) {
+                return;
+            }
             dispatch_progress(&progress_listener, progress);
         };
         let on_progress: depot_downloader::DepotProgressCallback = &on_progress;

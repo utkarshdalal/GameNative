@@ -237,6 +237,15 @@ private fun PrimaryActionButton(
         label = "primaryActionScale",
     )
 
+    // Download data arrives throttled (~5/sec) to bound GC/recomposition pressure; glide the
+    // bar AND the percent text between emissions so the digits tick smoothly instead of
+    // stepping. The tween matches the emit cadence so the animation lands with the next value.
+    val animatedProgress by animateFloatAsState(
+        targetValue = downloadProgress,
+        animationSpec = tween(durationMillis = 200, easing = LinearEasing),
+        label = "downloadProgress",
+    )
+
     val buttonColor = when {
         isDownloading -> PluviaTheme.colors.statusDownloading
         isInstalled -> PluviaTheme.colors.statusInstalled
@@ -275,7 +284,7 @@ private fun PrimaryActionButton(
                     modifier = Modifier.size(16.dp),
                 )
                 LinearProgressIndicator(
-                    progress = { downloadProgress },
+                    progress = { animatedProgress },
                     modifier = Modifier
                         .width(80.dp)
                         .height(4.dp)
@@ -294,7 +303,7 @@ private fun PrimaryActionButton(
                 )
                 Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.CenterEnd) {
                     Text(
-                        text = "${(downloadProgress * 100).toInt()}%",
+                        text = "${(animatedProgress * 100).roundToInt()}%",
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
                             fontFeatureSettings = "tnum",
@@ -555,6 +564,11 @@ internal fun AppScreenContent(
     val parallaxOffset = scrollState.value * 0.5f
 
     var downloadTimeLeftText by remember { mutableStateOf("")}
+    // ETA digits are EMA estimates — refresh them at a calm ~1/sec (Steam-client-style steady
+    // numbers) instead of at the raw emit cadence. Status text ("Verifying…", "Unpacking...")
+    // is event-driven and always applied immediately; the Rust gates already bypass their
+    // throttle for status/count milestones, so no status change is ever held back here.
+    var lastEtaTextUpdateAt by remember { mutableStateOf(0L) }
 
     val progressListener: (Float) -> Unit = {
         val downloadStatusMessage = downloadInfo?.getCurrentStatusMessage()
@@ -562,18 +576,27 @@ internal fun AppScreenContent(
         downloadTimeLeftText = run {
             val etaMs = downloadInfo?.getEstimatedTimeRemaining()
             if (etaMs != null && etaMs > 0L) {
-                val totalSeconds = etaMs / 1000
-                val minutesLeft = totalSeconds / 60
-                val secondsPart = totalSeconds % 60
-                "${minutesLeft}m ${secondsPart}s left"
+                val now = System.currentTimeMillis()
+                if (now - lastEtaTextUpdateAt >= 1000L) {
+                    lastEtaTextUpdateAt = now
+                    val totalSeconds = etaMs / 1000
+                    val minutesLeft = totalSeconds / 60
+                    val secondsPart = totalSeconds % 60
+                    "${minutesLeft}m ${secondsPart}s left"
+                } else {
+                    downloadTimeLeftText // keep the previous ETA text until the 1s tick
+                }
             } else if (isDownloading && downloadProgress >= 1f) {
                 // Bytes at 100% while the download is still active. Prefer the real status
                 // (e.g. Epic may still be fetching chunks — its byte total can saturate
                 // early); "Unpacking..." only when there is nothing more truthful to say.
+                lastEtaTextUpdateAt = 0L
                 downloadStatusMessage?.takeUnless { it.isBlank() } ?: "Unpacking..."
             } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
+                lastEtaTextUpdateAt = 0L
                 downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
             } else {
+                lastEtaTextUpdateAt = 0L
                 ""
             }
         }

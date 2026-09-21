@@ -25,6 +25,10 @@ class DownloadInfo(
     private var downloadJob: Job? = null
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val downloadProgressListeners = CopyOnWriteArrayList<(Float) -> Unit>()
+
+    /** Last emitProgressChange fan-out time; 0L so the first emit always passes. */
+    @Volatile
+    private var lastProgressEmitAt = 0L
     private val progresses: Array<Float> = Array(jobCount) { 0f }
 
     // Reservation-based persistence scheduler
@@ -278,9 +282,22 @@ class DownloadInfo(
         downloadProgressListeners.remove(listener)
     }
 
+    /**
+     * Fan out the current progress to listeners, throttled to [PROGRESS_EMIT_MIN_INTERVAL_MS].
+     * Listeners only ever receive a snapshot float, so dropping an intermediate emit loses
+     * nothing — the next one reads fresh state. Completion (progress >= 1f) always emits so
+     * the UI can settle. This is the store-agnostic safety net behind the per-store throttles:
+     * any present or future caller gets bounded recomposition pressure during downloads.
+     */
     fun emitProgressChange() {
+        val progress = getProgress()
+        val now = System.currentTimeMillis()
+        if (progress < 1f && now - lastProgressEmitAt < PROGRESS_EMIT_MIN_INTERVAL_MS) {
+            return
+        }
+        lastProgressEmitAt = now
         for (listener in downloadProgressListeners) {
-            listener(getProgress())
+            listener(progress)
         }
     }
 
@@ -290,6 +307,7 @@ class DownloadInfo(
         private const val PERSISTENCE_DIR = ".DownloadInfo"
         private const val PERSISTENCE_FILE = "bytes_downloaded.txt"
         private const val PERSIST_DEBOUNCE_MS = 10_000L // 10 seconds
+        private const val PROGRESS_EMIT_MIN_INTERVAL_MS = 200L // Same cadence as the store throttles
     }
 
     /**

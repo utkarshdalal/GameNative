@@ -42,6 +42,7 @@ class AmazonDownloadManager @Inject constructor(
         private const val MAX_RETRIES = 3
         private const val RETRY_DELAY_MS = 1000L
         private const val PROGRESS_EMIT_INTERVAL = 512 * 1024L // Emit UI progress every 512 KB
+        private const val STREAM_PROGRESS_TIME_INTERVAL_MS = 200L // Same throttle as Epic/GOG
         private const val TAG = "Amazon"
     }
 
@@ -151,6 +152,8 @@ class AmazonDownloadManager @Inject constructor(
                 }.toString()
 
                 var creditedBytes = 0L
+                var lastProgressEmitAt = 0L
+                var lastFilesDone = -1L
                 val listener = object : NativeAmazonDownloadListener {
                     override fun onProgress(bytesDone: Long, bytesTotal: Long, filesDone: Long, filesTotal: Long) {
                         // Native callbacks fire from multiple fetch-pool threads; keep the
@@ -162,9 +165,18 @@ class AmazonDownloadManager @Inject constructor(
                                 downloadInfo.updateBytesDownloaded(delta)
                             }
                         }
-                        downloadInfo.updateStatusMessage("Downloading ($filesDone/$filesTotal files)…")
-                        downloadInfo.emitProgressChange()
-                        downloadInfo.persistProgressSnapshot()
+                        // Byte crediting above is cheap and stays per-callback (accurate speed
+                        // samples); the expensive fan-out (status String + Compose listeners)
+                        // is throttled like Epic/GOG, with file boundaries always shown.
+                        val now = System.currentTimeMillis()
+                        if (filesDone != lastFilesDone || now - lastProgressEmitAt >= STREAM_PROGRESS_TIME_INTERVAL_MS) {
+                            lastProgressEmitAt = now
+                            lastFilesDone = filesDone
+                            // updateStatusMessage already emits a progress change — do NOT also
+                            // call emitProgressChange() here (was a double fan-out per callback).
+                            downloadInfo.updateStatusMessage("Downloading ($filesDone/$filesTotal files)…")
+                            downloadInfo.persistProgressSnapshot()
+                        }
                     }
 
                     override fun onLog(line: String) {
