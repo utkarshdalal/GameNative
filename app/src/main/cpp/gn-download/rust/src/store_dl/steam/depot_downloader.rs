@@ -213,7 +213,7 @@ pub fn fetch_manifest_with_retry(
     cdn_auth_token: &str,
     timeout: Duration,
     cancel: Option<&AtomicBool>,
-    auth_refresher: Option<CdnAuthTokenRefresher>,
+    auth_refresher: Option<&CdnAuthTokenRefresher>,
     code_refresher: Option<ManifestCodeRefresher>,
 ) -> CdnManifestResult {
     if servers.is_empty() {
@@ -419,7 +419,7 @@ pub fn download_resolved_depots_with_cancel_progress(
     cancel: Option<&AtomicBool>,
     on_progress: Option<DepotProgressCallback<'_>>,
     code_refresher: Option<ManifestCodeRefresher<'_>>,
-    auth_token_refresher: Option<CdnAuthTokenRefresher<'_>>,
+    auth_token_refresher: Option<&CdnAuthTokenRefresher>,
     log: Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>>,
     verify_status: Option<crate::store_dl::steam::depot_writer::DepotStatusCallback<'_>>,
 ) -> DepotDownloadResult {

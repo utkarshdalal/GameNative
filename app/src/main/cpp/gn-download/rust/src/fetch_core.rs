@@ -1682,7 +1682,8 @@ impl AdaptiveWindow {
         self.err_count = self.err_count.saturating_add(1);
         let immediate = kind == FetchFailKind::RateLimited
             || self.err_count >= WINDOW_ERR_BURST_IMMEDIATE;
-        if !immediate {
+        let cooling = self.cooldown_until.is_some_and(|t| now < t);
+        if !immediate || cooling {
             return false;
         }
         let before = self.current;
@@ -1740,6 +1741,7 @@ impl AdaptiveWindow {
                 };
                 self.grow(reason, doubling);
             } else if falling {
+                self.best_bps = self.bps_ewma.max(self.best_bps * (1.0 - WINDOW_DECLINE_EPS));
                 self.last_reason = WindowReason::HoldThroughputDown;
             } else if self.plateau_streak < WINDOW_PLATEAU_PATIENCE {
                 self.plateau_streak += 1;
@@ -1946,6 +1948,16 @@ mod tests {
         s.on_error(1, now, FetchFailKind::RateLimited);
         assert_eq!(s.pick(now), None);
         assert_eq!(s.pick(now + Duration::from_secs(6)), Some(0));
+    }
+
+    #[test]
+    fn window_shrinks_once_per_cooldown_on_an_error_burst() {
+        let now = Instant::now();
+        let mut w = AdaptiveWindow::new(64, 2, 128, now);
+        for _ in 0..12 {
+            w.record_err(now, FetchFailKind::Timeout);
+        }
+        assert_eq!(w.current, 48);
     }
 
     #[test]

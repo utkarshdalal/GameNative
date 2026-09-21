@@ -230,7 +230,7 @@ pub type DepotChunkProgressCallback<'a> = &'a (dyn Fn(u64, u64, bool) + Sync);
 /// with (depot_id, host) when a host answers 401/403. Returns the token query fragment
 /// to append, or None when unavailable. Called from worker threads; must not block
 /// indefinitely (the Kotlin implementation bounds the CM round-trip).
-pub type CdnAuthTokenRefresher<'a> = &'a (dyn Fn(u32, &str) -> Option<String> + Sync);
+pub type CdnAuthTokenRefresher = Arc<dyn Fn(u32, &str) -> Option<String> + Send + Sync>;
 
 #[derive(Clone)]
 pub struct DepotWriteOptions<'a> {
@@ -250,7 +250,7 @@ pub struct DepotWriteOptions<'a> {
     pub status: Option<DepotStatusCallback<'a>>,
     /// 401/403 recovery: fetch a fresh CDN auth token for the rejecting host and retry
     /// once (JavaSteam `requestCDNAuthToken` parity). `None` = no token retry.
-    pub auth_token_refresher: Option<CdnAuthTokenRefresher<'a>>,
+    pub auth_token_refresher: Option<&'a CdnAuthTokenRefresher>,
     /// Live ranking of the ASSIGNED CDN servers from the background CDN probe
     /// (`cdn_probe::seed_from_cache` + `spawn_background_probe`); the scheduler reprioritizes
     /// from it mid-download. `None` = cold ranking (learn speeds as chunks complete).
@@ -985,7 +985,8 @@ impl AdaptiveWindow {
         self.err_count = self.err_count.saturating_add(1);
         let immediate = kind == FetchFailKind::RateLimited
             || self.err_count >= WINDOW_ERR_BURST_IMMEDIATE;
-        if !immediate {
+        let cooling = self.cooldown_until.is_some_and(|t| now < t);
+        if !immediate || cooling {
             return false;
         }
         let before = self.current;
@@ -1058,6 +1059,7 @@ impl AdaptiveWindow {
             } else if falling {
                 // Throughput dropped without errors (a CDN slowed, or we are past the useful
                 // concurrency): HOLD. Shrinking here is what collapsed B2b to the floor.
+                self.best_bps = self.bps_ewma.max(self.best_bps * (1.0 - WINDOW_DECLINE_EPS));
                 self.last_reason = WindowReason::HoldThroughputDown;
             } else if self.plateau_streak < WINDOW_PLATEAU_PATIENCE {
                 // Flat, but throughput lags a window change — spend a little patience before calling
@@ -1484,14 +1486,15 @@ fn drain_contiguous(
         let mut batch: Vec<PendingDecoded> = Vec::new();
         let mut batch_bytes = 0u64;
         while batch_bytes < COALESCE_WRITE_BYTES {
+            let next_offset = writer.cursor + batch_bytes;
             let at_cursor = matches!(
                 writer.pending.first_key_value(),
-                Some((&offset, PendingEntry::Data(_))) if offset == writer.cursor
+                Some((&offset, PendingEntry::Data(_))) if offset == next_offset
             );
             if !at_cursor {
                 break;
             }
-            let Some(PendingEntry::Data(entry)) = writer.pending.remove(&writer.cursor) else {
+            let Some(PendingEntry::Data(entry)) = writer.pending.remove(&next_offset) else {
                 unreachable!("data entry at cursor");
             };
             batch_bytes += entry.data.len() as u64;
@@ -2237,7 +2240,7 @@ async fn run_async_fetch_driver(
     status: Option<DepotStatusCallback<'_>>,
     tx: tokio::sync::mpsc::UnboundedSender<(ChunkWriteJob, Vec<u8>)>,
     cdn_auth_token: &str,
-    auth_token_refresher: Option<CdnAuthTokenRefresher<'_>>,
+    auth_token_refresher: Option<&CdnAuthTokenRefresher>,
     // Per-host CDN auth tokens issued after a 401/403 (see the fetch future below).
     auth_tokens: &Mutex<HashMap<String, String>>,
     // Live assigned-server ranking from the background CDN probe (drained once per update).
@@ -2505,11 +2508,30 @@ async fn run_async_fetch_driver(
                 // 401/403: the CDN rejected the request's credentials (expired/missing
                 // auth token). Request a fresh token for this host ONCE and retry inline
                 // (JavaSteam `requestCDNAuthToken` parity). The refresher is a blocking
-                // CM round-trip on this single-threaded runtime, but it only runs on an
-                // auth rejection — a rare, already-failing path.
+                // CM round-trip, so it runs on a blocking pool thread: the single-threaded
+                // runtime keeps driving the other in-flight fetches while it waits. A token
+                // another chunk already refreshed for this host is reused instead.
                 if res.as_ref().is_err_and(|e| e.kind == FetchFailKind::Auth) {
                     if let Some(refresher) = auth_token_refresher {
-                        if let Some(token) = refresher(depot_id, &host) {
+                        let newer = auth_tokens
+                            .lock()
+                            .expect("auth tokens poisoned")
+                            .get(&host)
+                            .filter(|t| Some(t.as_str()) != cached_token.as_deref())
+                            .cloned();
+                        let fresh = match newer {
+                            Some(token) => Some(token),
+                            None => {
+                                let refresher = refresher.clone();
+                                let refresh_host = host.clone();
+                                tokio::task::spawn_blocking(move || {
+                                    (*refresher)(depot_id, &refresh_host)
+                                })
+                                .await
+                                .unwrap_or(None)
+                            }
+                        };
+                        if let Some(token) = fresh {
                             auth_tokens
                                 .lock()
                                 .expect("auth tokens poisoned")
@@ -2717,7 +2739,7 @@ pub fn fetch_raw_chunk(
     file_idx: usize,
     chunk_idx: usize,
     cdn_auth_token: &str,
-    auth_token_refresher: Option<CdnAuthTokenRefresher>,
+    auth_token_refresher: Option<&CdnAuthTokenRefresher>,
     start_server_index: usize,
     timeout: Duration,
     meter: Option<&BandwidthMeter>,
@@ -2778,7 +2800,8 @@ pub fn fetch_raw_chunk(
             if auth_status(fetched.http_status) {
                 if let Some(refresher) = auth_token_refresher {
                     if !tokens.contains_key(&server_idx) {
-                        if let Some(fresh) = refresher(manifest.metadata.depot_id, &servers[server_idx].host)
+                        if let Some(fresh) =
+                            (**refresher)(manifest.metadata.depot_id, &servers[server_idx].host)
                         {
                             tokens.insert(server_idx, fresh);
                             continue; // immediate same-host retry with the fresh token
@@ -2814,7 +2837,7 @@ pub fn fetch_process_write_chunk(
     depot_key: &[u8],
     file_handle: &File,
     cdn_auth_token: &str,
-    auth_token_refresher: Option<CdnAuthTokenRefresher>,
+    auth_token_refresher: Option<&CdnAuthTokenRefresher>,
     start_server_index: usize,
     timeout: Duration,
     meter: Option<&BandwidthMeter>,
@@ -2873,7 +2896,8 @@ pub fn fetch_process_write_chunk(
             if auth_status(fetched.http_status) {
                 if let Some(refresher) = auth_token_refresher {
                     if !tokens.contains_key(&server_idx) {
-                        if let Some(fresh) = refresher(manifest.metadata.depot_id, &servers[server_idx].host)
+                        if let Some(fresh) =
+                            (**refresher)(manifest.metadata.depot_id, &servers[server_idx].host)
                         {
                             tokens.insert(server_idx, fresh);
                             continue; // immediate same-host retry with the fresh token
@@ -4245,6 +4269,31 @@ mod tests {
             w.current > bottom,
             "window must recover once errors stop, got {} from {bottom}",
             w.current
+        );
+    }
+
+    #[test]
+    fn adaptive_window_shrinks_once_per_cooldown_on_an_error_burst() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(64, 2, 128, t);
+        for _ in 0..12 {
+            w.record_err(t, FetchFailKind::Timeout);
+        }
+        assert_eq!(w.current, 48, "one proportional shrink, not one per error");
+    }
+
+    #[test]
+    fn adaptive_window_recovers_after_a_shrink_at_lower_throughput() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 128, t);
+        let total = run_probes(&mut w, t, 1, 6, 20, 0, 0, |_| 40_000_000);
+        let total = run_probes(&mut w, t, 7, 1, 20, 3, total, |_| 40_000_000);
+        let shrunk = w.current;
+        assert!(shrunk < 128);
+        run_probes(&mut w, t, 8, 20, 20, 0, total, |_| 8_000_000);
+        assert!(
+            w.current > shrunk,
+            "window must grow again once the post-shrink rate becomes the baseline, stuck at {shrunk}"
         );
     }
 
