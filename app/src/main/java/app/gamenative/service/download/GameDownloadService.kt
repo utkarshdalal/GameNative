@@ -16,6 +16,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONArray
 import org.json.JSONObject
@@ -102,52 +105,26 @@ object GameDownloadService {
         // ── 2. Resolve per-depot (gid, depot key, manifest request code) ────────
         val depotsJson = JSONArray()
         val resolvedDepotIds = mutableListOf<Int>()
-        for ((depotId, depot) in selectedDepots.toSortedMap()) {
-            val gid = resolveManifestGid(steamApps, appId, depotId, depot, branch, branchPassword)
-            if (gid == 0L) {
-                Timber.tag(TAG).w("Skipping depot $depotId: no manifest gid for branch $branch")
-                continue
-            }
-
-            // Depot keys are granted to the app that OWNS the depot, not necessarily
-            // the app being downloaded: DLC depots (e.g. Vampire Survivors' 2230761,
-            // owned by DLC app 2230760) are refused with FileNotFound when requested
-            // as the parent app, even though the account owns the DLC. Ask the owning
-            // app first (dlcAppId, then depotfromapp), fall back to the parent app.
-            val owningAppId = when {
-                depot.dlcAppId != SteamService.INVALID_APP_ID -> depot.dlcAppId
-                depot.depotFromApp != SteamService.INVALID_APP_ID -> depot.depotFromApp
-                else -> appId
-            }
-            var keyCallback = steamApps.getDepotDecryptionKey(depotId, owningAppId).await()
-            if ((keyCallback.result != EResult.OK || keyCallback.depotKey.size != 32) && owningAppId != appId) {
-                Timber.tag(TAG).d("Depot $depotId key denied as owning app $owningAppId (${keyCallback.result}), retrying as $appId")
-                keyCallback = steamApps.getDepotDecryptionKey(depotId, appId).await()
-            }
-            if (keyCallback.result != EResult.OK || keyCallback.depotKey.size != 32) {
-                val dlcNote = if (depot.dlcAppId != SteamService.INVALID_APP_ID) {
-                    " (depot belongs to DLC app ${depot.dlcAppId} — not owned by this account?)"
-                } else {
-                    ""
+        val resolvedDepots = coroutineScope {
+            selectedDepots.toSortedMap().map { (depotId, depot) ->
+                async {
+                    resolveDepotForDownload(
+                        steamApps, steamContent, appId, depotId, depot, branch, branchPassword, parentScope,
+                    )
                 }
-                Timber.tag(TAG).w("Skipping depot $depotId: depot key denied (${keyCallback.result})$dlcNote")
-                continue
-            }
-
-            val requestCode = fetchManifestRequestCode(
-                steamContent, depotId, owningAppId, gid, branch, parentScope,
-            )
-
+            }.awaitAll()
+        }.filterNotNull()
+        for (resolved in resolvedDepots) {
             depotsJson.put(
                 JSONObject()
-                    .put("depot_id", depotId)
+                    .put("depot_id", resolved.depotId)
                     // gid/code are uint64 in Steam's protocol but signed Longs here; send them
                     // as unsigned decimal strings so high-bit values survive JSON → Rust.
-                    .put("manifest_id", java.lang.Long.toUnsignedString(gid))
-                    .put("depot_key_hex", keyCallback.depotKey.toHex())
-                    .put("manifest_request_code", java.lang.Long.toUnsignedString(requestCode)),
+                    .put("manifest_id", java.lang.Long.toUnsignedString(resolved.gid))
+                    .put("depot_key_hex", resolved.depotKeyHex)
+                    .put("manifest_request_code", java.lang.Long.toUnsignedString(resolved.requestCode)),
             )
-            resolvedDepotIds.add(depotId)
+            resolvedDepotIds.add(resolved.depotId)
         }
         if (depotsJson.length() == 0) {
             throw DownloadFailedException(
@@ -424,13 +401,67 @@ object GameDownloadService {
     // Cache of owning-app PICS data for shared depots (e.g. Steamworks Common
     // Redistributables app 228980), keyed by app id. Shared between depots in one run.
     // Plain map (nulls = "fetch failed"): the depot-resolution loop is sequential.
-    private val owningAppInfoCache = HashMap<Int, SteamApp?>()
+    private val owningAppInfoCache = java.util.Collections.synchronizedMap(HashMap<Int, SteamApp?>())
 
     /**
      * Resolves the manifest gid for [depot] on [branch], including password-protected beta
      * branches (via `checkAppBetaPassword` + `picsGetPrivateBeta`, mirroring the old
      * DepotDownloader's private-beta depot-section path).
      */
+    private class ResolvedDepot(
+        val depotId: Int,
+        val gid: Long,
+        val depotKeyHex: String,
+        val requestCode: Long,
+    )
+
+    private suspend fun resolveDepotForDownload(
+        steamApps: SteamApps,
+        steamContent: SteamContent,
+        appId: Int,
+        depotId: Int,
+        depot: DepotInfo,
+        branch: String,
+        branchPassword: String?,
+        parentScope: CoroutineScope,
+    ): ResolvedDepot? {
+        val gid = resolveManifestGid(steamApps, appId, depotId, depot, branch, branchPassword)
+        if (gid == 0L) {
+            Timber.tag(TAG).w("Skipping depot $depotId: no manifest gid for branch $branch")
+            return null
+        }
+
+        // Depot keys are granted to the app that OWNS the depot, not necessarily
+        // the app being downloaded: DLC depots (e.g. Vampire Survivors' 2230761,
+        // owned by DLC app 2230760) are refused with FileNotFound when requested
+        // as the parent app, even though the account owns the DLC. Ask the owning
+        // app first (dlcAppId, then depotfromapp), fall back to the parent app.
+        val owningAppId = when {
+            depot.dlcAppId != SteamService.INVALID_APP_ID -> depot.dlcAppId
+            depot.depotFromApp != SteamService.INVALID_APP_ID -> depot.depotFromApp
+            else -> appId
+        }
+        var keyCallback = steamApps.getDepotDecryptionKey(depotId, owningAppId).await()
+        if ((keyCallback.result != EResult.OK || keyCallback.depotKey.size != 32) && owningAppId != appId) {
+            Timber.tag(TAG).d("Depot $depotId key denied as owning app $owningAppId (${keyCallback.result}), retrying as $appId")
+            keyCallback = steamApps.getDepotDecryptionKey(depotId, appId).await()
+        }
+        if (keyCallback.result != EResult.OK || keyCallback.depotKey.size != 32) {
+            val dlcNote = if (depot.dlcAppId != SteamService.INVALID_APP_ID) {
+                " (depot belongs to DLC app ${depot.dlcAppId} — not owned by this account?)"
+            } else {
+                ""
+            }
+            Timber.tag(TAG).w("Skipping depot $depotId: depot key denied (${keyCallback.result})$dlcNote")
+            return null
+        }
+
+        val requestCode = fetchManifestRequestCode(
+            steamContent, depotId, owningAppId, gid, branch, parentScope,
+        )
+        return ResolvedDepot(depotId, gid, keyCallback.depotKey.toHex(), requestCode)
+    }
+
     private suspend fun resolveManifestGid(
         steamApps: SteamApps,
         appId: Int,
