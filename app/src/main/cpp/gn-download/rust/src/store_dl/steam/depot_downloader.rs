@@ -554,17 +554,18 @@ pub fn download_resolved_depots_with_cancel_progress(
         resolved.push((depot, manifest));
     }
 
-    // ── CDN probe: with all manifests in hand (the probe borrows one real chunk URL), maybe
-    // merge faster unassigned caches into the server pool. Cached with TTL + bad-host early
-    // refresh; strictly additive — any failure leaves the assigned set untouched.
+    // ── CDN probe: rank the ASSIGNED servers in the background. The on-disk cache seeds the
+    // ranking synchronously (one small file read) so even the first chunks follow the last known
+    // order; a background thread re-probes when the cache is stale/absent and the scheduler
+    // reprioritizes mid-download. The server pool itself is never extended.
+    let probe_hints = crate::store_dl::steam::cdn_probe::seed_from_cache(install_dir, &usable_servers);
     let probe_manifests: Vec<&ContentManifest> = resolved.iter().map(|(_, m)| m).collect();
-    let usable_servers = crate::store_dl::steam::cdn_probe::maybe_extend_servers(
+    crate::store_dl::steam::cdn_probe::spawn_background_probe(
+        &probe_hints,
         install_dir,
         ca_bundle_path,
         &usable_servers,
         &probe_manifests,
-        log,
-        cancel,
     );
 
     // ── Phase 2: all metadata resolved — download the depots in order.
@@ -609,6 +610,7 @@ pub fn download_resolved_depots_with_cancel_progress(
                 log,
                 status: verify_status,
                 auth_token_refresher,
+                probe_hints: Some(probe_hints.clone()),
                 ..Default::default()
             },
         );

@@ -232,7 +232,7 @@ pub type DepotChunkProgressCallback<'a> = &'a (dyn Fn(u64, u64, bool) + Sync);
 /// indefinitely (the Kotlin implementation bounds the CM round-trip).
 pub type CdnAuthTokenRefresher<'a> = &'a (dyn Fn(u32, &str) -> Option<String> + Sync);
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct DepotWriteOptions<'a> {
     pub cdn_auth_token: &'a str,
     pub timeout: Duration,
@@ -251,6 +251,10 @@ pub struct DepotWriteOptions<'a> {
     /// 401/403 recovery: fetch a fresh CDN auth token for the rejecting host and retry
     /// once (JavaSteam `requestCDNAuthToken` parity). `None` = no token retry.
     pub auth_token_refresher: Option<CdnAuthTokenRefresher<'a>>,
+    /// Live ranking of the ASSIGNED CDN servers from the background CDN probe
+    /// (`cdn_probe::seed_from_cache` + `spawn_background_probe`); the scheduler reprioritizes
+    /// from it mid-download. `None` = cold ranking (learn speeds as chunks complete).
+    pub probe_hints: Option<Arc<crate::store_dl::steam::cdn_probe::ProbeHints>>,
 }
 
 impl Default for DepotWriteOptions<'_> {
@@ -265,6 +269,7 @@ impl Default for DepotWriteOptions<'_> {
             log: None,
             status: None,
             auth_token_refresher: None,
+            probe_hints: None,
         }
     }
 }
@@ -595,6 +600,8 @@ struct FetchScheduler {
     health: Vec<ServerHealth>,
     /// server index → distinct-host index.
     server_host: Vec<usize>,
+    /// distinct-host index → dialed address (for CDN-probe hint lookup).
+    host_keys: Vec<String>,
     /// one semaphore per distinct host, each with `per_host_cap` permits.
     host_sems: Vec<Arc<Semaphore>>,
     per_host_cap: usize,
@@ -624,9 +631,35 @@ impl FetchScheduler {
         Self {
             health: servers.iter().map(|_| ServerHealth::default()).collect(),
             server_host,
+            host_keys,
             host_sems,
             per_host_cap,
             dispatch_counter: 0,
+        }
+    }
+
+    /// Apply CDN-probe results: seed the EWMA of never-sampled hosts with their measured probe
+    /// throughput so exploitation starts from a sane ranking instead of cold guesses, and
+    /// reprioritize mid-download when a fresh ranking lands. Hosts the probe couldn't reach (no
+    /// result) are marked sampled at ~0 speed so the cold-start pick doesn't funnel the window
+    /// into dead hosts; hosts marked bad are demoted. Live samples always win: a host with real
+    /// download measurements keeps its own ranking.
+    fn apply_probe_hints(&mut self, results: &[crate::store_dl::steam::cdn_probe::ProbeResult], bad: &[String]) {
+        for i in 0..self.health.len() {
+            let host = &self.host_keys[self.server_host[i]];
+            if bad.iter().any(|b| b == host) {
+                let h = &mut self.health[i];
+                h.ewma_bps *= 0.25;
+                h.samples = h.samples.max(1); // keep the cold-start pick off it
+                continue;
+            }
+            if self.health[i].samples > 0 {
+                continue; // real download measurements outrank any probe
+            }
+            let probed = results.iter().find(|r| &r.host == host);
+            let h = &mut self.health[i];
+            h.ewma_bps = probed.map(|r| r.bytes_per_sec as f64).unwrap_or(1.0);
+            h.samples = 1;
         }
     }
 
@@ -1693,7 +1726,12 @@ fn write_depot_single(
             &handle,
             options.cdn_auth_token,
             options.auth_token_refresher,
-            job_index % servers.len(),
+            // CDN-probe ranking picks the starting host when it has landed; else round-robin.
+            options
+                .probe_hints
+                .as_ref()
+                .and_then(|hints| hints.best_server_index(servers))
+                .unwrap_or(job_index % servers.len()),
             options.timeout,
             Some(meter),
         ) {
@@ -2048,6 +2086,7 @@ host_ceiling={} budget={}MiB reason=start",
                     cdn_auth_token,
                     auth_token_refresher,
                     &auth_tokens,
+                    options.probe_hints.as_ref(),
                     timeout,
                     total_bytes,
                     budget,
@@ -2132,6 +2171,8 @@ async fn run_async_fetch_driver(
     auth_token_refresher: Option<CdnAuthTokenRefresher<'_>>,
     // Per-host CDN auth tokens issued after a 401/403 (see the fetch future below).
     auth_tokens: &Mutex<HashMap<String, String>>,
+    // Live assigned-server ranking from the background CDN probe (drained once per update).
+    probe_hints: Option<&Arc<crate::store_dl::steam::cdn_probe::ProbeHints>>,
     timeout: Duration,
     total_bytes: u64,
     budget: u64,
@@ -2159,12 +2200,34 @@ async fn run_async_fetch_driver(
     let mut next_job = 0usize;
     let mut verify_since_yield: u32 = 0;
     let mut dispatch_ages: VecDeque<Instant> = VecDeque::new();
+    let mut hints_generation = 0u64;
 
     loop {
         if cancel.is_some_and(|c| c.load(Ordering::Relaxed))
             || error_slot.lock().expect("err slot poisoned").is_some()
         {
             break;
+        }
+        // Background CDN probe: apply a fresh assigned-server ranking exactly once per update
+        // (cheap mutex read per loop turn; the ranking itself reprioritizes the scheduler).
+        if let Some(hints) = probe_hints {
+            if let Some((generation, results, bad)) = hints.take_update(hints_generation) {
+                hints_generation = generation;
+                sched.apply_probe_hints(&results, &bad);
+                if let Some(log) = log {
+                    let ranked = results
+                        .iter()
+                        .take(4)
+                        .map(|r| format!("{} {:.1}MB/s", r.host, r.bytes_per_sec as f64 / 1_048_576.0))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    log(&format!(
+                        "cdn-probe depot={depot_id} ranked={} bad={} top: {ranked}",
+                        results.len(),
+                        bad.len(),
+                    ));
+                }
+            }
         }
         {
             let mut snap = driver_state.lock().expect("driver state poisoned");
@@ -4123,6 +4186,33 @@ mod tests {
         assert!(!sched.eligible(a, now));
         let later = now + Duration::from_secs(10);
         assert!(sched.eligible(a, later));
+    }
+
+    #[test]
+    fn fetch_scheduler_applies_probe_hints_but_live_samples_win() {
+        use crate::store_dl::steam::cdn_probe::ProbeResult;
+        let hint = |host: &str, bps: u64| ProbeResult {
+            host: host.into(),
+            ttfb_ms: 10,
+            bytes_per_sec: bps,
+        };
+        let servers = vec![srv("a"), srv("b"), srv("dead")];
+        let mut sched = FetchScheduler::new(&servers, 8);
+        let now = Instant::now();
+        // Probe: b fast, a slow, dead unreachable (no result).
+        sched.apply_probe_hints(&[hint("b", 20_000_000), hint("a", 1_000_000)], &[]);
+        // Every host counts as sampled: the cold-start pick must not detour to "dead".
+        assert!(sched.health.iter().all(|h| h.samples > 0));
+        assert_eq!(sched.pick(now), Some(1), "probe ranking seeds exploitation");
+        // A big real measurement on "a" overpowers its probe hint (EWMA: 0.7·1M + 0.3·200M).
+        sched.on_success(0, 200_000_000, Duration::from_secs(1), now);
+        assert_eq!(sched.pick(now), Some(0), "live samples outrank hints");
+        // A fresh probe update must not clobber live rankings...
+        sched.apply_probe_hints(&[hint("b", 20_000_000), hint("a", 1_000_000)], &[]);
+        assert_eq!(sched.pick(now), Some(0));
+        // ...but a bad mark demotes even a measured host.
+        sched.apply_probe_hints(&[], &["a".to_string()]);
+        assert!(sched.health[0].ewma_bps < 20_000_000.0);
     }
 
     #[test]

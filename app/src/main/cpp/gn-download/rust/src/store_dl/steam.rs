@@ -2,7 +2,7 @@
 //!
 //! `depot_downloader` orchestrates: manifests (`content_manifest`, `proto_wire` + `pb` for the
 //! content-server directory protobufs), depot keys/config (`depot_config`), the CDN client
-//! (`cdn_client`, `cdn_probe` for throughput-based server probing) and the writer
+//! (`cdn_client`, `cdn_probe` for background throughput ranking of the assigned servers) and the writer
 //! (`depot_writer`: verify/resume, chunk dispatch over [`crate::fetch_core`], ordered writes,
 //! stall watchdog). `depot_chunk` + `crypto` do chunk decrypt (AES-256) + VZip/LZMA decompress.
 //! `jni` is the JNI facade called from Kotlin; `base64` is a small local helper.
