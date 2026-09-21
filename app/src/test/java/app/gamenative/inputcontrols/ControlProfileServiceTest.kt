@@ -16,6 +16,7 @@ import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.widget.InputControlsView
 import java.io.ByteArrayInputStream
 import java.nio.file.Files
+import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -32,6 +33,27 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class)
 class ControlProfileServiceTest {
+    @Test
+    fun bundledProfilesCannotBeRenamedOrDeleted() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val manager = InputControlsManager(context)
+        val builtInNames = ControlProfileService.builtInProfileNames(context)
+        val builtIn = manager.profiles.first { it.name.lowercase(Locale.ROOT) in builtInNames }
+        val root = Files.createTempDirectory("built-in-profile").toFile()
+        val container = Container("built-in-profile").apply { rootDir = root }
+        try {
+            assertThrows(IllegalArgumentException::class.java) {
+                ControlProfileService.rename(context, manager, builtIn, "Renamed built-in")
+            }
+            assertThrows(IllegalArgumentException::class.java) {
+                ControlProfileService.deleteProfile(context, container, manager, builtIn)
+            }
+            assertTrue(ControlsProfile.getProfileFile(context, builtIn.id).isFile)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     @Test
     fun saveCurrentAddsNewCategoriesAndRoundTripsWithoutChangingAnotherGame() {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -331,6 +353,7 @@ class ControlProfileServiceTest {
     fun profileLoader_ignoresMalformedFieldTypes() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val malformed = """{"id":42,"name":{},"elements":[]}"""
+        val missingId = """{"name":"Missing ID","elements":[]}"""
 
         assertNull(
             InputControlsManager.loadProfile(
@@ -338,6 +361,32 @@ class ControlProfileServiceTest {
                 ByteArrayInputStream(malformed.toByteArray()),
             ),
         )
+        assertNull(
+            InputControlsManager.loadProfile(
+                context,
+                ByteArrayInputStream(missingId.toByteArray()),
+            ),
+        )
+    }
+
+    @Test
+    fun installedLoader_ignoresTemporaryAndMismatchedProfileFiles() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val profilesDir = InputControlsManager.getProfilesDir(context)
+        val mismatchedId = 999_999_990
+        val embeddedId = mismatchedId + 1
+        val mismatched = ControlsProfile.getProfileFile(context, mismatchedId)
+        val temporary = profilesDir.resolve("controls-${embeddedId + 1}-interrupted.tmp")
+        try {
+            assertTrue(FileUtils.writeString(mismatched, """{"id":$embeddedId,"name":"Mismatched"}"""))
+            assertTrue(FileUtils.writeString(temporary, """{"id":${embeddedId + 1},"name":"Temporary"}"""))
+            val manager = InputControlsManager(context)
+            assertNull(manager.getProfile(embeddedId))
+            assertNull(manager.getProfile(embeddedId + 1))
+        } finally {
+            mismatched.delete()
+            temporary.delete()
+        }
     }
 
     @Test
@@ -374,7 +423,10 @@ class ControlProfileServiceTest {
                     put("name", "Gyro source")
                     put("listed", true)
                     put("includedSections", JSONArray().put("gyro"))
-                    put("gyroSettings", JSONObject().put("sensitivity", 2.0))
+                    put(
+                        "gyroSettings",
+                        GyroSettings(mode = GyroSettings.MODE_MOUSE, sensitivity = 2f).toJsonObject(),
+                    )
                 }.toString(),
             )
             manager.reloadProfiles()
@@ -397,6 +449,11 @@ class ControlProfileServiceTest {
             val sources = ControlProfileService.appliedSectionSources(context, container, manager)
             assertEquals(firstId, sources[ControlProfileSection.ON_SCREEN])
             assertEquals(secondId, sources[ControlProfileSection.GYRO])
+            GyroSettings(mode = GyroSettings.MODE_MOUSE, sensitivity = 3f).saveTo(container, persist = false)
+            assertNull(
+                ControlProfileService.appliedSectionSources(context, container, manager)[ControlProfileSection.GYRO],
+            )
+            GyroSettings(mode = GyroSettings.MODE_MOUSE, sensitivity = 2f).saveTo(container, persist = false)
             val working = manager.getProfile(container.getExtra("profileId", "0").toInt())!!
             val workingJson = ControlProfileService.readProfileJson(context, working)
             assertEquals(1.5, workingJson.getDouble("cursorSpeed"), 0.0)

@@ -127,13 +127,9 @@ fun ControlProfileLibraryDialog(
     onProfileApplied: (ControlsProfile) -> Unit = {},
 ) {
     val context = LocalContext.current
-    val manager = remember(container.id) {
-        if (PluviaApp.inputControlsView != null) {
-            PluviaApp.inputControlsManager ?: InputControlsManager(context)
-        } else {
-            InputControlsManager(context)
-        }
-    }
+    // Library disk work happens off the main thread. Keep it isolated from the
+    // manager currently serving input events in a running game.
+    val manager = remember(container.id) { InputControlsManager(context) }
     val scope = rememberCoroutineScope()
     var entries by remember(container.id) { mutableStateOf<List<ProfileLibraryEntry>>(emptyList()) }
     var appliedSources by remember(container.id) {
@@ -167,16 +163,15 @@ fun ControlProfileLibraryDialog(
     }
 
     suspend fun loadSnapshot(): ProfileLibrarySnapshot = withContext(Dispatchers.IO) {
-        ControlProfileService.reconcileWorkingProfiles(context, manager)
         manager.reloadProfiles()
-        val builtIns = ControlProfileService.builtInProfileKeys(context)
+        val builtIns = ControlProfileService.builtInProfileNames(context)
         ProfileLibrarySnapshot(
             entries = manager.getProfiles(false).mapNotNull { profile ->
                 runCatching {
                     ProfileLibraryEntry(
                         profile = profile,
                         preview = ControlProfileService.preview(context, profile),
-                        builtIn = profile.id to profile.name in builtIns,
+                        builtIn = profile.name.lowercase(Locale.ROOT) in builtIns,
                     )
                 }.getOrNull()
             },
@@ -272,7 +267,7 @@ fun ControlProfileLibraryDialog(
                     title = {
                         Text(
                             stringResource(
-                                if (createDialog) R.string.control_profile_create else R.string.control_profiles,
+                                if (createDialog) R.string.create else R.string.control_profiles,
                             ),
                         )
                     },
@@ -302,7 +297,7 @@ fun ControlProfileLibraryDialog(
                             IconButton(enabled = !loading, onClick = ::openCreate) {
                                 Icon(
                                     Icons.Default.Add,
-                                    contentDescription = stringResource(R.string.control_profile_create),
+                                    contentDescription = stringResource(R.string.create),
                                 )
                             }
                         }
@@ -329,23 +324,13 @@ fun ControlProfileLibraryDialog(
                             setOf(ControlProfileSection.ON_SCREEN)
                         }
                         runIo({
-                            val saved = if (createFromCurrent) {
-                                ControlProfileService.saveCurrentAsProfile(
-                                    context,
-                                    container,
-                                    manager,
-                                    name,
-                                    selectedSections,
-                                )
-                            } else {
-                                ControlProfileService.createBlank(context, manager, name)
-                            }
-                            ControlProfileService.applyProfile(
+                            ControlProfileService.createAndApply(
                                 context,
                                 container,
                                 manager,
-                                saved,
+                                name,
                                 selectedSections,
+                                createFromCurrent,
                             )
                         }) { applied ->
                             createDialog = false
@@ -612,7 +597,7 @@ private fun ControlProfileCard(
                             )
                         }
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.control_profile_duplicate)) },
+                            text = { Text(stringResource(R.string.duplicate)) },
                             onClick = { menuExpanded = false; onDuplicate() },
                         )
                         if (onRename != null) {
@@ -657,7 +642,7 @@ private fun ControlProfileCard(
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(modifier = Modifier.weight(1f), onClick = onPreview) {
-                    Text(stringResource(R.string.control_profile_preview))
+                    Text(stringResource(R.string.preview))
                 }
                 Button(modifier = Modifier.weight(1f), onClick = onApply) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))

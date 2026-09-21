@@ -1274,7 +1274,6 @@ fun XServerScreen(
                     PluviaApp.inputControlsView?.setGyroSettings(GyroSettings.fromContainer(container))
                     PluviaApp.inputControlsView?.setContainerShooterMode(isShooterModeActive)
                     PluviaApp.inputControlsView?.setShooterModeConfig(currentShooterConfig)
-                    physicalControllerHandler?.setProfile(profile)
                     PluviaApp.radialMenuCoordinator?.setProfile(profile)
 
                     val winHandler = xServerView?.getxServer()?.winHandler
@@ -1333,7 +1332,6 @@ fun XServerScreen(
                 if (activeProfile != null) {
                     PluviaApp.inputControlsView?.setProfilePreservingOverlayVisibility(activeProfile)
                     PluviaApp.radialMenuCoordinator?.setProfile(activeProfile)
-                    physicalControllerHandler?.setProfile(activeProfile)
                 }
 
                 // Enable edit mode and show controls if not visible
@@ -2528,7 +2526,6 @@ fun XServerScreen(
                 anchor = view,
                 container = container,
                 xServer = xServerView.getxServer(),
-                gameNameProvider = { currentAppInfo?.name ?: container.name },
                 showKeyboard = showSoftKeyboard,
                 openQuickMenu = { showQuickMenu = true },
                 onSettingsVisibilityChanged = { visible ->
@@ -3125,7 +3122,6 @@ fun XServerScreen(
                             // Keep gyro and binding inspection on the reloaded profile without
                             // unintentionally showing controls that were hidden for a controller.
                             PluviaApp.inputControlsView?.setProfilePreservingOverlayVisibility(profile)
-                            physicalControllerHandler?.setProfile(profile)
                             PluviaApp.radialMenuCoordinator?.setProfile(profile)
                             showPhysicalControllerDialog = false
                             keepPausedForEditor = false

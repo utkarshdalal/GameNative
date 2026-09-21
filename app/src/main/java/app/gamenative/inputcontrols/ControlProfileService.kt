@@ -19,6 +19,7 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -199,12 +200,6 @@ object ControlProfileService {
         return migrated
     }
 
-    fun reconcileWorkingProfiles(context: Context, manager: InputControlsManager) {
-        // An unreadable container config is not evidence of deletion. Browsing
-        // the library must never remove working profiles for skipped containers.
-        migrateReferencedLibraryProfiles(context, manager)
-    }
-
     fun deleteWorkingProfilesForContainer(context: Context, containerId: String): Int {
         // Called only by explicit container deletion. Its async callback can also
         // run after a failed deletion, so require a successful directory listing
@@ -255,15 +250,48 @@ object ControlProfileService {
         manager: InputControlsManager,
         name: String,
     ): ControlsProfile {
-        val profile = manager.createProfile(InputControlsManager.normalizeProfileName(name))
-        val json = readProfileJson(context, profile).apply {
+        val normalizedName = InputControlsManager.normalizeProfileName(name)
+        if (manager.hasVisibleProfileNamed(normalizedName, -1)) {
+            throw IllegalArgumentException("A control profile with that name already exists")
+        }
+        val newId = manager.nextProfileId()
+        val json = JSONObject().apply {
+            put("id", newId)
+            put("name", normalizedName)
+            put("cursorSpeed", ControlsProfile.DEFAULT_CURSOR_SPEED)
+            put("elements", JSONArray())
             put(KEY_SCHEMA_VERSION, SCHEMA_VERSION)
             put(KEY_INCLUDED_SECTIONS, sectionArray(setOf(ControlProfileSection.ON_SCREEN)))
             put(KEY_LISTED, true)
         }
-        writeProfileJson(context, profile.id, json)
-        manager.reloadProfiles()
-        return requireNotNull(manager.getProfile(profile.id))
+        return installNewProfile(context, manager, newId, json)
+    }
+
+    fun createAndApply(
+        context: Context,
+        container: Container,
+        manager: InputControlsManager,
+        name: String,
+        sections: Set<ControlProfileSection>,
+        fromCurrent: Boolean,
+    ): ControlsProfile {
+        val originalProfileId = container.getExtra("profileId", "0")
+        val saved = if (fromCurrent) {
+            saveCurrentAsProfile(context, container, manager, name, sections)
+        } else {
+            createBlank(context, manager, name)
+        }
+        return try {
+            applyProfile(context, container, manager, saved, sections)
+        } catch (error: Throwable) {
+            // applyProfile rolls back its working profile and container changes.
+            // Remove the newly-created library entry only when the selection also
+            // remained unchanged, so a post-commit reload failure cannot orphan it.
+            if (container.getExtra("profileId", "0") == originalProfileId) {
+                manager.removeProfile(saved)
+            }
+            throw error
+        }
     }
 
     fun saveCurrentAsProfile(
@@ -285,9 +313,26 @@ object ControlProfileService {
             remove(KEY_LIBRARY_PROFILE_ID)
             remove(KEY_GAME_OWNER_ID)
         }
-        writeProfileJson(context, newId, json)
-        manager.reloadProfiles()
-        return requireNotNull(manager.getProfile(newId))
+        return installNewProfile(context, manager, newId, json)
+    }
+
+    private fun installNewProfile(
+        context: Context,
+        manager: InputControlsManager,
+        id: Int,
+        json: JSONObject,
+    ): ControlsProfile {
+        val file = ControlsProfile.getProfileFile(context, id)
+        try {
+            writeProfileJson(context, id, json)
+            manager.reloadProfiles()
+            return requireNotNull(manager.getProfile(id))
+        } catch (error: Throwable) {
+            if (file.isFile && !file.delete()) {
+                error.addSuppressed(IOException("Unable to remove incomplete control profile: $file"))
+            }
+            throw error
+        }
     }
 
     fun updateFromCurrent(
@@ -298,6 +343,7 @@ object ControlProfileService {
         sections: Set<ControlProfileSection>,
     ): ControlsProfile {
         if (sections.isEmpty()) throw IllegalArgumentException("Select at least one control profile section")
+        requireMutableProfile(context, target)
         ensureDirectReferenceIsolated(context, container, manager, target.id)
         migrateReferencedLibraryProfiles(context, manager)
         val working = ensureWorkingProfile(context, container, manager)
@@ -328,6 +374,7 @@ object ControlProfileService {
     }
 
     fun rename(context: Context, manager: InputControlsManager, profile: ControlsProfile, name: String) {
+        requireMutableProfile(context, profile)
         val normalizedName = InputControlsManager.normalizeProfileName(name)
         if (manager.hasVisibleProfileNamed(normalizedName, profile.id)) {
             throw IllegalArgumentException("A control profile with that name already exists")
@@ -344,6 +391,7 @@ object ControlProfileService {
         manager: InputControlsManager,
         profile: ControlsProfile,
     ) {
+        requireMutableProfile(context, profile)
         ensureDirectReferenceIsolated(context, container, manager, profile.id)
         migrateReferencedLibraryProfiles(context, manager)
         if (!manager.removeProfile(profile)) throw IOException("Unable to delete control profile")
@@ -414,15 +462,21 @@ object ControlProfileService {
         } ?: throw IOException("Unable to create profile")
     }
 
-    fun builtInProfileKeys(context: Context): Set<Pair<Int, String>> = runCatching {
+    fun builtInProfileNames(context: Context): Set<String> = runCatching {
         context.assets.list("inputcontrols/profiles").orEmpty().mapNotNullTo(mutableSetOf()) { assetName ->
             runCatching {
                 context.assets.open("inputcontrols/profiles/$assetName").use { asset ->
-                    InputControlsManager.loadProfile(context, asset)?.let { it.id to it.name }
+                    InputControlsManager.loadProfile(context, asset)?.name?.lowercase(Locale.ROOT)
                 }
             }.getOrNull()
         }
     }.getOrDefault(emptySet())
+
+    private fun requireMutableProfile(context: Context, profile: ControlsProfile) {
+        if (profile.name.lowercase(Locale.ROOT) in builtInProfileNames(context)) {
+            throw IllegalArgumentException("Built-in control profiles cannot be changed")
+        }
+    }
 
     fun appliedSectionSources(
         context: Context,
@@ -431,9 +485,46 @@ object ControlProfileService {
     ): Map<ControlProfileSection, Int> {
         val selectedId = container.getExtra("profileId", "0").toIntOrNull() ?: 0
         val selected = manager.getProfile(selectedId) ?: return emptyMap()
-        val json = readProfileJson(context, selected)
-        if (selected.isListed) return sectionsOf(json).associateWith { selected.id }
-        return sectionSourcesOf(json)
+        val workingJson = readProfileJson(context, selected)
+        val recorded = if (selected.isListed) {
+            sectionsOf(workingJson).associateWith { selected.id }
+        } else {
+            sectionSourcesOf(workingJson)
+        }
+        if (recorded.isEmpty()) return emptyMap()
+        val currentJson = captureCurrentJson(context, container, manager, selected.name, recorded.keys)
+        val sourceJsonById = mutableMapOf<Int, JSONObject>()
+        return recorded.filter { (section, sourceId) ->
+            val source = manager.getProfile(sourceId) ?: return@filter false
+            runCatching {
+                val sourceJson = sourceJsonById.getOrPut(sourceId) { readProfileJson(context, source) }
+                sectionValuesEqual(sourceJson, currentJson, section)
+            }.getOrDefault(false)
+        }
+    }
+
+    private fun sectionValuesEqual(
+        first: JSONObject,
+        second: JSONObject,
+        section: ControlProfileSection,
+    ): Boolean {
+        val firstSection = JSONObject().also { copySections(first, it, setOf(section)) }
+        val secondSection = JSONObject().also { copySections(second, it, setOf(section)) }
+        return jsonValuesEqual(firstSection, secondSection)
+    }
+
+    private fun jsonValuesEqual(first: Any?, second: Any?): Boolean = when {
+        first is JSONObject && second is JSONObject -> {
+            val firstKeys = first.keys().asSequence().toSet()
+            val secondKeys = second.keys().asSequence().toSet()
+            firstKeys == secondKeys && firstKeys.all { key -> jsonValuesEqual(first.opt(key), second.opt(key)) }
+        }
+        first is JSONArray && second is JSONArray ->
+            first.length() == second.length() &&
+                (0 until first.length()).all { index -> jsonValuesEqual(first.opt(index), second.opt(index)) }
+        first is Number && second is Number -> first.toDouble() == second.toDouble()
+        first === JSONObject.NULL || second === JSONObject.NULL -> first === second
+        else -> first == second
     }
 
     fun readProfileJson(context: Context, profile: ControlsProfile): JSONObject {

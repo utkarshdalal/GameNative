@@ -20,10 +20,15 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class InputControlsManager {
     public static final int MAX_PROFILE_NAME_LENGTH = 80;
     private static final int MAX_PROFILE_ID = 1_000_000_000;
+    private static final Pattern PROFILE_FILE_PATTERN = Pattern.compile("controls-(\\d+)\\.icp");
 
     private final Context context;
     private ArrayList<ControlsProfile> profiles;
@@ -62,7 +67,17 @@ public class InputControlsManager {
 
     private void copyAssetProfilesIfNeeded() {
         File profilesDir = InputControlsManager.getProfilesDir(context);
-        if (FileUtils.isEmpty(profilesDir)) {
+        File[] files = profilesDir.listFiles();
+        boolean hasInstalledProfile = false;
+        if (files != null) {
+            for (File file : files) {
+                if (loadInstalledProfile(file) != null) {
+                    hasInstalledProfile = true;
+                    break;
+                }
+            }
+        }
+        if (!hasInstalledProfile) {
             FileUtils.copy(context, "inputcontrols/profiles", profilesDir);
             return;
         }
@@ -73,7 +88,6 @@ public class InputControlsManager {
         if (oldVersion.equals(newVersion)) return;
         PrefManager.putString("inputcontrols_app_version", newVersion);
 
-        File[] files = profilesDir.listFiles();
         if (files == null) return;
 
         try {
@@ -83,7 +97,7 @@ public class InputControlsManager {
             // Pre-compute max local ID for assigning new profile IDs
             int nextNewId = 0;
             for (File f : files) {
-                ControlsProfile p = loadProfile(context, f);
+                ControlsProfile p = loadInstalledProfile(f);
                 if (p != null) {
                     nextNewId = Math.max(
                             nextNewId,
@@ -98,7 +112,7 @@ public class InputControlsManager {
 
                 File targetFile = null;
                 for (File file : files) {
-                    ControlsProfile targetProfile = loadProfile(context, file);
+                    ControlsProfile targetProfile = loadInstalledProfile(file);
                     if (originProfile == null || targetProfile == null) continue;
                     if (originProfile.id == targetProfile.id && originProfile.getName().equals(targetProfile.getName())) {
                         targetFile = file;
@@ -118,7 +132,7 @@ public class InputControlsManager {
                         // this asset profile (by name) already exists under any ID
                         boolean alreadyExists = false;
                         for (File file2 : files) {
-                            ControlsProfile p = loadProfile(context, file2);
+                            ControlsProfile p = loadInstalledProfile(file2);
                             if (p != null && p.getName().equals(originProfile.getName())) {
                                 alreadyExists = true;
                                 break;
@@ -159,12 +173,17 @@ public class InputControlsManager {
         copyAssetProfilesIfNeeded();
 
         ArrayList<ControlsProfile> profiles = new ArrayList<>();
+        Set<Integer> loadedIds = new HashSet<>();
         maxProfileId = 0;
         File[] files = profilesDir.listFiles();
         if (files != null) {
             for (File file : files) {
-                ControlsProfile profile = loadProfile(context, file);
+                ControlsProfile profile = loadInstalledProfile(file);
                 if (profile == null) continue;
+                if (!loadedIds.add(profile.id)) {
+                    Log.w("InputControlsManager", "Ignoring duplicate control profile ID " + profile.id);
+                    continue;
+                }
                 profiles.add(profile);
                 maxProfileId = Math.max(maxProfileId, Math.max(profile.id, profile.getMaxReferencedProfileId()));
             }
@@ -320,6 +339,7 @@ public class InputControlsManager {
     public static ControlsProfile loadProfile(Context context, InputStream inStream) {
         try (JsonReader reader = new JsonReader(new InputStreamReader(inStream, StandardCharsets.UTF_8))) {
             int profileId = 0;
+            boolean hasProfileId = false;
             String profileName = null;
             float cursorSpeed = ControlsProfile.DEFAULT_CURSOR_SPEED;
             boolean listed = true;
@@ -333,6 +353,7 @@ public class InputControlsManager {
 
                 if (name.equals("id")) {
                     profileId = reader.nextInt();
+                    hasProfileId = true;
                 }
                 else if (name.equals("name")) {
                     profileName = reader.nextString();
@@ -364,7 +385,7 @@ public class InputControlsManager {
             }
             reader.endObject();
 
-            if (profileId < 0 || profileId > MAX_PROFILE_ID || maxReferencedProfileId > MAX_PROFILE_ID || profileName == null ||
+            if (!hasProfileId || profileId < 0 || profileId > MAX_PROFILE_ID || maxReferencedProfileId > MAX_PROFILE_ID || profileName == null ||
                     profileName.trim().isEmpty() || !Float.isFinite(cursorSpeed)) {
                 return null;
             }
@@ -388,5 +409,23 @@ public class InputControlsManager {
         if (!profilesLoaded) loadProfiles();
         for (ControlsProfile profile : profiles) if (profile.id == id) return profile;
         return null;
+    }
+
+    private ControlsProfile loadInstalledProfile(File file) {
+        Matcher matcher = PROFILE_FILE_PATTERN.matcher(file.getName());
+        if (!file.isFile() || !matcher.matches()) return null;
+        int fileId;
+        try {
+            fileId = Integer.parseInt(matcher.group(1));
+        }
+        catch (NumberFormatException e) {
+            return null;
+        }
+        ControlsProfile profile = loadProfile(context, file);
+        if (profile != null && profile.id != fileId) {
+            Log.w("InputControlsManager", "Ignoring control profile whose ID does not match its filename: " + file);
+            return null;
+        }
+        return profile;
     }
 }

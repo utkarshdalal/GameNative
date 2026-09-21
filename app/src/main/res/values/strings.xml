@@ -283,15 +283,11 @@
     <string name="edit_physical_controller">Edit Physical Controller</string>
     <string name="control_profiles">Control Profiles</string>
     <string name="control_profiles_empty">No control profiles are available.</string>
-    <string name="control_profile_applied">Applied</string>
     <string name="control_profile_applied_sections">Applied · %1$d of %2$d settings</string>
     <string name="control_profile_apply">Apply</string>
-    <string name="control_profile_preview">Preview</string>
-    <string name="control_profile_duplicate">Duplicate</string>
     <string name="control_profile_rename">Rename</string>
     <string name="control_profile_export">Export</string>
     <string name="control_profile_import">Import</string>
-    <string name="control_profile_create">Create</string>
     <string name="control_profile_create_blank">Blank profile</string>
     <string name="control_profile_create_current">From current controls</string>
     <string name="control_profile_start_with">Start with</string>
@@ -313,9 +309,6 @@
     <string name="control_profile_controls_count">%1$d on-screen controls</string>
     <string name="control_profile_bindings_count">%1$d physical bindings</string>
     <string name="control_profile_radial_count">%1$d radial slots</string>
-    <string name="control_profile_gyro_summary">Gyro: mode %1$d, sensitivity %2$s×</string>
-    <string name="control_profile_touchscreen_summary">Touchscreen mode: %1$s</string>
-    <string name="control_profile_shooter_summary">Shooter mode: %1$s</string>
     <string name="control_profile_import_confirm">Add to library</string>
     <string name="control_profile_imported">Control profile imported</string>
     <string name="control_profile_exported">Control profile exported</string>

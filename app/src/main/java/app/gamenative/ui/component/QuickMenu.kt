@@ -1177,6 +1177,10 @@ fun QuickMenu(
             container = container,
             onDismiss = { showControlProfiles = false },
             onProfileApplied = {
+                // The library deliberately uses a private manager while doing
+                // background I/O. Refresh the live manager on the UI thread only
+                // after the transaction has committed.
+                PluviaApp.inputControlsManager?.reloadProfiles()
                 gyroMenu?.reloadFromContainer()
                 onItemSelected(QuickMenuAction.CONTROL_PROFILE_APPLIED)
             },

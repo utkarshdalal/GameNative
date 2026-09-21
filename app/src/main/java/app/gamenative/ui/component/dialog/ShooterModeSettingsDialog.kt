@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.data.ShooterModeConfig
 import app.gamenative.ui.theme.PluviaBackground
@@ -46,7 +48,14 @@ fun ShooterModeSettingsDialog(
     var config by remember(shooterConfig) { mutableStateOf(shooterConfig) }
     val locale = Locale.getDefault()
 
-    ControlSettingsDialog(onDismiss = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+        ),
+    ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = PluviaBackground,

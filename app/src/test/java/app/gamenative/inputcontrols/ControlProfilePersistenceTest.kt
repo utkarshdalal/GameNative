@@ -93,6 +93,23 @@ class ControlProfilePersistenceTest {
     }
 
     @Test
+    fun failedCreateAndApplyDoesNotLeaveTheNewLibraryProfile() = Fixture().use { fixture ->
+        val before = fixture.snapshot()
+        fixture.game.failSave = true
+        assertThrows(IOException::class.java) {
+            ControlProfileService.createAndApply(
+                fixture.context,
+                fixture.game,
+                fixture.manager,
+                "Atomic create",
+                ControlProfileSection.entries.toSet(),
+                fromCurrent = true,
+            )
+        }
+        fixture.assertUnchanged(before)
+    }
+
+    @Test
     fun failedApplyPreservesAbsentProfileReferencesAndNullExtraData() {
         for (extra in listOf(null, JSONObject().put("unrelated", "keep"))) {
             Fixture().use { fixture ->
