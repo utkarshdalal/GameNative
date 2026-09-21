@@ -81,7 +81,7 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
    - Location: `PowerProfile.kt`
    - Serializable data class representing a complete performance configuration
    - Fields (all mutable `var`):
-     - `enableAutoTuning: Boolean` - Enable automatic performance tuning (default: false)
+     - `autoTuningMode: AutoTuningMode` - `AUTO` (continuous PID tuning), `MANUAL` (locked governor/frequencies), or `OFF` (frequency control handed back to the OS) - default: `AUTO`
      - `name: String` - Profile name (e.g., "Balanced", "Performance", "Custom")
      - `governor: CpuGovernor` - CPU governor enum
      - `minCpuFreq: Long` - Minimum CPU frequency/level
@@ -120,7 +120,7 @@ GameNative's performance control system provides CPU and GPU tuning capabilities
      - Usage high threshold: 85% (increase performance)
      - Performance range: 20-100%
    - **Tuning Cycle**: Runs every 2 seconds on background thread
-   - **Integration**: Enabled via `PowerProfile.enableAutoTuning` flag
+   - **Integration**: Runs while `PowerProfile.autoTuningMode == AutoTuningMode.AUTO`
 
 8. **PidController** (Control Theory)
    - Location: `autotuning/PidController.kt`
@@ -820,12 +820,14 @@ else {
 3. **PowerManager** → Creates `PerformanceAutoTuner` with callbacks:
    - `onCpuFrequencyChange(freq)` → Calls `setMinCpuValue()` and `setMaxCpuValue()`
    - `onGpuLevelChange(level)` → Calls `setMinGpuPowerLevel()` and `setMaxGpuPowerLevel()`
-4. **PowerProfile** → `enableAutoTuning` flag controls auto-tuner lifecycle
+4. **PowerProfile** → `autoTuningMode` controls auto-tuner lifecycle
 
 **UI Behavior:**
-- When auto-tuning is enabled, manual CPU/GPU controls are hidden
-- Auto-tuning toggle is only shown when driver supports both CPU and GPU control
-- Profile name changes to "Custom" when auto-tuning is toggled
+- Auto-Tuning is a 3-state selector: **Auto** (PID tuner runs, manual CPU/GPU/governor controls hidden),
+  **Manual** (governor + CPU/GPU/RAM sliders shown, tuner stopped), **Off** (frequency control handed back
+  to the OS - governor selector and manual sliders are both hidden)
+- The 3-state selector is only shown when driver supports both CPU and GPU control
+- Profile name changes to "Custom" when auto-tuning mode is changed
 
 **Performance Characteristics:**
 

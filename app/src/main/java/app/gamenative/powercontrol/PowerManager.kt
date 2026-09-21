@@ -222,8 +222,11 @@ object PowerManager {
 
     /**
      * Enable or disable in-game power control at runtime. Disabling stops the
-     * driver and hands clock control back to the OS; enabling re-initializes
-     * and restarts it when a game is running.
+     * driver, hands clock control back to the OS, and (if a game is running) releases
+     * CPU pinning - otherwise the game and Wine processes stay stuck on whatever cores
+     * they were pinned to, which is what used to require a full app restart to undo.
+     * Enabling mirrors this: restarts the driver and, if a game is already running,
+     * re-applies pinning the same way a fresh game launch would.
      */
     fun setPowerControlEnabled(enabled: Boolean) {
         // Always save the profile
@@ -231,7 +234,20 @@ object PowerManager {
 
         if (enabled) {
             startPowerControl()
+            if (isGameStarted) {
+                val processName = pinnedGameProcessName
+                if (processName != null) {
+                    Timber.tag("PowerManager").i("Power control re-enabled, re-pinning $processName")
+                    startGamePin(processName, "power control re-enabled")
+                }
+                pinBackgroundProcesses()
+            }
         } else {
+            if (isGameStarted) {
+                Timber.tag("PowerManager").i("Power control disabled, releasing CPU pinning")
+                unpinGame()
+                unpinBackgroundProcesses()
+            }
             stopPowerControl()
         }
     }
@@ -543,16 +559,17 @@ object PowerManager {
 
         // Handle auto-tuning based on profile setting
         if (profile.enablePowerControl) {
-            if (profile.enableAutoTuning) {
-                if (previousProfile.enablePerClusterTuning != profile.enablePerClusterTuning) {
-                    Timber.tag("PowerManager").i(
-                        "Per-cluster tuning changed to ${profile.enablePerClusterTuning}, restarting the tuner"
-                    )
-                    stopAutoTuning()
+            when (profile.autoTuningMode) {
+                AutoTuningMode.AUTO -> {
+                    if (previousProfile.enablePerClusterTuning != profile.enablePerClusterTuning) {
+                        Timber.tag("PowerManager").i(
+                            "Per-cluster tuning changed to ${profile.enablePerClusterTuning}, restarting the tuner"
+                        )
+                        stopAutoTuning()
+                    }
+                    startAutoTuning()
                 }
-                startAutoTuning()
-            } else {
-                stopAutoTuning()
+                AutoTuningMode.MANUAL, AutoTuningMode.OFF -> stopAutoTuning()
             }
         } else {
             stopAutoTuning()
@@ -571,6 +588,10 @@ object PowerManager {
                 } else {
                     FanController.stop()
                 }
+            }
+
+            if (previousProfile.autoTuningMode != profile.autoTuningMode) {
+                switchAutoTuningMode(previousProfile.autoTuningMode, profile.autoTuningMode)
             }
 
             val pinningModeChanged = previousProfile.gamePinningMode != profile.gamePinningMode
@@ -701,9 +722,9 @@ object PowerManager {
                 minBusLevel = ramDisplayInfo?.minBusLevel ?: 0,
                 maxBusLevel = ramDisplayInfo?.maxBusLevel ?: 0
             )).copy(
-                // Preserve enableAutoTuning and tuningStrategy from PowerManager's current profile
+                // Preserve autoTuningMode and tuningStrategy from PowerManager's current profile
                 enablePowerControl = currentProfile.enablePowerControl,
-                enableAutoTuning = currentProfile.enableAutoTuning,
+                autoTuningMode = currentProfile.autoTuningMode,
                 enablePerClusterTuning = currentProfile.enablePerClusterTuning,
                 adaptiveFpsCapEnabled = currentProfile.adaptiveFpsCapEnabled,
                 enableFanControl = currentProfile.enableFanControl,
@@ -1590,27 +1611,22 @@ object PowerManager {
     private fun applyCurrentProfile() {
         if (currentProfile.enablePowerControl) {
             try {
-                val success = update {
-                    governor(currentProfile.governor.governorName)
-                    minCpuValue(currentProfile.minCpuFreq)
-                    maxCpuValue(currentProfile.maxCpuFreq)
-                    if (isGpuSupported()) {
-                        minGpuPowerLevel(currentProfile.minGpuPowerLevel)
-                        maxGpuPowerLevel(currentProfile.maxGpuPowerLevel)
-                    }
-                    if (isBusSupported()) {
-                        minBusLevel(currentProfile.minBusLevel)
-                        maxBusLevel(currentProfile.maxBusLevel)
-                    }
-                }
+                if (currentProfile.autoTuningMode != AutoTuningMode.OFF) {
+                    val success = applyCpuGpuControl()
 
-                if (success) {
-                    Timber.tag("PowerManager").i("Successfully restored power profile")
+                    if (success) {
+                        Timber.tag("PowerManager").i("Successfully restored power profile")
+                    } else {
+                        Timber.tag("PowerManager").w("Failed to restore power profile")
+                    }
                 } else {
-                    Timber.tag("PowerManager").w("Failed to restore power profile")
+                    val released = driver.releaseFrequencyControl()
+                    Timber.tag("PowerManager").i(
+                        "Auto-tuning mode is Off, released CPU/GPU frequency control back to the OS (success=$released)"
+                    )
                 }
 
-                if (currentProfile.enableAutoTuning) {
+                if (currentProfile.autoTuningMode == AutoTuningMode.AUTO) {
                     startAutoTuning()
                 }
 
@@ -1620,6 +1636,49 @@ object PowerManager {
             } catch (e: Exception) {
                 Timber.tag("PowerManager").e(e, "Failed to apply current profile")
             }
+        }
+    }
+
+    /**
+     * Applies the current profile's CPU governor/min/max frequency and GPU/Bus min/max power
+     * level to the driver. Used both on initial profile application and when reclaiming control
+     * from the OS after [AutoTuningMode.OFF] is switched away from.
+     */
+    private fun applyCpuGpuControl(): Boolean {
+        return update {
+            governor(currentProfile.governor.governorName)
+            minCpuValue(currentProfile.minCpuFreq)
+            maxCpuValue(currentProfile.maxCpuFreq)
+            if (isGpuSupported()) {
+                minGpuPowerLevel(currentProfile.minGpuPowerLevel)
+                maxGpuPowerLevel(currentProfile.maxGpuPowerLevel)
+            }
+            if (isBusSupported()) {
+                minBusLevel(currentProfile.minBusLevel)
+                maxBusLevel(currentProfile.maxBusLevel)
+            }
+        }
+    }
+
+    /**
+     * Hands CPU/GPU frequency control to or back from the OS when [AutoTuningMode] changes live
+     * while a game is running. Auto's PID loop and Manual's locked governor/min/max both keep the
+     * driver in control of frequencies, so only entering or leaving [AutoTuningMode.OFF] needs
+     * explicit handling here - transitions between Auto and Manual are already covered by
+     * [startAutoTuning]/[stopAutoTuning] and the frequencies [applyCurrentProfile] applies on
+     * driver start.
+     */
+    private fun switchAutoTuningMode(previous: AutoTuningMode, next: AutoTuningMode) {
+        if (next == AutoTuningMode.OFF) {
+            val released = driver.releaseFrequencyControl()
+            Timber.tag("PowerManager").i(
+                "Auto-tuning mode is now Off, released CPU/GPU frequency control back to the OS (success=$released)"
+            )
+        } else if (previous == AutoTuningMode.OFF) {
+            val reclaimed = applyCpuGpuControl()
+            Timber.tag("PowerManager").i(
+                "Auto-tuning mode is now $next, reclaimed CPU/GPU frequency control (success=$reclaimed)"
+            )
         }
     }
 }

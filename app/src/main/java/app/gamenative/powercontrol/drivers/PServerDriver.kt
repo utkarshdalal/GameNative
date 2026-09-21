@@ -6,6 +6,7 @@ import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.Parcel
 import app.gamenative.PrefManager
+import app.gamenative.powercontrol.AutoTuningMode
 import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerBaseline
 import app.gamenative.powercontrol.PowerBaselineEntry
@@ -303,7 +304,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 Timber.tag(TAG).e("Failed to execute batch script: ${execResult.exceptionOrNull()?.message}")
             } else {
                 // When using auto-tuning, this log can spam around, suppress it
-                if (PowerManager.currentProfile?.enableAutoTuning == false) {
+                if (PowerManager.currentProfile?.autoTuningMode != AutoTuningMode.AUTO) {
                     Timber.tag(TAG).d("Successfully executed ${batchCommands.size} batched commands")
                 }
             }
@@ -648,6 +649,41 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         Timber.tag(POWER_TAG).i(
             "Clean restore executed: ${if (success) "success" else "failure"} " +
                 "(entries=${sessionBaseline?.entries?.size ?: 0}, extraFiles=${modifiedSysfsFiles.size}, script=$scriptPath)"
+        )
+        return success
+    }
+
+    /**
+     * Hands CPU governor/min/max frequency and GPU min/max power level control back to
+     * the OS: restores just those paths (a subset of [baselinePaths]) to the values
+     * recorded in [sessionBaseline] and leaves them writable (644, no re-lock). Used when
+     * [AutoTuningMode] switches to [AutoTuningMode.OFF] while a game keeps running.
+     * Does not touch CPU pinning, fan control, or the rest of the session baseline, which
+     * stays armed so [stop] still restores everything (including this) on session end.
+     */
+    override fun releaseFrequencyControl(): Boolean {
+        val baseline = sessionBaseline
+        if (baseline == null) {
+            Timber.tag(POWER_TAG).w("No session baseline recorded, cannot release frequency control")
+            return false
+        }
+
+        val relevantPaths = baselinePaths().toSet()
+        val entries = baseline.entries.filter { it.path in relevantPaths }
+        if (entries.isEmpty()) {
+            Timber.tag(POWER_TAG).w("Baseline has no CPU/GPU frequency entries to release")
+            return false
+        }
+
+        beginUpdate()
+        for (entry in entries) {
+            batchCommands.add("echo '${entry.value}' > '${entry.path}'")
+            batchFilePaths.add(entry.path)
+        }
+
+        val success = commitInternal(skipPermissionLock = true)
+        Timber.tag(POWER_TAG).i(
+            "Released CPU/GPU frequency control back to the OS: ${if (success) "success" else "failure"} (${entries.size} paths)"
         )
         return success
     }
@@ -1287,7 +1323,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val defaultProfile = PowerProfile(
             enablePowerControl = PrefManager.powerControlDefaultEnabled,
             adaptiveFpsCapEnabled = isTestedDevice,
-            enableAutoTuning = isTestedDevice,
+            autoTuningMode = if (isTestedDevice) AutoTuningMode.AUTO else AutoTuningMode.MANUAL,
             enablePerClusterTuning = isTestedDevice,
             gamePinningMode = if (isTestedDevice) GamePinningMode.AUTO else GamePinningMode.OFF,
             enableFanControl = isTestedDevice,
