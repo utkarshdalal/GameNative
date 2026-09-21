@@ -25,7 +25,7 @@
 //!
 //! `MB/s` here means MiB/s (1024²), matching the Steam engine's lines.
 
-use crate::store_dl::steam::cdn_client::{read_body_capped, AsyncFetchError, CdnClient, FetchFailKind, MAX_WHOLE_BODY_BYTES, USER_AGENT};
+use crate::store_dl::steam::cdn_client::{classify_rejected_status, read_body_capped, AsyncFetchError, CdnClient, FetchFailKind, MAX_WHOLE_BODY_BYTES, USER_AGENT};
 use crate::store_dl::steam::depot_writer::{
     budget_admits, inflight_budget_bytes, retry_backoff_millis, BOOTSTRAP_WINDOW,
     MAX_CHUNK_ATTEMPTS, NOMINAL_CHUNK_RESERVE_BYTES, RATE_LIMIT_COOLDOWN_MS, SERVER_EXPLORE_EVERY,
@@ -646,13 +646,7 @@ pub fn status_accepted(status: u16, ranged: bool) -> bool {
 
 /// Classifies a rejected HTTP status the same way the Steam async client does.
 pub fn classify_status(status: u16) -> FetchFailKind {
-    if status == 429 {
-        FetchFailKind::RateLimited
-    } else if (500..600).contains(&status) {
-        FetchFailKind::ServerFault
-    } else {
-        FetchFailKind::Other
-    }
+    classify_rejected_status(status as i32)
 }
 
 /// The HTTP status carried by a `send_checked` rejection message, if that is what the error was.
@@ -1579,7 +1573,7 @@ impl WindowReason {
             FetchFailKind::Timeout => WindowReason::ShrinkTimeout,
             FetchFailKind::Connect => WindowReason::ShrinkReset,
             FetchFailKind::ServerFault => WindowReason::ShrinkServerFault,
-            FetchFailKind::Other => WindowReason::ShrinkErrorBurst,
+            FetchFailKind::Auth | FetchFailKind::Other => WindowReason::ShrinkErrorBurst,
         }
     }
 }

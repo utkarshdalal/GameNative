@@ -1,10 +1,10 @@
-use crate::store_dl::steam::cdn_client::{AsyncCdnClient, AsyncFetchError, CdnClient, CdnConnection, FetchFailKind};
+use crate::store_dl::steam::cdn_client::{auth_status, AsyncCdnClient, AsyncFetchError, CdnClient, CdnConnection, FetchFailKind};
 use crate::store_dl::steam::content_manifest::{ChunkData, ContentManifest};
 use crate::store_dl::steam::depot_chunk::process_depot_chunk;
 use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use futures_util::stream::FuturesUnordered;
 use futures_util::StreamExt;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::fs::{self, File, OpenOptions};
 use std::path::{Component, Path};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
@@ -226,6 +226,12 @@ pub struct DepotWritePlan {
 
 pub type DepotChunkProgressCallback<'a> = &'a (dyn Fn(u64, u64, bool) + Sync);
 
+/// Synchronous CDN auth-token fetch (JavaSteam `SteamContent.getCDNAuthToken`), called
+/// with (depot_id, host) when a host answers 401/403. Returns the token query fragment
+/// to append, or None when unavailable. Called from worker threads; must not block
+/// indefinitely (the Kotlin implementation bounds the CM round-trip).
+pub type CdnAuthTokenRefresher<'a> = &'a (dyn Fn(u32, &str) -> Option<String> + Sync);
+
 #[derive(Clone, Copy)]
 pub struct DepotWriteOptions<'a> {
     pub cdn_auth_token: &'a str,
@@ -242,6 +248,9 @@ pub struct DepotWriteOptions<'a> {
     /// Resume/verify status sink: fired once per file as its on-disk chunks are re-hashed.
     /// `None` = silent (tests).
     pub status: Option<DepotStatusCallback<'a>>,
+    /// 401/403 recovery: fetch a fresh CDN auth token for the rejecting host and retry
+    /// once (JavaSteam `requestCDNAuthToken` parity). `None` = no token retry.
+    pub auth_token_refresher: Option<CdnAuthTokenRefresher<'a>>,
 }
 
 impl Default for DepotWriteOptions<'_> {
@@ -255,6 +264,7 @@ impl Default for DepotWriteOptions<'_> {
             on_progress: None,
             log: None,
             status: None,
+            auth_token_refresher: None,
         }
     }
 }
@@ -786,7 +796,7 @@ impl WindowReason {
             FetchFailKind::Timeout => WindowReason::ShrinkTimeout,
             FetchFailKind::Connect => WindowReason::ShrinkReset,
             FetchFailKind::ServerFault => WindowReason::ShrinkServerFault,
-            FetchFailKind::Other => WindowReason::ShrinkErrorBurst,
+            FetchFailKind::Auth | FetchFailKind::Other => WindowReason::ShrinkErrorBurst,
         }
     }
 }
@@ -1682,6 +1692,7 @@ fn write_depot_single(
             depot_key,
             &handle,
             options.cdn_auth_token,
+            options.auth_token_refresher,
             job_index % servers.len(),
             options.timeout,
             Some(meter),
@@ -1761,6 +1772,8 @@ fn write_depot_parallel(
 
     let proc_count = (options.max_process_workers as usize).max(1).min(jobs.len());
     let cdn_auth_token = options.cdn_auth_token;
+    let auth_token_refresher = options.auth_token_refresher;
+    let auth_tokens: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
     let timeout = options.timeout;
     let cancel = options.cancel;
     let progress = options.on_progress;
@@ -2033,6 +2046,8 @@ host_ceiling={} budget={}MiB reason=start",
                     status,
                     tx,
                     cdn_auth_token,
+                    auth_token_refresher,
+                    &auth_tokens,
                     timeout,
                     total_bytes,
                     budget,
@@ -2114,6 +2129,9 @@ async fn run_async_fetch_driver(
     status: Option<DepotStatusCallback<'_>>,
     tx: tokio::sync::mpsc::UnboundedSender<(ChunkWriteJob, Vec<u8>)>,
     cdn_auth_token: &str,
+    auth_token_refresher: Option<CdnAuthTokenRefresher<'_>>,
+    // Per-host CDN auth tokens issued after a 401/403 (see the fetch future below).
+    auth_tokens: &Mutex<HashMap<String, String>>,
     timeout: Duration,
     total_bytes: u64,
     budget: u64,
@@ -2318,11 +2336,19 @@ async fn run_async_fetch_driver(
                     break;
                 }
             };
+            // A host previously issued a CDN auth token (after a 401/403) keeps it for
+            // later chunks; otherwise the run's static token (usually empty).
+            let host = servers[server_idx].host.clone();
+            let cached_token = auth_tokens
+                .lock()
+                .expect("auth tokens poisoned")
+                .get(&host)
+                .cloned();
             let url = match cdn.build_chunk_url(
                 &servers[server_idx],
                 depot_id,
                 &chunk_sha,
-                cdn_auth_token,
+                cached_token.as_deref().unwrap_or(cdn_auth_token),
             ) {
                 Ok(url) => url,
                 Err(error) => {
@@ -2343,7 +2369,27 @@ async fn run_async_fetch_driver(
             let async_client = &async_client;
             let started = Instant::now();
             inflight.push(async move {
-                let res = async_client.fetch_url_async(&url, timeout).await;
+                let mut res = async_client.fetch_url_async(&url, timeout).await;
+                // 401/403: the CDN rejected the request's credentials (expired/missing
+                // auth token). Request a fresh token for this host ONCE and retry inline
+                // (JavaSteam `requestCDNAuthToken` parity). The refresher is a blocking
+                // CM round-trip on this single-threaded runtime, but it only runs on an
+                // auth rejection — a rare, already-failing path.
+                if res.as_ref().is_err_and(|e| e.kind == FetchFailKind::Auth) {
+                    if let Some(refresher) = auth_token_refresher {
+                        if let Some(token) = refresher(depot_id, &host) {
+                            auth_tokens
+                                .lock()
+                                .expect("auth tokens poisoned")
+                                .insert(host.clone(), token.clone());
+                            if let Ok(retry_url) =
+                                cdn.build_chunk_url(&servers[server_idx], depot_id, &chunk_sha, &token)
+                            {
+                                res = async_client.fetch_url_async(&retry_url, timeout).await;
+                            }
+                        }
+                    }
+                }
                 drop(permit); // RAII per-host permit release (also on future drop / cancel-abort)
                 FetchDone {
                     job,
@@ -2411,12 +2457,20 @@ async fn run_async_fetch_driver(
                 }
                 // Preserve the existing per-chunk retry/rotation as fallback: up to
                 // MAX_CHUNK_ATTEMPTS, each re-dispatch rotates to a different (non-cooling) host with
-                // the same exponential backoff.
-                if done.attempts < MAX_CHUNK_ATTEMPTS {
-                    let backoff = retry_backoff_millis(done.attempts);
+                // the same exponential backoff. A 5xx (CDN-side fault) does NOT burn an
+                // attempt (JavaSteam retries server errors until cancel): the chunk keeps
+                // rotating across hosts, and a total outage is still bounded by the
+                // write-stall watchdog's 120s no-progress abort.
+                let spent = if err.kind == FetchFailKind::ServerFault {
+                    done.attempts.saturating_sub(1)
+                } else {
+                    done.attempts
+                };
+                if spent < MAX_CHUNK_ATTEMPTS {
+                    let backoff = retry_backoff_millis(spent);
                     retry.push_back(PendingChunk {
                         job: done.job,
-                        attempts: done.attempts,
+                        attempts: spent,
                         not_before: now + Duration::from_millis(backoff),
                     });
                 } else {
@@ -2522,6 +2576,7 @@ pub fn fetch_raw_chunk(
     file_idx: usize,
     chunk_idx: usize,
     cdn_auth_token: &str,
+    auth_token_refresher: Option<CdnAuthTokenRefresher>,
     start_server_index: usize,
     timeout: Duration,
     meter: Option<&BandwidthMeter>,
@@ -2538,36 +2593,62 @@ pub fn fetch_raw_chunk(
         .get(chunk_idx)
         .ok_or_else(|| "write_depot: bad chunk index".to_string())?;
     let mut last_error = String::new();
-    for (attempt, server_idx) in
-        chunk_attempt_server_indices(start_server_index, servers.len(), MAX_CHUNK_ATTEMPTS)
-            .into_iter()
-            .enumerate()
-    {
-        if attempt > 0 {
-            thread::sleep(Duration::from_millis(retry_backoff_millis(attempt as u32)));
+    // Retry policy (JavaSteam `DepotDownloader` parity): only CLIENT/protocol errors burn
+    // an attempt toward MAX_CHUNK_ATTEMPTS. A 401/403 gets ONE immediate same-host retry
+    // with a freshly requested CDN auth token; a 5xx (CDN-side fault) rotates hosts for
+    // free. Everything is still bounded absolutely by `max_total`.
+    let mut burned = 0u32;
+    let mut total = 0usize;
+    let max_total =
+        (MAX_CHUNK_ATTEMPTS as usize * servers.len().max(1)).max(MAX_CHUNK_ATTEMPTS as usize);
+    let mut tokens: HashMap<usize, String> = HashMap::new();
+    let mut server_idx = start_server_index % servers.len();
+    while burned < MAX_CHUNK_ATTEMPTS && total < max_total {
+        if total > 0 {
+            thread::sleep(Duration::from_millis(retry_backoff_millis(burned.max(1))));
             if let Some(connection) = conn.as_deref_mut() {
                 *connection = cdn.open_connection();
             }
         }
+        total += 1;
+        let token = tokens
+            .get(&server_idx)
+            .map(String::as_str)
+            .unwrap_or(cdn_auth_token);
         let fetched = match conn.as_deref_mut() {
             Some(connection) => cdn.fetch_chunk_with_connection(
                 connection,
                 &servers[server_idx],
                 manifest.metadata.depot_id,
                 &chunk.sha,
-                cdn_auth_token,
+                token,
                 timeout,
             ),
             None => cdn.fetch_chunk(
                 &servers[server_idx],
                 manifest.metadata.depot_id,
                 &chunk.sha,
-                cdn_auth_token,
+                token,
                 timeout,
             ),
         };
         if !fetched.ok() {
             last_error = fetched.error;
+            if auth_status(fetched.http_status) {
+                if let Some(refresher) = auth_token_refresher {
+                    if !tokens.contains_key(&server_idx) {
+                        if let Some(fresh) = refresher(manifest.metadata.depot_id, &servers[server_idx].host)
+                        {
+                            tokens.insert(server_idx, fresh);
+                            continue; // immediate same-host retry with the fresh token
+                        }
+                    }
+                }
+                burned += 1; // token already tried or unavailable: count + rotate
+            } else if !(500..600).contains(&fetched.http_status) {
+                burned += 1; // 5xx rotates for free
+            }
+            server_idx = (server_idx + 1) % servers.len();
             continue;
         }
         if let Some(meter) = meter {
@@ -2592,6 +2673,7 @@ pub fn fetch_process_write_chunk(
     depot_key: &[u8],
     file_handle: &File,
     cdn_auth_token: &str,
+    auth_token_refresher: Option<CdnAuthTokenRefresher>,
     start_server_index: usize,
     timeout: Duration,
     meter: Option<&BandwidthMeter>,
@@ -2608,36 +2690,60 @@ pub fn fetch_process_write_chunk(
         .get(chunk_idx)
         .ok_or_else(|| "write_depot: bad chunk index".to_string())?;
     let mut last_error = String::new();
-    for (attempt, server_idx) in
-        chunk_attempt_server_indices(start_server_index, servers.len(), MAX_CHUNK_ATTEMPTS)
-            .into_iter()
-            .enumerate()
-    {
-        if attempt > 0 {
-            thread::sleep(Duration::from_millis(retry_backoff_millis(attempt as u32)));
+    // Same retry policy as fetch_raw_chunk: 401/403 → one same-host retry with a fresh
+    // CDN auth token; 5xx rotates hosts without burning an attempt; bounded by max_total.
+    let mut burned = 0u32;
+    let mut total = 0usize;
+    let max_total =
+        (MAX_CHUNK_ATTEMPTS as usize * servers.len().max(1)).max(MAX_CHUNK_ATTEMPTS as usize);
+    let mut tokens: HashMap<usize, String> = HashMap::new();
+    let mut server_idx = start_server_index % servers.len();
+    while burned < MAX_CHUNK_ATTEMPTS && total < max_total {
+        if total > 0 {
+            thread::sleep(Duration::from_millis(retry_backoff_millis(burned.max(1))));
             if let Some(connection) = conn.as_deref_mut() {
                 *connection = cdn.open_connection();
             }
         }
+        total += 1;
+        let token = tokens
+            .get(&server_idx)
+            .map(String::as_str)
+            .unwrap_or(cdn_auth_token);
         let fetched = match conn.as_deref_mut() {
             Some(connection) => cdn.fetch_chunk_with_connection(
                 connection,
                 &servers[server_idx],
                 manifest.metadata.depot_id,
                 &chunk.sha,
-                cdn_auth_token,
+                token,
                 timeout,
             ),
             None => cdn.fetch_chunk(
                 &servers[server_idx],
                 manifest.metadata.depot_id,
                 &chunk.sha,
-                cdn_auth_token,
+                token,
                 timeout,
             ),
         };
         if !fetched.ok() {
             last_error = fetched.error;
+            if auth_status(fetched.http_status) {
+                if let Some(refresher) = auth_token_refresher {
+                    if !tokens.contains_key(&server_idx) {
+                        if let Some(fresh) = refresher(manifest.metadata.depot_id, &servers[server_idx].host)
+                        {
+                            tokens.insert(server_idx, fresh);
+                            continue; // immediate same-host retry with the fresh token
+                        }
+                    }
+                }
+                burned += 1; // token already tried or unavailable: count + rotate
+            } else if !(500..600).contains(&fetched.http_status) {
+                burned += 1; // 5xx rotates for free
+            }
+            server_idx = (server_idx + 1) % servers.len();
             continue;
         }
         if let Some(meter) = meter {
@@ -2645,7 +2751,11 @@ pub fn fetch_process_write_chunk(
         }
         match process_and_write_chunk(file_handle, chunk, &fetched.data, depot_key) {
             Ok(bytes) => return Ok(bytes),
-            Err(error) => last_error = error,
+            Err(error) => {
+                last_error = error;
+                burned += 1;
+                server_idx = (server_idx + 1) % servers.len();
+            }
         }
     }
     Err(format!(

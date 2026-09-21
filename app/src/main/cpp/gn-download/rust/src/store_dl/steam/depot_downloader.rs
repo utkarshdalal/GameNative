@@ -1,9 +1,10 @@
-use crate::store_dl::steam::cdn_client::{CdnClient, CdnManifestResult};
+use crate::store_dl::steam::cdn_client::{auth_status, CdnClient, CdnManifestResult};
 use crate::store_dl::steam::content_manifest::ContentManifest;
 use crate::store_dl::steam::depot_config::{DepotConfigStore, DepotProgressStore, INVALID_MANIFEST_ID};
-use crate::store_dl::steam::depot_writer::{write_depot_sequential, DepotWriteOptions};
+use crate::store_dl::steam::depot_writer::{write_depot_sequential, CdnAuthTokenRefresher, DepotWriteOptions};
 use crate::store_dl::steam::pb::ccontentserverdirectory::CContentServerDirectoryServerInfo;
 use std::fs;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -202,6 +203,7 @@ pub fn retry_backoff_millis(attempt: u32) -> u64 {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn fetch_manifest_with_retry(
     cdn: &CdnClient,
     servers: &[CContentServerDirectoryServerInfo],
@@ -210,6 +212,9 @@ pub fn fetch_manifest_with_retry(
     request_code: u64,
     cdn_auth_token: &str,
     timeout: Duration,
+    cancel: Option<&AtomicBool>,
+    auth_refresher: Option<CdnAuthTokenRefresher>,
+    code_refresher: Option<ManifestCodeRefresher>,
 ) -> CdnManifestResult {
     if servers.is_empty() {
         return CdnManifestResult {
@@ -217,28 +222,87 @@ pub fn fetch_manifest_with_retry(
             ..Default::default()
         };
     }
+    // JavaSteam `DepotDownloader` parity: a 404 is permanent; a 401/403 gets ONE same-host
+    // retry with a freshly requested CDN auth token (fatal only when EVERY host rejects
+    // auth); 5xx/network faults keep rotating hosts so a CDN-side outage does not fail
+    // the depot — bounded by MAX_MANIFEST_FETCH_ATTEMPTS tries per server (not infinite),
+    // refreshing the manifest request code after each full fault pass (it may have expired).
+    let mut request_code = request_code;
     let mut last = CdnManifestResult::default();
-    for (attempt, server_idx) in
-        manifest_retry_server_indices(servers.len(), MAX_MANIFEST_FETCH_ATTEMPTS)
-            .into_iter()
-            .enumerate()
-    {
-        if attempt > 0 {
-            thread::sleep(Duration::from_millis(retry_backoff_millis(attempt as u32)));
+    let mut tokens: HashMap<usize, String> = HashMap::new();
+    let mut auth_failed: HashSet<usize> = HashSet::new();
+    let mut per_server = vec![0usize; servers.len()];
+    let mut retry_server: Option<usize> = None;
+    let mut rotation = 0usize;
+    let mut faults = 0u32;
+    loop {
+        if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
+            last.error = "cancelled".to_string();
+            return last;
         }
+        let server_idx = match retry_server.take() {
+            Some(idx) => idx,
+            None => {
+                let Some(idx) = (0..servers.len())
+                    .map(|k| (rotation + k) % servers.len())
+                    .find(|&i| per_server[i] < MAX_MANIFEST_FETCH_ATTEMPTS)
+                else {
+                    return last; // every server exhausted its attempts
+                };
+                per_server[idx] += 1;
+                rotation += 1;
+                idx
+            }
+        };
+        if faults > 0 && retry_server.is_none() {
+            thread::sleep(Duration::from_millis(retry_backoff_millis(faults.min(5))));
+        }
+        let token = tokens
+            .get(&server_idx)
+            .map(String::as_str)
+            .unwrap_or(cdn_auth_token);
         last = cdn.fetch_manifest(
             &servers[server_idx],
             depot_id,
             manifest_id,
             request_code,
-            cdn_auth_token,
+            token,
             timeout,
         );
         if last.ok() {
             return last;
         }
+        let status = last.http_status;
+        if status == 404 {
+            return last; // permanent: the manifest is not on this CDN, rotating won't help
+        }
+        if auth_status(status) {
+            if let Some(refresher) = auth_refresher {
+                if !tokens.contains_key(&server_idx) {
+                    if let Some(fresh) = refresher(depot_id, &servers[server_idx].host) {
+                        tokens.insert(server_idx, fresh);
+                        retry_server = Some(server_idx);
+                        continue; // immediate same-host retry with the fresh token
+                    }
+                }
+            }
+            auth_failed.insert(server_idx);
+            if auth_failed.len() == servers.len() {
+                return last; // every host rejects auth: fatal (JavaSteam aborts here too)
+            }
+        } else {
+            faults += 1;
+            if faults as usize % servers.len() == 0 {
+                // Full fault pass done: the request code may have expired mid-outage.
+                if let Some(fresh) = code_refresher
+                    .and_then(|refresh| refresh(depot_id, manifest_id))
+                    .filter(|fresh| *fresh != request_code)
+                {
+                    request_code = fresh;
+                }
+            }
+        }
     }
-    last
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -311,6 +375,7 @@ pub fn download_resolved_depots(
         None,
         None,
         None,
+        None,
     )
 }
 
@@ -338,6 +403,7 @@ pub fn download_resolved_depots_with_cancel(
         None,
         None,
         None,
+        None,
     )
 }
 
@@ -353,6 +419,7 @@ pub fn download_resolved_depots_with_cancel_progress(
     cancel: Option<&AtomicBool>,
     on_progress: Option<DepotProgressCallback<'_>>,
     code_refresher: Option<ManifestCodeRefresher<'_>>,
+    auth_token_refresher: Option<CdnAuthTokenRefresher<'_>>,
     log: Option<crate::store_dl::steam::depot_writer::DepotLogCallback<'_>>,
     verify_status: Option<crate::store_dl::steam::depot_writer::DepotStatusCallback<'_>>,
 ) -> DepotDownloadResult {
@@ -438,7 +505,10 @@ pub fn download_resolved_depots_with_cancel_progress(
                 let refreshed_code = code_refresher
                     .and_then(|refresh| refresh(depot.depot_id, depot.manifest_id));
                 let request_code = refreshed_code.unwrap_or(depot.manifest_request_code);
-                let mut fetched = fetch_manifest_with_retry(
+                // Status-aware retry (JavaSteam parity): 404 permanent, 401/403 retried
+                // once per host with a fresh CDN auth token, 5xx/network rotated across
+                // hosts with the request code refreshed after each full fault pass.
+                let fetched = fetch_manifest_with_retry(
                     &cdn,
                     &usable_servers,
                     depot.depot_id,
@@ -446,24 +516,10 @@ pub fn download_resolved_depots_with_cancel_progress(
                     request_code,
                     "",
                     CdnClient::default_timeout(),
+                    cancel,
+                    auth_token_refresher,
+                    code_refresher,
                 );
-                if !fetched.ok() {
-                    // One more pass with a code obtained after the failed attempts.
-                    if let Some(fresh) = code_refresher
-                        .and_then(|refresh| refresh(depot.depot_id, depot.manifest_id))
-                        .filter(|fresh| *fresh != request_code)
-                    {
-                        fetched = fetch_manifest_with_retry(
-                            &cdn,
-                            &usable_servers,
-                            depot.depot_id,
-                            depot.manifest_id,
-                            fresh,
-                            "",
-                            CdnClient::default_timeout(),
-                        );
-                    }
-                }
                 if !fetched.ok() {
                     return DepotDownloadResult::fail(format!(
                         "download: manifest fetch failed for depot {}: {}",
@@ -552,6 +608,7 @@ pub fn download_resolved_depots_with_cancel_progress(
                 on_progress: Some(chunk_progress),
                 log,
                 status: verify_status,
+                auth_token_refresher,
                 ..Default::default()
             },
         );

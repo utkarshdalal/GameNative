@@ -242,6 +242,42 @@ fn refresh_manifest_request_code(listener: &GlobalRef, depot_id: u32, manifest_i
     code
 }
 
+/// `NativeSteamDownloadListener.getCdnAuthToken(depotId, host)` — blocking CM round-trip
+/// (JavaSteam `SteamContent.getCDNAuthToken`). Returns the token query fragment, or None
+/// when unavailable (Kotlin returns null/empty). Called from engine worker threads on a
+/// 401/403; the Kotlin implementation bounds the wait.
+fn fetch_cdn_auth_token(listener: &GlobalRef, depot_id: u32, host: &str) -> Option<String> {
+    let mut token: Option<String> = None;
+    with_attached_env(listener, |env, obj| {
+        let Ok(jhost) = env.new_string(host) else {
+            clear_pending_exception(env);
+            return;
+        };
+        match env.call_method(
+            obj,
+            "getCdnAuthToken",
+            "(ILjava/lang/String;)Ljava/lang/String;",
+            &[JValue::Int(depot_id as jint), JValue::Object(&jhost)],
+        ) {
+            Ok(value) => {
+                if let Ok(jstr) = value.l() {
+                    if !jstr.is_null() {
+                        let s: String = env
+                            .get_string(&jstr.into())
+                            .map(|s| s.into())
+                            .unwrap_or_default();
+                        if !s.is_empty() {
+                            token = Some(s);
+                        }
+                    }
+                }
+            }
+            Err(_) => clear_pending_exception(env),
+        }
+    });
+    token
+}
+
 fn hex_decode(value: &str) -> Vec<u8> {
     let value = value.trim();
     if value.len() % 2 != 0 {
@@ -421,6 +457,12 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
             (code != 0).then_some(code)
         };
         let code_refresher: depot_downloader::ManifestCodeRefresher = &code_refresher;
+        let token_listener = listener.clone();
+        let auth_token_refresher = move |depot_id: u32, host: &str| -> Option<String> {
+            fetch_cdn_auth_token(&token_listener, depot_id, host)
+        };
+        let auth_token_refresher: Option<crate::store_dl::steam::depot_writer::CdnAuthTokenRefresher> =
+            Some(&auth_token_refresher);
         let status_listener = listener.clone();
         let on_status = move |path: &str| {
             with_attached_env(&status_listener, |env, obj| call_status(env, obj, path));
@@ -440,6 +482,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
             Some(cancel.as_ref()),
             Some(on_progress),
             Some(code_refresher),
+            auth_token_refresher,
             log_cb,
             Some(on_status),
         );

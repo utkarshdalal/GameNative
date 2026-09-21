@@ -278,6 +278,32 @@ object GameDownloadService {
                 }
             }
 
+            override fun getCdnAuthToken(depotId: Int, host: String): String? {
+                // CDN auth tokens are app-scoped like depot keys: use the depot's owning
+                // app (DLC depots fail under the parent app id).
+                val owningAppId = depotIdToOwningAppId[depotId] ?: appId
+                return try {
+                    kotlinx.coroutines.runBlocking {
+                        val auth = steamContent.getCDNAuthToken(
+                            app = owningAppId,
+                            depot = depotId,
+                            hostName = host,
+                            parentScope = this,
+                        ).await()
+                        if (auth.result == EResult.OK && auth.token.isNotEmpty()) {
+                            Timber.tag(TAG).i("CDN auth token issued for depot $depotId host $host (expires ${auth.expiration})")
+                            auth.token
+                        } else {
+                            Timber.tag(TAG).w("getCDNAuthToken for depot $depotId host $host: ${auth.result}")
+                            null
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "getCdnAuthToken failed for depot $depotId host $host")
+                    null
+                }
+            }
+
             override fun onComplete(
                 success: Boolean,
                 error: String,

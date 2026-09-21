@@ -460,7 +460,30 @@ pub enum FetchFailKind {
     RateLimited,
     ServerFault,
     Connect,
+    /// 401/403: the CDN rejected the request's credentials (expired/missing CDN auth
+    /// token). The depot engine retries the host once with a freshly requested token;
+    /// other stores treat it like `Other`.
+    Auth,
     Other,
+}
+
+/// 401/403 — CDN auth-token rejection (see JavaSteam `DepotDownloader`'s 401/403 handling).
+pub fn auth_status(status: i32) -> bool {
+    status == 401 || status == 403
+}
+
+/// Classify a rejected HTTP status for retry/backoff decisions (shared by the async
+/// fetch paths: 429, 5xx, 401/403, everything else).
+pub fn classify_rejected_status(status: i32) -> FetchFailKind {
+    if status == 429 {
+        FetchFailKind::RateLimited
+    } else if (500..600).contains(&status) {
+        FetchFailKind::ServerFault
+    } else if auth_status(status) {
+        FetchFailKind::Auth
+    } else {
+        FetchFailKind::Other
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -606,16 +629,9 @@ impl AsyncCdnClient {
         };
         let status = response.status().as_u16() as i32;
         if status != 200 {
-            let kind = if status == 429 {
-                FetchFailKind::RateLimited
-            } else if (500..600).contains(&status) {
-                FetchFailKind::ServerFault
-            } else {
-                FetchFailKind::Other
-            };
             return Err(AsyncFetchError {
                 message: format!("non-200 HTTP status ({status})"),
-                kind,
+                kind: classify_rejected_status(status),
             });
         }
         let content_length = response.content_length();
@@ -746,6 +762,19 @@ mod tests {
     use super::*;
     use flate2::{write::DeflateEncoder, Compression};
     use std::io::Write;
+
+    #[test]
+    fn classifies_rejected_status_for_retry_policy() {
+        assert_eq!(classify_rejected_status(401), FetchFailKind::Auth);
+        assert_eq!(classify_rejected_status(403), FetchFailKind::Auth);
+        assert_eq!(classify_rejected_status(429), FetchFailKind::RateLimited);
+        assert_eq!(classify_rejected_status(500), FetchFailKind::ServerFault);
+        assert_eq!(classify_rejected_status(503), FetchFailKind::ServerFault);
+        assert_eq!(classify_rejected_status(599), FetchFailKind::ServerFault);
+        assert_eq!(classify_rejected_status(404), FetchFailKind::Other);
+        assert!(auth_status(401) && auth_status(403));
+        assert!(!auth_status(404) && !auth_status(503));
+    }
 
     #[test]
     fn extracts_stored_zip_entry() {

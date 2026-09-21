@@ -37,6 +37,15 @@ interface NativeSteamDownloadListener {
      */
     fun refreshManifestRequestCode(depotId: Int, manifestId: Long): Long
 
+    /**
+     * Called from native worker threads when a CDN host answers 401/403 (expired/missing
+     * CDN auth token). Implementations must call `SteamContent.getCDNAuthToken` and return
+     * the token query fragment (null/empty = unavailable; the engine then rotates hosts).
+     * Blocking is expected — bound the wait. Default null so existing listeners stay
+     * source-compatible (no token retry).
+     */
+    fun getCdnAuthToken(depotId: Int, host: String): String? = null
+
     /** Fired exactly once per [NativeSteamDownload.start] that returned a non-zero handle. */
     fun onComplete(
         success: Boolean,
