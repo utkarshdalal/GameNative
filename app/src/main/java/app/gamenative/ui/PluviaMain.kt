@@ -1666,6 +1666,20 @@ fun PluviaMain(
                     VotvHomeScreen(
                         mainViewModel = viewModel,
                         votvViewModel = hiltViewModel(),
+                        onLaunch = { appId ->
+                            // Same download/extract-if-missing (Wine, DXVK, Box64, etc.) pre-launch
+                            // chain every other Play button in the app goes through — skipping it
+                            // leaves a container with no actual Wine binary to run.
+                            preLaunchApp(
+                                context = context,
+                                appId = appId,
+                                setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                                setLoadingProgress = viewModel::setLoadingDialogProgress,
+                                setLoadingMessage = viewModel::setLoadingDialogMessage,
+                                setMessageDialogState = setMessageDialogState,
+                                onSuccess = viewModel::launchApp,
+                            )
+                        },
                     )
                 }
                 /** Library, Downloads **/
