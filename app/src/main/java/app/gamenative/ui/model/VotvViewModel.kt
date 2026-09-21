@@ -140,6 +140,10 @@ class VotvViewModel @Inject constructor(
      */
     private fun ensureVotvControlsProfile(container: Container) {
         val manager = InputControlsManager(context)
+        // createProfile() assumes `profiles` is already loaded (it does profiles.add(...) with
+        // no lazy-load guard, unlike getProfile()/getProfiles()); force the load first so a
+        // fresh manager instance doesn't NPE when no profileId extra exists yet.
+        manager.getProfiles()
         val existingId = container.getExtra("profileId", "").toIntOrNull()
         val existing = existingId?.let { manager.getProfile(it) }
         val profile = if (existing != null && existing.name == VOTV_PROFILE_NAME) {
