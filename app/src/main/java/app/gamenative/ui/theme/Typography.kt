@@ -42,10 +42,6 @@ fun Typography.withFontFamily(family: FontFamily): Typography = copy(
     labelSmall = labelSmall.copy(fontFamily = family),
 )
 
-// VOTV launcher variant's typography, gated behind BuildConfig.VOTV_LAUNCHER in PluviaTheme
-// so the regular GameNative app keeps Bricolage Grotesque unchanged.
-val VotvTypography = PluviaTypography.withFontFamily(ShareTechMono)
-
 // Custom typography using Bricolage Grotesque
 val PluviaTypography = Typography(
     displayLarge = TextStyle(
@@ -154,3 +150,7 @@ val PluviaTypography = Typography(
         letterSpacing = 0.5.sp,
     ),
 )
+
+// VOTV launcher variant's typography, gated behind BuildConfig.VOTV_LAUNCHER in PluviaTheme
+// so the regular GameNative app keeps Bricolage Grotesque unchanged.
+val VotvTypography = PluviaTypography.withFontFamily(ShareTechMono)
