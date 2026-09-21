@@ -32,8 +32,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.concurrent.Volatile
 
 /**
  * Single entry point for ALL store game downloads in GameNative.
@@ -573,8 +573,8 @@ object GameDownloadService {
 
     // ═════════════════════════════════════════════════════════════════════════
     // Download queue (one active download across Steam/Epic/GOG/Amazon, queue-
-    // managed auto-pause/resume, transient-failure auto-retry, wake-lock while
-    // transferring). Merged from the former GameDownloadService object.
+    // managed auto-pause/resume, wake-lock while transferring). Merged from the
+    // former GameDownloadService object.
     // ═════════════════════════════════════════════════════════════════════════
 
     data class DownloadEntry(
@@ -586,6 +586,7 @@ object GameDownloadService {
         val containerLanguage: String?,
     )
 
+    @Volatile
     private var currentDownloadingKey: String? = null
     private val downloadQueue = CopyOnWriteArrayList<String>()
     private val registeredDownloads = ConcurrentHashMap<String, DownloadEntry>()
@@ -604,6 +605,13 @@ object GameDownloadService {
      * BOTH stay active, breaking the one-at-a-time contract.
      */
     private val queueLock = Any()
+
+    /**
+     * Runs the deferred queue-resume store startups (DB / container / disk work — Epic
+     * even `runBlocking`s a Room query), so they never run on the caller's thread of
+     * unregister/remove (which can be the main thread) and never inside [queueLock].
+     */
+    private val queueScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private fun makeKey(gameSource: GameSource, gameId: String): String {
         return "${gameSource.name}_$gameId"
@@ -666,9 +674,12 @@ object GameDownloadService {
             registeredDownloads.remove(key)
             downloadQueue.remove(key)
             Timber.i("[GameDownloadService] Unregistered $gameSource download for $gameId")
-
-            resumeNextDownload(context)
         }
+
+        // Off the caller's thread and OUTSIDE queueLock: store startups do DB /
+        // container / disk work (Epic even `runBlocking`s a Room query), so running
+        // one here would ANR a main-thread caller and stall every other queue call.
+        queueScope.launch { resumeNextDownload(context.applicationContext) }
     }
 
     /**
@@ -677,10 +688,9 @@ object GameDownloadService {
      */
     fun removeDownload(context: Context, gameSource: GameSource, gameId: String) {
         val key = makeKey(gameSource, gameId)
+        var shouldResume = false
 
         synchronized(queueLock) {
-            var shouldResume = false
-
             // If currentEntry is downloading, cancel it, and resume
             if (currentDownloadingKey == key) {
                 val currentEntry = registeredDownloads[currentDownloadingKey]
@@ -691,48 +701,54 @@ object GameDownloadService {
             registeredDownloads.remove(key)
             downloadQueue.remove(key)
             Timber.i("[GameDownloadService] Removed $gameSource download for $gameId")
+        }
 
-            if (shouldResume) {
-                resumeNextDownload(context)
-            }
+        // Same threading rule as unregisterDownload: never on the caller, never in-lock.
+        if (shouldResume) {
+            queueScope.launch { resumeNextDownload(context.applicationContext) }
         }
     }
 
     /**
-     * Resume next pending download
+     * Resume next pending download. The claim (queue head -> current) is atomic under
+     * [queueLock]; the store startup itself runs unlocked on the caller's coroutine.
      */
     private fun resumeNextDownload(context: Context) {
-        val nextKey = downloadQueue.firstOrNull()
-        if (nextKey != null) {
-            val nextEntry = registeredDownloads[nextKey]
+        val nextEntry: DownloadEntry?
+        synchronized(queueLock) {
+            val nextKey = downloadQueue.firstOrNull()
+            nextEntry = nextKey?.let { registeredDownloads[it] }
             if (nextEntry != null) {
-                currentDownloadingKey = makeKey(nextEntry.gameSource, nextEntry.gameId)
-                Timber.i("[GameDownloadService] Resuming ${nextEntry.gameSource} download for ${nextEntry.gameId}")
-                when (nextEntry.gameSource) {
-                    GameSource.STEAM -> SteamService.downloadApp(
-                        appId = nextEntry.gameId.toInt()
-                    )
-                    GameSource.AMAZON -> AmazonService.downloadGame(
-                        context = context,
-                        productId = nextEntry.gameId,
-                        installPath = nextEntry.installPath!!
-                    )
-                    GameSource.GOG -> GOGService.downloadGame(
-                        context = context,
-                        gameId = nextEntry.gameId,
-                        installPath = nextEntry.installPath!!,
-                        containerLanguage = nextEntry.containerLanguage!!
-                    )
-                    GameSource.EPIC -> EpicService.downloadGame(
-                        context = context,
-                        appId = nextEntry.gameId.toInt(),
-                        dlcGameIds = nextEntry.dlcGameIds,
-                        installPath = nextEntry.installPath!!,
-                        containerLanguage = nextEntry.containerLanguage!!
-                    )
-                    // Do Nothing for Custom Game
-                    GameSource.CUSTOM_GAME -> {}
-                }
+                currentDownloadingKey = nextKey
+            }
+        }
+
+        if (nextEntry != null) {
+            Timber.i("[GameDownloadService] Resuming ${nextEntry.gameSource} download for ${nextEntry.gameId}")
+            when (nextEntry.gameSource) {
+                GameSource.STEAM -> SteamService.downloadApp(
+                    appId = nextEntry.gameId.toInt()
+                )
+                GameSource.AMAZON -> AmazonService.downloadGame(
+                    context = context,
+                    productId = nextEntry.gameId,
+                    installPath = nextEntry.installPath!!
+                )
+                GameSource.GOG -> GOGService.downloadGame(
+                    context = context,
+                    gameId = nextEntry.gameId,
+                    installPath = nextEntry.installPath!!,
+                    containerLanguage = nextEntry.containerLanguage!!
+                )
+                GameSource.EPIC -> EpicService.downloadGame(
+                    context = context,
+                    appId = nextEntry.gameId.toInt(),
+                    dlcGameIds = nextEntry.dlcGameIds,
+                    installPath = nextEntry.installPath!!,
+                    containerLanguage = nextEntry.containerLanguage!!
+                )
+                // Do Nothing for Custom Game
+                GameSource.CUSTOM_GAME -> {}
             }
         }
     }
