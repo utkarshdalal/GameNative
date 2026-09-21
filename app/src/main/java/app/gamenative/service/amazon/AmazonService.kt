@@ -428,6 +428,13 @@ class AmazonService : Service() {
         fun hasActiveDownload(): Boolean =
             getInstance()?.activeDownloads?.isNotEmpty() == true
 
+        /** Resolves the install path Amazon would download [productId] to, or null if unknown. */
+        fun resolveInstallPath(context: Context, productId: String): String? {
+            val instance = getInstance() ?: return null
+            val game = runBlocking { instance.amazonManager.getGameById(productId) } ?: return null
+            return game.installPath.ifEmpty { AmazonConstants.getGameInstallPath(context, game.title) }
+        }
+
         /** Begin downloading [productId] to [installPath]. */
         fun downloadGame(
             context: Context,
@@ -481,7 +488,8 @@ class AmazonService : Service() {
             GameDownloadService.registerDownload(
                 gameSource = GameSource.AMAZON,
                 gameId = productId,
-                downloadInfo = downloadInfo
+                downloadInfo = downloadInfo,
+                installPath = installPath
             )
 
             val job = instance.serviceScope.launch {

@@ -458,11 +458,11 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
         };
         let code_refresher: depot_downloader::ManifestCodeRefresher = &code_refresher;
         let token_listener = listener.clone();
-        let auth_token_refresher = move |depot_id: u32, host: &str| -> Option<String> {
-            fetch_cdn_auth_token(&token_listener, depot_id, host)
-        };
-        let auth_token_refresher: Option<crate::store_dl::steam::depot_writer::CdnAuthTokenRefresher> =
-            Some(&auth_token_refresher);
+        let auth_token_refresher: crate::store_dl::steam::depot_writer::CdnAuthTokenRefresher =
+            std::sync::Arc::new(move |depot_id: u32, host: &str| -> Option<String> {
+                fetch_cdn_auth_token(&token_listener, depot_id, host)
+            });
+        let auth_token_refresher = Some(&auth_token_refresher);
         let status_listener = listener.clone();
         let on_status = move |path: &str| {
             with_attached_env(&status_listener, |env, obj| call_status(env, obj, path));

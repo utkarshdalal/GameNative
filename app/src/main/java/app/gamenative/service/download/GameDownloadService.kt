@@ -57,6 +57,8 @@ object GameDownloadService {
 
     private const val TAG = "GameDownloadService"
 
+    private const val CDN_AUTH_TOKEN_TIMEOUT_MS = 30_000L
+
     /** Thrown when a native download run finishes with `success = false` (not a cancel). */
     class DownloadFailedException(message: String) : Exception(message)
 
@@ -261,13 +263,18 @@ object GameDownloadService {
                 val owningAppId = depotIdToOwningAppId[depotId] ?: appId
                 return try {
                     kotlinx.coroutines.runBlocking {
-                        val auth = steamContent.getCDNAuthToken(
-                            app = owningAppId,
-                            depot = depotId,
-                            hostName = host,
-                            parentScope = this,
-                        ).await()
-                        if (auth.result == EResult.OK && auth.token.isNotEmpty()) {
+                        val auth = kotlinx.coroutines.withTimeoutOrNull(CDN_AUTH_TOKEN_TIMEOUT_MS) {
+                            steamContent.getCDNAuthToken(
+                                app = owningAppId,
+                                depot = depotId,
+                                hostName = host,
+                                parentScope = this,
+                            ).await()
+                        }
+                        if (auth == null) {
+                            Timber.tag(TAG).w("getCDNAuthToken timed out for depot $depotId host $host")
+                            null
+                        } else if (auth.result == EResult.OK && auth.token.isNotEmpty()) {
                             Timber.tag(TAG).i("CDN auth token issued for depot $depotId host $host (expires ${auth.expiration})")
                             auth.token
                         } else {
@@ -824,11 +831,19 @@ object GameDownloadService {
                 GameSource.STEAM -> SteamService.downloadApp(
                     appId = nextEntry.gameId.toInt()
                 )
-                GameSource.AMAZON -> AmazonService.downloadGame(
-                    context = context,
-                    productId = nextEntry.gameId,
-                    installPath = nextEntry.installPath!!
-                )
+                GameSource.AMAZON -> {
+                    val installPath = nextEntry.installPath
+                        ?: AmazonService.resolveInstallPath(context, nextEntry.gameId)
+                    if (installPath != null) {
+                        AmazonService.downloadGame(
+                            context = context,
+                            productId = nextEntry.gameId,
+                            installPath = installPath
+                        )
+                    } else {
+                        Timber.w("[GameDownloadService] No install path for Amazon ${nextEntry.gameId}, not resuming")
+                    }
+                }
                 GameSource.GOG -> GOGService.downloadGame(
                     context = context,
                     gameId = nextEntry.gameId,

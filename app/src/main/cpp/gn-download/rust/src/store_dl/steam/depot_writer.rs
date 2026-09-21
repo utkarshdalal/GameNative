@@ -230,7 +230,7 @@ pub type DepotChunkProgressCallback<'a> = &'a (dyn Fn(u64, u64, bool) + Sync);
 /// with (depot_id, host) when a host answers 401/403. Returns the token query fragment
 /// to append, or None when unavailable. Called from worker threads; must not block
 /// indefinitely (the Kotlin implementation bounds the CM round-trip).
-pub type CdnAuthTokenRefresher<'a> = &'a (dyn Fn(u32, &str) -> Option<String> + Sync);
+pub type CdnAuthTokenRefresher = Arc<dyn Fn(u32, &str) -> Option<String> + Send + Sync>;
 
 #[derive(Clone)]
 pub struct DepotWriteOptions<'a> {
@@ -250,7 +250,7 @@ pub struct DepotWriteOptions<'a> {
     pub status: Option<DepotStatusCallback<'a>>,
     /// 401/403 recovery: fetch a fresh CDN auth token for the rejecting host and retry
     /// once (JavaSteam `requestCDNAuthToken` parity). `None` = no token retry.
-    pub auth_token_refresher: Option<CdnAuthTokenRefresher<'a>>,
+    pub auth_token_refresher: Option<&'a CdnAuthTokenRefresher>,
     /// Live ranking of the ASSIGNED CDN servers from the background CDN probe
     /// (`cdn_probe::seed_from_cache` + `spawn_background_probe`); the scheduler reprioritizes
     /// from it mid-download. `None` = cold ranking (learn speeds as chunks complete).
@@ -2240,7 +2240,7 @@ async fn run_async_fetch_driver(
     status: Option<DepotStatusCallback<'_>>,
     tx: tokio::sync::mpsc::UnboundedSender<(ChunkWriteJob, Vec<u8>)>,
     cdn_auth_token: &str,
-    auth_token_refresher: Option<CdnAuthTokenRefresher<'_>>,
+    auth_token_refresher: Option<&CdnAuthTokenRefresher>,
     // Per-host CDN auth tokens issued after a 401/403 (see the fetch future below).
     auth_tokens: &Mutex<HashMap<String, String>>,
     // Live assigned-server ranking from the background CDN probe (drained once per update).
@@ -2508,11 +2508,30 @@ async fn run_async_fetch_driver(
                 // 401/403: the CDN rejected the request's credentials (expired/missing
                 // auth token). Request a fresh token for this host ONCE and retry inline
                 // (JavaSteam `requestCDNAuthToken` parity). The refresher is a blocking
-                // CM round-trip on this single-threaded runtime, but it only runs on an
-                // auth rejection — a rare, already-failing path.
+                // CM round-trip, so it runs on a blocking pool thread: the single-threaded
+                // runtime keeps driving the other in-flight fetches while it waits. A token
+                // another chunk already refreshed for this host is reused instead.
                 if res.as_ref().is_err_and(|e| e.kind == FetchFailKind::Auth) {
                     if let Some(refresher) = auth_token_refresher {
-                        if let Some(token) = refresher(depot_id, &host) {
+                        let newer = auth_tokens
+                            .lock()
+                            .expect("auth tokens poisoned")
+                            .get(&host)
+                            .filter(|t| Some(t.as_str()) != cached_token.as_deref())
+                            .cloned();
+                        let fresh = match newer {
+                            Some(token) => Some(token),
+                            None => {
+                                let refresher = refresher.clone();
+                                let refresh_host = host.clone();
+                                tokio::task::spawn_blocking(move || {
+                                    (*refresher)(depot_id, &refresh_host)
+                                })
+                                .await
+                                .unwrap_or(None)
+                            }
+                        };
+                        if let Some(token) = fresh {
                             auth_tokens
                                 .lock()
                                 .expect("auth tokens poisoned")
@@ -2720,7 +2739,7 @@ pub fn fetch_raw_chunk(
     file_idx: usize,
     chunk_idx: usize,
     cdn_auth_token: &str,
-    auth_token_refresher: Option<CdnAuthTokenRefresher>,
+    auth_token_refresher: Option<&CdnAuthTokenRefresher>,
     start_server_index: usize,
     timeout: Duration,
     meter: Option<&BandwidthMeter>,
@@ -2781,7 +2800,8 @@ pub fn fetch_raw_chunk(
             if auth_status(fetched.http_status) {
                 if let Some(refresher) = auth_token_refresher {
                     if !tokens.contains_key(&server_idx) {
-                        if let Some(fresh) = refresher(manifest.metadata.depot_id, &servers[server_idx].host)
+                        if let Some(fresh) =
+                            (**refresher)(manifest.metadata.depot_id, &servers[server_idx].host)
                         {
                             tokens.insert(server_idx, fresh);
                             continue; // immediate same-host retry with the fresh token
@@ -2817,7 +2837,7 @@ pub fn fetch_process_write_chunk(
     depot_key: &[u8],
     file_handle: &File,
     cdn_auth_token: &str,
-    auth_token_refresher: Option<CdnAuthTokenRefresher>,
+    auth_token_refresher: Option<&CdnAuthTokenRefresher>,
     start_server_index: usize,
     timeout: Duration,
     meter: Option<&BandwidthMeter>,
@@ -2876,7 +2896,8 @@ pub fn fetch_process_write_chunk(
             if auth_status(fetched.http_status) {
                 if let Some(refresher) = auth_token_refresher {
                     if !tokens.contains_key(&server_idx) {
-                        if let Some(fresh) = refresher(manifest.metadata.depot_id, &servers[server_idx].host)
+                        if let Some(fresh) =
+                            (**refresher)(manifest.metadata.depot_id, &servers[server_idx].host)
                         {
                             tokens.insert(server_idx, fresh);
                             continue; // immediate same-host retry with the fresh token
