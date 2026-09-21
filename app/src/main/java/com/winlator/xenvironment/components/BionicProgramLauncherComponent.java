@@ -203,19 +203,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     private int execGuestProgram() {
 
         final int MAX_PLAYERS = 4;
+        Context context = environment.getContext();
 
         // Get the number of enabled players directly from ControllerManager.
         for (int i = 0; i < MAX_PLAYERS; i++) {
-            String memPath;
-            if (i == 0) {
-                // Player 1 uses the original, non-numbered path that is known to work.
-                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad.mem";
-            } else {
-                // Players 2, 3, 4 use a 1-based index.
-                memPath = "/data/data/app.gamenative/files/imagefs/tmp/gamepad" + i + ".mem";
-            }
-
-            File memFile = new File(memPath);
+            String memFileName = i == 0 ? "gamepad.mem" : "gamepad" + i + ".mem";
+            // Player 1 keeps the original, non-numbered filename that is known to work.
+            File memFile = new File(context.getFilesDir(), "imagefs/tmp/" + memFileName);
             memFile.getParentFile().mkdirs();
             try (RandomAccessFile raf = new RandomAccessFile(memFile, "rw")) {
                 raf.setLength(64);
@@ -223,7 +217,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 Log.e("EVSHIM_HOST", "Failed to create mem file for player index "+i, e);
             }
         }
-        Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
 
@@ -251,6 +244,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (true) {
             envVars.put("EVSHIM_SHM_ID", 1);
         }
+        // Native evshim.c falls back to a hardcoded "/data/data/app.gamenative/files" base
+        // when this is unset, which only matches the default applicationId — build variants
+        // with an applicationIdSuffix (e.g. the VOTV launcher's ".votv") would otherwise fail
+        // every shm lookup and log-spam on every controller axis event, starving the UI thread.
+        envVars.put("EVSHIM_BASE_PATH", context.getFilesDir().getAbsolutePath());
         addBox64EnvVars(envVars, enableBox86_64Logs);
         envVars.putAll(FEXCorePresetManager.getEnvVars(context, fexcorePreset));
 
