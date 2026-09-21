@@ -34,6 +34,9 @@ android {
         create("release-gold") {
             initWith(getByName("release"))
         }
+        create("release-votv") {
+            initWith(getByName("release"))
+        }
     }
 
     compileOptions {
