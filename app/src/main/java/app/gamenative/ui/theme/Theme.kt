@@ -11,6 +11,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import app.gamenative.BuildConfig
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
 import com.materialkolor.PaletteStyle
@@ -179,10 +180,12 @@ fun PluviaTheme(
         insetsController.isAppearanceLightNavigationBars = false
     }
 
+    val typography = if (BuildConfig.VOTV_LAUNCHER) VotvTypography else PluviaTypography
+
     CompositionLocalProvider(LocalPluviaColors provides pluviaColors) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = PluviaTypography,
+            typography = typography,
             content = content,
         )
     }

@@ -3,6 +3,7 @@ package app.gamenative.ui.model
 import android.content.Context
 import android.net.Uri
 import android.view.KeyEvent
+import android.view.MotionEvent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gamenative.PrefManager
@@ -132,11 +133,19 @@ class VotvViewModel @Inject constructor(
      * read). No on-screen touch elements are added — this device already has physical buttons,
      * and touch fallback lives in the bottom-screen hub instead.
      *
-     * Default mapping:
-     *  A=E (interact)  B=Esc (back/pause)  X=F (flashlight)  Y=Tab (inventory/PDA)
-     *  L1=Q  R1=C  L2=right-click  R2=left-click
+     * Default mapping (confirmed VOTV keys only — see the "extra keys?" note below):
+     *  A=E (interact)  B=Space (jump)  X=F (flashlight)  Y=Tab (inventory/PDA)
+     *  L1=Q  R1=C  L2=right-click (zoom)  R2=left-click (fire)
      *  L3=Ctrl (crouch)  R3=Shift (sprint)
-     *  D-pad=1/2/3/4 (hotbar)  Start=Esc  Select=Tab  Home=GameNative quick menu
+     *  Left stick=WASD (movement)  Right stick=mouse look
+     *  D-pad up=R (reload)  D-pad down/left/right=unbound for now (see below)
+     *  Start=Esc (pause)  Select=Tab  Home=GameNative quick menu
+     *
+     * D-pad down/left/right are deliberately left unbound: VOTV's 1-9 hotbar keys are moving to
+     * a touch hotbar page on the bottom-screen hub instead of the d-pad, and beyond reload there
+     * wasn't a confidently-sourced "next most important" VOTV key to put here (this sandbox can't
+     * reach voicesofthevoid.wiki.gg or the Steam guide to verify further). Extend [bindings] once
+     * we know what else VOTV uses.
      */
     private fun ensureVotvControlsProfile(container: Container) {
         val manager = InputControlsManager(context)
@@ -159,7 +168,7 @@ class VotvViewModel @Inject constructor(
 
         val bindings = mapOf(
             KeyEvent.KEYCODE_BUTTON_A to Binding.KEY_E,
-            KeyEvent.KEYCODE_BUTTON_B to Binding.KEY_ESC,
+            KeyEvent.KEYCODE_BUTTON_B to Binding.KEY_SPACE,
             KeyEvent.KEYCODE_BUTTON_X to Binding.KEY_F,
             KeyEvent.KEYCODE_BUTTON_Y to Binding.KEY_TAB,
             KeyEvent.KEYCODE_BUTTON_L1 to Binding.KEY_Q,
@@ -168,13 +177,23 @@ class VotvViewModel @Inject constructor(
             KeyEvent.KEYCODE_BUTTON_R2 to Binding.MOUSE_LEFT_BUTTON,
             KeyEvent.KEYCODE_BUTTON_THUMBL to Binding.KEY_CTRL_L,
             KeyEvent.KEYCODE_BUTTON_THUMBR to Binding.KEY_SHIFT_L,
-            KeyEvent.KEYCODE_DPAD_UP to Binding.KEY_1,
-            KeyEvent.KEYCODE_DPAD_RIGHT to Binding.KEY_2,
-            KeyEvent.KEYCODE_DPAD_DOWN to Binding.KEY_3,
-            KeyEvent.KEYCODE_DPAD_LEFT to Binding.KEY_4,
+            KeyEvent.KEYCODE_DPAD_UP to Binding.KEY_R,
+            KeyEvent.KEYCODE_DPAD_DOWN to Binding.NONE,
+            KeyEvent.KEYCODE_DPAD_LEFT to Binding.NONE,
+            KeyEvent.KEYCODE_DPAD_RIGHT to Binding.NONE,
             KeyEvent.KEYCODE_BUTTON_START to Binding.KEY_ESC,
             KeyEvent.KEYCODE_BUTTON_SELECT to Binding.KEY_TAB,
             KeyEvent.KEYCODE_BUTTON_MODE to Binding.OPEN_NAVIGATION_MENU,
+            // Left stick -> WASD movement
+            ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Y, (-1).toByte()) to Binding.KEY_W,
+            ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Y, 1.toByte()) to Binding.KEY_S,
+            ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, (-1).toByte()) to Binding.KEY_A,
+            ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_X, 1.toByte()) to Binding.KEY_D,
+            // Right stick -> mouse look
+            ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_RZ, (-1).toByte()) to Binding.MOUSE_MOVE_UP,
+            ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_RZ, 1.toByte()) to Binding.MOUSE_MOVE_DOWN,
+            ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Z, (-1).toByte()) to Binding.MOUSE_MOVE_LEFT,
+            ExternalControllerBinding.getKeyCodeForAxis(MotionEvent.AXIS_Z, 1.toByte()) to Binding.MOUSE_MOVE_RIGHT,
         )
         for ((keyCode, binding) in bindings) {
             controller.addControllerBinding(
@@ -191,6 +210,6 @@ class VotvViewModel @Inject constructor(
     private companion object {
         const val VOTV_PROFILE_NAME = "VOTV Controller"
         const val EXTRA_DEFAULTS_VERSION = "votvDefaultsVersion"
-        const val VOTV_DEFAULTS_VERSION = 2
+        const val VOTV_DEFAULTS_VERSION = 3
     }
 }

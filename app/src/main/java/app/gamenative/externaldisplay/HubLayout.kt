@@ -10,6 +10,8 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.res.ResourcesCompat
+import app.gamenative.R
 import com.winlator.widget.TouchpadView
 import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
@@ -38,7 +40,24 @@ internal class HubLayout(
         "Inventory" to "Inventory — coming soon",
     )
 
+    // Hotbar slots 1-9, moved here off the d-pad so the physical controller has those directions free.
+    private val hotbarSlots = listOf(
+        "1" to XKeycode.KEY_1,
+        "2" to XKeycode.KEY_2,
+        "3" to XKeycode.KEY_3,
+        "4" to XKeycode.KEY_4,
+        "5" to XKeycode.KEY_5,
+        "6" to XKeycode.KEY_6,
+        "7" to XKeycode.KEY_7,
+        "8" to XKeycode.KEY_8,
+        "9" to XKeycode.KEY_9,
+    )
+
+    private val hubTypeface = ResourcesCompat.getFont(context, R.font.share_tech_mono_regular)
+
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+
+    private fun <T : TextView> T.applyHubFont(): T = apply { typeface = hubTypeface }
 
     init {
         setBackgroundColor(Color.parseColor("#101418"))
@@ -52,7 +71,7 @@ internal class HubLayout(
             gravity = Gravity.CENTER
             setPadding(dp(24), dp(24), dp(24), dp(24))
         }
-        column.addView(TextView(context).apply {
+        column.addView(TextView(context).applyHubFont().apply {
             text = "Voices of the Void"
             textSize = 24f
             setTextColor(Color.WHITE)
@@ -62,6 +81,7 @@ internal class HubLayout(
             showPage(HybridInputLayout(context, xServer, touchpadViewProvider))
         })
         column.addView(menuButton("Hotkeys") { showPage(buildHotkeyPage()) })
+        column.addView(menuButton("Hotbar") { showPage(buildKeyGridPage(hotbarSlots)) })
         placeholderPages.forEach { (label, message) ->
             column.addView(menuButton(label) { showPage(placeholderPage(message)) })
         }
@@ -71,7 +91,7 @@ internal class HubLayout(
         )
     }
 
-    private fun menuButton(label: String, onClick: () -> Unit) = Button(context).apply {
+    private fun menuButton(label: String, onClick: () -> Unit) = Button(context).applyHubFont().apply {
         text = label
         textSize = 20f
         setOnClickListener { onClick() }
@@ -86,7 +106,7 @@ internal class HubLayout(
             page,
             LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
         )
-        val back = Button(context).apply {
+        val back = Button(context).applyHubFont().apply {
             text = "Menu"
             setOnClickListener { showMenu() }
         }
@@ -101,7 +121,7 @@ internal class HubLayout(
 
     private fun placeholderPage(message: String): View = FrameLayout(context).apply {
         addView(
-            TextView(context).apply {
+            TextView(context).applyHubFont().apply {
                 text = message
                 textSize = 20f
                 setTextColor(Color.WHITE)
@@ -113,13 +133,15 @@ internal class HubLayout(
         )
     }
 
-    private fun buildHotkeyPage(): View {
+    private fun buildHotkeyPage(): View = buildKeyGridPage(hotkeys)
+
+    private fun buildKeyGridPage(keys: List<Pair<String, XKeycode>>): View {
         val column = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dp(16), dp(56), dp(16), dp(16))
         }
-        hotkeys.chunked(3).forEach { rowKeys ->
+        keys.chunked(3).forEach { rowKeys ->
             val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
             rowKeys.forEach { (label, key) ->
                 row.addView(
@@ -141,7 +163,7 @@ internal class HubLayout(
     }
 
     // Press while touched, release on lift, so holding a button holds the key.
-    private fun hotkeyButton(label: String, key: XKeycode) = Button(context).apply {
+    private fun hotkeyButton(label: String, key: XKeycode) = Button(context).applyHubFont().apply {
         text = label
         textSize = 20f
         setOnTouchListener { v, event ->
