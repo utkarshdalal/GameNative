@@ -52,6 +52,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.powercontrol.AutoTuningMode
 import app.gamenative.powercontrol.AutoTuningStrategy
 import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerControlUiState
@@ -77,7 +78,7 @@ fun PowerControlQuickMenuContent(
     onGamePinningModeSelected: (GamePinningMode) -> Unit = {},
     onManualGamePinCoresChanged: (String) -> Unit = {},
     onManualBackgroundPinCoresChanged: (String) -> Unit = {},
-    onAutoTuningToggled: (Boolean) -> Unit = {},
+    onAutoTuningModeSelected: (AutoTuningMode) -> Unit = {},
     onTuningModeSelected: (Boolean) -> Unit = {},
     onTuningStrategySelected: (AutoTuningStrategy) -> Unit = {},
     onProfileSelected: (PowerProfile) -> Unit = {},
@@ -117,7 +118,7 @@ fun PowerControlQuickMenuContent(
                         onGamePinningModeSelected = onGamePinningModeSelected,
                         onManualGamePinCoresChanged = onManualGamePinCoresChanged,
                         onManualBackgroundPinCoresChanged = onManualBackgroundPinCoresChanged,
-                        onAutoTuningToggled = onAutoTuningToggled,
+                        onAutoTuningModeSelected = onAutoTuningModeSelected,
                         onTuningModeSelected = onTuningModeSelected,
                         onTuningStrategySelected = onTuningStrategySelected,
                         onProfileSelected = onProfileSelected,
@@ -194,7 +195,7 @@ private fun FlowRowScope.SuccessView(
     onGamePinningModeSelected: (GamePinningMode) -> Unit,
     onManualGamePinCoresChanged: (String) -> Unit,
     onManualBackgroundPinCoresChanged: (String) -> Unit,
-    onAutoTuningToggled: (Boolean) -> Unit,
+    onAutoTuningModeSelected: (AutoTuningMode) -> Unit,
     onTuningModeSelected: (Boolean) -> Unit,
     onTuningStrategySelected: (AutoTuningStrategy) -> Unit,
     onProfileSelected: (PowerProfile) -> Unit,
@@ -212,6 +213,7 @@ private fun FlowRowScope.SuccessView(
     var isTuningStrategyDropdownExpanded by remember { mutableStateOf(false) }
     var isTuningModeDropdownExpanded by remember { mutableStateOf(false) }
     var isGamePinningModeDropdownExpanded by remember { mutableStateOf(false) }
+    var isAutoTuningModeDropdownExpanded by remember { mutableStateOf(false) }
     var selectedMinFreqIndex by remember { mutableIntStateOf(state.cpuInfo?.selectedMinFreqIndex ?: 0) }
     var selectedMaxFreqIndex by remember { mutableIntStateOf(state.cpuInfo?.selectedMaxFreqIndex ?: 0) }
     var selectedMinGpuPowerLevel by remember { mutableIntStateOf(state.gpuInfo?.minPowerLevel ?: 0) }
@@ -342,21 +344,47 @@ private fun FlowRowScope.SuccessView(
             )
         }
 
-        QuickMenuToggleRow(
-            title = stringResource(R.string.power_control_auto_tuning),
-            subtitle = stringResource(R.string.power_control_auto_tuning_desc),
-            enabled = state.selectedProfile.enableAutoTuning,
-            selectable = isDriverSupported,
-            onToggle = {
-                onAutoTuningToggled(!state.selectedProfile.enableAutoTuning)
-            },
-            accentColor = accentColor,
+        Column(
             modifier = Modifier.fillMaxWidth(),
-        )
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.power_control_auto_tuning),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
 
-        // Tuning Mode Dropdown (only shown when auto-tuning is enabled)
+            SelectorRow(
+                valueText = stringResource(state.selectedProfile.autoTuningMode.displayNameRes),
+                descriptionText = stringResource(state.selectedProfile.autoTuningMode.descriptionRes),
+                accentColor = accentColor,
+                expanded = isAutoTuningModeDropdownExpanded,
+                onExpandedChange = { expand ->
+                    if (isDriverSupported) isAutoTuningModeDropdownExpanded = expand
+                },
+            ) { menuFocusRequester ->
+                AutoTuningMode.entries.forEachIndexed { index, mode ->
+                    SelectorMenuItem(
+                        accentColor = accentColor,
+                        focusRequester = if (index == 0) menuFocusRequester else null,
+                        onClick = {
+                            isAutoTuningModeDropdownExpanded = false
+                            onAutoTuningModeSelected(mode)
+                        },
+                        text = {
+                            Text(
+                                text = stringResource(mode.displayNameRes),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+
+        // Tuning Mode Dropdown (only shown when auto-tuning mode is Auto)
         val isClusterTuningAvailable = PowerManager.isClusterTuningAvailable()
-        if (state.selectedProfile.enableAutoTuning) {
+        if (state.selectedProfile.autoTuningMode == AutoTuningMode.AUTO) {
             val isPerClusterSelected = isClusterTuningAvailable && state.selectedProfile.enablePerClusterTuning
 
             Column(
@@ -456,7 +484,7 @@ private fun FlowRowScope.SuccessView(
             }
         }
 
-        if (!state.selectedProfile.enableAutoTuning) {
+        if (state.selectedProfile.autoTuningMode == AutoTuningMode.MANUAL) {
             SectionHeader(title = "Profile")
 
             Column(
@@ -503,47 +531,49 @@ private fun FlowRowScope.SuccessView(
         }
 
         if (isDriverSupported) {
-            state.cpuInfo?.let { cpuInfo ->
-                SectionHeader(title = "CPU")
+            if (state.selectedProfile.autoTuningMode != AutoTuningMode.OFF) {
+                state.cpuInfo?.let { cpuInfo ->
+                    SectionHeader(title = "CPU")
 
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.power_control_governor),
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.power_control_governor),
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
 
-                    SelectorRow(
-                        valueText = cpuInfo.currentGovernor.replaceFirstChar { it.uppercase() },
-                        accentColor = accentColor,
-                        expanded = isGovernorDropdownExpanded,
-                        onExpandedChange = { isGovernorDropdownExpanded = it },
-                    ) { menuFocusRequester ->
-                        cpuInfo.availableGovernors.forEachIndexed { index, governor ->
-                            SelectorMenuItem(
-                                accentColor = accentColor,
-                                focusRequester = if (index == 0) menuFocusRequester else null,
-                                onClick = {
-                                    isGovernorDropdownExpanded = false
-                                    onGovernorSelected(governor)
-                                },
-                                text = {
-                                    Text(
-                                        text = governor.replaceFirstChar { it.uppercase() },
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                },
-                            )
+                        SelectorRow(
+                            valueText = cpuInfo.currentGovernor.replaceFirstChar { it.uppercase() },
+                            accentColor = accentColor,
+                            expanded = isGovernorDropdownExpanded,
+                            onExpandedChange = { isGovernorDropdownExpanded = it },
+                        ) { menuFocusRequester ->
+                            cpuInfo.availableGovernors.forEachIndexed { index, governor ->
+                                SelectorMenuItem(
+                                    accentColor = accentColor,
+                                    focusRequester = if (index == 0) menuFocusRequester else null,
+                                    onClick = {
+                                        isGovernorDropdownExpanded = false
+                                        onGovernorSelected(governor)
+                                    },
+                                    text = {
+                                        Text(
+                                            text = governor.replaceFirstChar { it.uppercase() },
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    },
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // Only show manual controls when auto-tuning is disabled
-            if (!state.selectedProfile.enableAutoTuning) {
+            // Only show manual controls when auto-tuning mode is Manual
+            if (state.selectedProfile.autoTuningMode == AutoTuningMode.MANUAL) {
                 state.cpuInfo?.let { cpuInfo ->
                     if (cpuInfo.availableFrequencies.isNotEmpty()) {
                         val maxFreqIndex = cpuInfo.availableFrequencies.size - 1

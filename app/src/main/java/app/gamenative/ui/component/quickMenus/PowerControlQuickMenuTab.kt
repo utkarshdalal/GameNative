@@ -11,6 +11,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.tooling.preview.Preview
+import app.gamenative.powercontrol.AutoTuningMode
 import app.gamenative.powercontrol.CpuDisplayInfo
 import app.gamenative.powercontrol.GpuDisplayInfo
 import app.gamenative.powercontrol.PowerControlUiState
@@ -90,12 +91,12 @@ fun PowerControlQuickMenuTab(
                 PowerManager.refreshUiState()
             }
         },
-        onAutoTuningToggled = { enabled ->
+        onAutoTuningModeSelected = { mode ->
             coroutineScope.launch(Dispatchers.IO) {
                 // Update current profile
                 PowerManager.currentProfile.let { profile ->
                     val updatedProfile = profile.copy(
-                        enableAutoTuning = enabled,
+                        autoTuningMode = mode,
                         name = PerformancePreset.CUSTOM.displayName
                     )
                     PowerManager.setPowerProfile(updatedProfile)
@@ -136,7 +137,7 @@ fun PowerControlQuickMenuTab(
                 val updatedProfile = profile.copy(
                     enablePowerControl = currentProfile.enablePowerControl,
                     adaptiveFpsCapEnabled = currentProfile.adaptiveFpsCapEnabled,
-                    enableAutoTuning = false,
+                    autoTuningMode = AutoTuningMode.MANUAL,
                     enablePerClusterTuning = false,
                     enableFanControl = currentProfile.enableFanControl,
                     gamePinningMode = currentProfile.gamePinningMode,
