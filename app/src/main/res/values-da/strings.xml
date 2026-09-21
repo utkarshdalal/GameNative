@@ -532,7 +532,7 @@
     <string name="achievement_position_top_right">Øverst til højre</string>
     <string name="achievement_position_bottom_left">Nederst til venstre</string>
     <string name="achievement_position_bottom_right">Nederst til højre</string>
-    <string name="launch_steam_client_description">Reducerer ydelse og gør opstart langsommere\nMuliggør online-spil og løser DRM- og controllerproblemer\nIkke alle spil virker</string>
+    <string name="launch_steam_client_description">Headless anbefales\nPåkrævet til EA, Rockstar, Ubisoft og andre launchere\nAktiverer multiplayer og løser DRM- og controllerproblemer</string>
     <string name="launch_bionic_steam">Aktivér eksperimentel Bionic Steam</string>
     <string name="allow_steam_updates">Tillad Steam-opdateringer</string>
     <string name="allow_steam_updates_description">Opdaterer Steam til nyeste version. Reducerer ydelsen markant.</string>
@@ -771,6 +771,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulering</string>
+    <string name="settings_accounts_title">Spilstarter-konti</string>
+    <string name="settings_accounts_signed_out">Ikke logget ind</string>
+    <string name="settings_accounts_ea_title">EA-konto</string>
+    <string name="settings_accounts_rockstar_title">Rockstar-konto</string>
     <string name="settings_emulation_orientations_title">Tilladte orienteringer</string>
     <string name="settings_emulation_orientations_subtitle">Vælg hvilke orienteringer der kan roteres til i spillet</string>
     <string name="settings_emulation_default_config_title">Redigér standardkonfiguration</string>
@@ -944,6 +948,8 @@
 
     <!-- TODO: Manual review - PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Downloader Steam...</string>
+    <string name="steam_update_required_title">Opdatering påkrævet</string>
+    <string name="steam_update_required_message">Dette spil har en opdatering. Steam-klienten kan ikke starte det, før opdateringen er installeret. Opdater nu, og start derefter igen.</string>
     <string name="main_installing_glibc">Installerer glibc-komponenter...</string>
     <string name="main_installing_bionic">Installerer Bionic-komponenter...</string>
     <string name="main_loading">Indlæser...</string>
@@ -996,6 +1002,8 @@
     <string name="container_config_vkd3d_version">VKD3D-version</string>
     <string name="container_config_executable_path">Sti til eksekverbar fil</string>
     <string name="container_config_executable_path_placeholder">f.eks. sti\\til\\exe</string>
+    <string name="container_config_executable_path_custom">Brugerdefineret sti…</string>
+    <string name="container_config_executable_path_custom_placeholder">f.eks. C:\\Spil\\spil.exe</string>
 
     <!-- TODO: Manual review - Libraries Dialog -->
     <string name="libraries_title">Anvendte biblioteker</string>
@@ -1338,6 +1346,15 @@
     <string name="gog_settings_login_title">Log ind på GOG</string>
     <string name="gog_settings_login_subtitle">Log ind på din GOG-konto</string>
     <string name="gog_login_success_title">Login lykkedes</string>
+    <string name="rockstar_login_required_title">Rockstar-login påkrævet</string>
+    <string name="rockstar_login_failed">Rockstar-login mislykkedes: %1$s</string>
+    <string name="ea_login_required_title">EA-login påkrævet</string>
+    <string name="ea_login_success">Logget ind på EA som %1$s</string>
+    <string name="ea_login_failed">EA-login mislykkedes: %1$s</string>
+    <string name="ea_preparing">Forbereder understøttelse af EA-launcheren</string>
+    <string name="rockstar_preparing">Forbereder understøttelse af Rockstar-launcheren</string>
+    <string name="rockstar_runtime_installing">Installerer Social Club-runtime</string>
+    <string name="rockstar_installer_missing">Social Club-installationsprogrammet mangler i spilfilerne. Verificer spilfilerne i Steam, og prøv igen.</string>
     <string name="gog_login_cancel">Annuller</string>
     <string name="gog_settings_logout_title">Log ud af GOG</string>
     <string name="gog_settings_logout_subtitle">Log ud fra din GOG-konto</string>
@@ -1485,6 +1502,10 @@
     <string name="lsfg_performance_mode">Ydelsestilstand</string>
     <string name="lsfg_present_mode">Præsentationstilstand</string>
     <string name="lsfg_present_mode_desc">Mailbox anbefales. FIFO fungerer også, når outputbilledraten (fps-grænse × multiplikator) matcher skærmens opdateringshastighed; under opdateringshastigheden kan FIFO se hakkende ud.</string>
+    <string name="lsfg_backend">Backend</string>
+    <string name="lsfg_backend_desc">Legacy kører lsfg-vk-laget inde i spillet; Native kører billedgenerering i GameNative-rendereren</string>
+    <string name="lsfg_backend_legacy">Legacy (lag)</string>
+    <string name="lsfg_backend_native">Native (renderer)</string>
     <string name="lsfg_not_supported">Billedgenerering kræver en Bionic-container</string>
     <string name="lsfg_install_prompt">Lossless Scaling er ikke installeret. Tryk for at installere. Virkede kun på Adreno 6xx og nyere, så vidt vides.</string>
     <string name="lsfg_not_in_library">Lossless Scaling er ikke i dit Steam-bibliotek</string>
@@ -1695,6 +1716,7 @@
     <string name="debug_prerun_title">Få AI-hjælp</string>
     <string name="debug_prerun_message_1">Kører spillet med debug-logning og deler loggen med vores AI på Discord, når du afslutter. Spil, indtil du oplever problemet.</string>
     <string name="debug_prerun_message_2">AI-svar er kun for abonnenter.</string>
+    <string name="debug_trial_note">Gratis prøveperiode tilgængelig.</string>
     <string name="debug_prerun_message_3">Alle kan dele rapporten for at få menneskelig hjælp.</string>
     <string name="debug_paywall_title">Få AI-fejlfindingshjælp</string>
     <string name="debug_paywall_pitch">Vores AI læser din nøjagtige log og konfiguration og fortæller dig, hvad du skal ændre, som regel på under 5 minutter.</string>
@@ -2324,6 +2346,8 @@
     <string name="xr_open_composite_toggle">SteamVR (OpenVR)-kompatibilitet</string>
     <string name="xr_open_composite_toggle_desc">Sender spil bygget til SteamVR gennem OpenComposite. Slå til, hvis spillet siger, at SteamVR ikke kører, eller forbliver fladt med VR-tilstand slået til.</string>
     <string name="xr_render_scale">VR-gengivelsesskala</string>
+    <string name="settings_hide_ai_title">Skjul AI-funktioner</string>
+    <string name="settings_hide_ai_subtitle">Skjuler den valgfrie AI-fejlfindingshjælp</string>
     <string name="settings_info_boot_ads_title">Sponsorerede indlæsningsskærme</string>
     <string name="settings_info_boot_ads_subtitle">At lade dette være slået til hjælper med at støtte udviklingen af GameNative. Det gør aldrig spilstart langsommere og påvirker dig ikke på nogen måde.</string>
     <string name="settings_info_boot_recs_title">Spilanbefalinger på indlæsningsskærme</string>

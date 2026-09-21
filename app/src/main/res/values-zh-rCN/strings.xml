@@ -687,7 +687,7 @@
     <string name="achievement_position_top_right">右上</string>
     <string name="achievement_position_bottom_left">左下</string>
     <string name="achievement_position_bottom_right">右下</string>
-    <string name="launch_steam_client_description">降低性能并减慢启动速度\n允许在线游玩并修复 DRM 和控制器问题\n并非所有游戏都适用</string>
+    <string name="launch_steam_client_description">推荐使用 Headless\nEA、Rockstar、Ubisoft 等启动器必需\n启用多人游戏并修复 DRM 和手柄问题</string>
     <string name="launch_bionic_steam">启用实验性 Bionic Steam</string>
     <string name="allow_steam_updates">允许 Steam 更新</string>
     <string name="allow_steam_updates_description">将 Steam 更新至最新版本，会显著降低性能</string>
@@ -938,6 +938,10 @@
 
     <!-- 设置：模拟组 -->
     <string name="settings_emulation_title">模拟设置</string>
+    <string name="settings_accounts_title">游戏启动器账户</string>
+    <string name="settings_accounts_signed_out">未登录</string>
+    <string name="settings_accounts_ea_title">EA 账户</string>
+    <string name="settings_accounts_rockstar_title">Rockstar 账户</string>
     <string name="settings_emulation_orientations_title">允许的屏幕方向</string>
     <string name="settings_emulation_orientations_subtitle">选择游戏中可使用的屏幕方向</string>
     <string name="settings_emulation_default_config_title">修改默认配置</string>
@@ -1104,6 +1108,8 @@
 
     <!-- 主界面：游戏启动 -->
     <string name="main_downloading_steam">正在下载 Steam...</string>
+    <string name="steam_update_required_title">需要更新</string>
+    <string name="steam_update_required_message">此游戏有可用更新。在安装更新之前，Steam 客户端无法启动它。请立即更新，然后重新启动。</string>
     <string name="main_installing_glibc">安装 glibc 组件...</string>
     <string name="main_installing_bionic">安装Bionic组件中...</string>
     <string name="main_loading">加载中...</string>
@@ -1156,6 +1162,8 @@
     <string name="container_config_vkd3d_version">VKD3D 版本</string>
     <string name="container_config_executable_path">可执行文件路径</string>
     <string name="container_config_executable_path_placeholder">例如：path\\to\\exe</string>
+    <string name="container_config_executable_path_custom">自定义路径…</string>
+    <string name="container_config_executable_path_custom_placeholder">例如：C:\\Games\\game.exe</string>
 
     <!-- 使用的库对话框 -->
     <string name="libraries_title">使用的库</string>
@@ -1445,6 +1453,15 @@
     <string name="gog_settings_login_title">登录 GOG</string>
     <string name="gog_settings_login_subtitle">登录到您的 GOG 账户</string>
     <string name="gog_login_success_title">登录成功</string>
+    <string name="rockstar_login_required_title">需要登录 Rockstar</string>
+    <string name="rockstar_login_failed">Rockstar 登录失败：%1$s</string>
+    <string name="ea_login_required_title">需要登录 EA</string>
+    <string name="ea_login_success">已以 %1$s 身份登录 EA</string>
+    <string name="ea_login_failed">EA 登录失败：%1$s</string>
+    <string name="ea_preparing">正在准备 EA 启动器支持</string>
+    <string name="rockstar_preparing">正在准备 Rockstar 启动器支持</string>
+    <string name="rockstar_runtime_installing">正在安装 Social Club 运行环境</string>
+    <string name="rockstar_installer_missing">游戏文件中缺少 Social Club 安装程序。请在 Steam 中验证游戏文件后重试。</string>
     <string name="gog_login_cancel">取消</string>
     <string name="gog_settings_logout_title">退出 GOG</string>
     <string name="gog_settings_logout_subtitle">从您的 GOG 账户登出</string>
@@ -1664,6 +1681,10 @@
     <string name="lsfg_performance_mode">性能模式</string>
     <string name="lsfg_present_mode">呈现模式</string>
     <string name="lsfg_present_mode_desc">推荐使用 Mailbox。当输出帧率（fps 上限 × 倍数）与屏幕刷新率一致时也可使用 FIFO；低于刷新率时 FIFO 可能出现抖动。</string>
+    <string name="lsfg_backend">后端</string>
+    <string name="lsfg_backend_desc">Legacy 在游戏内运行 lsfg-vk 层；Native 在 GameNative 渲染器中运行帧生成。</string>
+    <string name="lsfg_backend_legacy">Legacy（层）</string>
+    <string name="lsfg_backend_native">Native（渲染器）</string>
     <string name="lsfg_not_supported">帧生成需要 Bionic 容器</string>
     <string name="lsfg_install_prompt">Lossless Scaling 未安装。点击安装。已知仅在 Adreno 6xx 及更高版本上可用。</string>
     <string name="lsfg_not_in_library">Lossless Scaling 不在你的 Steam 库中</string>
@@ -1842,6 +1863,7 @@
     <string name="debug_prerun_title">获取 AI 帮助</string>
     <string name="debug_prerun_message_1">以调试日志运行游戏，退出后将日志分享给我们在 Discord 上的 AI。请一直运行游戏，直到出现问题。</string>
     <string name="debug_prerun_message_2">AI 回复仅限订阅者。</string>
+    <string name="debug_trial_note">提供免费试用。</string>
     <string name="debug_prerun_message_3">任何人都可以分享报告以获得人工帮助。</string>
     <string name="debug_paywall_title">获取 AI 调试支持</string>
     <string name="debug_paywall_pitch">我们的 AI 会阅读你的完整日志和配置，并告诉你需要更改什么，通常不到 5 分钟。</string>
@@ -2468,6 +2490,8 @@
     <string name="xr_open_composite_toggle">SteamVR (OpenVR) 兼容</string>
     <string name="xr_open_composite_toggle_desc">通过 OpenComposite 运行为 SteamVR 开发的游戏。若游戏提示 SteamVR 未运行，或开启 VR 模式后仍为平面显示，请开启此项。</string>
     <string name="xr_render_scale">VR 渲染比例</string>
+    <string name="settings_hide_ai_title">隐藏 AI 功能</string>
+    <string name="settings_hide_ai_subtitle">隐藏可选的 AI 调试帮助</string>
     <string name="settings_info_boot_ads_title">赞助加载画面</string>
     <string name="settings_info_boot_ads_subtitle">保持开启有助于支持 GameNative 的开发。它绝不会拖慢游戏启动，也不会以任何方式影响你。</string>
     <string name="settings_info_boot_recs_title">在加载画面显示游戏推荐</string>

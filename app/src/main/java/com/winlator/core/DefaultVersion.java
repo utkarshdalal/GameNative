@@ -1,6 +1,6 @@
 package com.winlator.core;
 
-import static com.winlator.container.Container.STEAM_TYPE_NORMAL;
+import static com.winlator.container.Container.STEAM_TYPE_HEADLESS;
 
 import com.winlator.container.Container;
 
@@ -20,7 +20,7 @@ public abstract class DefaultVersion {
     public static final String VORTEK = "2.1-22.2.5";
     public static final String ADRENO = "819.2";
     public static final String SD8ELITE = "800.51";
-    public static String STEAM_TYPE = STEAM_TYPE_NORMAL;
+    public static String STEAM_TYPE = STEAM_TYPE_HEADLESS;
     public static String VARIANT = Container.GLIBC;
     public static String DEFAULT_GRAPHICS_DRIVER = "vortek";
     public static String WINE_VERSION = com.winlator.core.WineInfo.MAIN_WINE_VERSION.identifier();

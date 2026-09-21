@@ -696,7 +696,7 @@
     <string name="achievement_position_top_right">Правий верхній</string>
     <string name="achievement_position_bottom_left">Лівий нижній</string>
     <string name="achievement_position_bottom_right">Правий нижній</string>
-    <string name="launch_steam_client_description">Зменшує продуктивність та сповільнює запуск.\nДозволяє онлайн гру, а також вирішує проблему DRM та контролеру.\nПрацює не з усіма іграми</string>
+    <string name="launch_steam_client_description">Рекомендовано Headless\nПотрібно для EA, Rockstar, Ubisoft та інших лаунчерів\nВмикає мультиплеєр і виправляє проблеми з DRM та контролером</string>
     <string name="launch_bionic_steam">Увімкнути експериментальний Bionic Steam</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>
@@ -948,6 +948,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Емуляція</string>
+    <string name="settings_accounts_title">Облікові записи ігрових лаунчерів</string>
+    <string name="settings_accounts_signed_out">Вхід не виконано</string>
+    <string name="settings_accounts_ea_title">Обліковий запис EA</string>
+    <string name="settings_accounts_rockstar_title">Обліковий запис Rockstar</string>
     <string name="settings_emulation_orientations_title">Дозволені орієнтації екрану</string>
     <string name="settings_emulation_orientations_subtitle">Виберіть можливі орієнтації екрана під час гри.</string>
     <string name="settings_emulation_default_config_title">Змінити стандартну конфігурацію</string>
@@ -1120,6 +1124,8 @@
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Завантаження Steam...</string>
+    <string name="steam_update_required_title">Потрібне оновлення</string>
+    <string name="steam_update_required_message">Для цієї гри є оновлення. Клієнт Steam не зможе її запустити, доки оновлення не встановлено. Оновіть зараз, а потім запустіть знову.</string>
     <string name="main_installing_glibc">Інсталяція компонентів glibc...</string>
     <string name="main_installing_bionic">Інсталяція компонентів Bionic...</string>
     <string name="main_loading">Завантаження...</string>
@@ -1172,6 +1178,8 @@
     <string name="container_config_vkd3d_version">Версія VKD3D</string>
     <string name="container_config_executable_path">Шлях до виконуваного файлу</string>
     <string name="container_config_executable_path_placeholder">напр., path\\to\\exe</string>
+    <string name="container_config_executable_path_custom">Власний шлях…</string>
+    <string name="container_config_executable_path_custom_placeholder">напр., C:\\Games\\game.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">Використані бібліотеки</string>
@@ -1464,6 +1472,15 @@
     <string name="gog_settings_login_title">Увійти в GOG</string>
     <string name="gog_settings_login_subtitle">Увійдіть у свій обліковий запис GOG</string>
     <string name="gog_login_success_title">Вхід успішний</string>
+    <string name="rockstar_login_required_title">Потрібен вхід у Rockstar</string>
+    <string name="rockstar_login_failed">Не вдалося увійти в Rockstar: %1$s</string>
+    <string name="ea_login_required_title">Потрібен вхід в EA</string>
+    <string name="ea_login_success">Виконано вхід в EA як %1$s</string>
+    <string name="ea_login_failed">Не вдалося увійти в EA: %1$s</string>
+    <string name="ea_preparing">Підготовка підтримки лаунчера EA</string>
+    <string name="rockstar_preparing">Підготовка підтримки лаунчера Rockstar</string>
+    <string name="rockstar_runtime_installing">Встановлення середовища Social Club</string>
+    <string name="rockstar_installer_missing">У файлах гри відсутній інсталятор Social Club. Перевірте файли гри в Steam і спробуйте ще раз.</string>
     <string name="gog_login_cancel">Скасувати</string>
     <string name="gog_settings_logout_title">Вийти з GOG</string>
     <string name="gog_settings_logout_subtitle">Вийти з облікового запису GOG</string>
@@ -1611,6 +1628,10 @@
     <string name="lsfg_performance_mode">Режим продуктивності</string>
     <string name="lsfg_present_mode">Режим виводу</string>
     <string name="lsfg_present_mode_desc">Рекомендується Mailbox. FIFO також підходить, коли вихідна частота кадрів (ліміт fps × множник) збігається з частотою оновлення екрана; нижче за неї FIFO може виглядати нерівно.</string>
+    <string name="lsfg_backend">Бекенд</string>
+    <string name="lsfg_backend_desc">Legacy запускає шар lsfg-vk усередині гри; Native виконує генерацію кадрів у рендерері GameNative</string>
+    <string name="lsfg_backend_legacy">Legacy (шар)</string>
+    <string name="lsfg_backend_native">Native (рендерер)</string>
     <string name="lsfg_not_supported">Для генерації кадрів потрібен контейнер Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling не встановлено. Натисніть для встановлення. Відомо, що працює лише на Adreno 6xx і новіших.</string>
     <string name="lsfg_not_in_library">Lossless Scaling немає у вашій бібліотеці Steam</string>
@@ -1821,6 +1842,7 @@
     <string name="debug_prerun_title">Отримати допомогу AI</string>
     <string name="debug_prerun_message_1">Запускає гру з журналом налагодження і після виходу надсилає журнал нашому AI в Discord. Грайте, доки не виникне проблема.</string>
     <string name="debug_prerun_message_2">Відповіді AI доступні лише підписникам.</string>
+    <string name="debug_trial_note">Доступний безкоштовний пробний період.</string>
     <string name="debug_prerun_message_3">Будь-хто може поділитися звітом, щоб отримати допомогу людей.</string>
     <string name="debug_paywall_title">Отримайте AI-підтримку з налагодження</string>
     <string name="debug_paywall_pitch">Наш AI читає саме ваш лог і конфігурацію та каже, що змінити, зазвичай менше ніж за 5 хвилин.</string>
@@ -2456,6 +2478,8 @@
     <string name="xr_open_composite_toggle">Сумісність зі SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Запускає ігри, створені для SteamVR, через OpenComposite. Увімкніть, якщо гра повідомляє, що SteamVR не запущено, або залишається пласкою з увімкненим VR-режимом.</string>
     <string name="xr_render_scale">Масштаб рендерингу VR</string>
+    <string name="settings_hide_ai_title">Приховати функції ШІ</string>
+    <string name="settings_hide_ai_subtitle">Приховує необов\'язкову допомогу ШІ у налагодженні</string>
     <string name="settings_info_boot_ads_title">Спонсорські екрани завантаження</string>
     <string name="settings_info_boot_ads_subtitle">Якщо залишити це увімкненим, ви підтримаєте розробку GameNative. Це ніколи не сповільнює запуск ігор і жодним чином на вас не впливає.</string>
     <string name="settings_info_boot_recs_title">Рекомендації ігор на екранах завантаження</string>

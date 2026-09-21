@@ -64,7 +64,7 @@ android {
         buildConfigField("boolean", "XR_BUILD", "false")
         buildConfigField("boolean", "MODERN_XR", "false")
 
-        versionCode = 22
+        versionCode = 23
         versionName = "1.2.1"
 
         buildConfigField("boolean", "GOLD", "false")
@@ -229,7 +229,10 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
-            all { it.maxHeapSize = "4g" }
+            all {
+                it.maxHeapSize = "4g"
+                it.testLogging { events("started", "failed") }
+            }
         }
     }
 

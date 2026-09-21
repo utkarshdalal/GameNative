@@ -702,7 +702,7 @@
 	<string name="achievement_position_top_right">Dreapta sus</string>
 	<string name="achievement_position_bottom_left">Stânga jos</string>
 	<string name="achievement_position_bottom_right">Dreapta jos</string>
-	<string name="launch_steam_client_description">Reduce performanța și încetinește lansarea\nPermite joc online și rezolvă probleme DRM și controller\nNu toate jocurile funcționează</string>
+	<string name="launch_steam_client_description">Headless este recomandat\nNecesar pentru EA, Rockstar, Ubisoft și alte launchere\nActivează modul multiplayer și rezolvă problemele de DRM și controler</string>
 	<string name="launch_bionic_steam">Activează Bionic Steam experimental</string>
 	<string name="allow_steam_updates">Permite actualizările Steam</string>
 	<string name="allow_steam_updates_description">Actualizează Steam la ultima versiune. Reduce semnificativ performanța.</string>
@@ -954,6 +954,10 @@
 
 	<!-- Settings: Emulation Group -->
 	<string name="settings_emulation_title">Emulare</string>
+    <string name="settings_accounts_title">Conturi pentru lansatoarele de jocuri</string>
+    <string name="settings_accounts_signed_out">Neautentificat</string>
+    <string name="settings_accounts_ea_title">Cont EA</string>
+    <string name="settings_accounts_rockstar_title">Cont Rockstar</string>
 	<string name="settings_emulation_orientations_title">Orientări permise</string>
 	<string name="settings_emulation_orientations_subtitle">Alege orientările în care se poate roti în timpul jocului</string>
 	<string name="settings_emulation_default_config_title">Modifică configurația implicită</string>
@@ -1178,6 +1182,8 @@
 	<string name="container_config_vkd3d_version">Versiune VKD3D</string>
 	<string name="container_config_executable_path">Cale executabil</string>
 	<string name="container_config_executable_path_placeholder">ex.: path\\to\\exe</string>
+	<string name="container_config_executable_path_custom">Cale personalizată…</string>
+	<string name="container_config_executable_path_custom_placeholder">ex.: C:\\Jocuri\\joc.exe</string>
 
 	<!-- Libraries Dialog -->
 	<string name="libraries_title">Biblioteci utilizate</string>
@@ -1617,6 +1623,10 @@
     <string name="lsfg_performance_mode">Mod performanță</string>
     <string name="lsfg_present_mode">Mod de prezentare</string>
     <string name="lsfg_present_mode_desc">Mailbox este recomandat. FIFO funcționează și când rata de cadre de ieșire (limita fps × multiplicator) corespunde ratei de reîmprospătare a ecranului; sub aceasta, FIFO poate părea instabil.</string>
+    <string name="lsfg_backend">Backend</string>
+    <string name="lsfg_backend_desc">Legacy rulează stratul lsfg-vk în joc; Nativ rulează generarea de cadre în randorul GameNative</string>
+    <string name="lsfg_backend_legacy">Legacy (strat)</string>
+    <string name="lsfg_backend_native">Nativ (randor)</string>
     <string name="lsfg_not_supported">Generarea de cadre necesită un container Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling nu este instalat. Atingeți pentru a instala. Se știe că funcționează doar pe Adreno 6xx și mai nou.</string>
     <string name="lsfg_not_in_library">Lossless Scaling nu este în biblioteca dumneavoastră Steam</string>
@@ -1827,6 +1837,7 @@
     <string name="debug_prerun_title">Primește ajutor de la AI</string>
     <string name="debug_prerun_message_1">Rulează jocul cu jurnal de depanare și partajează jurnalul cu AI-ul nostru pe Discord la ieșire. Joacă până când apare problema.</string>
     <string name="debug_prerun_message_2">Răspunsurile AI sunt doar pentru abonați.</string>
+    <string name="debug_trial_note">Perioadă de probă gratuită disponibilă.</string>
     <string name="debug_prerun_message_3">Oricine poate partaja raportul pentru ajutor uman.</string>
     <string name="debug_paywall_title">Obține suport de depanare AI</string>
     <string name="debug_paywall_pitch">AI-ul nostru îți citește exact jurnalul și configurația și îți spune ce să schimbi, de obicei în mai puțin de 5 minute.</string>
@@ -2459,6 +2470,8 @@
     <string name="xr_open_composite_toggle">Compatibilitate SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Direcționează jocurile create pentru SteamVR prin OpenComposite. Activează dacă jocul spune că SteamVR nu rulează sau rămâne plat cu modul VR pornit.</string>
     <string name="xr_render_scale">Scară de randare VR</string>
+    <string name="settings_hide_ai_title">Ascunde funcțiile AI</string>
+    <string name="settings_hide_ai_subtitle">Ascunde ajutorul opțional de depanare cu AI</string>
     <string name="settings_info_boot_ads_title">Ecrane de încărcare sponsorizate</string>
     <string name="settings_info_boot_ads_subtitle">Păstrarea acestei opțiuni activate ajută la susținerea dezvoltării GameNative. Nu încetinește niciodată pornirea jocurilor și nu te afectează în niciun fel.</string>
     <string name="settings_info_boot_recs_title">Recomandări de jocuri pe ecranele de încărcare</string>
@@ -2505,4 +2518,15 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Resetează setările giroscopului</string>
+    <string name="steam_update_required_title">Actualizare necesară</string>
+    <string name="steam_update_required_message">Acest joc are o actualizare. Clientul Steam nu îl poate porni până când actualizarea nu este instalată. Actualizează acum, apoi pornește din nou.</string>
+    <string name="rockstar_login_required_title">Autentificare Rockstar necesară</string>
+    <string name="rockstar_login_failed">Autentificarea Rockstar a eșuat: %1$s</string>
+    <string name="ea_login_required_title">Autentificare EA necesară</string>
+    <string name="ea_login_success">Autentificat la EA ca %1$s</string>
+    <string name="ea_login_failed">Autentificarea EA a eșuat: %1$s</string>
+    <string name="ea_preparing">Se pregătește suportul pentru launcherul EA</string>
+    <string name="rockstar_preparing">Se pregătește suportul pentru launcherul Rockstar</string>
+    <string name="rockstar_runtime_installing">Se instalează runtime-ul Social Club</string>
+    <string name="rockstar_installer_missing">Programul de instalare Social Club lipsește din fișierele jocului. Verifică fișierele jocului în Steam și încearcă din nou.</string>
 </resources>

@@ -27,6 +27,7 @@ import com.winlator.box86_64.Box86_64Preset
 import com.winlator.container.Container
 import com.winlator.core.DefaultVersion
 import `in`.dragonbra.javasteam.enums.EPersonaState
+import java.io.IOException
 import java.util.EnumSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -127,7 +128,12 @@ object PrefManager {
 
     @Suppress("SameParameterValue")
     private fun <T> getPref(key: Preferences.Key<T>, defaultValue: T): T = runBlocking {
-        dataStore.data.first()[key] ?: defaultValue
+        try {
+            dataStore.data.first()[key] ?: defaultValue
+        } catch (e: IOException) {
+            Timber.w(e, "Failed to read preference ${key.name}, using default")
+            defaultValue
+        }
     }
 
     @Suppress("SameParameterValue")
@@ -584,6 +590,20 @@ object PrefManager {
             setPref(UNPACK_FILES, value)
         }
 
+    private val FASTER_EXTERNAL_LOADING = booleanPreferencesKey("faster_external_loading")
+    var fasterExternalLoading: Boolean
+        get() = getPref(FASTER_EXTERNAL_LOADING, false)
+        set(value) {
+            setPref(FASTER_EXTERNAL_LOADING, value)
+        }
+
+    private val DISABLE_LIBREDIRECT = booleanPreferencesKey("disable_libredirect")
+    var disableLibredirect: Boolean
+        get() = getPref(DISABLE_LIBREDIRECT, false)
+        set(value) {
+            setPref(DISABLE_LIBREDIRECT, value)
+        }
+
     private val SUSPEND_POLICY = stringPreferencesKey("suspend_policy")
     var suspendPolicy: String
         get() = Container.normalizeSuspendPolicy(getPref(SUSPEND_POLICY, Container.SUSPEND_POLICY_MANUAL))
@@ -849,7 +869,14 @@ object PrefManager {
     // Special: Because null value.
     private val CLIENT_ID = longPreferencesKey("client_id")
     var clientId: Long?
-        get() = runBlocking { dataStore.data.first()[CLIENT_ID] }
+        get() = runBlocking {
+            try {
+                dataStore.data.first()[CLIENT_ID]
+            } catch (e: IOException) {
+                Timber.w(e, "Failed to read client_id preference")
+                null
+            }
+        }
         set(value) {
             scope.launch {
                 dataStore.edit { pref -> pref[CLIENT_ID] = value!! }
@@ -1295,6 +1322,13 @@ object PrefManager {
         get() = getPref(BOOT_SCREEN_ADS_ENABLED, true)
         set(value) {
             setPref(BOOT_SCREEN_ADS_ENABLED, value)
+        }
+
+    private val HIDE_AI_FEATURES = booleanPreferencesKey("hide_ai_features")
+    var hideAiFeatures: Boolean
+        get() = getPref(HIDE_AI_FEATURES, false)
+        set(value) {
+            setPref(HIDE_AI_FEATURES, value)
         }
 
     // Show game recommendations in library

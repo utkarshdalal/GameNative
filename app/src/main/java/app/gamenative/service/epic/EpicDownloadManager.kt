@@ -389,6 +389,14 @@ class EpicDownloadManager @Inject constructor(
                     // Don't fail the base game download if DLC fails
                 }
             }
+            EpicInstallState.write(
+                installPath,
+                EpicInstallState(
+                    buildVersion = manifest.meta?.buildVersion ?: "",
+                    language = containerLanguage,
+                ),
+            )
+
             // Update database with install info
             try {
                 val updatedGame = game.copy(

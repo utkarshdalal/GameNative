@@ -706,7 +706,7 @@
     <string name="achievement_position_top_right">우측 상단</string>
     <string name="achievement_position_bottom_left">좌측 하단</string>
     <string name="achievement_position_bottom_right">우측 하단</string>
-    <string name="launch_steam_client_description">성능이 저하되고 실행 속도가 느려집니다\n온라인 플레이를 허용하고 DRM 및 컨트롤러 문제를 해결합니다\n모든 게임이 작동하는 것은 아닙니다</string>
+    <string name="launch_steam_client_description">Headless 권장\nEA, Rockstar, Ubisoft 및 기타 런처에 필요\n멀티플레이를 활성화하고 DRM 및 컨트롤러 문제를 해결</string>
     <string name="allow_steam_updates">Steam 업데이트 허용</string>
     <string name="allow_steam_updates_description">Steam을 최신 버전으로 업데이트합니다. 성능이 크게 저하될 수 있습니다.</string>
     <string name="steam_type">Steam 유형</string>
@@ -954,6 +954,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">에뮬레이션</string>
+    <string name="settings_accounts_title">게임 런처 계정</string>
+    <string name="settings_accounts_signed_out">로그인하지 않음</string>
+    <string name="settings_accounts_ea_title">EA 계정</string>
+    <string name="settings_accounts_rockstar_title">Rockstar 계정</string>
     <string name="settings_emulation_orientations_title">허용된 방향</string>
     <string name="settings_emulation_orientations_subtitle">게임 중 회전할 수 있는 방향 선택</string>
     <string name="settings_emulation_default_config_title">기본 설정 수정</string>
@@ -1121,6 +1125,8 @@
 
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_steam">Steam 다운로드 중...</string>
+    <string name="steam_update_required_title">업데이트 필요</string>
+    <string name="steam_update_required_message">이 게임에 업데이트가 있습니다. 업데이트를 설치할 때까지 Steam 클라이언트가 게임을 시작할 수 없습니다. 지금 업데이트한 다음 다시 실행하세요.</string>
     <string name="main_installing_glibc">glibc 구성 요소 설치 중...</string>
     <string name="main_installing_bionic">Bionic 구성 요소 설치 중...</string>
     <string name="main_loading">로딩 중...</string>
@@ -1173,6 +1179,8 @@
     <string name="container_config_vkd3d_version">VKD3D 버전</string>
     <string name="container_config_executable_path">실행 파일 경로</string>
     <string name="container_config_executable_path_placeholder">예: path\\to\\exe</string>
+    <string name="container_config_executable_path_custom">사용자 지정 경로…</string>
+    <string name="container_config_executable_path_custom_placeholder">예: C:\\Games\\game.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">사용된 라이브러리</string>
@@ -1462,6 +1470,15 @@
     <string name="gog_settings_login_title">GOG 로그인</string>
     <string name="gog_settings_login_subtitle">GOG 계정에 로그인</string>
     <string name="gog_login_success_title">로그인 성공</string>
+    <string name="rockstar_login_required_title">Rockstar 로그인 필요</string>
+    <string name="rockstar_login_failed">Rockstar 로그인 실패: %1$s</string>
+    <string name="ea_login_required_title">EA 로그인 필요</string>
+    <string name="ea_login_success">%1$s(으)로 EA에 로그인했습니다</string>
+    <string name="ea_login_failed">EA 로그인 실패: %1$s</string>
+    <string name="ea_preparing">EA 런처 지원 준비 중</string>
+    <string name="rockstar_preparing">Rockstar 런처 지원 준비 중</string>
+    <string name="rockstar_runtime_installing">Social Club 런타임 설치 중</string>
+    <string name="rockstar_installer_missing">게임 파일에 Social Club 설치 프로그램이 없습니다. Steam에서 게임 파일을 검증한 후 다시 시도하세요.</string>
     <string name="gog_login_cancel">취소</string>
     <string name="gog_settings_logout_title">GOG 로그아웃</string>
     <string name="gog_settings_logout_subtitle">GOG 계정에서 로그아웃</string>
@@ -1576,6 +1593,10 @@
     <string name="lsfg_performance_mode">성능 모드</string>
     <string name="lsfg_present_mode">프레젠트 모드</string>
     <string name="lsfg_present_mode_desc">Mailbox를 권장합니다. FIFO는 출력 프레임 레이트(fps 제한 × 배수)가 화면 주사율과 일치할 때도 사용할 수 있지만, 주사율보다 낮으면 화면이 흔들려 보일 수 있습니다.</string>
+    <string name="lsfg_backend">백엔드</string>
+    <string name="lsfg_backend_desc">Legacy는 게임 내부에서 lsfg-vk 레이어를 실행하고, Native는 GameNative 렌더러에서 프레임 생성을 실행합니다.</string>
+    <string name="lsfg_backend_legacy">Legacy(레이어)</string>
+    <string name="lsfg_backend_native">Native(렌더러)</string>
     <string name="lsfg_not_supported">프레임 생성에는 Bionic 컨테이너가 필요합니다</string>
     <string name="lsfg_install_prompt">Lossless Scaling이 설치되지 않았습니다. 탭하여 설치하세요. Adreno 6xx 이상에서만 작동하는 것으로 알려져 있습니다.</string>
     <string name="lsfg_not_in_library">Lossless Scaling이 Steam 라이브러리에 없습니다</string>
@@ -1822,6 +1843,7 @@
     <string name="debug_prerun_title">AI 도움 받기</string>
     <string name="debug_prerun_message_1">디버그 로깅으로 게임을 실행하고, 종료 시 로그를 Discord의 AI에 공유합니다. 문제가 발생할 때까지 게임을 플레이하세요.</string>
     <string name="debug_prerun_message_2">AI 답변은 구독자 전용입니다.</string>
+    <string name="debug_trial_note">무료 체험 이용 가능.</string>
     <string name="debug_prerun_message_3">리포트는 누구나 공유해 사람의 도움을 받을 수 있습니다.</string>
     <string name="debug_paywall_title">AI 디버그 지원 받기</string>
     <string name="debug_paywall_pitch">AI가 로그와 설정을 그대로 읽고 무엇을 바꿔야 할지 알려드립니다. 보통 5분 이내입니다.</string>
@@ -2448,6 +2470,8 @@
     <string name="xr_open_composite_toggle">SteamVR(OpenVR) 호환</string>
     <string name="xr_open_composite_toggle_desc">SteamVR용으로 만들어진 게임을 OpenComposite를 통해 실행합니다. 게임이 SteamVR이 실행 중이 아니라고 표시하거나 VR 모드에서도 평면으로 남아 있으면 켜세요.</string>
     <string name="xr_render_scale">VR 렌더링 배율</string>
+    <string name="settings_hide_ai_title">AI 기능 숨기기</string>
+    <string name="settings_hide_ai_subtitle">선택 사항인 AI 디버그 도움말을 숨깁니다</string>
     <string name="settings_info_boot_ads_title">스폰서 로딩 화면</string>
     <string name="settings_info_boot_ads_subtitle">이 옵션을 켜 두면 GameNative 개발을 지원하는 데 도움이 됩니다. 게임 실행이 느려지거나 사용자에게 어떤 영향도 주지 않습니다.</string>
     <string name="settings_info_boot_recs_title">로딩 화면에 게임 추천 표시</string>

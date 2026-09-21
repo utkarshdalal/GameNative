@@ -736,7 +736,7 @@
     <string name="local_saves_only">Solo guardados locales</string>
     <string name="local_saves_only_description">Desactiva la sincronización de guardados en la nube para este juego y mantén las partidas solo en el dispositivo</string>
     <string name="launch_steam_client_beta">Iniciar cliente de Steam (Beta)</string>
-    <string name="launch_steam_client_description">Reduce el rendimiento y ralentiza el inicio.\nPermite el juego en línea y soluciona problemas de DRM y de mando.\nNo todos los juegos funcionan.</string>
+    <string name="launch_steam_client_description">Se recomienda Headless\nNecesario para EA, Rockstar, Ubisoft y otros lanzadores\nActiva el multijugador y corrige problemas de DRM y de mando</string>
     <string name="launch_bionic_steam">Habilitar Bionic Steam experimental</string>
     <string name="steam_offline_mode">Modo sin conexión de Steam</string>
     <string name="steam_offline_mode_description">Inicia juegos de Steam en modo sin conexión.</string>
@@ -961,6 +961,10 @@
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulación</string>
+    <string name="settings_accounts_title">Cuentas de lanzadores de juegos</string>
+    <string name="settings_accounts_signed_out">No has iniciado sesión</string>
+    <string name="settings_accounts_ea_title">Cuenta de EA</string>
+    <string name="settings_accounts_rockstar_title">Cuenta de Rockstar</string>
     <string name="settings_emulation_orientations_title">Orientaciones de pantalla permitidas</string>
     <string name="settings_emulation_orientations_subtitle">Elige las orientaciones a las que puede rotar la pantalla durante el juego.</string>
     <string name="settings_emulation_default_config_title">Configuración por defecto</string>
@@ -1133,6 +1137,8 @@
     <!-- PluviaMain: Game Launch -->
     <string name="main_downloading_entry">Descargando %s…</string>
     <string name="main_downloading_steam">Descargando Steam…</string>
+    <string name="steam_update_required_title">Actualización necesaria</string>
+    <string name="steam_update_required_message">Este juego tiene una actualización. El cliente de Steam no puede iniciarlo hasta que se instale. Actualiza ahora y vuelve a iniciarlo.</string>
 
     <string name="main_installing_glibc">Instalando componentes de glibc…</string>
     <string name="main_installing_bionic">Instalando componentes de Bionic…</string>
@@ -1186,6 +1192,8 @@
     <string name="container_config_vkd3d_version">Versión de VKD3D</string>
     <string name="container_config_executable_path">Ruta del ejecutable</string>
     <string name="container_config_executable_path_placeholder">p. ej., ruta\\al\\exe</string>
+    <string name="container_config_executable_path_custom">Ruta personalizada…</string>
+    <string name="container_config_executable_path_custom_placeholder">p. ej., C:\\Juegos\\juego.exe</string>
 
     <!-- Libraries Dialog -->
     <string name="libraries_title">Librerías utilizadas</string>
@@ -1476,6 +1484,15 @@
     <string name="gog_settings_login_title">Iniciar sesión en GOG</string>
     <string name="gog_settings_login_subtitle">Inicia sesión en tu cuenta de GOG.</string>
     <string name="gog_login_success_title">Inicio de sesión exitoso</string>
+    <string name="rockstar_login_required_title">Se requiere iniciar sesión en Rockstar</string>
+    <string name="rockstar_login_failed">Error al iniciar sesión en Rockstar: %1$s</string>
+    <string name="ea_login_required_title">Se requiere iniciar sesión en EA</string>
+    <string name="ea_login_success">Sesión iniciada en EA como %1$s</string>
+    <string name="ea_login_failed">Error al iniciar sesión en EA: %1$s</string>
+    <string name="ea_preparing">Preparando la compatibilidad con el launcher de EA</string>
+    <string name="rockstar_preparing">Preparando la compatibilidad con el launcher de Rockstar</string>
+    <string name="rockstar_runtime_installing">Instalando el entorno de Social Club</string>
+    <string name="rockstar_installer_missing">Falta el instalador de Social Club en los archivos del juego. Verifica los archivos del juego en Steam e inténtalo de nuevo.</string>
     <string name="gog_login_cancel">Cancelar</string>
     <string name="gog_settings_logout_title">Cerrar sesión de GOG</string>
     <string name="gog_settings_logout_subtitle">Cierra la sesión de tu cuenta de GOG.</string>
@@ -1613,6 +1630,10 @@
     <string name="lsfg_performance_mode">Modo de rendimiento</string>
     <string name="lsfg_present_mode">Modo de presentación</string>
     <string name="lsfg_present_mode_desc">Se recomienda Mailbox. FIFO también funciona cuando la tasa de fotogramas de salida (límite de fps × multiplicador) coincide con la tasa de refresco de la pantalla; por debajo de ella, FIFO puede verse inestable.</string>
+    <string name="lsfg_backend">Backend</string>
+    <string name="lsfg_backend_desc">Legacy ejecuta la capa lsfg-vk dentro del juego; Nativo ejecuta la generación de fotogramas en el renderizador de GameNative</string>
+    <string name="lsfg_backend_legacy">Legacy (capa)</string>
+    <string name="lsfg_backend_native">Nativo (renderizador)</string>
     <string name="lsfg_not_supported">La generación de fotogramas requiere un contenedor Bionic</string>
     <string name="lsfg_install_prompt">Lossless Scaling no está instalado. Toca para instalar. Solo se sabe que funciona en Adreno 6xx y posteriores.</string>
     <string name="lsfg_not_in_library">Lossless Scaling no está en tu biblioteca de Steam</string>
@@ -1823,6 +1844,7 @@
     <string name="debug_prerun_title">Obtén ayuda de la AI</string>
     <string name="debug_prerun_message_1">Ejecuta el juego con registro de depuración y comparte el registro con nuestra AI en Discord al salir. Juega hasta que aparezca el problema.</string>
     <string name="debug_prerun_message_2">Las respuestas de la AI son solo para suscriptores.</string>
+    <string name="debug_trial_note">Prueba gratuita disponible.</string>
     <string name="debug_prerun_message_3">Cualquiera puede compartir el informe para recibir ayuda humana.</string>
     <string name="debug_paywall_title">Consigue soporte de depuración con AI</string>
     <string name="debug_paywall_pitch">Nuestra AI lee tu registro y tu configuración exactos y te dice qué cambiar, normalmente en menos de 5 minutos.</string>
@@ -2452,6 +2474,8 @@
     <string name="xr_open_composite_toggle">Compatibilidad con SteamVR (OpenVR)</string>
     <string name="xr_open_composite_toggle_desc">Redirige los juegos creados para SteamVR a través de OpenComposite. Actívalo si el juego dice que SteamVR no está en ejecución o se queda en plano con el modo VR activado.</string>
     <string name="xr_render_scale">Escala de renderizado de RV</string>
+    <string name="settings_hide_ai_title">Ocultar funciones de IA</string>
+    <string name="settings_hide_ai_subtitle">Oculta la ayuda de depuración con IA opcional</string>
     <string name="settings_info_boot_ads_title">Pantallas de carga patrocinadas</string>
     <string name="settings_info_boot_ads_subtitle">Mantener esto activado ayuda a apoyar el desarrollo de GameNative. Nunca ralentiza el inicio de los juegos ni te afecta de ninguna manera.</string>
     <string name="settings_info_boot_recs_title">Recomendaciones de juegos en pantallas de carga</string>
