@@ -42,6 +42,15 @@ class VotvViewModel @Inject constructor(
     private val _gameAppId = MutableStateFlow(PrefManager.votvGameAppId)
     val gameAppId: StateFlow<String?> = _gameAppId.asStateFlow()
 
+    init {
+        // Re-applied on every visit to this screen (not just at import time) so a container
+        // created before the display-mode fields were introduced, or before this default
+        // changed, gets fixed up too.
+        _gameAppId.value?.let { appId ->
+            viewModelScope.launch(Dispatchers.IO) { prepareContainerDefaults(appId) }
+        }
+    }
+
     fun importGame(uri: Uri) {
         if (_importState.value.isImporting) return
         _importState.value = ImportState(isImporting = true)
@@ -81,17 +90,17 @@ class VotvViewModel @Inject constructor(
     }
 
     /**
-     * Defaults a freshly-created container to swap+hybrid external display mode, so the
-     * dual-screen hub works with no settings UI. Only applied on first creation, so it never
-     * overwrites a value a future settings screen lets the user change.
+     * Defaults the container to hybrid external display mode with swap OFF, so the dual-screen
+     * hub works with no settings UI: the game stays on this activity's own screen (untouched)
+     * and the hub renders on the second display via ExternalDisplayInputController, instead of
+     * moving the game's surface between displays. There's no settings screen yet for the user to
+     * have overridden this, so it's safe (and needed, to fix up already-created containers) to
+     * re-apply unconditionally rather than gating on first creation.
      */
     private fun prepareContainerDefaults(appId: String) {
-        val isNewContainer = !ContainerUtils.hasContainer(context, appId)
         val container = ContainerUtils.getOrCreateContainer(context, appId)
-        if (isNewContainer) {
-            container.setExternalDisplayMode(Container.EXTERNAL_DISPLAY_MODE_HYBRID)
-            container.setExternalDisplaySwap(true)
-            container.saveData()
-        }
+        container.setExternalDisplayMode(Container.EXTERNAL_DISPLAY_MODE_HYBRID)
+        container.setExternalDisplaySwap(false)
+        container.saveData()
     }
 }

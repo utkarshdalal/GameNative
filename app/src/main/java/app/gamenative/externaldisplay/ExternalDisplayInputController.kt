@@ -15,6 +15,7 @@ import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import com.winlator.container.Container
 import com.winlator.widget.TouchpadView
@@ -194,12 +195,20 @@ private class ExternalInputPresentation(
                 setContentView(root)
             }
             ExternalDisplayInputController.Mode.HYBRID -> {
-                val hybrid = HybridInputLayout(
-                    context = context,
-                    xServer = xServer,
-                    touchpadViewProvider = touchpadViewProvider,
-                )
-                setContentView(hybrid)
+                val view = if (BuildConfig.VOTV_LAUNCHER) {
+                    HubLayout(
+                        context = context,
+                        xServer = xServer,
+                        touchpadViewProvider = touchpadViewProvider,
+                    )
+                } else {
+                    HybridInputLayout(
+                        context = context,
+                        xServer = xServer,
+                        touchpadViewProvider = touchpadViewProvider,
+                    )
+                }
+                setContentView(view)
             }
             else -> {
                 setContentView(FrameLayout(context))
