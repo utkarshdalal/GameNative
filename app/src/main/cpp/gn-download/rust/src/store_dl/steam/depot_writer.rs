@@ -985,7 +985,8 @@ impl AdaptiveWindow {
         self.err_count = self.err_count.saturating_add(1);
         let immediate = kind == FetchFailKind::RateLimited
             || self.err_count >= WINDOW_ERR_BURST_IMMEDIATE;
-        if !immediate {
+        let cooling = self.cooldown_until.is_some_and(|t| now < t);
+        if !immediate || cooling {
             return false;
         }
         let before = self.current;
@@ -1058,6 +1059,7 @@ impl AdaptiveWindow {
             } else if falling {
                 // Throughput dropped without errors (a CDN slowed, or we are past the useful
                 // concurrency): HOLD. Shrinking here is what collapsed B2b to the floor.
+                self.best_bps = self.bps_ewma.max(self.best_bps * (1.0 - WINDOW_DECLINE_EPS));
                 self.last_reason = WindowReason::HoldThroughputDown;
             } else if self.plateau_streak < WINDOW_PLATEAU_PATIENCE {
                 // Flat, but throughput lags a window change — spend a little patience before calling
@@ -1484,14 +1486,15 @@ fn drain_contiguous(
         let mut batch: Vec<PendingDecoded> = Vec::new();
         let mut batch_bytes = 0u64;
         while batch_bytes < COALESCE_WRITE_BYTES {
+            let next_offset = writer.cursor + batch_bytes;
             let at_cursor = matches!(
                 writer.pending.first_key_value(),
-                Some((&offset, PendingEntry::Data(_))) if offset == writer.cursor
+                Some((&offset, PendingEntry::Data(_))) if offset == next_offset
             );
             if !at_cursor {
                 break;
             }
-            let Some(PendingEntry::Data(entry)) = writer.pending.remove(&writer.cursor) else {
+            let Some(PendingEntry::Data(entry)) = writer.pending.remove(&next_offset) else {
                 unreachable!("data entry at cursor");
             };
             batch_bytes += entry.data.len() as u64;
@@ -4205,6 +4208,31 @@ mod tests {
             w.current > bottom,
             "window must recover once errors stop, got {} from {bottom}",
             w.current
+        );
+    }
+
+    #[test]
+    fn adaptive_window_shrinks_once_per_cooldown_on_an_error_burst() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(64, 2, 128, t);
+        for _ in 0..12 {
+            w.record_err(t, FetchFailKind::Timeout);
+        }
+        assert_eq!(w.current, 48, "one proportional shrink, not one per error");
+    }
+
+    #[test]
+    fn adaptive_window_recovers_after_a_shrink_at_lower_throughput() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 128, t);
+        let total = run_probes(&mut w, t, 1, 6, 20, 0, 0, |_| 40_000_000);
+        let total = run_probes(&mut w, t, 7, 1, 20, 3, total, |_| 40_000_000);
+        let shrunk = w.current;
+        assert!(shrunk < 128);
+        run_probes(&mut w, t, 8, 20, 20, 0, total, |_| 8_000_000);
+        assert!(
+            w.current > shrunk,
+            "window must grow again once the post-shrink rate becomes the baseline, stuck at {shrunk}"
         );
     }
 
