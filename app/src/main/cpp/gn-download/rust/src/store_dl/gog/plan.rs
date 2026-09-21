@@ -186,6 +186,22 @@ pub fn parse_gen1_manifest(json: &str, out: &mut Vec<Gen1File>) {
         }
         out.push(Gen1File { path, url, offset, size });
     }
+    // Case-insensitive canonicalization, same semantics as the gen2 `build_plan` pass.
+    let paths: Vec<&str> = out.iter().map(|f| f.path.as_str()).collect();
+    let canon = crate::store_dl::canonicalize_case_paths(&paths);
+    let mut winner: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for (i, k) in canon.keys.iter().enumerate() {
+        winner.insert(k.as_str(), i);
+    }
+    let mut kept = Vec::with_capacity(out.len());
+    for (i, mut f) in std::mem::take(out).into_iter().enumerate() {
+        if winner.get(canon.keys[i].as_str()) != Some(&i) {
+            continue;
+        }
+        f.path = canon.paths[i].clone();
+        kept.push(f);
+    }
+    *out = kept;
 }
 
 /// Parses every manifest in order (the order Java fetched the depots) and optionally applies the
@@ -197,6 +213,24 @@ pub fn build_plan(manifests: &[String], sort_largest_first: bool) -> Vec<Planned
     for manifest in manifests {
         parse_depot_manifest(manifest, &mut files);
     }
+    // Case-insensitive canonicalization ACROSS all depots (Windows/Android-storage semantics):
+    // `Game/` and `game/` merge into one on-disk directory (first-seen spelling wins); exact
+    // case-duplicate files are the same on-disk file — the LAST entry wins.
+    let paths: Vec<&str> = files.iter().map(|f| f.relative_path.as_str()).collect();
+    let canon = crate::store_dl::canonicalize_case_paths(&paths);
+    let mut winner: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for (i, k) in canon.keys.iter().enumerate() {
+        winner.insert(k.as_str(), i);
+    }
+    let mut kept = Vec::with_capacity(files.len());
+    for (i, mut f) in files.into_iter().enumerate() {
+        if winner.get(canon.keys[i].as_str()) != Some(&i) {
+            continue;
+        }
+        f.relative_path = canon.paths[i].clone();
+        kept.push(f);
+    }
+    files = kept;
     if sort_largest_first {
         files.sort_by(|a, b| b.total_size.cmp(&a.total_size));
     }

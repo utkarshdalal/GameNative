@@ -110,7 +110,24 @@ pub fn parse_plan(json: &str) -> Result<Vec<PlanEntry>, String> {
             sha256,
         });
     }
-    Ok(entries)
+    // Case-insensitive canonicalization (Windows/Android-storage semantics): `Game/` and
+    // `game/` merge into one on-disk directory (first-seen spelling wins); exact
+    // case-duplicate files are the same file — the LAST entry wins.
+    let paths: Vec<&str> = entries.iter().map(|e| e.rel_path.as_str()).collect();
+    let canon = crate::store_dl::canonicalize_case_paths(&paths);
+    let mut winner: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for (i, k) in canon.keys.iter().enumerate() {
+        winner.insert(k.as_str(), i);
+    }
+    let mut kept = Vec::with_capacity(entries.len());
+    for (i, mut e) in entries.into_iter().enumerate() {
+        if winner.get(canon.keys[i].as_str()) != Some(&i) {
+            continue;
+        }
+        e.rel_path = canon.paths[i].clone();
+        kept.push(e);
+    }
+    Ok(kept)
 }
 
 /// `ManifestFile.unixPath()`.
@@ -141,9 +158,16 @@ pub fn hex_decode(hex: &str) -> Option<Vec<u8>> {
 
 /// `new File(installDir, rel)` — Java resolves the child textually under the parent, so
 /// build the path by concatenation (never `Path::join`, which would let a leading `/` escape).
+/// Existing components are re-spelled to their on-disk case (`Game/` vs `game/` resume).
 pub fn dest_path(install_dir: &str, rel_path: &str) -> PathBuf {
     let base = install_dir.trim_end_matches('/');
-    PathBuf::from(format!("{base}/{rel_path}"))
+    // Java parity for the degenerate leading-`/` case (never produced by real plans —
+    // `rel_path_is_safe` rejects it at parse): keep the verbatim textual concatenation.
+    if rel_path.starts_with('/') {
+        return PathBuf::from(format!("{base}/{rel_path}"));
+    }
+    let resolved = crate::store_dl::resolve_existing_case(base, rel_path);
+    PathBuf::from(format!("{base}/{resolved}"))
 }
 
 /// Java `:250`: `destFile.exists() && destFile.length() == file.size`. `File.length()` is

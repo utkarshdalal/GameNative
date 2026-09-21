@@ -842,7 +842,10 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
                 if skip.contains(file.relative_path.as_str()) {
                     continue;
                 }
-                let out_path = install_dir.join(&file.relative_path);
+                let out_path = install_dir.join(crate::store_dl::resolve_existing_case(
+                    &req.install_dir,
+                    &file.relative_path,
+                ));
                 events.on_file_verify(&file.relative_path);
                 if file_verified(&out_path, file.total_size, &file.md5) {
                     files_verified.fetch_add(1, Ordering::Relaxed);
@@ -886,7 +889,10 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
     let mut resumed_chunks = 0u64;
     let mut resumed_bytes = 0u64;
     for (file_idx, file) in files.iter().enumerate() {
-        let out_path = install_dir.join(&file.relative_path);
+        let out_path = install_dir.join(crate::store_dl::resolve_existing_case(
+            &req.install_dir,
+            &file.relative_path,
+        ));
         let is_pending = pending[file_idx].load(Ordering::Relaxed);
         let mut resume_chunks = prefixes[file_idx].0.load(Ordering::Relaxed);
         let mut resume_bytes = prefixes[file_idx].1.load(Ordering::Relaxed);
@@ -1225,7 +1231,10 @@ fn run_gen1(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
                 ..Default::default()
             };
         }
-        let out_path = install_dir.join(&file.path);
+        let out_path = install_dir.join(crate::store_dl::resolve_existing_case(
+            &req.install_dir,
+            &file.path,
+        ));
         let skipped = skip.contains(file.path.as_str());
         let resumed = !skipped
             && fs::metadata(&out_path)

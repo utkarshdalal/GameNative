@@ -408,7 +408,10 @@ pub fn plan_depot_write(
                 false,
             ));
         }
-        let path = join_target_path(target_dir, &file.filename);
+        // Re-spell to the on-disk case so Directory/Symlink actions land in the dir an earlier
+        // depot already created (`Game/`) instead of mkdir-ing a duplicate (`game/`).
+        let rel = crate::store_dl::resolve_existing_case(target_dir, &file.filename);
+        let path = join_target_path(target_dir, &rel);
         if !file.linktarget.is_empty() {
             // Path-traversal guard: symlinks are created up front (before any file write),
             // so an unchecked `sub -> ../../..` target lets a later `sub/x` write escape the
@@ -1209,6 +1212,38 @@ struct DepotFiles {
     already_present_bytes: u64,
 }
 
+/// Normalize manifest file paths to case-insensitive (Windows / Android-storage) semantics:
+/// directory components adopt the first-seen spelling so `Game/` and `game/` entries (e.g.
+/// depots 16451/16452) merge into ONE on-disk directory even on case-sensitive storage, and
+/// regular files whose full path differs only in case are the SAME on-disk file — the LAST
+/// manifest entry wins (Steam's manifest-order last-writer-wins) and the rest are dropped so
+/// two writers never race one inode. Directories and symlinks are never dropped. Runs once
+/// right after filename decryption, before planning/journaling, so every downstream consumer
+/// (chunk jobs, slots, resume markers) sees the same normalized list.
+pub fn normalize_manifest_case_paths(manifest: &mut ContentManifest) {
+    let is_regular = |f: &crate::store_dl::steam::content_manifest::FileMapping| {
+        f.linktarget.is_empty() && (f.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0
+    };
+    let paths: Vec<&str> = manifest.files.iter().map(|f| f.filename.as_str()).collect();
+    let canon = crate::store_dl::canonicalize_case_paths(&paths);
+    // Winner per case-folded key among REGULAR files (last in manifest order).
+    let mut winner: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for (i, f) in manifest.files.iter().enumerate() {
+        if is_regular(f) {
+            winner.insert(canon.keys[i].as_str(), i);
+        }
+    }
+    let mut kept = Vec::with_capacity(manifest.files.len());
+    for (i, mut f) in std::mem::take(&mut manifest.files).into_iter().enumerate() {
+        if is_regular(&f) && winner.get(canon.keys[i].as_str()) != Some(&i) {
+            continue; // case-duplicate of a later entry — same on-disk file
+        }
+        f.filename = canon.paths[i].clone();
+        kept.push(f);
+    }
+    manifest.files = kept;
+}
+
 impl DepotFiles {
     fn prepare(manifest: &ContentManifest, target_dir: &str) -> Self {
         let mut slots = Vec::with_capacity(manifest.files.len());
@@ -1216,7 +1251,10 @@ impl DepotFiles {
         for file in &manifest.files {
             let is_regular =
                 file.linktarget.is_empty() && (file.flags & DEPOT_FILE_FLAG_DIRECTORY) == 0;
-            let path = join_target_path(target_dir, &file.filename);
+            // Re-spell to the on-disk case so a resume finds files an older manifest (or a
+            // sibling depot) wrote with different casing (`Game/` vs `game/`).
+            let rel = crate::store_dl::resolve_existing_case(target_dir, &file.filename);
+            let path = join_target_path(target_dir, &rel);
             let preexisting = if is_regular {
                 fs::metadata(&path).map(|m| m.len()).unwrap_or(0)
             } else {
@@ -3002,6 +3040,48 @@ mod tests {
     }
 
     #[test]
+    fn plan_layout_respells_dirs_to_on_disk_case() {
+        // Cross-depot case merge: an earlier depot already created `Game/`; this depot's
+        // manifest spells it `game/`. The layout pass must NOT mkdir a duplicate lowercase dir.
+        let dir = temp_dir("plan_layout_respell_case");
+        fs::create_dir_all(dir.join("Game/Data")).unwrap();
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                ..Default::default()
+            },
+            files: vec![
+                crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: "game".into(),
+                    flags: DEPOT_FILE_FLAG_DIRECTORY,
+                    ..Default::default()
+                },
+                // Nested: both existing levels re-spell, the missing tail keeps its spelling.
+                crate::store_dl::steam::content_manifest::FileMapping {
+                    filename: "GAME/data/Sub".into(),
+                    flags: DEPOT_FILE_FLAG_DIRECTORY,
+                    ..Default::default()
+                },
+            ],
+            signature: Vec::new(),
+        };
+        let plan = plan_depot_write(&manifest, &[1u8; 32], 1, dir.to_str().unwrap(), 4).unwrap();
+        let result = create_depot_layout(&plan);
+        assert!(result.ok(), "{}", result.error);
+        assert!(dir.join("Game").is_dir());
+        assert!(dir.join("Game/Data/Sub").is_dir(), "nested dir created under on-disk case");
+        assert!(
+            !dir.join("game").exists(),
+            "layout must merge into the existing `Game/`, not mkdir `game/`"
+        );
+        assert!(
+            !dir.join("Game/data").exists(),
+            "nested layout must not mkdir a duplicate `data/` either"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn rejects_paths_that_escape_target() {
         assert!(path_is_safe("a/b/file.txt"));
         assert!(path_is_safe("./a/file.txt"));
@@ -4186,6 +4266,36 @@ mod tests {
         assert!(!sched.eligible(a, now));
         let later = now + Duration::from_secs(10);
         assert!(sched.eligible(a, later));
+    }
+
+    #[test]
+    fn manifest_case_normalization_merges_dirs_and_dedupes_last_wins() {
+        use crate::store_dl::steam::content_manifest::{ContentManifest, FileMapping};
+        let file = |name: &str| FileMapping {
+            filename: name.into(),
+            ..Default::default()
+        };
+        let mut dir_entry = file("game");
+        dir_entry.flags = DEPOT_FILE_FLAG_DIRECTORY;
+        let mut link = file("GAME/link");
+        link.linktarget = "Game/a.pk4".into();
+        let mut m = ContentManifest::default();
+        m.files = vec![
+            file("Game/a.pk4"),  // idx 0: same key as idx 2 → dropped (last wins)
+            file("game/b.pk4"),  // idx 1: dir merge → Game/b.pk4
+            file("game/A.pk4"),  // idx 2: the winner, canonical spelling Game/a.pk4
+            dir_entry,           // dir entries are never dropped
+            link,                // symlinks are never dropped
+        ];
+        normalize_manifest_case_paths(&mut m);
+        let names: Vec<&str> = m.files.iter().map(|f| f.filename.as_str()).collect();
+        assert_eq!(
+            names,
+            ["Game/b.pk4", "Game/a.pk4", "Game", "Game/link"],
+            "dirs merge into the first-seen spelling, case-dup keeps the LAST entry, \
+             dir + symlink survive"
+        );
+        assert_eq!(m.files[3].linktarget, "Game/a.pk4");
     }
 
     #[test]

@@ -551,6 +551,7 @@ pub fn download_resolved_depots_with_cancel_progress(
                 depot.depot_id
             ));
         }
+        crate::store_dl::steam::depot_writer::normalize_manifest_case_paths(&mut manifest);
         resolved.push((depot, manifest));
     }
 

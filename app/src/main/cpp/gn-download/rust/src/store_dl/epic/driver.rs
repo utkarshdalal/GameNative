@@ -112,13 +112,23 @@ pub struct EpicOutcome {
 /// Parse + plan (pure computation, no I/O). `Err` = "engine could not start"; Java
 /// then runs its own pool, since nothing has been fetched yet.
 pub fn build_plan(req: &EpicRequest) -> Result<EpicPlan, String> {
-    let manifest = parse_manifest(&req.manifest_bytes).map_err(|e| format!("plan: {e}"))?;
+    let mut manifest = parse_manifest(&req.manifest_bytes).map_err(|e| format!("plan: {e}"))?;
     // Path-traversal guard: filenames come from the server manifest and are joined onto
     // `install_dir` verbatim (`Path::join` even lets an ABSOLUTE path replace the base), and
     // error cleanup `remove_file`s those paths — reject the whole manifest up front.
     for file in &manifest.files {
         if !crate::store_dl::rel_path_is_safe(&file.filename) {
             return Err(format!("plan: unsafe path '{}'", file.filename));
+        }
+    }
+    // Case-insensitive path canonicalization: `Game/` and `game/` merge into one on-disk
+    // directory (first-seen spelling wins). NO entry drops — `pending_file_indices` index
+    // this list and must stay aligned with Java's manifest view.
+    {
+        let paths: Vec<&str> = manifest.files.iter().map(|f| f.filename.as_str()).collect();
+        let canon = crate::store_dl::canonicalize_case_paths(&paths);
+        for (f, path) in manifest.files.iter_mut().zip(canon.paths) {
+            f.filename = path;
         }
     }
     for &i in &req.pending_file_indices {
@@ -510,8 +520,9 @@ pub fn run_plan(
                 let file = &plan.manifest.files[req.pending_file_indices[ord]];
                 // Resume verify sweep: report the file whose on-disk bytes are being re-hashed.
                 verify_status(&file.filename);
+                let on_disk = crate::store_dl::resolve_existing_case(&req.install_dir, &file.filename);
                 let (n, bytes) =
-                    verified_prefix(&install_dir.join(&file.filename), file, &plan.manifest, &by_guid);
+                    verified_prefix(&install_dir.join(&on_disk), file, &plan.manifest, &by_guid);
                 resume[ord].0.store(n, Ordering::Relaxed);
                 resume[ord].1.store(bytes, Ordering::Relaxed);
             });
@@ -531,7 +542,8 @@ pub fn run_plan(
     let mut resumed_bytes = 0u64;
     for (ord, &fi) in req.pending_file_indices.iter().enumerate() {
         let file = &plan.manifest.files[fi];
-        let out_path = install_dir.join(&file.filename);
+        // Re-spell to the on-disk case (resume after a manifest casing change).
+        let out_path = install_dir.join(crate::store_dl::resolve_existing_case(&req.install_dir, &file.filename));
         if let Some(parent) = out_path.parent() {
             if let Err(e) = fs::create_dir_all(parent) {
                 outcome.error = format!("mkdirs {}: {e}", parent.display());
