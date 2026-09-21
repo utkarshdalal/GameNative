@@ -668,15 +668,61 @@ class DownloadsViewModel @Inject constructor(
             .forEach(::onPauseDownload)
     }
 
+    /**
+     * Enqueue one item with GameDownloadService (placeholder entry, store restart
+     * params resolved the same way as [resumeOnStore]). Starts nothing.
+     */
+    private suspend fun enqueueOnStore(item: DownloadItemState) {
+        when (item.gameSource) {
+            GameSource.STEAM -> {
+                val id = item.appId.toIntOrNull() ?: return
+                GameDownloadService.enqueueDownload(GameSource.STEAM, id.toString())
+            }
+
+            GameSource.GOG -> {
+                val game = gogGameDao.getById(item.appId) ?: return
+                val installPath = game.installPath.ifBlank { GOGConstants.getGameInstallPath(game.title) }
+                val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.GOG.name}_${item.appId}")
+                val language = ContainerUtils.toContainerData(container).language
+                GameDownloadService.enqueueDownload(GameSource.GOG, item.appId, installPath = installPath, containerLanguage = language)
+            }
+
+            GameSource.EPIC -> {
+                val id = item.appId.toIntOrNull() ?: return
+                val game = epicGameDao.getById(id) ?: return
+                val installPath = game.installPath.ifBlank {
+                    EpicConstants.getGameInstallPath(appContext, game.appName)
+                }
+                val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.EPIC.name}_${item.appId}")
+                val language = ContainerUtils.toContainerData(container).language
+                GameDownloadService.enqueueDownload(GameSource.EPIC, item.appId, dlcGameIds = emptyList(), installPath = installPath, containerLanguage = language)
+            }
+
+            GameSource.AMAZON -> {
+                val game = amazonGameDao.getByProductId(item.appId) ?: return
+                val installPath = game.installPath.ifBlank {
+                    AmazonConstants.getGameInstallPath(appContext, game.title)
+                }
+                GameDownloadService.enqueueDownload(GameSource.AMAZON, item.appId, installPath = installPath)
+            }
+
+            GameSource.CUSTOM_GAME -> Unit
+        }
+    }
+
     fun onResumeAll() {
-        // Only the first resumable download is launched: every launch registers
-        // with the queue, and registering N downloads at once would auto-pause
-        // the previous one N-1 times (a queue-transition chain = ANR). The rest
-        // stay truthfully paused — optimistically un-pausing them in the UI
-        // would lie until the next refresh, and queueing paused downloads
-        // without launching them needs store-side enqueue support.
-        val first = state.value.downloads.values.firstOrNull { it.canResume } ?: return
-        onResumeDownload(first)
+        val resumable = state.value.downloads.values.filter { it.canResume }
+        if (resumable.isEmpty()) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            // Queue every resumable download first (placeholders only — nothing is
+            // cancelled and the current download keeps running), then launch just the
+            // first one: its registerDownload replaces the placeholder with the real
+            // DownloadInfo and the queue drains the rest as each download finishes.
+            resumable.forEach { enqueueOnStore(it) }
+            resumeOnStore(resumable.first())
+            scheduleRefreshDownloads()
+        }
     }
 
     fun onCancelAll() {

@@ -580,7 +580,7 @@ object GameDownloadService {
     data class DownloadEntry(
         val gameSource: GameSource,
         val gameId: String,
-        val downloadInfo: DownloadInfo,
+        val downloadInfo: DownloadInfo?,
         val dlcGameIds: List<Int>,
         val installPath: String?,
         val containerLanguage: String?,
@@ -633,11 +633,12 @@ object GameDownloadService {
 
         synchronized(queueLock) {
             // Auto-pause all other active downloads. Skip entries whose transfer is
-            // already done and which are only syncing saves (post-install)
+            // already done and which are only syncing saves (post-install). Enqueued
+            // placeholders have no DownloadInfo yet — nothing to pause.
             registeredDownloads.forEach { (existingKey, entry) ->
-                if (existingKey != key && currentDownloadingKey != key && !entry.downloadInfo.isPostInstallSyncing()) {
+                if (existingKey != key && currentDownloadingKey != key && entry.downloadInfo?.isPostInstallSyncing() != true) {
                     Timber.i("[GameDownloadService] Auto-pausing ${entry.gameSource} download for ${entry.gameId}")
-                    entry.downloadInfo.cancel(message = "Paused for new download")
+                    entry.downloadInfo?.cancel(message = "Paused for new download")
                 }
             }
 
@@ -659,6 +660,43 @@ object GameDownloadService {
             // Always set current download key
             currentDownloadingKey = key
             Timber.i("[GameDownloadService] Registered $gameSource download for $gameId")
+        }
+    }
+
+    /**
+     * Enqueue a download WITHOUT starting it: registers a placeholder entry (no
+     * DownloadInfo yet) at the END of the queue so it survives as a pending item and
+     * is resumed by [resumeNextDownload] when the downloads ahead of it finish.
+     * Cancels nothing and never touches [currentDownloadingKey]. When the queue
+     * reaches the entry, the store's download entry point runs and its
+     * [registerDownload] call replaces the placeholder with the real DownloadInfo.
+     * Used by "Resume all" after an app kill, when the in-memory queue was lost.
+     */
+    fun enqueueDownload(
+        gameSource: GameSource,
+        gameId: String,
+        dlcGameIds: List<Int> = emptyList(),
+        installPath: String? = null,
+        containerLanguage: String? = null,
+    ) {
+        val key = makeKey(gameSource, gameId)
+
+        synchronized(queueLock) {
+            if (registeredDownloads.containsKey(key)) {
+                return // already registered (queued or running) — keep the live entry
+            }
+            registeredDownloads[key] = DownloadEntry(
+                gameSource = gameSource,
+                gameId = gameId,
+                downloadInfo = null,
+                dlcGameIds = dlcGameIds,
+                installPath = installPath,
+                containerLanguage = containerLanguage
+            )
+            if (!downloadQueue.contains(key)) {
+                downloadQueue.add(key)
+            }
+            Timber.i("[GameDownloadService] Enqueued $gameSource download for $gameId")
         }
     }
 
