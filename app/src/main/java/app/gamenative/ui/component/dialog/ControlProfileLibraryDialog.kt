@@ -223,7 +223,7 @@ fun ControlProfileLibraryDialog(
             runIo({
                 ControlProfileService.exportProfile(context, request.first, request.second, uri)
             }) {
-                SnackbarManager.show(context.getString(R.string.control_profile_exported))
+                SnackbarManager.show(context.getString(R.string.library_exported))
             }
         }
     }
@@ -237,7 +237,7 @@ fun ControlProfileLibraryDialog(
                     onConfirm = {
                         runIo({ ControlProfileService.installImported(manager, imported) }) {
                             refresh()
-                            SnackbarManager.show(context.getString(R.string.control_profile_imported))
+                            SnackbarManager.show(context.getString(R.string.nexus_queue_imported))
                         }
                     },
                 )
@@ -291,7 +291,7 @@ fun ControlProfileLibraryDialog(
                             ) {
                                 Icon(
                                     Icons.Default.Download,
-                                    contentDescription = stringResource(R.string.control_profile_import),
+                                    contentDescription = stringResource(R.string.nexus_tab_import),
                                 )
                             }
                             IconButton(enabled = !loading, onClick = ::openCreate) {
@@ -396,7 +396,7 @@ fun ControlProfileLibraryDialog(
                                         }) { applied ->
                                             onProfileApplied(applied)
                                             refresh(scrollToTop = true)
-                                            SnackbarManager.show(context.getString(R.string.control_profile_applied_message))
+                                            SnackbarManager.show(context.getString(R.string.best_config_applied_successfully))
                                         }
                                     }
                                 },
@@ -446,9 +446,9 @@ fun ControlProfileLibraryDialog(
     val pendingRename: ControlsProfile? = renameProfile
     pendingRename?.let { profile: ControlsProfile ->
         ProfileNameDialog(
-            title = stringResource(R.string.control_profile_rename),
+            title = stringResource(R.string.nexus_profile_rename),
             initialName = profile.name,
-            labelResId = R.string.control_profile_name,
+            labelResId = R.string.nexus_profile_name,
             maxLength = InputControlsManager.MAX_PROFILE_NAME_LENGTH,
             onDismiss = { renameProfile = null },
             onConfirm = { name: String ->
@@ -602,7 +602,7 @@ private fun ControlProfileCard(
                         )
                         if (onRename != null) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.control_profile_rename)) },
+                                text = { Text(stringResource(R.string.nexus_profile_rename)) },
                                 onClick = { menuExpanded = false; onRename() },
                             )
                         }
@@ -732,7 +732,7 @@ internal fun CreateControlProfileScreen(
                 value = name,
                 onValueChange = onNameChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.control_profile_name)) },
+                label = { Text(stringResource(R.string.nexus_profile_name)) },
                 singleLine = true,
             )
         }
@@ -1045,10 +1045,10 @@ private fun sectionLabel(section: ControlProfileSection): String = stringResourc
     when (section) {
         ControlProfileSection.ON_SCREEN -> R.string.control_profile_section_on_screen
         ControlProfileSection.PHYSICAL_CONTROLLER -> R.string.control_profile_section_physical
-        ControlProfileSection.RADIAL_MENU -> R.string.control_profile_section_radial
-        ControlProfileSection.GYRO -> R.string.control_profile_section_gyro
-        ControlProfileSection.TOUCHSCREEN -> R.string.control_profile_section_touchscreen
-        ControlProfileSection.SHOOTER -> R.string.control_profile_section_shooter
+        ControlProfileSection.RADIAL_MENU -> R.string.radial_menu
+        ControlProfileSection.GYRO -> R.string.gyro_aiming
+        ControlProfileSection.TOUCHSCREEN -> R.string.touchscreen_mode
+        ControlProfileSection.SHOOTER -> R.string.shooter_mode_toggle
     },
 )
 
