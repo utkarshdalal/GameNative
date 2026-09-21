@@ -771,6 +771,14 @@
     <string name="custom_game_import_failed">Import failed</string>
     <string name="custom_game_import_dialog_message">Select the folder containing the game. It will be imported into GameNative\'s storage so it can run without any storage permission. Large games may take a few minutes.</string>
     <string name="custom_game_import_remove_original">Remove original after import</string>
+    <string name="votv_home_title">Voices of the Void</string>
+    <string name="votv_import_button">Import Voices of the Void</string>
+    <string name="votv_import_description">Select the folder containing your Voices of the Void game files. It will be imported into app storage so it can run without any storage permission.</string>
+    <string name="votv_importing">Importing game…</string>
+    <string name="votv_launch_button">Launch Voices of the Void</string>
+    <string name="votv_reimport_button">Import a different copy</string>
+    <string name="votv_import_error_generic">Could not find a game executable in the imported folder</string>
+    <string name="votv_import_error_failed">Import failed</string>
     <string name="base_app_shortcut_created">Shortcut created</string>
     <string name="base_app_shortcut_failed">Failed to create shortcut: %s</string>
     <string name="base_app_images_fetched">Images fetched successfully</string>

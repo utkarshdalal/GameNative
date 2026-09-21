@@ -1502,6 +1502,14 @@ object PrefManager {
             setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
         }
 
+    /** The appId of the single game imported into the VOTV launcher variant, or null if none yet. */
+    private val VOTV_GAME_APP_ID = stringPreferencesKey("votv_game_app_id")
+    var votvGameAppId: String?
+        get() = getPref(VOTV_GAME_APP_ID, "").ifEmpty { null }
+        set(value) {
+            if (value == null) removePref(VOTV_GAME_APP_ID) else setPref(VOTV_GAME_APP_ID, value)
+        }
+
     private val FAVORITE_APP_IDS = stringPreferencesKey("favorite_app_ids")
     var favoriteAppIds: Set<String>
         get() {

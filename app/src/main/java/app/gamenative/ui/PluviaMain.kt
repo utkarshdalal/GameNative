@@ -100,8 +100,10 @@ import app.gamenative.launch.LaunchReadiness
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
+import app.gamenative.ui.model.VotvViewModel
 import app.gamenative.ui.screen.DebugPaywallScreen
 import app.gamenative.ui.screen.HomeScreen
+import app.gamenative.ui.screen.votv.VotvHomeScreen
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
 import app.gamenative.ui.screen.settings.SettingsScreen
@@ -1626,6 +1628,9 @@ fun PluviaMain(
 
             val startDestination = rememberSaveable {
                 when {
+                    // The VOTV launcher variant never touches Steam/GOG/Epic/Amazon login;
+                    // it always starts on its own minimal import/launch screen.
+                    BuildConfig.VOTV_LAUNCHER -> PluviaScreen.VotvHome.route
                     SteamService.isLoggedIn -> PluviaScreen.Home.route + "?offline=false"
                     // skip login screen if any service has stored credentials
                     SteamUtils.hasStoredCredentials() ||
@@ -1654,6 +1659,13 @@ fun PluviaMain(
                                 popUpTo(PluviaScreen.LoginUser.route) { inclusive = true }
                             }
                         },
+                    )
+                }
+                /** VOTV launcher variant's minimal import/launch screen **/
+                composable(route = PluviaScreen.VotvHome.route) {
+                    VotvHomeScreen(
+                        mainViewModel = viewModel,
+                        votvViewModel = hiltViewModel(),
                     )
                 }
                 /** Library, Downloads **/

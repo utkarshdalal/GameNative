@@ -6,6 +6,7 @@ package app.gamenative.ui.screen
 sealed class PluviaScreen(val route: String) {
     data object LoginUser : PluviaScreen("login")
     data object Home : PluviaScreen("home")
+    data object VotvHome : PluviaScreen("votv_home")
     data object XServer : PluviaScreen("xserver")
     data object Settings : PluviaScreen("settings")
     data object Chat : PluviaScreen("chat/{id}") {

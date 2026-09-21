@@ -2619,7 +2619,12 @@ fun XServerScreen(
             val configuredExternalMode = ExternalDisplayInputController.fromConfig(container.externalDisplayMode)
             val swapEnabled = container.isExternalDisplaySwap
 
-            val overlay = SwapInputOverlayView(context, xServerView.getxServer()).apply {
+            val overlay = SwapInputOverlayView(
+                context,
+                xServerView.getxServer(),
+                touchpadViewProvider = { PluviaApp.touchpadView },
+                useHub = BuildConfig.VOTV_LAUNCHER,
+            ).apply {
                 visibility = View.GONE
                 setMode(ExternalDisplayInputController.Mode.OFF)
             }

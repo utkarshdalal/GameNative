@@ -208,7 +208,7 @@ private class ExternalInputPresentation(
     }
 }
 
-private class HybridInputLayout(
+internal class HybridInputLayout(
     context: Context,
     xServer: XServer,
     touchpadViewProvider: () -> TouchpadView?,

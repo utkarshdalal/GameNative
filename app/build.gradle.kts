@@ -68,6 +68,7 @@ android {
         versionName = "1.2.1"
 
         buildConfigField("boolean", "GOLD", "false")
+        buildConfigField("boolean", "VOTV_LAUNCHER", "false")
         fun secret(name: String) =
             project.findProperty(name) as String? ?: System.getenv(name) ?: ""
 
@@ -81,6 +82,7 @@ android {
             mapOf(
                 "icon" to iconValue,
                 "roundIcon" to iconRoundValue,
+                "appName" to "GameNative",
             ),
         )
 
@@ -190,6 +192,21 @@ android {
                 mapOf(
                     "icon" to iconValue,
                     "roundIcon" to iconRoundValue,
+                ),
+            )
+        }
+        create("release-votv") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".votv"
+            buildConfigField("boolean", "VOTV_LAUNCHER", "true")
+            // No VOTV-branded art yet; reuses the default launcher icon until real assets land.
+            manifestPlaceholders.putAll(
+                mapOf(
+                    "icon" to "@mipmap/ic_launcher",
+                    "roundIcon" to "@mipmap/ic_launcher_round",
+                    "appName" to "VOTV Launcher",
                 ),
             )
         }
