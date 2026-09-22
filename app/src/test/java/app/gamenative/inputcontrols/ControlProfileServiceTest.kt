@@ -276,23 +276,23 @@ class ControlProfileServiceTest {
     }
 
     @Test
-    fun preview_countsEachControlPayload() {
+    fun preview_countsOnlyTheActiveControllerSetAndDefaultRadialMenu() {
         val profile = JSONObject(
             """{
                 "name":"Mixed",
                 "elements":[{},{}],
                 "controllers":[
-                    {"controllerBindings":[{},{},{}]},
-                    {"controllerBindings":[{}]}
+                    {"id":"device-specific","controllerBindings":[{},{},{}]},
+                    {"id":"*","controllerBindings":[{}]}
                 ],
-                "radialMenus":[{"slots":[{},{},{}]}]
+                "radialMenus":[{"slots":[{},{},{}]},{"slots":[{}]}]
             }""".trimIndent(),
         )
 
         val preview = ControlProfileService.preview(profile)
 
         assertEquals(2, preview.elementCount)
-        assertEquals(4, preview.physicalBindingCount)
+        assertEquals(1, preview.physicalBindingCount)
         assertEquals(3, preview.radialSlotCount)
     }
 

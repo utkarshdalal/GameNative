@@ -65,34 +65,26 @@ object ControlProfileService {
         preview(readProfileJson(context, profile))
 
     fun preview(json: JSONObject): ControlProfilePreview {
-        val controllers = json.optJSONArray("controllers")
-        var physicalBindings = 0
-        if (controllers != null) {
-            for (index in 0 until controllers.length()) {
-                physicalBindings += controllers.optJSONObject(index)
-                    ?.optJSONArray("controllerBindings")
-                    ?.length()
-                    ?: 0
-            }
-        }
-
-        val radialMenus = json.optJSONArray("radialMenus")
-        var radialSlots = 0
-        if (radialMenus != null) {
-            for (index in 0 until radialMenus.length()) {
-                radialSlots += radialMenus.optJSONObject(index)?.optJSONArray("slots")?.length() ?: 0
-            }
-        }
-
         return ControlProfilePreview(
             json = json,
             name = json.optString("name", "Control Profile"),
             sections = sectionsOf(json),
             elementCount = json.optJSONArray("elements")?.length() ?: 0,
-            physicalBindingCount = physicalBindings,
-            radialSlotCount = radialSlots,
+            physicalBindingCount = activeControllerJson(json)?.optJSONArray("controllerBindings")?.length() ?: 0,
+            radialSlotCount = activeRadialMenuJson(json)?.optJSONArray("slots")?.length() ?: 0,
         )
     }
+
+    /** Preview the editor's wildcard mapping, or the first stored mapping when none exists. */
+    internal fun activeControllerJson(json: JSONObject): JSONObject? {
+        val controllers = json.optJSONArray("controllers") ?: return null
+        val entries = (0 until controllers.length()).mapNotNull(controllers::optJSONObject)
+        return entries.firstOrNull { it.optString("id") == "*" } ?: entries.firstOrNull()
+    }
+
+    /** The runtime and editor both use the first/default radial menu. */
+    internal fun activeRadialMenuJson(json: JSONObject): JSONObject? =
+        json.optJSONArray("radialMenus")?.optJSONObject(0)
 
     fun sectionsOf(json: JSONObject): Set<ControlProfileSection> {
         val declared = json.optJSONArray(KEY_INCLUDED_SECTIONS)

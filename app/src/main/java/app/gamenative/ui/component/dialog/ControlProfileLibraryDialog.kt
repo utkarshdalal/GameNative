@@ -842,6 +842,8 @@ private fun ControlProfilePreviewDialog(
     onDismiss: () -> Unit,
     onConfirm: (() -> Unit)?,
 ) {
+    val physicalBindings = remember(action.preview.json) { physicalProfileBindingRows(action.preview.json) }
+    val radialBindings = remember(action.preview.json) { radialProfileBindingRows(action.preview.json) }
     ControlSettingsDialog(onDismiss = onDismiss) {
         Box(
             modifier = Modifier
@@ -882,9 +884,19 @@ private fun ControlProfilePreviewDialog(
                             }
                             if (ControlProfileSection.PHYSICAL_CONTROLLER in action.preview.sections) {
                                 item { Text(stringResource(R.string.control_profile_bindings_count, action.preview.physicalBindingCount)) }
+                                items(physicalBindings.size, key = { "physical-binding-$it" }) { index ->
+                                    ProfileBindingPreviewRow(physicalBindings[index].label, physicalBindings[index])
+                                }
                             }
                             if (ControlProfileSection.RADIAL_MENU in action.preview.sections) {
                                 item { Text(stringResource(R.string.control_profile_radial_count, action.preview.radialSlotCount)) }
+                                items(radialBindings.size, key = { "radial-slot-$it" }) { index ->
+                                    val row = radialBindings[index]
+                                    ProfileBindingPreviewRow(
+                                        row.label.ifBlank { stringResource(R.string.radial_menu_slot_title, index + 1) },
+                                        row,
+                                    )
+                                }
                             }
                             item { ProfileSettingsSummary(action.preview) }
                         }
@@ -898,6 +910,29 @@ private fun ControlProfilePreviewDialog(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ProfileBindingPreviewRow(label: String, row: ProfileBindingRow) {
+    val value = when {
+        row.binding.isEmpty -> stringResource(R.string.binding_none)
+        row.binding.isSequence -> stringResource(
+            R.string.binding_sequence_current_format,
+            row.binding.toString(),
+            row.binding.sequenceDelayMs,
+        )
+        else -> row.binding.toString()
+    }
+    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
         }
     }
 }
