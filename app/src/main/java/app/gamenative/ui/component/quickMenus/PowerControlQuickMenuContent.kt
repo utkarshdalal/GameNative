@@ -867,9 +867,7 @@ private fun CoreCheckboxRow(
         ) {
             for (core in cores) {
                 val checked = selectedCores.contains(core)
-                // Keep at least one core selected at all times: once a core is the last one
-                // left checked, its checkbox is locked on (non-clickable, greyed out via the
-                // default Material3 disabled colors below).
+                // Lock the last checked core's checkbox so at least one core always stays selected.
                 val isLastRemainingCore = checked && selectedCores.size == 1
                 val cluster = topology?.clusterByCore?.get(core)
                 Row(verticalAlignment = Alignment.CenterVertically) {

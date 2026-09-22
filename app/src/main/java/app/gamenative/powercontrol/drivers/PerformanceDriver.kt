@@ -78,10 +78,8 @@ abstract class PerformanceDriver {
     open fun stop() {}
 
     /**
-     * Hands CPU governor/min/max frequency and GPU min/max power level control back to
-     * the OS, without touching CPU pinning or fan control. Used when [AutoTuningMode]
-     * switches to [AutoTuningMode.OFF]. Drivers that cannot do this in isolation (no
-     * per-session baseline to restore from) return false and leave things as they are.
+     * Hands CPU/GPU frequency control back to the OS on [AutoTuningMode.OFF]; drivers with no
+     * baseline to restore from return false and leave things as they are.
      */
     open fun releaseFrequencyControl(): Boolean = false
 
