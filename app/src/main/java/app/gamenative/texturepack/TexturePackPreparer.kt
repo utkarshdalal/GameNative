@@ -113,10 +113,10 @@ class TexturePackPreparer(
                     continue
                 }
                 idleSince = 0L
-                for (request in batch.requests) {
-                    currentCoroutineContext().ensureActive()
-                    val payload = withContext(Dispatchers.IO) {
-                        reader.read(
+                val payloads = withContext(Dispatchers.IO) {
+                    batch.requests.map { request ->
+                        currentCoroutineContext().ensureActive()
+                        request.id to reader.read(
                             request.file,
                             request.offset,
                             request.length,
@@ -125,9 +125,16 @@ class TexturePackPreparer(
                             request.innerLength,
                         )
                     }
-                    client.putIoResult(session, request.id, payload)
-                    served++
-                    onProgress(TexturePackProgress(TexturePackPhase.SCANNING, served, 0L))
+                }
+                val gate = Semaphore(IO_ANSWER_PARALLELISM)
+                coroutineScope {
+                    payloads.map { (id, payload) ->
+                        async(Dispatchers.IO) {
+                            gate.withPermit { client.putIoResult(session, id, payload) }
+                            served++
+                            onProgress(TexturePackProgress(TexturePackPhase.SCANNING, served, 0L))
+                        }
+                    }.awaitAll()
                 }
             }
         }
@@ -238,6 +245,7 @@ class TexturePackPreparer(
         private const val UPLOAD_PARALLELISM = 4
         private const val DOWNLOAD_PARALLELISM = 6
         private const val MAX_ATTEMPTS = 3
+        private const val IO_ANSWER_PARALLELISM = 8
         private const val PLANNER_IDLE_LIMIT_MS = 10 * 60_000L
         private const val EMPTY_BATCH_DELAY_MS = 1_000L
         private const val INITIAL_BACKOFF_MS = 2_000L
