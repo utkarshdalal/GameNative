@@ -243,7 +243,6 @@
     <string name="container_config_custom_resolution_title">사용자 지정 해상도 설정</string>
     <string name="container_config_custom_resolution_separator">x</string>
     <string name="container_config_custom_resolution_error_nonzero">너비와 높이는 0보다 커야 합니다</string>
-    <string name="container_config_custom_resolution_error_aspect">너비는 높이보다 커야 합니다</string>
     <string name="storage_info">저장소 정보</string>
     <string name="duplicate">복제</string>
     <string name="reconfigure">재구성</string>
