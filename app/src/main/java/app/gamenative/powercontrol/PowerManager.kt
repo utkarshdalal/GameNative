@@ -154,6 +154,10 @@ object PowerManager {
     var ownsGameAffinity: Boolean = false
         private set
 
+    val holdsGameAffinity: Boolean
+        get() = ownsGameAffinity ||
+            (currentProfile.gamePinningMode == GamePinningMode.MANUAL && parseCpuList(currentProfile.manualGamePinCores).isNotEmpty())
+
     /**
      * Bumped whenever a pin run starts or is called off, so a retry loop left over from an earlier
      * run stops instead of pinning the game again.
@@ -553,6 +557,22 @@ object PowerManager {
     fun setPowerProfile(profile: PowerProfile) {
         val previousProfile = currentProfile
         currentProfile = profile
+
+        if (profile.gamePinningMode == GamePinningMode.MANUAL) {
+            val needsGameDefault = profile.manualGamePinCores.isBlank()
+            val needsBackgroundDefault = profile.manualBackgroundPinCores.isBlank()
+            if (needsGameDefault || needsBackgroundDefault) {
+                autoModeCoreSplit()?.let { (background, game) ->
+                    currentProfile = currentProfile.copy(
+                        manualBackgroundPinCores = if (needsBackgroundDefault) background else currentProfile.manualBackgroundPinCores,
+                        manualGamePinCores = if (needsGameDefault) game else currentProfile.manualGamePinCores,
+                    )
+                    Timber.tag("PowerManager").i(
+                        "Seeded empty Manual core list(s) from Auto's split (background=$background, game=$game)"
+                    )
+                }
+            }
+        }
 
         // Handle auto-tuning based on profile setting
         if (profile.enablePowerControl) {
@@ -1119,6 +1139,14 @@ object PowerManager {
         return if (all.size <= 2) all else all.drop(2)
     }
 
+    private fun autoModeCoreSplit(): Pair<String, String>? {
+        val pserver = driver as? PServerDriver ?: return null
+        val background = lowestCores(pserver, 2)
+        val game = gameCores(pserver)
+        if (background.isEmpty() && game.isEmpty()) return null
+        return background.sorted().joinToString(",") to game.sorted().joinToString(",")
+    }
+
     /**
      * Cores non-game Wine/background processes (wineserver, winhandler.exe, services.exe,
      * libsteambootstrap.so, PulseAudio) should be pinned to, per the profile's
@@ -1322,9 +1350,16 @@ object PowerManager {
             }
             GamePinningMode.AUTO -> {
                 if (!ownsGameAffinity) {
-                    Timber.tag("PowerManager").i(
-                        "Container CPU list owns the game affinity, not pinning $processName"
-                    )
+                    if (pinnedGameCores.isNotEmpty()) {
+                        Timber.tag("PowerManager").i(
+                            "Container CPU list owns the game affinity, releasing $processName's Manual pin before switching to Auto"
+                        )
+                        unpinGame()
+                    } else {
+                        Timber.tag("PowerManager").i(
+                            "Container CPU list owns the game affinity, not pinning $processName"
+                        )
+                    }
                     return
                 }
             }
@@ -1391,6 +1426,16 @@ object PowerManager {
         return parseCpuList(Container.getFallbackCPUList()).sorted()
     }
 
+    private fun targetCoresToUnpin(): List<Int> {
+        if (!ownsGameAffinity) {
+            containerCpuList(containerDir)
+                ?.let { parseCpuList(it).sorted() }
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { return it }
+        }
+        return allKnownCores()
+    }
+
     /**
      * Hands the recorded game process back every core and forgets the pinned mask.
      */
@@ -1401,8 +1446,8 @@ object PowerManager {
             return
         }
 
-        val allCores = allKnownCores()
-        if (allCores.isEmpty()) {
+        val coresToUnpin = targetCoresToUnpin()
+        if (coresToUnpin.isEmpty()) {
             Timber.tag("PowerManager").w("No all-cores mask available, affinity of $processName left alone")
             return
         }
@@ -1411,12 +1456,12 @@ object PowerManager {
         gamePinGeneration++
         Thread {
             try {
-                val success = applyAffinity(processName, pid, allCores)
+                val success = applyAffinity(processName, pid, coresToUnpin)
                 pinnedGameCores = emptyList()
                 Timber.tag("PowerManager").i(
-                    "Game pinning switched off, gave $processName CPUs ${allCores.joinToString()} back (success=$success)"
+                    "Game pinning switched off, gave $processName CPUs ${coresToUnpin.joinToString()} back (success=$success)"
                 )
-                if (success && pid != null) verifyGameAffinity(pid, allCores, "PowerManager")
+                if (success && pid != null) verifyGameAffinity(pid, coresToUnpin, "PowerManager")
             } catch (e: Exception) {
                 Timber.tag("PowerManager").e(e, "Failed to unpin game: $processName")
             }
