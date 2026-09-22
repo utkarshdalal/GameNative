@@ -748,10 +748,19 @@ object PowerManager {
                 ),
                 gpuInfo = gpuDisplayInfo,
                 ramInfo = ramDisplayInfo,
+                cpuTopology = (driver as? PServerDriver)?.let { buildCpuTopologyDisplayInfo(it) },
             )
         } catch (e: Exception) {
             Timber.tag("PowerManager").e(e, "Failed to refresh power control UI state")
         }
+    }
+
+    private fun buildCpuTopologyDisplayInfo(pserver: PServerDriver): CpuTopologyDisplayInfo? {
+        val presentClusters = pserver.getPresentClusters()
+        val cores = pserver.getAllCpuCores()
+        if (presentClusters.isEmpty() || cores.isEmpty()) return null
+        val clusterByCore = cores.mapNotNull { core -> pserver.clusterOf(core)?.let { core to it } }.toMap()
+        return CpuTopologyDisplayInfo(cores = cores, clusterByCore = clusterByCore, presentClusters = presentClusters)
     }
 
     /**
@@ -1098,11 +1107,7 @@ object PowerManager {
      * Order is efficiency, performance, then prime. For dual-cluster devices,
      * PERFORMANCE is the lower-frequency cluster and PRIME is the higher one.
      */
-    private fun allCpuCoresSorted(pserver: PServerDriver): List<Int> {
-        return pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.EFFICIENCY) +
-            pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PERFORMANCE) +
-            pserver.getCpuCoresByCluster(PServerDriver.CpuCluster.PRIME)
-    }
+    private fun allCpuCoresSorted(pserver: PServerDriver): List<Int> = pserver.getAllCpuCores()
 
     /**
      * The N lowest-frequency cores, reserved for non-game processes
@@ -1239,7 +1244,7 @@ object PowerManager {
         val driver = driver
         if (driver !is PServerDriver) return
 
-        val allCores = parseCpuList(Container.getFallbackCPUList()).sorted()
+        val allCores = allKnownCores(driver)
         if (allCores.isEmpty()) {
             Timber.tag("PowerManager").w("No all-cores mask available, background process affinity left alone")
             return
@@ -1390,6 +1395,11 @@ object PowerManager {
         }.start()
     }
 
+    private fun allKnownCores(pserver: PServerDriver? = driver as? PServerDriver): List<Int> {
+        pserver?.getAllCpuCores()?.takeIf { it.isNotEmpty() }?.let { return it }
+        return parseCpuList(Container.getFallbackCPUList()).sorted()
+    }
+
     /**
      * Hands the recorded game process back every core and forgets the pinned mask.
      */
@@ -1400,7 +1410,7 @@ object PowerManager {
             return
         }
 
-        val allCores = parseCpuList(Container.getFallbackCPUList()).sorted()
+        val allCores = allKnownCores()
         if (allCores.isEmpty()) {
             Timber.tag("PowerManager").w("No all-cores mask available, affinity of $processName left alone")
             return

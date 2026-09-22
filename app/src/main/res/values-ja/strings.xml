@@ -2420,6 +2420,10 @@
     <string name="power_control_auto_tuning_mode_off">オフ</string>
     <string name="power_control_auto_tuning_mode_off_desc">CPUとGPUの周波数制御をデバイスのOSに戻します。ガバナーや周波数の設定は適用されません。</string>
     <string name="power_control_game_pinning_manual_background_cores">バックグラウンドプロセスのコア</string>
+    <string name="power_control_cluster_legend_title">コアの種類</string>
+    <string name="power_control_cluster_efficiency">省電力</string>
+    <string name="power_control_cluster_performance">高性能</string>
+    <string name="power_control_cluster_prime">Prime</string>
     <string name="power_control_hud_show_fan">ファン回転数を表示</string>
     <string name="power_control_hud_show_tuner">チューニングのクロック上限を表示</string>
     <string name="power_control_tuning_strategy">調整ストラテジー</string>

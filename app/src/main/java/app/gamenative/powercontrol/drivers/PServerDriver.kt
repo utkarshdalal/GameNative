@@ -1591,6 +1591,17 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         return cpuClusters.size
     }
 
+    fun getAllCpuCores(): List<Int> =
+        getCpuCoresByCluster(CpuCluster.EFFICIENCY) +
+            getCpuCoresByCluster(CpuCluster.PERFORMANCE) +
+            getCpuCoresByCluster(CpuCluster.PRIME)
+
+    fun getPresentClusters(): List<CpuCluster> =
+        listOf(CpuCluster.EFFICIENCY, CpuCluster.PERFORMANCE, CpuCluster.PRIME)
+            .filter { cpuClusters[it]?.isNotEmpty() == true }
+
+    fun clusterOf(core: Int): CpuCluster? = cpuClusters.entries.firstOrNull { core in it.value }?.key
+
     /**
      * Pin a process to specific CPU cores using taskset.
      *

@@ -2465,6 +2465,10 @@
     <string name="power_control_auto_tuning_mode_off">Desactivado</string>
     <string name="power_control_auto_tuning_mode_off_desc">Devuelve el control de las frecuencias de CPU y GPU al sistema operativo del dispositivo. No se aplica ninguna configuración de gobernador ni de frecuencia.</string>
     <string name="power_control_game_pinning_manual_background_cores">Núcleos de procesos en segundo plano</string>
+    <string name="power_control_cluster_legend_title">Tipos de núcleo</string>
+    <string name="power_control_cluster_efficiency">Eficiencia</string>
+    <string name="power_control_cluster_performance">Rendimiento</string>
+    <string name="power_control_cluster_prime">Prime</string>
     <string name="power_control_hud_show_fan">Mostrar velocidad del ventilador</string>
     <string name="power_control_hud_show_tuner">Mostrar límites de frecuencia del ajuste</string>
     <string name="power_control_tuning_strategy">Estrategia de ajuste</string>

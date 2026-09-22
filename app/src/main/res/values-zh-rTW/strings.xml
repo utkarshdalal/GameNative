@@ -2472,6 +2472,10 @@
     <string name="power_control_auto_tuning_mode_off">關閉</string>
     <string name="power_control_auto_tuning_mode_off_desc">將 CPU 和 GPU 的頻率控制權交還給裝置系統。不會套用任何調速器或頻率設定。</string>
     <string name="power_control_game_pinning_manual_background_cores">背景處理程序核心</string>
+    <string name="power_control_cluster_legend_title">核心類型</string>
+    <string name="power_control_cluster_efficiency">能效</string>
+    <string name="power_control_cluster_performance">效能</string>
+    <string name="power_control_cluster_prime">Prime</string>
     <string name="power_control_hud_show_fan">顯示風扇轉速</string>
     <string name="power_control_hud_show_tuner">顯示調整的頻率上限</string>
     <string name="power_control_tuning_strategy">調整策略</string>
