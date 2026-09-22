@@ -154,6 +154,7 @@ object PowerManager {
     var ownsGameAffinity: Boolean = false
         private set
 
+    /** True while a new window must not get the container's CPU list re-applied over Power Control's own pin. */
     val holdsGameAffinity: Boolean
         get() = ownsGameAffinity ||
             (currentProfile.gamePinningMode == GamePinningMode.MANUAL && parseCpuList(currentProfile.manualGamePinCores).isNotEmpty())
@@ -225,9 +226,8 @@ object PowerManager {
     fun isProfilePowerControlEnabled(): Boolean = currentProfile.enablePowerControl
 
     /**
-     * Enable or disable in-game power control at runtime. Disabling stops the driver and
-     * hands clock control back to the OS; if a game is running, both directions also
-     * release/re-apply CPU pinning so nothing stays stuck once toggled.
+     * Enable or disable in-game power control at runtime; also releases/re-applies CPU
+     * pinning when a game is running, so nothing stays stuck once toggled.
      */
     fun setPowerControlEnabled(enabled: Boolean) {
         // Always save the profile
@@ -629,8 +629,7 @@ object PowerManager {
                 }
             }
 
-            // Background processes are otherwise only pinned once, at game launch - without
-            // this, live mode/core-list changes would update the UI but not move them until relaunch.
+            // Background processes are otherwise pinned once at launch, so live changes need a manual re-pin too.
             val manualBackgroundCoresChanged = profile.gamePinningMode == GamePinningMode.MANUAL &&
                 previousProfile.manualBackgroundPinCores != profile.manualBackgroundPinCores
             if (pinningModeChanged || manualBackgroundCoresChanged) {
@@ -1139,6 +1138,7 @@ object PowerManager {
         return if (all.size <= 2) all else all.drop(2)
     }
 
+    /** Auto mode's current background/game core split, formatted for the Manual core-list profile fields. */
     private fun autoModeCoreSplit(): Pair<String, String>? {
         val pserver = driver as? PServerDriver ?: return null
         val background = lowestCores(pserver, 2)
@@ -1147,11 +1147,7 @@ object PowerManager {
         return background.sorted().joinToString(",") to game.sorted().joinToString(",")
     }
 
-    /**
-     * Cores non-game Wine/background processes (wineserver, winhandler.exe, services.exe,
-     * libsteambootstrap.so, PulseAudio) should be pinned to, per the profile's
-     * [PowerProfile.gamePinningMode]. Empty means "do not pin them at all".
-     */
+    /** Cores background Wine processes/PulseAudio pin to, per [PowerProfile.gamePinningMode]; empty = don't pin. */
     private fun backgroundPinCores(pserver: PServerDriver): List<Int> {
         return when (currentProfile.gamePinningMode) {
             GamePinningMode.AUTO -> lowestCores(pserver, 2)
@@ -1212,9 +1208,7 @@ object PowerManager {
                 // Wait for Wine to fully initialize
                 Thread.sleep(2000)
 
-                // In Auto mode this is the 2 lowest-frequency cores, matching upstream. On
-                // some devices that starves winhandler.exe (answers every mouse-look round trip)
-                // during camera movement; Manual mode lets the user pick a different range.
+                // Auto uses the 2 lowest-frequency cores (upstream default); Manual lets the user pick a range.
                 val backgroundCores = backgroundPinCores(driver)
 
                 if (backgroundCores.isEmpty()) {
@@ -1224,9 +1218,7 @@ object PowerManager {
                     return@Thread
                 }
 
-                // Pin wineserver/winhandler.exe/services.exe to the background cores
-                // (wineserver is critical for Wine IPC, winhandler.exe answers the mouse-look
-                // round trip - see the comment above).
+                // wineserver handles Wine IPC, winhandler.exe the mouse-look round trip.
                 for (processName in BACKGROUND_EXE_PROCESS_NAMES) {
                     driver.findRunningProcesses(processName)
                         .firstOrNull { it.second.endsWith(processName) }?.let {
@@ -1253,12 +1245,7 @@ object PowerManager {
         }.start()
     }
 
-    /**
-     * Hands wineserver/winhandler.exe/services.exe/libsteambootstrap.so and PulseAudio back to
-     * every core. Mirrors [unpinGame], but for the background process group - used when a live
-     * profile change moves [PowerProfile.gamePinningMode] to [GamePinningMode.OFF] while a game
-     * is already running.
-     */
+    /** Hands the background process group's affinity back to every core; mirrors [unpinGame] for that group. */
     private fun unpinBackgroundProcesses() {
         val driver = driver
         if (driver !is PServerDriver) return
@@ -1364,8 +1351,7 @@ object PowerManager {
                 }
             }
             GamePinningMode.MANUAL -> {
-                // Manual mode explicitly overrides the container CPU list, so ownsGameAffinity
-                // (which only governs the Auto-mode handoff) does not apply here.
+                // Manual explicitly overrides the container CPU list; ownsGameAffinity only governs Auto.
             }
         }
 
@@ -1426,6 +1412,7 @@ object PowerManager {
         return parseCpuList(Container.getFallbackCPUList()).sorted()
     }
 
+    /** Cores to release the game onto: the container's CPU list if it owns affinity, else all known cores. */
     private fun targetCoresToUnpin(): List<Int> {
         if (!ownsGameAffinity) {
             containerCpuList(containerDir)
@@ -1685,11 +1672,7 @@ object PowerManager {
         }
     }
 
-    /**
-     * Applies the current profile's CPU governor/min/max frequency and GPU/Bus min/max power
-     * level to the driver. Used both on initial profile application and when reclaiming control
-     * from the OS after [AutoTuningMode.OFF] is switched away from.
-     */
+    /** Applies the profile's CPU governor/min/max and GPU/Bus min/max power level to the driver. */
     private fun applyCpuGpuControl(): Boolean {
         return update {
             governor(currentProfile.governor.governorName)
@@ -1706,11 +1689,7 @@ object PowerManager {
         }
     }
 
-    /**
-     * Hands CPU/GPU frequency control to or back from the OS when [AutoTuningMode] changes
-     * live. Only entering/leaving [AutoTuningMode.OFF] needs handling here - Auto/Manual
-     * transitions are already covered by [startAutoTuning]/[stopAutoTuning].
-     */
+    /** Releases/reclaims CPU-GPU frequency control from the OS on entering/leaving [AutoTuningMode.OFF] live. */
     private fun switchAutoTuningMode(previous: AutoTuningMode, next: AutoTuningMode) {
         if (next == AutoTuningMode.OFF) {
             val released = driver.releaseFrequencyControl()
