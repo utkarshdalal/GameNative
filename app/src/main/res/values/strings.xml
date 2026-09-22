@@ -2548,6 +2548,7 @@
     <string name="texture_pack_play">Play</string>
     <string name="texture_pack_cancel_and_play">Cancel and play</string>
     <string name="texture_pack_dont_ask">Don\'t ask again for this game</string>
+    <string name="texture_pack_progress_reads">%1$d file reads answered</string>
     <string name="texture_pack_phase_scanning">Scanning game files</string>
     <string name="texture_pack_phase_hashing">Checking textures</string>
     <string name="texture_pack_phase_uploading">Uploading textures</string>

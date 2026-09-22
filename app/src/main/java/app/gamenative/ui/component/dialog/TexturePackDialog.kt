@@ -59,7 +59,8 @@ fun TexturePackDialog(
 
     LaunchedEffect(appId, storeId) {
         try {
-            val result = preparer.estimate()
+            val result = preparer.estimate { progress = it }
+            progress = null
             estimate = result
             if (result is TexturePackEstimate.Unsupported) {
                 TexturePackGate.setSkipped(context, appId, true)
@@ -113,6 +114,12 @@ fun TexturePackDialog(
                         text = phaseLabel(state.phase),
                         style = MaterialTheme.typography.bodySmall,
                     )
+                    if (state.total == 0L && state.current > 0L) {
+                        Text(
+                            text = stringResource(R.string.texture_pack_progress_reads, state.current),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                     if (state.total > 0L) {
                         LinearProgressIndicator(
                             progress = { (state.current.toFloat() / state.total.toFloat()).coerceIn(0f, 1f) },

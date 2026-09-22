@@ -15,6 +15,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.IOException
 
 enum class TexturePackPhase { SCANNING, HASHING, UPLOADING, WAITING, DOWNLOADING, DONE }
 
@@ -95,12 +96,20 @@ class TexturePackPreparer(
 
     private suspend fun runIoLoop(session: String, onProgress: (TexturePackProgress) -> Unit): PreparePlan? {
         var served = 0L
+        var idleSince = 0L
         MipReader(gameDir).use { reader ->
             while (true) {
                 currentCoroutineContext().ensureActive()
                 val batch = client.prepareNext(session)
                 if (batch.done) return batch.plan
-                if (batch.requests.isEmpty()) return batch.plan
+                if (batch.requests.isEmpty()) {
+                    val now = System.currentTimeMillis()
+                    if (idleSince == 0L) idleSince = now
+                    if (now - idleSince > PLANNER_IDLE_LIMIT_MS) throw IOException("planner produced no work for ${PLANNER_IDLE_LIMIT_MS / 1000}s")
+                    delay(EMPTY_BATCH_DELAY_MS)
+                    continue
+                }
+                idleSince = 0L
                 for (request in batch.requests) {
                     currentCoroutineContext().ensureActive()
                     val payload = withContext(Dispatchers.IO) {
@@ -226,6 +235,8 @@ class TexturePackPreparer(
         private const val UPLOAD_PARALLELISM = 4
         private const val DOWNLOAD_PARALLELISM = 6
         private const val MAX_ATTEMPTS = 3
+        private const val PLANNER_IDLE_LIMIT_MS = 10 * 60_000L
+        private const val EMPTY_BATCH_DELAY_MS = 1_000L
         private const val INITIAL_BACKOFF_MS = 2_000L
         private const val MAX_BACKOFF_MS = 30_000L
         private const val WAIT_TIMEOUT_MS = 10 * 60 * 1000L
