@@ -34,7 +34,12 @@ class TexturePackDownloadWorker(
                     pending++
                 }
             }
-            if (pending > 0) Result.retry() else Result.success()
+            if (pending > 0) {
+                Result.retry()
+            } else {
+                TexturePackGate.markDone(applicationContext, appId)
+                Result.success()
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

@@ -48,6 +48,7 @@ class TexturePackPreparer(
     suspend fun estimate(onProgress: (TexturePackProgress) -> Unit = {}): TexturePackEstimate {
         onProgress(TexturePackProgress(TexturePackPhase.SCANNING))
         val files = withContext(Dispatchers.IO) { scanFiles(gameDir) }
+        withContext(Dispatchers.IO) { TexturePackGate.setPendingSignature(context, appId, TexturePackGate.installSignature(gameDir.absolutePath)) }
         val start = client.prepareStart(PrepareStartRequest(platform, storeId, files))
         fingerprint = start.fingerprint
         when (start.status) {
@@ -87,7 +88,9 @@ class TexturePackPreparer(
         }
         uploadMissing(onProgress)
         val complete = downloadPack(cacheDir, onProgress)
-        if (!complete) {
+        if (complete) {
+            TexturePackGate.markDone(context, appId)
+        } else {
             TexturePackDownloadWorker.enqueue(context, appId, fingerprint)
         }
         onProgress(TexturePackProgress(TexturePackPhase.DONE))

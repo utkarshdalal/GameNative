@@ -53,11 +53,14 @@ fun TexturePackDialog(
 
     var estimate by remember(appId) { mutableStateOf<TexturePackEstimate?>(null) }
     var statusError by remember(appId) { mutableStateOf<String?>(null) }
+    var attempt by remember(appId) { mutableStateOf(0) }
     var progress by remember(appId) { mutableStateOf<TexturePackProgress?>(null) }
     var dontAsk by remember(appId) { mutableStateOf(false) }
     var prepareJob by remember(appId) { mutableStateOf<Job?>(null) }
 
-    LaunchedEffect(appId, storeId) {
+    LaunchedEffect(appId, storeId, attempt) {
+        statusError = null
+        estimate = null
         try {
             val result = preparer.estimate { progress = it }
             progress = null
@@ -156,8 +159,11 @@ fun TexturePackDialog(
         },
         confirmButton = {
             when {
-                unsupported || statusError != null -> {
+                unsupported -> {
                     TextButton(onClick = finish) { Text(stringResource(R.string.texture_pack_play)) }
+                }
+                statusError != null -> {
+                    TextButton(onClick = { attempt++ }) { Text(stringResource(R.string.texture_pack_retry)) }
                 }
                 running -> {
                     TextButton(onClick = {
@@ -193,7 +199,7 @@ fun TexturePackDialog(
             }
         },
         dismissButton = {
-            if (!running && !unsupported && statusError == null) {
+            if (!running && !unsupported) {
                 TextButton(onClick = finish) { Text(stringResource(R.string.texture_pack_play_anyway)) }
             }
         },

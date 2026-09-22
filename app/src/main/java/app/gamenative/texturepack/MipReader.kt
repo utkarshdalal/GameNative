@@ -6,6 +6,7 @@ import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.util.zip.Inflater
+import net.jpountz.lz4.LZ4Exception
 import net.jpountz.lz4.LZ4Factory
 import net.jpountz.lz4.LZ4FrameInputStream
 
@@ -101,12 +102,19 @@ class MipReader(private val gameDir: File) : Closeable {
         }
     }
 
-    private fun lz4Block(raw: ByteArray, decompressedSize: Int): ByteArray {
-        val dest = ByteArray(decompressedSize)
-        val written = LZ4Factory.fastestJavaInstance()
-            .safeDecompressor()
-            .decompress(raw, 0, raw.size, dest, 0, decompressedSize)
-        return if (written == decompressedSize) dest else dest.copyOf(written)
+    private fun lz4Block(raw: ByteArray, hint: Int): ByteArray {
+        val decompressor = LZ4Factory.fastestJavaInstance().safeDecompressor()
+        var capacity = maxOf(hint, raw.size * 4, LZ4_MIN_CAPACITY)
+        while (true) {
+            val dest = ByteArray(capacity)
+            try {
+                val written = decompressor.decompress(raw, 0, raw.size, dest, 0, capacity)
+                return if (written == capacity) dest else dest.copyOf(written)
+            } catch (e: LZ4Exception) {
+                if (capacity >= LZ4_MAX_CAPACITY) throw IOException("lz4 block did not fit in $LZ4_MAX_CAPACITY bytes", e)
+                capacity = (capacity.toLong() * 2).coerceAtMost(LZ4_MAX_CAPACITY.toLong()).toInt()
+            }
+        }
     }
 
     private fun lz4Frame(raw: ByteArray): ByteArray =
@@ -125,5 +133,7 @@ class MipReader(private val gameDir: File) : Closeable {
 
     companion object {
         private const val MIN_GROW = 64 * 1024
+        private const val LZ4_MIN_CAPACITY = 4 * 1024 * 1024
+        private const val LZ4_MAX_CAPACITY = 128 * 1024 * 1024
     }
 }
