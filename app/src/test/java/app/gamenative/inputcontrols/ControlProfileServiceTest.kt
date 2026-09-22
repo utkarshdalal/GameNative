@@ -169,10 +169,17 @@ class ControlProfileServiceTest {
             profileFile.delete()
             profile.loadElementsFromJson(view, source)
             assertEquals(1, profile.elements.size)
+            assertTrue(profile.elements.single().isShooterLookThrough)
+
+            source.getJSONArray("elements").getJSONObject(0).put("lookThrough", false)
+            profile.loadElementsFromJson(view, source)
+            assertFalse(profile.elements.single().isLookThrough)
+            assertTrue(profile.elements.single().isShooterLookThrough)
 
             profile.loadElements(view)
 
             assertEquals(1, profile.elements.size)
+            assertTrue(profile.elements.single().isShooterLookThrough)
             assertFalse(profileFile.exists())
         } finally {
             bitmap.recycle()
