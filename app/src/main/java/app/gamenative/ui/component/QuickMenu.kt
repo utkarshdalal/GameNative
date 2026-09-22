@@ -1195,19 +1195,25 @@ fun QuickMenu(
     }
 
     LaunchedEffect(showControlProfiles, isVisible) {
-        if (showControlProfiles || !restoreControlProfileFocus || !isVisible) return@LaunchedEffect
-        restoreControlProfileFocus = false
+        if (showControlProfiles || !restoreControlProfileFocus) return@LaunchedEffect
+        if (!isVisible) {
+            restoreControlProfileFocus = false
+            return@LaunchedEffect
+        }
         // The library owns a separate window. Let it detach before returning
         // controller focus to the item that opened it.
         repeat(4) {
             delay(80)
             try {
-                controlProfileItemFocusRequester.requestFocus()
-                return@LaunchedEffect
+                if (controlProfileItemFocusRequester.requestFocus()) {
+                    restoreControlProfileFocus = false
+                    return@LaunchedEffect
+                }
             } catch (_: IllegalStateException) {
                 // The quick-menu focus target may still be attaching.
             }
         }
+        restoreControlProfileFocus = false
     }
 
     LaunchedEffect(isVisible, selectedTab) {
