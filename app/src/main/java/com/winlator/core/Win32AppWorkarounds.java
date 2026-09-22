@@ -104,7 +104,7 @@ public class Win32AppWorkarounds {
             return;
         }
         String pinnedProcessName = PowerManager.INSTANCE.getPinnedGameProcessName();
-        if (PowerManager.INSTANCE.getOwnsGameAffinity() && pinnedProcessName != null
+        if (PowerManager.INSTANCE.getHoldsGameAffinity() && pinnedProcessName != null
                 && pinnedProcessName.equalsIgnoreCase(className)) {
             Timber.tag("PowerManager").i("Power control holds the affinity of %s, container CPU list not applied", className);
             return;
