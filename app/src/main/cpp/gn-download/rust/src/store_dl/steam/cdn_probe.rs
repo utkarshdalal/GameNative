@@ -15,12 +15,17 @@
 //! caches 13 MB/s to 1-2. Each assigned host gets a real 256 KiB range GET of an actual depot
 //! chunk; we record connect+TTFB and body throughput.
 //!
-//! The probe runs in the BACKGROUND: the download starts immediately on the assigned set, the
-//! scheduler picks up the ranking mid-download ([`ProbeHints`]), and a usable on-disk cache
-//! (`<install>/.DepotDownloader/cdn_probe_cache.json`, keyed by the assigned-server-set hash —
-//! a network change usually changes the assigned set, which re-keys the cache naturally) seeds
-//! the ranking synchronously so even the first chunks start from the last known order. The
-//! cache refreshes when ANY of these hold:
+//! The download starts IMMEDIATELY on the assigned servers (seeded synchronously from the
+//! on-disk cache when usable — one small file read) and the fresh probe runs in the
+//! BACKGROUND, promoting winners at the next depot boundary. A background probe races the
+//! download's own traffic, though: on-device, every host's 256 KiB sample starved to the
+//! same ~0.5 MB/s against a ~30 MB/s download, so the ranking was noise AND the near-zero
+//! assigned median made the winner gate pass anything. Such a run is detected by the
+//! congestion floor ([`PROBE_CONGESTED_FLOOR_BPS`]) and discarded entirely — no cache write,
+//! no publish — so it can poison neither future downloads nor the current one.
+//! The on-disk cache (`<install>/.DepotDownloader/cdn_probe_cache.json`, keyed by the
+//! assigned-server-set hash — a network change usually changes the assigned set, which
+//! re-keys the cache naturally) refreshes when ANY of these hold:
 //!   1. age > [`PROBE_CACHE_TTL_SECS`],
 //!   2. the assigned server set changed (key mismatch),
 //!   3. a probed host was marked bad since — see [`mark_bad`]: a host that stalls/errors
@@ -66,6 +71,23 @@ pub const PROBE_CROSS_REGION_METROS: &[&str] = &[
 ];
 /// Host IDs probed per cross-region metro (wide metros are a lottery; a few tickets each).
 pub const PROBE_CROSS_REGION_HOST_MAX_ID: u32 = 6;
+/// Whole-probe deadline for the background probe: bounds how long the probe thread can linger
+/// against a saturated link (39 candidates at 16-way normally answer in a few seconds; partial
+/// results collected before the deadline are kept — ranking SOME hosts beats none).
+pub const PROBE_TOTAL_DEADLINE: Duration = Duration::from_secs(8);
+/// Congestion guard: if even the FASTEST probed host stayed below this, the probe ran against
+/// an already-busy link and its numbers are comparative garbage (on-device: ~0.5 MB/s for all
+/// 39 hosts during a 30 MB/s download). The run is discarded — not cached, not published —
+/// because a garbage ranking poisons both the winner gate (near-zero assigned median passes
+/// anything) and every future download seeded from the cache. 2 MiB/s: probing exists to find
+/// hosts worth promoting; below this the link is either congested or too slow for promotion
+/// to matter.
+const PROBE_CONGESTED_FLOOR_BPS: u64 = 2 * 1024 * 1024;
+
+/// On-disk cache format version. Bumped when the probing method changes in a way that makes
+/// old measurements untrustworthy (v1 → v2: v1 rankings could be probed UNDER LOAD — every
+/// host starved to the same ~0.5 MB/s — so a pre-v2 cache is treated as stale and re-probed).
+const CACHE_VERSION: u32 = 2;
 
 const CACHE_FILE_NAME: &str = "cdn_probe_cache.json";
 
@@ -84,6 +106,7 @@ pub struct ProbeResult {
 
 #[derive(Clone, Debug, Default)]
 struct ProbeCache {
+    version: u32,
     key: String,
     probed_at: u64,
     results: Vec<ProbeResult>,
@@ -141,6 +164,7 @@ fn load_cache(path: &Path) -> Option<ProbeCache> {
         })
         .unwrap_or_default();
     Some(ProbeCache {
+        version: v.get("version").and_then(|n| n.as_u64()).unwrap_or(0) as u32,
         key: v.get("key")?.as_str()?.to_string(),
         probed_at: v.get("probed_at")?.as_u64()?,
         results,
@@ -161,6 +185,7 @@ fn save_cache(path: &Path, cache: &ProbeCache) {
         })
         .collect();
     let v = serde_json::json!({
+        "version": cache.version,
         "key": cache.key,
         "probed_at": cache.probed_at,
         "results": results,
@@ -176,7 +201,7 @@ fn save_cache(path: &Path, cache: &ProbeCache) {
 /// no probed host marked bad since (a bad mark means a re-probe is due BEFORE the TTL expires —
 /// the whole point is re-ranking around the bad host immediately).
 fn cache_usable(cache: &ProbeCache, key: &str) -> bool {
-    if cache.key != key || cache.results.is_empty() {
+    if cache.version != CACHE_VERSION || cache.key != key || cache.results.is_empty() {
         return false;
     }
     if now_secs().saturating_sub(cache.probed_at) > PROBE_CACHE_TTL_SECS {
@@ -328,12 +353,14 @@ async fn probe_one(
 }
 
 /// Run the full probe on a scratch runtime. Returns results for reachable hosts only, ranked
-/// by throughput descending.
+/// by throughput descending. `deadline` caps the whole probe (hosts still in flight at the
+/// deadline are dropped; partial results are kept).
 fn run_probe(
     ca_bundle_path: &str,
     candidates: &[String],
     url_path: &str,
     cancel: Option<&AtomicBool>,
+    deadline: Option<Duration>,
 ) -> Vec<ProbeResult> {
     let rt = match tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -343,6 +370,7 @@ fn run_probe(
         Err(_) => return Vec::new(),
     };
     rt.block_on(async {
+        let started = Instant::now();
         let shared = match AsyncCdnClient::new(ca_bundle_path, PROBE_CONCURRENCY) {
             Ok(client) => client,
             Err(_) => return Vec::new(),
@@ -354,6 +382,9 @@ fn run_probe(
         loop {
             if cancel.is_some_and(|c| c.load(Ordering::Relaxed)) {
                 return Vec::new();
+            }
+            if deadline.is_some_and(|d| started.elapsed() >= d) {
+                break;
             }
             while in_flight.len() < PROBE_CONCURRENCY {
                 let Some(host) = pending.next() else {
@@ -405,9 +436,10 @@ struct ProbeState {
     winners: Vec<ProbeResult>,
 }
 
-/// Shared, live-ranked view of the ASSIGNED CDN servers. Seeded synchronously from the on-disk
-/// cache at download start ([`seed_from_cache`]), then refreshed by the background probe thread
-/// ([`spawn_background_probe`]); the fetch scheduler and the single-connection path consume it
+/// Shared, live-ranked view of the CDN servers. Seeded synchronously from the on-disk
+/// cache at download start ([`seed_from_cache`]), then — when the cache is stale — by the
+/// background probe ([`spawn_background_probe`], congestion-guarded); the fetch scheduler and
+/// the single-connection path consume it
 /// to prioritize the fastest assigned hosts. Consumers track a generation counter so each
 /// update is applied exactly once.
 #[derive(Debug)]
@@ -471,8 +503,9 @@ impl ProbeHints {
 
     /// `servers` plus synthetic directory entries for the currently promoted foreign caches
     /// (assigned hosts and bad-marked hosts excluded). The download calls this per depot, so a
-    /// background probe that lands mid-run extends the pool from the NEXT depot onward — the
-    /// in-flight depot's futures borrow a fixed server slice and can't grow it safely.
+    /// probe that lands mid-run (cache seed or the background probe racing the current depot)
+    /// extends the pool from the NEXT depot onward — the in-flight depot's futures borrow a
+    /// fixed server slice and can't grow it safely.
     /// Promoted hosts flow through the same EWMA seeding / live-sample / zombie-sweep paths as
     /// assigned ones, so reprioritization toward the fastest CDN is then automatic.
     pub fn extended_servers(
@@ -522,13 +555,14 @@ pub fn seed_from_cache(
     hints
 }
 
-/// Spawn the background probe thread (no-op when the cache already served a fresh ranking, or
-/// when there is no downloadable chunk to sample). Probes the assigned servers AND predicted
-/// foreign caches (same-metro siblings + cross-region metros — prediction failures simply
-/// don't respond), saves the cache, then publishes the ranking plus the median-gated winners
-/// — the running download picks both up via [`ProbeHints`].
-/// Deliberately not wired to the download's cancel flag: the probe is tiny (≤ ~10 s worst case)
-/// and its result is simply unused when the download has already ended.
+/// Spawn the fresh probe on a background thread (no-op when the cache already served a fresh
+/// ranking, or when there is no downloadable chunk to sample). The download starts immediately
+/// on the assigned servers; this probes them AND predicted foreign caches (same-metro siblings
+/// + cross-region metros — prediction failures simply don't respond), then — only if the
+/// results pass the congestion floor — saves the cache and publishes the ranking plus the
+/// median-gated winners into [`ProbeHints`], so the pool can grow at the NEXT depot boundary.
+/// Deliberately not wired to the download's cancel flag: the probe is bounded by
+/// [`PROBE_TOTAL_DEADLINE`] and its result is useful even if the download ends right after.
 pub fn spawn_background_probe(
     hints: &Arc<ProbeHints>,
     install_dir: &str,
@@ -550,30 +584,52 @@ pub fn spawn_background_probe(
     all_candidates.extend(predicted_candidates(servers));
     let key = cache_key(servers);
     std::thread::spawn(move || {
-        let results = run_probe(&ca_bundle_path, &all_candidates, &url_path, None);
+        let results = run_probe(
+            &ca_bundle_path,
+            &all_candidates,
+            &url_path,
+            None,
+            Some(PROBE_TOTAL_DEADLINE),
+        );
         if results.is_empty() {
             return; // keep needs_probe set: the NEXT download tries again
         }
-        // Keep the old bad list: a host marked bad mid-download stays bad until it re-proves
-        // itself (it's IN this fresh result set only if it served a chunk).
-        let path = cache_path(&install_dir);
-        let bad = load_cache(&path).map(|c| c.bad).unwrap_or_default();
-        let bad: Vec<String> = bad
-            .into_iter()
-            .filter(|h| results.iter().any(|r| &r.host == h))
-            .collect();
-        save_cache(
-            &path,
-            &ProbeCache {
-                key,
-                probed_at: now_secs(),
-                results: results.clone(),
-                bad: bad.clone(),
-            },
-        );
-        let winners = gated_winners(&results, &bad, &candidates);
-        hints.publish(results, bad, winners);
+        if results_usable(&results) {
+            // Keep the old bad list: a host marked bad mid-download stays bad until it
+            // re-proves itself (it's IN this fresh result set only if it served a chunk).
+            let path = cache_path(&install_dir);
+            let bad = load_cache(&path).map(|c| c.bad).unwrap_or_default();
+            let bad: Vec<String> = bad
+                .into_iter()
+                .filter(|h| results.iter().any(|r| &r.host == h))
+                .collect();
+            save_cache(
+                &path,
+                &ProbeCache {
+                    version: CACHE_VERSION,
+                    key,
+                    probed_at: now_secs(),
+                    results: results.clone(),
+                    bad: bad.clone(),
+                },
+            );
+            let winners = gated_winners(&results, &bad, &candidates);
+            hints.publish(results, bad, winners);
+        }
+        // Congested run (or nothing above the floor): discard — needs_probe stays set so the
+        // NEXT download re-probes rather than trusting or persisting the noise.
     });
+}
+
+/// Congestion guard (see [`PROBE_CONGESTED_FLOOR_BPS`]): a probe whose fastest host couldn't
+/// reach the floor measured a busy link, not the hosts — its ranking is noise.
+fn results_usable(results: &[ProbeResult]) -> bool {
+    results
+        .iter()
+        .map(|r| r.bytes_per_sec)
+        .max()
+        .unwrap_or(0)
+        >= PROBE_CONGESTED_FLOOR_BPS
 }
 
 /// Record a host as bad (called from the fetch driver after repeated consecutive errors — the
@@ -643,6 +699,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         let path = dir.join("probe.json");
         let cache = ProbeCache {
+            version: CACHE_VERSION,
             key: "k".into(),
             probed_at: now_secs(),
             results: vec![result("a", 10), result("b", 20)],
@@ -674,6 +731,20 @@ mod tests {
             "a probed host marked bad re-probes before TTL"
         );
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn congested_probe_results_are_discarded() {
+        // Under-load signature from the device log: every host starved to the same ~0.5 MB/s.
+        let starved: Vec<ProbeResult> = (0..39)
+            .map(|i| result(&format!("h{i}"), 500_000 + i as u64))
+            .collect();
+        assert!(!results_usable(&starved), "all-hosts-starved run is noise");
+        assert!(results_usable(&[result("fast", PROBE_CONGESTED_FLOOR_BPS)]));
+        assert!(
+            !results_usable(&[result("slow", PROBE_CONGESTED_FLOOR_BPS - 1)]),
+            "best host below the floor → discarded"
+        );
     }
 
     #[test]

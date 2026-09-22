@@ -153,9 +153,17 @@ pub const WINDOW_ERR_RATE_LOW: f64 = 0.05;
 /// window is over the link's real bandwidth-delay product — throughput can't rise, yet every
 /// head-of-line chunk pays the bufferbloat delay. This is the shrink the error path can't
 /// provide: device runs sat pinned at window 112-120 with err_rate=0.0% and rtt 4-10 s, while
-/// the best day parked at ~50 for 33 MB/s. Trigger = 3x (the device gap was 10-20x; 2x would
-/// false-fire on ordinary CDN jitter).
-pub const WINDOW_LATENCY_CONGESTION_FACTOR: f64 = 3.0;
+/// the best day parked at ~50 for 33 MB/s. Trigger = 5x (the pathological device gap was
+/// 10-20x; 3x false-fired on-device against a ~100-170 ms near-idle baseline — ordinary
+/// BDP queuing at full speed legitimately runs 300-600 ms and shrinking there only sawtoothed
+/// the window 24→6 with no throughput gain).
+pub const WINDOW_LATENCY_CONGESTION_FACTOR: f64 = 5.0;
+/// Congestion confirmation: the latency signal alone can't distinguish bufferbloat (queue full,
+/// throughput capped) from ordinary BDP queuing (throughput still rising). On-device, HALF the
+/// latency-only shrinks fired while throughput was ≥95% of EWMA and climbing — pure queuing.
+/// Require the current sample to have DROPPED below this fraction of the throughput EWMA before
+/// the shrink fires; a real congestion collapse always costs throughput.
+const WINDOW_CONGESTION_BPS_CONFIRM: f64 = 0.9;
 /// Don't judge congestion on a handful of completions — cold-start latencies are garbage.
 const WINDOW_LATENCY_MIN_SAMPLES: u32 = 32;
 /// Errors inside ONE probe interval that trigger an immediate (don't-wait-for-the-probe) shrink. A
@@ -585,7 +593,7 @@ struct ServerHealth {
 /// A SAMPLED host is a zombie when it holds ≥1 permit, has been quiet (no completion) for
 /// `ZOMBIE_QUIET`, and completed < `ZOMBIE_MIN_BYTES` over `ZOMBIE_WINDOW`. Device evidence:
 /// google2 parked at exactly 60 MB / 211 MB for 45–85 s at err_rate=0 — connections dribble just
-/// enough to never trip the 15 s body-idle timeout, and (second run) it escaped the sweep by
+/// enough to never trip the body-idle timeout, and (second run) it escaped the sweep by
 /// holding only ONE permit — so the rule keys on SILENCE-WHILE-HOLDING, not permit count. The
 /// quiet condition also kills the startup false-positive (a host that just completed a SMALL
 /// chunk while its fresh connections warm up is arriving, not zombie). Zombies get a hard
@@ -734,8 +742,12 @@ impl FetchScheduler {
     /// permits), so two entries sharing a host see the same pressure.
     fn check_zombies(&mut self, now: Instant) -> Vec<(usize, usize, u64)> {
         let mut zombies = Vec::new();
+        let mut active_hosts = 0usize; // hosts currently holding permits
         for i in 0..self.health.len() {
             let held = self.per_host_cap - self.host_sem(i).available_permits();
+            if held > 0 {
+                active_hosts += 1;
+            }
             let h = &mut self.health[i];
             while h
                 .recent
@@ -759,11 +771,24 @@ impl FetchScheduler {
             }
             let done_bytes: u64 = h.recent.iter().map(|&(_, b)| b).sum();
             if done_bytes < ZOMBIE_MIN_BYTES {
-                h.cooldown_until = Some(now + ZOMBIE_COOLDOWN);
-                h.ewma_bps *= 0.25;
-                h.recent.clear(); // post-cooldown judgement starts clean
                 zombies.push((i, held, quiet.as_secs()));
             }
+        }
+        // Global-blip guard: many hosts going quiet SIMULTANEOUSLY is a link event (on-device:
+        // 24+ connections across 10 hosts all silent for ~20 s, RTT ~5 s, then spontaneous
+        // recovery), not per-host death. The connections are still recycled (cooldown + clean
+        // slate) but the EWMA penalty is skipped — quartering EVERY host's ranking right after
+        // a blip scrambles the known-good order exactly when recovery needs it most. ≥3 at once
+        // is near-impossible for independent host deaths; ≥half the active pool likewise.
+        let global_blip =
+            zombies.len() >= 3 || (zombies.len() >= 2 && zombies.len() * 2 >= active_hosts);
+        for &(i, _, _) in &zombies {
+            let h = &mut self.health[i];
+            h.cooldown_until = Some(now + ZOMBIE_COOLDOWN);
+            if !global_blip {
+                h.ewma_bps *= 0.25;
+            }
+            h.recent.clear(); // post-cooldown judgement starts clean
         }
         zombies
     }
@@ -888,6 +913,11 @@ struct AdaptiveWindow {
     last_reason: WindowReason,
     last_err_rate: f64,
     probes_since_log: u32,
+    /// Congestion shrinks never go below this: with per-conn-throttled CDN hosts, a window
+    /// under the distinct-host count can't reduce queuing meaningfully — it only underfills
+    /// the pipe (on-device: shrink-to-6 on a 16-host pool sawtoothed throughput). Error
+    /// shrinks are unaffected (a storm still goes to `min`).
+    congestion_floor: usize,
 }
 
 impl AdaptiveWindow {
@@ -919,7 +949,14 @@ impl AdaptiveWindow {
             last_reason: WindowReason::Start,
             last_err_rate: 0.0,
             probes_since_log: 0,
+            congestion_floor: min,
         }
+    }
+
+    /// Set the congestion-shrink floor (defaults to `min`). See the field doc.
+    fn with_congestion_floor(mut self, floor: usize) -> Self {
+        self.congestion_floor = floor.clamp(self.min, self.max);
+        self
     }
 
     /// The dispatch loop wanted another in-flight slot but the byte budget was full.
@@ -1030,12 +1067,19 @@ impl AdaptiveWindow {
         } else if self.ok_count >= WINDOW_LATENCY_MIN_SAMPLES
             && self.latency_min_ms > 0.0
             && self.latency_ewma_ms > WINDOW_LATENCY_CONGESTION_FACTOR * self.latency_min_ms
+            && sample_bps < self.bps_ewma * WINDOW_CONGESTION_BPS_CONFIRM
         {
-            // Bufferbloated at err_rate~0: the window exceeds the link's real BDP. Checked
-            // BEFORE the ceiling hold (a pinned window is exactly what needs this) and after
-            // the cooldown (give the queue 3 s to drain before shrinking again). `shrink`
-            // re-baselines best_bps and ends slow-start — recovery is the normal probe path.
+            // Bufferbloated at err_rate~0 AND paying for it in throughput: the window exceeds
+            // the link's real BDP. The throughput confirmation distinguishes this from ordinary
+            // BDP queuing (high RTT but still rising — shrinking THERE only sawtooths; on-device
+            // half the latency-only shrinks were exactly that). Checked BEFORE the ceiling hold
+            // (a pinned window is exactly what needs this) and after the cooldown (give the
+            // queue 3 s to drain before shrinking again). `shrink` re-baselines best_bps and
+            // ends slow-start — recovery is the normal probe path.
             self.shrink(now, WindowReason::ShrinkCongestion);
+            // ...but never below the host-count floor: with per-conn-throttled hosts a
+            // smaller window only underfills the pipe, it can't drain the queue faster.
+            self.current = self.current.max(self.congestion_floor);
         } else if self.current >= self.max {
             self.last_reason = WindowReason::HoldCeiling;
         } else if err_rate > WINDOW_ERR_RATE_LOW {
@@ -2264,7 +2308,10 @@ async fn run_async_fetch_driver(
         }
     };
 
-    let mut window = AdaptiveWindow::new(bootstrap, win_min, win_max, Instant::now());
+    let mut window = AdaptiveWindow::new(bootstrap, win_min, win_max, Instant::now())
+        // win_max = distinct_hosts × PER_HOST_CAP (capped), so this recovers the host count:
+        // the congestion shrink floors there (see the field doc).
+        .with_congestion_floor(win_max / PER_HOST_CAP);
     let mut sched = FetchScheduler::new(servers, PER_HOST_CAP);
     let mut inflight: FuturesUnordered<_> = FuturesUnordered::new();
     let mut ready: VecDeque<ChunkWriteJob> = VecDeque::new();
@@ -2280,7 +2327,7 @@ async fn run_async_fetch_driver(
         {
             break;
         }
-        // Background CDN probe: apply a fresh assigned-server ranking exactly once per update
+        // CDN probe hints: apply the published server ranking exactly once per update
         // (cheap mutex read per loop turn; the ranking itself reprioritizes the scheduler).
         if let Some(hints) = probe_hints {
             if let Some((generation, results, bad)) = hints.take_update(hints_generation) {
@@ -4095,7 +4142,7 @@ mod tests {
     #[test]
     fn adaptive_window_shrinks_on_latency_congestion_without_any_error() {
         // The device pathology: err_rate=0 forever, window pinned >100, rtt 4-10s while the link
-        // wants ~50. Latency-EWMA > 3x its run minimum must shrink (and end slow-start) with
+        // wants ~50. Latency-EWMA > 5x its run minimum must shrink (and end slow-start) with
         // ZERO errors recorded.
         let t = Instant::now();
         let mut w = AdaptiveWindow::new(8, 2, 256, t);
@@ -4108,11 +4155,13 @@ mod tests {
         }
         let before = w.current;
         assert!(before > 8, "window should have grown in warm-up, got {before}");
-        // Bufferbloat: every completion still succeeds but 10x the latency floor.
+        // Bufferbloat: every completion still succeeds but 10x the latency floor, and the
+        // interval's byte delta collapses (5 MB vs the ~20 MB/interval warm-up rate) — the
+        // throughput confirmation a latency-only signal now requires.
         for _ in 0..40 {
             w.record_ok(200.0);
         }
-        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * 3 + 10), 60_000_000);
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * 3 + 10), 45_000_000);
         assert_eq!(w.last_reason, WindowReason::ShrinkCongestion);
         assert!(w.current < before, "congestion must shrink with no errors");
         assert!(!w.slow_start, "congestion shrink ends slow-start like an error shrink");
@@ -4123,7 +4172,7 @@ mod tests {
         }
         w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * 4 + 10), 80_000_000);
         assert_eq!(w.current, settled);
-        // Jitter must NOT fire it: 2x the floor is under the 3x trigger.
+        // Jitter must NOT fire it: 2x the floor is under the 5x trigger.
         let mut w2 = AdaptiveWindow::new(8, 2, 256, t);
         for i in 1..=3u64 {
             for _ in 0..40 {
@@ -4132,6 +4181,61 @@ mod tests {
             w2.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * i + 10), 20_000_000 * i);
         }
         assert_ne!(w2.last_reason, WindowReason::ShrinkCongestion, "2x jitter is not congestion");
+        // 4x is ordinary BDP queuing on a per-conn-throttled pool, not congestion: it must NOT
+        // fire (it did with the 3x trigger on-device — the 24→6 sawtooth).
+        let mut w3 = AdaptiveWindow::new(8, 2, 256, t);
+        for i in 1..=3u64 {
+            for _ in 0..40 {
+                w3.record_ok(if i < 3 { 20.0 } else { 80.0 });
+            }
+            w3.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * i + 10), 20_000_000 * i);
+        }
+        assert_ne!(w3.last_reason, WindowReason::ShrinkCongestion, "4x working RTT is not congestion");
+        // 10x latency but throughput RISING (delta jumps to 40 MB this interval — the on-device
+        // false-fire signature: last ≥ 95% of ewma at rtt 550-1150): must NOT shrink.
+        let mut w4 = AdaptiveWindow::new(8, 2, 256, t);
+        for i in 1..=2u64 {
+            for _ in 0..40 {
+                w4.record_ok(20.0);
+            }
+            w4.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * i + 10), 20_000_000 * i);
+        }
+        for _ in 0..40 {
+            w4.record_ok(200.0);
+        }
+        w4.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * 3 + 10), 80_000_000);
+        assert_ne!(
+            w4.last_reason,
+            WindowReason::ShrinkCongestion,
+            "high RTT with rising throughput is BDP queuing, not congestion"
+        );
+    }
+
+    #[test]
+    fn congestion_shrink_floors_at_host_count_but_error_shrink_does_not() {
+        let t = Instant::now();
+        let mut w = AdaptiveWindow::new(8, 2, 256, t).with_congestion_floor(16);
+        // Establish the latency floor, grow, then bufferbloat at 10x with collapsing throughput
+        // (5 MB delta vs the ~20 MB/interval warm-up rate — congestion costs throughput).
+        for i in 1..=2u64 {
+            for _ in 0..40 {
+                w.record_ok(20.0);
+            }
+            w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * i + 10), 20_000_000 * i);
+        }
+        for _ in 0..40 {
+            w.record_ok(200.0);
+        }
+        w.maybe_probe(t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * 3 + 10), 45_000_000);
+        assert_eq!(w.last_reason, WindowReason::ShrinkCongestion);
+        assert_eq!(w.current, 16, "congestion shrink stops at the host-count floor");
+        // An error burst still goes below it (a real storm needs the small window) — timed
+        // past the 3 s post-shrink cooldown, during which record_err deliberately holds.
+        let storm_at = t + Duration::from_millis(WINDOW_PROBE_INTERVAL_MS * 4 + 10) + Duration::from_secs(4);
+        for _ in 0..12 {
+            w.record_err(storm_at, FetchFailKind::Timeout);
+        }
+        assert!(w.current < 16, "error shrink is not floored, got {}", w.current);
     }
 
     #[test]
@@ -4453,6 +4557,55 @@ mod tests {
         drop(_h2);
         assert!(sched.eligible(0, after));
         assert!(sched.check_zombies(after).is_empty());
+    }
+
+    #[test]
+    fn simultaneous_multi_host_quiet_is_a_blip_and_keeps_ewma() {
+        // On-device signature: 3+ hosts (or half the active pool) quiet in the SAME sweep —
+        // a link blip, not per-host death. Cooldown/recycle still applies, but the EWMA ranking
+        // must NOT be quartered (recovery needs the known-good order immediately).
+        let servers = vec![srv("q1"), srv("q2"), srv("q3"), srv("busy")];
+        let mut sched = FetchScheduler::new(&servers, 8);
+        let now = Instant::now();
+        let old = now - ZOMBIE_WINDOW - Duration::from_secs(5);
+        let mut permits = Vec::new();
+        for i in 0..3 {
+            sched.on_success(i, 100_000, Duration::from_millis(100), old);
+            sched.health[i].ewma_bps = 10_000_000.0;
+            permits.push(sched.host_sem(i).clone().try_acquire_owned().unwrap());
+        }
+        // busy: recently completed, holding a permit — healthy, not part of the blip.
+        sched.on_success(3, 4 * 1024 * 1024, Duration::from_millis(500), now);
+        permits.push(sched.host_sem(3).clone().try_acquire_owned().unwrap());
+
+        let zombies = sched.check_zombies(now);
+        assert_eq!(zombies.len(), 3, "all three quiet hosts flagged");
+        for i in 0..3 {
+            assert!(!sched.eligible(i, now), "blip connections are still recycled");
+            assert_eq!(
+                sched.health[i].ewma_bps, 10_000_000.0,
+                "blip must NOT quarter the EWMA ranking"
+            );
+        }
+        assert!(sched.eligible(3, now));
+        drop(permits);
+
+        // Contrast: a SINGLE quiet host among several active ones stays a real zombie.
+        let mut sched2 = FetchScheduler::new(&servers, 8);
+        sched2.on_success(0, 100_000, Duration::from_millis(100), old);
+        sched2.health[0].ewma_bps = 10_000_000.0;
+        let _z = sched2.host_sem(0).clone().try_acquire_owned().unwrap();
+        let mut keep = Vec::new();
+        for i in 1..4 {
+            sched2.on_success(i, 4 * 1024 * 1024, Duration::from_millis(500), now);
+            keep.push(sched2.host_sem(i).clone().try_acquire_owned().unwrap());
+        }
+        let zombies2 = sched2.check_zombies(now);
+        assert_eq!(zombies2.len(), 1);
+        assert!(
+            sched2.health[0].ewma_bps < 10_000_000.0,
+            "a lone zombie still eats the EWMA penalty"
+        );
     }
 
     fn temp_dir(name: &str) -> PathBuf {

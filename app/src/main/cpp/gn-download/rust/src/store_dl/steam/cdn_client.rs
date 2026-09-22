@@ -501,10 +501,11 @@ pub(crate) const MAX_WHOLE_BODY_BYTES: u64 = 128 * 1024 * 1024;
 /// reqwest's per-request timeout stops once headers arrive, so WITHOUT this a host that stalls
 /// mid-body (the google2 freeze seen on-device: zero bytes for 90+ s, no error) hangs the request
 /// forever — and worse, its speed-ranking EWMA never updates, so the scheduler keeps feeding it.
-/// 15 s is far above real jitter (RTT spikes to ~4.5 s at full window) but short enough that a
-/// frozen host errors out, cools down, and its chunks rotate elsewhere within one probe cycle.
+/// 8 s is still far above real jitter (RTT spikes to ~5 s at full window on-device) but halves
+/// the post-blip permit lockup: after a link-wide stall every dead connection errors out, cools
+/// down, and its chunks rotate elsewhere within one probe cycle instead of two.
 pub(crate) const CHUNK_BODY_IDLE_TIMEOUT: std::time::Duration =
-    std::time::Duration::from_secs(15);
+    std::time::Duration::from_secs(8);
 
 /// Read a response body incrementally, rejecting it as soon as it exceeds `cap`.
 /// Prefer this over `response.bytes()` for any server-supplied body.
