@@ -16,6 +16,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonConstants
 import app.gamenative.service.amazon.AmazonService
+import app.gamenative.service.download.GameDownloadService
 import app.gamenative.service.epic.EpicConstants
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGConstants
@@ -287,6 +288,7 @@ class DownloadsViewModel @Inject constructor(
         val statusMessage = normalizeStatusMessage(info.getCurrentStatusMessage())
         val isRunning = info.isActive() || info.isPostInstallSyncing()
         val status = when {
+            GameDownloadService.isPaused(gameSource, appId) -> DownloadItemStatus.PAUSED
             rawProgress < 0f || statusMessage?.startsWith("Failed", ignoreCase = true) == true -> DownloadItemStatus.FAILED
             isRunning -> DownloadItemStatus.DOWNLOADING
             else -> DownloadItemStatus.PAUSED
@@ -365,7 +367,7 @@ class DownloadsViewModel @Inject constructor(
             compareBy<DownloadItemState> { item ->
                 when {
                     item.status == DownloadItemStatus.DOWNLOADING -> 0
-                    item.isPartial -> 1
+                    item.isPartial || item.status == DownloadItemStatus.PAUSED -> 1
                     item.status == DownloadItemStatus.COMPLETED -> 2
                     item.status == DownloadItemStatus.CANCELLED -> 3
                     else -> 4
@@ -577,21 +579,29 @@ class DownloadsViewModel @Inject constructor(
         recentFailureMessages.remove(key)
 
         viewModelScope.launch(Dispatchers.IO) {
-            when (item.gameSource) {
-                GameSource.STEAM -> {
-                    val id = item.appId.toIntOrNull() ?: return@launch
-                    SteamService.getAppDownloadInfo(id)?.cancel()
-                }
+            pauseOnStore(item)
+        }
+    }
 
-                GameSource.EPIC -> {
-                    val id = item.appId.toIntOrNull() ?: return@launch
-                    EpicService.cancelDownload(id)
-                }
-
-                GameSource.GOG -> GOGService.cancelDownload(item.appId)
-                GameSource.AMAZON -> AmazonService.cancelDownload(item.appId)
-                GameSource.CUSTOM_GAME -> Unit
+    /**
+     * Store-level pause / dequeue. Non-destructive (no file deletion): a queued
+     * (auto-paused) entry becomes plainly paused, an active one is cancelled.
+     */
+    private fun pauseOnStore(item: DownloadItemState) {
+        when (item.gameSource) {
+            GameSource.STEAM -> {
+                val id = item.appId.toIntOrNull() ?: return
+                SteamService.getAppDownloadInfo(id)?.cancel()
             }
+
+            GameSource.EPIC -> {
+                val id = item.appId.toIntOrNull() ?: return
+                EpicService.cancelDownload(id)
+            }
+
+            GameSource.GOG -> GOGService.cancelDownload(item.appId)
+            GameSource.AMAZON -> AmazonService.cancelDownload(item.appId)
+            GameSource.CUSTOM_GAME -> Unit
         }
     }
 
@@ -605,46 +615,50 @@ class DownloadsViewModel @Inject constructor(
         finishedDownloads.remove(key)
 
         viewModelScope.launch(Dispatchers.IO) {
-            when (item.gameSource) {
-                GameSource.STEAM -> {
-                    val id = item.appId.toIntOrNull() ?: return@launch
-                    SteamService.downloadApp(id)
-                }
+            resumeOnStore(item)
+            scheduleRefreshDownloads()
+        }
+    }
 
-                GameSource.GOG -> {
-                    val game = gogGameDao.getById(item.appId) ?: return@launch
-                    val installPath = game.installPath.ifBlank { GOGConstants.getGameInstallPath(game.title) }
-                    val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.GOG.name}_${item.appId}")
-                    val language = ContainerUtils.toContainerData(container).language
-                    val result = GOGService.downloadGame(appContext, item.appId, installPath, language)
-                    result.exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
-                }
-
-                GameSource.EPIC -> {
-                    val id = item.appId.toIntOrNull() ?: return@launch
-                    val game = epicGameDao.getById(id) ?: return@launch
-                    val installPath = game.installPath.ifBlank {
-                        EpicConstants.getGameInstallPath(appContext, game.appName)
-                    }
-                    val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.EPIC.name}_${item.appId}")
-                    val language = ContainerUtils.toContainerData(container).language
-                    val result = EpicService.downloadGame(appContext, id, emptyList(), installPath, language)
-                    result.exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
-                }
-
-                GameSource.AMAZON -> {
-                    val game = amazonGameDao.getByProductId(item.appId) ?: return@launch
-                    val installPath = game.installPath.ifBlank {
-                        AmazonConstants.getGameInstallPath(appContext, game.title)
-                    }
-                    val result = AmazonService.downloadGame(appContext, item.appId, installPath)
-                    result.exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
-                }
-
-                GameSource.CUSTOM_GAME -> Unit
+    private suspend fun resumeOnStore(item: DownloadItemState) {
+        val key = item.uniqueId
+        when (item.gameSource) {
+            GameSource.STEAM -> {
+                val id = item.appId.toIntOrNull() ?: return
+                SteamService.downloadApp(id)
             }
 
-            scheduleRefreshDownloads()
+            GameSource.GOG -> {
+                val game = gogGameDao.getById(item.appId) ?: return
+                val installPath = game.installPath.ifBlank { GOGConstants.getGameInstallPath(game.title) }
+                val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.GOG.name}_${item.appId}")
+                val language = ContainerUtils.toContainerData(container).language
+                val result = GOGService.downloadGame(appContext, item.appId, installPath, language)
+                result.exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
+            }
+
+            GameSource.EPIC -> {
+                val id = item.appId.toIntOrNull() ?: return
+                val game = epicGameDao.getById(id) ?: return
+                val installPath = game.installPath.ifBlank {
+                    EpicConstants.getGameInstallPath(appContext, game.appName)
+                }
+                val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.EPIC.name}_${item.appId}")
+                val language = ContainerUtils.toContainerData(container).language
+                val result = EpicService.downloadGame(appContext, id, emptyList(), installPath, language)
+                result.exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
+            }
+
+            GameSource.AMAZON -> {
+                val game = amazonGameDao.getByProductId(item.appId) ?: return
+                val installPath = game.installPath.ifBlank {
+                    AmazonConstants.getGameInstallPath(appContext, game.title)
+                }
+                val result = AmazonService.downloadGame(appContext, item.appId, installPath)
+                result.exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
+            }
+
+            GameSource.CUSTOM_GAME -> Unit
         }
     }
 
@@ -654,16 +668,82 @@ class DownloadsViewModel @Inject constructor(
             .forEach(::onPauseDownload)
     }
 
+    /**
+     * Enqueue one item with GameDownloadService (placeholder entry, store restart
+     * params resolved the same way as [resumeOnStore]). Starts nothing.
+     */
+    private suspend fun enqueueOnStore(item: DownloadItemState) {
+        when (item.gameSource) {
+            GameSource.STEAM -> {
+                val id = item.appId.toIntOrNull() ?: return
+                GameDownloadService.enqueueDownload(GameSource.STEAM, id.toString())
+            }
+
+            GameSource.GOG -> {
+                val game = gogGameDao.getById(item.appId) ?: return
+                val installPath = game.installPath.ifBlank { GOGConstants.getGameInstallPath(game.title) }
+                val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.GOG.name}_${item.appId}")
+                val language = ContainerUtils.toContainerData(container).language
+                GameDownloadService.enqueueDownload(GameSource.GOG, item.appId, installPath = installPath, containerLanguage = language)
+            }
+
+            GameSource.EPIC -> {
+                val id = item.appId.toIntOrNull() ?: return
+                val game = epicGameDao.getById(id) ?: return
+                val installPath = game.installPath.ifBlank {
+                    EpicConstants.getGameInstallPath(appContext, game.appName)
+                }
+                val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.EPIC.name}_${item.appId}")
+                val language = ContainerUtils.toContainerData(container).language
+                GameDownloadService.enqueueDownload(GameSource.EPIC, item.appId, dlcGameIds = emptyList(), installPath = installPath, containerLanguage = language)
+            }
+
+            GameSource.AMAZON -> {
+                val game = amazonGameDao.getByProductId(item.appId) ?: return
+                val installPath = game.installPath.ifBlank {
+                    AmazonConstants.getGameInstallPath(appContext, game.title)
+                }
+                GameDownloadService.enqueueDownload(GameSource.AMAZON, item.appId, installPath = installPath)
+            }
+
+            GameSource.CUSTOM_GAME -> Unit
+        }
+    }
+
     fun onResumeAll() {
-        state.value.downloads.values
-            .filter { it.canResume }
-            .forEach(::onResumeDownload)
+        val resumable = state.value.downloads.values.filter { it.canResume }
+        if (resumable.isEmpty()) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            // Queue every resumable download first (placeholders only — nothing is
+            // cancelled and the current download keeps running), then launch just the
+            // first one: its registerDownload replaces the placeholder with the real
+            // DownloadInfo and the queue drains the rest as each download finishes.
+            resumable.forEach { enqueueOnStore(it) }
+            resumeOnStore(resumable.first())
+            scheduleRefreshDownloads()
+        }
     }
 
     fun onCancelAll() {
-        state.value.downloads.values
-            .filter { it.canCancel }
-            .forEach { item -> cancelDownloadNow(item.appId, item.gameSource, item.gameName) }
+        val items = state.value.downloads.values.filter { it.canCancel }
+        if (items.isEmpty()) return
+        val active = items.filter { it.status == DownloadItemStatus.DOWNLOADING }
+        val others = items - active.toSet()
+
+        items.forEach {
+            pendingCancelledDownloads.add(it.uniqueId)
+            pausedDownloads.remove(it.uniqueId)
+            recentFailureMessages.remove(it.uniqueId)
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            // Cancelling the active download advances the queue, so clear queued
+            // and paused entries FIRST — otherwise each cancel restarts the next
+            // queued download just to cancel it again (chain of queue
+            // transitions + snapshot writes = ANR).
+            others.forEach { cancelOnStore(it.appId, it.gameSource, it.gameName) }
+            active.forEach { cancelOnStore(it.appId, it.gameSource, it.gameName) }
+        }
     }
 
     fun onClearFinished() {
@@ -702,46 +782,54 @@ class DownloadsViewModel @Inject constructor(
         recentFailureMessages.remove(key)
 
         viewModelScope.launch(Dispatchers.IO) {
-            when (gameSource) {
-                GameSource.STEAM -> {
-                    val id = appId.toIntOrNull() ?: return@launch
-                    SteamService.getAppDownloadInfo(id)?.cancel()
-                    SteamService.deleteApp(id)
-                    PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(id, GameSource.STEAM))
-                    scheduleRefreshDownloads()
-                }
+            cancelOnStore(appId, gameSource, gameName)
+        }
+    }
 
-                GameSource.EPIC -> {
-                    val id = appId.toIntOrNull() ?: return@launch
-                    EpicService.cancelDownload(id)
-                    EpicService.deleteGame(appContext, id)
-                    scheduleRefreshDownloads()
-                }
-
-                GameSource.GOG -> {
-                    GOGService.cancelDownload(appId)
-                    val game = gogGameDao.getById(appId)
-                    if (game != null) {
-                        GOGService.deleteGame(
-                            appContext,
-                            LibraryItem(
-                                appId = appId,
-                                name = game.title.ifBlank { gameName },
-                                gameSource = GameSource.GOG,
-                            ),
-                        )
-                    }
-                    scheduleRefreshDownloads()
-                }
-
-                GameSource.AMAZON -> {
-                    AmazonService.cancelDownload(appId)
-                    AmazonService.deleteGame(appContext, appId)
-                    scheduleRefreshDownloads()
-                }
-
-                GameSource.CUSTOM_GAME -> Unit
+    /** Store-level cancel + delete. Destructive: removes the partial download. */
+    private suspend fun cancelOnStore(appId: String, gameSource: GameSource, gameName: String) {
+        when (gameSource) {
+            GameSource.STEAM -> {
+                val id = appId.toIntOrNull() ?: return
+                SteamService.getAppDownloadInfo(id)?.cancel()
+                // A queued (auto-paused) entry has no live job left to remove it —
+                // drop it explicitly (no-op when the job's completion already did).
+                SteamService.removeDownloadJob(id)
+                SteamService.deleteApp(id)
+                PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(id, GameSource.STEAM))
+                scheduleRefreshDownloads()
             }
+
+            GameSource.EPIC -> {
+                val id = appId.toIntOrNull() ?: return
+                EpicService.cancelDownload(id)
+                EpicService.deleteGame(appContext, id)
+                scheduleRefreshDownloads()
+            }
+
+            GameSource.GOG -> {
+                GOGService.cancelDownload(appId)
+                val game = gogGameDao.getById(appId)
+                if (game != null) {
+                    GOGService.deleteGame(
+                        appContext,
+                        LibraryItem(
+                            appId = appId,
+                            name = game.title.ifBlank { gameName },
+                            gameSource = GameSource.GOG,
+                        ),
+                    )
+                }
+                scheduleRefreshDownloads()
+            }
+
+            GameSource.AMAZON -> {
+                AmazonService.cancelDownload(appId)
+                AmazonService.deleteGame(appContext, appId)
+                scheduleRefreshDownloads()
+            }
+
+            GameSource.CUSTOM_GAME -> Unit
         }
     }
 }

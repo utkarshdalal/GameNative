@@ -55,7 +55,6 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
-import app.gamenative.utils.CaseInsensitiveFileSystem
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.LicenseSerializer
@@ -71,10 +70,8 @@ import app.gamenative.workshop.WorkshopManager
 import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
 import dagger.hilt.android.AndroidEntryPoint
-import `in`.dragonbra.javasteam.depotdownloader.DepotDownloader
-import `in`.dragonbra.javasteam.depotdownloader.IDownloadListener
-import `in`.dragonbra.javasteam.depotdownloader.data.AppItem
-import `in`.dragonbra.javasteam.depotdownloader.data.DownloadItem
+import app.gamenative.service.download.GameDownloadService
+import app.gamenative.service.download.NativeTreeDelete
 import `in`.dragonbra.javasteam.enums.EAccountType
 import `in`.dragonbra.javasteam.enums.EDepotFileFlag
 import `in`.dragonbra.javasteam.enums.ELicenseFlags
@@ -458,7 +455,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         // callbacks) must pass [owner]: the phase is then only ended if it still belongs to that
         // download, so a late callback cannot wipe the message a newer attempt just posted. Omit
         // [owner] to end the phase whoever owns it, e.g. when tearing the job down.
-        private fun clearDepotKeyPrep(appId: Int, owner: DownloadInfo? = null) {
+        internal fun clearDepotKeyPrep(appId: Int, owner: DownloadInfo? = null) {
             if (!depotKeyPrep.containsKey(appId)) return
             synchronized(depotKeyPrepLock) {
                 val prep = depotKeyPrep[appId] ?: return
@@ -2005,6 +2002,9 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 true
             } else {
+                // Remove download from GameDownloadService
+                GameDownloadService.removeDownload(instance?.applicationContext!!, GameSource.STEAM, appId.toString())
+
                 val appDirPath = getAppDirPath(appId)
                 val appDir = File(appDirPath)
 
@@ -2012,7 +2012,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     MarkerUtils.removeMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
                 }
 
-                File(appDirPath).deleteRecursively()
+                NativeTreeDelete.deleteTreeFast(File(appDirPath))
             }
 
             // Remove from DB
@@ -2069,6 +2069,12 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         fun downloadApp(appId: Int, dlcAppIds: List<Int>, branch: String = "public", isUpdateOrVerify: Boolean): DownloadInfo? {
             if (!checkWifiOrNotify()) return null
+            // A queued (auto-paused) entry being resumed keeps showing "Queued" until the
+            // fresh DownloadInfo replaces it below, and depot resolution can take a moment;
+            // re-seed its status now so the screen reflects the resume immediately.
+            downloadJobs[appId]?.takeIf { !it.isActive() }?.let { stale ->
+                instance?.let { svc -> stale.updateStatusMessage(svc.getString(R.string.download_preparing)) }
+            }
             return getAppInfoOf(appId)?.let { appInfo ->
                 val container = ContainerManager(instance!!.applicationContext).getContainerById("STEAM_${appId}")
                 val containerLanguage = if (container != null) {
@@ -2488,12 +2494,15 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             val info = DownloadInfo(selectedDepots.size, appId, downloadingAppIds).also { di ->
                 di.setPersistencePath(appDirPath)
-                // Set weights for each depot based on manifest sizes
+                // Weights + total = UNCOMPRESSED depot size (manifest.size): the native engine
+                // credits decompressed chunk bytes written, so the progress bar and ETA must be
+                // in the same unit (previously getDownloadBytes = compressed → the bar could
+                // clamp at 100% before the depot was actually done).
                 val sizes = selectedDepots.map { (_, depot) ->
                     val mInfo = depot.manifests[branch]
                         ?: depot.encryptedManifests[branch]
                         ?: return@map 1L
-                    SteamUtils.getDownloadBytes(mInfo).coerceAtLeast(1L)
+                    mInfo.size.coerceAtLeast(1L)
                 }
                 sizes.forEachIndexed { i, bytes -> di.setWeight(i, bytes) }
 
@@ -2542,94 +2551,54 @@ class SteamService : Service(), IChallengeUrlChanged {
                             return@launch
                         }
 
-                        // Moved to DownloadSpeedConfig
-                        val speedConfig = DownloadSpeedConfig()
-                        val cpuCores = speedConfig.cpuCores
-                        val maxDownloads = speedConfig.maxDownloads
-                        val maxDecompress = speedConfig.maxDecompress
-
-                        Timber.i("CPU Cores: $cpuCores")
-                        Timber.i("maxDownloads: $maxDownloads")
-                        Timber.i("maxDecompress: $maxDecompress")
-
-                        chunkStagingRedirectDir?.apply {
-                            deleteRecursively()
-                            mkdirs()
-                        }
-
-                        // Create DepotDownloader instance
-                        val depotDownloader = DepotDownloader(
-                            instance!!.steamClient!!,
-                            licenses,
-                            debug = false,
-                            androidEmulation = true,
-                            maxDownloads = maxDownloads,
-                            maxDecompress = maxDecompress,
-                            parentJob = coroutineContext[Job],
-                            autoStartDownload = false,
-                            skipLargeFileAllocation = chunkStagingRedirectDir != null,
-                            filesystem = CaseInsensitiveFileSystem(
-                                showDebugLog = false,
-                                chunkStagingRedirect = chunkStagingRedirectDir?.absolutePath?.toPath(),
-                            ),
+                        // Register with centralized queue and auto-pause other downloads
+                        GameDownloadService.registerDownload(
+                            gameSource = GameSource.STEAM,
+                            gameId = appId.toString(),
+                            downloadInfo = di
                         )
 
-                        // Create listeners for DLC apps
-                        val depotIdToIndex = selectedDepots.keys.mapIndexed { index, depotId -> depotId to index }.toMap()
-                        val listener = AppDownloadListener(di, depotIdToIndex)
-                        depotDownloader.addListener(listener)
+                        // All Steam bytes are moved by the Rust engine in libgndownload.so via
+                        // GameDownloadService; JavaSteam stays the CM client (keys/codes/servers).
+                        val speedConfig = DownloadSpeedConfig()
+                        Timber.i("CPU Cores: ${speedConfig.cpuCores}")
+                        Timber.i("maxDownloads: ${speedConfig.maxDownloads}")
+                        Timber.i("maxDecompress: ${speedConfig.maxDecompress}")
+
+                        chunkStagingRedirectDir?.apply {
+                            NativeTreeDelete.deleteTreeFast(this)
+                            mkdirs()
+                        }
 
                         val branchPassword = instance?.steamUnlockedBranchDao
                             ?.getSteamUnlockedBranches(appId)
                             ?.firstOrNull { it.branchName == branch }
                             ?.password
 
-                        if (mainAppDepots.isNotEmpty()) {
-                            val mainAppDepotIds = mainAppDepots.keys.sorted()
-
-                            val mainAppItem = AppItem(
-                                appId,
-                                installDirectory = getAppDirPath(appId),
-                                depot = mainAppDepotIds,
-                                branch = branch,
-                                branchPassword = branchPassword,
-                            )
-
-                            depotDownloader.add(mainAppItem)
-                        }
-
-                        calculatedDlcAppIds.forEach { dlcAppId ->
-                            val dlcAppDepotIds = getAppInfoOf(dlcAppId)?.depots?.keys.orEmpty()
-                            val dlcDepots = selectedDepots.filter { (depotId, depot) ->
-                                depot.dlcAppId == dlcAppId &&
-                                    (depotId !in mainAppDepots || depotId in dlcAppDepotIds)
-                            }
-                            val dlcDepotIds = dlcDepots.keys.sorted()
-
-                            val dlcAppItem = AppItem(
-                                dlcAppId,
-                                installDirectory = getAppDirPath(appId),
-                                depot = dlcDepotIds,
-                                branch = branch,
-                                branchPassword = branchPassword,
-                            )
-
-                            depotDownloader.add(dlcAppItem)
-                        }
-
-                        // Signal that no more items will be added
-                        depotDownloader.finishAdding()
-
-                        // Start Download
-                        depotDownloader.startDownloading()
+                        val depotIdToIndex = selectedDepots.keys
+                            .mapIndexed { index, depotId -> depotId to index }
+                            .toMap()
 
                         Timber.i("Downloading game to " + defaultAppInstallPath)
 
-                        // Wait for completion
-                        depotDownloader.getCompletion().await()
+                        GameDownloadService.downloadSteamApp(
+                            appId = appId,
+                            selectedDepots = selectedDepots,
+                            branch = branch,
+                            branchPassword = branchPassword,
+                            installDir = getAppDirPath(appId),
+                            isUpdateOrVerify = isUpdateOrVerify,
+                            depotIdToIndex = depotIdToIndex,
+                            downloadInfo = di,
+                            // Adaptive-window ceiling (ramps up only while the link delivers);
+                            // process pool stays core-scaled.
+                            maxWorkers = speedConfig.maxDownloads,
+                            processWorkers = speedConfig.maxDecompress,
+                            parentScope = this,
+                        )
 
-                        // Close the downloader
-                        depotDownloader.close()
+                        // Transfer is complete - unregister from GameDownloadService
+                        GameDownloadService.unregisterDownload(instance?.applicationContext!!, GameSource.STEAM, appId.toString())
 
                         val appConfig = getAppInfoOf(appId)?.config
                         if (appConfig?.steamControllerTemplateIndex == 1) {
@@ -2822,7 +2791,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     // handlers, and cancellations thrown out of suspension points.
                     // second call is a no-op if the inline path already removed the entry.
                     removeDownloadJob(appId)
-                    chunkStagingRedirectDir?.deleteRecursively()
+                    chunkStagingRedirectDir?.let { NativeTreeDelete.deleteTreeFast(it) }
                     if (throwable is kotlinx.coroutines.CancellationException) {
                         Timber.d(throwable, "Download canceled for app $appId")
                     }
@@ -2884,6 +2853,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     MarkerUtils.addMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
                     MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
                     MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
+                    MarkerUtils.removeMarker(appDirPath, Marker.STEAM_CEG_WRAPPED)
                 }
 
                 // clean up DB record BEFORE notifying UI to avoid stale "Resume" button
@@ -2939,94 +2909,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        /**
-         * Listener for download progress and completion events from DepotDownloader
-         */
-        private class AppDownloadListener(
-            private val downloadInfo: DownloadInfo,
-            private val depotIdToIndex: Map<Int, Int>,
-        ) : IDownloadListener {
-            // Track cumulative compressed (network) bytes per depot to calculate deltas.
-            // compressedBytes from onChunkCompleted is cumulative per depot, and matches the
-            // unit of totalExpectedBytes which is summed from manifest.download.
-            private val depotCumulativeCompressedBytes = mutableMapOf<Int, Long>()
-            override fun onItemAdded(item: DownloadItem) {
-                Timber.d("Item ${item.appId} added to queue")
-            }
-
-            override fun onDownloadStarted(item: DownloadItem) {
-                Timber.i("Item ${item.appId} download started")
-            }
-
-            override fun onDownloadCompleted(item: DownloadItem) {
-                Timber.i("Item ${item.appId} download completed")
-            }
-
-            override fun onDownloadFailed(item: DownloadItem, error: Throwable) {
-                Timber.e(error, "Item ${item.appId} failed to download")
-                downloadInfo.failedToDownload()
-
-                // Remove the downloading app info
-                runBlocking {
-                    instance?.downloadingAppInfoDao?.deleteApp(downloadInfo.gameId)
-                }
-
-                removeDownloadJob(downloadInfo.gameId)
-                instance?.let { service ->
-                    SnackbarManager.show(service.getString(R.string.download_failed_try_again))
-                }
-            }
-
-            override fun onStatusUpdate(message: String) {
-                Timber.d("Download status: $message")
-                downloadInfo.updateStatusMessage(message)
-            }
-
-            override fun onChunkCompleted(
-                depotId: Int,
-                depotPercentComplete: Float,
-                compressedBytes: Long,
-                uncompressedBytes: Long,
-            ) {
-                val isFirstCallForDepot = !depotCumulativeCompressedBytes.containsKey(depotId)
-
-                clearDepotKeyPrep(downloadInfo.gameId, owner = downloadInfo)
-
-                val previousBytes = depotCumulativeCompressedBytes[depotId] ?: 0L
-                val deltaBytes = compressedBytes - previousBytes
-                depotCumulativeCompressedBytes[depotId] = compressedBytes
-
-                if (deltaBytes > 0L) {
-                    downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis())
-                }
-
-                depotIdToIndex[depotId]?.let { index ->
-                    downloadInfo.setProgress(depotPercentComplete, index)
-                }
-
-                // Persist progress snapshot
-                downloadInfo.persistProgressSnapshot()
-            }
-
-            override fun onDepotCompleted(depotId: Int, compressedBytes: Long, uncompressedBytes: Long) {
-                Timber.i("Depot $depotId completed (compressed: $compressedBytes, uncompressed: $uncompressedBytes)")
-
-                val previousBytes = depotCumulativeCompressedBytes[depotId] ?: 0L
-                val deltaBytes = compressedBytes - previousBytes
-                depotCumulativeCompressedBytes[depotId] = compressedBytes
-
-                if (deltaBytes > 0L) {
-                    downloadInfo.updateBytesDownloaded(deltaBytes, System.currentTimeMillis())
-                }
-
-                depotIdToIndex[depotId]?.let { index ->
-                    downloadInfo.setProgress(1f, index)
-                }
-
-                // Persist progress snapshot
-                downloadInfo.persistProgressSnapshot()
-            }
-        }
 
         fun getWindowsLaunchInfos(appId: Int): List<LaunchInfo> {
             return getAppInfoOf(appId)?.let { appInfo ->

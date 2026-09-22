@@ -577,6 +577,12 @@
     <string name="calculating_time">Calcolo...</string>
     <string name="download_failed_try_again">Download fallito. Riprova.</string>
     <string name="download_preparing">Preparazione del download...</string>
+    <string name="download_verifying_file">Verifica di %1$s…</string>
+    <string name="download_verifying_files">Verifica dei file...</string>
+    <string name="download_assembling_files">Assemblaggio dei file...</string>
+    <string name="download_progress_chunks">Download (%1$d/%2$d blocchi)</string>
+    <string name="download_progress_files">Download (%1$d/%2$d file)…</string>
+    <string name="download_unpacking">Decompressione...</string>
     <string name="download_preparing_depots">Preparazione dei depot (%1$d/%2$d)</string>
     <string name="update_available">Aggiornamento Disponibile</string>
     <string name="game_information">Informazioni Gioco</string>

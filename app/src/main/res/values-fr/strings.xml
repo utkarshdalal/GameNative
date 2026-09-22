@@ -595,6 +595,12 @@
     <string name="calculating_time">Calcul…</string>
     <string name="download_failed_try_again">Échec du téléchargement. Veuillez réessayer.</string>
     <string name="download_preparing">Préparation du téléchargement…</string>
+    <string name="download_verifying_file">Vérification de %1$s…</string>
+    <string name="download_verifying_files">Vérification des fichiers...</string>
+    <string name="download_assembling_files">Assemblage des fichiers...</string>
+    <string name="download_progress_chunks">Téléchargement (%1$d/%2$d blocs)</string>
+    <string name="download_progress_files">Téléchargement (%1$d/%2$d fichiers)…</string>
+    <string name="download_unpacking">Décompression...</string>
     <string name="download_preparing_depots">Préparation des dépôts (%1$d/%2$d)</string>
     <string name="update_available">Mise à jour disponible</string>
     <string name="game_information">Informations sur le jeu</string>
