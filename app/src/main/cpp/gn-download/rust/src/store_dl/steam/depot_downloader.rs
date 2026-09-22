@@ -555,10 +555,12 @@ pub fn download_resolved_depots_with_cancel_progress(
         resolved.push((depot, manifest));
     }
 
-    // ── CDN probe: rank the ASSIGNED servers in the background. The on-disk cache seeds the
-    // ranking synchronously (one small file read) so even the first chunks follow the last known
-    // order; a background thread re-probes when the cache is stale/absent and the scheduler
-    // reprioritizes mid-download. The server pool itself is never extended.
+    // ── CDN probe: rank the ASSIGNED servers in the background, and promote predicted
+    // foreign caches that measurably beat the assigned-set median. The on-disk cache seeds
+    // the ranking (and any cached winners) synchronously so even the first chunks follow the
+    // last known order; a background thread re-probes when the cache is stale/absent and the
+    // scheduler reprioritizes mid-download. The pool grows at depot boundaries only
+    // (extended_servers below): an in-flight depot's futures borrow a fixed server slice.
     let probe_hints = crate::store_dl::steam::cdn_probe::seed_from_cache(install_dir, &usable_servers);
     let probe_manifests: Vec<&ContentManifest> = resolved.iter().map(|(_, m)| m).collect();
     crate::store_dl::steam::cdn_probe::spawn_background_probe(
@@ -597,11 +599,23 @@ pub fn download_resolved_depots_with_cancel_progress(
         };
         let chunk_progress: crate::store_dl::steam::depot_writer::DepotChunkProgressCallback =
             &chunk_progress;
+        // Promote median-beating foreign caches the probe has found so far (cache-seeded on
+        // depot 1, live-probe winners from depot 2 onward). Assigned servers always come first;
+        // promoted hosts are seeded/ranked/demoted by the same scheduler paths as assigned ones.
+        let depot_servers = probe_hints.extended_servers(&usable_servers);
+        if depot_servers.len() != usable_servers.len() {
+            if let Some(log) = log {
+                log(&format!(
+                    "cdn-probe: depot {depot_id} pool extended to {} servers",
+                    depot_servers.len()
+                ));
+            }
+        }
         let write_result = write_depot_sequential(
             &manifest,
             &depot.depot_key,
             &cdn,
-            &usable_servers,
+            &depot_servers,
             install_dir,
             DepotWriteOptions {
                 max_workers,

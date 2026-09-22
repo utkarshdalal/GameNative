@@ -1,10 +1,14 @@
-//! Background CDN server probing: rank the servers Steam ASSIGNED, nothing more.
+//! Background CDN server probing: rank the servers Steam ASSIGNED live, and promote
+//! predicted foreign caches ONLY when they measurably beat the assigned set.
 //!
-//! Steam's Content Server Directory assigns ~16 servers by client-IP geolocation. Earlier
-//! revisions also guessed unassigned cache hostnames (`cache<N>-<metro>.steamcontent.com`)
-//! and merged probe winners into the pool; that broke down outside the regions it was tuned
-//! on (hostname prediction is not a contract), so the probe now measures ONLY the assigned
-//! set and feeds a live ranking to the download's scheduler — the pool is never extended.
+//! Steam's Content Server Directory assigns ~16 servers by client-IP geolocation. Hostname
+//! prediction (`cache<N>-<metro>.steamcontent.com` siblings + cross-region metros) is not a
+//! contract and breaks in some regions, so predicted hosts are probed ONLY in the background
+//! — an invalid guess simply fails its probe and is discarded. A probed foreign host is
+//! promoted into the download's server pool only when its measured throughput beats the
+//! assigned-set median: device evidence (DMC5 run) showed unconditional top-4 merging pulled
+//! in 0.2 MB/s Sydney caches that each absorbed up to per-host-cap permits while the one host
+//! that scales (alibaba) starved — promotion must be additive in VALUE, not just host count.
 //!
 //! Probe design (why throughput, not ping): latency measures distance, throughput measures how
 //! much Valve lets a host give you — on-device, alibaba out-delivered geographically closer hkg
@@ -50,6 +54,18 @@ pub const PROBE_CONCURRENCY: usize = 16;
 /// A host with this many CONSECUTIVE errors mid-download is marked bad in the cache (the early
 /// refresh trigger). One error is CDN noise; two in a row is a pattern worth re-probing.
 pub const PROBE_BAD_AFTER_CONSECUTIVE_ERRORS: u32 = 2;
+/// How many probed-but-unassigned winners may be promoted into the download's server pool.
+pub const PROBE_WINNER_COUNT: usize = 4;
+/// For each metro seen in the assigned set, probe cache host IDs 1..=this (Steam assigns ~12 of a
+/// metro's caches; there are usually more, and one unassigned sibling may be idle and fast).
+pub const PROBE_METRO_HOST_MAX_ID: u32 = 24;
+/// Cross-region metros to sample (a few host IDs each): if a neighbouring metro's caches are
+/// faster from the user's real network, the background probe finds them.
+pub const PROBE_CROSS_REGION_METROS: &[&str] = &[
+    "nrt1", "sin1", "tpe1", "icn1", "hkg1", "lax1", "sea1", "fra1", "lhr1", "syd1", "bom1", "dxb1",
+];
+/// Host IDs probed per cross-region metro (wide metros are a lottery; a few tickets each).
+pub const PROBE_CROSS_REGION_HOST_MAX_ID: u32 = 6;
 
 const CACHE_FILE_NAME: &str = "cdn_probe_cache.json";
 
@@ -185,6 +201,100 @@ pub fn probe_candidates(servers: &[CContentServerDirectoryServerInfo]) -> Vec<St
     out
 }
 
+/// `cache7-hkg1.steamcontent.com` → `Some("hkg1")`. None for non-pattern hosts (alibaba, fastly,
+/// akamai edges) — their hostnames don't carry a metro we can enumerate siblings for.
+fn metro_of(host: &str) -> Option<String> {
+    let first = host.split('.').next()?;
+    let (_, suffix) = first.split_once('-')?;
+    if suffix.len() >= 3 && suffix.chars().all(|c| c.is_ascii_alphanumeric()) {
+        Some(suffix.to_string())
+    } else {
+        None
+    }
+}
+
+/// Predicted-but-unassigned probe candidates: same-metro siblings (`cache1..=24-<metro>` for
+/// each metro present in the assigned set) plus a few host IDs per cross-region metro. Probed
+/// ONLY in the background — a wrong guess just fails its probe and is discarded. Assigned
+/// hosts are excluded (they are probed via [`probe_candidates`]).
+pub fn predicted_candidates(servers: &[CContentServerDirectoryServerInfo]) -> Vec<String> {
+    let assigned = probe_candidates(servers);
+    let mut out: Vec<String> = Vec::new();
+    let mut push = |host: String| {
+        if !assigned.contains(&host) && !out.contains(&host) {
+            out.push(host);
+        }
+    };
+    let mut metros: Vec<String> = Vec::new();
+    for host in &assigned {
+        if let Some(metro) = metro_of(host) {
+            if !metros.contains(&metro) {
+                metros.push(metro);
+            }
+        }
+    }
+    for metro in &metros {
+        for id in 1..=PROBE_METRO_HOST_MAX_ID {
+            push(format!("cache{id}-{metro}.steamcontent.com"));
+        }
+    }
+    for metro in PROBE_CROSS_REGION_METROS {
+        for id in 1..=PROBE_CROSS_REGION_HOST_MAX_ID {
+            push(format!("cache{id}-{metro}.steamcontent.com"));
+        }
+    }
+    out
+}
+
+/// Median probe throughput of the ASSIGNED set: the bar a foreign cache must beat to earn a pool
+/// slot. `None` when no assigned host produced a sample (then don't gate — the assigned set is
+/// unreachable and any working foreign cache is an improvement).
+fn assigned_median_bps(results: &[ProbeResult], assigned_hosts: &[String]) -> Option<u64> {
+    let mut bps: Vec<u64> = results
+        .iter()
+        .filter(|r| assigned_hosts.contains(&r.host))
+        .map(|r| r.bytes_per_sec)
+        .filter(|&b| b > 0)
+        .collect();
+    if bps.is_empty() {
+        return None;
+    }
+    bps.sort_unstable();
+    Some(bps[bps.len() / 2])
+}
+
+/// Top `count` probed hosts by throughput, excluding bad hosts and anything already assigned.
+fn pick_winners(
+    results: &[ProbeResult],
+    bad: &[String],
+    assigned_hosts: &[String],
+    count: usize,
+) -> Vec<ProbeResult> {
+    let mut ranked: Vec<&ProbeResult> = results
+        .iter()
+        .filter(|r| r.bytes_per_sec > 0)
+        .filter(|r| !bad.contains(&r.host))
+        .filter(|r| !assigned_hosts.contains(&r.host))
+        .collect();
+    ranked.sort_by(|a, b| b.bytes_per_sec.cmp(&a.bytes_per_sec));
+    ranked.into_iter().take(count).cloned().collect()
+}
+
+/// Foreign caches worth promoting into the server pool: probed winners that beat the
+/// assigned-set median (the dilution guard — see the module doc). Empty when no assigned
+/// host was probed AND no foreign host responded either.
+pub fn gated_winners(
+    results: &[ProbeResult],
+    bad: &[String],
+    assigned_hosts: &[String],
+) -> Vec<ProbeResult> {
+    let median = assigned_median_bps(results, assigned_hosts);
+    pick_winners(results, bad, assigned_hosts, PROBE_WINNER_COUNT)
+        .into_iter()
+        .filter(|w| median.is_none_or(|m| w.bytes_per_sec > m))
+        .collect()
+}
+
 /// Probe one host: range-GET a slice of a real depot chunk, returning TTFB and body throughput.
 async fn probe_one(
     client: &reqwest::Client,
@@ -291,6 +401,8 @@ struct ProbeState {
     /// Ranked best-first; empty until the first cache/probe lands.
     results: Vec<ProbeResult>,
     bad: Vec<String>,
+    /// Foreign caches that beat the assigned-set median — promotable into the server pool.
+    winners: Vec<ProbeResult>,
 }
 
 /// Shared, live-ranked view of the ASSIGNED CDN servers. Seeded synchronously from the on-disk
@@ -346,14 +458,46 @@ impl ProbeHints {
         })
     }
 
-    fn publish(&self, results: Vec<ProbeResult>, bad: Vec<String>) {
+    fn publish(&self, results: Vec<ProbeResult>, bad: Vec<String>, winners: Vec<ProbeResult>) {
         {
             let mut state = self.state.lock().expect("probe hints poisoned");
             state.results = results;
             state.bad = bad;
+            state.winners = winners;
         }
         self.generation.fetch_add(1, Ordering::Relaxed);
         self.needs_probe.store(false, Ordering::Relaxed);
+    }
+
+    /// `servers` plus synthetic directory entries for the currently promoted foreign caches
+    /// (assigned hosts and bad-marked hosts excluded). The download calls this per depot, so a
+    /// background probe that lands mid-run extends the pool from the NEXT depot onward — the
+    /// in-flight depot's futures borrow a fixed server slice and can't grow it safely.
+    /// Promoted hosts flow through the same EWMA seeding / live-sample / zombie-sweep paths as
+    /// assigned ones, so reprioritization toward the fastest CDN is then automatic.
+    pub fn extended_servers(
+        &self,
+        servers: &[CContentServerDirectoryServerInfo],
+    ) -> Vec<CContentServerDirectoryServerInfo> {
+        let mut out = servers.to_vec();
+        if self.generation.load(Ordering::Relaxed) == 0 {
+            return out;
+        }
+        let state = self.state.lock().expect("probe hints poisoned");
+        for winner in &state.winners {
+            if state.bad.iter().any(|b| b == &winner.host) {
+                continue;
+            }
+            if out.iter().any(|s| server_addr(s) == winner.host) {
+                continue;
+            }
+            out.push(CContentServerDirectoryServerInfo {
+                host: winner.host.clone(),
+                https_support: "mandatory".into(),
+                ..Default::default()
+            });
+        }
+        out
     }
 }
 
@@ -371,14 +515,18 @@ pub fn seed_from_cache(
     let path = cache_path(install_dir);
     let key = cache_key(servers);
     if let Some(cache) = load_cache(&path).filter(|c| cache_usable(c, &key)) {
-        hints.publish(cache.results, cache.bad);
+        let assigned = probe_candidates(servers);
+        let winners = gated_winners(&cache.results, &cache.bad, &assigned);
+        hints.publish(cache.results, cache.bad, winners);
     }
     hints
 }
 
 /// Spawn the background probe thread (no-op when the cache already served a fresh ranking, or
-/// when there is no downloadable chunk to sample). Probes ONLY the assigned servers, saves the
-/// cache, then publishes the ranking — the running download picks it up via [`ProbeHints`].
+/// when there is no downloadable chunk to sample). Probes the assigned servers AND predicted
+/// foreign caches (same-metro siblings + cross-region metros — prediction failures simply
+/// don't respond), saves the cache, then publishes the ranking plus the median-gated winners
+/// — the running download picks both up via [`ProbeHints`].
 /// Deliberately not wired to the download's cancel flag: the probe is tiny (≤ ~10 s worst case)
 /// and its result is simply unused when the download has already ended.
 pub fn spawn_background_probe(
@@ -398,9 +546,11 @@ pub fn spawn_background_probe(
     let install_dir = install_dir.to_string();
     let ca_bundle_path = ca_bundle_path.to_string();
     let candidates = probe_candidates(servers);
+    let mut all_candidates = candidates.clone();
+    all_candidates.extend(predicted_candidates(servers));
     let key = cache_key(servers);
     std::thread::spawn(move || {
-        let results = run_probe(&ca_bundle_path, &candidates, &url_path, None);
+        let results = run_probe(&ca_bundle_path, &all_candidates, &url_path, None);
         if results.is_empty() {
             return; // keep needs_probe set: the NEXT download tries again
         }
@@ -421,7 +571,8 @@ pub fn spawn_background_probe(
                 bad: bad.clone(),
             },
         );
-        hints.publish(results, bad);
+        let winners = gated_winners(&results, &bad, &candidates);
+        hints.publish(results, bad, winners);
     });
 }
 
@@ -534,6 +685,7 @@ mod tests {
         hints.publish(
             vec![result("fast", 20_000_000), result("slow", 1_000_000)],
             Vec::new(),
+            Vec::new(),
         );
         assert!(!hints.needs_probe.load(Ordering::Relaxed));
         let (gen, results, bad) = hints.take_update(0).expect("first update");
@@ -549,11 +701,89 @@ mod tests {
         hints.publish(
             vec![result("fast", 20_000_000), result("slow", 1_000_000)],
             vec!["fast".into()],
+            Vec::new(),
         );
         let (gen, _, bad) = hints.take_update(1).expect("second update");
         assert_eq!(gen, 2);
         assert_eq!(bad, vec!["fast".to_string()]);
         assert_eq!(hints.best_server_index(&servers), Some(0));
+    }
+
+    #[test]
+    fn predicted_candidates_siblings_and_cross_region_exclude_assigned() {
+        let servers = vec![
+            srv("cache7-hkg1.steamcontent.com"),
+            srv("alibaba.cdn.steampipe.steamcontent.com"),
+        ];
+        let predicted = predicted_candidates(&servers);
+        // Same-metro siblings for hkg1 (1..=24), minus the assigned cache7.
+        assert!(predicted.contains(&"cache1-hkg1.steamcontent.com".to_string()));
+        assert!(predicted.contains(&"cache24-hkg1.steamcontent.com".to_string()));
+        assert!(!predicted.contains(&"cache7-hkg1.steamcontent.com".to_string()));
+        // Cross-region metros, a few IDs each.
+        assert!(predicted.contains(&"cache1-nrt1.steamcontent.com".to_string()));
+        assert!(predicted.contains(&"cache6-dxb1.steamcontent.com".to_string()));
+        assert!(!predicted.contains(&"cache7-nrt1.steamcontent.com".to_string()));
+        // Non-pattern assigned hosts are not "predicted", and nothing is duplicated.
+        assert!(!predicted.contains(&"alibaba.cdn.steampipe.steamcontent.com".to_string()));
+        let mut dedup = predicted.clone();
+        dedup.sort_unstable();
+        dedup.dedup();
+        assert_eq!(dedup.len(), predicted.len());
+    }
+
+    #[test]
+    fn gated_winners_require_beating_the_assigned_median() {
+        let assigned = vec!["a1".to_string(), "a2".to_string()];
+        let results = vec![
+            result("a1", 10_000_000),
+            result("a2", 20_000_000),
+            result("fast-foreign", 30_000_000),
+            result("slow-foreign", 5_000_000),
+        ];
+        // Median of {10, 20} = index 1 of sorted = 20 MB/s.
+        let winners = gated_winners(&results, &[], &assigned);
+        assert_eq!(winners.len(), 1);
+        assert_eq!(winners[0].host, "fast-foreign");
+
+        // Bad-marked winners are excluded even when fast enough.
+        let winners = gated_winners(&results, &["fast-foreign".into()], &assigned);
+        assert!(winners.is_empty());
+
+        // No assigned samples → no gate: any responsive foreign cache wins.
+        let foreign_only = vec![result("fast-foreign", 30_000_000)];
+        let winners = gated_winners(&foreign_only, &[], &assigned);
+        assert_eq!(winners.len(), 1);
+    }
+
+    #[test]
+    fn extended_servers_appends_gated_winners_as_synthetic_entries() {
+        let hints = ProbeHints::default();
+        let servers = vec![srv("cache7-hkg1.steamcontent.com")];
+        // No ranking yet → pool unchanged.
+        assert_eq!(hints.extended_servers(&servers).len(), 1);
+
+        hints.publish(
+            vec![
+                result("cache7-hkg1.steamcontent.com", 10_000_000),
+                result("cache3-sin1.steamcontent.com", 30_000_000),
+            ],
+            Vec::new(),
+            vec![result("cache3-sin1.steamcontent.com", 30_000_000)],
+        );
+        let extended = hints.extended_servers(&servers);
+        assert_eq!(extended.len(), 2);
+        assert_eq!(extended[1].host, "cache3-sin1.steamcontent.com");
+        assert_eq!(extended[1].https_support, "mandatory");
+        assert!(extended[1].vhost.is_empty());
+
+        // A bad-marked winner is not promoted.
+        hints.publish(
+            vec![result("cache3-sin1.steamcontent.com", 30_000_000)],
+            vec!["cache3-sin1.steamcontent.com".into()],
+            vec![result("cache3-sin1.steamcontent.com", 30_000_000)],
+        );
+        assert_eq!(hints.extended_servers(&servers).len(), 1);
     }
 
     #[test]
