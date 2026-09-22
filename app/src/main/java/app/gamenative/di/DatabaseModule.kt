@@ -30,8 +30,6 @@ class DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): PluviaDatabase {
-        // The db will be considered unstable during development.
-        // Once stable we should add a (room) db migration
         return Room.databaseBuilder(context, PluviaDatabase::class.java, DATABASE_NAME)
             .addMigrations(
                 ROOM_MIGRATION_V7_to_V8,
@@ -39,10 +37,6 @@ class DatabaseModule {
                 ROOM_MIGRATION_V24_to_V25,
                 ROOM_MIGRATION_V26_to_V27,
             )
-            // Versions 1-6 predate the first retained migration. Version 16 has no
-            // 16 -> 17 migration because that historical schema could contain a
-            // duplicated column. Every newer supported schema migrates in place.
-            .fallbackToDestructiveMigrationFrom(true, 1, 2, 3, 4, 5, 6, 16)
             .build()
     }
 

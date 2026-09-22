@@ -1,4 +1,4 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <string name="app_name">GameNative</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>
@@ -2190,7 +2190,7 @@
     <string name="nexus_mod_order_already_applying">Mod order is already applying.</string>
     <string name="nexus_applying_order_may_take_time">Applying mod order. Large mod lists may take a while.</string>
     <string name="nexus_checking_mod_order">Checking mod order</string>
-    <string name="nexus_mod_order_blocked_managed_files" tools:ignore="MissingTranslation">Mod order was not changed because %1$d managed file(s) are missing or modified. Run Install health and resolve those files first.</string>
+    <string name="nexus_mod_order_blocked_managed_files">Mod order was not changed. Missing or modified managed files: %1$d. Run Install health and resolve them first.</string>
     <string name="nexus_fix_plugin_warnings_before_apply">Fix plugin master warnings before applying order.</string>
     <string name="nexus_checking_file_conflicts">Checking file conflicts</string>
     <string name="nexus_profile_order_target_files_exist">Profile order has existing target files. Use Overwrite files and create backups for mods that should win conflicts.</string>
@@ -2200,7 +2200,7 @@
     <string name="nexus_plan_review_title">Placement review</string>
     <string name="nexus_plan_coverage">%1$d of %2$d files planned • %3$d ignored • %4$d need review</string>
     <string name="nexus_fomod_defaults_replaced">%1$d default file(s) replaced by your FOMOD choices</string>
-    <string name="nexus_fomod_selected_winner" tools:ignore="MissingTranslation">%1$s ← %2$s</string>
+    <string name="nexus_fomod_selected_winner" translatable="false">%1$s ← %2$s</string>
     <string name="nexus_plan_ranked">Ranked suggestions</string>
     <string name="nexus_plan_score">%1$d. %2$s — %3$d%% coverage</string>
     <string name="nexus_plan_case_merge">Case merge: %1$s</string>
@@ -2271,12 +2271,12 @@
     <string name="nexus_resolve_url_failed">Failed to resolve Nexus URL</string>
     <string name="nexus_applying_mod_files">Applying mod files</string>
     <string name="nexus_applied_items_backups">Applied %1$d item(s), backed up %2$d%3$s</string>
-    <string name="nexus_placement_complete_summary" tools:ignore="MissingTranslation">Placement complete for %1$d item(s): %2$d updated, %3$d already current, %4$d backed up%5$s</string>
+    <string name="nexus_placement_complete_summary">Placement complete. Total: %1$d; updated: %2$d; already current: %3$d; backed up: %4$d%5$s</string>
     <string name="nexus_old_files_left_in_place_suffix">; %1$d old file(s) left in place</string>
-    <string name="nexus_apply_failed_rolled_back" tools:ignore="MissingTranslation,PluralsCandidate">Install failed; safe rollback attempted (%1$d error(s))</string>
-    <string name="nexus_apply_failure_title" tools:ignore="MissingTranslation">Last mod install failed</string>
-    <string name="nexus_apply_failure_description" tools:ignore="MissingTranslation">The mod was not marked as applied. Changes were rolled back where they could be verified safely. Review the file errors below, then return to Placement to correct or retry this mod.</string>
-    <string name="nexus_apply_failure_details" tools:ignore="MissingTranslation,PluralsCandidate">%1$d file error(s)</string>
+    <string name="nexus_apply_failed_rolled_back">Install failed; safe rollback attempted. Errors: %1$d</string>
+    <string name="nexus_apply_failure_title">Last mod install failed</string>
+    <string name="nexus_apply_failure_description">The mod was not marked as applied. Changes were rolled back where they could be verified safely. Review the file errors below, then return to Placement to correct or retry this mod.</string>
+    <string name="nexus_apply_failure_details">File errors: %1$d</string>
     <string name="nexus_mod_apply_already_running">Mod files are already being applied.</string>
     <string name="nexus_failed_to_apply_mod">Failed to apply mod</string>
     <string name="nexus_fomod_or_custom_required">Configure the FOMOD installer or choose Custom placement before applying.</string>

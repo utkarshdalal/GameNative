@@ -2486,7 +2486,7 @@
     <string name="nexus_impact_will_receive_files">파일을 받을 폴더</string>
     <string name="nexus_advanced_placement">고급 배치</string>
     <string name="nexus_hide_advanced_placement">고급 배치 숨기기</string>
-    <string name="nexus_advanced_placement_description">자동 배치를 권장합니다. 프리셋, 이전 레이아웃 또는 수동 매핑이 필요할 때만 고급 배치를 여세요.</string>
+    <string name="nexus_advanced_placement_description">자동 배치는 추정 결과입니다. 배치할 파일과 대상 폴더가 모드 설치 안내와 일치하는지 확인하세요. 일치하지 않으면 고급 배치에서 사용자 지정을 선택해 직접 지정하세요.</string>
     <string name="nexus_folder_layout">대상에 설치할 항목</string>
     <string name="nexus_install_contents_of">%1$s의 내용</string>
     <string name="nexus_install_folder_and_contents">%1$s 폴더와 그 내용</string>
@@ -2591,4 +2591,10 @@
     <string name="nexus_review_placement">배치 검토</string>
     <string name="nexus_everything_folder_layout">최상위 폴더는 이름을 유지하고 루트 파일은 대상에 직접 배치됩니다</string>
     <string name="nexus_fomod_defaults_replaced">FOMOD 선택으로 기본 파일 %1$d개 교체됨</string>
+    <string name="nexus_mod_order_blocked_managed_files">모드 순서를 변경하지 않았습니다. 누락되었거나 수정된 관리 파일: %1$d. 먼저 설치 상태를 확인하고 문제를 해결하세요.</string>
+    <string name="nexus_placement_complete_summary">배치 완료. 전체: %1$d; 업데이트: %2$d; 이미 최신 상태: %3$d; 백업: %4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">설치에 실패했습니다. 안전한 롤백을 시도했습니다. 오류: %1$d</string>
+    <string name="nexus_apply_failure_title">마지막 모드 설치 실패</string>
+    <string name="nexus_apply_failure_description">모드가 설치 완료로 표시되지 않았습니다. 안전하게 확인할 수 있는 변경 사항은 되돌렸습니다. 아래 파일 오류를 확인한 뒤 배치 화면으로 돌아가 수정하거나 다시 시도하세요.</string>
+    <string name="nexus_apply_failure_details">파일 오류: %1$d</string>
 </resources>

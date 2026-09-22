@@ -2486,7 +2486,7 @@
     <string name="nexus_impact_will_receive_files">Va primi fișiere</string>
     <string name="nexus_advanced_placement">Plasare avansată</string>
     <string name="nexus_hide_advanced_placement">Ascunde plasarea avansată</string>
-    <string name="nexus_advanced_placement_description">Se recomandă plasarea automată. Deschide opțiunile avansate doar pentru presetări, reutilizarea unui aspect sau mapare manuală.</string>
+    <string name="nexus_advanced_placement_description">Plasarea automată este doar o estimare. Verifică dacă fișierele și destinațiile planificate respectă instrucțiunile de instalare ale modului. Dacă nu, deschide Plasare avansată și alege Personalizat pentru a le atribui manual.</string>
     <string name="nexus_folder_layout">La destinație, instalează</string>
     <string name="nexus_install_contents_of">Conținutul din %1$s</string>
     <string name="nexus_install_folder_and_contents">Folderul %1$s și conținutul său</string>
@@ -2602,4 +2602,10 @@
     <string name="rockstar_preparing">Se pregătește suportul pentru launcherul Rockstar</string>
     <string name="rockstar_runtime_installing">Se instalează runtime-ul Social Club</string>
     <string name="rockstar_installer_missing">Programul de instalare Social Club lipsește din fișierele jocului. Verifică fișierele jocului în Steam și încearcă din nou.</string>
+    <string name="nexus_mod_order_blocked_managed_files">Ordinea modurilor nu a fost schimbată. Fișiere gestionate lipsă sau modificate: %1$d. Verifică mai întâi starea instalării și rezolvă problemele.</string>
+    <string name="nexus_placement_complete_summary">Plasare finalizată. Total: %1$d; actualizate: %2$d; deja la zi: %3$d; cu copii de rezervă: %4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">Instalarea a eșuat; s-a încercat revenirea în siguranță. Erori: %1$d</string>
+    <string name="nexus_apply_failure_title">Ultima instalare a modului a eșuat</string>
+    <string name="nexus_apply_failure_description">Modul nu a fost marcat ca instalat. Modificările au fost anulate acolo unde acest lucru a putut fi verificat în siguranță. Verifică erorile de fișier de mai jos, apoi revino la Plasare pentru a corecta sau reîncerca instalarea.</string>
+    <string name="nexus_apply_failure_details">Erori de fișier: %1$d</string>
 </resources>

@@ -2506,7 +2506,7 @@
     <string name="nexus_impact_will_receive_files">将接收文件</string>
     <string name="nexus_advanced_placement">高级放置</string>
     <string name="nexus_hide_advanced_placement">隐藏高级放置</string>
-    <string name="nexus_advanced_placement_description">建议使用自动放置。仅在选择预设、复用旧布局或手动映射文件时打开高级选项。</string>
+    <string name="nexus_advanced_placement_description">自动放置只是估计结果。请核对计划安装的文件和目标位置是否符合模组的安装说明。如果不符，请打开高级放置并选择自定义，手动指定位置。</string>
     <string name="nexus_folder_layout">在目标位置安装</string>
     <string name="nexus_install_contents_of">%1$s 的内容</string>
     <string name="nexus_install_folder_and_contents">%1$s 文件夹及其内容</string>
@@ -2611,4 +2611,10 @@
     <string name="nexus_review_placement">检查放置方式</string>
     <string name="nexus_everything_folder_layout">顶层文件夹保留其名称；根目录文件直接放入目标位置</string>
     <string name="nexus_fomod_defaults_replaced">FOMOD 选择替换了 %1$d 个默认文件</string>
+    <string name="nexus_mod_order_blocked_managed_files">模组顺序未更改。缺失或被修改的受管理文件：%1$d。请先检查安装状态并解决这些问题。</string>
+    <string name="nexus_placement_complete_summary">放置完成。总计：%1$d；已更新：%2$d；已是最新：%3$d；已备份：%4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">安装失败；已尝试安全回滚。错误：%1$d</string>
+    <string name="nexus_apply_failure_title">上次模组安装失败</string>
+    <string name="nexus_apply_failure_description">该模组未被标记为已安装。对于能够安全核实的更改，已尝试回滚。请查看下方的文件错误，然后返回放置页面进行修正或重试。</string>
+    <string name="nexus_apply_failure_details">文件错误：%1$d</string>
 </resources>

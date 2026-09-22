@@ -2497,7 +2497,7 @@
     <string name="nexus_impact_will_receive_files">將接收檔案</string>
     <string name="nexus_advanced_placement">進階放置</string>
     <string name="nexus_hide_advanced_placement">隱藏進階放置</string>
-    <string name="nexus_advanced_placement_description">建議使用自動放置。只有選擇預設、重用舊配置或手動對應檔案時才開啟進階選項。</string>
+    <string name="nexus_advanced_placement_description">自動放置只是估計結果。請核對預計安裝的檔案與目標位置是否符合模組的安裝說明。若不符合，請開啟進階放置並選擇自訂，手動指定位置。</string>
     <string name="nexus_folder_layout">在目標位置安裝</string>
     <string name="nexus_install_contents_of">%1$s 的內容</string>
     <string name="nexus_install_folder_and_contents">%1$s 資料夾及其內容</string>
@@ -2602,4 +2602,10 @@
     <string name="nexus_review_placement">檢查放置方式</string>
     <string name="nexus_everything_folder_layout">頂層資料夾保留其名稱；根目錄檔案直接放入目標位置</string>
     <string name="nexus_fomod_defaults_replaced">FOMOD 選項取代了 %1$d 個預設檔案</string>
+    <string name="nexus_mod_order_blocked_managed_files">模組順序未變更。遺失或遭修改的受管理檔案：%1$d。請先檢查安裝狀態並解決這些問題。</string>
+    <string name="nexus_placement_complete_summary">放置完成。總計：%1$d；已更新：%2$d；已是最新：%3$d；已備份：%4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">安裝失敗；已嘗試安全回復。錯誤：%1$d</string>
+    <string name="nexus_apply_failure_title">上次模組安裝失敗</string>
+    <string name="nexus_apply_failure_description">此模組未標記為已安裝。對於能安全確認的變更，已嘗試回復。請查看下方的檔案錯誤，然後返回放置頁面修正或重試。</string>
+    <string name="nexus_apply_failure_details">檔案錯誤：%1$d</string>
 </resources>

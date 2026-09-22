@@ -2362,7 +2362,7 @@
     <string name="nexus_impact_will_receive_files">Modtager filer</string>
     <string name="nexus_advanced_placement">Avanceret placering</string>
     <string name="nexus_hide_advanced_placement">Skjul avanceret placering</string>
-    <string name="nexus_advanced_placement_description">Automatisk placering anbefales. Åbn kun avanceret placering for at vælge forudindstillinger, genbruge et layout eller tilknytte filer manuelt.</string>
+    <string name="nexus_advanced_placement_description">Automatisk placering er et bedste skøn. Kontrollér, at de planlagte filer og destinationer følger moddens installationsvejledning. Hvis ikke, skal du åbne Avanceret placering og vælge Brugerdefineret for selv at placere dem.</string>
     <string name="nexus_folder_layout">Installer på destinationen</string>
     <string name="nexus_install_contents_of">Indholdet af %1$s</string>
     <string name="nexus_install_folder_and_contents">Mappen %1$s og dens indhold</string>
@@ -2467,4 +2467,10 @@
     <string name="nexus_review_placement">Gennemgå placering</string>
     <string name="nexus_everything_folder_layout">Mapper på øverste niveau beholder deres navne; filer i roden placeres direkte i destinationen</string>
     <string name="nexus_fomod_defaults_replaced">%1$d standardfil(er) erstattet af dine FOMOD-valg</string>
+    <string name="nexus_mod_order_blocked_managed_files">Modrækkefølgen blev ikke ændret. Manglende eller ændrede administrerede filer: %1$d. Kør kontrol af installationen, og løs problemerne først.</string>
+    <string name="nexus_placement_complete_summary">Placering fuldført. I alt: %1$d; opdateret: %2$d; allerede ajour: %3$d; sikkerhedskopieret: %4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">Installationen mislykkedes; sikker tilbagerulning blev forsøgt. Fejl: %1$d</string>
+    <string name="nexus_apply_failure_title">Sidste modinstallation mislykkedes</string>
+    <string name="nexus_apply_failure_description">Moddet blev ikke markeret som installeret. Ændringer blev rullet tilbage, hvor det kunne bekræftes sikkert. Gennemgå filfejlene nedenfor, og gå tilbage til Placering for at rette eller prøve installationen igen.</string>
+    <string name="nexus_apply_failure_details">Filfejl: %1$d</string>
 </resources>

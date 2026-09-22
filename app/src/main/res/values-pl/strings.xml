@@ -2498,7 +2498,7 @@
     <string name="nexus_impact_will_receive_files">Otrzyma pliki</string>
     <string name="nexus_advanced_placement">Zaawansowane rozmieszczenie</string>
     <string name="nexus_hide_advanced_placement">Ukryj zaawansowane rozmieszczenie</string>
-    <string name="nexus_advanced_placement_description">Zalecane jest rozmieszczenie automatyczne. Opcje zaawansowane otwieraj tylko dla ustawień wstępnych, wcześniejszego układu lub ręcznego mapowania.</string>
+    <string name="nexus_advanced_placement_description">Automatyczne rozmieszczenie jest jedynie oszacowaniem. Sprawdź, czy planowane pliki i miejsca docelowe są zgodne z instrukcją instalacji moda. Jeśli nie, otwórz Zaawansowane rozmieszczenie i wybierz Własne, aby przypisać je ręcznie.</string>
     <string name="nexus_folder_layout">W miejscu docelowym zainstaluj</string>
     <string name="nexus_install_contents_of">Zawartość %1$s</string>
     <string name="nexus_install_folder_and_contents">Folder %1$s i jego zawartość</string>
@@ -2603,4 +2603,10 @@
     <string name="nexus_review_placement">Sprawdź rozmieszczenie</string>
     <string name="nexus_everything_folder_layout">Foldery najwyższego poziomu zachowują nazwy; pliki główne trafiają bezpośrednio do miejsca docelowego</string>
     <string name="nexus_fomod_defaults_replaced">Liczba plików domyślnych zastąpionych przez wybory FOMOD: %1$d</string>
+    <string name="nexus_mod_order_blocked_managed_files">Kolejność modów nie została zmieniona. Brakujące lub zmodyfikowane pliki zarządzane: %1$d. Najpierw sprawdź stan instalacji i rozwiąż problemy.</string>
+    <string name="nexus_placement_complete_summary">Rozmieszczenie zakończone. Łącznie: %1$d; zaktualizowano: %2$d; już aktualne: %3$d; utworzono kopie zapasowe: %4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">Instalacja nie powiodła się; podjęto próbę bezpiecznego wycofania zmian. Błędy: %1$d</string>
+    <string name="nexus_apply_failure_title">Ostatnia instalacja moda nie powiodła się</string>
+    <string name="nexus_apply_failure_description">Mod nie został oznaczony jako zainstalowany. Zmiany cofnięto tam, gdzie można było to bezpiecznie zweryfikować. Sprawdź poniższe błędy plików, a następnie wróć do Rozmieszczenia, aby poprawić lub ponowić instalację moda.</string>
+    <string name="nexus_apply_failure_details">Błędy plików: %1$d</string>
 </resources>

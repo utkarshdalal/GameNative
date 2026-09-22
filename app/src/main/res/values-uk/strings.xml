@@ -2494,7 +2494,7 @@
     <string name="nexus_impact_will_receive_files">Отримає файли</string>
     <string name="nexus_advanced_placement">Розширене розміщення</string>
     <string name="nexus_hide_advanced_placement">Сховати розширене розміщення</string>
-    <string name="nexus_advanced_placement_description">Рекомендується автоматичне розміщення. Відкривайте розширені параметри лише для шаблонів, попередньої схеми або ручного зіставлення.</string>
+    <string name="nexus_advanced_placement_description">Автоматичне розміщення — лише попередня оцінка. Перевірте, чи відповідають заплановані файли та папки призначення інструкції зі встановлення мода. Якщо ні, відкрийте розширене розміщення та виберіть ручне налаштування.</string>
     <string name="nexus_folder_layout">У місці призначення встановити</string>
     <string name="nexus_install_contents_of">Вміст %1$s</string>
     <string name="nexus_install_folder_and_contents">Папку %1$s та її вміст</string>
@@ -2599,4 +2599,10 @@
     <string name="nexus_review_placement">Перевірити розміщення</string>
     <string name="nexus_everything_folder_layout">Папки верхнього рівня зберігають свої назви; файли з кореня розміщуються безпосередньо в папці призначення</string>
     <string name="nexus_fomod_defaults_replaced">Файлів за замовчуванням замінено вибраними параметрами FOMOD: %1$d</string>
+    <string name="nexus_mod_order_blocked_managed_files">Порядок модів не змінено. Відсутні або змінені керовані файли: %1$d. Спочатку перевірте стан встановлення та усуньте проблеми.</string>
+    <string name="nexus_placement_complete_summary">Розміщення завершено. Усього: %1$d; оновлено: %2$d; уже актуальні: %3$d; створено резервні копії: %4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">Не вдалося встановити мод; виконано спробу безпечного відкату. Помилки: %1$d</string>
+    <string name="nexus_apply_failure_title">Останнє встановлення мода не вдалося</string>
+    <string name="nexus_apply_failure_description">Мод не позначено як встановлений. Зміни скасовано там, де це вдалося безпечно перевірити. Перегляньте помилки файлів нижче, а потім поверніться до розміщення, щоб виправити або повторити встановлення.</string>
+    <string name="nexus_apply_failure_details">Помилки файлів: %1$d</string>
 </resources>

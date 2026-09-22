@@ -2445,7 +2445,7 @@
     <string name="nexus_impact_will_receive_files">ファイルの配置先</string>
     <string name="nexus_advanced_placement">詳細な配置</string>
     <string name="nexus_hide_advanced_placement">詳細な配置を隠す</string>
-    <string name="nexus_advanced_placement_description">自動配置を推奨します。プリセット、以前のレイアウト、手動マッピングが必要な場合のみ詳細設定を開いてください。</string>
+    <string name="nexus_advanced_placement_description">自動配置は推定結果です。予定されたファイルと配置先が MOD の導入手順に合っているか確認してください。合わない場合は詳細な配置を開き、カスタムを選んで手動で指定してください。</string>
     <string name="nexus_folder_layout">インストール先での配置</string>
     <string name="nexus_install_contents_of">%1$s の内容</string>
     <string name="nexus_install_folder_and_contents">%1$s フォルダーとその内容</string>
@@ -2550,4 +2550,10 @@
     <string name="nexus_review_placement">配置を確認</string>
     <string name="nexus_everything_folder_layout">最上位フォルダーは名前を保持し、ルートファイルは移動先に直接配置されます</string>
     <string name="nexus_fomod_defaults_replaced">FOMOD の選択により %1$d 個の既定ファイルを置き換えました</string>
+    <string name="nexus_mod_order_blocked_managed_files">MOD の順序は変更されませんでした。不足または変更された管理対象ファイル: %1$d。先にインストール状態を確認し、問題を解決してください。</string>
+    <string name="nexus_placement_complete_summary">配置完了。合計: %1$d、更新: %2$d、変更不要: %3$d、バックアップ: %4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">インストールに失敗しました。安全なロールバックを試行しました。エラー: %1$d</string>
+    <string name="nexus_apply_failure_title">直前の MOD のインストールに失敗しました</string>
+    <string name="nexus_apply_failure_description">MOD は適用済みとして記録されませんでした。安全に確認できた変更は元に戻しました。以下のファイルエラーを確認し、配置画面に戻って修正または再試行してください。</string>
+    <string name="nexus_apply_failure_details">ファイルエラー: %1$d</string>
 </resources>

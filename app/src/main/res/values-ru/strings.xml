@@ -2424,7 +2424,7 @@ https://gamenative.app
     <string name="nexus_impact_will_receive_files">Получит файлы</string>
     <string name="nexus_advanced_placement">Расширенное размещение</string>
     <string name="nexus_hide_advanced_placement">Скрыть расширенное размещение</string>
-    <string name="nexus_advanced_placement_description">Рекомендуется автоматическое размещение. Открывайте расширенные настройки только для шаблонов, прежней схемы или ручного сопоставления.</string>
+    <string name="nexus_advanced_placement_description">Автоматическое размещение — лишь предварительная оценка. Проверьте, соответствуют ли файлы и папки назначения инструкции по установке мода. Если нет, откройте расширенное размещение и выберите ручную настройку.</string>
     <string name="nexus_folder_layout">В месте назначения установить</string>
     <string name="nexus_install_contents_of">Содержимое %1$s</string>
     <string name="nexus_install_folder_and_contents">Папку %1$s и её содержимое</string>
@@ -2529,4 +2529,10 @@ https://gamenative.app
     <string name="nexus_review_placement">Проверить размещение</string>
     <string name="nexus_everything_folder_layout">Папки верхнего уровня сохраняют свои имена; файлы из корня помещаются непосредственно в папку назначения</string>
     <string name="nexus_fomod_defaults_replaced">Файлов по умолчанию заменено выбранными параметрами FOMOD: %1$d</string>
+    <string name="nexus_mod_order_blocked_managed_files">Порядок модов не изменён. Отсутствующие или изменённые управляемые файлы: %1$d. Сначала проверьте состояние установки и устраните проблемы.</string>
+    <string name="nexus_placement_complete_summary">Размещение завершено. Всего: %1$d; обновлено: %2$d; уже актуальны: %3$d; созданы резервные копии: %4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">Установка не удалась; предпринята попытка безопасного отката. Ошибки: %1$d</string>
+    <string name="nexus_apply_failure_title">Последняя установка мода не удалась</string>
+    <string name="nexus_apply_failure_description">Мод не отмечен как установленный. Изменения отменены там, где это удалось безопасно проверить. Просмотрите ошибки файлов ниже, затем вернитесь к размещению, чтобы исправить или повторить установку.</string>
+    <string name="nexus_apply_failure_details">Ошибки файлов: %1$d</string>
 </resources>

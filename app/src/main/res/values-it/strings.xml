@@ -2483,7 +2483,7 @@
     <string name="nexus_impact_will_receive_files">Riceverà file</string>
     <string name="nexus_advanced_placement">Posizionamento avanzato</string>
     <string name="nexus_hide_advanced_placement">Nascondi posizionamento avanzato</string>
-    <string name="nexus_advanced_placement_description">È consigliato il posizionamento automatico. Apri le opzioni avanzate solo per scegliere preset, riutilizzare un layout o mappare manualmente i file.</string>
+    <string name="nexus_advanced_placement_description">Il posizionamento automatico è una stima. Verifica che i file e le destinazioni previsti corrispondano alle istruzioni del mod. In caso contrario, apri Posizionamento avanzato e scegli Personalizzato per assegnarli manualmente.</string>
     <string name="nexus_folder_layout">Nella destinazione, installa</string>
     <string name="nexus_install_contents_of">Contenuto di %1$s</string>
     <string name="nexus_install_folder_and_contents">Cartella %1$s e relativo contenuto</string>
@@ -2588,4 +2588,10 @@
     <string name="nexus_review_placement">Controlla posizionamento</string>
     <string name="nexus_everything_folder_layout">Le cartelle di primo livello mantengono i loro nomi; i file nella radice vengono inseriti direttamente nella destinazione</string>
     <string name="nexus_fomod_defaults_replaced">%1$d file predefinito/i sostituito/i dalle tue scelte FOMOD</string>
+    <string name="nexus_mod_order_blocked_managed_files">L’ordine dei mod non è stato modificato. File gestiti mancanti o modificati: %1$d. Controlla prima lo stato di installazione e risolvi i problemi.</string>
+    <string name="nexus_placement_complete_summary">Posizionamento completato. Totale: %1$d; aggiornati: %2$d; già aggiornati: %3$d; salvati in backup: %4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">Installazione non riuscita; è stato tentato un ripristino sicuro. Errori: %1$d</string>
+    <string name="nexus_apply_failure_title">Ultima installazione del mod non riuscita</string>
+    <string name="nexus_apply_failure_description">Il mod non è stato contrassegnato come installato. Le modifiche sono state annullate dove era possibile verificarle in sicurezza. Controlla gli errori dei file qui sotto, poi torna a Posizionamento per correggere o riprovare questo mod.</string>
+    <string name="nexus_apply_failure_details">Errori dei file: %1$d</string>
 </resources>

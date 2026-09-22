@@ -2490,7 +2490,7 @@
     <string name="nexus_impact_will_receive_files">Recibirá archivos</string>
     <string name="nexus_advanced_placement">Colocación avanzada</string>
     <string name="nexus_hide_advanced_placement">Ocultar colocación avanzada</string>
-    <string name="nexus_advanced_placement_description">Se recomienda la colocación automática. Abre las opciones avanzadas solo para elegir ajustes, reutilizar un diseño o asignar archivos manualmente.</string>
+    <string name="nexus_advanced_placement_description">La colocación automática es una estimación. Comprueba que los archivos y destinos previstos coincidan con las instrucciones del mod. Si no es así, abre Colocación avanzada y elige Personalizada para asignarlos tú mismo.</string>
     <string name="nexus_folder_layout">En el destino, instalar</string>
     <string name="nexus_install_contents_of">Contenido de %1$s</string>
     <string name="nexus_install_folder_and_contents">Carpeta %1$s y su contenido</string>
@@ -2595,4 +2595,10 @@
     <string name="nexus_review_placement">Revisar colocación</string>
     <string name="nexus_everything_folder_layout">Las carpetas de nivel superior conservan sus nombres; los archivos raíz se colocan directamente en el destino</string>
     <string name="nexus_fomod_defaults_replaced">%1$d archivo(s) predeterminado(s) reemplazado(s) por tus opciones de FOMOD</string>
+    <string name="nexus_mod_order_blocked_managed_files">No se cambió el orden de los mods. Archivos gestionados ausentes o modificados: %1$d. Comprueba primero el estado de la instalación y resuelve esos problemas.</string>
+    <string name="nexus_placement_complete_summary">Colocación completada. Total: %1$d; actualizados: %2$d; ya al día: %3$d; con copia de seguridad: %4$d%5$s</string>
+    <string name="nexus_apply_failed_rolled_back">La instalación falló; se intentó una reversión segura. Errores: %1$d</string>
+    <string name="nexus_apply_failure_title">Falló la última instalación del mod</string>
+    <string name="nexus_apply_failure_description">El mod no se marcó como instalado. Los cambios se revirtieron cuando pudieron verificarse de forma segura. Revisa los errores de archivo de abajo y vuelve a Colocación para corregir o reintentar este mod.</string>
+    <string name="nexus_apply_failure_details">Errores de archivo: %1$d</string>
 </resources>
