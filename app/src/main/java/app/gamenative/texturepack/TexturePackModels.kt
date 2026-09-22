@@ -20,6 +20,7 @@ data class PrepareStartResponse(
     val session: String = "",
     val status: String = STATUS_UNSUPPORTED,
     val fingerprint: String = "",
+    val sourceFiles: Int? = null,
     val packBytes: Long? = null,
     val packEntries: Int? = null,
 ) {

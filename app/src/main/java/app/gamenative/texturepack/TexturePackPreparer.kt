@@ -23,6 +23,7 @@ data class TexturePackProgress(
     val phase: TexturePackPhase,
     val current: Long = 0L,
     val total: Long = 0L,
+    val archives: Int = 0,
 )
 
 sealed interface TexturePackEstimate {
@@ -55,7 +56,7 @@ class TexturePackPreparer(
             PrepareStartResponse.STATUS_UNSUPPORTED -> return TexturePackEstimate.Unsupported
             PrepareStartResponse.STATUS_READY -> return TexturePackEstimate.Ready(start.packBytes ?: 0L)
         }
-        val plan = runIoLoop(start.session, onProgress) ?: return TexturePackEstimate.Unsupported
+        val plan = runIoLoop(start.session, start.sourceFiles ?: 0, onProgress) ?: return TexturePackEstimate.Unsupported
         if (plan.mips.isEmpty()) return TexturePackEstimate.Unsupported
 
         onProgress(TexturePackProgress(TexturePackPhase.HASHING, 0, plan.mips.size.toLong()))
@@ -97,7 +98,7 @@ class TexturePackPreparer(
         return complete
     }
 
-    private suspend fun runIoLoop(session: String, onProgress: (TexturePackProgress) -> Unit): PreparePlan? {
+    private suspend fun runIoLoop(session: String, archives: Int, onProgress: (TexturePackProgress) -> Unit): PreparePlan? {
         var served = 0L
         var idleSince = 0L
         MipReader(gameDir).use { reader ->
@@ -132,7 +133,7 @@ class TexturePackPreparer(
                         async(Dispatchers.IO) {
                             gate.withPermit { client.putIoResult(session, id, payload) }
                             served++
-                            onProgress(TexturePackProgress(TexturePackPhase.SCANNING, served, 0L))
+                            onProgress(TexturePackProgress(TexturePackPhase.SCANNING, served, 0L, archives))
                         }
                     }.awaitAll()
                 }

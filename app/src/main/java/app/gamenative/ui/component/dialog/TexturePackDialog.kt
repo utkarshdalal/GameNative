@@ -84,7 +84,7 @@ fun TexturePackDialog(
     }
 
     val current = estimate
-    val running = progress != null
+    val running = prepareJob != null
     val unsupported = current is TexturePackEstimate.Unsupported
 
     AlertDialog(
@@ -119,7 +119,11 @@ fun TexturePackDialog(
                     )
                     if (state.total == 0L && state.current > 0L) {
                         Text(
-                            text = stringResource(R.string.texture_pack_progress_reads, state.current),
+                            text = if (state.archives > 0) {
+                                stringResource(R.string.texture_pack_progress_reads_of, state.current, state.archives)
+                            } else {
+                                stringResource(R.string.texture_pack_progress_reads, state.current)
+                            },
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -140,7 +144,7 @@ fun TexturePackDialog(
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
                 }
-                if (!running && !unsupported) {
+                if (!unsupported) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
