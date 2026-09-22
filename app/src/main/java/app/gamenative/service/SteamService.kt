@@ -2884,6 +2884,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     MarkerUtils.addMarker(appDirPath, Marker.DOWNLOAD_COMPLETE_MARKER)
                     MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
                     MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
+                    MarkerUtils.removeMarker(appDirPath, Marker.STEAM_CEG_WRAPPED)
                 }
 
                 // clean up DB record BEFORE notifying UI to avoid stale "Resume" button
