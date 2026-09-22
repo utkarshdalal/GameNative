@@ -442,6 +442,7 @@
     <string name="downloading">Downloader...</string>
     <string name="calculating_time">Beregner...</string>
     <string name="download_preparing">Forbereder download...</string>
+    <string name="download_verifying_file">Bekræfter %1$s…</string>
     <string name="download_preparing_depots">Forbereder depoter (%1$d/%2$d)</string>
     <string name="update_available">Opdatering tilgængelig</string>
     <string name="game_information">Spilinformation</string>

@@ -442,6 +442,7 @@
     <string name="downloading">Baixando...</string>
     <string name="calculating_time">Calculando...</string>
     <string name="download_preparing">Preparando download...</string>
+    <string name="download_verifying_file">Verificando %1$s…</string>
     <string name="download_preparing_depots">Preparando depots (%1$d/%2$d)</string>
     <string name="update_available">Atualização disponível</string>
     <string name="game_information">Informações do jogo</string>
