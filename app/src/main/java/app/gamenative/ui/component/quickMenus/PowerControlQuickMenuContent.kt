@@ -54,10 +54,12 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.powercontrol.AutoTuningMode
 import app.gamenative.powercontrol.AutoTuningStrategy
+import app.gamenative.powercontrol.CpuTopologyDisplayInfo
 import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerControlUiState
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.PowerProfile
+import app.gamenative.powercontrol.drivers.PServerDriver.CpuCluster
 import app.gamenative.powercontrol.drivers.PerformanceDriver
 import app.gamenative.ui.component.QuickMenuAdjustmentRow
 import app.gamenative.ui.component.QuickMenuToggleRow
@@ -328,11 +330,19 @@ private fun FlowRowScope.SuccessView(
         }
 
         if (state.selectedProfile.gamePinningMode == GamePinningMode.MANUAL) {
+            val topology = state.cpuTopology
+            if (topology != null) {
+                CpuClusterLegendRow(
+                    presentClusters = topology.presentClusters,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             CoreCheckboxRow(
                 title = stringResource(R.string.power_control_game_pinning_manual_game_cores),
                 value = state.selectedProfile.manualGamePinCores,
                 onValueChange = onManualGamePinCoresChanged,
                 accentColor = accentColor,
+                topology = topology,
                 modifier = Modifier.fillMaxWidth(),
             )
             CoreCheckboxRow(
@@ -340,6 +350,7 @@ private fun FlowRowScope.SuccessView(
                 value = state.selectedProfile.manualBackgroundPinCores,
                 onValueChange = onManualBackgroundPinCoresChanged,
                 accentColor = accentColor,
+                topology = topology,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -782,6 +793,49 @@ private fun FlowRowScope.SuccessView(
     }
 }
 
+private fun clusterColor(cluster: CpuCluster): Color = when (cluster) {
+    CpuCluster.EFFICIENCY -> Color(0xFF4CAF50)
+    CpuCluster.PERFORMANCE -> Color(0xFFFFC107)
+    CpuCluster.PRIME -> Color(0xFFE53935)
+}
+
+private fun clusterLabelRes(cluster: CpuCluster): Int = when (cluster) {
+    CpuCluster.EFFICIENCY -> R.string.power_control_cluster_efficiency
+    CpuCluster.PERFORMANCE -> R.string.power_control_cluster_performance
+    CpuCluster.PRIME -> R.string.power_control_cluster_prime
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CpuClusterLegendRow(
+    presentClusters: List<CpuCluster>,
+    modifier: Modifier = Modifier,
+) {
+    if (presentClusters.isEmpty()) return
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.power_control_cluster_legend_title),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            for (cluster in presentClusters) {
+                Text(
+                    text = stringResource(clusterLabelRes(cluster)),
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = clusterColor(cluster),
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CoreCheckboxRow(
@@ -789,9 +843,12 @@ private fun CoreCheckboxRow(
     value: String,
     onValueChange: (String) -> Unit,
     accentColor: Color,
+    topology: CpuTopologyDisplayInfo?,
     modifier: Modifier = Modifier,
 ) {
-    val coreCount = remember { Runtime.getRuntime().availableProcessors() }
+    val cores = remember(topology) {
+        topology?.cores?.sorted() ?: (0 until Runtime.getRuntime().availableProcessors()).toList()
+    }
     val selectedCores = remember(value) {
         value.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
     }
@@ -808,12 +865,13 @@ private fun CoreCheckboxRow(
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            for (core in 0 until coreCount) {
+            for (core in cores) {
                 val checked = selectedCores.contains(core)
                 // Keep at least one core selected at all times: once a core is the last one
                 // left checked, its checkbox is locked on (non-clickable, greyed out via the
                 // default Material3 disabled colors below).
                 val isLastRemainingCore = checked && selectedCores.size == 1
+                val cluster = topology?.clusterByCore?.get(core)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         checked = checked,
@@ -827,7 +885,8 @@ private fun CoreCheckboxRow(
                     )
                     Text(
                         text = core.toString(),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = cluster?.let { clusterColor(it) } ?: MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }

@@ -1,5 +1,7 @@
 package app.gamenative.powercontrol
 
+import app.gamenative.powercontrol.drivers.PServerDriver.CpuCluster
+
 sealed class PowerControlUiState {
     object Loading : PowerControlUiState()
     data class Success(
@@ -8,8 +10,15 @@ sealed class PowerControlUiState {
         val cpuInfo: CpuDisplayInfo?,
         val gpuInfo: GpuDisplayInfo?,
         val ramInfo: RamDisplayInfo?,
+        val cpuTopology: CpuTopologyDisplayInfo? = null,
     ) : PowerControlUiState()
 }
+
+data class CpuTopologyDisplayInfo(
+    val cores: List<Int>,
+    val clusterByCore: Map<Int, CpuCluster>,
+    val presentClusters: List<CpuCluster>,
+)
 
 data class CpuDisplayInfo(
     val currentGovernor: String,
