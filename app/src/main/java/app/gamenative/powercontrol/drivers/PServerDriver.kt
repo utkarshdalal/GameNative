@@ -654,12 +654,9 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     /**
-     * Hands CPU governor/min/max frequency and GPU min/max power level control back to
-     * the OS: restores just those paths (a subset of [baselinePaths]) to the values
-     * recorded in [sessionBaseline] and leaves them writable (644, no re-lock). Used when
-     * [AutoTuningMode] switches to [AutoTuningMode.OFF] while a game keeps running.
-     * Does not touch CPU pinning, fan control, or the rest of the session baseline, which
-     * stays armed so [stop] still restores everything (including this) on session end.
+     * Hands CPU governor/min/max frequency and GPU min/max power level control back to the
+     * OS: restores the relevant baseline paths and leaves them writable. Does not touch CPU
+     * pinning, fan control, or the rest of the session baseline (still restored by [stop]).
      */
     override fun releaseFrequencyControl(): Boolean {
         val baseline = sessionBaseline

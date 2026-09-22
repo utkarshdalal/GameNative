@@ -221,12 +221,9 @@ object PowerManager {
     fun isProfilePowerControlEnabled(): Boolean = currentProfile.enablePowerControl
 
     /**
-     * Enable or disable in-game power control at runtime. Disabling stops the
-     * driver, hands clock control back to the OS, and (if a game is running) releases
-     * CPU pinning - otherwise the game and Wine processes stay stuck on whatever cores
-     * they were pinned to, which is what used to require a full app restart to undo.
-     * Enabling mirrors this: restarts the driver and, if a game is already running,
-     * re-applies pinning the same way a fresh game launch would.
+     * Enable or disable in-game power control at runtime. Disabling stops the driver and
+     * hands clock control back to the OS; if a game is running, both directions also
+     * release/re-apply CPU pinning so nothing stays stuck once toggled.
      */
     fun setPowerControlEnabled(enabled: Boolean) {
         // Always save the profile
@@ -612,11 +609,8 @@ object PowerManager {
                 }
             }
 
-            // Background processes (wineserver/winhandler.exe/services.exe/libsteambootstrap.so,
-            // PulseAudio) are otherwise only ever pinned once, right after game launch - without
-            // this, switching modes or editing the Manual core lists live would visually update
-            // but not actually move the affected processes until the game/container was
-            // relaunched.
+            // Background processes are otherwise only pinned once, at game launch - without
+            // this, live mode/core-list changes would update the UI but not move them until relaunch.
             val manualBackgroundCoresChanged = profile.gamePinningMode == GamePinningMode.MANUAL &&
                 previousProfile.manualBackgroundPinCores != profile.manualBackgroundPinCores
             if (pinningModeChanged || manualBackgroundCoresChanged) {
@@ -1190,12 +1184,9 @@ object PowerManager {
                 // Wait for Wine to fully initialize
                 Thread.sleep(2000)
 
-                // Cores winhandler.exe (the Windows-side process that answers every mouse-look
-                // UDP round trip / CURSOR_POS_FEEDBACK) and the rest of the Wine infrastructure
-                // are pinned to. In Auto mode this is the 2 lowest-frequency cores, matching
-                // upstream. On some devices that lands the pinned processes on the weakest
-                // efficiency cluster and starves the render path during camera movement; Manual
-                // mode lets the user pick a different core range instead.
+                // In Auto mode this is the 2 lowest-frequency cores, matching upstream. On
+                // some devices that starves winhandler.exe (answers every mouse-look round trip)
+                // during camera movement; Manual mode lets the user pick a different range.
                 val backgroundCores = backgroundPinCores(driver)
 
                 if (backgroundCores.isEmpty()) {
@@ -1671,12 +1662,9 @@ object PowerManager {
     }
 
     /**
-     * Hands CPU/GPU frequency control to or back from the OS when [AutoTuningMode] changes live
-     * while a game is running. Auto's PID loop and Manual's locked governor/min/max both keep the
-     * driver in control of frequencies, so only entering or leaving [AutoTuningMode.OFF] needs
-     * explicit handling here - transitions between Auto and Manual are already covered by
-     * [startAutoTuning]/[stopAutoTuning] and the frequencies [applyCurrentProfile] applies on
-     * driver start.
+     * Hands CPU/GPU frequency control to or back from the OS when [AutoTuningMode] changes
+     * live. Only entering/leaving [AutoTuningMode.OFF] needs handling here - Auto/Manual
+     * transitions are already covered by [startAutoTuning]/[stopAutoTuning].
      */
     private fun switchAutoTuningMode(previous: AutoTuningMode, next: AutoTuningMode) {
         if (next == AutoTuningMode.OFF) {
