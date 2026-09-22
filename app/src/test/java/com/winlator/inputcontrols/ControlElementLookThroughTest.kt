@@ -8,16 +8,16 @@ import org.junit.Test
 
 class ControlElementLookThroughTest {
     @Test
-    fun `new buttons leave general look-through off but allow shooter drag look`() {
+    fun `new buttons explicitly disable look-through by default`() {
         val element = ControlElement(null)
 
         assertEquals(false, element.lookThroughSetting)
         assertFalse(element.isLookThrough)
-        assertTrue(element.isShooterLookThrough)
+        assertFalse(element.isShooterLookThrough)
     }
 
     @Test
-    fun `reset restores independent look-through defaults`() {
+    fun `reset restores the explicit look-through default`() {
         val element = ControlElement(null)
         element.lookThroughSetting = true
 
@@ -25,7 +25,7 @@ class ControlElementLookThroughTest {
 
         assertEquals(false, element.lookThroughSetting)
         assertFalse(element.isLookThrough)
-        assertTrue(element.isShooterLookThrough)
+        assertFalse(element.isShooterLookThrough)
     }
 
     @Test
@@ -39,12 +39,12 @@ class ControlElementLookThroughTest {
     }
 
     @Test
-    fun `explicitly disabling general look-through does not disable shooter drag look`() {
+    fun `explicitly disabling general look-through disables both modes`() {
         val element = ControlElement(null)
         element.lookThroughSetting = false
 
         assertFalse(element.isLookThrough)
-        assertTrue(element.isShooterLookThrough)
+        assertFalse(element.isShooterLookThrough)
     }
 
     @Test
@@ -60,16 +60,6 @@ class ControlElementLookThroughTest {
     @Test
     fun `legacy shooter opt-out remains disabled`() {
         val element = ControlElement(null)
-        element.setShooterLookThrough(false)
-
-        assertFalse(element.isLookThrough)
-        assertFalse(element.isShooterLookThrough)
-    }
-
-    @Test
-    fun `explicit general and shooter opt-outs remain disabled together`() {
-        val element = ControlElement(null)
-        element.lookThroughSetting = false
         element.setShooterLookThrough(false)
 
         assertFalse(element.isLookThrough)

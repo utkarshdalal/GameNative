@@ -430,9 +430,7 @@ public class ControlElement {
     }
 
     public boolean isShooterLookThrough() {
-        // The general look-through toggle controls non-shooter input. Its default
-        // false must not override Shooter Mode's separate button-drag setting.
-        return !isRadialMenuButton() && (shooterLookThrough || Boolean.TRUE.equals(lookThrough));
+        return !isRadialMenuButton() && (lookThrough != null ? lookThrough : shooterLookThrough);
     }
 
     public void setShooterLookThrough(boolean shooterLookThrough) {
