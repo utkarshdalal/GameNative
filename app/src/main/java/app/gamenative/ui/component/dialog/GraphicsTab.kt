@@ -21,6 +21,8 @@ import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.LsfgVkManager
+import androidx.compose.runtime.remember
+import app.gamenative.texturepack.TexturePackGate
 import app.gamenative.texturepack.TexturePackPaths
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
@@ -266,6 +268,28 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                         TexturePackPaths.clear(TexturePackPaths.cacheDirForApp(texturePackContext, state.appId))
                     },
                 )
+                val texturePackLaunchInfo = remember(state.appId) {
+                    TexturePackGate.launchInfo(texturePackContext, state.appId)
+                }
+                var prepareTextures by rememberSaveable(state.appId) { mutableStateOf(false) }
+                if (texturePackLaunchInfo != null) {
+                    SettingsMenuLink(
+                        colors = settingsTileColorsAlt(),
+                        title = { Text(text = stringResource(R.string.prepare_textures_now)) },
+                        subtitle = { Text(text = stringResource(R.string.prepare_textures_now_subtitle)) },
+                        onClick = { prepareTextures = true },
+                    )
+                    if (prepareTextures) {
+                        TexturePackDialog(
+                            appId = state.appId,
+                            platform = texturePackLaunchInfo.platform,
+                            storeId = texturePackLaunchInfo.storeId,
+                            gameDir = java.io.File(texturePackLaunchInfo.installDir),
+                            onPlay = { prepareTextures = false },
+                            onDismiss = { prepareTextures = false },
+                        )
+                    }
+                }
             }
             // Sharpness (vkBasalt)
             SettingsListDropdown(

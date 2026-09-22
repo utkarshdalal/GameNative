@@ -4915,6 +4915,13 @@ private fun exit(
     }
     frameRating?.writeSessionSummary()
 
+    runCatching {
+        val syncContext = frameRating?.context ?: PluviaApp.xServerView?.context
+        if (syncContext != null) {
+            app.gamenative.texturepack.TexturePackSyncWorker.enqueueFullSync(syncContext.applicationContext, appId)
+        }
+    }.onFailure { Timber.w(it, "could not enqueue texture pack sync for $appId") }
+
     if (MainActivity.wasLaunchedViaExternalIntent) {
         Timber.i("[IntentLaunch]: Waiting for exit handling before returning to external launcher")
         onExit(navigateBack)

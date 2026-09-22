@@ -1,6 +1,7 @@
 package app.gamenative.texturepack
 
 import android.content.Context
+import app.gamenative.utils.ContainerUtils
 import java.io.File
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
@@ -74,7 +75,7 @@ class TexturePackPreparer(
         mipsByKey = byKey
 
         val lookup = client.lookup(byKey.keys.toList())
-        missingKeys = lookup.missing.filter { byKey.containsKey(it) }
+        missingKeys = lookup.want.filter { byKey.containsKey(it) }
 
         val uploadBytes = missingKeys.sumOf { key -> mipBytes(byKey.getValue(key)).toLong() }
         val downloadBytes = byKey.values.sumOf { TextureCacheStore.astcSizeBytes(it.w, it.h) }
@@ -88,14 +89,26 @@ class TexturePackPreparer(
             return false
         }
         uploadMissing(onProgress)
+        storeFingerprint()
         val complete = downloadPack(cacheDir, onProgress)
         if (complete) {
             TexturePackGate.markDone(context, appId)
         } else {
-            TexturePackDownloadWorker.enqueue(context, appId, fingerprint)
+            TexturePackSyncWorker.enqueueDownloadSync(context, appId)
         }
         onProgress(TexturePackProgress(TexturePackPhase.DONE))
         return complete
+    }
+
+    private fun storeFingerprint() {
+        if (fingerprint.isBlank()) return
+        try {
+            val container = ContainerUtils.getContainer(context, appId)
+            container.putExtra(TexturePackGate.CONTAINER_EXTRA_FINGERPRINT, fingerprint)
+            container.saveData()
+        } catch (e: Exception) {
+            Timber.w(e, "could not persist texture pack fingerprint for $appId")
+        }
     }
 
     private suspend fun runIoLoop(session: String, archives: Int, onProgress: (TexturePackProgress) -> Unit): PreparePlan? {

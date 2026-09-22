@@ -13,6 +13,10 @@ object TexturePackGate {
     const val CONTAINER_EXTRA_SKIP = "texturePackSkip"
     const val CONTAINER_EXTRA_PENDING_SIG = "texturePackPendingSig"
     const val CONTAINER_EXTRA_DONE_SIG = "texturePackDoneSig"
+    const val CONTAINER_EXTRA_FINGERPRINT = "texturePackFingerprint"
+    const val CONTAINER_EXTRA_PLATFORM = "texturePackPlatform"
+    const val CONTAINER_EXTRA_STORE_ID = "texturePackStoreId"
+    const val CONTAINER_EXTRA_INSTALL_DIR = "texturePackInstallDir"
 
     private val NATIVE_BCN_RENDERERS = listOf("Adreno", "Xclipse")
     private val EMULATED_BCN_RENDERERS = listOf("Mali", "Immortalis", "PowerVR")
@@ -63,6 +67,44 @@ object TexturePackGate {
         if (!needsTexturePack(context)) return false
         if (isSkipped(context, appId)) return false
         return doneSignature(context, appId) != installSignature(installPath)
+    }
+
+    fun syncEnabled(context: Context): Boolean =
+        PrefManager.texturePackEnabled && needsTexturePack(context)
+
+    fun rememberLaunchInfo(context: Context, appId: String, source: GameSource, installPath: String?) {
+        val platform = platformFor(source) ?: return
+        if (installPath.isNullOrBlank() || !File(installPath).isDirectory) return
+        try {
+            if (!ContainerUtils.hasContainer(context, appId)) return
+            val container = ContainerUtils.getContainer(context, appId)
+            container.putExtra(CONTAINER_EXTRA_PLATFORM, platform)
+            container.putExtra(CONTAINER_EXTRA_STORE_ID, storeIdFor(source, appId))
+            container.putExtra(CONTAINER_EXTRA_INSTALL_DIR, installPath)
+            container.saveData()
+        } catch (e: Exception) {
+            Timber.w(e, "could not persist texture pack launch info for $appId")
+        }
+    }
+
+    data class LaunchInfo(val platform: String, val storeId: String, val installDir: String)
+
+    fun launchInfo(context: Context, appId: String): LaunchInfo? = try {
+        if (!ContainerUtils.hasContainer(context, appId)) {
+            null
+        } else {
+            val container = ContainerUtils.getContainer(context, appId)
+            val platform = container.getExtra(CONTAINER_EXTRA_PLATFORM, "")
+            val installDir = container.getExtra(CONTAINER_EXTRA_INSTALL_DIR, "")
+            if (platform.isBlank() || installDir.isBlank() || !File(installDir).isDirectory) {
+                null
+            } else {
+                LaunchInfo(platform, container.getExtra(CONTAINER_EXTRA_STORE_ID, ""), installDir)
+            }
+        }
+    } catch (e: Exception) {
+        Timber.w(e, "could not read texture pack launch info for $appId")
+        null
     }
 
     fun installSignature(installPath: String): String {

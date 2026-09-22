@@ -2566,6 +2566,8 @@
     <string name="settings_texture_pack_token_title">Texture pack access token</string>
     <string name="settings_texture_pack_token_unset">Not set</string>
     <string name="settings_texture_pack_server_reset">Reset to default</string>
+    <string name="prepare_textures_now">Prepare textures now (advanced)</string>
+    <string name="prepare_textures_now_subtitle">Scans the game and asks the server to build the full texture pack before you play. Textures also sync by themselves after each session.</string>
     <string name="clear_texture_cache">Clear texture cache</string>
     <string name="clear_texture_cache_subtitle">Deletes the prepared and on-device converted textures for this game.</string>
 </resources>

@@ -46,6 +46,10 @@ class TexturePackClient(
         putBytes("/v1/source/${enc(key)}", payload)
     }
 
+    suspend fun packRegister(request: PackRegisterRequest): PackRegisterResponse =
+        postJson("/v1/pack/register", json.encodeToString(PackRegisterRequest.serializer(), request))
+            .let { json.decodeFromString(PackRegisterResponse.serializer(), it) }
+
     suspend fun pack(fingerprint: String): PackResponse =
         getString("/v1/pack/${enc(fingerprint)}")
             .let { json.decodeFromString(PackResponse.serializer(), it) }

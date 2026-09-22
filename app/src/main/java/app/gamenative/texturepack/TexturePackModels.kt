@@ -1,6 +1,11 @@
 package app.gamenative.texturepack
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 
 @Serializable
 data class PrepareFileEntry(
@@ -74,20 +79,52 @@ data class LookupRequest(val keys: List<String>)
 
 @Serializable
 data class LookupResponse(
-    val missing: List<String> = emptyList(),
-    val present: Int = 0,
+    val have: List<String> = emptyList(),
+    val want: List<String> = emptyList(),
+    val pending: List<String> = emptyList(),
+    val invalid: List<String> = emptyList(),
+)
+
+@Serializable
+data class PackRegisterRequest(
+    val platform: String,
+    val storeId: String,
+    val files: List<PrepareFileEntry>,
+    val keys: List<String> = emptyList(),
+)
+
+@Serializable
+data class PackRegisterResponse(
+    val fingerprint: String = "",
 )
 
 @Serializable
 data class PackEntry(
     val key: String,
     val size: Long = 0L,
+    val pending: Boolean = false,
 )
 
 @Serializable
 data class PackResponse(
     val entries: List<PackEntry> = emptyList(),
-)
+    val pending: JsonElement? = null,
+    val encoded: Int = 0,
+    val expected: Int = 0,
+) {
+    val pendingKeys: Set<String>
+        get() = (pending as? JsonArray)
+            ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+            ?.toSet()
+            ?: emptySet()
+
+    val pendingCount: Int
+        get() = when (val value = pending) {
+            is JsonArray -> value.size
+            is JsonPrimitive -> value.intOrNull ?: 0
+            else -> 0
+        }
+}
 
 object TextureCodec {
     const val NONE = "none"
