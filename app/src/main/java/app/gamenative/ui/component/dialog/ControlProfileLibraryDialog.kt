@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +36,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Upload
@@ -533,7 +536,7 @@ private fun ControlProfileCard(
     var menuExpanded by remember { mutableStateOf(false) }
     val applied = appliedSections.isNotEmpty()
     Surface(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).clickable(onClick = onPreview),
+        modifier = Modifier.fillMaxWidth().focusGroup(),
         shape = RoundedCornerShape(18.dp),
         color = if (applied) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f)
         else MaterialTheme.colorScheme.surface,
@@ -844,6 +847,10 @@ private fun ControlProfilePreviewDialog(
 ) {
     val physicalBindings = remember(action.preview.json) { physicalProfileBindingRows(action.preview.json) }
     val radialBindings = remember(action.preview.json) { radialProfileBindingRows(action.preview.json) }
+    var expandedSections by remember(action.preview) { mutableStateOf(emptySet<ControlProfileSection>()) }
+    fun toggle(section: ControlProfileSection) {
+        expandedSections = if (section in expandedSections) expandedSections - section else expandedSections + section
+    }
     ControlSettingsDialog(onDismiss = onDismiss) {
         Box(
             modifier = Modifier
@@ -876,29 +883,58 @@ private fun ControlProfilePreviewDialog(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             if (ControlProfileSection.ON_SCREEN in action.preview.sections) {
-                                item { ControlLayoutPreview(action.preview.json, screenSize, maxHeight = previewHeight) }
-                            }
-                            item { ProfileSectionChips(action.preview.sections) }
-                            if (ControlProfileSection.ON_SCREEN in action.preview.sections) {
-                                item { Text(stringResource(R.string.control_profile_controls_count, action.preview.elementCount)) }
+                                item(key = "preview-on-screen") {
+                                    PreviewSectionCard(
+                                        section = ControlProfileSection.ON_SCREEN,
+                                        summary = action.preview.elementCount.toString(),
+                                        expanded = ControlProfileSection.ON_SCREEN in expandedSections,
+                                        onToggle = { toggle(ControlProfileSection.ON_SCREEN) },
+                                    ) {
+                                        ControlLayoutPreview(action.preview.json, screenSize, maxHeight = previewHeight)
+                                    }
+                                }
                             }
                             if (ControlProfileSection.PHYSICAL_CONTROLLER in action.preview.sections) {
-                                item { Text(stringResource(R.string.control_profile_bindings_count, action.preview.physicalBindingCount)) }
-                                items(physicalBindings.size, key = { "physical-binding-$it" }) { index ->
-                                    ProfileBindingPreviewRow(physicalBindings[index].label, physicalBindings[index])
+                                item(key = "preview-physical") {
+                                    PreviewSectionCard(
+                                        section = ControlProfileSection.PHYSICAL_CONTROLLER,
+                                        summary = action.preview.physicalBindingCount.toString(),
+                                        expanded = ControlProfileSection.PHYSICAL_CONTROLLER in expandedSections,
+                                        onToggle = { toggle(ControlProfileSection.PHYSICAL_CONTROLLER) },
+                                    ) {
+                                        if (physicalBindings.isEmpty()) Text(stringResource(R.string.no_bindings_found))
+                                        physicalBindings.forEach { row -> ProfileBindingPreviewRow(row.label, row) }
+                                    }
                                 }
                             }
                             if (ControlProfileSection.RADIAL_MENU in action.preview.sections) {
-                                item { Text(stringResource(R.string.control_profile_radial_count, action.preview.radialSlotCount)) }
-                                items(radialBindings.size, key = { "radial-slot-$it" }) { index ->
-                                    val row = radialBindings[index]
-                                    ProfileBindingPreviewRow(
-                                        row.label.ifBlank { stringResource(R.string.radial_menu_slot_title, index + 1) },
-                                        row,
-                                    )
+                                item(key = "preview-radial") {
+                                    PreviewSectionCard(
+                                        section = ControlProfileSection.RADIAL_MENU,
+                                        summary = action.preview.radialSlotCount.toString(),
+                                        expanded = ControlProfileSection.RADIAL_MENU in expandedSections,
+                                        onToggle = { toggle(ControlProfileSection.RADIAL_MENU) },
+                                    ) {
+                                        if (radialBindings.isEmpty()) Text(stringResource(R.string.no_bindings_found))
+                                        radialBindings.forEachIndexed { index, row ->
+                                            ProfileBindingPreviewRow(
+                                                row.label.ifBlank { stringResource(R.string.radial_menu_slot_title, index + 1) },
+                                                row,
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                            item { ProfileSettingsSummary(action.preview) }
+                            if (action.preview.sections.any {
+                                    it == ControlProfileSection.GYRO ||
+                                        it == ControlProfileSection.TOUCHSCREEN ||
+                                        it == ControlProfileSection.SHOOTER
+                                }
+                            ) {
+                                item(key = "preview-settings") {
+                                    ProfileSettingsSummary(action.preview, expandedSections, ::toggle)
+                                }
+                            }
                         }
                     }
                     HorizontalDivider()
@@ -915,6 +951,35 @@ private fun ControlProfilePreviewDialog(
 }
 
 @Composable
+private fun PreviewSectionCard(
+    section: ControlProfileSection,
+    summary: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(sectionLabel(section), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Text(summary, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), style = MaterialTheme.typography.labelMedium)
+                }
+                Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
+            }
+            if (expanded) {
+                HorizontalDivider()
+                Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) { content() }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProfileBindingPreviewRow(label: String, row: ProfileBindingRow) {
     val value = when {
         row.binding.isEmpty -> stringResource(R.string.binding_none)
@@ -925,50 +990,59 @@ private fun ProfileBindingPreviewRow(label: String, row: ProfileBindingRow) {
         )
         else -> row.binding.toString()
     }
-    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(label, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
-        }
+    HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
     }
 }
 
 @Composable
-private fun ProfileSettingsSummary(preview: ControlProfilePreview) {
+private fun ProfileSettingsSummary(
+    preview: ControlProfilePreview,
+    expandedSections: Set<ControlProfileSection>,
+    onToggle: (ControlProfileSection) -> Unit,
+) {
     val enabled = stringResource(R.string.enabled)
     val disabled = stringResource(R.string.disabled)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         preview.json.optJSONObject("gyroSettings")?.takeIf { ControlProfileSection.GYRO in preview.sections }?.let { gyroJson ->
             SettingsSummaryCard(
-                title = sectionLabel(ControlProfileSection.GYRO),
+                section = ControlProfileSection.GYRO,
                 status = if (gyroJson.optInt("mode") == 0) disabled else enabled,
                 rows = profileSettingRows(gyroJson, ControlProfileSection.GYRO),
+                expanded = ControlProfileSection.GYRO in expandedSections,
+                onToggle = { onToggle(ControlProfileSection.GYRO) },
             )
         }
 
         preview.json.optJSONObject("touchscreenSettings")?.takeIf { ControlProfileSection.TOUCHSCREEN in preview.sections }?.let { touchJson ->
             SettingsSummaryCard(
-                title = sectionLabel(ControlProfileSection.TOUCHSCREEN),
+                section = ControlProfileSection.TOUCHSCREEN,
                 status = enabledLabel(touchJson.optBoolean("enabled")),
                 rows = profileSettingRows(
                     touchJson.optJSONObject("gestures") ?: JSONObject(),
                     ControlProfileSection.TOUCHSCREEN,
                 ),
+                expanded = ControlProfileSection.TOUCHSCREEN in expandedSections,
+                onToggle = { onToggle(ControlProfileSection.TOUCHSCREEN) },
             )
         }
 
         preview.json.optJSONObject("shooterSettings")?.takeIf { ControlProfileSection.SHOOTER in preview.sections }?.let { shooterJson ->
             SettingsSummaryCard(
-                title = sectionLabel(ControlProfileSection.SHOOTER),
+                section = ControlProfileSection.SHOOTER,
                 status = enabledLabel(shooterJson.optBoolean("enabled")),
                 rows = profileSettingRows(
                     shooterJson.optJSONObject("config") ?: JSONObject(),
                     ControlProfileSection.SHOOTER,
                 ),
+                expanded = ControlProfileSection.SHOOTER in expandedSections,
+                onToggle = { onToggle(ControlProfileSection.SHOOTER) },
             )
         }
     }
@@ -976,41 +1050,28 @@ private fun ProfileSettingsSummary(preview: ControlProfilePreview) {
 
 @Composable
 private fun SettingsSummaryCard(
-    title: String,
+    section: ControlProfileSection,
     status: String,
     rows: List<Pair<String, String>>,
+    expanded: Boolean,
+    onToggle: () -> Unit,
 ) {
-    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-        Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                ) {
-                    Text(
-                        status,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
-            }
-            rows.forEach { (label, value) ->
-                HorizontalDivider(modifier = Modifier.padding(vertical = 7.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        label,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        value,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
+    PreviewSectionCard(section, status, expanded, onToggle) {
+        rows.forEach { (label, value) ->
+            HorizontalDivider(modifier = Modifier.padding(vertical = 7.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    label,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    value,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                )
             }
         }
     }
