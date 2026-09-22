@@ -443,6 +443,11 @@
     <string name="calculating_time">Beregner...</string>
     <string name="download_preparing">Forbereder download...</string>
     <string name="download_verifying_file">Bekræfter %1$s…</string>
+    <string name="download_verifying_files">Bekræfter filer...</string>
+    <string name="download_assembling_files">Samler filer...</string>
+    <string name="download_progress_chunks">Downloader (%1$d/%2$d dele)</string>
+    <string name="download_progress_files">Downloader (%1$d/%2$d filer)…</string>
+    <string name="download_unpacking">Udpakker...</string>
     <string name="download_preparing_depots">Forbereder depoter (%1$d/%2$d)</string>
     <string name="update_available">Opdatering tilgængelig</string>
     <string name="game_information">Spilinformation</string>

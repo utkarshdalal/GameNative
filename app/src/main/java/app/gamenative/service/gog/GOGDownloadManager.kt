@@ -302,7 +302,7 @@ class GOGDownloadManager @Inject constructor(
             // On a resume this MD5-reads every completed file, which can take minutes for
             // a large install — surface it in the UI and honor cancellation between files.
             val gameInstallDir = installPath
-            downloadInfo.updateStatusMessage("Verifying files...")
+            downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_files))
             val beforeCount = gameFiles.size
             gameFiles = gameFiles.filter { file ->
                 if (!downloadInfo.isActive()) {
@@ -968,7 +968,7 @@ class GOGDownloadManager @Inject constructor(
                         // Aggregate across products: donePaths tracks every completed file.
                         val globalDone = donePaths.size
                         downloadInfo.setProgress((globalDone.toFloat() / totalFiles).coerceIn(0f, 1f))
-                        downloadInfo.updateStatusMessage("Downloading ($globalDone/$totalFiles files)…")
+                        downloadInfo.updateStatusMessage(context.getString(R.string.download_progress_files, globalDone, totalFiles))
                         downloadInfo.emitProgressChange()
                         downloadInfo.persistProgressSnapshot()
                     }
@@ -1295,7 +1295,7 @@ class GOGDownloadManager @Inject constructor(
                                 val progress = downloadedChunkIds.size.toFloat() / totalChunks
                                 downloadInfo.setProgress(progress)
                                 downloadInfo.updateStatusMessage(
-                                    "Downloading (${downloadedChunkIds.size}/$totalChunks chunks)",
+                                    context.getString(R.string.download_progress_chunks, downloadedChunkIds.size, totalChunks),
                                 )
 
                                 // Decrement pending chunks counter

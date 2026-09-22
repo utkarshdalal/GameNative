@@ -588,6 +588,11 @@
     <string name="download_failed_try_again">ダウンロードに失敗しました。もう一度試してください。</string>
     <string name="download_preparing">ダウンロードを準備中...</string>
     <string name="download_verifying_file">%1$s を検証しています...</string>
+    <string name="download_verifying_files">ファイルを検証しています...</string>
+    <string name="download_assembling_files">ファイルを結合しています...</string>
+    <string name="download_progress_chunks">ダウンロード中 (%1$d/%2$d チャンク)</string>
+    <string name="download_progress_files">ダウンロード中 (%1$d/%2$d ファイル)…</string>
+    <string name="download_unpacking">展開中...</string>
     <string name="download_preparing_depots">デポを準備中 (%1$d/%2$d)</string>
     <string name="update_available">利用可能なアップデート</string>
     <string name="game_information">ゲーム情報</string>

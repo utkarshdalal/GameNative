@@ -1,6 +1,7 @@
 package app.gamenative.service.amazon
 
 import android.content.Context
+import app.gamenative.R
 import app.gamenative.data.AmazonGame
 import app.gamenative.data.DownloadInfo
 import app.gamenative.enums.Marker
@@ -174,7 +175,7 @@ class AmazonDownloadManager @Inject constructor(
                             lastFilesDone = filesDone
                             // updateStatusMessage already emits a progress change — do NOT also
                             // call emitProgressChange() here (was a double fan-out per callback).
-                            downloadInfo.updateStatusMessage("Downloading ($filesDone/$filesTotal files)…")
+                            downloadInfo.updateStatusMessage(context.getString(R.string.download_progress_files, filesDone, filesTotal))
                             downloadInfo.persistProgressSnapshot()
                         }
                     }
@@ -237,7 +238,7 @@ class AmazonDownloadManager @Inject constructor(
                     }
 
                     completedFiles += batch.size
-                    downloadInfo.updateStatusMessage("Downloading ($completedFiles/$totalFiles files)…")
+                    downloadInfo.updateStatusMessage(context.getString(R.string.download_progress_files, completedFiles, totalFiles))
                     downloadInfo.emitProgressChange()
                     downloadInfo.persistProgressSnapshot()
                 }

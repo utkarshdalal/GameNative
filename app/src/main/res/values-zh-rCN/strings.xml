@@ -568,6 +568,11 @@
     <string name="download_failed_try_again">下载失败，请重试</string>
     <string name="download_preparing">正在准备下载...</string>
     <string name="download_verifying_file">正在验证 %1$s…</string>
+    <string name="download_verifying_files">正在验证文件...</string>
+    <string name="download_assembling_files">正在合并文件...</string>
+    <string name="download_progress_chunks">正在下载 (%1$d/%2$d 区块)</string>
+    <string name="download_progress_files">正在下载 (%1$d/%2$d 个文件)…</string>
+    <string name="download_unpacking">正在解压...</string>
     <string name="download_preparing_depots">正在准备仓库 (%1$d/%2$d)</string>
     <string name="update_available">有可用更新</string>
     <string name="game_information">游戏信息</string>

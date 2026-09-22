@@ -569,6 +569,7 @@ internal fun AppScreenContent(
     // is event-driven and always applied immediately; the Rust gates already bypass their
     // throttle for status/count milestones, so no status change is ever held back here.
     var lastEtaTextUpdateAt by remember { mutableStateOf(0L) }
+    val unpackingText = stringResource(R.string.download_unpacking)
 
     val progressListener: (Float) -> Unit = {
         val downloadStatusMessage = downloadInfo?.getCurrentStatusMessage()
@@ -591,7 +592,7 @@ internal fun AppScreenContent(
                 // (e.g. Epic may still be fetching chunks — its byte total can saturate
                 // early); "Unpacking..." only when there is nothing more truthful to say.
                 lastEtaTextUpdateAt = 0L
-                downloadStatusMessage?.takeUnless { it.isBlank() } ?: "Unpacking..."
+                downloadStatusMessage?.takeUnless { it.isBlank() } ?: unpackingText
             } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
                 lastEtaTextUpdateAt = 0L
                 downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""

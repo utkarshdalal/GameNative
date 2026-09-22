@@ -297,7 +297,7 @@ class EpicDownloadManager @Inject constructor(
             // Incremental download: skip files already on disk with matching size and SHA-1.
             // On a resume this hashes every completed file, which can take minutes for a
             // large install — surface it in the UI and honor cancellation between files.
-            downloadInfo.updateStatusMessage("Verifying files...")
+            downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_files))
             val pendingFiles = files.filter { file ->
                 if (!downloadInfo.isActive()) {
                     // The enclosing catch never runs on this return path, so clean up here
@@ -483,7 +483,7 @@ class EpicDownloadManager @Inject constructor(
             // Incremental download: skip files already on disk with matching size and SHA-1.
             // On a resume this hashes every completed file, which can take minutes for a
             // large install — surface it in the UI and honor cancellation between files.
-            downloadInfo.updateStatusMessage("Verifying files...")
+            downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_files))
             val pendingFiles = files.filter { file ->
                 if (!downloadInfo.isActive()) {
                     // The enclosing catch never runs on this return path, so clean up here
@@ -1098,7 +1098,7 @@ class EpicDownloadManager @Inject constructor(
                 if (chunksTotal > 0) {
                     downloadInfo.setProgress(chunksDone.toFloat() / chunksTotal.toFloat())
                 }
-                downloadInfo.updateStatusMessage("Downloading ($chunksDone/$chunksTotal chunks)")
+                downloadInfo.updateStatusMessage(context.getString(R.string.download_progress_chunks, chunksDone, chunksTotal))
             }
 
             override fun onAssemblyProgress(bytesWritten: Long) {
@@ -1116,7 +1116,7 @@ class EpicDownloadManager @Inject constructor(
                 val now = System.currentTimeMillis()
                 if (now - lastAssemblyEmitAt >= 250L) {
                     lastAssemblyEmitAt = now
-                    downloadInfo.updateStatusMessage("Assembling files...")
+                    downloadInfo.updateStatusMessage(context.getString(R.string.download_assembling_files))
                     downloadInfo.emitProgressChange()
                 }
             }
@@ -1335,7 +1335,7 @@ class EpicDownloadManager @Inject constructor(
                                 val progress = downloadedChunkIds.size.toFloat() / totalChunks
                                 downloadInfo.setProgress(progress)
                                 downloadInfo.updateStatusMessage(
-                                    "Downloading (${downloadedChunkIds.size}/$totalChunks chunks)",
+                                    context.getString(R.string.download_progress_chunks, downloadedChunkIds.size, totalChunks),
                                 )
 
                                 // Decrement pending chunks counter

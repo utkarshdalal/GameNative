@@ -584,6 +584,11 @@
     <string name="download_failed_try_again">다운로드 실패. 다시 시도해 주세요.</string>
     <string name="download_preparing">다운로드 준비 중...</string>
     <string name="download_verifying_file">%1$s 검증 중...</string>
+    <string name="download_verifying_files">파일 검증 중...</string>
+    <string name="download_assembling_files">파일 결합 중...</string>
+    <string name="download_progress_chunks">다운로드 중 (%1$d/%2$d 청크)</string>
+    <string name="download_progress_files">다운로드 중 (%1$d/%2$d 파일)…</string>
+    <string name="download_unpacking">압축 해제 중...</string>
     <string name="download_preparing_depots">디포 준비 중 (%1$d/%2$d)</string>
     <string name="update_available">업데이트 사용 가능</string>
     <string name="game_information">게임 정보</string>

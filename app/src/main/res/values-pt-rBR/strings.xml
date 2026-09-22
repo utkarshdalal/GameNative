@@ -443,6 +443,11 @@
     <string name="calculating_time">Calculando...</string>
     <string name="download_preparing">Preparando download...</string>
     <string name="download_verifying_file">Verificando %1$s…</string>
+    <string name="download_verifying_files">Verificando arquivos...</string>
+    <string name="download_assembling_files">Montando arquivos...</string>
+    <string name="download_progress_chunks">Baixando (%1$d/%2$d blocos)</string>
+    <string name="download_progress_files">Baixando (%1$d/%2$d arquivos)…</string>
+    <string name="download_unpacking">Descompactando...</string>
     <string name="download_preparing_depots">Preparando depots (%1$d/%2$d)</string>
     <string name="update_available">Atualização disponível</string>
     <string name="game_information">Informações do jogo</string>

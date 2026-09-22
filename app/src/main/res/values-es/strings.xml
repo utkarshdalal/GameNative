@@ -622,6 +622,11 @@
     <string name="download_failed_try_again">Descarga fallida, inténtalo de nuevo.</string>
     <string name="download_preparing">Preparando la descarga…</string>
     <string name="download_verifying_file">Verificando %1$s…</string>
+    <string name="download_verifying_files">Verificando archivos...</string>
+    <string name="download_assembling_files">Ensamblando archivos...</string>
+    <string name="download_progress_chunks">Descargando (%1$d/%2$d fragmentos)</string>
+    <string name="download_progress_files">Descargando (%1$d/%2$d archivos)…</string>
+    <string name="download_unpacking">Descomprimiendo...</string>
     <string name="download_preparing_depots">Preparando depósitos (%1$d/%2$d)</string>
     <string name="update_available">Actualización disponible</string>
     <string name="game_information">Información del juego</string>

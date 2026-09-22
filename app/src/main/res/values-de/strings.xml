@@ -563,6 +563,11 @@
     <string name="download_failed_try_again">Download fehlgeschlagen. Bitte nochmal versuchen.</string>
     <string name="download_preparing">Download wird vorbereitet…</string>
     <string name="download_verifying_file">Überprüfe %1$s…</string>
+    <string name="download_verifying_files">Überprüfe Dateien...</string>
+    <string name="download_assembling_files">Dateien werden zusammengesetzt...</string>
+    <string name="download_progress_chunks">Wird heruntergeladen (%1$d/%2$d Blöcke)</string>
+    <string name="download_progress_files">Wird heruntergeladen (%1$d/%2$d Dateien)…</string>
+    <string name="download_unpacking">Wird entpackt...</string>
     <string name="download_preparing_depots">Depots werden vorbereitet (%1$d/%2$d)</string>
     <string name="update_available">Update verfügbar</string>
     <string name="game_information">Spieldetails</string>
