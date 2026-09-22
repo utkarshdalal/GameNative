@@ -43,10 +43,10 @@ class MipReader(private val gameDir: File) : Closeable {
             decoded
         }
         val start = innerOffset ?: 0
-        val size = innerLength ?: (chunk.size - start)
-        if (start < 0 || size < 0 || start + size > chunk.size) {
-            throw IOException("mip slice [$start, ${start + size}) outside chunk of ${chunk.size} bytes")
-        }
+        if (start < 0) throw IOException("negative slice offset $start")
+        if (start >= chunk.size) return ByteArray(0)
+        val size = (innerLength ?: (chunk.size - start)).coerceAtMost(chunk.size - start)
+        if (size < 0) throw IOException("negative slice length $size")
         return chunk.copyOfRange(start, start + size)
     }
 
