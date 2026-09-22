@@ -22,7 +22,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -86,11 +85,11 @@ class TexturePackSyncWorker(
         if (sources.isNotEmpty()) {
             val byKey = sources.associateBy { TexturePackSync.keyOf(it) }
             for (batch in byKey.keys.chunked(TexturePackSync.LOOKUP_BATCH_SIZE)) {
-                val response = withRetry { client.lookup(batch) }
+                val response = TexturePackSync.withRetry { client.lookup(batch) }
                 if (response.invalid.isNotEmpty()) {
                     Timber.w("texture pack: server rejected ${response.invalid.size} keys for $appId")
                 }
-                val uploaded = uploadSources(client, response.want.mapNotNull { byKey[it] })
+                val uploaded = TexturePackSync.uploadSources(client, response.want.mapNotNull { byKey[it] })
                 val settled = TexturePackSync.settledKeys(response, uploaded)
                 withContext(Dispatchers.IO) {
                     settled.forEach { key -> byKey[key]?.delete() }
@@ -105,29 +104,6 @@ class TexturePackSyncWorker(
         }
     }
 
-    private suspend fun uploadSources(client: TexturePackClient, sources: List<File>): List<String> {
-        if (sources.isEmpty()) return emptyList()
-        val gate = Semaphore(TexturePackSync.UPLOAD_PARALLELISM)
-        return coroutineScope {
-            sources.map { source ->
-                async(Dispatchers.IO) {
-                    gate.withPermit {
-                        val key = TexturePackSync.keyOf(source)
-                        try {
-                            withRetry { client.putSource(key, source.readBytes()) }
-                            key
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            Timber.w(e, "texture pack source upload for $key failed")
-                            null
-                        }
-                    }
-                }
-            }.awaitAll().filterNotNull()
-        }
-    }
-
     private suspend fun downloadSync(client: TexturePackClient, container: Container, appId: String, cacheDir: File) {
         var fingerprint = container.getExtra(TexturePackGate.CONTAINER_EXTRA_FINGERPRINT, "")
         if (fingerprint.isBlank()) {
@@ -136,7 +112,7 @@ class TexturePackSyncWorker(
             container.putExtra(TexturePackGate.CONTAINER_EXTRA_FINGERPRINT, fingerprint)
             withContext(Dispatchers.IO) { container.saveData() }
         }
-        val pack = withRetry { client.pack(fingerprint) }
+        val pack = TexturePackSync.withRetry { client.pack(fingerprint) }
         val keys = withContext(Dispatchers.IO) {
             TexturePackSync.downloadKeys(cacheDir, pack.entries, pack.pendingKeys)
         }
@@ -147,7 +123,7 @@ class TexturePackSyncWorker(
                 async(Dispatchers.IO) {
                     gate.withPermit {
                         try {
-                            val payload = withRetry { client.entry(key) } ?: return@withPermit
+                            val payload = TexturePackSync.withRetry { client.entry(key) } ?: return@withPermit
                             if (TextureCacheStore.writeEntryAtomic(cacheDir, key, payload)) {
                                 TexturePackSync.sourceFile(cacheDir, key).delete()
                             }
@@ -169,33 +145,15 @@ class TexturePackSyncWorker(
         if (platform.isBlank() || installDir.isBlank()) return ""
         val files = withContext(Dispatchers.IO) { TexturePackPreparer.scanFiles(File(installDir)) }
         if (files.isEmpty()) return ""
-        return withRetry {
+        return TexturePackSync.withRetry {
             client.packRegister(PackRegisterRequest(platform, storeId, files, keys))
         }.fingerprint
-    }
-
-    private suspend fun <T> withRetry(block: suspend () -> T): T {
-        var attempt = 0
-        while (true) {
-            try {
-                return block()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: TexturePackNetworkUnavailable) {
-                throw e
-            } catch (e: Exception) {
-                attempt++
-                if (attempt >= MAX_ATTEMPTS) throw e
-                delay(RETRY_BACKOFF_MS * attempt)
-            }
-        }
     }
 
     companion object {
         private const val KEY_APP_ID = "appId"
         private const val KEY_UPLOAD = "upload"
         private const val MAX_ATTEMPTS = 3
-        private const val RETRY_BACKOFF_MS = 2_000L
         private const val SWEEP_INTERVAL_HOURS = 12L
 
         private fun constraints(): Constraints {

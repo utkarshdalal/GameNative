@@ -4915,6 +4915,8 @@ private fun exit(
     }
     frameRating?.writeSessionSummary()
 
+    app.gamenative.texturepack.TexturePackLiveUploader.stop()
+
     runCatching {
         val syncContext = frameRating?.context ?: PluviaApp.xServerView?.context
         if (syncContext != null) {
@@ -6114,7 +6116,9 @@ private suspend fun extractGraphicsDriverFiles(
 
         val bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache", "1")
         envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache)
-        envVars.put("WRAPPER_CACHE_PATH", app.gamenative.texturepack.TexturePackPaths.ensureCacheDir(container).absolutePath)
+        val textureCacheDir = app.gamenative.texturepack.TexturePackPaths.ensureCacheDir(container)
+        envVars.put("WRAPPER_CACHE_PATH", textureCacheDir.absolutePath)
+        app.gamenative.texturepack.TexturePackLiveUploader.start(context, textureCacheDir)
 
         val transcoder = graphicsDriverConfig.get("transcoder", "cpu")
         envVars.put("WRAPPER_BCN_GPU", if (transcoder.equals("gpu", ignoreCase = true)) "1" else "0")
