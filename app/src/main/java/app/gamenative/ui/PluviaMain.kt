@@ -1352,6 +1352,7 @@ fun PluviaMain(
                     ContainerConfigDialog(
                         visible = true,
                         title = context.getString(R.string.container_config_title),
+                        appId = appId,
                         initialConfig = config,
                         onDismissRequest = { openContainerConfigForAppId = null },
                         onSave = { newConfig ->

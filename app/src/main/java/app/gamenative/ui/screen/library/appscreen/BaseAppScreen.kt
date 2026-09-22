@@ -1625,7 +1625,24 @@ abstract class BaseAppScreen {
                 }
         }
 
-        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, onPlayWithDiagnostics, onAiDebugRun, exportFrontendLauncher)
+        var texturePackPending by remember(appId) { mutableStateOf<Boolean?>(null) }
+        val texturePackInstallDir = remember(appId) { getInstallPath(context, libraryItem) }
+        val gatedClickPlay: (Boolean) -> Unit = { asRoot ->
+            val offer = try {
+                app.gamenative.texturepack.TexturePackGate.shouldOffer(
+                    context,
+                    appId,
+                    libraryItem.gameSource,
+                    texturePackInstallDir,
+                )
+            } catch (e: Exception) {
+                Timber.w(e, "texture pack gate failed for $appId")
+                false
+            }
+            if (offer) texturePackPending = asRoot else onClickPlay(asRoot)
+        }
+
+        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, gatedClickPlay, onTestGraphics, onPlayWithDiagnostics, onAiDebugRun, exportFrontendLauncher)
 
         // Get download info based on game source for progress tracking
         val downloadInfo = when (libraryItem.gameSource) {
@@ -1688,7 +1705,7 @@ abstract class BaseAppScreen {
                 if (app.gamenative.launch.LaunchReadiness.pending) {
                     showReadiness = true
                 } else {
-                    onDownloadInstallClick(context, libraryItem, onClickPlay)
+                    onDownloadInstallClick(context, libraryItem, gatedClickPlay)
                     uiScope.launch {
                         delay(100)
                         performStateRefresh(true)
@@ -1714,11 +1731,33 @@ abstract class BaseAppScreen {
             dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested,
         )
 
+        texturePackPending?.let { asRoot ->
+            val platform = app.gamenative.texturepack.TexturePackGate.platformFor(libraryItem.gameSource)
+            if (platform == null || texturePackInstallDir.isNullOrBlank()) {
+                LaunchedEffect(appId) {
+                    texturePackPending = null
+                    onClickPlay(asRoot)
+                }
+            } else {
+                app.gamenative.ui.component.dialog.TexturePackDialog(
+                    appId = appId,
+                    platform = platform,
+                    storeId = app.gamenative.texturepack.TexturePackGate.storeIdFor(libraryItem.gameSource, appId),
+                    gameDir = File(texturePackInstallDir),
+                    onPlay = {
+                        texturePackPending = null
+                        onClickPlay(asRoot)
+                    },
+                    onDismiss = { texturePackPending = null },
+                )
+            }
+        }
+
         if (showReadiness && launchActivity != null) {
             app.gamenative.launch.LaunchReadiness.Prompt(launchActivity) {
                 showReadiness = false
                 if (!app.gamenative.launch.LaunchReadiness.pending) {
-                    onDownloadInstallClick(context, libraryItem, onClickPlay)
+                    onDownloadInstallClick(context, libraryItem, gatedClickPlay)
                     uiScope.launch {
                         delay(100)
                         performStateRefresh(true)
@@ -1731,6 +1770,7 @@ abstract class BaseAppScreen {
         if (showConfigDialog) {
             ContainerConfigDialog(
                 title = "${displayInfo.name} Config",
+                appId = appId,
                 initialConfig = containerData,
                 onDismissRequest = { showConfigDialog = false },
                 onSave = {

@@ -6105,8 +6105,9 @@ private suspend fun extractGraphicsDriverFiles(
             else -> envVars.put("WRAPPER_EMULATE_BCN", "1")
         }
 
-        val bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache")
+        val bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache", "1")
         envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache)
+        envVars.put("WRAPPER_CACHE_PATH", app.gamenative.texturepack.TexturePackPaths.ensureCacheDir(container).absolutePath)
 
         val transcoder = graphicsDriverConfig.get("transcoder", "cpu")
         envVars.put("WRAPPER_BCN_GPU", if (transcoder.equals("gpu", ignoreCase = true)) "1" else "0")

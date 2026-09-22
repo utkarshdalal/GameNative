@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
@@ -20,7 +21,9 @@ import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.LsfgVkManager
+import app.gamenative.texturepack.TexturePackPaths
 import com.alorma.compose.settings.ui.SettingsGroup
+import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
 import com.winlator.contents.ContentProfile
 import com.winlator.container.Container
@@ -253,6 +256,17 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                 },
             )
+            if (state.appId.isNotBlank()) {
+                val texturePackContext = LocalContext.current
+                SettingsMenuLink(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(text = stringResource(R.string.clear_texture_cache)) },
+                    subtitle = { Text(text = stringResource(R.string.clear_texture_cache_subtitle)) },
+                    onClick = {
+                        TexturePackPaths.clear(TexturePackPaths.cacheDirForApp(texturePackContext, state.appId))
+                    },
+                )
+            }
             // Sharpness (vkBasalt)
             SettingsListDropdown(
                 colors = settingsTileColors(),

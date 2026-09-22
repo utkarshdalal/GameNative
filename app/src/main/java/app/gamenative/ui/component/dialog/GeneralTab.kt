@@ -162,7 +162,7 @@ fun GeneralTabContent(
                             if (get("resourceType").isEmpty()) put("resourceType", "auto")
                             if (get("bcnEmulation").isEmpty()) put("bcnEmulation", "auto")
                             if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "compute")
-                            if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "0")
+                            if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "1")
                             put("adrenotoolsTurnip", "1")
                         }
                         state.graphicsDriverIndex.value =
@@ -170,7 +170,7 @@ fun GeneralTabContent(
                         state.graphicsDriverVersionIndex.value = 0
                         state.syncEveryFrameChecked.value = false
                         state.disablePresentWaitChecked.value = newCfg.get("disablePresentWait", "0") == "1"
-                        state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "0") == "1"
+                        state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "1") == "1"
                         state.adrenotoolsTurnipChecked.value = true
 
                         val defaultGlibcWine = glibcWineEntries.firstOrNull() ?: Container.DEFAULT_WINE_VERSION
@@ -198,7 +198,7 @@ fun GeneralTabContent(
                             if (get("resourceType").isEmpty()) put("resourceType", "auto")
                             if (get("bcnEmulation").isEmpty()) put("bcnEmulation", "auto")
                             if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "compute")
-                            if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "0")
+                            if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "1")
                         }
                         state.bionicDriverIndex.value = 0
                         state.wrapperVersionIndex.value = state.wrapperOptions.ids
@@ -206,7 +206,7 @@ fun GeneralTabContent(
                             .let { if (it >= 0) it else 0 }
                         state.syncEveryFrameChecked.value = false
                         state.disablePresentWaitChecked.value = newCfg.get("disablePresentWait", "0") == "1"
-                        state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "0") == "1"
+                        state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "1") == "1"
                         state.adrenotoolsTurnipChecked.value = true
                         state.maxDeviceMemoryIndex.value =
                             listOf("0", "512", "1024", "2048", "4096").indexOf("4096").coerceAtLeast(0)
