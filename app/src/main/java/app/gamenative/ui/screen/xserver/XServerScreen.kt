@@ -6114,7 +6114,7 @@ private suspend fun extractGraphicsDriverFiles(
             else -> envVars.put("WRAPPER_EMULATE_BCN", "1")
         }
 
-        val bcnEmulationCache = graphicsDriverConfig.get("bcnEmulationCache", "1")
+        val bcnEmulationCache = if (PrefManager.texturePackEnabled && app.gamenative.texturepack.TexturePackGate.needsTexturePack(context)) "1" else graphicsDriverConfig.get("bcnEmulationCache", "1")
         envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache)
         val textureCacheDir = app.gamenative.texturepack.TexturePackPaths.ensureCacheDir(container)
         envVars.put("WRAPPER_CACHE_PATH", textureCacheDir.absolutePath)
