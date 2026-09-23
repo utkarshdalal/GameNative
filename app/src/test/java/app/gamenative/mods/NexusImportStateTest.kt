@@ -284,6 +284,23 @@ class NexusImportStateTest {
         )
     }
 
+    @Test
+    fun userMessage_adultContentBlockPrefersLocalizedOverride() {
+        val error = NexusApiException(
+            message = "Adult content blocked",
+            statusCode = 403,
+            reason = NexusApiErrorReason.ADULT_CONTENT_BLOCKED,
+        )
+
+        assertEquals(
+            "Localized adult-content message",
+            NexusImportState.userMessage(
+                error = error,
+                adultContentBlockedMessage = "Localized adult-content message",
+            ),
+        )
+    }
+
     private fun install(
         status: ModInstallStatus,
         fileId: Long,

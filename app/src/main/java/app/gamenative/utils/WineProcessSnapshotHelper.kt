@@ -17,6 +17,24 @@ object WineProcessSnapshotHelper {
         "svchost",
     )
 
+    private val systemWindowProcesses = setOf(
+        "conhost",
+        "wineconsole",
+        "winedbg",
+        "taskmgr",
+        "rundll32",
+        "msiexec",
+        "winebrowser",
+        "steam",
+        "steamwebhelper",
+    )
+
+    fun isSystemProcessName(name: String): Boolean {
+        val normalized = normalizeProcessName(name)
+        if (normalized.isEmpty()) return true
+        return normalized in buildEssentialProcessAllowlist() || normalized in systemWindowProcesses
+    }
+
     fun readFromProc(): List<ProcessInfo> {
         val procDir = File("/proc")
         val pidDirs = try {

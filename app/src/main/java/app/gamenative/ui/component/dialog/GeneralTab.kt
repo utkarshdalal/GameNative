@@ -48,7 +48,6 @@ import java.util.Locale
 fun GeneralTabContent(
     state: ContainerConfigState,
     nonzeroResolutionError: String,
-    aspectResolutionError: String,
 ) {
     val config = state.config.value
     val graphicsDrivers = state.graphicsDrivers.value
@@ -115,8 +114,6 @@ fun GeneralTabContent(
                         val heightInt = state.customScreenHeight.value.toIntOrNull() ?: 0
                         if (widthInt == 0 || heightInt == 0) {
                             state.customResolutionValidationError.value = nonzeroResolutionError
-                        } else if (widthInt <= heightInt) {
-                            state.customResolutionValidationError.value = aspectResolutionError
                         } else {
                             state.customResolutionValidationError.value = null
                             state.applyScreenSizeToConfig()
@@ -371,6 +368,13 @@ fun GeneralTabContent(
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.disable_epic_overlay_title)) },
+            subtitle = { Text(text = stringResource(R.string.disable_epic_overlay_subtitle)) },
+            state = config.disableEpicOverlay,
+            onCheckedChange = { state.config.value = config.copy(disableEpicOverlay = it) },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.launch_steam_client_beta)) },
             subtitle = { Text(text = stringResource(R.string.launch_steam_client_description)) },
             state = config.launchRealSteam,
@@ -382,6 +386,30 @@ fun GeneralTabContent(
                 }
             },
         )
+        if (config.launchRealSteam) {
+            val steamTypeItems = listOf("Headless", "Normal", "Light", "Ultra Light")
+            val currentSteamTypeIndex = when (config.steamType.lowercase()) {
+                Container.STEAM_TYPE_HEADLESS -> 0
+                Container.STEAM_TYPE_LIGHT -> 2
+                Container.STEAM_TYPE_ULTRALIGHT -> 3
+                else -> 1
+            }
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.steam_type)) },
+                value = currentSteamTypeIndex,
+                items = steamTypeItems,
+                onItemSelected = {
+                    val type = when (it) {
+                        0 -> Container.STEAM_TYPE_HEADLESS
+                        2 -> Container.STEAM_TYPE_LIGHT
+                        3 -> Container.STEAM_TYPE_ULTRALIGHT
+                        else -> Container.STEAM_TYPE_NORMAL
+                    }
+                    state.config.value = config.copy(steamType = type)
+                },
+            )
+        }
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             SettingsSwitch(
                 colors = settingsTileColorsAlt(),
@@ -396,26 +424,27 @@ fun GeneralTabContent(
                     }
                 },
             )
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.disable_libredirect_title)) },
+                subtitle = { Text(text = stringResource(R.string.disable_libredirect_subtitle)) },
+                state = config.disableLibredirect,
+                onCheckedChange = {
+                    state.config.value = if (it) {
+                        config.copy(disableLibredirect = true, fasterExternalLoading = false)
+                    } else {
+                        config.copy(disableLibredirect = false)
+                    }
+                },
+            )
         }
-        val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
-        val currentSteamTypeIndex = when (config.steamType.lowercase()) {
-            Container.STEAM_TYPE_LIGHT -> 1
-            Container.STEAM_TYPE_ULTRALIGHT -> 2
-            else -> 0
-        }
-        SettingsListDropdown(
-            colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.steam_type)) },
-            value = currentSteamTypeIndex,
-            items = steamTypeItems,
-            onItemSelected = {
-                val type = when (it) {
-                    1 -> Container.STEAM_TYPE_LIGHT
-                    2 -> Container.STEAM_TYPE_ULTRALIGHT
-                    else -> Container.STEAM_TYPE_NORMAL
-                }
-                state.config.value = config.copy(steamType = type)
-            },
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            enabled = !config.disableLibredirect,
+            title = { Text(text = stringResource(R.string.faster_external_loading_title)) },
+            subtitle = { Text(text = stringResource(R.string.faster_external_loading_subtitle)) },
+            state = config.fasterExternalLoading,
+            onCheckedChange = { state.config.value = config.copy(fasterExternalLoading = it) },
         )
         SettingsListDropdown(
             colors = settingsTileColors(),

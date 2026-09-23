@@ -1,10 +1,20 @@
 package app.gamenative.utils
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.view.Choreographer
+import android.view.WindowManager
+import java.util.concurrent.Executors
+import app.gamenative.BuildConfig
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
+import com.winlator.container.ContainerManager
 import com.winlator.core.FileUtils
 import com.winlator.core.envvars.EnvVars
+import com.winlator.renderer.VulkanRenderer
+import com.winlator.renderer.lsfg.LosslessScaling
+import java.lang.ref.WeakReference
 import java.io.File
 import java.util.Locale
 import timber.log.Timber
@@ -58,6 +68,19 @@ object LsfgVkManager {
     const val EXTRA_MULTIPLIER = "lsfgMultiplier"
     const val EXTRA_FLOW_SCALE = "lsfgFlowScale"
     const val EXTRA_PERFORMANCE_MODE = "lsfgPerformanceMode"
+    const val EXTRA_PRESENT_MODE = "lsfgPresentMode"
+    const val EXTRA_BACKEND = "lsfgBackend"
+
+    const val BACKEND_LEGACY = "legacy"
+    const val BACKEND_NATIVE = "native"
+
+    // FPS limiter extras (owned by XServerScreen)
+    private const val EXTRA_FPS_LIMITER_ENABLED = "fpsLimiterEnabled"
+    private const val EXTRA_FPS_LIMITER_TARGET = "fpsLimiterTarget"
+
+    // Written by the layer next to conf.toml; measured presented/base fps
+    private const val STATS_RELATIVE_PATH = ".config/lsfg-vk/stats.txt"
+    private const val STATS_FRESHNESS_MS = 2000L
 
     // Environment variables consumed by the lsfg-vk layer
     private const val ENV_DISABLE = "DISABLE_LSFG"
@@ -65,11 +88,10 @@ object LsfgVkManager {
     private const val ENV_PROCESS = "LSFG_PROCESS"
 
     // Current runtime version (bumped when the bundled .so changes)
-    private const val RUNTIME_VERSION = "v1.0.2-android-arm64-v8a"
+    private const val RUNTIME_VERSION = "v1.3.3-android-arm64-v8a"
 
-    // Asset paths
+    // Asset path for manifest (still in assets)
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
-    private const val ASSET_LIB = "$ASSET_DIR/$LIB_FILENAME"
     private const val ASSET_MANIFEST = "$ASSET_DIR/$MANIFEST_FILENAME"
 
     // ---- Public API --------------------------------------------------------
@@ -117,6 +139,211 @@ object LsfgVkManager {
         parseBool(container.getExtra(EXTRA_PERFORMANCE_MODE, "true"))
 
     /**
+     * Swapchain present mode while frame generation runs ("mailbox" or
+     * "fifo"). Mailbox is the default: the layer already paces vsync-locked,
+     * and mesa's FIFO queue underneath it breaks the display cadence.
+     */
+    fun presentMode(container: Container): String =
+        container.getExtra(EXTRA_PRESENT_MODE, "mailbox")
+            .takeIf { it == "fifo" || it == "mailbox" } ?: "mailbox"
+
+    /**
+     * Frame-generation backend: the legacy lsfg-vk Vulkan layer inside the
+     * container, or the native pipeline in the host renderer.
+     */
+    fun backend(container: Container): String =
+        container.getExtra(EXTRA_BACKEND, BACKEND_NATIVE)
+            .takeIf { it == BACKEND_LEGACY } ?: BACKEND_NATIVE
+
+    @JvmStatic
+    fun isNativeBackend(container: Container): Boolean =
+        backend(container) == BACKEND_NATIVE
+
+    /**
+     * Base fps cap for the layer's limiter (0 = uncapped). The layer
+     * phase-locks its schedule to the vsync grid published by
+     * [startVsyncClock]; without that file it falls back to free-running.
+     */
+    fun fpsLimit(container: Container): Int {
+        if (!parseBool(container.getExtra(EXTRA_FPS_LIMITER_ENABLED, "false"))) return 0
+        return container.getExtra(EXTRA_FPS_LIMITER_TARGET, "0").toIntOrNull()?.coerceAtLeast(0) ?: 0
+    }
+
+    // ---- Vsync clock ------------------------------------------------------
+
+    private var vsyncClockHandler: Handler? = null
+    private val vsyncWriteExecutor by lazy {
+        Executors.newSingleThreadExecutor { r -> Thread(r, "lsfg-vsync").apply { isDaemon = true } }
+    }
+
+    /**
+     * Publish the display's vsync timestamp and period to vsync.txt next to
+     * conf.toml, once a second, so the layer can phase-lock its frame limiter
+     * to the display instead of free-running against it. Choreographer frame
+     * timestamps are CLOCK_MONOTONIC, the clock the layer paces with.
+     */
+    @JvmStatic
+    fun startVsyncClock(context: Context, container: Container) {
+        stopVsyncClock()
+        val file = File(container.rootDir, ".config/lsfg-vk/vsync.txt")
+        val handler = Handler(Looper.getMainLooper())
+        vsyncClockHandler = handler
+        val tick = object : Runnable {
+            override fun run() {
+                if (vsyncClockHandler !== handler) return
+                Choreographer.getInstance().postFrameCallback { frameTimeNanos ->
+                    if (vsyncClockHandler !== handler) return@postFrameCallback
+                    val refreshRate = runCatching {
+                        (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)
+                            ?.defaultDisplay?.refreshRate
+                    }.getOrNull()?.takeIf { it > 1f } ?: 60f
+                    val periodNs = (1_000_000_000.0 / refreshRate).toLong()
+                    vsyncWriteExecutor.execute {
+                        runCatching {
+                            file.parentFile?.mkdirs()
+                            file.writeText("vsync_ns=$frameTimeNanos\nperiod_ns=$periodNs\n")
+                        }
+                    }
+                }
+                handler.postDelayed(this, 1000)
+            }
+        }
+        handler.post(tick)
+    }
+
+    @JvmStatic
+    fun stopVsyncClock() {
+        vsyncClockHandler?.removeCallbacksAndMessages(null)
+        vsyncClockHandler = null
+    }
+
+    /**
+     * Read the fps the layer actually presented, measured on-device.
+     * Returns null when the stats file is missing or stale (layer not running),
+     * in which case callers should fall back to their own estimate.
+     */
+    @JvmStatic
+    @Volatile private var cachedMeasuredFps: Float? = null
+    @Volatile private var lastStatsReadMs: Long = 0L
+
+    @Volatile private var lastPresentedFrames: Long = -1L
+    @Volatile private var lastPresentedAtMs: Long = 0L
+
+    private fun readNativeMeasuredFps(): Float? {
+        val renderer = rendererRef?.get() ?: return null
+        val now = System.currentTimeMillis()
+        val frames = try {
+            renderer.presentedFrameCount
+        } catch (t: Throwable) {
+            return null
+        }
+        val prevFrames = lastPresentedFrames
+        val prevAt = lastPresentedAtMs
+        if (prevFrames < 0 || frames < prevFrames) {
+            lastPresentedFrames = frames
+            lastPresentedAtMs = now
+            return null
+        }
+        val elapsed = now - prevAt
+        if (elapsed < 500L) return cachedMeasuredFps
+        lastPresentedFrames = frames
+        lastPresentedAtMs = now
+        cachedMeasuredFps = ((frames - prevFrames) * 1000.0 / elapsed).toFloat()
+        return cachedMeasuredFps
+    }
+
+    /** Served from a cache refreshed off the main thread; callers poll ~1/s. */
+    fun readMeasuredFps(container: Container): Float? {
+        if (isNativeBackend(container)) return readNativeMeasuredFps()
+        val now = System.currentTimeMillis()
+        if (now - lastStatsReadMs >= 500L) {
+            lastStatsReadMs = now
+            vsyncWriteExecutor.execute {
+                cachedMeasuredFps = try {
+                    val statsFile = File(container.rootDir, STATS_RELATIVE_PATH)
+                    if (statsFile.isFile &&
+                        System.currentTimeMillis() - statsFile.lastModified() <= STATS_FRESHNESS_MS
+                    ) {
+                        statsFile.readLines()
+                            .firstOrNull { it.startsWith("fps=") }
+                            ?.substringAfter("fps=")
+                            ?.toFloatOrNull()
+                    } else {
+                        null
+                    }
+                } catch (t: Throwable) {
+                    null
+                }
+            }
+        }
+        return cachedMeasuredFps
+    }
+
+    // ---- Native backend ----------------------------------------------------
+
+    @Volatile private var nativeCachePath: String? = null
+    @Volatile private var rendererRef: WeakReference<VulkanRenderer>? = null
+    @Volatile private var appContext: Context? = null
+
+    /**
+     * Compile (or reuse) the SPIR-V shader cache the native pipeline needs,
+     * derived from the container's copy of Lossless.dll. Takes ~200 ms on a
+     * cold build, so callers should keep it off the launch-critical path.
+     */
+    @JvmStatic
+    @Synchronized
+    fun prepareNativeCache(context: Context, container: Container): String? {
+        val dll = containerDllPath(container)?.let { File(it) } ?: findSteamDll()
+        if (dll == null || !dll.isFile) return null
+        val driverName = LosslessScaling.getDriverName(container)
+        val cache = LosslessScaling.resolveOrBuildCache(context, dll, driverName)
+        nativeCachePath = cache?.absolutePath
+        return nativeCachePath
+    }
+
+    private fun displayRefreshRate(context: Context): Float = runCatching {
+        (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)
+            ?.defaultDisplay?.refreshRate
+    }.getOrNull()?.takeIf { it > 1f } ?: 60f
+
+    /** Push the container's LSFG settings into the host renderer's native pipeline. */
+    @JvmStatic
+    fun applyNativeRuntime(renderer: VulkanRenderer, container: Container, context: Context) {
+        rendererRef = WeakReference(renderer)
+        appContext = context.applicationContext
+        val multiplier = multiplier(container)
+        val enabled = isArmed(container) && isNativeBackend(container) && multiplier >= 2
+
+        renderer.setFrameGenerationMode(
+            multiplier.coerceAtLeast(2),
+            0,
+            (flowScale(container) * 100f).toInt(),
+        )
+        renderer.setFrameGenerationRefreshRate(displayRefreshRate(context))
+
+        val cachePath = nativeCachePath
+        if (cachePath == null && enabled) {
+            val ctx = context.applicationContext
+            vsyncWriteExecutor.execute {
+                val built = prepareNativeCache(ctx, container)
+                if (built != null) renderer.setFrameGenerationShaders(built)
+                renderer.setFrameGenerationEnabled(built != null)
+            }
+            return
+        }
+
+        if (cachePath != null) renderer.setFrameGenerationShaders(cachePath)
+        renderer.setFrameGenerationEnabled(enabled)
+    }
+
+    /** Re-push settings to the renderer captured by [applyNativeRuntime], if any. */
+    fun refreshNativeRuntime(container: Container) {
+        val renderer = rendererRef?.get() ?: return
+        val context = appContext ?: return
+        applyNativeRuntime(renderer, container, context)
+    }
+
+    /**
      * Install the layer runtime + DLL into the container's filesystem.
      * Called during container startup in BionicProgramLauncherComponent.
      *
@@ -152,8 +379,18 @@ object LsfgVkManager {
                 localLibDir.mkdirs()
                 layerDir.mkdirs()
 
-                // Copy the layer .so from assets
-                FileUtils.copy(context, ASSET_LIB, libFile)
+                // Copy the layer .so from native library directory (jniLibs)
+                val nativeLibDir = File(context.applicationInfo.nativeLibraryDir)
+                val sourceLib = File(nativeLibDir, LIB_FILENAME)
+                if (!sourceLib.exists()) {
+                    Timber.tag(TAG).e("Native library not found: %s", sourceLib.absolutePath)
+                    return false
+                }
+                sourceLib.inputStream().use { input ->
+                    libFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
                 // Write the manifest with patched library_path
                 val manifestText = context.assets.open(ASSET_MANIFEST)
                     .bufferedReader().use { it.readText() }
@@ -183,6 +420,10 @@ object LsfgVkManager {
         } else {
             Timber.tag(TAG).d("Runtime %s already installed in %s", RUNTIME_VERSION, rootDir)
         }
+
+        // Delete the Lossless Scaling container if it exists (no longer needed)
+        // We now copy the DLL directly from Steam install dir instead of creating a container
+        deleteLosslessScalingContainerIfExists(context)
 
         // Copy Lossless.dll from Steam install dir into the container
         val dllFile = File(dllDir, LOSSLESS_DLL_NAME)
@@ -225,7 +466,7 @@ object LsfgVkManager {
             val dllPath = containerDllPath(container)
             val savedMultiplier = multiplier(container)
             val frameGenActive = parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
-                dllPath != null && savedMultiplier >= 2
+                dllPath != null && savedMultiplier >= 2 && !isNativeBackend(container)
             val configFile = File(container.rootDir, CONFIG_RELATIVE_PATH)
             val configText = buildConfigToml(
                 dllPath = dllPath,
@@ -233,11 +474,10 @@ object LsfgVkManager {
                 multiplier = if (frameGenActive) savedMultiplier else 1,
                 flowScale = flowScale(container),
                 performanceMode = performanceMode(container) && frameGenActive,
+                fpsLimit = fpsLimit(container),
+                presentMode = presentMode(container),
             )
-            val ok = FileUtils.writeString(configFile, configText)
-            if (ok && configFile.exists()) {
-                FileUtils.chmod(configFile, 0b110100100)
-            }
+            val ok = writeConfigAtomic(configFile, configText)
             ok
         } catch (t: Throwable) {
             Timber.tag(TAG).e(t, "Failed to write LSFG conf.toml")
@@ -316,11 +556,59 @@ object LsfgVkManager {
     /**
      * Find Lossless.dll in the Steam install directory for app 993090.
      * Returns the File if it exists, null otherwise.
+     *
+     * This function searches all possible Steam install paths directly
+     * without creating a container for the Lossless Scaling app.
      */
     private fun findSteamDll(): File? {
-        val appDir = SteamService.getAppDirPath(LOSSLESS_SCALING_APP_ID)
-        val dll = File(appDir, LOSSLESS_DLL_NAME)
-        return dll.takeIf { it.isFile }
+        return findSteamDllDirect()
+    }
+
+    /**
+     * Find Lossless.dll by searching all Steam install paths directly.
+     * This avoids creating a container for app 993090 (Lossless Scaling).
+     *
+     * Search order:
+     * 1. Check if app is already installed in any known Steam path
+     * 2. Look for common install directory names
+     *
+     * @return File pointing to Lossless.dll if found, null otherwise
+     */
+    private fun findSteamDllDirect(): File? {
+        // Get app info to find the install directory name
+        val appInfo = SteamService.getAppInfoOf(LOSSLESS_SCALING_APP_ID)
+        val installDirName = appInfo?.installDir?.takeIf { it.isNotBlank() } ?: "Lossless Scaling"
+
+        // Search all possible Steam install paths
+        val searchPaths = SteamService.allInstallPaths
+
+        for (basePath in searchPaths) {
+            val appDir = File(basePath, installDirName)
+            val dll = File(appDir, LOSSLESS_DLL_NAME)
+            if (dll.isFile) {
+                Timber.tag(TAG).d("Found Lossless.dll at: %s", dll.absolutePath)
+                return dll
+            }
+        }
+
+        // Fallback: search for any directory containing Lossless.dll in Steam paths
+        for (basePath in searchPaths) {
+            val baseDir = File(basePath)
+            if (!baseDir.exists() || !baseDir.isDirectory) continue
+
+            baseDir.listFiles()?.forEach { subDir ->
+                if (subDir.isDirectory) {
+                    val dll = File(subDir, LOSSLESS_DLL_NAME)
+                    if (dll.isFile) {
+                        Timber.tag(TAG).d("Found Lossless.dll in fallback search at: %s", dll.absolutePath)
+                        return dll
+                    }
+                }
+            }
+        }
+
+        Timber.tag(TAG).w("Lossless.dll not found in any Steam install path")
+        return null
     }
 
     // ---- Helpers -----------------------------------------------------------
@@ -328,12 +616,28 @@ object LsfgVkManager {
     private fun configFile(container: Container): File =
         File(container.rootDir, CONFIG_RELATIVE_PATH)
 
+    // The layer rereads conf.toml on mtime change and must never observe a
+    // half-written file.
+    private fun writeConfigAtomic(file: File, text: String): Boolean {
+        val tmp = File(file.parentFile, file.name + ".tmp")
+        return try {
+            if (!FileUtils.writeString(tmp, text)) return false
+            FileUtils.chmod(tmp, 0b110100100)
+            tmp.renameTo(file)
+        } catch (t: Throwable) {
+            tmp.delete()
+            false
+        }
+    }
+
     private fun buildConfigToml(
         dllPath: String?,
         enabled: Boolean,
         multiplier: Int,
         flowScale: Float,
         performanceMode: Boolean,
+        fpsLimit: Int,
+        presentMode: String,
     ): String = buildString {
         appendLine("version = 1")
         appendLine()
@@ -352,7 +656,8 @@ object LsfgVkManager {
             appendLine("flow_scale = ${formatFlowScale(flowScale)}")
             appendLine("performance_mode = ${if (enabled && performanceMode) "true" else "false"}")
             appendLine("hdr_mode = false")
-            appendLine("experimental_present_mode = ${tomlString("fifo")}")
+            appendLine("fps_limit = ${fpsLimit.coerceAtLeast(0)}")
+            appendLine("experimental_present_mode = ${tomlString(if (enabled) presentMode else "fifo")}")
         }
     }
 
@@ -374,6 +679,31 @@ object LsfgVkManager {
 
     private fun formatFlowScale(value: Float): String =
         String.format(Locale.US, "%.2f", value.coerceIn(0.25f, 1.0f))
+
+    /**
+     * Delete the Lossless Scaling container if it exists.
+     * This container is no longer needed since we copy the DLL directly from
+     * the Steam install directory instead of creating a container for app 993090.
+     * This saves storage space.
+     */
+    private fun deleteLosslessScalingContainerIfExists(context: Context) {
+        try {
+            val containerManager = ContainerManager(context)
+            val losslessContainer = containerManager.getContainerById("STEAM_$LOSSLESS_SCALING_APP_ID")
+            if (losslessContainer != null) {
+                Timber.tag(TAG).i("Deleting Lossless Scaling container to save storage")
+                if (FileUtils.delete(losslessContainer.rootDir)) {
+                    containerManager.containers.remove(losslessContainer)
+                    Timber.tag(TAG).i("Successfully deleted Lossless Scaling container")
+                } else {
+                    Timber.tag(TAG).w("Failed to delete Lossless Scaling container directory")
+                }
+            }
+        } catch (t: Throwable) {
+            Timber.tag(TAG).w(t, "Error while trying to delete Lossless Scaling container")
+        }
+    }
+
     // ---- Runtime hot-reload -----------------------------------------------
 
     /**
@@ -396,6 +726,7 @@ object LsfgVkManager {
         multiplier: Int,
         flowScale: Float,
         performanceMode: Boolean,
+        fpsLimitOverride: Int? = null,
     ): Boolean {
         if (!isSupported(container)) return false
 
@@ -408,40 +739,22 @@ object LsfgVkManager {
         }
 
         return try {
-            val effectiveMultiplier = if (enabled && dllPath != null) {
-                multiplier.coerceIn(2, 4)
-            } else {
-                1 // multiplier <= 1 means pass-through (no framegen)
-            }
-            val effectiveFlowScale = flowScale.coerceIn(0.25f, 1.0f)
-            val effectivePerfMode = performanceMode && enabled
+            val frameGenActive = enabled && dllPath != null && !isNativeBackend(container)
+            val configText = buildConfigToml(
+                dllPath = dllPath,
+                enabled = frameGenActive,
+                multiplier = if (frameGenActive) multiplier.coerceIn(2, 4) else 1,
+                flowScale = flowScale.coerceIn(0.25f, 1.0f),
+                performanceMode = performanceMode && frameGenActive,
+                fpsLimit = fpsLimitOverride ?: fpsLimit(container),
+                presentMode = presentMode(container),
+            )
 
-            val configText = buildString {
-                appendLine("version = 1")
-                appendLine()
-                appendLine("[global]")
-                if (!dllPath.isNullOrBlank()) {
-                    appendLine("dll = ${tomlString(dllPath)}")
-                }
-                appendLine("no_fp16 = false")
-                appendLine()
-                appendLine("[[game]]")
-                appendLine("exe = ${tomlString(PROCESS_EXE_IDENTIFIER)}")
-                appendLine("multiplier = $effectiveMultiplier")
-                appendLine("flow_scale = ${formatFlowScale(effectiveFlowScale)}")
-                appendLine("performance_mode = ${if (effectivePerfMode) "true" else "false"}")
-                appendLine("hdr_mode = false")
-                appendLine("experimental_present_mode = ${tomlString("fifo")}")
-            }
-
-            val ok = FileUtils.writeString(configFile, configText)
-            if (ok && configFile.exists()) {
-                FileUtils.chmod(configFile, 0b110100100)
-            }
+            val ok = writeConfigAtomic(configFile, configText)
             if (ok) {
                 Timber.tag(TAG).i(
-                    "Hot-reloaded conf.toml: enabled=%s, multiplier=%d, flowScale=%.2f, perf=%s",
-                    enabled, effectiveMultiplier, effectiveFlowScale, effectivePerfMode
+                    "Hot-reloaded conf.toml: enabled=%s, multiplier=%d, flowScale=%.2f, perf=%s, fpsLimit=%d",
+                    frameGenActive, multiplier, flowScale, performanceMode, fpsLimit(container)
                 )
             }
             ok

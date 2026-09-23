@@ -23,6 +23,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Add swap
+      run: |
+        sudo fallocate -l 8G /mnt/swapfile.ci
+        sudo chmod 600 /mnt/swapfile.ci
+        sudo mkswap /mnt/swapfile.ci
+        sudo swapon /mnt/swapfile.ci
+        free -m
     - name: set up Java 17
       uses: actions/setup-java@v4
       with:
@@ -81,7 +88,11 @@ jobs:
         yes | "$SDKMANAGER" --install "build-tools;34.0.0"
 
     - name: Build with Gradle
-      run: ./gradlew :app:bundleLegacyRelease :app:bundleModernRelease :app:bundleLegacyXrRelease
+      run: |
+        ./gradlew -Pkotlin.daemon.jvmargs=-Xmx3g :app:bundleLegacyRelease
+        ./gradlew -Pkotlin.daemon.jvmargs=-Xmx3g :app:bundleModernRelease
+        ./gradlew -Pkotlin.daemon.jvmargs=-Xmx3g :app:bundleLegacyXrRelease
+        free -m
 
     - name: Stage bundles
       run: |

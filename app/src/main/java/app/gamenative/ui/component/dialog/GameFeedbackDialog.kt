@@ -49,95 +49,102 @@ fun GameFeedbackDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp)
-                        .verticalScroll(rememberScrollState()),
+                        .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Title
-                    Text(
-                        text = stringResource(R.string.game_feedback_game_run),
-                        style = MaterialTheme.typography.headlineSmall,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    // Rating Stars
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        horizontalArrangement = Arrangement.Center
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        for (i in 1..5) {
-                            Icon(
-                                imageVector = if (i <= state.rating) Icons.Filled.Star else Icons.Filled.StarOutline,
-                                contentDescription = "Star $i",
-                                tint = if (i <= state.rating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clickable {
-                                        onStateChange(state.copy(rating = i))
-                                    }
-                                    .padding(4.dp)
-                            )
+                        // Title
+                        Text(
+                            text = stringResource(R.string.game_feedback_game_run),
+                            style = MaterialTheme.typography.headlineSmall,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+
+                        // Rating Stars
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            for (i in 1..5) {
+                                Icon(
+                                    imageVector = if (i <= state.rating) Icons.Filled.Star else Icons.Filled.StarOutline,
+                                    contentDescription = "Star $i",
+                                    tint = if (i <= state.rating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clickable {
+                                            onStateChange(state.copy(rating = i))
+                                        }
+                                        .padding(4.dp)
+                                )
+                            }
                         }
-                    }
 
-                    // Tags Selection
-                    Text(
-                        text = stringResource(R.string.game_feedback_issues_question),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier
-                            .align(Alignment.Start)
-                            .padding(bottom = 8.dp)
-                    )
+                        // Tags Selection
+                        Text(
+                            text = stringResource(R.string.game_feedback_issues_question),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .align(Alignment.Start)
+                                .padding(bottom = 8.dp)
+                        )
 
-                    FlowRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                    ) {
-                        for (tag in GameFeedbackDialogState.AVAILABLE_TAGS) {
-                            val isSelected = tag in state.selectedTags
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = {
-                                    val newTags = if (isSelected) {
-                                        state.selectedTags - tag
-                                    } else {
-                                        state.selectedTags + tag
-                                    }
-                                    onStateChange(state.copy(selectedTags = newTags))
-                                },
-                                label = {
-                                    Text(
-                                        text = tag.replace("_", " ").capitalize(),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                },
-                                modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
-                            )
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp)
+                        ) {
+                            for (tag in GameFeedbackDialogState.AVAILABLE_TAGS) {
+                                val isSelected = tag in state.selectedTags
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        val newTags = if (isSelected) {
+                                            state.selectedTags - tag
+                                        } else {
+                                            state.selectedTags + tag
+                                        }
+                                        onStateChange(state.copy(selectedTags = newTags))
+                                    },
+                                    label = {
+                                        Text(
+                                            text = tag.replace("_", " ").capitalize(),
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    },
+                                    modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
+                                )
+                            }
                         }
-                    }
 
-                    // Feedback text box
-                    NoExtractOutlinedTextField(
-                        value = state.feedbackText,
-                        onValueChange = { onStateChange(state.copy(feedbackText = it)) },
-                        label = { Text(stringResource(R.string.describe_what_happened)) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 100.dp)
-                            .padding(bottom = 16.dp),
-                        maxLines = 5,
-                    )
+                        // Feedback text box
+                        NoExtractOutlinedTextField(
+                            value = state.feedbackText,
+                            onValueChange = { onStateChange(state.copy(feedbackText = it)) },
+                            label = { Text(stringResource(R.string.describe_what_happened)) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 100.dp)
+                                .padding(bottom = 16.dp),
+                            maxLines = 5,
+                        )
 
-                    // Discord support link
-                    TextButton(
-                        onClick = onDiscordSupport,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    ) {
-                        Text(stringResource(R.string.get_support_on_discord))
+                        // Discord support link
+                        TextButton(
+                            onClick = onDiscordSupport,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        ) {
+                            Text(stringResource(R.string.get_support_on_discord))
+                        }
                     }
 
                     // Dialog action buttons

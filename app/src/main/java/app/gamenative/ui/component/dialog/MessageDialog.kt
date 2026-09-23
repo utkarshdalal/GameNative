@@ -1,7 +1,10 @@
 package app.gamenative.ui.component.dialog
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material3.AlertDialog
@@ -9,6 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.AnnotatedString
@@ -42,21 +46,23 @@ fun MessageDialog(
                 title = title?.let { { Text(it) } },
                 text = message?.let {
                     {
-                        if (useHtmlInMsg) {
-                            Text(
-                                text = AnnotatedString.fromHtml(
-                                    htmlString = it,
-                                    linkStyles = TextLinkStyles(
-                                        style = SpanStyle(
-                                            textDecoration = TextDecoration.Underline,
-                                            fontStyle = FontStyle.Italic,
-                                            color = Color.Blue,
+                        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                            if (useHtmlInMsg) {
+                                Text(
+                                    text = AnnotatedString.fromHtml(
+                                        htmlString = it,
+                                        linkStyles = TextLinkStyles(
+                                            style = SpanStyle(
+                                                textDecoration = TextDecoration.Underline,
+                                                fontStyle = FontStyle.Italic,
+                                                color = Color.Blue,
+                                            ),
                                         ),
                                     ),
-                                ),
-                            )
-                        } else {
-                            Text(it)
+                                )
+                            } else {
+                                Text(it)
+                            }
                         }
                     }
                 },

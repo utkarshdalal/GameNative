@@ -6,11 +6,13 @@ import app.gamenative.data.GOGCloudSavesLocation
 import app.gamenative.data.GOGCloudSavesLocationTemplate
 import app.gamenative.data.GOGGame
 import app.gamenative.data.GameSource
+import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
+import app.gamenative.service.download.GameDownloadService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.MarkerUtils
@@ -24,6 +26,7 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -98,7 +101,9 @@ class GOGManager @Inject constructor(
 
     suspend fun insertGame(game: GOGGame) {
         withContext(Dispatchers.IO) {
-            gogGameDao.insert(game)
+            // Preserve install state and the hidden flag when the row already exists, so a
+            // single-game refresh cannot reset them.
+            gogGameDao.upsertPreservingInstallStatus(listOf(game))
         }
     }
 
@@ -146,10 +151,48 @@ class GOGManager @Inject constructor(
                 Timber.e(error, "Background sync failed: ${error?.message}")
                 return@withContext Result.failure(error ?: Exception("Background sync failed"))
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Failed to sync GOG library in background")
             Result.failure(e)
         }
+    }
+
+    /**
+     * Fetches hidden-product IDs once per sync and stores them on the matching `gog_games` rows.
+     *
+     * Failures leave the existing hidden flags untouched and are logged; this never throws and
+     * never fails the caller. Staleness is corrected on the next sync.
+     *
+     * @return the fetched hidden product IDs, or null when the fetch failed or the user is not
+     * authenticated (callers can use it to stamp newly inserted rows).
+     */
+    suspend fun refreshHiddenIds(): Set<String>? {
+        if (!GOGAuthManager.hasStoredCredentials(context)) return null
+        val hiddenIdsResult = GOGApiClient.getHiddenGameIds(context)
+        if (hiddenIdsResult.isFailure) {
+            Timber.tag("GOG").w(
+                hiddenIdsResult.exceptionOrNull(),
+                "Failed to fetch hidden GOG game IDs; keeping existing hidden flags",
+            )
+            return null
+        }
+        val hiddenIds = hiddenIdsResult.getOrNull() ?: emptySet()
+        return try {
+            gogGameDao.applyHiddenFlags(hiddenIds)
+            hiddenIds
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("GOG").e(e, "Failed to persist hidden GOG game IDs; keeping existing hidden flags")
+            null
+        }
+    }
+
+    /** Clears the hidden flag on every GOG row (used when the logged-out account's metadata is removed). */
+    suspend fun clearHiddenFlags() {
+        gogGameDao.clearHiddenFlags()
     }
 
     /**
@@ -179,6 +222,10 @@ class GOGManager @Inject constructor(
 
             val gameIds = gameIdList.getOrNull() ?: emptyList()
             Timber.tag("GOG").i("Successfully fetched ${gameIds.size} game IDs from GOG")
+
+            // Refresh hidden-game metadata even when the owned library itself is unchanged.
+            // A failure keeps the existing flags and must not fail the library refresh.
+            val hiddenIds = refreshHiddenIds()
 
             if (gameIds.isEmpty()) {
                 Timber.w("No games found in GOG library")
@@ -220,12 +267,16 @@ class GOGManager @Inject constructor(
                             Timber.tag("GOG").d("Got Game Details for ID: $id")
                             val parsedGame = parseGameObject(gameDetails)
                             if (parsedGame != null) {
+                                val isHidden = hiddenIds?.contains(id) == true
                                 // Only real (non-excluded) games are shown, so only fetch
                                 // their portrait cover to avoid wasting GamesDB requests.
                                 val game = if (parsedGame.exclude) {
-                                    parsedGame
+                                    parsedGame.copy(hidden = isHidden)
                                 } else {
-                                    parsedGame.copy(verticalCoverUrl = GOGApiClient.getVerticalCoverUrl(id))
+                                    parsedGame.copy(
+                                        hidden = isHidden,
+                                        verticalCoverUrl = GOGApiClient.getVerticalCoverUrl(id),
+                                    )
                                 }
                                 games.add(game)
                                 Timber.tag("GOG").d("Refreshed Game: ${game.title}")
@@ -235,6 +286,8 @@ class GOGManager @Inject constructor(
                     } else {
                         Timber.w("GOG game ID $id not found in library after refresh")
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to parse game details for ID: $id")
                 }
@@ -253,6 +306,8 @@ class GOGManager @Inject constructor(
             }
             Timber.tag("GOG").i("Successfully refreshed GOG library with $totalProcessed games")
             return@withContext Result.success(totalProcessed)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Failed to refresh GOG library")
             return@withContext Result.failure(e)
@@ -471,8 +526,12 @@ class GOGManager @Inject constructor(
                 Timber.tag("GOG").w("Skipping Invalid GOG App with id: $gameId")
                 return Result.success(null)
             }
+            // insertGame preserves install state, hidden, and cover; a hidden game that has not
+            // been synced yet fails open (visible) until the next sync.
             insertGame(game)
-            return Result.success(game)
+            return Result.success(gogGameDao.getById(gameId) ?: game)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.e(e, "Error fetching single game data for $gameId")
             Result.failure(e)
@@ -483,6 +542,9 @@ class GOGManager @Inject constructor(
         return withContext(Dispatchers.IO) {
             try {
                 val gameId = libraryItem.gameId.toString()
+
+                // Remove download from GameDownloadService
+                GameDownloadService.removeDownload(context, GameSource.GOG, gameId)
 
                 val game = getGameFromDbById(gameId)
                 val storedPath = game?.installPath?.takeIf { it.isNotBlank() }
@@ -499,7 +561,7 @@ class GOGManager @Inject constructor(
                 for (path in pathsToClean) {
                     val dir = File(path)
                     if (dir.exists()) {
-                        if (dir.deleteRecursively()) {
+                        if (NativeTreeDelete.deleteTreeFast(dir)) {
                             Timber.i("Successfully deleted game directory: $path")
                         } else {
                             Timber.w("Failed to delete some game files at $path")
@@ -511,6 +573,9 @@ class GOGManager @Inject constructor(
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 }
+
+                // Drop any leftover chunk cache (kept on failed downloads for resume)
+                NativeTreeDelete.deleteTreeFast(File(context.cacheDir, "gog_chunks/$gameId"))
 
                 if (game != null) {
                     val updatedGame = game.copy(isInstalled = false, installPath = "")
@@ -596,7 +661,7 @@ class GOGManager @Inject constructor(
         val gameId = libraryItem.gameId.toString()
         try {
             val game = getGameFromDbById(gameId) ?: return@withContext ""
-            val installPath = getGameInstallPath(game.id, game.title)
+            val installPath = game.installPath.ifEmpty { getGameInstallPath(game.id, game.title) }
 
             // Try V2 structure first (game_$gameId subdirectory)
             val v2GameDir = File(installPath, "game_$gameId")
@@ -737,7 +802,7 @@ class GOGManager @Inject constructor(
             return "\"explorer.exe\""
         }
 
-        val gameInstallPath = getGameInstallPath(gameId.toString(), game.title)
+        val gameInstallPath = game.installPath.ifEmpty { getGameInstallPath(gameId.toString(), game.title) }
         val gameDir = File(gameInstallPath)
 
         if (!gameDir.exists()) {
@@ -762,6 +827,10 @@ class GOGManager @Inject constructor(
         if (executablePath.isEmpty()) {
             Timber.w("No executable found, opening file manager")
             return "\"explorer.exe\""
+        }
+
+        if (ContainerUtils.isAbsoluteWindowsPath(executablePath)) {
+            return "\"$executablePath\""
         }
 
         // Find the drive letter that's mapped to this game's install path
@@ -813,19 +882,23 @@ class GOGManager @Inject constructor(
         val commonRedistDir = File(gameInstallDir, "_CommonRedist")
         val isiDir = File(commonRedistDir, "ISI")
         if (isiDir.isDirectory) {
-            val rootDirLink = File(isiDir, "rootdir")
-            if (!rootDirLink.exists() || !WinlatorFileUtils.isSymlink(rootDirLink)) {
-                try {
+            ensureRootDirSymlink(gameInstallDir, isiDir)
+        }
+    }
+
+    private fun ensureRootDirSymlink(gameInstallDir: File, parentDir: File) {
+        val rootDirLink = File(parentDir, "rootdir")
+        if (!rootDirLink.exists() || !WinlatorFileUtils.isSymlink(rootDirLink)) {
+            try {
                 WinlatorFileUtils.symlink(gameInstallDir, rootDirLink)
-                    Timber.tag("GOG").d(
-                        "Created scriptinterpreter rootdir symlink: ${rootDirLink.absolutePath} -> ${gameInstallDir.absolutePath}",
-                    )
-                } catch (e: Exception) {
-                    Timber.tag("GOG").e(
-                        e,
-                        "Failed to create scriptinterpreter rootdir symlink: ${rootDirLink.absolutePath} -> ${gameInstallDir.absolutePath}",
-                    )
-                }
+                Timber.tag("GOG").d(
+                    "Created rootdir symlink: ${rootDirLink.absolutePath} -> ${gameInstallDir.absolutePath}",
+                )
+            } catch (e: Exception) {
+                Timber.tag("GOG").e(
+                    e,
+                    "Failed to create rootdir symlink: ${rootDirLink.absolutePath} -> ${gameInstallDir.absolutePath}",
+                )
             }
         }
     }
@@ -890,6 +963,101 @@ class GOGManager @Inject constructor(
         }
 
         return parts
+    }
+
+    /**
+     * Returns command parts to run Gen 1 (legacy) support_commands setup executables for launch.
+     * These are per-game installers GOG ships in the support depot (downloaded to
+     * _CommonRedist/<gameID>/) that create registry keys, shortcuts, etc. — the same step
+     * Galaxy and Heroic perform after installing a Gen 1 game. Idempotent, so run each launch
+     * like the scriptinterpreter path; the registry also self-heals if the prefix is recreated.
+     */
+    fun getSupportCommandPartsForLaunch(appId: String, knownInstallDir: File? = null): List<String> {
+        val gameInstallDir = if (knownInstallDir != null && knownInstallDir.isDirectory) {
+            knownInstallDir
+        } else {
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId) ?: return emptyList()
+            val game = runBlocking { getGameFromDbById(gameId.toString()) } ?: return emptyList()
+            val computedPath = getGameInstallPath(gameId.toString(), game.title)
+            val gameInstallPath = when {
+                game.installPath.isNotEmpty() && File(game.installPath).exists() -> game.installPath
+                else -> computedPath
+            }
+            File(gameInstallPath)
+        }
+        val root = GOGManifestUtils.readLocalManifest(gameInstallDir) ?: return emptyList()
+        val commandsArray = root.optJSONArray("supportCommands") ?: return emptyList()
+        if (commandsArray.length() == 0) return emptyList()
+
+        val language = root.optString("language", "english")
+        val buildId = root.optString("buildId", "")
+        val versionName = root.optString("versionName", "")
+        val gameDriveLetter = "A"
+
+        val parts = mutableListOf<String>()
+        for (i in 0 until commandsArray.length()) {
+            val cmd = commandsArray.getJSONObject(i)
+            val executable = cmd.optString("executable", "").trimStart('/')
+            if (executable.isEmpty()) continue
+            val cmdGameId = cmd.optString("gameID", "")
+            if (cmdGameId.isEmpty()) continue
+
+            val langsArr = cmd.optJSONArray("languages")
+            var languageMatches = langsArr == null || langsArr.length() == 0
+            if (langsArr != null) {
+                val aliases = languageAliases(language)
+                for (j in 0 until langsArr.length()) {
+                    val l = langsArr.getString(j)
+                    if (l.equals("Neutral", ignoreCase = true) || l.lowercase() in aliases) {
+                        languageMatches = true
+                        break
+                    }
+                }
+            }
+            if (!languageMatches) continue
+
+            val supportSubDir = File(gameInstallDir, "_CommonRedist/$cmdGameId")
+            val exeFile = File(supportSubDir, executable)
+            if (!exeFile.exists()) {
+                Timber.tag("GOG").w("Support command executable missing, skipping: ${exeFile.absolutePath}")
+                continue
+            }
+
+            ensureRootDirSymlink(gameInstallDir, supportSubDir)
+
+            val exePathWin = "$gameDriveLetter:\\_CommonRedist\\$cmdGameId\\${executable.replace('/', '\\')}"
+            val dirArg = "$gameDriveLetter:\\_CommonRedist\\$cmdGameId\\rootdir"
+            val args = listOf(
+                "/VERYSILENT",
+                "/DIR=$dirArg",
+                "/Language=$language",
+                "/LANG=$language",
+                "/ProductId=$cmdGameId",
+                "/galaxyclient",
+                "/buildId=$buildId",
+                "/versionName=$versionName",
+                "/nodesktopshorctut",
+                "/nodesktopshortcut",
+            ).joinToString(" ")
+
+            val extraArg = cmd.optString("argument", "")
+            parts.add(if (extraArg.isNotEmpty()) "$exePathWin $extraArg $args" else "$exePathWin $args")
+        }
+
+        return parts
+    }
+
+    /**
+     * All spellings that refer to the same language as [language] (container name plus GOG
+     * codes, lowercased), so support_commands language names ("English") match whichever
+     * form the download saved ("english", "en-US", "en", ...).
+     */
+    private fun languageAliases(language: String): Set<String> {
+        val lower = language.lowercase()
+        val entry = GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.entries.firstOrNull { (name, codes) ->
+            name == lower || codes.any { it.equals(lower, ignoreCase = true) }
+        } ?: return setOf(lower)
+        return (entry.value.map { it.lowercase() } + entry.key).toSet()
     }
 
     // ==========================================================================

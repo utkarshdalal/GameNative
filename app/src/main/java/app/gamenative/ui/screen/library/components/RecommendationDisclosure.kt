@@ -14,28 +14,36 @@ import com.posthog.PostHog
 fun RecommendationDisclosureDialog(
     onContinue: () -> Unit,
     onDismiss: () -> Unit,
+    source: String = "tab",
 ) {
+    fun capture(event: String) {
+        if (PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(event = event, properties = mapOf("source" to source))
+        }
+    }
     LaunchedEffect(Unit) {
-        if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "rec_disclosure_shown")
+        capture("rec_disclosure_shown")
     }
     AlertDialog(
         onDismissRequest = {
-            if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "rec_disclosure_declined")
+            capture("rec_disclosure_declined")
             onDismiss()
         },
         title = { Text(text = stringResource(R.string.rec_disclosure_title)) },
         text = { Text(text = stringResource(R.string.rec_disclosure_body)) },
         confirmButton = {
-            TextButton(onClick = {
-                if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "rec_disclosure_allowed")
-                onContinue()
-            }) {
+            TextButton(
+                onClick = {
+                    capture("rec_disclosure_allowed")
+                    onContinue()
+                },
+            ) {
                 Text(text = stringResource(R.string.rec_disclosure_allow))
             }
         },
         dismissButton = {
             TextButton(onClick = {
-                if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "rec_disclosure_declined")
+                capture("rec_disclosure_declined")
                 onDismiss()
             }) {
                 Text(text = stringResource(R.string.rec_disclosure_not_now))

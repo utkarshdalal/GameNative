@@ -2,6 +2,7 @@ package app.gamenative.service
 
 import android.content.Context
 import android.os.Environment
+import app.gamenative.PrefManager
 import app.gamenative.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,10 +38,27 @@ object DownloadService {
         baseExternalAppDirPath = extFiles?.parentFile?.path ?: ""
 
         val sm = context.getSystemService(android.os.storage.StorageManager::class.java)
-        externalVolumePaths = StorageUtils.getAllExternalFilesDirs(context)
+        val appFilesDirs = StorageUtils.getAllExternalFilesDirs(context)
             .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
             .filter { sm?.getStorageVolume(it)?.isPrimary != true }
-            .map { it.absolutePath }
+        // both layouts per volume: legacy Android/data (existing installs) + public root (new installs)
+        externalVolumePaths = appFilesDirs
+            .flatMap { dir -> listOfNotNull(dir.absolutePath, StorageUtils.publicInstallRoot(dir)?.absolutePath) }
+            .distinct()
+
+        migrateExternalStoragePath()
+    }
+
+    // Android/data paths pay a ~1000x FUSE metadata penalty (MediaProvider disables kernel
+    // caching there); repoint the install pref at the public root so new installs avoid it
+    private fun migrateExternalStoragePath() {
+        val pref = PrefManager.externalStoragePath
+        if (pref.isBlank() || !pref.contains("/Android/data/")) return
+        val public = StorageUtils.publicInstallRoot(File(pref)) ?: return
+        if (StorageUtils.ensureInstallRoot(public)) {
+            Timber.i("Migrating external install root from $pref to ${public.absolutePath}")
+            PrefManager.externalStoragePath = public.absolutePath
+        }
     }
 
     @Synchronized

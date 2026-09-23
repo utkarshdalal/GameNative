@@ -180,11 +180,11 @@ public class ExternalController {
 
     private void processJoystickInput(MotionEvent event, int historyPos) {
         boolean z = false;
-        this.state.thumbLX = getCenteredAxis(event, MotionEvent.AXIS_X, historyPos);
-        this.state.thumbLY = getCenteredAxis(event, MotionEvent.AXIS_Y, historyPos);
-        this.state.thumbRX = getCenteredAxis(event, MotionEvent.AXIS_Z, historyPos);
-        this.state.thumbRY = getCenteredAxis(event, MotionEvent.AXIS_RZ, historyPos);
-        if (historyPos == -1) {
+        this.state.thumbLX = updateAxis(event, MotionEvent.AXIS_X, historyPos, this.state.thumbLX);
+        this.state.thumbLY = updateAxis(event, MotionEvent.AXIS_Y, historyPos, this.state.thumbLY);
+        this.state.thumbRX = updateAxis(event, MotionEvent.AXIS_Z, historyPos, this.state.thumbRX);
+        this.state.thumbRY = updateAxis(event, MotionEvent.AXIS_RZ, historyPos, this.state.thumbRY);
+        if (historyPos == -1 && !JoyConSupport.isJoyCon(event.getDevice())) {
             float axisX = getCenteredAxis(event, MotionEvent.AXIS_HAT_X, historyPos);
             float axisY = getCenteredAxis(event, MotionEvent.AXIS_HAT_Y, historyPos);
             GamepadState gamepadState = this.state;
@@ -200,6 +200,12 @@ public class ExternalController {
             }
             zArr[3] = z;
         }
+    }
+
+    private static float updateAxis(MotionEvent event, int axis, int historyPos, float retained) {
+        InputDevice device = event.getDevice();
+        boolean reported = device != null && device.getMotionRange(axis, event.getSource()) != null;
+        return JoyConSupport.axisValue(reported, retained, getCenteredAxis(event, axis, historyPos));
     }
 
     private void processTriggerButton(MotionEvent event) {
@@ -249,7 +255,7 @@ public class ExternalController {
 
     public boolean updateStateFromMotionEvent(MotionEvent event) {
         if (isJoystickDevice(event)) {
-            if (triggerType == TRIGGER_IS_AXIS)
+            if (triggerType == TRIGGER_IS_AXIS && !JoyConSupport.isJoyCon(event.getDevice()))
                 processTriggerButton(event);
             else if (triggerType == TRIGGER_IS_BUTTON && isXboxController())
                 processXboxTriggerButton(event);
@@ -264,17 +270,17 @@ public class ExternalController {
     public boolean updateStateFromKeyEvent(KeyEvent event) {
         boolean z = false;
         boolean pressed = event.getAction() == KeyEvent.ACTION_DOWN;
-        int keyCode = event.getKeyCode();
+        int keyCode = JoyConSupport.remapKeyCode(event.getDevice(), event);
         int buttonIdx = getButtonIdxByKeyCode(keyCode);
         if (buttonIdx != -1) {
             if (buttonIdx == IDX_BUTTON_L2) {
-                if (triggerType == TRIGGER_IS_BUTTON) {
+                if (triggerType == TRIGGER_IS_BUTTON || JoyConSupport.isJoyCon(event.getDevice())) {
                     state.triggerL = pressed ? 1.0f : 0f;
                     state.setPressed(buttonIdx, pressed);
                 } else
                     return true;
             } else if (buttonIdx == IDX_BUTTON_R2) {
-                if (triggerType == TRIGGER_IS_BUTTON) {
+                if (triggerType == TRIGGER_IS_BUTTON || JoyConSupport.isJoyCon(event.getDevice())) {
                     state.triggerR = pressed ? 1.0f : 0f;
                     state.setPressed(buttonIdx, pressed);
                 } else
@@ -367,9 +373,14 @@ public class ExternalController {
         boolean isGamepad = device.supportsSource(InputDevice.SOURCE_GAMEPAD);
         boolean isJoystick = device.supportsSource(InputDevice.SOURCE_JOYSTICK);
 
+        // Only consider axes reported under a controller source class. Composite HID
+        // devices (e.g. keyboards with built-in touchpads) expose AXIS_X/AXIS_Y through
+        // SOURCE_MOUSE and may wrongly claim SOURCE_JOYSTICK in their source mask, which
+        // caused them to be treated as gamepads. SOURCE_GAMEPAD is queried as well, for
+        // drivers that attach the sticks to the gamepad source instead.
         boolean hasAxes =
-                device.getMotionRange(android.view.MotionEvent.AXIS_X) != null ||
-                        device.getMotionRange(android.view.MotionEvent.AXIS_Y) != null;
+                hasControllerAxis(device, android.view.MotionEvent.AXIS_X) ||
+                        hasControllerAxis(device, android.view.MotionEvent.AXIS_Y);
 
         boolean[] hasGamepadKeysArray = device.hasKeys(
                 KeyEvent.KEYCODE_BUTTON_A,
@@ -388,6 +399,12 @@ public class ExternalController {
 
         return (isGamepad && hasGamepadKeys) ||
                 (isJoystick && hasAxes);
+    }
+
+    /** Shared with {@link ControllerManager#isGameController(InputDevice)}. */
+    static boolean hasControllerAxis(InputDevice device, int axis) {
+        return device.getMotionRange(axis, InputDevice.SOURCE_JOYSTICK) != null ||
+                device.getMotionRange(axis, InputDevice.SOURCE_GAMEPAD) != null;
     }
 
     public static float getCenteredAxis(MotionEvent event, int axis, int historyPos) {

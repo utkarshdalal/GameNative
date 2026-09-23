@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "updatedAt": "2026-06-03",
+  "version": 2,
+  "updatedAt": "2026-08-21",
   "components": [
     {
       "id": "extras",
@@ -9,8 +9,8 @@
     },
     {
       "id": "container_pattern_common",
-      "name": "container_pattern_common.tzst",
-      "url": "https://downloads.gamenative.app/container_files/container_pattern_common.tzst"
+      "name": "container_pattern_common_20260821.tzst",
+      "url": "https://downloads.gamenative.app/container_files/container_pattern_common_20260821.tzst"
     },
     {
       "id": "container_pattern_gamenative",

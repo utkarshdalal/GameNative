@@ -168,6 +168,7 @@ data class GOGManifestMeta(
     val products: List<Product>,
     val productTimestamp: String? = null,
     val scriptInterpreter: Boolean = false,
+    val supportCommands: List<SupportCommand> = emptyList(),
 ) {
     companion object {
         fun fromJson(json: JSONObject): GOGManifestMeta {
@@ -288,6 +289,18 @@ data class Depot(
  * Product metadata (base game or DLC)
  * @param temp_executable Optional post-install exe (e.g. game-specific installer) when scriptInterpreter is false
  */
+/**
+ * Gen 1 (legacy) post-install setup command: an installer executable shipped in the game's
+ * support depot that creates registry keys, shortcuts, etc. (Galaxy/Heroic run these after
+ * install; see Heroic's gog/setup.ts.)
+ */
+data class SupportCommand(
+    val executable: String,
+    val gameId: String,
+    val argument: String = "",
+    val languages: List<String> = emptyList(),
+)
+
 data class Product(
     val productId: String,
     val name: String,

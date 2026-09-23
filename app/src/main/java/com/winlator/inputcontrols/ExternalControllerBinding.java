@@ -18,7 +18,7 @@ public class ExternalControllerBinding {
     public static final byte AXIS_RZ_NEGATIVE = -7;
     public static final byte AXIS_RZ_POSITIVE = -8;
     private short keyCode;
-    private Binding binding = Binding.NONE;
+    private BindingCombo bindingCombo = BindingCombo.none();
 
     public int getKeyCodeForAxis() {
         return this.keyCode;
@@ -29,18 +29,29 @@ public class ExternalControllerBinding {
     }
 
     public Binding getBinding() {
-        return this.binding;
+        return this.bindingCombo.getPrimaryBinding();
     }
 
     public void setBinding(Binding binding) {
-        this.binding = binding;
+        this.bindingCombo = BindingCombo.of(binding);
+    }
+
+    public BindingCombo getBindingCombo() {
+        return this.bindingCombo;
+    }
+
+    public void setBindingCombo(BindingCombo bindingCombo) {
+        this.bindingCombo = bindingCombo != null ? bindingCombo : BindingCombo.none();
     }
 
     public JSONObject toJSONObject() {
         try {
             JSONObject controllerBindingJSONObject = new JSONObject();
             controllerBindingJSONObject.put("keyCode", (int) this.keyCode);
-            controllerBindingJSONObject.put("binding", this.binding.name());
+            controllerBindingJSONObject.put("binding", getBinding().name());
+            if (!bindingCombo.isSingleBinding()) {
+                bindingCombo.writeToJsonObject(controllerBindingJSONObject);
+            }
             return controllerBindingJSONObject;
         } catch (JSONException e) {
             return null;

@@ -36,6 +36,27 @@ object ContainerFilesDownloader {
         val url: String
     )
 
+    internal fun getCacheFile(cacheDir: File, component: ContainerFileComponent): File =
+        File(cacheDir, component.name)
+
+    internal fun isReusableCacheFile(file: File): Boolean = file.isFile && file.length() > 0
+
+    internal fun removeObsoleteCachedArchives(cacheDir: File, currentFileNames: Set<String>) {
+        cacheDir.listFiles()?.forEach { file ->
+            if (
+                file.isFile &&
+                file.extension.equals("tzst", ignoreCase = true) &&
+                file.name !in currentFileNames
+            ) {
+                if (file.delete()) {
+                    Timber.i("Removed obsolete container file cache: ${file.name}")
+                } else {
+                    Timber.w("Failed to remove obsolete container file cache: ${file.name}")
+                }
+            }
+        }
+    }
+
     /**
      * Ensures a container file component is available, either from cache, server download, or bundled assets.
      *
@@ -62,8 +83,9 @@ object ContainerFilesDownloader {
 
         // Modern variant: download from server
         // Check if already downloaded and cached
-        val destFile = File(context.filesDir, "$CONTAINER_FILES_CACHE_DIR/$componentId.tzst")
-        if (destFile.exists() && destFile.length() > 0) {
+        val cacheDir = File(context.filesDir, CONTAINER_FILES_CACHE_DIR)
+        val destFile = getCacheFile(cacheDir, component)
+        if (isReusableCacheFile(destFile)) {
             Timber.d("Using cached container file: $componentId at ${destFile.absolutePath}")
             return@withContext destFile
         }
@@ -71,7 +93,7 @@ object ContainerFilesDownloader {
         // Download from server using local manifest
         Timber.i("Downloading container file: $componentId from server")
 
-        destFile.parentFile?.mkdirs()
+        cacheDir.mkdirs()
 
         try {
             SteamService.fetchFileWithFallback(
@@ -153,6 +175,10 @@ object ContainerFilesDownloader {
                 }
             }
 
+            removeObsoleteCachedArchives(
+                File(context.filesDir, CONTAINER_FILES_CACHE_DIR),
+                manifest.components.mapTo(mutableSetOf()) { it.name },
+            )
             Timber.i("Container files preload complete")
         } catch (e: Exception) {
             Timber.e(e, "Failed to preload container files")

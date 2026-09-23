@@ -1,0 +1,4 @@
+MODULE = gamenative_xr_unixbridge.dll
+IMPORTS = ntdll
+EXTRADLLFLAGS = -marm64x -Wl,/align:65536 -Wl,--file-alignment,65536
+SOURCES = gamenative_xr_unixbridge.c

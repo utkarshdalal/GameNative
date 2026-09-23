@@ -36,7 +36,9 @@ public class Container {
     public static final String DEFAULT_EXTERNAL_DISPLAY_MODE = EXTERNAL_DISPLAY_MODE_OFF;
 
     public static final String DEFAULT_ENV_VARS = "WRAPPER_MAX_IMAGE_COUNT=0 ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact,deck_emu MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform VKD3D_SHADER_MODEL=6_0 PULSE_LATENCY_MSEC=144";
-    public static final String DEFAULT_SCREEN_SIZE = "1280x720";
+    public static final String DEFAULT_SCREEN_SIZE_16_9 = "1280x720";
+    public static final String DEFAULT_SCREEN_SIZE_16_10 = "1280x800";
+    public static final String DEFAULT_SCREEN_SIZE_4_3 = "1280x960";
     public static final String DEFAULT_GRAPHICS_DRIVER = DefaultVersion.DEFAULT_GRAPHICS_DRIVER;
     public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
     public static final String DEFAULT_EMULATOR = "FEXCore";
@@ -70,12 +72,13 @@ public class Container {
     public static final String STEAM_TYPE_NORMAL = "normal";
     public static final String STEAM_TYPE_LIGHT = "light";
     public static final String STEAM_TYPE_ULTRALIGHT = "ultralight";
+    public static final String STEAM_TYPE_HEADLESS = "headless";
     public static final String GLIBC = "glibc";
     public static final String BIONIC = "bionic";
     public static final byte MAX_DRIVE_LETTERS = 8;
     public final String id;
     private String name;
-    private String screenSize = DEFAULT_SCREEN_SIZE;
+    private String screenSize = DEFAULT_SCREEN_SIZE_16_9;
     private String envVars = DEFAULT_ENV_VARS;
     private String graphicsDriver = DEFAULT_GRAPHICS_DRIVER;
     private String dxwrapper = DEFAULT_DXWRAPPER;
@@ -83,6 +86,8 @@ public class Container {
     private String graphicsDriverConfig = DEFAULT_GRAPHICSDRIVERCONFIG;
     private String rendererPresentMode = "fifo";
     private String displayRenderer = Container.DEFAULT_DISPLAY_RENDERER;
+    private int xrRefreshRate = 72;
+    private int xrRenderScale = 100;
     private boolean sfCompatMode = true;
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
@@ -90,6 +95,7 @@ public class Container {
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
+    private boolean launchImmersiveMode = app.gamenative.BuildConfig.XR_BUILD;
     private boolean launchRealSteam;
     private boolean launchBionicSteam;
     private boolean allowSteamUpdates;
@@ -110,6 +116,7 @@ public class Container {
     private String installPath = "";
     private JSONObject extraData;
     private JSONObject sessionMetadata;
+    private String configSource = "";
     private int rcfileId = 0;
     private String midiSoundFont = "";
     private int inputType = WinHandler.PreferredInputApi.BOTH.ordinal();
@@ -122,6 +129,9 @@ public class Container {
     private String execArgs = ""; // Default exec arguments
     private String executablePath = ""; // Executable path for container
     private boolean sdlControllerAPI;
+    private boolean fasterExternalLoading;
+    private boolean disableLibredirect;
+    private boolean disableEpicOverlay;
 
     // Preferred game language for Goldberg force_language.txt
     private String language = "english";
@@ -145,7 +155,8 @@ public class Container {
     private boolean externalDisplaySwap = false;
     // Prefer DRI3 WSI path
     private boolean useDRI3 = true;
-    // Steam client type for selecting appropriate Box64 RC config: normal, light, ultralight
+    // Steam client flavour: headless (steamhost, no client UI) or the Valve GUI client under
+    // one of the Box64 RC configs (normal, light, ultralight)
     private String steamType = DefaultVersion.STEAM_TYPE;
 
     private boolean gstreamerWorkaround = false;
@@ -188,6 +199,9 @@ public class Container {
                 break;
             case STEAM_TYPE_ULTRALIGHT:
                 this.steamType = STEAM_TYPE_ULTRALIGHT;
+                break;
+            case STEAM_TYPE_HEADLESS:
+                this.steamType = STEAM_TYPE_HEADLESS;
                 break;
             default:
                 this.steamType = STEAM_TYPE_NORMAL;
@@ -270,6 +284,14 @@ public class Container {
 
     public String getDisplayRenderer() { return displayRenderer; }
 
+    public int getXrRefreshRate() { return xrRefreshRate; }
+
+    public void setXrRefreshRate(int v) { this.xrRefreshRate = v; }
+
+    public int getXrRenderScale() { return xrRenderScale; }
+
+    public void setXrRenderScale(int v) { this.xrRenderScale = v; }
+
     public void setDisplayRenderer(String v) { this.displayRenderer = v; }
 
     public boolean getSfCompatMode() { return sfCompatMode; }
@@ -348,12 +370,25 @@ public class Container {
         this.showFPS = showFPS;
     }
 
+    public boolean isLaunchImmersiveMode() {
+        return launchImmersiveMode;
+    }
+
+    public void setLaunchImmersiveMode(boolean launchImmersiveMode) {
+        this.launchImmersiveMode = launchImmersiveMode;
+    }
+
     public boolean isLaunchRealSteam() {
         return launchRealSteam;
     }
 
     public void setLaunchRealSteam(boolean launchRealSteam) {
         this.launchRealSteam = launchRealSteam;
+    }
+
+    /** Real Steam through the headless steamhost rather than the Valve GUI client. */
+    public boolean isLaunchHeadlessSteam() {
+        return launchRealSteam && STEAM_TYPE_HEADLESS.equals(steamType);
     }
 
     public boolean isLaunchBionicSteam() {
@@ -378,6 +413,30 @@ public class Container {
 
     public void setSdlControllerAPI(boolean sdlControllerAPI) {
         this.sdlControllerAPI = sdlControllerAPI;
+    }
+
+    public boolean isFasterExternalLoading() {
+        return fasterExternalLoading;
+    }
+
+    public void setFasterExternalLoading(boolean fasterExternalLoading) {
+        this.fasterExternalLoading = fasterExternalLoading;
+    }
+
+    public boolean isDisableLibredirect() {
+        return disableLibredirect;
+    }
+
+    public void setDisableLibredirect(boolean disableLibredirect) {
+        this.disableLibredirect = disableLibredirect;
+    }
+
+    public boolean isDisableEpicOverlay() {
+        return disableEpicOverlay;
+    }
+
+    public void setDisableEpicOverlay(boolean disableEpicOverlay) {
+        this.disableEpicOverlay = disableEpicOverlay;
     }
 
     public String getLanguage() {
@@ -686,6 +745,8 @@ public class Container {
             if (!graphicsDriverConfig.isEmpty()) data.put("graphicsDriverConfig", graphicsDriverConfig);
             data.put("rendererPresentMode", rendererPresentMode);
             data.put("displayRendererMode", displayRenderer);
+            data.put("xrRefreshRate", xrRefreshRate);
+            data.put("xrRenderScale", xrRenderScale);
             data.put("sfCompatMode", sfCompatMode);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
@@ -694,6 +755,7 @@ public class Container {
             data.put("wincomponents", wincomponents);
             data.put("drives", drives);
             data.put("showFPS", showFPS);
+            data.put("launchImmersiveMode", launchImmersiveMode);
             data.put("launchRealSteam", launchRealSteam);
             data.put("launchBionicSteam", launchBionicSteam);
             data.put("allowSteamUpdates", allowSteamUpdates);
@@ -709,6 +771,7 @@ public class Container {
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
             data.put("sessionMetadata", sessionMetadata);
+            data.put("configSource", configSource);
             data.put("rcfileId", rcfileId);
             data.put("midiSoundFont", midiSoundFont);
             data.put("lc_all", lc_all);
@@ -718,6 +781,9 @@ public class Container {
             data.put("executablePath", executablePath);
             data.put("needsUnpacking", needsUnpacking);
             data.put("sdlControllerAPI", sdlControllerAPI);
+            data.put("fasterExternalLoading", fasterExternalLoading);
+            data.put("disableLibredirect", disableLibredirect);
+            data.put("disableEpicOverlay", disableEpicOverlay);
             // Disable mouse input flag
             data.put("disableMouseInput", disableMouseInput);
             // Touchscreen mode flag
@@ -810,6 +876,12 @@ public class Container {
                 case "displayRendererMode" :
                     setDisplayRenderer(data.getString(key));
                     break;
+                case "xrRefreshRate" :
+                    setXrRefreshRate(data.getInt(key));
+                    break;
+                case "xrRenderScale" :
+                    setXrRenderScale(data.getInt(key));
+                    break;
                 case "sfCompatMode" :
                     setSfCompatMode(data.getBoolean(key));
                     break;
@@ -827,6 +899,9 @@ public class Container {
                     break;
                 case "showFPS" :
                     setShowFPS(data.getBoolean(key));
+                    break;
+                case "launchImmersiveMode" :
+                    setLaunchImmersiveMode(data.getBoolean(key));
                     break;
                 case "launchRealSteam" :
                     setLaunchRealSteam(data.getBoolean(key));
@@ -861,6 +936,10 @@ public class Container {
                 case "extraData" : {
                     JSONObject extraData = data.getJSONObject(key);
                     setExtraData(extraData);
+                    break;
+                }
+                case "configSource" : {
+                    configSource = data.getString(key);
                     break;
                 }
                 case "sessionMetadata" : {
@@ -928,6 +1007,15 @@ public class Container {
                     break;
                 case "sdlControllerAPI" :
                     setSdlControllerAPI(data.getBoolean(key));
+                    break;
+                case "fasterExternalLoading" :
+                    setFasterExternalLoading(data.getBoolean(key));
+                    break;
+                case "disableLibredirect" :
+                    setDisableLibredirect(data.getBoolean(key));
+                    break;
+                case "disableEpicOverlay" :
+                    setDisableEpicOverlay(data.getBoolean(key));
                     break;
                 case "disableMouseInput" :
                     setDisableMouseInput(data.getBoolean(key));
@@ -1124,6 +1212,15 @@ public class Container {
 
     public void setPortraitMode(boolean portraitMode) {
         this.portraitMode = portraitMode;
+    }
+
+
+    public String getConfigSource() {
+        return configSource;
+    }
+
+    public void setConfigSource(String configSource) {
+        this.configSource = configSource;
     }
 
     public String getContainerJson() {

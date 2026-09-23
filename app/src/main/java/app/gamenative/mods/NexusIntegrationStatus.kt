@@ -1,9 +1,6 @@
 package app.gamenative.mods
 
-/**
- * Online Nexus access remains disabled until GameNative receives its registered
- * OAuth client credentials. Local management of previously imported mods stays available.
- */
+/** GameNative's registered public/native Nexus OAuth client is available in this build. */
 object NexusIntegrationStatus {
-    const val ONLINE_ACCESS_AVAILABLE = false
+    const val ONLINE_ACCESS_AVAILABLE = true
 }

@@ -1,6 +1,7 @@
 package app.gamenative.ui.data
 
 import androidx.compose.runtime.saveable.mapSaver
+import app.gamenative.PluviaApp
 import com.winlator.container.Container
 import com.winlator.core.DXVKHelper
 import com.winlator.core.KeyValueSet
@@ -10,7 +11,7 @@ data class XServerState(
     var winStarted: Boolean = false,
     val dxwrapper: String = Container.DEFAULT_DXWRAPPER,
     val dxwrapperConfig: KeyValueSet? = null,
-    val screenSize: String = Container.DEFAULT_SCREEN_SIZE,
+    val screenSize: String = PluviaApp.getDefaultScreenSize(),
     val wineInfo: WineInfo = WineInfo.MAIN_WINE_VERSION,
     val graphicsDriver: String = Container.DEFAULT_GRAPHICS_DRIVER,
     val graphicsDriverVersion: String = "",

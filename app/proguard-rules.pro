@@ -37,8 +37,19 @@
 -keep class timber.log.Timber { *; }
 -keep class app.gamenative.ReleaseTree { *; }
 
+# gn-download JNI bridge (libgndownload.so): the Rust engine resolves these classes by their
+# JNI-mangled names (Java_app_gamenative_service_download_Native*_native*) and calls the
+# listener methods (onProgress/onComplete/onVerifying/onLog/onBytes/onPlan/onAssemblyProgress/
+# getCdnAuthToken/refreshManifestRequestCode) by name from native threads. Nothing in bytecode
+# invokes the overrides, so R8 shrinking removes/renames them in release builds (debug works
+# because it isn't minified) — keep the whole bridge package.
+-keep class app.gamenative.service.download.** { *; }
+
 -keep class horizon.** { *; }
 -keep class com.meta.horizon.** { *; }
 -dontwarn horizon.**
 -dontwarn com.meta.horizon.**
 
+# Samsung Performance SDK (bundled stub jar, referenced by powercontrol Samsung driver)
+-keep class com.samsung.sdk.sperf.** { *; }
+-dontwarn com.samsung.sdk.sperf.**

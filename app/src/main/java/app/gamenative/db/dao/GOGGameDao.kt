@@ -16,6 +16,12 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface GOGGameDao {
 
+    // SQLite (and Room's expanded IN lists) bind each entry separately; Android's default bind
+    // limit is 999, so chunk large hidden sets to stay well under it.
+    private companion object {
+        const val MAX_HIDDEN_BIND_PARAMS = 500
+    }
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(game: GOGGame)
 
@@ -68,9 +74,31 @@ interface GOGGameDao {
     @Query("UPDATE gog_games SET vertical_cover_url = :url WHERE id = :gameId")
     suspend fun updateVerticalCoverUrl(gameId: String, url: String)
 
+    /** Clears the hidden flag on every GOG row (used before applying a fresh hidden set). */
+    @Query("UPDATE gog_games SET hidden = 0")
+    suspend fun clearHiddenFlags()
+
+    /** Marks the given GOG product IDs as hidden. */
+    @Query("UPDATE gog_games SET hidden = 1 WHERE id IN (:hiddenIds)")
+    suspend fun markHidden(hiddenIds: Collection<String>)
+
     /**
-     * Upsert GOG games while preserving install status and paths
-     * This is useful when refreshing the library from GOG API
+     * Replaces the stored hidden state with [hiddenIds]: every GOG row is cleared first, then the
+     * listed product IDs are marked hidden. Large sets are applied in chunks to stay under SQLite's
+     * bind-variable limit.
+     */
+    @Transaction
+    suspend fun applyHiddenFlags(hiddenIds: Collection<String>) {
+        clearHiddenFlags()
+        hiddenIds.chunked(MAX_HIDDEN_BIND_PARAMS).forEach { chunk ->
+            markHidden(chunk)
+        }
+    }
+
+    /**
+     * Upserts GOG games while preserving local install state, play history, and hidden state.
+     * When updating an existing row, a nonblank incoming cover replaces the stored cover; blank
+     * incoming cover data preserves the existing value.
      */
     @Transaction
     suspend fun upsertPreservingInstallStatus(games: List<GOGGame>) {
@@ -84,6 +112,8 @@ interface GOGGameDao {
                     installSize = existingGame.installSize,
                     lastPlayed = existingGame.lastPlayed,
                     playTime = existingGame.playTime,
+                    verticalCoverUrl = newGame.verticalCoverUrl.ifBlank { existingGame.verticalCoverUrl },
+                    hidden = existingGame.hidden,
                 )
                 insert(gameToInsert)
             } else {

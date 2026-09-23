@@ -12,9 +12,14 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
+import app.gamenative.R
+import app.gamenative.data.GameSource
+import app.gamenative.service.download.GameDownloadService
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.LocaleHelper
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -40,6 +45,13 @@ import timber.log.Timber
  */
 @AndroidEntryPoint
 class GOGService : Service() {
+
+    override fun attachBaseContext(newBase: Context) {
+        PrefManager.init(newBase)
+        val languageCode = PrefManager.appLanguage
+        val context = LocaleHelper.applyLanguage(newBase, languageCode)
+        super.attachBaseContext(context)
+    }
 
     companion object {
         private const val ACTION_SYNC_LIBRARY = "app.gamenative.GOG_SYNC_LIBRARY"
@@ -150,6 +162,9 @@ class GOGService : Service() {
                     // Clear all non-installed GOG games from database
                     instance.gogManager.deleteAllNonInstalledGames()
                     Timber.i("[GOGService] All non-installed GOG games removed from database")
+
+                    // Hidden-game metadata belongs to the logged-out account.
+                    instance.gogManager.clearHiddenFlags()
 
                     // Stop the service
                     stop()
@@ -301,6 +316,14 @@ class GOGService : Service() {
             }
         }
 
+        fun updateInstallPath(gameId: String, path: String) {
+            runBlocking(Dispatchers.IO) {
+                val manager = getInstance()?.gogManager ?: return@runBlocking
+                val game = manager.getGameFromDbById(gameId) ?: return@runBlocking
+                if (game.installPath != path) manager.updateGame(game.copy(installPath = path))
+            }
+        }
+
         fun verifyInstallation(gameId: String): Pair<Boolean, String?> {
             return getInstance()?.gogManager?.verifyInstallation(gameId)
                 ?: Pair(false, "Service not available")
@@ -354,6 +377,15 @@ class GOGService : Service() {
             instance.activeDownloads[gameId] = downloadInfo
             instance.notifierOrNull?.trackDownload(downloadInfo, "", NotificationHelper.NOTIFICATION_ID_GOG)
 
+            // Register with centralized queue and auto-pause other downloads
+            GameDownloadService.registerDownload(
+                gameSource = GameSource.GOG,
+                gameId = gameId,
+                downloadInfo = downloadInfo,
+                installPath = installPath,
+                containerLanguage = containerLanguage,
+            )
+
             // Launch download in service scope so it runs independently
             val job = instance.scope.launch {
                 try {
@@ -370,11 +402,13 @@ class GOGService : Service() {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
                         downloadInfo.setProgress(-1.0f)
-                        downloadInfo.setActive(false)
 
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
+
+                        // Transfer is complete - unregister from GameDownloadService
+                        GameDownloadService.unregisterDownload(context, GameSource.GOG, gameId)
 
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
@@ -407,7 +441,6 @@ class GOGService : Service() {
 
                         SnackbarManager.show("Download completed successfully!")
                         downloadInfo.setProgress(1.0f)
-                        downloadInfo.setActive(false)
                     }
                 } catch (e: CancellationException) {
                     downloadInfo.setPostInstallSyncing(false)
@@ -419,8 +452,6 @@ class GOGService : Service() {
                     downloadInfo.setPostInstallSyncing(false)
                     downloadInfo.updateStatusMessage(null)
                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: -1, false))
-                    downloadInfo.setProgress(-1.0f)
-                    downloadInfo.setActive(false)
 
                     SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
                 } finally {
@@ -730,12 +761,16 @@ class GOGService : Service() {
 
         // Start as foreground service
         val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_GOG, "Connected")
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            startForeground(NotificationHelper.NOTIFICATION_ID_GOG, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            startForeground(NotificationHelper.NOTIFICATION_ID_GOG, notification)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                startForeground(NotificationHelper.NOTIFICATION_ID_GOG, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            } else {
+                startForeground(NotificationHelper.NOTIFICATION_ID_GOG, notification)
+            }
+            notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_GOG)
+        } catch (e: Exception) {
+            Timber.w(e, "[GOGService] startForeground not allowed, continuing as a background service")
         }
-        notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_GOG)
 
         // Determine if we should sync based on the action
         val shouldSync = when (intent?.action) {
@@ -790,6 +825,8 @@ class GOGService : Service() {
                         // Mark that initial sync has been performed
                         hasPerformedInitialSync = true
                     }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Timber.e(e, "[GOGService]: Exception starting background sync")
                 } finally {

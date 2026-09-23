@@ -3,7 +3,10 @@ package app.gamenative.ui
 import android.content.Context
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -63,18 +66,31 @@ import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
+import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
+import app.gamenative.service.ea.EaLaunchSupport
+import app.gamenative.service.ea.EaLoginGate
+import app.gamenative.service.rockstar.RockstarLaunchSupport
+import app.gamenative.service.rockstar.RockstarHelperArchive
+import app.gamenative.service.rockstar.RockstarHelperDeployment
+import app.gamenative.service.rockstar.RockstarLoginGate
+import app.gamenative.service.rockstar.RockstarRuntime
 import app.gamenative.service.amazon.AmazonService
 import com.posthog.PostHog
 import app.gamenative.ui.component.AchievementOverlay
 import app.gamenative.ui.component.ConnectionStatusBanner
+import app.gamenative.ui.component.GameInviteOverlay
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.api.DebugReportApi
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.DebugPreRunDialog
+import app.gamenative.ui.component.dialog.DebugReportDialog
 import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.dialog.state.DebugReportDialogState
 import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.components.BootingSplash
@@ -84,6 +100,7 @@ import app.gamenative.launch.LaunchReadiness
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.model.MainViewModel
+import app.gamenative.ui.screen.DebugPaywallScreen
 import app.gamenative.ui.screen.HomeScreen
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.login.UserLoginScreen
@@ -94,6 +111,7 @@ import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.PlatformAuthUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ManifestInstaller
@@ -117,6 +135,7 @@ import com.winlator.xenvironment.ImageFs
 import com.winlator.xenvironment.ImageFsInstaller
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesClientObjects.ECloudPendingRemoteOperation
 import java.io.File
+import java.security.SecureRandom
 import java.util.Locale
 import java.util.Date
 import java.util.EnumSet
@@ -137,6 +156,12 @@ private const val SNACKBAR_SHOW_TIMEOUT_MS = 15_000L
 
 /** Used to suspend preLaunchApp while the user decides on large workshop updates. */
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
+
+/** Used to suspend preLaunchApp while the user decides on a pending update for a real-Steam launch. */
+private var steamUpdateDeferred: CompletableDeferred<Boolean>? = null
+
+/** Valve Windows client tree (build 2026-01-29) + headless steam.exe for Real Steam mode; see extractSteamFiles. */
+const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20260922-2.tzst"
 
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,
@@ -260,6 +285,30 @@ private fun consumePendingSteamLoginError(context: Context) {
     SnackbarManager.show(context.getString(R.string.intent_launch_steam_login_failed))
 }
 
+private const val LAUNCH_PITCH_COOLDOWN_MS = 5 * 24 * 60 * 60 * 1000L
+
+private fun trackMembershipPrompt(event: String, trigger: String) {
+    if (PrefManager.usageAnalyticsEnabled) {
+        PostHog.capture(
+            event = event,
+            properties = mapOf("trigger" to trigger),
+        )
+    }
+}
+
+private fun trackAiDebugOffer(event: String, appId: String, trigger: String) {
+    if (PrefManager.usageAnalyticsEnabled) {
+        PostHog.capture(
+            event = event,
+            properties = mapOf(
+                "game_name" to ContainerUtils.resolveGameName(appId),
+                "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
+                "trigger" to trigger,
+            ),
+        )
+    }
+}
+
 private fun trackGameLaunched(appId: String) {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val gameName = ContainerUtils.resolveGameName(appId)
@@ -291,9 +340,29 @@ fun PluviaMain(
         mutableStateOf(MessageDialogState(false))
     }
     val setMessageDialogState: (MessageDialogState) -> Unit = { msgDialogState = it }
+    var membershipPitchTrigger by rememberSaveable { mutableStateOf("launch") }
 
     var gameFeedbackState by rememberSaveable(stateSaver = GameFeedbackDialogState.Saver) {
         mutableStateOf(GameFeedbackDialogState(false))
+    }
+
+    var debugReportState by rememberSaveable(stateSaver = DebugReportDialogState.Saver) {
+        mutableStateOf(DebugReportDialogState(false))
+    }
+    var debugPaywallReason by rememberSaveable { mutableStateOf<String?>(null) }
+    var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
+    var aiDebugOfferTrigger by rememberSaveable { mutableStateOf("") }
+    var debugPreRunVisible by rememberSaveable { mutableStateOf(false) }
+    var debugPreRunAppId by rememberSaveable { mutableStateOf("") }
+    var debugPreRunOffline by rememberSaveable { mutableStateOf(false) }
+    val discordTokenPresent by PrefManager.discordRelayTokenPresent
+
+    LaunchedEffect(Unit) {
+        if (!PrefManager.discordRelayTokenPresent.value) {
+            PrefManager.discordRelayTokenPresent.value = withContext(Dispatchers.IO) {
+                PrefManager.discordRelayToken.isNotEmpty()
+            }
+        }
     }
 
     var hasBack by rememberSaveable { mutableStateOf(navController.previousBackStackEntry?.destination?.route != null) }
@@ -526,7 +595,18 @@ fun PluviaMain(
                 }
 
                 MainViewModel.MainUiEvent.OnBackPressed -> {
-                    if (SteamService.keepAlive){
+                    if (debugPaywallReason != null) {
+                        debugPaywallReason = null
+                        debugReportState = debugReportState.copy(
+                            visible = true,
+                            phase = DebugReportDialogState.PHASE_COMPOSE,
+                        )
+                    } else if (debugReportState.visible) {
+                        if (debugReportState.phase != DebugReportDialogState.PHASE_SENDING) {
+                            debugReportState = debugReportState.copy(visible = false)
+                            SteamService.keepAlive = false
+                        }
+                    } else if (SteamService.keepAlive){
                         gameBackAction?.invoke() ?: run { navController.popBackStack() }
                     } else if (hasBack) {
                         // TODO: check if back leads to log out and present confidence modal
@@ -618,6 +698,57 @@ fun PluviaMain(
                     gameFeedbackState = GameFeedbackDialogState(
                         visible = true,
                         appId = event.appId,
+                    )
+                }
+
+                is MainViewModel.MainUiEvent.ShowMembershipPitch -> {
+                    val gameName = ContainerUtils.resolveGameName(event.appId)
+                    PrefManager.lastWarmPitchTime = System.currentTimeMillis()
+                    membershipPitchTrigger = event.trigger
+                    trackMembershipPrompt("membership_prompt_shown", event.trigger)
+                    msgDialogState = MessageDialogState(
+                        visible = true,
+                        type = DialogType.SUPPORT,
+                        title = if (event.trigger == "five_star") {
+                            context.getString(R.string.pitch_five_star_title, gameName)
+                        } else {
+                            context.getString(R.string.pitch_session_title, gameName)
+                        },
+                        message = context.getString(R.string.main_thank_you_message),
+                        confirmBtnText = context.getString(R.string.main_join_kofi),
+                        dismissBtnText = context.getString(R.string.close),
+                    )
+                }
+
+                is MainViewModel.MainUiEvent.ShowDebugReportDialog -> {
+                    val dir = File(event.reportDir)
+                    val header = withContext(Dispatchers.IO) { DebugReportUtils.readHeader(dir) }
+                    debugReportState = DebugReportDialogState(
+                        visible = true,
+                        appId = event.appId,
+                        reportDir = event.reportDir,
+                        gameName = header?.optString("gameName").takeUnless { it.isNullOrEmpty() }
+                            ?: ContainerUtils.resolveGameName(event.appId),
+                        deviceName = header?.optString("deviceName") ?: "",
+                        logSizeBytes = withContext(Dispatchers.IO) { DebugReportUtils.logFile(dir).length() },
+                    )
+                }
+
+                is MainViewModel.MainUiEvent.ShowAiDebugOffer -> {
+                    aiDebugOfferAppId = event.appId
+                    aiDebugOfferTrigger = event.trigger
+                    trackAiDebugOffer("ai_debug_offer_shown", event.appId, event.trigger)
+                    val offerMessage = context.getString(
+                        R.string.debug_offer_message,
+                        ContainerUtils.resolveGameName(event.appId),
+                    )
+                    msgDialogState = MessageDialogState(
+                        visible = true,
+                        type = DialogType.AI_DEBUG_OFFER,
+                        title = context.getString(R.string.debug_offer_title),
+                        message = offerMessage + " " + context.getString(R.string.debug_trial_note),
+                        confirmBtnText = context.getString(R.string.debug_offer_confirm),
+                        dismissBtnText = context.getString(R.string.close),
                     )
                 }
             }
@@ -792,7 +923,7 @@ fun PluviaMain(
         DialogType.SUPPORT -> {
             onConfirmClick = {
                 uriHandler.openUri(Constants.Misc.KO_FI_LINK)
-                PrefManager.tipped = true
+                trackMembershipPrompt("membership_prompt_clicked", membershipPitchTrigger)
                 msgDialogState = MessageDialogState(visible = false)
             }
             onDismissRequest = {
@@ -800,14 +931,6 @@ fun PluviaMain(
             }
             onDismissClick = {
                 msgDialogState = MessageDialogState(visible = false)
-            }
-            onActionClick = {
-                val shareIntent = Intent().apply {
-                    action = Intent.ACTION_SEND
-                    putExtra(Intent.EXTRA_TEXT, context.getString(R.string.main_share_text))
-                    type = "text/plain"
-                }
-                context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.main_share)))
             }
         }
 
@@ -1104,6 +1227,30 @@ fun PluviaMain(
             }
         }
 
+        DialogType.AI_DEBUG_OFFER -> {
+            onConfirmClick = {
+                setMessageDialogState(MessageDialogState(false))
+                if (aiDebugOfferAppId.isNotEmpty()) {
+                    trackAiDebugOffer("ai_debug_offer_accepted", aiDebugOfferAppId, aiDebugOfferTrigger)
+                    debugPreRunAppId = aiDebugOfferAppId
+                    debugPreRunOffline = viewModel.isOffline.value
+                    debugPreRunVisible = true
+                }
+            }
+            onDismissClick = {
+                setMessageDialogState(MessageDialogState(false))
+                if (aiDebugOfferAppId.isNotEmpty()) {
+                    trackAiDebugOffer("ai_debug_offer_dismissed", aiDebugOfferAppId, aiDebugOfferTrigger)
+                }
+            }
+            onDismissRequest = {
+                setMessageDialogState(MessageDialogState(false))
+                if (aiDebugOfferAppId.isNotEmpty()) {
+                    trackAiDebugOffer("ai_debug_offer_dismissed", aiDebugOfferAppId, aiDebugOfferTrigger)
+                }
+            }
+        }
+
         DialogType.WORKSHOP_UPDATE_PROMPT -> {
             onConfirmClick = {
                 workshopUpdateDeferred?.complete(true)
@@ -1113,6 +1260,18 @@ fun PluviaMain(
             }
             onDismissRequest = {
                 workshopUpdateDeferred?.complete(false)
+            }
+        }
+
+        DialogType.STEAM_UPDATE_PROMPT -> {
+            onConfirmClick = {
+                steamUpdateDeferred?.complete(true)
+            }
+            onDismissClick = {
+                steamUpdateDeferred?.complete(false)
+            }
+            onDismissRequest = {
+                steamUpdateDeferred?.complete(false)
             }
         }
 
@@ -1257,21 +1416,189 @@ fun PluviaMain(
                         // Close the dialog regardless of success
                         Timber.d("GameFeedback: Closing dialog")
                         gameFeedbackState = GameFeedbackDialogState(visible = false)
+                        viewModel.onGameFeedbackResolved(context, feedbackState.rating, feedbackState.selectedTags)
                     }
                 },
                 onDismiss = {
                     gameFeedbackState = GameFeedbackDialogState(visible = false)
+                    viewModel.onGameFeedbackResolved(context, null)
                 },
                 onDiscordSupport = {
                     uriHandler.openUri("https://discord.gg/2hKv4VfZfE")
                 },
             )
 
+            val openDiscordConnect: () -> Unit = {
+                val nonce = ByteArray(16).also { SecureRandom().nextBytes(it) }
+                    .joinToString("") { "%02x".format(it) }
+                PrefManager.discordOauthNonce = nonce
+                CustomTabsIntent.Builder()
+                    .setShowTitle(true)
+                    .build()
+                    .launchUrl(context, Uri.parse("${DebugReportApi.OAUTH_START_URL}?app_state=$nonce"))
+            }
+
+            val shareDebugLog: () -> Unit = {
+                val reportDir = File(debugReportState.reportDir)
+                val files = listOf(DebugReportUtils.logFile(reportDir), DebugReportUtils.perfFile(reportDir), DebugReportUtils.logcatFile(reportDir))
+                    .filter { it.exists() }
+                if (files.isNotEmpty()) {
+                    val uris = files.map { FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", it) }
+                    val intent = if (uris.size == 1) {
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = if (files.single().name.endsWith(".gz")) "application/gzip" else "application/json"
+                            putExtra(Intent.EXTRA_STREAM, uris.single())
+                        }
+                    } else {
+                        Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                            type = "*/*"
+                            putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                        }
+                    }
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    context.startActivity(
+                        Intent.createChooser(intent, context.getString(R.string.debug_report_share_log_title)),
+                    )
+                }
+            }
+
+            val submitDebugReport: () -> Unit = submit@{
+                val current = debugReportState
+                if (current.reportDir.isEmpty()) return@submit
+                debugReportState = current.copy(visible = true, phase = DebugReportDialogState.PHASE_SENDING)
+                scope.launch {
+                    val dir = File(current.reportDir)
+                    val header = withContext(Dispatchers.IO) {
+                        if (DebugReportUtils.writeIssueText(dir, current.issueText)) {
+                            DebugReportUtils.readHeader(dir)
+                        } else {
+                            null
+                        }
+                    }
+                    val logFile = DebugReportUtils.logFile(dir)
+                    if (header == null || !logFile.exists()) {
+                        debugReportState = debugReportState.copy(phase = DebugReportDialogState.PHASE_ERROR)
+                        return@launch
+                    }
+                    val perfFile = DebugReportUtils.perfFile(dir)
+                    val logcatFile = DebugReportUtils.logcatFile(dir)
+                    when (val result = DebugReportApi.submit(header, logFile, PrefManager.discordRelayToken, perfFile, logcatFile)) {
+                        is DebugReportApi.SubmitResult.Success -> {
+                            withContext(Dispatchers.IO) { DebugReportUtils.deleteReport(dir) }
+                            debugReportState = debugReportState.copy(
+                                phase = DebugReportDialogState.PHASE_SUCCESS,
+                                threadUrl = result.threadUrl,
+                            )
+                        }
+
+                        is DebugReportApi.SubmitResult.Forbidden -> {
+                            debugReportState = debugReportState.copy(visible = false)
+                            debugPaywallReason = result.reason.ifEmpty { "no_subscription" }
+                        }
+
+                        is DebugReportApi.SubmitResult.Failure -> {
+                            debugReportState = debugReportState.copy(phase = DebugReportDialogState.PHASE_ERROR)
+                        }
+                    }
+                }
+            }
+
+            DebugPreRunDialog(
+                visible = debugPreRunVisible,
+                onStart = {
+                    debugPreRunVisible = false
+                    val appId = debugPreRunAppId
+                    if (appId.isNotEmpty()) {
+                        val isOffline = debugPreRunOffline
+                        trackGameLaunched(appId)
+                        viewModel.setLaunchedAppId(appId)
+                        viewModel.setBootToContainer(false)
+                        viewModel.setTestGraphics(false)
+                        viewModel.setDiagnostics(false)
+                        viewModel.setDebugRun(true)
+                        viewModel.setOffline(isOffline)
+                        preLaunchApp(
+                            context = context,
+                            appId = appId,
+                            setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                            setLoadingProgress = viewModel::setLoadingDialogProgress,
+                            setLoadingMessage = viewModel::setLoadingDialogMessage,
+                            setMessageDialogState = setMessageDialogState,
+                            onSuccess = viewModel::launchApp,
+                            isOffline = isOffline,
+                            bootToContainer = false,
+                        )
+                    }
+                },
+                onDismiss = {
+                    debugPreRunVisible = false
+                },
+            )
+
+            val debugFlowActive = debugReportState.visible || debugPaywallReason != null
+            LaunchedEffect(debugFlowActive) {
+                if (debugFlowActive) {
+                    SteamService.keepAlive = true
+                }
+            }
+
+            DebugReportDialog(
+                state = debugReportState,
+                hasDiscordToken = discordTokenPresent,
+                onStateChange = { debugReportState = it },
+                onSend = submitDebugReport,
+                onShare = shareDebugLog,
+                onConnectDiscord = openDiscordConnect,
+                onOpenThread = {
+                    if (debugReportState.threadUrl.isNotEmpty()) {
+                        uriHandler.openUri(debugReportState.threadUrl)
+                    }
+                },
+                onDismiss = {
+                    debugReportState = debugReportState.copy(visible = false)
+                    if (debugPaywallReason == null) {
+                        SteamService.keepAlive = false
+                    }
+                },
+            )
+
+            debugPaywallReason?.let { reason ->
+                Box(modifier = Modifier.zIndex(5f)) {
+                    DebugPaywallScreen(
+                        gameName = debugReportState.gameName,
+                        deviceName = debugReportState.deviceName,
+                        logSizeBytes = debugReportState.logSizeBytes,
+                        reason = reason,
+                        hasDiscordToken = discordTokenPresent,
+                        onSubscribe = {
+                            uriHandler.openUri(Constants.Misc.DISCORD_SHOP_LINK)
+                        },
+                        onSubscribeKofi = {
+                            uriHandler.openUri(Constants.Misc.KO_FI_LINK)
+                        },
+                        onConnectDiscord = openDiscordConnect,
+                        onRetry = {
+                            debugPaywallReason = null
+                            submitDebugReport()
+                        },
+                        onDismiss = {
+                            debugPaywallReason = null
+                            debugReportState = debugReportState.copy(
+                                visible = true,
+                                phase = DebugReportDialogState.PHASE_COMPOSE,
+                            )
+                        },
+                    )
+                }
+            }
+
             Box(modifier = Modifier.zIndex(10f)) {
                 BootingSplash(
                     visible = state.showBootingSplash,
                     text = state.bootingSplashText,
                     heroImageUrl = state.bootingSplashHeroImageUrl,
+                    bootAd = state.bootAd,
+                    onAbort = { viewModel.abortBoot() },
                 )
             }
 
@@ -1372,8 +1699,15 @@ fun PluviaMain(
                                     message = context.getString(R.string.main_recent_crash_message),
                                     confirmBtnText = context.getString(R.string.ok),
                                 )
-                            } else if (!(PrefManager.tipped || BuildConfig.GOLD)) {
+                            } else if (!(PrefManager.tipped || BuildConfig.GOLD) &&
+                                PrefManager.hasAttemptedGameLaunch &&
+                                !MainViewModel.gamePlayedThisSession &&
+                                System.currentTimeMillis() - PrefManager.lastLaunchPitchTime >= LAUNCH_PITCH_COOLDOWN_MS
+                            ) {
                                 viewModel.setAnnoyingDialogShown(true)
+                                PrefManager.lastLaunchPitchTime = System.currentTimeMillis()
+                                membershipPitchTrigger = "launch"
+                                trackMembershipPrompt("membership_prompt_shown", "launch")
                                 msgDialogState = MessageDialogState(
                                     visible = true,
                                     type = DialogType.SUPPORT,
@@ -1381,7 +1715,6 @@ fun PluviaMain(
                                     message = context.getString(R.string.main_thank_you_message),
                                     confirmBtnText = context.getString(R.string.main_join_kofi),
                                     dismissBtnText = context.getString(R.string.close),
-                                    actionBtnText = context.getString(R.string.main_share),
                                 )
                             }
                         }
@@ -1394,6 +1727,7 @@ fun PluviaMain(
                             viewModel.setBootToContainer(asContainer)
                             viewModel.setTestGraphics(false)
                             viewModel.setDiagnostics(false)
+                            viewModel.setDebugRun(false)
                             viewModel.setOffline(isOffline)
                             preLaunchApp(
                                 context = context,
@@ -1412,6 +1746,7 @@ fun PluviaMain(
                             viewModel.setBootToContainer(true)
                             viewModel.setTestGraphics(true)
                             viewModel.setDiagnostics(false)
+                            viewModel.setDebugRun(false)
                             viewModel.setOffline(isOffline)
                             preLaunchApp(
                                 context = context,
@@ -1431,6 +1766,7 @@ fun PluviaMain(
                             viewModel.setBootToContainer(false)
                             viewModel.setTestGraphics(false)
                             viewModel.setDiagnostics(true)
+                            viewModel.setDebugRun(false)
                             viewModel.setOffline(isOffline)
                             preLaunchApp(
                                 context = context,
@@ -1443,6 +1779,11 @@ fun PluviaMain(
                                 isOffline = isOffline,
                                 bootToContainer = false,
                             )
+                        },
+                        onAiDebugRun = { appId ->
+                            debugPreRunAppId = appId
+                            debugPreRunOffline = isOffline
+                            debugPreRunVisible = true
                         },
                         onClickExit = {
                             if (!PrefManager.warnBeforeExit) {
@@ -1498,11 +1839,25 @@ fun PluviaMain(
                 /** Game Screen **/
                 composable(route = PluviaScreen.XServer.route) {
                     val xServerIsOffline by viewModel.isOffline.collectAsStateWithLifecycle()
+                    val launchedAppId = state.launchedAppId
+                    val hasContainer = remember(launchedAppId) {
+                        launchedAppId.isNotEmpty() && ContainerUtils.hasContainer(context, launchedAppId)
+                    }
+                    if (!hasContainer) {
+                        LaunchedEffect(launchedAppId) {
+                            Timber.w("XServer route entered without a container for '$launchedAppId', returning home")
+                            navController.navigate(PluviaScreen.Home.route + "?offline=$xServerIsOffline") {
+                                popUpTo(PluviaScreen.XServer.route) { inclusive = true }
+                            }
+                        }
+                        return@composable
+                    }
                     XServerScreen(
                         appId = state.launchedAppId,
                         bootToContainer = state.bootToContainer,
                         testGraphics = state.testGraphics,
                         diagnostics = state.diagnostics,
+                        debugRun = state.debugRun,
                         isOffline = xServerIsOffline,
                         registerBackAction = { cb ->
                             Timber.d("registerBackAction called: $cb")
@@ -1578,6 +1933,7 @@ fun PluviaMain(
             }
 
             AchievementOverlay()
+            GameInviteOverlay()
         }
     }
 }
@@ -1622,6 +1978,15 @@ fun preLaunchApp(
 
         // Clear session metadata on every launch to ensure fresh values
         container.clearSessionMetadata()
+
+        // Apply game-specific fixes before anything reads the container config. Some fixes
+        // change launch-mode flags (e.g. bionic Steam) that the download/dependency steps
+        // below and MainViewModel.launchApp consume, so this must run first.
+        try {
+            GameFixesRegistry.applyFor(context, appId, container)
+        } catch (e: Exception) {
+            Timber.tag("GameFixes").w(e, "Game fixes failed in preLaunchApp")
+        }
 
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
         val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)
@@ -1764,7 +2129,126 @@ fun preLaunchApp(
                     "experimental-drm-20260116.tzst",
                 ).await()
             }
-            if ((container.isLaunchRealSteam || container.isLaunchBionicSteam) && !SteamService.isFileInstallable(context, "steam.tzst")) {
+            if (gameSource == GameSource.STEAM && container.isLaunchRealSteam && !isOffline && !container.isSteamOfflineMode &&
+                SteamService.getInstalledApp(gameId) != null
+            ) {
+                // The Valve client refuses to start a build behind its own manifest and never
+                // downloads itself. Offline launches trust the manifest the app wrote, so they skip this.
+                val branch = SteamService.getInstalledApp(gameId)?.branch ?: "public"
+                if (SteamService.isUpdatePending(gameId, branch)) {
+                    val userChoice = CompletableDeferred<Boolean>()
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.STEAM_UPDATE_PROMPT,
+                            title = context.getString(R.string.steam_update_required_title),
+                            message = context.getString(R.string.steam_update_required_message),
+                            confirmBtnText = context.getString(R.string.main_update_button),
+                            dismissBtnText = context.getString(R.string.cancel),
+                        ),
+                    )
+                    steamUpdateDeferred = userChoice
+                    val update = userChoice.await()
+                    steamUpdateDeferred = null
+                    setMessageDialogState(MessageDialogState(false))
+                    if (update) {
+                        val dlcAppIds = SteamService.getInstalledApp(gameId)?.dlcDepots.orEmpty()
+                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, isUpdateOrVerify = true)
+                    }
+                    return@launch
+                }
+            }
+            if (container.isLaunchHeadlessSteam && !SteamService.isFileInstallable(context, REAL_STEAM_CLIENT_ARCHIVE)) {
+                setLoadingMessage(context.getString(R.string.main_downloading_steam))
+                SteamService.downloadFile(
+                    onDownloadProgress = { setLoadingProgress(it / 1.0f) },
+                    this,
+                    context = context,
+                    REAL_STEAM_CLIENT_ARCHIVE,
+                ).await()
+            }
+            if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM &&
+                EaLaunchSupport.isEaTitle(gameId, File(SteamService.getAppDirPath(gameId)))
+            ) {
+                setLoadingMessage(context.getString(R.string.ea_preparing))
+                app.gamenative.service.ea.EaHelperArchive.download(context) { setLoadingProgress(it) }
+                val signIn = EaLoginGate.ensureSignedIn(context)
+                if (signIn.isFailure) {
+                    Timber.tag("preLaunchApp").w(signIn.exceptionOrNull(), "EA sign-in did not complete")
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.ea_login_required_title),
+                            message = context.getString(R.string.ea_login_failed, signIn.exceptionOrNull()?.message ?: ""),
+                            dismissBtnText = context.getString(R.string.ok),
+                        ),
+                    )
+                    return@launch
+                }
+            }
+            /*
+             * Rockstar titles sign in through Social Club, and the Windows stub needs the
+             * resulting ScAuthToken on disk before the game starts: it mints the ROS ticket with
+             * CreateTicketScAuthToken2 and exits when the token file is missing. Minting from
+             * Steam ownership instead was tried and refused by the server, so the account sign-in
+             * is required rather than a convenience.
+             */
+            if (gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
+                RockstarLaunchSupport.isRockstarTitle(File(SteamService.getAppDirPath(gameId)))
+            ) {
+                val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
+                setLoadingMessage(context.getString(R.string.rockstar_preparing))
+                RockstarHelperArchive.downloadAndExtract(context) { setLoadingProgress(it) }
+                val signIn = RockstarLoginGate.ensureSignedIn(context, "launcher")
+                if (signIn.isFailure && RockstarLaunchSupport.hasUsableToken(File(SteamService.getAppDirPath(gameId)))) {
+                    /* A token is already in place, so carry on rather than block a launch that works. */
+                    Timber.tag("preLaunchApp").w("Rockstar sign-in did not complete; using the token already in the game directory")
+                } else if (signIn.isFailure) {
+                    Timber.tag("preLaunchApp").w(signIn.exceptionOrNull(), "Rockstar sign-in did not complete")
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.rockstar_login_required_title),
+                            message = context.getString(R.string.rockstar_login_failed, signIn.exceptionOrNull()?.message ?: ""),
+                            dismissBtnText = context.getString(R.string.ok),
+                        ),
+                    )
+                    return@launch
+                }
+                val prefixDriveC = File(container.rootDir, ".wine/drive_c")
+                if (!RockstarRuntime.isInstalled(prefixDriveC)) {
+                    val installer = RockstarRuntime.installer(rockstarGameDir)
+                    if (installer == null) {
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.SYNC_FAIL,
+                                title = context.getString(R.string.rockstar_login_required_title),
+                                message = context.getString(R.string.rockstar_installer_missing),
+                                dismissBtnText = context.getString(R.string.ok),
+                            ),
+                        )
+                        return@launch
+                    }
+                    setLoadingMessage(context.getString(R.string.rockstar_runtime_installing))
+                    withContext(Dispatchers.IO) { RockstarRuntime.install(context, installer, prefixDriveC) { setLoadingProgress(it) } }
+                }
+                withContext(Dispatchers.IO) {
+                    check(RockstarLaunchSupport.placeToken(context, rockstarGameDir) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir)) {
+                        "Could not place Rockstar sign-in credentials in the game directory"
+                    }
+                    RockstarHelperDeployment.prepare(context.filesDir, rockstarGameDir)
+                }
+            }
+            if ((container.isLaunchBionicSteam || (container.isLaunchRealSteam && !container.isLaunchHeadlessSteam)) &&
+                !SteamService.isFileInstallable(context, "steam.tzst")
+            ) {
                 setLoadingMessage(context.getString(R.string.main_downloading_steam))
                 SteamService.downloadSteam(
                     onDownloadProgress = { setLoadingProgress(it / 1.0f) },

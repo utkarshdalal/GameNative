@@ -51,6 +51,31 @@ object StorageUtils {
         return stat.blockSizeLong * stat.availableBlocksLong
     }
 
+    // Minimum internal free space required to host a transient download chunk cache.
+    // The cache normally stays MB-sized (chunks are deleted as they are assembled),
+    // so this only guards against starting a download on a nearly-full data partition.
+    private const val MIN_INTERNAL_CACHE_BYTES = 512L * 1024 * 1024
+
+    /**
+     * Pre-download disk space check shared by the GOG and Epic download managers.
+     * Returns a human-readable error when there is not enough space, or null when
+     * the download can proceed. [requiredBytes] is checked against the install
+     * volume; the internal volume hosting [internalCacheDir] only needs modest
+     * headroom for the transient chunk cache.
+     */
+    fun downloadSpaceShortfall(installDir: File, requiredBytes: Long, internalCacheDir: File): String? {
+        val available = getAvailableSpaceForUncreatedPath(installDir.absolutePath)
+        if (available < requiredBytes) {
+            return "Not enough free space: need ${formatBinarySize(requiredBytes)}, available ${formatBinarySize(available)}"
+        }
+        val internalAvailable = getAvailableSpaceForUncreatedPath(internalCacheDir.absolutePath)
+        if (internalAvailable < MIN_INTERNAL_CACHE_BYTES) {
+            return "Not enough internal storage for the download cache: " +
+                "${formatBinarySize(internalAvailable)} free, need at least ${formatBinarySize(MIN_INTERNAL_CACHE_BYTES)}"
+        }
+        return null
+    }
+
     fun getTotalSpace(path: String): Long {
         val file = File(path)
         if (!file.exists()) {
@@ -96,6 +121,55 @@ object StorageUtils {
         )
 
         return result
+    }
+
+    private const val PUBLIC_INSTALL_DIR_NAME = "GameNative"
+
+    /**
+     * Maps an app-specific dir (<volume>/Android/data/<pkg>/files) to a public install root
+     * (<volume>/GameNative). MediaProvider disables FUSE kernel caching under Android/data,
+     * making per-open metadata ops ~1000x slower there; public dirs get normal dcache treatment.
+     */
+    fun publicInstallRoot(appFilesDir: File): File? {
+        val path = appFilesDir.absolutePath
+        val idx = path.indexOf("/Android/data/")
+        if (idx <= 0) return null
+        return File(path.substring(0, idx), PUBLIC_INSTALL_DIR_NAME)
+    }
+
+    fun ensureInstallRoot(dir: File): Boolean {
+        if (!dir.isDirectory && !dir.mkdirs()) return false
+        runCatching { File(dir, ".nomedia").createNewFile() }
+        return true
+    }
+
+    fun preferredInstallRoot(appFilesDir: File): String {
+        val public = publicInstallRoot(appFilesDir)
+        if (public != null && ensureInstallRoot(public)) return public.absolutePath
+        return appFilesDir.absolutePath
+    }
+
+    fun resolveLegacyGameDir(path: String?): String? {
+        if (path.isNullOrBlank()) return path
+        val idx = path.indexOf("/Android/data/")
+        if (idx <= 0) return path
+        val filesIdx = path.indexOf("/files/", idx)
+        if (filesIdx < 0) return path
+        val legacyRoot = File(path.substring(0, filesIdx + "/files".length))
+        val rel = path.substring(filesIdx + "/files/".length)
+        val src = File(path)
+        val publicRoot = publicInstallRoot(legacyRoot) ?: return path
+        val dst = File(publicRoot, rel)
+        if (!src.isDirectory) return if (dst.isDirectory) dst.absolutePath else path
+        if (dst.exists() || !ensureInstallRoot(publicRoot)) return path
+        dst.parentFile?.mkdirs()
+        return if (src.renameTo(dst)) {
+            Timber.i("Migrated game dir $path to ${dst.absolutePath}")
+            dst.absolutePath
+        } else {
+            Timber.w("Could not migrate $path; leaving in place")
+            path
+        }
     }
 
     /**

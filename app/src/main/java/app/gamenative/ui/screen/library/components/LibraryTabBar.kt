@@ -56,7 +56,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.enums.LibraryTab
@@ -71,6 +70,7 @@ import app.gamenative.ui.util.rememberWindowWidthClass
 @Composable
 fun LibraryTabBar(
     currentTab: LibraryTab,
+    tabs: List<LibraryTab>,
     tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
@@ -87,6 +87,7 @@ fun LibraryTabBar(
     when (widthClass) {
         WindowWidthClass.COMPACT -> CompactLibraryTabBar(
             currentTab = currentTab,
+            tabs = tabs,
             tabCounts = tabCounts,
             onTabSelected = onTabSelected,
             onOptionsClick = onOptionsClick,
@@ -101,6 +102,7 @@ fun LibraryTabBar(
 
         else -> ExpandedLibraryTabBar(
             currentTab = currentTab,
+            tabs = tabs,
             tabCounts = tabCounts,
             onTabSelected = onTabSelected,
             onOptionsClick = onOptionsClick,
@@ -122,6 +124,7 @@ fun LibraryTabBar(
 @Composable
 private fun CompactLibraryTabBar(
     currentTab: LibraryTab,
+    tabs: List<LibraryTab>,
     tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
@@ -133,7 +136,6 @@ private fun CompactLibraryTabBar(
     onNextTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LibraryTab.visibleEntries
     val currentIndex = tabs.indexOf(currentTab)
     val scrollState = rememberScrollState()
     val tabPositions = remember { mutableStateMapOf<Int, Float>() }
@@ -240,12 +242,24 @@ private fun CompactLibraryTabBar(
                             else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         }
                         if (tab.icon != null) {
-                            Icon(
-                                imageVector = tab.icon,
-                                contentDescription = stringResource(tab.labelResId),
-                                tint = tabColor,
-                                modifier = Modifier.size(18.dp),
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = tab.icon,
+                                    contentDescription = stringResource(tab.labelResId),
+                                    tint = tabColor,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                if (count != null && count > 0) {
+                                    Text(
+                                        text = "($count)",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        maxLines = 1,
+                                        color = tabColor,
+                                        modifier = Modifier.padding(start = 4.dp),
+                                    )
+                                }
+                            }
                         } else {
                             val label = if (count != null && count > 0) {
                                 stringResource(R.string.library_tab_with_count, stringResource(tab.labelResId), count)
@@ -270,13 +284,11 @@ private fun CompactLibraryTabBar(
                 contentDescription = stringResource(R.string.search),
                 onClick = onSearchClick,
             )
-            if (!BuildConfig.MODERN_ANDROID) {
-                CompactIconButton(
-                    icon = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.action_add_game),
-                    onClick = onAddGameClick,
-                )
-            }
+            CompactIconButton(
+                icon = Icons.Default.Add,
+                contentDescription = stringResource(R.string.action_add_game),
+                onClick = onAddGameClick,
+            )
             CompactIconButton(
                 icon = Icons.Default.Menu,
                 contentDescription = stringResource(R.string.menu),
@@ -338,6 +350,7 @@ private fun CompactIconButton(
 @Composable
 private fun ExpandedLibraryTabBar(
     currentTab: LibraryTab,
+    tabs: List<LibraryTab>,
     tabCounts: Map<LibraryTab, Int>,
     onTabSelected: (LibraryTab) -> Unit,
     onOptionsClick: () -> Unit,
@@ -349,7 +362,6 @@ private fun ExpandedLibraryTabBar(
     onNextTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LibraryTab.visibleEntries
     val currentIndex = tabs.indexOf(currentTab)
     val scrollState = rememberScrollState()
 
@@ -491,13 +503,11 @@ private fun ExpandedLibraryTabBar(
                 onClick = onSearchClick,
             )
 
-            if (!BuildConfig.MODERN_ANDROID) {
-                IconActionButton(
-                    icon = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.action_add_game),
-                    onClick = onAddGameClick,
-                )
-            }
+            IconActionButton(
+                icon = Icons.Default.Add,
+                contentDescription = stringResource(R.string.action_add_game),
+                onClick = onAddGameClick,
+            )
 
             IconActionButton(
                 icon = Icons.Default.Menu,
@@ -637,15 +647,30 @@ private fun TabItem(
         contentAlignment = Alignment.Center,
     ) {
         if (tab.icon != null) {
-            Icon(
-                imageVector = tab.icon,
-                contentDescription = stringResource(tab.labelResId),
-                tint = when {
-                    isSelected -> MaterialTheme.colorScheme.onPrimary
-                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
-                },
-                modifier = Modifier.size(20.dp),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = tab.icon,
+                    contentDescription = stringResource(tab.labelResId),
+                    tint = when {
+                        isSelected -> MaterialTheme.colorScheme.onPrimary
+                        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
+                    },
+                    modifier = Modifier.size(20.dp),
+                )
+                if (count != null && count > 0) {
+                    Text(
+                        text = "($count)",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 1,
+                        color = when {
+                            isSelected -> MaterialTheme.colorScheme.onPrimary
+                            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
+                        },
+                        modifier = Modifier.padding(start = 4.dp),
+                    )
+                }
+            }
         } else {
             Text(
                 text = label,
@@ -674,6 +699,7 @@ private fun Preview_LibraryTabBar() {
         ) {
             LibraryTabBar(
                 currentTab = LibraryTab.ALL,
+                tabs = LibraryTab.visibleEntries,
                 tabCounts = mapOf(
                     LibraryTab.ALL to 42,
                     LibraryTab.STEAM to 30,
@@ -703,6 +729,7 @@ private fun Preview_LibraryTabBar_Steam() {
         ) {
             LibraryTabBar(
                 currentTab = LibraryTab.STEAM,
+                tabs = LibraryTab.visibleEntries,
                 tabCounts = mapOf(
                     LibraryTab.ALL to 42,
                     LibraryTab.STEAM to 30,

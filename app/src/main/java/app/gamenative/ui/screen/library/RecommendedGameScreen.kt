@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -30,12 +32,14 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -51,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import app.gamenative.R
 import app.gamenative.data.RecommendedGame
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.library.components.VideoHero
 import app.gamenative.PrefManager
 import com.posthog.PostHog
@@ -67,6 +72,14 @@ internal fun RecommendedGameScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+
+    val firstActionFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(game) {
+        try {
+            firstActionFocusRequester.requestFocus()
+        } catch (_: IllegalStateException) {
+        }
+    }
 
     val media = remember(game) {
         val list = mutableListOf<Pair<Boolean, String>>()
@@ -135,11 +148,14 @@ internal fun RecommendedGameScreen(
             )
 
             // Back button
+            val backInteractionSource = remember { MutableInteractionSource() }
             IconButton(
                 onClick = onBack,
+                interactionSource = backInteractionSource,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(8.dp),
+                    .padding(8.dp)
+                    .focusRing(backInteractionSource, CircleShape, width = 2.dp),
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -345,43 +361,20 @@ internal fun RecommendedGameScreen(
                 }
 
                 // Featured actions (wishlist / pre-order / etc.)
-                game.featuredCtas.forEach { action ->
-                    val onClick = {
-                        if (PrefManager.usageAnalyticsEnabled) {
-                            PostHog.capture(
-                                event = "featured_action_clicked",
-                                properties = mapOf(
-                                    "campaign_id" to game.id,
-                                    "action_label" to action.label,
-                                    "url" to action.url,
-                                    "source" to recSource,
-                                ),
-                            )
-                        }
-                        context.startActivity(Intent(Intent.ACTION_VIEW, action.url.toUri()))
-                    }
-                    if (action.primary) {
-                        Button(
-                            onClick = onClick,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Text(text = action.label, fontWeight = FontWeight.SemiBold)
-                        }
-                    } else {
-                        OutlinedButton(
-                            onClick = onClick,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Text(text = action.label, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
+                game.featuredCtas.forEachIndexed { index, action ->
+                    FeaturedCtaButton(
+                        action = action,
+                        campaignId = game.id,
+                        recSource = recSource,
+                        focusRequester = firstActionFocusRequester.takeIf { index == 0 },
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             } else {
                 // Buy button
+                val buyInteractionSource = remember { MutableInteractionSource() }
                 Button(
+                    interactionSource = buyInteractionSource,
                     onClick = {
                         if (PrefManager.usageAnalyticsEnabled) {
                             PostHog.capture(
@@ -399,7 +392,10 @@ internal fun RecommendedGameScreen(
                         val browserIntent = Intent(Intent.ACTION_VIEW, game.affiliateUrl.toUri())
                         context.startActivity(browserIntent)
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRing(buyInteractionSource, RoundedCornerShape(12.dp), width = 2.dp)
+                        .focusRequester(firstActionFocusRequester),
                     shape = RoundedCornerShape(12.dp),
                 ) {
                     Icon(
@@ -407,8 +403,13 @@ internal fun RecommendedGameScreen(
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                     )
+                    val price = game.priceLabel
                     Text(
-                        text = stringResource(R.string.recommended_buy_button),
+                        text = if (price != null) {
+                            stringResource(R.string.rec_buy_with_price, price)
+                        } else {
+                            stringResource(R.string.recommended_buy_button)
+                        },
                         modifier = Modifier.padding(start = 8.dp),
                         fontWeight = FontWeight.SemiBold,
                     )

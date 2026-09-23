@@ -1,6 +1,7 @@
 package com.winlator.container
 
 import androidx.compose.runtime.saveable.mapSaver
+import app.gamenative.PluviaApp
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.core.DefaultVersion
 import com.winlator.core.WineInfo
@@ -11,13 +12,15 @@ import kotlin.String
 
 data class ContainerData(
     val name: String = "",
-    val screenSize: String = Container.DEFAULT_SCREEN_SIZE,
+    val screenSize: String = PluviaApp.getDefaultScreenSize(),
     val envVars: String = Container.DEFAULT_ENV_VARS,
     val graphicsDriver: String = Container.DEFAULT_GRAPHICS_DRIVER,
     val graphicsDriverVersion: String = "",
     val graphicsDriverConfig: String = "",
     val rendererPresentMode: String = "fifo",
     val displayRenderer: String = Container.DEFAULT_DISPLAY_RENDERER,
+    val xrRefreshRate: Int = 72,
+    val xrRenderScale: Int = 100,
     val sfCompatMode: Boolean = true,
     var dxwrapper: String = Container.DEFAULT_DXWRAPPER,
     val dxwrapperConfig: String = "",
@@ -32,7 +35,7 @@ data class ContainerData(
     val launchRealSteam: Boolean = false,
     val launchBionicSteam: Boolean = false,
     val allowSteamUpdates: Boolean = false,
-    val steamType: String = "normal",
+    val steamType: String = Container.STEAM_TYPE_HEADLESS,
     val cpuList: String = Container.getFallbackCPUList(),
     val cpuListWoW64: String = Container.getFallbackCPUListWoW64(),
     val wow64Mode: Boolean = true,
@@ -68,6 +71,8 @@ data class ContainerData(
     val shaderBackend: String = "glsl",
     val useGLSL: String = "enabled",
     val sdlControllerAPI: Boolean = true,
+    val fasterExternalLoading: Boolean = false,
+    val disableLibredirect: Boolean = false,
     /** Enable Steam Input **/
     val useSteamInput: Boolean = false,
     /** Enable XInput API **/
@@ -96,6 +101,7 @@ data class ContainerData(
     val localSavesOnly: Boolean = false,
     val steamOfflineMode: Boolean = false,
     val epicOfflineMode: Boolean = false,
+    val disableEpicOverlay: Boolean = false,
     val useLegacyDRM: Boolean = false,
     val unpackFiles: Boolean = false,
     val suspendPolicy: String = Container.SUSPEND_POLICY_MANUAL,
@@ -106,6 +112,8 @@ data class ContainerData(
     // LSFG Vulkan frame generation
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
+    val windowsVrEnabled: Boolean = false,
+    val openCompositeEnabled: Boolean = false,
 ) {
     companion object {
         val Saver = mapSaver(
@@ -119,6 +127,8 @@ data class ContainerData(
                     "graphicsDriverConfig" to state.graphicsDriverConfig,
                     "rendererPresentMode" to state.rendererPresentMode,
                     "displayRenderer" to state.displayRenderer,
+                    "xrRefreshRate" to state.xrRefreshRate,
+                    "xrRenderScale" to state.xrRenderScale,
                     "sfCompatMode" to state.sfCompatMode,
                     "dxwrapper" to state.dxwrapper,
                     "dxwrapperConfig" to state.dxwrapperConfig,
@@ -152,6 +162,8 @@ data class ContainerData(
                     "fexcoreMultiBlock" to state.fexcoreMultiBlock,
                     "fexcorePreset" to state.fexcorePreset,
                     "sdlControllerAPI" to state.sdlControllerAPI,
+                    "fasterExternalLoading" to state.fasterExternalLoading,
+                    "disableLibredirect" to state.disableLibredirect,
                     "useSteamInput" to state.useSteamInput,
                     "enableXInput" to state.enableXInput,
                     "enableDInput" to state.enableDInput,
@@ -177,6 +189,8 @@ data class ContainerData(
                     "sharpnessLevel" to state.sharpnessLevel,
                     "sharpnessDenoise" to state.sharpnessDenoise,
                     "lsfgEnabled" to state.lsfgEnabled,
+                    "windowsVrEnabled" to state.windowsVrEnabled,
+                    "openCompositeEnabled" to state.openCompositeEnabled,
                 )
             },
             restore = { savedMap ->
@@ -189,6 +203,8 @@ data class ContainerData(
                     graphicsDriverConfig = (savedMap["graphicsDriverConfig"] as? String) ?: "",
                     rendererPresentMode = (savedMap["rendererPresentMode"] as? String) ?: "fifo",
                     displayRenderer = (savedMap["displayRenderer"] as? String) ?: "vulkan",
+                    xrRefreshRate = (savedMap["xrRefreshRate"] as? Int) ?: 72,
+                    xrRenderScale = (savedMap["xrRenderScale"] as? Int) ?: 100,
                     sfCompatMode = (savedMap["sfCompatMode"] as? Boolean) ?: true,
                     dxwrapper = savedMap["dxwrapper"] as String,
                     dxwrapperConfig = savedMap["dxwrapperConfig"] as String,
@@ -203,7 +219,7 @@ data class ContainerData(
                     launchRealSteam = savedMap["launchRealSteam"] as Boolean,
                     launchBionicSteam = (savedMap["launchBionicSteam"] as? Boolean) ?: false,
                     allowSteamUpdates = savedMap["allowSteamUpdates"] as Boolean,
-                    steamType = (savedMap["steamType"] as? String) ?: "normal",
+                    steamType = (savedMap["steamType"] as? String) ?: Container.STEAM_TYPE_HEADLESS,
                     cpuList = savedMap["cpuList"] as String,
                     cpuListWoW64 = savedMap["cpuListWoW64"] as String,
                     wow64Mode = savedMap["wow64Mode"] as Boolean,
@@ -222,6 +238,8 @@ data class ContainerData(
                     fexcoreMultiBlock = (savedMap["fexcoreMultiBlock"] as? String) ?: "Disabled",
                     fexcorePreset = (savedMap["fexcorePreset"] as? String) ?: FEXCorePreset.INTERMEDIATE,
                     sdlControllerAPI = savedMap["sdlControllerAPI"] as Boolean,
+                    fasterExternalLoading = (savedMap["fasterExternalLoading"] as? Boolean) ?: false,
+                    disableLibredirect = (savedMap["disableLibredirect"] as? Boolean) ?: false,
                     useSteamInput = (savedMap["useSteamInput"] as? Boolean) ?: false,
                     enableXInput = savedMap["enableXInput"] as Boolean,
                     enableDInput = savedMap["enableDInput"] as Boolean,
@@ -247,6 +265,8 @@ data class ContainerData(
                     sharpnessLevel = (savedMap["sharpnessLevel"] as? Int) ?: 100,
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
+                    windowsVrEnabled = (savedMap["windowsVrEnabled"] as? Boolean) ?: false,
+                    openCompositeEnabled = (savedMap["openCompositeEnabled"] as? Boolean) ?: false,
                 )
             },
         )

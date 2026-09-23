@@ -1,0 +1,4 @@
+LIBRARY ntdll.dll
+EXPORTS
+    NtQueryVirtualMemory
+    __wine_unix_call_dispatcher DATA

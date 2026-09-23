@@ -24,6 +24,7 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.service.DownloadService
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicConstants
+import app.gamenative.service.epic.EpicInstallState
 import app.gamenative.service.epic.EpicService
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
@@ -97,6 +98,20 @@ class EpicAppScreen : BaseAppScreen() {
             val result = installDialogAppIds.contains(appId)
             Timber.tag(TAG).d("shouldShowInstallDialog: appId=$appId, result=$result")
             return result
+        }
+
+        private val pendingUpdateVerifyOperations = mutableStateMapOf<Int, AppOptionMenuType>()
+
+        fun setPendingUpdateVerifyOperation(gameId: Int, operation: AppOptionMenuType?) {
+            if (operation != null) {
+                pendingUpdateVerifyOperations[gameId] = operation
+            } else {
+                pendingUpdateVerifyOperations.remove(gameId)
+            }
+        }
+
+        fun getPendingUpdateVerifyOperation(gameId: Int): AppOptionMenuType? {
+            return pendingUpdateVerifyOperations[gameId]
         }
 
         // Shared state for game manager dialog - map of gameId to GameManagerDialogState
@@ -518,9 +533,68 @@ class EpicAppScreen : BaseAppScreen() {
 
     override fun onUpdateClick(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("onUpdateClick: appId=${libraryItem.appId}")
-        // TODO: Implement update for Epic games
-        // Check Epic for newer version and download if available
-        Timber.tag(TAG).d("Update clicked for Epic game: ${libraryItem.appId}")
+        setPendingUpdateVerifyOperation(libraryItem.gameId, AppOptionMenuType.Update)
+        showInstallDialog(
+            libraryItem.appId,
+            app.gamenative.ui.component.dialog.state.MessageDialogState(
+                visible = true,
+                type = app.gamenative.ui.enums.DialogType.UPDATE_VERIFY_CONFIRM,
+                title = context.getString(R.string.library_update_title),
+                message = context.getString(R.string.library_update_message),
+                confirmBtnText = context.getString(R.string.proceed),
+                dismissBtnText = context.getString(R.string.cancel),
+            ),
+        )
+    }
+
+    override suspend fun isUpdatePendingSuspend(context: Context, libraryItem: LibraryItem): Boolean = withContext(Dispatchers.IO) {
+        if (!isInstalled(context, libraryItem)) return@withContext false
+        val game = EpicService.getEpicGameOf(libraryItem.gameId) ?: return@withContext false
+        val latestVersion = game.version
+        if (latestVersion.isEmpty()) return@withContext false
+        val state = EpicInstallState.read(game.installPath)
+            ?: if (EpicService.getDownloadInfo(libraryItem.gameId)?.isActive() == true) {
+                return@withContext false
+            } else {
+                val language = ContainerUtils.getContainer(context, libraryItem.appId).language
+                EpicService.backfillInstallState(context, libraryItem.gameId, game.installPath, language)
+                    ?: return@withContext false
+            }
+        state.buildVersion != latestVersion
+    }
+
+    private fun triggerEpicUpdateDownload(
+        context: Context,
+        libraryItem: LibraryItem,
+        language: String,
+        clearPrerequisiteMarkers: Boolean,
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val gameId = libraryItem.gameId
+            if (!EpicService.isGameInstalled(context, gameId)) return@launch
+            if (EpicService.getDownloadInfo(gameId)?.isActive() == true) {
+                Timber.tag(TAG).w("Download already active for $gameId, skipping update download")
+                return@launch
+            }
+
+            val game = EpicService.getEpicGameOf(gameId) ?: return@launch
+            val installPath = game.installPath.takeIf { it.isNotEmpty() }
+                ?: EpicConstants.getGameInstallPath(context, game.appName)
+
+            if (clearPrerequisiteMarkers) {
+                MarkerUtils.clearInstalledPrerequisiteMarkers(installPath)
+            }
+
+            val installedDlcIds = EpicService.getDLCForGame(gameId)
+                .filter { it.isInstalled }
+                .map { it.id }
+
+            val result = EpicService.downloadGame(context, gameId, installedDlcIds, installPath, language)
+            if (result.isFailure) {
+                Timber.tag(TAG).e("Failed to start Epic update download for $gameId: ${result.exceptionOrNull()?.message}")
+                SnackbarManager.show(context.getString(R.string.epic_download_failed, result.exceptionOrNull()?.message ?: ""))
+            }
+        }
     }
 
     override fun getExportFileExtension(): String = ".epic"
@@ -549,8 +623,13 @@ class EpicAppScreen : BaseAppScreen() {
     override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
         Timber.tag(TAG).i("saveContainerConfig: appId=${libraryItem.appId}")
         // Save Epic-specific container configuration using ContainerUtils
+        val previousLanguage = ContainerUtils.getContainer(context, libraryItem.appId).language
         app.gamenative.utils.ContainerUtils.applyToContainer(context, libraryItem.appId, config)
         Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
+
+        if (previousLanguage != config.language) {
+            triggerEpicUpdateDownload(context, libraryItem, config.language, clearPrerequisiteMarkers = false)
+        }
     }
 
     override fun supportsContainerConfig(): Boolean {
@@ -572,6 +651,34 @@ class EpicAppScreen : BaseAppScreen() {
         isInstalled: Boolean,
     ): List<AppMenuOption> {
         val options = mutableListOf<AppMenuOption>()
+
+        if (isInstalled && !isDownloading(context, libraryItem)) {
+            options.add(
+                AppMenuOption(
+                    optionType = AppOptionMenuType.VerifyFiles,
+                    onClick = {
+                        setPendingUpdateVerifyOperation(libraryItem.gameId, AppOptionMenuType.VerifyFiles)
+                        showInstallDialog(
+                            libraryItem.appId,
+                            app.gamenative.ui.component.dialog.state.MessageDialogState(
+                                visible = true,
+                                type = app.gamenative.ui.enums.DialogType.UPDATE_VERIFY_CONFIRM,
+                                title = context.getString(R.string.library_verify_files_title),
+                                message = context.getString(R.string.library_verify_files_message),
+                                confirmBtnText = context.getString(R.string.proceed),
+                                dismissBtnText = context.getString(R.string.cancel),
+                            ),
+                        )
+                    },
+                ),
+            )
+            options.add(
+                AppMenuOption(
+                    optionType = AppOptionMenuType.Update,
+                    onClick = { onUpdateClick(context, libraryItem) },
+                ),
+            )
+        }
 
         // Add cloud sync option if game supports cloud saves
         val epicGame = EpicService.getEpicGameOf(libraryItem.gameId)
@@ -835,6 +942,21 @@ class EpicAppScreen : BaseAppScreen() {
                                 }
                             }
                         }
+                    }
+                }
+
+                app.gamenative.ui.enums.DialogType.UPDATE_VERIFY_CONFIRM -> {
+                    {
+                        BaseAppScreen.hideInstallDialog(appId)
+                        val operation = getPendingUpdateVerifyOperation(gameId)
+                        setPendingUpdateVerifyOperation(gameId, null)
+                        val language = loadContainerData(context, libraryItem).language
+                        triggerEpicUpdateDownload(
+                            context,
+                            libraryItem,
+                            language,
+                            clearPrerequisiteMarkers = operation == AppOptionMenuType.VerifyFiles,
+                        )
                     }
                 }
 

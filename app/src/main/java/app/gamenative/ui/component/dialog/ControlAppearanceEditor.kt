@@ -37,7 +37,8 @@ internal data class ControlAppearance(
     val activeColorCustom: Boolean,
     val opacity: Float,
     val strokeScale: Float,
-    val shooterLookThrough: Boolean
+    val lookThrough: Boolean?,
+    val legacyShooterLookThrough: Boolean,
 ) {
     fun applyTo(element: ControlElement) {
         element.setScale(scale)
@@ -45,7 +46,8 @@ internal data class ControlAppearance(
         element.setButtonActiveColor(activeColor, activeColorCustom)
         element.setButtonOpacity(opacity)
         element.setButtonStrokeScale(strokeScale)
-        element.setShooterLookThrough(shooterLookThrough)
+        element.setShooterLookThrough(legacyShooterLookThrough)
+        element.lookThroughSetting = lookThrough
     }
 
     companion object {
@@ -56,7 +58,8 @@ internal data class ControlAppearance(
             activeColorCustom = element.hasCustomButtonActiveColor(),
             opacity = element.buttonOpacity,
             strokeScale = element.buttonStrokeScale,
-            shooterLookThrough = element.isShooterLookThrough
+            lookThrough = element.lookThroughSetting,
+            legacyShooterLookThrough = element.shooterLookThroughSetting,
         )
     }
 }
