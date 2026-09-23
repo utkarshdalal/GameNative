@@ -6,6 +6,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
 import com.winlator.core.GPUInformation
+import com.winlator.core.KeyValueSet
 import java.io.File
 import kotlinx.serialization.json.Json
 import timber.log.Timber
@@ -21,6 +22,7 @@ object TexturePackGate {
     const val CONTAINER_EXTRA_TITLE = "texturePackTitle"
     const val CONTAINER_EXTRA_POLICY = "texturePackPolicy"
     const val NEEDS_FULL_RES_MARKER = "needs_full_res"
+    const val COMPATIBLE_DRIVER = "wrapper-gamenative"
 
     private val POLICY_FORMAT_ORDER = listOf("bc1", "bc2", "bc3", "bc4", "bc5", "bc7", "bc6h")
     private val POLICY_FORMAT = Regex("[a-z0-9]+")
@@ -129,8 +131,26 @@ object TexturePackGate {
     fun syncEnabled(context: Context): Boolean =
         PrefManager.texturePackEnabled && needsTexturePack(context)
 
+    fun compatible(driver: String?, bcnEmulation: String?, bcnEmulationType: String?): Boolean =
+        driver.equals(COMPATIBLE_DRIVER, ignoreCase = true) &&
+            !bcnEmulation.equals("none", ignoreCase = true) &&
+            !bcnEmulationType.equals("compute", ignoreCase = true)
+
+    fun containerCompatible(container: Container): Boolean {
+        val config = KeyValueSet(container.graphicsDriverConfig)
+        return compatible(container.graphicsDriver, config.get("bcnEmulation"), config.get("bcnEmulationType"))
+    }
+
+    fun containerCompatible(context: Context, appId: String): Boolean = try {
+        !ContainerUtils.hasContainer(context, appId) ||
+            containerCompatible(ContainerUtils.getContainer(context, appId))
+    } catch (e: Exception) {
+        Timber.w(e, "could not read texture pack container compatibility for $appId")
+        false
+    }
+
     fun syncEnabled(context: Context, appId: String): Boolean =
-        syncEnabled(context) && !isSkipped(context, appId)
+        syncEnabled(context) && !isSkipped(context, appId) && containerCompatible(context, appId)
 
     enum class ExitUploadAction { NONE, PROMPT, ENQUEUE }
 

@@ -2544,8 +2544,13 @@
     <string name="texture_pack_dont_do_for_game">Nu mai face asta pentru acest joc</string>
     <string name="texture_pack_play_now">Joacă acum</string>
     <string name="texture_pack_game_setting_title">Pachet de texturi de pe server pentru acest joc</string>
+    <string name="texture_pack_game_setting_subtitle">Funcționează doar cu driverul grafic wrapper-gamenative și decodarea BCn software.</string>
+    <string name="texture_pack_game_setting_needs_driver">Indisponibil: setează %1$s la wrapper-gamenative.</string>
+    <string name="texture_pack_game_setting_needs_software">Indisponibil: setează %1$s la software.</string>
+    <string name="texture_pack_game_setting_needs_bcn">Indisponibil: setează %1$s la orice valoare în afară de none.</string>
+    <string name="settings_texture_section_title">Texturi (Mali și alte GPU-uri fără BCn)</string>
     <string name="settings_texture_pack_title">Pachete de texturi de pe server</string>
-    <string name="settings_texture_pack_subtitle">Oferă texturi de calitate înaltă deja pregătite înainte de pornirea unui joc pe dispozitivele Mali. Dezactivarea oprește și limita de memorie pentru texturi și restabilește conversia proprie a texturilor pe dispozitiv.</string>
+    <string name="settings_texture_pack_subtitle">Oferă texturi de calitate înaltă deja pregătite înainte de pornirea unui joc pe dispozitivele Mali. Dezactivarea oprește și limita de memorie pentru texturi și restabilește conversia proprie a texturilor pe dispozitiv. Funcționează doar cu driverul grafic wrapper-gamenative și decodarea BCn software.</string>
     <string name="settings_texture_pack_gpu_transcode_title">Convertește texturile pe GPU</string>
     <string name="settings_texture_pack_gpu_transcode_subtitle">Evită blocajele procesorului și vârfurile de memorie la prima rulare a unui joc. Dezactivarea folosește calea mai lentă prin procesor.</string>
     <string name="settings_texture_pack_mobile_data_title">Permite transferul texturilor prin date mobile</string>

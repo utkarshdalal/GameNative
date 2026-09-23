@@ -6109,7 +6109,7 @@ private suspend fun extractGraphicsDriverFiles(
         val excludeBcnCompute = isAdreno || (isWrapperGamenative && isXclipse)
         val bcnEmulation = graphicsDriverConfig.get("bcnEmulation")
         val texturePackSync = app.gamenative.texturepack.TexturePackGate.syncEnabled(context, container.id)
-        val bcnEmulationType = if (texturePackSync) "software" else graphicsDriverConfig.get("bcnEmulationType")
+        val bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType")
         when (bcnEmulation) {
             "auto" -> {
                 if (bcnEmulationType.equals("compute") && !excludeBcnCompute) {

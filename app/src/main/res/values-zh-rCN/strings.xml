@@ -2553,8 +2553,13 @@
     <string name="texture_pack_dont_do_for_game">此游戏不再执行此操作</string>
     <string name="texture_pack_play_now">立即游玩</string>
     <string name="texture_pack_game_setting_title">为此游戏使用服务器端纹理包</string>
+    <string name="texture_pack_game_setting_subtitle">仅适用于 wrapper-gamenative 图形驱动程序和软件 BCn 解码。</string>
+    <string name="texture_pack_game_setting_needs_driver">不可用：请将“%1$s”设为 wrapper-gamenative。</string>
+    <string name="texture_pack_game_setting_needs_software">不可用：请将“%1$s”设为 software。</string>
+    <string name="texture_pack_game_setting_needs_bcn">不可用：请将“%1$s”设为 none 以外的任意值。</string>
+    <string name="settings_texture_section_title">纹理（Mali 及其他不支持 BCn 的 GPU）</string>
     <string name="settings_texture_pack_title">服务器端纹理包</string>
-    <string name="settings_texture_pack_subtitle">在 Mali 设备上启动游戏前提供预先准备的高质量纹理。关闭后也会取消纹理内存上限，并恢复设备自身的纹理转换。</string>
+    <string name="settings_texture_pack_subtitle">在 Mali 设备上启动游戏前提供预先准备的高质量纹理。关闭后也会取消纹理内存上限，并恢复设备自身的纹理转换。仅适用于 wrapper-gamenative 图形驱动程序和软件 BCn 解码。</string>
     <string name="settings_texture_pack_gpu_transcode_title">在 GPU 上转换纹理</string>
     <string name="settings_texture_pack_gpu_transcode_subtitle">避免游戏首次运行时出现 CPU 卡顿和内存峰值。关闭后将使用较慢的 CPU 路径。</string>
     <string name="settings_texture_pack_mobile_data_title">允许使用移动数据传输纹理</string>

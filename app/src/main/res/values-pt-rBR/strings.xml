@@ -2409,8 +2409,13 @@
     <string name="texture_pack_dont_do_for_game">Não fazer isso para este jogo</string>
     <string name="texture_pack_play_now">Jogar agora</string>
     <string name="texture_pack_game_setting_title">Pacote de texturas do servidor para este jogo</string>
+    <string name="texture_pack_game_setting_subtitle">Funciona apenas com o driver gráfico wrapper-gamenative e a decodificação BCn por software.</string>
+    <string name="texture_pack_game_setting_needs_driver">Indisponível: defina %1$s como wrapper-gamenative.</string>
+    <string name="texture_pack_game_setting_needs_software">Indisponível: defina %1$s como software.</string>
+    <string name="texture_pack_game_setting_needs_bcn">Indisponível: defina %1$s com qualquer valor diferente de none.</string>
+    <string name="settings_texture_section_title">Texturas (Mali e outras GPUs sem BCn)</string>
     <string name="settings_texture_pack_title">Pacotes de texturas do servidor</string>
-    <string name="settings_texture_pack_subtitle">Oferece texturas de alta qualidade já preparadas antes de iniciar um jogo em dispositivos Mali. Desativar também desliga o limite de memória de texturas e restaura a conversão de texturas do próprio dispositivo.</string>
+    <string name="settings_texture_pack_subtitle">Oferece texturas de alta qualidade já preparadas antes de iniciar um jogo em dispositivos Mali. Desativar também desliga o limite de memória de texturas e restaura a conversão de texturas do próprio dispositivo. Funciona apenas com o driver gráfico wrapper-gamenative e a decodificação BCn por software.</string>
     <string name="settings_texture_pack_gpu_transcode_title">Converter texturas na GPU</string>
     <string name="settings_texture_pack_gpu_transcode_subtitle">Evita travamentos da CPU e picos de memória na primeira vez que um jogo é executado. Desativar usa o caminho mais lento pela CPU.</string>
     <string name="settings_texture_pack_mobile_data_title">Permitir transferências de texturas por dados móveis</string>

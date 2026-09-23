@@ -2492,8 +2492,13 @@
     <string name="texture_pack_dont_do_for_game">このゲームでは今後行わない</string>
     <string name="texture_pack_play_now">今すぐプレイ</string>
     <string name="texture_pack_game_setting_title">このゲームでサーバー側テクスチャパックを使用</string>
+    <string name="texture_pack_game_setting_subtitle">wrapper-gamenative グラフィックドライバーとソフトウェア BCn デコードでのみ動作します。</string>
+    <string name="texture_pack_game_setting_needs_driver">利用不可: %1$s を wrapper-gamenative に設定してください。</string>
+    <string name="texture_pack_game_setting_needs_software">利用不可: %1$s を software に設定してください。</string>
+    <string name="texture_pack_game_setting_needs_bcn">利用不可: %1$s を none 以外に設定してください。</string>
+    <string name="settings_texture_section_title">テクスチャ（Mali など BCn 非対応の GPU）</string>
     <string name="settings_texture_pack_title">サーバー側テクスチャパック</string>
-    <string name="settings_texture_pack_subtitle">Mali デバイスでゲームを開始する前に、準備済みの高品質テクスチャを提供します。オフにすると、テクスチャメモリの上限も無効になり、デバイス本来のテクスチャ変換に戻ります。</string>
+    <string name="settings_texture_pack_subtitle">Mali デバイスでゲームを開始する前に、準備済みの高品質テクスチャを提供します。オフにすると、テクスチャメモリの上限も無効になり、デバイス本来のテクスチャ変換に戻ります。wrapper-gamenative グラフィックドライバーとソフトウェア BCn デコードでのみ動作します。</string>
     <string name="settings_texture_pack_gpu_transcode_title">GPU でテクスチャを変換</string>
     <string name="settings_texture_pack_gpu_transcode_subtitle">ゲームの初回実行時の CPU の停止やメモリの急増を防ぎます。オフにすると、より遅い CPU 処理を使用します。</string>
     <string name="settings_texture_pack_mobile_data_title">モバイルデータでのテクスチャ転送を許可</string>

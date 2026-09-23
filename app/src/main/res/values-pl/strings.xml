@@ -2545,8 +2545,13 @@
     <string name="texture_pack_dont_do_for_game">Nie rób tego dla tej gry</string>
     <string name="texture_pack_play_now">Graj teraz</string>
     <string name="texture_pack_game_setting_title">Pakiet tekstur z serwera dla tej gry</string>
+    <string name="texture_pack_game_setting_subtitle">Działa tylko ze sterownikiem graficznym wrapper-gamenative i programowym dekodowaniem BCn.</string>
+    <string name="texture_pack_game_setting_needs_driver">Niedostępne: ustaw %1$s na wrapper-gamenative.</string>
+    <string name="texture_pack_game_setting_needs_software">Niedostępne: ustaw %1$s na software.</string>
+    <string name="texture_pack_game_setting_needs_bcn">Niedostępne: ustaw %1$s na wartość inną niż none.</string>
+    <string name="settings_texture_section_title">Tekstury (Mali i inne GPU bez BCn)</string>
     <string name="settings_texture_pack_title">Pakiety tekstur z serwera</string>
-    <string name="settings_texture_pack_subtitle">Oferuj przygotowane tekstury wysokiej jakości przed uruchomieniem gry na urządzeniach z Mali. Wyłączenie tej opcji wyłącza też limit pamięci tekstur i przywraca własną konwersję tekstur urządzenia.</string>
+    <string name="settings_texture_pack_subtitle">Oferuj przygotowane tekstury wysokiej jakości przed uruchomieniem gry na urządzeniach z Mali. Wyłączenie tej opcji wyłącza też limit pamięci tekstur i przywraca własną konwersję tekstur urządzenia. Działa tylko ze sterownikiem graficznym wrapper-gamenative i programowym dekodowaniem BCn.</string>
     <string name="settings_texture_pack_gpu_transcode_title">Konwertuj tekstury na GPU</string>
     <string name="settings_texture_pack_gpu_transcode_subtitle">Zapobiega przestojom CPU i skokom zużycia pamięci przy pierwszym uruchomieniu gry. Po wyłączeniu używana jest wolniejsza ścieżka CPU.</string>
     <string name="settings_texture_pack_mobile_data_title">Zezwalaj na przesyłanie tekstur przez dane komórkowe</string>

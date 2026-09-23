@@ -2550,8 +2550,13 @@
     <string name="texture_pack_dont_do_for_game">Don\'t do this for this game</string>
     <string name="texture_pack_play_now">Play now</string>
     <string name="texture_pack_game_setting_title">Server-side texture pack for this game</string>
+    <string name="texture_pack_game_setting_subtitle">Works only with the wrapper-gamenative graphics driver and software BCn decoding.</string>
+    <string name="texture_pack_game_setting_needs_driver">Unavailable: set %1$s to wrapper-gamenative.</string>
+    <string name="texture_pack_game_setting_needs_software">Unavailable: set %1$s to software.</string>
+    <string name="texture_pack_game_setting_needs_bcn">Unavailable: set %1$s to any value other than none.</string>
+    <string name="settings_texture_section_title">Textures (Mali and other GPUs without BCn)</string>
     <string name="settings_texture_pack_title">Server-side texture packs</string>
-    <string name="settings_texture_pack_subtitle">Offer prepared high-quality textures before a game starts on Mali devices. Turning this off also turns off the texture memory cap and restores the device\'s own texture conversion.</string>
+    <string name="settings_texture_pack_subtitle">Offer prepared high-quality textures before a game starts on Mali devices. Turning this off also turns off the texture memory cap and restores the device\'s own texture conversion. Works only with the wrapper-gamenative graphics driver and software BCn decoding.</string>
     <string name="settings_texture_pack_gpu_transcode_title">Convert textures on the GPU</string>
     <string name="settings_texture_pack_gpu_transcode_subtitle">Avoids CPU stalls and memory spikes the first time a game runs. Turning this off uses the slower CPU path.</string>
     <string name="settings_texture_pack_mobile_data_title">Allow texture transfers on mobile data</string>

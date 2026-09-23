@@ -268,9 +268,23 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     var texturePackOn by remember(state.appId) {
                         mutableStateOf(!TexturePackGate.isSkipped(texturePackContext, state.appId))
                     }
+                    val texturePackConfig = KeyValueSet(config.graphicsDriverConfig)
+                    val texturePackBlocker = when {
+                        !config.graphicsDriver.equals(TexturePackGate.COMPATIBLE_DRIVER, ignoreCase = true) ->
+                            stringResource(R.string.texture_pack_game_setting_needs_driver, stringResource(R.string.graphics_driver))
+                        texturePackConfig.get("bcnEmulationType").equals("compute", ignoreCase = true) ->
+                            stringResource(R.string.texture_pack_game_setting_needs_software, stringResource(R.string.bcn_emulation_type))
+                        texturePackConfig.get("bcnEmulation").equals("none", ignoreCase = true) ->
+                            stringResource(R.string.texture_pack_game_setting_needs_bcn, stringResource(R.string.bcn_emulation))
+                        else -> null
+                    }
                     SettingsSwitch(
                         colors = settingsTileColorsAlt(),
+                        enabled = texturePackBlocker == null,
                         title = { Text(text = stringResource(R.string.texture_pack_game_setting_title)) },
+                        subtitle = {
+                            Text(text = texturePackBlocker ?: stringResource(R.string.texture_pack_game_setting_subtitle))
+                        },
                         state = texturePackOn,
                         onCheckedChange = { checked ->
                             texturePackOn = checked

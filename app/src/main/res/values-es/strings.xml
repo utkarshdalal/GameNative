@@ -2537,8 +2537,13 @@
     <string name="texture_pack_dont_do_for_game">No hacer esto con este juego</string>
     <string name="texture_pack_play_now">Jugar ahora</string>
     <string name="texture_pack_game_setting_title">Paquete de texturas del servidor para este juego</string>
+    <string name="texture_pack_game_setting_subtitle">Solo funciona con el controlador gráfico wrapper-gamenative y la decodificación BCn por software.</string>
+    <string name="texture_pack_game_setting_needs_driver">No disponible: establece %1$s en wrapper-gamenative.</string>
+    <string name="texture_pack_game_setting_needs_software">No disponible: establece %1$s en software.</string>
+    <string name="texture_pack_game_setting_needs_bcn">No disponible: establece %1$s en cualquier valor distinto de none.</string>
+    <string name="settings_texture_section_title">Texturas (Mali y otras GPU sin BCn)</string>
     <string name="settings_texture_pack_title">Paquetes de texturas del servidor</string>
-    <string name="settings_texture_pack_subtitle">Ofrece texturas de alta calidad ya preparadas antes de iniciar un juego en dispositivos Mali. Al desactivarlo también se desactiva el límite de memoria de texturas y se restaura la conversión de texturas propia del dispositivo.</string>
+    <string name="settings_texture_pack_subtitle">Ofrece texturas de alta calidad ya preparadas antes de iniciar un juego en dispositivos Mali. Al desactivarlo también se desactiva el límite de memoria de texturas y se restaura la conversión de texturas propia del dispositivo. Solo funciona con el controlador gráfico wrapper-gamenative y la decodificación BCn por software.</string>
     <string name="settings_texture_pack_gpu_transcode_title">Convertir texturas en la GPU</string>
     <string name="settings_texture_pack_gpu_transcode_subtitle">Evita bloqueos de la CPU y picos de memoria la primera vez que se ejecuta un juego. Si lo desactivas, se usa la ruta de CPU, más lenta.</string>
     <string name="settings_texture_pack_mobile_data_title">Permitir transferencias de texturas con datos móviles</string>

@@ -2541,8 +2541,13 @@
     <string name="texture_pack_dont_do_for_game">Більше не робити для цієї гри</string>
     <string name="texture_pack_play_now">Грати зараз</string>
     <string name="texture_pack_game_setting_title">Серверний пакет текстур для цієї гри</string>
+    <string name="texture_pack_game_setting_subtitle">Працює лише з графічним драйвером wrapper-gamenative і програмним декодуванням BCn.</string>
+    <string name="texture_pack_game_setting_needs_driver">Недоступно: встановіть для параметра «%1$s» значення wrapper-gamenative.</string>
+    <string name="texture_pack_game_setting_needs_software">Недоступно: встановіть для параметра «%1$s» значення software.</string>
+    <string name="texture_pack_game_setting_needs_bcn">Недоступно: встановіть для параметра «%1$s» будь-яке значення, крім none.</string>
+    <string name="settings_texture_section_title">Текстури (Mali та інші GPU без BCn)</string>
     <string name="settings_texture_pack_title">Серверні пакети текстур</string>
-    <string name="settings_texture_pack_subtitle">Пропонувати підготовлені текстури високої якості перед запуском гри на пристроях із Mali. Вимкнення також знімає обмеження пам\'яті текстур і повертає власне перетворення текстур пристрою.</string>
+    <string name="settings_texture_pack_subtitle">Пропонувати підготовлені текстури високої якості перед запуском гри на пристроях із Mali. Вимкнення також знімає обмеження пам\'яті текстур і повертає власне перетворення текстур пристрою. Працює лише з графічним драйвером wrapper-gamenative і програмним декодуванням BCn.</string>
     <string name="settings_texture_pack_gpu_transcode_title">Перетворювати текстури на GPU</string>
     <string name="settings_texture_pack_gpu_transcode_subtitle">Запобігає зависанням процесора та стрибкам пам\'яті під час першого запуску гри. Якщо вимкнути, використовується повільніший шлях через процесор.</string>
     <string name="settings_texture_pack_mobile_data_title">Дозволити передавання текстур мобільними даними</string>
