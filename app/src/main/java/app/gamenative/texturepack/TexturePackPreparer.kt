@@ -40,6 +40,7 @@ class TexturePackPreparer(
     private val storeId: String,
     private val gameDir: File,
     private val client: TexturePackClient = TexturePackClient(context),
+    private val title: String? = null,
 ) {
 
     private val cacheDir = TexturePackPaths.cacheDirForApp(context, appId)
@@ -51,7 +52,7 @@ class TexturePackPreparer(
         onProgress(TexturePackProgress(TexturePackPhase.SCANNING))
         val files = withContext(Dispatchers.IO) { scanFiles(gameDir) }
         withContext(Dispatchers.IO) { TexturePackGate.setPendingSignature(context, appId, TexturePackGate.installSignature(gameDir.absolutePath)) }
-        val start = client.prepareStart(PrepareStartRequest(platform, storeId, files))
+        val start = client.prepareStart(PrepareStartRequest(platform, storeId, files, TexturePackGate.cleanTitle(title)))
         fingerprint = start.fingerprint
         when (start.status) {
             PrepareStartResponse.STATUS_UNSUPPORTED -> return TexturePackEstimate.Unsupported
@@ -63,11 +64,12 @@ class TexturePackPreparer(
         onProgress(TexturePackProgress(TexturePackPhase.HASHING, 0, plan.mips.size.toLong()))
         val byKey = LinkedHashMap<String, PlanMip>()
         withContext(Dispatchers.IO) {
+            val policy = TexturePackGate.policyFor(context, appId)
             MipReader(gameDir).use { reader ->
                 plan.mips.forEachIndexed { index, mip ->
                     currentCoroutineContext().ensureActive()
                     val bytes = reader.read(mip.file, mip.offset, mip.length, mip.codec, mip.innerOffset, mip.innerLength)
-                    byKey[TextureCacheStore.contentKey(mip.src, mip.w, mip.h, bytes)] = mip
+                    byKey[TextureCacheStore.contentKey(mip.src, mip.w, mip.h, bytes, policy)] = mip
                     onProgress(TexturePackProgress(TexturePackPhase.HASHING, index + 1L, plan.mips.size.toLong()))
                 }
             }
@@ -78,7 +80,7 @@ class TexturePackPreparer(
         missingKeys = lookup.want.filter { byKey.containsKey(it) }
 
         val uploadBytes = missingKeys.sumOf { key -> mipBytes(byKey.getValue(key)).toLong() }
-        val downloadBytes = byKey.values.sumOf { TextureCacheStore.astcSizeBytes(it.w, it.h) }
+        val downloadBytes = byKey.keys.sumOf { TextureCacheStore.expectedAstcSizeForKey(it) ?: 0L }
         return TexturePackEstimate.Work(uploadBytes, downloadBytes)
     }
 

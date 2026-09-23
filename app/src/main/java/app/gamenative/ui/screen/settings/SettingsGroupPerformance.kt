@@ -1,19 +1,41 @@
 package app.gamenative.ui.screen.settings
 
+import android.text.format.Formatter
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.texturepack.TextureCacheUsage
+import app.gamenative.texturepack.TexturePackGate
+import app.gamenative.texturepack.TexturePackPaths
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
@@ -84,6 +106,8 @@ fun SettingsGroupPerformance() {
             },
         )
 
+        TextureCacheSetting()
+
         if (editingToken) {
             AlertDialog(
                 onDismissRequest = { editingToken = false },
@@ -148,4 +172,109 @@ fun SettingsGroupPerformance() {
             )
         }
     }
+}
+
+@Composable
+private fun TextureCacheSetting() {
+    val context = LocalContext.current
+    val available = remember { TexturePackGate.needsTexturePack(context) }
+    if (!available) return
+    val scope = rememberCoroutineScope()
+    var usage by remember { mutableStateOf<List<TextureCacheUsage>?>(null) }
+    var refresh by remember { mutableIntStateOf(0) }
+    var showDialog by rememberSaveable { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
+
+    LaunchedEffect(refresh) {
+        usage = withContext(Dispatchers.IO) { TexturePackPaths.cacheUsage(context) }
+    }
+
+    val current = usage
+    SettingsMenuLink(
+        colors = settingsTileColorsAlt(),
+        title = { Text(stringResource(R.string.settings_texture_cache_title)) },
+        subtitle = {
+            Text(
+                if (current == null) {
+                    stringResource(R.string.settings_texture_cache_calculating)
+                } else {
+                    Formatter.formatShortFileSize(context, current.sumOf { it.bytes })
+                },
+            )
+        },
+        onClick = { showDialog = true },
+    )
+
+    if (!showDialog) return
+
+    val deleteDirs: (List<TextureCacheUsage>) -> Unit = { targets ->
+        if (!deleting) {
+            deleting = true
+            scope.launch {
+                withContext(Dispatchers.IO) {
+                    targets.forEach {
+                        TexturePackPaths.clear(it.dir)
+                        TexturePackGate.resetServerEntries(context, it.appId)
+                    }
+                }
+                deleting = false
+                usage = null
+                refresh++
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = { showDialog = false },
+        title = { Text(stringResource(R.string.settings_texture_cache_title)) },
+        text = {
+            when {
+                current == null -> Text(stringResource(R.string.settings_texture_cache_calculating))
+                current.isEmpty() -> Text(stringResource(R.string.settings_texture_cache_empty))
+                else -> Column(
+                    modifier = Modifier
+                        .heightIn(max = 360.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    current.forEach { entry ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = entry.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = Formatter.formatShortFileSize(context, entry.bytes),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            TextButton(enabled = !deleting, onClick = { deleteDirs(listOf(entry)) }) {
+                                Text(stringResource(R.string.settings_texture_cache_delete))
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !deleting && !current.isNullOrEmpty(),
+                onClick = { current?.let(deleteDirs) },
+            ) {
+                Text(stringResource(R.string.settings_texture_cache_delete_all))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { showDialog = false }) {
+                Text(stringResource(R.string.settings_texture_cache_close))
+            }
+        },
+    )
 }

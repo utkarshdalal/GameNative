@@ -1935,6 +1935,7 @@ fun PluviaMain(
 
             AchievementOverlay()
             GameInviteOverlay()
+            app.gamenative.ui.component.dialog.TexturePackUploadDialog()
         }
     }
 }

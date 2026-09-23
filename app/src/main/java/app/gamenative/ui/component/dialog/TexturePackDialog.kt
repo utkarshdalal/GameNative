@@ -46,10 +46,11 @@ fun TexturePackDialog(
     gameDir: File,
     onPlay: () -> Unit,
     onDismiss: () -> Unit,
+    title: String? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val preparer = remember(appId, storeId) { TexturePackPreparer(context, appId, platform, storeId, gameDir) }
+    val preparer = remember(appId, storeId) { TexturePackPreparer(context, appId, platform, storeId, gameDir, title = title) }
 
     var estimate by remember(appId) { mutableStateOf<TexturePackEstimate?>(null) }
     var statusError by remember(appId) { mutableStateOf<String?>(null) }

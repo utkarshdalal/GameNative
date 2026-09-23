@@ -4915,14 +4915,9 @@ private fun exit(
     }
     frameRating?.writeSessionSummary()
 
-    app.gamenative.texturepack.TexturePackLiveUploader.stop()
-
     runCatching {
-        val syncContext = frameRating?.context ?: PluviaApp.xServerView?.context
-        if (syncContext != null) {
-            app.gamenative.texturepack.TexturePackSyncWorker.enqueueFullSync(syncContext.applicationContext, appId)
-        }
-    }.onFailure { Timber.w(it, "could not enqueue texture pack sync for $appId") }
+        app.gamenative.texturepack.TexturePackUploadPrompt.request(appId)
+    }.onFailure { Timber.w(it, "could not request texture pack upload for $appId") }
 
     if (MainActivity.wasLaunchedViaExternalIntent) {
         Timber.i("[IntentLaunch]: Waiting for exit handling before returning to external launcher")
@@ -6094,7 +6089,8 @@ private suspend fun extractGraphicsDriverFiles(
         val isXclipse = vendorId == 0x144D
         val excludeBcnCompute = isAdreno || (isWrapperGamenative && isXclipse)
         val bcnEmulation = graphicsDriverConfig.get("bcnEmulation")
-        val bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType")
+        val texturePackSync = app.gamenative.texturepack.TexturePackGate.syncEnabled(context, container.id)
+        val bcnEmulationType = if (texturePackSync) "software" else graphicsDriverConfig.get("bcnEmulationType")
         when (bcnEmulation) {
             "auto" -> {
                 if (bcnEmulationType.equals("compute") && !excludeBcnCompute) {
@@ -6114,17 +6110,23 @@ private suspend fun extractGraphicsDriverFiles(
             else -> envVars.put("WRAPPER_EMULATE_BCN", "1")
         }
 
-        val bcnEmulationCache = if (PrefManager.texturePackEnabled && app.gamenative.texturepack.TexturePackGate.needsTexturePack(context)) "1" else graphicsDriverConfig.get("bcnEmulationCache", "1")
+        val bcnEmulationCache = if (texturePackSync) "1" else graphicsDriverConfig.get("bcnEmulationCache", "1")
         envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache)
         val textureCacheDir = app.gamenative.texturepack.TexturePackPaths.ensureCacheDir(container)
         envVars.put("WRAPPER_CACHE_PATH", textureCacheDir.absolutePath)
-        app.gamenative.texturepack.TexturePackLiveUploader.start(context, textureCacheDir)
 
         val transcoder = graphicsDriverConfig.get("transcoder", "cpu")
-        envVars.put("WRAPPER_BCN_GPU", if (transcoder.equals("gpu", ignoreCase = true)) "1" else "0")
+        envVars.put("WRAPPER_BCN_GPU", if (!texturePackSync && transcoder.equals("gpu", ignoreCase = true)) "1" else "0")
 
         val wrapperQuality = graphicsDriverConfig.get("quality", "low")
         envVars.put("WRAPPER_ASTC_BLOCK", if (wrapperQuality.equals("high", ignoreCase = true)) "4x4" else "8x8")
+        if (texturePackSync &&
+            app.gamenative.texturepack.TexturePackGate.serverPackPresent(context, container.id)
+        ) {
+            app.gamenative.texturepack.TexturePackGate.policyEnv(app.gamenative.texturepack.TexturePackGate.policyFor(context, container.id))?.let {
+                envVars.put("WRAPPER_BCN_POLICY", it)
+            }
+        }
 
         if (!vkbasaltConfig.isEmpty()) {
             envVars.put("ENABLE_VKBASALT", "1")

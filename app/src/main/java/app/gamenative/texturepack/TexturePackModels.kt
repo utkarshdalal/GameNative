@@ -18,6 +18,7 @@ data class PrepareStartRequest(
     val platform: String,
     val storeId: String,
     val files: List<PrepareFileEntry>,
+    val title: String? = null,
 )
 
 @Serializable
@@ -91,17 +92,28 @@ data class PackRegisterRequest(
     val storeId: String,
     val files: List<PrepareFileEntry>,
     val keys: List<String> = emptyList(),
+    val title: String? = null,
+    val needsFullRes: Boolean = false,
+)
+
+@Serializable
+data class PackPolicy(
+    val enabled: Boolean = false,
+    val blocks: Map<String, String> = emptyMap(),
+    val maxDim: Int? = null,
 )
 
 @Serializable
 data class PackRegisterResponse(
     val fingerprint: String = "",
+    val policy: PackPolicy? = null,
 )
 
 @Serializable
 data class PackEntry(
     val key: String,
     val size: Long = 0L,
+    val rawSize: Long? = null,
     val pending: Boolean = false,
 )
 
@@ -111,6 +123,8 @@ data class PackResponse(
     val pending: JsonElement? = null,
     val encoded: Int = 0,
     val expected: Int = 0,
+    val next: Long? = null,
+    val policy: PackPolicy? = null,
 ) {
     val pendingKeys: Set<String>
         get() = (pending as? JsonArray)
@@ -125,6 +139,31 @@ data class PackResponse(
             else -> 0
         }
 }
+
+@Serializable
+data class EntriesRequest(val keys: List<String>)
+
+@Serializable
+data class SourceResult(
+    val key: String,
+    val status: String = "",
+    val error: String? = null,
+) {
+    val accepted: Boolean
+        get() = status == STATUS_QUEUED || status == STATUS_HAVE || status == STATUS_PENDING
+
+    companion object {
+        const val STATUS_QUEUED = "queued"
+        const val STATUS_HAVE = "have"
+        const val STATUS_PENDING = "pending"
+        const val STATUS_REJECTED = "rejected"
+    }
+}
+
+@Serializable
+data class SourcesResponse(
+    val results: List<SourceResult> = emptyList(),
+)
 
 object TextureCodec {
     const val NONE = "none"

@@ -95,6 +95,9 @@ object GraphicsDriverDownloader {
      * Loads the graphics driver manifest from assets.
      */
     private fun loadGraphicsDriverManifest(context: Context): GraphicsDriverManifest {
+        if (BuildConfig.MODERN_ANDROID) {
+            remoteManifest(context)?.let { return it }
+        }
         return try {
             val manifestJson = context.assets.open(GRAPHICS_DRIVER_MANIFEST_FILE).bufferedReader().use { it.readText() }
             json.decodeFromString<GraphicsDriverManifest>(manifestJson)
@@ -102,6 +105,43 @@ object GraphicsDriverDownloader {
             Timber.e(e, "Failed to load $GRAPHICS_DRIVER_MANIFEST_FILE")
             throw Exception("Failed to load graphics driver manifest: ${e.message}", e)
         }
+    }
+
+    private fun remoteManifest(context: Context): GraphicsDriverManifest? {
+        val cached = File(context.filesDir, "$GRAPHICS_DRIVER_CACHE_DIR/$GRAPHICS_DRIVER_MANIFEST_FILE")
+        for (url in REMOTE_MANIFEST_URLS) {
+            try {
+                val request = okhttp3.Request.Builder().url(url).header("Cache-Control", "no-cache").build()
+                manifestClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@use
+                    val body = response.body.string()
+                    val parsed = json.decodeFromString<GraphicsDriverManifest>(body)
+                    cached.parentFile?.mkdirs()
+                    cached.writeText(body)
+                    Timber.i("Using remote graphics driver manifest from $url (updated ${parsed.updatedAt})")
+                    return parsed
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "Remote graphics driver manifest unavailable at $url")
+            }
+        }
+        return try {
+            if (cached.exists()) json.decodeFromString<GraphicsDriverManifest>(cached.readText()) else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private val REMOTE_MANIFEST_URLS = listOf(
+        "https://downloads.gamenative.app/$GRAPHICS_DRIVER_MANIFEST_FILE",
+        "https://pub-9fcd5294bd0d4b85a9d73615bf98f3b5.r2.dev/$GRAPHICS_DRIVER_MANIFEST_FILE",
+    )
+
+    private val manifestClient: okhttp3.OkHttpClient by lazy {
+        okhttp3.OkHttpClient.Builder()
+            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
     }
 
     /**

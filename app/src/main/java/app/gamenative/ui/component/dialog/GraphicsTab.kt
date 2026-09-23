@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
@@ -260,12 +261,30 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             )
             if (state.appId.isNotBlank()) {
                 val texturePackContext = LocalContext.current
+                val texturePackAvailable = remember {
+                    PrefManager.texturePackEnabled && TexturePackGate.needsTexturePack(texturePackContext)
+                }
+                if (texturePackAvailable) {
+                    var texturePackOn by remember(state.appId) {
+                        mutableStateOf(!TexturePackGate.isSkipped(texturePackContext, state.appId))
+                    }
+                    SettingsSwitch(
+                        colors = settingsTileColorsAlt(),
+                        title = { Text(text = stringResource(R.string.texture_pack_game_setting_title)) },
+                        state = texturePackOn,
+                        onCheckedChange = { checked ->
+                            texturePackOn = checked
+                            TexturePackGate.setSkipped(texturePackContext, state.appId, !checked)
+                        },
+                    )
+                }
                 SettingsMenuLink(
                     colors = settingsTileColorsAlt(),
                     title = { Text(text = stringResource(R.string.clear_texture_cache)) },
                     subtitle = { Text(text = stringResource(R.string.clear_texture_cache_subtitle)) },
                     onClick = {
                         TexturePackPaths.clear(TexturePackPaths.cacheDirForApp(texturePackContext, state.appId))
+                        TexturePackGate.resetServerEntries(texturePackContext, state.appId)
                     },
                 )
                 val texturePackLaunchInfo = remember(state.appId) {
@@ -287,6 +306,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                             gameDir = java.io.File(texturePackLaunchInfo.installDir),
                             onPlay = { prepareTextures = false },
                             onDismiss = { prepareTextures = false },
+                            title = texturePackLaunchInfo.title,
                         )
                     }
                 }

@@ -1626,21 +1626,25 @@ abstract class BaseAppScreen {
         }
 
         val texturePackInstallDir = remember(appId) { getInstallPath(context, libraryItem) }
+        var texturePackDownloadFor by remember(appId) { mutableStateOf<Boolean?>(null) }
         val gatedClickPlay: (Boolean) -> Unit = { asRoot ->
+            var gated = false
             try {
-                if (app.gamenative.texturepack.TexturePackGate.syncEnabled(context)) {
+                if (app.gamenative.texturepack.TexturePackGate.syncEnabled(context, appId)) {
                     app.gamenative.texturepack.TexturePackGate.rememberLaunchInfo(
                         context,
                         appId,
                         libraryItem.gameSource,
                         texturePackInstallDir,
+                        libraryItem.name,
                     )
-                    app.gamenative.texturepack.TexturePackSyncWorker.enqueueDownloadSync(context, appId)
+                    texturePackDownloadFor = asRoot
+                    gated = true
                 }
             } catch (e: Exception) {
                 Timber.w(e, "texture pack sync trigger failed for $appId")
             }
-            onClickPlay(asRoot)
+            if (!gated) onClickPlay(asRoot)
         }
 
         val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, gatedClickPlay, onTestGraphics, onPlayWithDiagnostics, onAiDebugRun, exportFrontendLauncher)
@@ -1731,6 +1735,16 @@ abstract class BaseAppScreen {
             optionsMenu = optionsMenu,
             dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested,
         )
+
+        texturePackDownloadFor?.let { asRoot ->
+            app.gamenative.ui.component.dialog.TexturePackDownloadDialog(
+                appId = appId,
+                onLaunch = {
+                    texturePackDownloadFor = null
+                    onClickPlay(asRoot)
+                },
+            )
+        }
 
         if (showReadiness && launchActivity != null) {
             app.gamenative.launch.LaunchReadiness.Prompt(launchActivity) {
