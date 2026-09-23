@@ -29,6 +29,7 @@ object TexturePackSync {
     const val UPLOAD_BATCH_RECORDS = 64
     const val UPLOAD_BATCH_BYTES = 8L * 1024L * 1024L
     const val UPLOAD_BATCHES_IN_FLIGHT = 4
+    const val DEFAULT_SERVED_DIM = 1024
     const val MAX_PACK_PAGES = 1000
     const val MAX_ATTEMPTS = 3
     const val RETRY_BACKOFF_MS = 2_000L
@@ -66,6 +67,15 @@ object TexturePackSync {
         return firstSeen.entries
             .sortedWith(compareBy<Map.Entry<String, Long>> { it.value }.thenBy { it.key })
             .map { it.key }
+    }
+
+    fun unservedSources(sources: List<File>, policy: PackPolicy?, needsFullRes: Boolean): List<File> {
+        if (needsFullRes) return emptyList()
+        val maxDim = if (policy != null) policy.maxDim ?: return emptyList() else DEFAULT_SERVED_DIM
+        return sources.filter { file ->
+            val (w, h) = TexturePackKeys.dimensionsOf(keyOf(file, policy)) ?: return@filter false
+            w > maxDim || h > maxDim
+        }
     }
 
     fun overCapSources(sources: List<File>, capBytes: Long = PENDING_CAP_BYTES): List<File> {
@@ -287,6 +297,14 @@ object TexturePackSync {
         }
 
         val policy = TexturePackGate.policyOf(container)
+        val unserved = withContext(Dispatchers.IO) {
+            unservedSources(sourceFiles(cacheDir), policy, TexturePackGate.needsFullRes(cacheDir))
+        }
+        if (unserved.isNotEmpty()) {
+            val bytes = unserved.sumOf { it.length() }
+            Timber.i("texture pack: dropping ${unserved.size} pending sources ($bytes bytes) above the served size")
+            withContext(Dispatchers.IO) { unserved.forEach { it.delete() } }
+        }
         val keys = withContext(Dispatchers.IO) { packKeys(cacheDir, policy) }
         ensureFingerprint(client, container, keys)
 

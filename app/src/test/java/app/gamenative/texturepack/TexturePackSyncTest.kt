@@ -294,4 +294,20 @@ class TexturePackSyncTest {
         assertEquals(listOf(PrepareFileEntry("archive.pak", 2L)), TexturePackSync.installFiles("fp", listing, install))
         assertTrue(listing.isFile)
     }
+
+    @Test
+    fun unservedSourcesDropsBigLevelsUnlessFullResIsNeeded() {
+        val dir = File(System.getProperty("java.io.tmpdir"), "tp-unserved-" + System.nanoTime()).apply { mkdirs() }
+        val big = File(dir, "bc7_2048x2048_0000000000000001.src").apply { writeBytes(ByteArray(16)) }
+        val wide = File(dir, "bc7_4096x512_0000000000000002.src").apply { writeBytes(ByteArray(16)) }
+        val small = File(dir, "bc7_1024x1024_0000000000000003.src").apply { writeBytes(ByteArray(16)) }
+        val all = listOf(big, wide, small)
+        assertEquals(listOf(big, wide), TexturePackSync.unservedSources(all, null, needsFullRes = false))
+        assertEquals(emptyList<File>(), TexturePackSync.unservedSources(all, null, needsFullRes = true))
+        val capped = PackPolicy(enabled = true, blocks = mapOf("bc7" to "4x4"), maxDim = 512)
+        assertEquals(all, TexturePackSync.unservedSources(all, capped, needsFullRes = false))
+        val uncapped = PackPolicy(enabled = true, blocks = mapOf("bc7" to "4x4"), maxDim = null)
+        assertEquals(emptyList<File>(), TexturePackSync.unservedSources(all, uncapped, needsFullRes = false))
+        dir.deleteRecursively()
+    }
 }
