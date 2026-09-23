@@ -6145,14 +6145,7 @@ private suspend fun extractGraphicsDriverFiles(
         }
 
         val transcoder = graphicsDriverConfig.get("transcoder", "cpu")
-        envVars.put(
-            "WRAPPER_BCN_GPU",
-            app.gamenative.texturepack.TexturePackGate.gpuTranscodeEnv(
-                texturePackSync,
-                PrefManager.texturePackGpuTranscode,
-                transcoder.equals("gpu", ignoreCase = true),
-            ),
-        )
+        envVars.put("WRAPPER_BCN_GPU", if (transcoder.equals("gpu", ignoreCase = true)) "1" else "0")
 
         val wrapperQuality = graphicsDriverConfig.get("quality", "low")
         envVars.put("WRAPPER_ASTC_BLOCK", if (wrapperQuality.equals("high", ignoreCase = true)) "4x4" else "8x8")

@@ -175,16 +175,4 @@ class TexturePackPolicyTest {
         assertEquals(1, TextureCacheStore.pruneSuperseded(dir, key))
         assertFalse(h4.exists())
     }
-
-    @Test
-    fun `gpu transcode follows the preference on the texture pack path`() {
-        assertEquals("1", TexturePackGate.gpuTranscodeEnv(sync = true, prefOn = true, containerTranscoderIsGpu = false))
-        assertEquals("0", TexturePackGate.gpuTranscodeEnv(sync = true, prefOn = false, containerTranscoderIsGpu = true))
-    }
-
-    @Test
-    fun `gpu transcode follows the container setting without texture packs`() {
-        assertEquals("1", TexturePackGate.gpuTranscodeEnv(sync = false, prefOn = false, containerTranscoderIsGpu = true))
-        assertEquals("0", TexturePackGate.gpuTranscodeEnv(sync = false, prefOn = true, containerTranscoderIsGpu = false))
-    }
 }

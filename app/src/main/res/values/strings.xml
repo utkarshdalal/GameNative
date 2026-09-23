@@ -2554,15 +2554,10 @@
     <string name="texture_pack_game_setting_needs_driver">Unavailable: set %1$s to wrapper-gamenative.</string>
     <string name="texture_pack_game_setting_needs_software">Unavailable: set %1$s to software.</string>
     <string name="texture_pack_game_setting_needs_bcn">Unavailable: set %1$s to any value other than none.</string>
-    <string name="settings_texture_section_title">Textures (Mali and other GPUs without BCn)</string>
     <string name="settings_texture_pack_title">Server-side texture packs</string>
-    <string name="settings_texture_pack_subtitle">Offer prepared high-quality textures before a game starts on GPUs without BCn texture support (Mali, PowerVR and others). Turning this off also turns off the texture memory cap and restores the device\'s own texture conversion. Works only with the wrapper-gamenative graphics driver and software BCn decoding.</string>
-    <string name="settings_texture_pack_gpu_transcode_title">Convert textures on the GPU</string>
-    <string name="settings_texture_pack_gpu_transcode_subtitle">Avoids CPU stalls and memory spikes the first time a game runs. Turning this off uses the slower CPU path.</string>
+    <string name="settings_texture_pack_subtitle">Use prepared high-quality textures on non-Adreno/Xclipse GPUs. Increases image quality while reducing game RAM usage and heat.</string>
     <string name="settings_texture_pack_mobile_data_title">Allow texture transfers on mobile data</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Texture packs transfer only on Wi-Fi unless this is on.</string>
-    <string name="settings_texture_pack_server_title">Texture pack server</string>
-    <string name="settings_texture_pack_server_reset">Reset to default</string>
     <string name="settings_texture_cache_title">Texture cache</string>
     <string name="settings_texture_cache_calculating">Calculating…</string>
     <string name="settings_texture_cache_empty">No cached textures</string>

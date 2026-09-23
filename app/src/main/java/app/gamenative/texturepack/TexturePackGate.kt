@@ -77,11 +77,6 @@ object TexturePackGate {
         return parts.takeIf { it.isNotEmpty() }?.joinToString(",")
     }
 
-    fun gpuTranscodeEnv(sync: Boolean, prefOn: Boolean, containerTranscoderIsGpu: Boolean): String {
-        val gpu = if (sync) prefOn else containerTranscoderIsGpu
-        return if (gpu) "1" else "0"
-    }
-
     fun needsFullRes(cacheDir: File): Boolean = File(cacheDir, NEEDS_FULL_RES_MARKER).exists()
 
     fun platformFor(source: GameSource): String? = when (source) {

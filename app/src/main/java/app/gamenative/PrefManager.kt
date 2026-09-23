@@ -1709,16 +1709,6 @@ object PrefManager {
         get() = getPref(TEXTURE_PACK_ENABLED, true)
         set(value) { setPref(TEXTURE_PACK_ENABLED, value) }
 
-    private val TEXTURE_PACK_SERVER = stringPreferencesKey("texturePackServer")
-    var texturePackServer: String
-        get() = getPref(TEXTURE_PACK_SERVER, DEFAULT_TEXTURE_PACK_SERVER).ifBlank { DEFAULT_TEXTURE_PACK_SERVER }
-        set(value) { setPref(TEXTURE_PACK_SERVER, value) }
-
-    private val TEXTURE_PACK_GPU_TRANSCODE = booleanPreferencesKey("texturePackGpuTranscode")
-    var texturePackGpuTranscode: Boolean
-        get() = getPref(TEXTURE_PACK_GPU_TRANSCODE, true)
-        set(value) { setPref(TEXTURE_PACK_GPU_TRANSCODE, value) }
-
     private val TEXTURE_PACK_ALLOW_MOBILE_DATA = booleanPreferencesKey("texturePackAllowMobileData")
     var texturePackAllowMobileData: Boolean
         get() = getPref(TEXTURE_PACK_ALLOW_MOBILE_DATA, false)

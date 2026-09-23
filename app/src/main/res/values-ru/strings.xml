@@ -2475,15 +2475,10 @@ https://gamenative.app
     <string name="texture_pack_game_setting_needs_driver">Недоступно: установите для параметра «%1$s» значение wrapper-gamenative.</string>
     <string name="texture_pack_game_setting_needs_software">Недоступно: установите для параметра «%1$s» значение software.</string>
     <string name="texture_pack_game_setting_needs_bcn">Недоступно: установите для параметра «%1$s» любое значение, кроме none.</string>
-    <string name="settings_texture_section_title">Текстуры (Mali и другие GPU без BCn)</string>
     <string name="settings_texture_pack_title">Серверные пакеты текстур</string>
-    <string name="settings_texture_pack_subtitle">Предлагать подготовленные текстуры высокого качества перед запуском игры на GPU без поддержки текстур BCn (Mali, PowerVR и другие). Отключение также снимает ограничение памяти текстур и возвращает собственное преобразование текстур устройства. Работает только с графическим драйвером wrapper-gamenative и программным декодированием BCn.</string>
-    <string name="settings_texture_pack_gpu_transcode_title">Преобразовывать текстуры на GPU</string>
-    <string name="settings_texture_pack_gpu_transcode_subtitle">Предотвращает зависания процессора и скачки памяти при первом запуске игры. При отключении используется более медленный путь через процессор.</string>
+    <string name="settings_texture_pack_subtitle">Использует подготовленные высококачественные текстуры на GPU, отличных от Adreno/Xclipse. Повышает качество изображения, одновременно снижая расход ОЗУ игрой и нагрев.</string>
     <string name="settings_texture_pack_mobile_data_title">Разрешить передачу текстур по мобильной сети</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Без этой опции пакеты текстур передаются только по Wi-Fi.</string>
-    <string name="settings_texture_pack_server_title">Сервер пакетов текстур</string>
-    <string name="settings_texture_pack_server_reset">Сбросить по умолчанию</string>
     <string name="settings_texture_cache_title">Кэш текстур</string>
     <string name="settings_texture_cache_calculating">Подсчёт…</string>
     <string name="settings_texture_cache_empty">Нет кэшированных текстур</string>

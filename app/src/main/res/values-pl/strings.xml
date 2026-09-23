@@ -2549,15 +2549,10 @@
     <string name="texture_pack_game_setting_needs_driver">Niedostępne: ustaw %1$s na wrapper-gamenative.</string>
     <string name="texture_pack_game_setting_needs_software">Niedostępne: ustaw %1$s na software.</string>
     <string name="texture_pack_game_setting_needs_bcn">Niedostępne: ustaw %1$s na wartość inną niż none.</string>
-    <string name="settings_texture_section_title">Tekstury (Mali i inne GPU bez BCn)</string>
     <string name="settings_texture_pack_title">Pakiety tekstur z serwera</string>
-    <string name="settings_texture_pack_subtitle">Oferuj przygotowane tekstury wysokiej jakości przed uruchomieniem gry na GPU bez obsługi tekstur BCn (Mali, PowerVR i inne). Wyłączenie tej opcji wyłącza też limit pamięci tekstur i przywraca własną konwersję tekstur urządzenia. Działa tylko ze sterownikiem graficznym wrapper-gamenative i programowym dekodowaniem BCn.</string>
-    <string name="settings_texture_pack_gpu_transcode_title">Konwertuj tekstury na GPU</string>
-    <string name="settings_texture_pack_gpu_transcode_subtitle">Zapobiega przestojom CPU i skokom zużycia pamięci przy pierwszym uruchomieniu gry. Po wyłączeniu używana jest wolniejsza ścieżka CPU.</string>
+    <string name="settings_texture_pack_subtitle">Używa przygotowanych tekstur wysokiej jakości na układach GPU innych niż Adreno/Xclipse. Poprawia jakość obrazu, jednocześnie zmniejszając zużycie pamięci RAM przez grę i nagrzewanie.</string>
     <string name="settings_texture_pack_mobile_data_title">Zezwalaj na przesyłanie tekstur przez dane komórkowe</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Pakiety tekstur są przesyłane tylko przez Wi-Fi, chyba że ta opcja jest włączona.</string>
-    <string name="settings_texture_pack_server_title">Serwer pakietów tekstur</string>
-    <string name="settings_texture_pack_server_reset">Przywróć domyślne</string>
     <string name="settings_texture_cache_title">Pamięć podręczna tekstur</string>
     <string name="settings_texture_cache_calculating">Obliczanie…</string>
     <string name="settings_texture_cache_empty">Brak tekstur w pamięci podręcznej</string>

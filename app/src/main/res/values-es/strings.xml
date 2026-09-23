@@ -2541,15 +2541,10 @@
     <string name="texture_pack_game_setting_needs_driver">No disponible: establece %1$s en wrapper-gamenative.</string>
     <string name="texture_pack_game_setting_needs_software">No disponible: establece %1$s en software.</string>
     <string name="texture_pack_game_setting_needs_bcn">No disponible: establece %1$s en cualquier valor distinto de none.</string>
-    <string name="settings_texture_section_title">Texturas (Mali y otras GPU sin BCn)</string>
     <string name="settings_texture_pack_title">Paquetes de texturas del servidor</string>
-    <string name="settings_texture_pack_subtitle">Ofrece texturas de alta calidad ya preparadas antes de iniciar un juego en GPU sin soporte de texturas BCn (Mali, PowerVR y otras). Al desactivarlo también se desactiva el límite de memoria de texturas y se restaura la conversión de texturas propia del dispositivo. Solo funciona con el controlador gráfico wrapper-gamenative y la decodificación BCn por software.</string>
-    <string name="settings_texture_pack_gpu_transcode_title">Convertir texturas en la GPU</string>
-    <string name="settings_texture_pack_gpu_transcode_subtitle">Evita bloqueos de la CPU y picos de memoria la primera vez que se ejecuta un juego. Si lo desactivas, se usa la ruta de CPU, más lenta.</string>
+    <string name="settings_texture_pack_subtitle">Usa texturas de alta calidad preparadas en GPU que no son Adreno/Xclipse. Mejora la calidad de imagen y reduce el uso de RAM del juego y el calor.</string>
     <string name="settings_texture_pack_mobile_data_title">Permitir transferencias de texturas con datos móviles</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Los paquetes de texturas solo se transfieren por Wi-Fi salvo que esto esté activado.</string>
-    <string name="settings_texture_pack_server_title">Servidor de paquetes de texturas</string>
-    <string name="settings_texture_pack_server_reset">Restablecer valor predeterminado</string>
     <string name="settings_texture_cache_title">Caché de texturas</string>
     <string name="settings_texture_cache_calculating">Calculando…</string>
     <string name="settings_texture_cache_empty">No hay texturas en caché</string>

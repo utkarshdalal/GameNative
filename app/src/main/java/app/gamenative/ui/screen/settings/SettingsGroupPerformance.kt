@@ -1,7 +1,6 @@
 package app.gamenative.ui.screen.settings
 
 import android.text.format.Formatter
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,7 +23,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,11 +45,20 @@ import com.alorma.compose.settings.ui.SettingsSwitch
 fun SettingsGroupPerformance() {
     val context = LocalContext.current
     val texturePackAvailable = remember { TexturePackGate.needsTexturePack(context) }
-    if (texturePackAvailable) {
-        SettingsGroup(
-            modifier = Modifier.background(Color.Transparent),
-            title = { Text(text = stringResource(R.string.settings_texture_section_title)) },
-        ) {
+    SettingsGroup {
+        var powerControlDefaultEnabled by rememberSaveable { mutableStateOf(PrefManager.powerControlDefaultEnabled) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            state = powerControlDefaultEnabled,
+            title = { Text(stringResource(R.string.settings_performance_power_control_title)) },
+            subtitle = { Text(stringResource(R.string.settings_performance_power_control_subtitle)) },
+            onCheckedChange = {
+                powerControlDefaultEnabled = it
+                PrefManager.powerControlDefaultEnabled = it
+            },
+        )
+
+        if (texturePackAvailable) {
             var texturePackEnabled by rememberSaveable { mutableStateOf(PrefManager.texturePackEnabled) }
             SettingsSwitch(
                 colors = settingsTileColorsAlt(),
@@ -65,18 +71,7 @@ fun SettingsGroupPerformance() {
                 },
             )
 
-            var texturePackGpuTranscode by rememberSaveable { mutableStateOf(PrefManager.texturePackGpuTranscode) }
-            SettingsSwitch(
-                colors = settingsTileColorsAlt(),
-                enabled = texturePackEnabled,
-                state = texturePackGpuTranscode,
-                title = { Text(stringResource(R.string.settings_texture_pack_gpu_transcode_title)) },
-                subtitle = { Text(stringResource(R.string.settings_texture_pack_gpu_transcode_subtitle)) },
-                onCheckedChange = {
-                    texturePackGpuTranscode = it
-                    PrefManager.texturePackGpuTranscode = it
-                },
-            )
+            TextureCacheSetting()
 
             var texturePackAllowMobileData by rememberSaveable { mutableStateOf(PrefManager.texturePackAllowMobileData) }
             SettingsSwitch(
@@ -90,69 +85,7 @@ fun SettingsGroupPerformance() {
                     TexturePackSyncWorker.schedule(context)
                 },
             )
-
-            TextureCacheSetting()
-
-            var texturePackServer by rememberSaveable { mutableStateOf(PrefManager.texturePackServer) }
-            var editingServer by rememberSaveable { mutableStateOf(false) }
-            var serverDraft by rememberSaveable { mutableStateOf(texturePackServer) }
-            SettingsMenuLink(
-                colors = settingsTileColorsAlt(),
-                title = { Text(stringResource(R.string.settings_texture_pack_server_title)) },
-                subtitle = { Text(texturePackServer) },
-                onClick = {
-                    serverDraft = texturePackServer
-                    editingServer = true
-                },
-            )
-
-            if (editingServer) {
-                AlertDialog(
-                    onDismissRequest = { editingServer = false },
-                    title = { Text(stringResource(R.string.settings_texture_pack_server_title)) },
-                    text = {
-                        OutlinedTextField(
-                            modifier = Modifier.fillMaxWidth(),
-                            value = serverDraft,
-                            onValueChange = { serverDraft = it },
-                            singleLine = true,
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            val value = serverDraft.trim().ifBlank { PrefManager.DEFAULT_TEXTURE_PACK_SERVER }
-                            PrefManager.texturePackServer = value
-                            texturePackServer = value
-                            editingServer = false
-                        }) {
-                            Text(stringResource(android.R.string.ok))
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = {
-                            PrefManager.texturePackServer = PrefManager.DEFAULT_TEXTURE_PACK_SERVER
-                            texturePackServer = PrefManager.DEFAULT_TEXTURE_PACK_SERVER
-                            editingServer = false
-                        }) {
-                            Text(stringResource(R.string.settings_texture_pack_server_reset))
-                        }
-                    },
-                )
-            }
         }
-    }
-    SettingsGroup {
-        var powerControlDefaultEnabled by rememberSaveable { mutableStateOf(PrefManager.powerControlDefaultEnabled) }
-        SettingsSwitch(
-            colors = settingsTileColorsAlt(),
-            state = powerControlDefaultEnabled,
-            title = { Text(stringResource(R.string.settings_performance_power_control_title)) },
-            subtitle = { Text(stringResource(R.string.settings_performance_power_control_subtitle)) },
-            onCheckedChange = {
-                powerControlDefaultEnabled = it
-                PrefManager.powerControlDefaultEnabled = it
-            },
-        )
     }
 }
 

@@ -2413,15 +2413,10 @@
     <string name="texture_pack_game_setting_needs_driver">Ikke tilgængelig: sæt %1$s til wrapper-gamenative.</string>
     <string name="texture_pack_game_setting_needs_software">Ikke tilgængelig: sæt %1$s til software.</string>
     <string name="texture_pack_game_setting_needs_bcn">Ikke tilgængelig: sæt %1$s til en anden værdi end none.</string>
-    <string name="settings_texture_section_title">Teksturer (Mali og andre GPU\'er uden BCn)</string>
     <string name="settings_texture_pack_title">Serverbaserede teksturpakker</string>
-    <string name="settings_texture_pack_subtitle">Tilbyd forberedte teksturer i høj kvalitet, før et spil starter på GPU\'er uden understøttelse af BCn-teksturer (Mali, PowerVR og andre). Når du slår dette fra, slås grænsen for teksturhukommelse også fra, og enhedens egen teksturkonvertering gendannes. Virker kun med grafikdriveren wrapper-gamenative og software-BCn-afkodning.</string>
-    <string name="settings_texture_pack_gpu_transcode_title">Konvertér teksturer på GPU\'en</string>
-    <string name="settings_texture_pack_gpu_transcode_subtitle">Undgår CPU-stop og hukommelsesspidser første gang et spil kører. Slås dette fra, bruges den langsommere CPU-vej.</string>
+    <string name="settings_texture_pack_subtitle">Brug forberedte teksturer i høj kvalitet på GPU\'er, der ikke er Adreno/Xclipse. Forbedrer billedkvaliteten og reducerer samtidig spillets RAM-forbrug og varme.</string>
     <string name="settings_texture_pack_mobile_data_title">Tillad teksturoverførsler på mobildata</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Teksturpakker overføres kun på Wi-Fi, medmindre dette er slået til.</string>
-    <string name="settings_texture_pack_server_title">Teksturpakkeserver</string>
-    <string name="settings_texture_pack_server_reset">Nulstil til standard</string>
     <string name="settings_texture_cache_title">Teksturcache</string>
     <string name="settings_texture_cache_calculating">Beregner…</string>
     <string name="settings_texture_cache_empty">Ingen gemte teksturer</string>

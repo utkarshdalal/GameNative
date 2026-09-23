@@ -27,7 +27,7 @@ class TexturePackNetworkUnavailable : IOException("texture pack transfers are re
 
 class TexturePackClient(
     private val context: Context,
-    private val baseUrl: String = PrefManager.texturePackServer,
+    private val baseUrl: String = PrefManager.DEFAULT_TEXTURE_PACK_SERVER,
     private val client: OkHttpClient = defaultClient,
 ) {
 

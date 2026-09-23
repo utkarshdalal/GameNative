@@ -2537,15 +2537,10 @@
     <string name="texture_pack_game_setting_needs_driver">사용 불가: %1$s을(를) wrapper-gamenative로 설정하세요.</string>
     <string name="texture_pack_game_setting_needs_software">사용 불가: %1$s을(를) software로 설정하세요.</string>
     <string name="texture_pack_game_setting_needs_bcn">사용 불가: %1$s을(를) none 이외의 값으로 설정하세요.</string>
-    <string name="settings_texture_section_title">텍스처 (Mali 및 BCn 미지원 GPU)</string>
     <string name="settings_texture_pack_title">서버 텍스처 팩</string>
-    <string name="settings_texture_pack_subtitle">BCn 텍스처를 지원하지 않는 GPU(Mali, PowerVR 등)에서 게임을 시작하기 전에 미리 준비된 고품질 텍스처를 제공합니다. 끄면 텍스처 메모리 제한도 해제되고 기기 자체의 텍스처 변환으로 돌아갑니다. wrapper-gamenative 그래픽 드라이버와 소프트웨어 BCn 디코딩에서만 작동합니다.</string>
-    <string name="settings_texture_pack_gpu_transcode_title">GPU에서 텍스처 변환</string>
-    <string name="settings_texture_pack_gpu_transcode_subtitle">게임을 처음 실행할 때 CPU 멈춤과 메모리 급증을 방지합니다. 끄면 더 느린 CPU 경로를 사용합니다.</string>
+    <string name="settings_texture_pack_subtitle">Adreno/Xclipse가 아닌 GPU에서 미리 준비된 고품질 텍스처를 사용합니다. 화질을 높이면서 게임의 RAM 사용량과 발열을 줄입니다.</string>
     <string name="settings_texture_pack_mobile_data_title">모바일 데이터로 텍스처 전송 허용</string>
     <string name="settings_texture_pack_mobile_data_subtitle">이 옵션을 켜지 않으면 텍스처 팩은 Wi-Fi로만 전송됩니다.</string>
-    <string name="settings_texture_pack_server_title">텍스처 팩 서버</string>
-    <string name="settings_texture_pack_server_reset">기본값으로 재설정</string>
     <string name="settings_texture_cache_title">텍스처 캐시</string>
     <string name="settings_texture_cache_calculating">계산 중…</string>
     <string name="settings_texture_cache_empty">캐시된 텍스처가 없습니다</string>
