@@ -380,6 +380,7 @@
     <string name="disable_mouse_input">Отключить ввод мыши</string>
     <string name="disable_present_wait">Отключить KHR_present_wait</string>
     <string name="disabled">Отключено</string>
+    <string name="enabled">Включено</string>
     <string name="discard">Отменить</string>
     <string name="done">Готово</string>
     <string name="download">Загрузить</string>
@@ -2543,6 +2544,7 @@ https://gamenative.app
     <string name="nexus_apply_failure_description">Мод не отмечен как установленный. Изменения отменены там, где это удалось безопасно проверить. Просмотрите ошибки файлов ниже, затем вернитесь к размещению, чтобы исправить или повторить установку.</string>
     <string name="nexus_apply_failure_details">Ошибки файлов: %1$d</string>
     <string name="control_profiles">Профили управления</string>
+    <string name="more_options">Дополнительные параметры</string>
     <string name="control_profiles_empty">Нет доступных профилей управления.</string>
     <string name="control_profile_applied_sections">Применено · %1$d из %2$d настроек</string>
     <string name="control_profile_apply">Применить</string>

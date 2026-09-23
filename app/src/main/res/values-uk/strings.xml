@@ -195,6 +195,7 @@
 
     <!--Winlator-->
     <string name="disabled">Вимкнено</string>
+    <string name="enabled">Увімкнено</string>
     <string name="copy">Копіювати</string>
     <string name="stability">Стабільність</string>
     <string name="compatibility">Сумісність</string>
@@ -2613,6 +2614,7 @@
     <string name="nexus_apply_failure_description">Мод не позначено як встановлений. Зміни скасовано там, де це вдалося безпечно перевірити. Перегляньте помилки файлів нижче, а потім поверніться до розміщення, щоб виправити або повторити встановлення.</string>
     <string name="nexus_apply_failure_details">Помилки файлів: %1$d</string>
     <string name="control_profiles">Профілі керування</string>
+    <string name="more_options">Додаткові параметри</string>
     <string name="control_profiles_empty">Немає доступних профілів керування.</string>
     <string name="control_profile_applied_sections">Застосовано · %1$d з %2$d налаштувань</string>
     <string name="control_profile_apply">Застосувати</string>

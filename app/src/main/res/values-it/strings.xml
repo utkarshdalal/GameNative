@@ -200,6 +200,7 @@
 
     <!--Winlator-->
     <string name="disabled">Disabilitato</string>
+    <string name="enabled">Attivato</string>
     <string name="copy">Copia</string>
     <string name="stability">Stabilità</string>
     <string name="compatibility">Compatibilità</string>
@@ -2602,6 +2603,7 @@
     <string name="nexus_apply_failure_description">Il mod non è stato contrassegnato come installato. Le modifiche sono state annullate dove era possibile verificarle in sicurezza. Controlla gli errori dei file qui sotto, poi torna a Posizionamento per correggere o riprovare questo mod.</string>
     <string name="nexus_apply_failure_details">Errori dei file: %1$d</string>
     <string name="control_profiles">Profili di controllo</string>
+    <string name="more_options">Altre opzioni</string>
     <string name="control_profiles_empty">Nessun profilo di controllo disponibile.</string>
     <string name="control_profile_applied_sections">Applicate · %1$d di %2$d impostazioni</string>
     <string name="control_profile_apply">Applica</string>

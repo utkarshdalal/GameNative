@@ -198,6 +198,7 @@
 
     <!--Winlator-->
     <string name="disabled">已禁用</string>
+    <string name="enabled">已啟用</string>
     <string name="copy">複製</string>
     <string name="stability">穩定</string>
     <string name="compatibility">相容性</string>
@@ -2616,6 +2617,7 @@
     <string name="nexus_apply_failure_description">此模組未標記為已安裝。對於能安全確認的變更，已嘗試回復。請查看下方的檔案錯誤，然後返回放置頁面修正或重試。</string>
     <string name="nexus_apply_failure_details">檔案錯誤：%1$d</string>
     <string name="control_profiles">控制設定檔</string>
+    <string name="more_options">更多選項</string>
     <string name="control_profiles_empty">沒有可用的控制設定檔。</string>
     <string name="control_profile_applied_sections">已套用 · %2$d 項設定中的 %1$d 項</string>
     <string name="control_profile_apply">套用</string>

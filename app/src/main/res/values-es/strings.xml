@@ -211,6 +211,7 @@
 
     <!--Winlator-->
     <string name="disabled">Desactivado</string>
+    <string name="enabled">Activado</string>
     <string name="copy">Copiar</string>
     <string name="stability">Estabilidad</string>
     <string name="compatibility">Compatibilidad</string>
@@ -2609,6 +2610,7 @@
     <string name="nexus_apply_failure_description">El mod no se marcó como instalado. Los cambios se revirtieron cuando pudieron verificarse de forma segura. Revisa los errores de archivo de abajo y vuelve a Colocación para corregir o reintentar este mod.</string>
     <string name="nexus_apply_failure_details">Errores de archivo: %1$d</string>
     <string name="control_profiles">Perfiles de controles</string>
+    <string name="more_options">Más opciones</string>
     <string name="control_profiles_empty">No hay perfiles de controles disponibles.</string>
     <string name="control_profile_applied_sections">Aplicado · %1$d de %2$d ajustes</string>
     <string name="control_profile_apply">Aplicar</string>

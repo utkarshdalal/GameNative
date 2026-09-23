@@ -194,6 +194,7 @@
     <string name="custom_game_unknown_developer">Unbekannt</string>
     <!--Winlator-->
     <string name="disabled">Deaktiviert</string>
+    <string name="enabled">Aktiviert</string>
     <string name="copy">Kopieren</string>
     <string name="stability">Stabilität</string>
     <string name="compatibility">Kompatibilität</string>
@@ -2551,6 +2552,7 @@
     <string name="nexus_apply_failure_description">Der Mod wurde nicht als installiert markiert. Änderungen wurden zurückgesetzt, soweit dies sicher überprüft werden konnte. Prüfe die Dateifehler unten und kehre zu Platzierung zurück, um den Mod zu korrigieren oder erneut zu versuchen.</string>
     <string name="nexus_apply_failure_details">Dateifehler: %1$d</string>
     <string name="control_profiles">Steuerungsprofile</string>
+    <string name="more_options">Weitere Optionen</string>
     <string name="control_profiles_empty">Keine Steuerungsprofile verfügbar.</string>
     <string name="control_profile_applied_sections">Angewendet · %1$d von %2$d Einstellungen</string>
     <string name="control_profile_apply">Anwenden</string>

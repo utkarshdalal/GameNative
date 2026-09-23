@@ -159,6 +159,7 @@
 
     <!--Winlator-->
     <string name="disabled">無効</string>
+    <string name="enabled">有効</string>
     <string name="copy">コピー</string>
     <string name="stability">安定性</string>
     <string name="compatibility">互換性</string>
@@ -2564,6 +2565,7 @@
     <string name="nexus_apply_failure_description">MOD は適用済みとして記録されませんでした。安全に確認できた変更は元に戻しました。以下のファイルエラーを確認し、配置画面に戻って修正または再試行してください。</string>
     <string name="nexus_apply_failure_details">ファイルエラー: %1$d</string>
     <string name="control_profiles">コントロールプロファイル</string>
+    <string name="more_options">その他のオプション</string>
     <string name="control_profiles_empty">利用できるコントロールプロファイルはありません。</string>
     <string name="control_profile_applied_sections">適用済み · %2$d 項目中 %1$d 項目</string>
     <string name="control_profile_apply">適用</string>

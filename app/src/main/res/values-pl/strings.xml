@@ -209,6 +209,7 @@
 
     <!--Winlator-->
     <string name="disabled">Wyłączone</string>
+    <string name="enabled">Włączone</string>
     <string name="copy">Kopiuj</string>
     <string name="stability">Stabilność</string>
     <string name="compatibility">Kompatybilność</string>
@@ -2617,6 +2618,7 @@
     <string name="nexus_apply_failure_description">Mod nie został oznaczony jako zainstalowany. Zmiany cofnięto tam, gdzie można było to bezpiecznie zweryfikować. Sprawdź poniższe błędy plików, a następnie wróć do Rozmieszczenia, aby poprawić lub ponowić instalację moda.</string>
     <string name="nexus_apply_failure_details">Błędy plików: %1$d</string>
     <string name="control_profiles">Profile sterowania</string>
+    <string name="more_options">Więcej opcji</string>
     <string name="control_profiles_empty">Brak dostępnych profili sterowania.</string>
     <string name="control_profile_applied_sections">Zastosowano · %1$d z %2$d ustawień</string>
     <string name="control_profile_apply">Zastosuj</string>

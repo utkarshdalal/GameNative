@@ -198,6 +198,7 @@
 
     <!-- Winlator -->
     <string name="disabled">已禁用</string>
+    <string name="enabled">已启用</string>
     <string name="copy">复制</string>
     <string name="stability">稳定</string>
     <string name="compatibility">兼容性</string>
@@ -2625,6 +2626,7 @@
     <string name="nexus_apply_failure_description">该模组未被标记为已安装。对于能够安全核实的更改，已尝试回滚。请查看下方的文件错误，然后返回放置页面进行修正或重试。</string>
     <string name="nexus_apply_failure_details">文件错误：%1$d</string>
     <string name="control_profiles">控制配置</string>
+    <string name="more_options">更多选项</string>
     <string name="control_profiles_empty">没有可用的控制配置。</string>
     <string name="control_profile_applied_sections">已应用 · %2$d 项设置中的 %1$d 项</string>
     <string name="control_profile_apply">应用</string>

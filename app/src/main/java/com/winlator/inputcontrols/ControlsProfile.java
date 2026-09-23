@@ -94,10 +94,6 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         return virtualGamepad;
     }
 
-    public void setVirtualGamepad(boolean isVirtualGamepad) {
-        virtualGamepad = isVirtualGamepad;
-    }
-
     public boolean isListed() {
         return listed;
     }

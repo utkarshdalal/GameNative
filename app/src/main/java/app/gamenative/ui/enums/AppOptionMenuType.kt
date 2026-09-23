@@ -10,7 +10,6 @@ enum class AppOptionMenuType(@StringRes val title: Int) {
     CopyLaunchLink(R.string.option_copy_launch_link),
     RunContainer(R.string.option_open_container),
     EditContainer(R.string.option_edit_container),
-    ControlProfiles(R.string.control_profiles),
     ResetToDefaults(R.string.option_reset_to_defaults),
     GetSupport(R.string.option_get_support),
     SubmitFeedback(R.string.option_submit_feedback),

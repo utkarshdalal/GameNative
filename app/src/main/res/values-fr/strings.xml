@@ -201,6 +201,7 @@
 
     <!--Winlator-->
     <string name="disabled">Désactivé</string>
+    <string name="enabled">Activé</string>
     <string name="copy">Copier</string>
     <string name="stability">Stabilité</string>
     <string name="compatibility">Compatibilité</string>
@@ -2611,6 +2612,7 @@
     <string name="nexus_apply_failure_description">Le mod n’a pas été marqué comme installé. Les modifications ont été annulées lorsque cela pouvait être vérifié sans risque. Consultez les erreurs de fichiers ci-dessous, puis revenez à Placement pour corriger ou réessayer ce mod.</string>
     <string name="nexus_apply_failure_details">Erreurs de fichiers : %1$d</string>
     <string name="control_profiles">Profils de commandes</string>
+    <string name="more_options">Plus d’options</string>
     <string name="control_profiles_empty">Aucun profil de commandes disponible.</string>
     <string name="control_profile_applied_sections">Appliqué · %1$d paramètres sur %2$d</string>
     <string name="control_profile_apply">Appliquer</string>

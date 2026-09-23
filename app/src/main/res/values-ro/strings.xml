@@ -199,6 +199,7 @@
     <string name="custom_game_unknown_developer">Necunoscut</string>
     <!--Winlator-->
     <string name="disabled">Dezactivat</string>
+    <string name="enabled">Activat</string>
     <string name="copy">Copiază</string>
     <string name="stability">Stabilitate</string>
     <string name="compatibility">Compatibilitate</string>
@@ -2616,6 +2617,7 @@
     <string name="nexus_apply_failure_description">Modul nu a fost marcat ca instalat. Modificările au fost anulate acolo unde acest lucru a putut fi verificat în siguranță. Verifică erorile de fișier de mai jos, apoi revino la Plasare pentru a corecta sau reîncerca instalarea.</string>
     <string name="nexus_apply_failure_details">Erori de fișier: %1$d</string>
     <string name="control_profiles">Profiluri de control</string>
+    <string name="more_options">Mai multe opțiuni</string>
     <string name="control_profiles_empty">Nu sunt disponibile profiluri de control.</string>
     <string name="control_profile_applied_sections">Aplicat · %1$d din %2$d setări</string>
     <string name="control_profile_apply">Aplică</string>

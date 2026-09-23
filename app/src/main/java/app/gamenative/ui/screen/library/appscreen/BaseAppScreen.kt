@@ -41,7 +41,6 @@ import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
 import app.gamenative.ui.component.dialog.CommunityConfigsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
-import app.gamenative.ui.component.dialog.ControlProfileLibraryDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
@@ -61,7 +60,6 @@ import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
-import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.core.GPUInformation
 import java.io.File
@@ -665,14 +663,6 @@ abstract class BaseAppScreen {
     }
 
     @Composable
-    protected open fun getControlProfilesOption(
-        onOpenControlProfiles: () -> Unit,
-    ): AppMenuOption = AppMenuOption(
-        optionType = AppOptionMenuType.ControlProfiles,
-        onClick = onOpenControlProfiles,
-    )
-
-    @Composable
     protected open fun getExportSavesOption(
         context: Context,
         libraryItem: LibraryItem,
@@ -1183,7 +1173,6 @@ abstract class BaseAppScreen {
         onTestGraphics: () -> Unit,
         onPlayWithDiagnostics: () -> Unit,
         onAiDebugRun: () -> Unit,
-        onOpenControlProfiles: () -> Unit,
         exportFrontendLauncher: ActivityResultLauncher<String>,
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
@@ -1194,7 +1183,6 @@ abstract class BaseAppScreen {
 
         if (isInstalled) {
             // Options only available when game is installed
-            menuOptions.add(getControlProfilesOption(onOpenControlProfiles))
             getRunContainerOption(context, libraryItem, onClickPlay)?.let { menuOptions.add(it) }
             getTestGraphicsOption(context, libraryItem, onTestGraphics)?.let { menuOptions.add(it) }
             getPlayWithDiagnosticsOption(context, libraryItem, onPlayWithDiagnostics)?.let { menuOptions.add(it) }
@@ -1637,27 +1625,6 @@ abstract class BaseAppScreen {
                 }
         }
 
-        var showControlProfiles by remember(appId) { mutableStateOf(false) }
-        var controlProfilesContainer by remember(appId) { mutableStateOf<Container?>(null) }
-
-        LaunchedEffect(appId, showControlProfiles) {
-            if (!showControlProfiles) return@LaunchedEffect
-            controlProfilesContainer = null
-            runCatching {
-                withContext(Dispatchers.IO) { ContainerUtils.getOrCreateControlProfileContainer(context, appId) }
-            }.onSuccess {
-                controlProfilesContainer = it
-            }.onFailure { error ->
-                showControlProfiles = false
-                SnackbarManager.show(
-                    context.getString(
-                        R.string.control_profile_failed,
-                        error.message ?: error.javaClass.simpleName,
-                    ),
-                )
-            }
-        }
-
         val optionsMenu = getOptionsMenu(
             context,
             libraryItem,
@@ -1667,7 +1634,6 @@ abstract class BaseAppScreen {
             onTestGraphics,
             onPlayWithDiagnostics,
             onAiDebugRun,
-            { showControlProfiles = true },
             exportFrontendLauncher,
         )
 
@@ -1755,7 +1721,7 @@ abstract class BaseAppScreen {
             onBack = onBack,
             achievements = achievementsState,
             optionsMenu = optionsMenu,
-            dialogOpen = showConfigDialog || showControlProfiles || communityConfigsRequested || manageModsRequested,
+            dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested,
         )
 
         if (showReadiness && launchActivity != null) {
@@ -1781,25 +1747,6 @@ abstract class BaseAppScreen {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
                 },
-            )
-        }
-
-        val profileContainer = controlProfilesContainer
-        if (showControlProfiles && profileContainer != null) {
-            ControlProfileLibraryDialog(
-                container = profileContainer,
-                onDismiss = {
-                    showControlProfiles = false
-                    controlProfilesContainer = null
-                },
-            )
-        }
-        else if (showControlProfiles) {
-            LoadingDialog(
-                visible = true,
-                onDismissRequest = { showControlProfiles = false },
-                progress = -1f,
-                message = stringResource(R.string.working),
             )
         }
 
