@@ -108,7 +108,7 @@ object TexturePackSync {
         val installDir = container.getExtra(TexturePackGate.CONTAINER_EXTRA_INSTALL_DIR, "")
         val title = TexturePackGate.cleanTitle(container.getExtra(TexturePackGate.CONTAINER_EXTRA_TITLE, ""))
         if (platform.isBlank() || installDir.isBlank()) return ""
-        val files = withContext(Dispatchers.IO) { TexturePackPreparer.scanFiles(File(installDir)) }
+        val files = withContext(Dispatchers.IO) { scanFiles(File(installDir)) }
         if (files.isEmpty()) return ""
         val needsFullRes = withContext(Dispatchers.IO) {
             TexturePackGate.needsFullRes(TexturePackPaths.cacheDir(container))
@@ -318,5 +318,14 @@ object TexturePackSync {
                 delay(RETRY_BACKOFF_MS * attempt)
             }
         }
+    }
+
+    fun scanFiles(root: File): List<PrepareFileEntry> {
+        if (!root.isDirectory) return emptyList()
+        val prefix = root.absolutePath.length + 1
+        return root.walkTopDown()
+            .filter { it.isFile }
+            .map { PrepareFileEntry(it.absolutePath.substring(prefix).replace(File.separatorChar, '/'), it.length()) }
+            .toList()
     }
 }

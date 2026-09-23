@@ -32,13 +32,4 @@ class TexturePackModelsTest {
         val body = encode(Json, PackRegisterRequest("steam", "1145350", files))
         assertFalse(body.containsKey("title"))
     }
-
-    @Test
-    fun prepareStartRequestCarriesTitle() {
-        val text = clientJson.encodeToString(
-            PrepareStartRequest.serializer(),
-            PrepareStartRequest("gog", "1", files, "Hades II"),
-        )
-        assertEquals(JsonPrimitive("Hades II"), clientJson.parseToJsonElement(text).jsonObject["title"])
-    }
 }

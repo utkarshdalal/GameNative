@@ -287,29 +287,6 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                         TexturePackGate.resetServerEntries(texturePackContext, state.appId)
                     },
                 )
-                val texturePackLaunchInfo = remember(state.appId) {
-                    TexturePackGate.launchInfo(texturePackContext, state.appId)
-                }
-                var prepareTextures by rememberSaveable(state.appId) { mutableStateOf(false) }
-                if (texturePackLaunchInfo != null) {
-                    SettingsMenuLink(
-                        colors = settingsTileColorsAlt(),
-                        title = { Text(text = stringResource(R.string.prepare_textures_now)) },
-                        subtitle = { Text(text = stringResource(R.string.prepare_textures_now_subtitle)) },
-                        onClick = { prepareTextures = true },
-                    )
-                    if (prepareTextures) {
-                        TexturePackDialog(
-                            appId = state.appId,
-                            platform = texturePackLaunchInfo.platform,
-                            storeId = texturePackLaunchInfo.storeId,
-                            gameDir = java.io.File(texturePackLaunchInfo.installDir),
-                            onPlay = { prepareTextures = false },
-                            onDismiss = { prepareTextures = false },
-                            title = texturePackLaunchInfo.title,
-                        )
-                    }
-                }
             }
             // Sharpness (vkBasalt)
             SettingsListDropdown(

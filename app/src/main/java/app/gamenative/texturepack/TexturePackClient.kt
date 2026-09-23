@@ -35,18 +35,6 @@ class TexturePackClient(
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    suspend fun prepareStart(request: PrepareStartRequest): PrepareStartResponse =
-        postJson("/v1/prepare/start", json.encodeToString(PrepareStartRequest.serializer(), request))
-            .let { json.decodeFromString(PrepareStartResponse.serializer(), it) }
-
-    suspend fun prepareNext(session: String): PrepareIoBatch =
-        getString("/v1/prepare/${enc(session)}/next")
-            .let { json.decodeFromString(PrepareIoBatch.serializer(), it) }
-
-    suspend fun putIoResult(session: String, id: String, payload: ByteArray) {
-        putBytes("/v1/prepare/${enc(session)}/io/${enc(id)}", payload)
-    }
-
     suspend fun lookup(keys: List<String>): LookupResponse =
         postJson("/v1/lookup", json.encodeToString(LookupRequest.serializer(), LookupRequest(keys)))
             .let { json.decodeFromString(LookupResponse.serializer(), it) }

@@ -2535,28 +2535,6 @@
     <string name="gyro_degrees_per_second_value">%1$.1f°/s</string>
     <string name="gyro_milliseconds_value">%1$d ms</string>
     <string name="reset_gyro_settings">Reset gyro settings</string>
-    <string name="texture_pack_dialog_title">Better textures for this game</string>
-    <string name="texture_pack_dialog_body">This game can run cooler and look sharper with GameNative\'s server-side texture mapping. Our servers convert the game textures once at high quality, then your device reuses them instead of converting them itself while you play.</string>
-    <string name="texture_pack_status_checking">Checking what the server already has\u2026</string>
-    <string name="texture_pack_status_work">Upload %1$s MB, download %2$s MB</string>
-    <string name="texture_pack_status_ready">Pack ready: download %1$s MB</string>
-    <string name="texture_pack_status_unsupported">Not available for this game yet</string>
-    <string name="texture_pack_status_failed">Could not reach the texture server</string>
-    <string name="texture_pack_status_wifi">Connect to Wi-Fi to prepare textures</string>
-    <string name="texture_pack_prepare_and_play">Prepare and play</string>
-    <string name="texture_pack_play_anyway">Play anyway</string>
-    <string name="texture_pack_play">Play</string>
-    <string name="texture_pack_cancel_and_play">Cancel and play</string>
-    <string name="texture_pack_dont_ask">Don\'t ask again for this game</string>
-    <string name="texture_pack_progress_reads_of">%1$d file reads answered across %2$d texture archives</string>
-    <string name="texture_pack_progress_reads">%1$d file reads answered</string>
-    <string name="texture_pack_retry">Retry</string>
-    <string name="texture_pack_phase_scanning">Scanning game files</string>
-    <string name="texture_pack_phase_hashing">Checking textures</string>
-    <string name="texture_pack_phase_uploading">Uploading textures</string>
-    <string name="texture_pack_phase_waiting">Waiting for the server to encode</string>
-    <string name="texture_pack_phase_downloading">Downloading textures</string>
-    <string name="texture_pack_phase_done">Done</string>
     <string name="texture_pack_progress_bytes">%1$s / %2$s MB</string>
     <string name="texture_pack_notification_channel">Texture packs</string>
     <string name="texture_pack_notification_uploading">Uploading game textures</string>
@@ -2586,8 +2564,6 @@
     <string name="settings_texture_cache_delete">Delete</string>
     <string name="settings_texture_cache_delete_all">Delete all</string>
     <string name="settings_texture_cache_close">Close</string>
-    <string name="prepare_textures_now">Prepare textures now (advanced)</string>
-    <string name="prepare_textures_now_subtitle">Scans the game and asks the server to build the full texture pack before you play. Textures also sync by themselves after each session.</string>
     <string name="clear_texture_cache">Clear texture cache</string>
     <string name="clear_texture_cache_subtitle">Deletes the prepared and on-device converted textures for this game.</string>
 </resources>
