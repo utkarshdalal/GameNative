@@ -2538,6 +2538,8 @@
     <string name="texture_pack_game_setting_title">Paquete de texturas del servidor para este juego</string>
     <string name="settings_texture_pack_title">Paquetes de texturas del servidor</string>
     <string name="settings_texture_pack_subtitle">Ofrece texturas de alta calidad ya preparadas antes de iniciar un juego en dispositivos Mali. Al desactivarlo también se desactiva el límite de memoria de texturas y se restaura la conversión de texturas propia del dispositivo.</string>
+    <string name="settings_texture_pack_gpu_transcode_title">Convertir texturas en la GPU</string>
+    <string name="settings_texture_pack_gpu_transcode_subtitle">Evita bloqueos de la CPU y picos de memoria la primera vez que se ejecuta un juego. Si lo desactivas, se usa la ruta de CPU, más lenta.</string>
     <string name="settings_texture_pack_mobile_data_title">Permitir transferencias de texturas con datos móviles</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Los paquetes de texturas solo se transfieren por Wi-Fi salvo que esto esté activado.</string>
     <string name="settings_texture_pack_server_title">Servidor de paquetes de texturas</string>

@@ -2410,6 +2410,8 @@
     <string name="texture_pack_game_setting_title">Serverbaseret teksturpakke til dette spil</string>
     <string name="settings_texture_pack_title">Serverbaserede teksturpakker</string>
     <string name="settings_texture_pack_subtitle">Tilbyd forberedte teksturer i høj kvalitet, før et spil starter på Mali-enheder. Når du slår dette fra, slås grænsen for teksturhukommelse også fra, og enhedens egen teksturkonvertering gendannes.</string>
+    <string name="settings_texture_pack_gpu_transcode_title">Konvertér teksturer på GPU\'en</string>
+    <string name="settings_texture_pack_gpu_transcode_subtitle">Undgår CPU-stop og hukommelsesspidser første gang et spil kører. Slås dette fra, bruges den langsommere CPU-vej.</string>
     <string name="settings_texture_pack_mobile_data_title">Tillad teksturoverførsler på mobildata</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Teksturpakker overføres kun på Wi-Fi, medmindre dette er slået til.</string>
     <string name="settings_texture_pack_server_title">Teksturpakkeserver</string>

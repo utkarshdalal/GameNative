@@ -2545,6 +2545,8 @@
     <string name="texture_pack_game_setting_title">Pachet de texturi de pe server pentru acest joc</string>
     <string name="settings_texture_pack_title">Pachete de texturi de pe server</string>
     <string name="settings_texture_pack_subtitle">Oferă texturi de calitate înaltă deja pregătite înainte de pornirea unui joc pe dispozitivele Mali. Dezactivarea oprește și limita de memorie pentru texturi și restabilește conversia proprie a texturilor pe dispozitiv.</string>
+    <string name="settings_texture_pack_gpu_transcode_title">Convertește texturile pe GPU</string>
+    <string name="settings_texture_pack_gpu_transcode_subtitle">Evită blocajele procesorului și vârfurile de memorie la prima rulare a unui joc. Dezactivarea folosește calea mai lentă prin procesor.</string>
     <string name="settings_texture_pack_mobile_data_title">Permite transferul texturilor prin date mobile</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Pachetele de texturi se transferă doar prin Wi-Fi, cu excepția cazului în care această opțiune este activată.</string>
     <string name="settings_texture_pack_server_title">Server pentru pachete de texturi</string>

@@ -2472,6 +2472,8 @@ https://gamenative.app
     <string name="texture_pack_game_setting_title">Серверный пакет текстур для этой игры</string>
     <string name="settings_texture_pack_title">Серверные пакеты текстур</string>
     <string name="settings_texture_pack_subtitle">Предлагать подготовленные текстуры высокого качества перед запуском игры на устройствах с Mali. Отключение также снимает ограничение памяти текстур и возвращает собственное преобразование текстур устройства.</string>
+    <string name="settings_texture_pack_gpu_transcode_title">Преобразовывать текстуры на GPU</string>
+    <string name="settings_texture_pack_gpu_transcode_subtitle">Предотвращает зависания процессора и скачки памяти при первом запуске игры. При отключении используется более медленный путь через процессор.</string>
     <string name="settings_texture_pack_mobile_data_title">Разрешить передачу текстур по мобильной сети</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Без этой опции пакеты текстур передаются только по Wi-Fi.</string>
     <string name="settings_texture_pack_server_title">Сервер пакетов текстур</string>

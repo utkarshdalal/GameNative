@@ -2554,6 +2554,8 @@
     <string name="texture_pack_game_setting_title">为此游戏使用服务器端纹理包</string>
     <string name="settings_texture_pack_title">服务器端纹理包</string>
     <string name="settings_texture_pack_subtitle">在 Mali 设备上启动游戏前提供预先准备的高质量纹理。关闭后也会取消纹理内存上限，并恢复设备自身的纹理转换。</string>
+    <string name="settings_texture_pack_gpu_transcode_title">在 GPU 上转换纹理</string>
+    <string name="settings_texture_pack_gpu_transcode_subtitle">避免游戏首次运行时出现 CPU 卡顿和内存峰值。关闭后将使用较慢的 CPU 路径。</string>
     <string name="settings_texture_pack_mobile_data_title">允许使用移动数据传输纹理</string>
     <string name="settings_texture_pack_mobile_data_subtitle">除非开启此选项，否则纹理包仅通过 Wi-Fi 传输。</string>
     <string name="settings_texture_pack_server_title">纹理包服务器</string>

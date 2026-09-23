@@ -68,6 +68,19 @@ fun SettingsGroupPerformance() {
             },
         )
 
+        var texturePackGpuTranscode by rememberSaveable { mutableStateOf(PrefManager.texturePackGpuTranscode) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            enabled = texturePackEnabled,
+            state = texturePackGpuTranscode,
+            title = { Text(stringResource(R.string.settings_texture_pack_gpu_transcode_title)) },
+            subtitle = { Text(stringResource(R.string.settings_texture_pack_gpu_transcode_subtitle)) },
+            onCheckedChange = {
+                texturePackGpuTranscode = it
+                PrefManager.texturePackGpuTranscode = it
+            },
+        )
+
         var texturePackAllowMobileData by rememberSaveable { mutableStateOf(PrefManager.texturePackAllowMobileData) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),

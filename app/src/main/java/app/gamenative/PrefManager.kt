@@ -1719,6 +1719,11 @@ object PrefManager {
         get() = getPref(TEXTURE_PACK_TOKEN, "")
         set(value) { setPref(TEXTURE_PACK_TOKEN, value) }
 
+    private val TEXTURE_PACK_GPU_TRANSCODE = booleanPreferencesKey("texturePackGpuTranscode")
+    var texturePackGpuTranscode: Boolean
+        get() = getPref(TEXTURE_PACK_GPU_TRANSCODE, true)
+        set(value) { setPref(TEXTURE_PACK_GPU_TRANSCODE, value) }
+
     private val TEXTURE_PACK_ALLOW_MOBILE_DATA = booleanPreferencesKey("texturePackAllowMobileData")
     var texturePackAllowMobileData: Boolean
         get() = getPref(TEXTURE_PACK_ALLOW_MOBILE_DATA, false)
