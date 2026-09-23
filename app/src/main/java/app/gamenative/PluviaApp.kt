@@ -92,13 +92,7 @@ class PluviaApp : SplitCompatApplication() {
 
         DownloadService.populateDownloadService(this)
 
-        appScope.launch {
-            if (app.gamenative.texturepack.TexturePackGate.syncEnabled(applicationContext)) {
-                app.gamenative.texturepack.TexturePackSyncWorker.schedule(applicationContext)
-            } else {
-                app.gamenative.texturepack.TexturePackSyncWorker.cancelScheduled(applicationContext)
-            }
-        }
+        app.gamenative.texturepack.TexturePackSyncWorker.cancelScheduled(applicationContext)
 
         migrateGogAmazonPaths()
 

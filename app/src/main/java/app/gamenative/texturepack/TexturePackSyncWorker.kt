@@ -10,21 +10,17 @@ import androidx.core.app.NotificationCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
-import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
-import com.winlator.container.ContainerManager
 import java.io.File
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +35,7 @@ class TexturePackSyncWorker(
     override suspend fun doWork(): Result {
         if (!PrefManager.texturePackEnabled) return Result.success()
         val appId = inputData.getString(KEY_APP_ID)
-        if (appId.isNullOrBlank()) return sweep()
+        if (appId.isNullOrBlank()) return Result.success()
         if (!TexturePackGate.syncEnabled(applicationContext, appId)) return Result.success()
 
         val container = runCatching { ContainerUtils.getContainer(applicationContext, appId) }.getOrNull()
@@ -55,8 +51,11 @@ class TexturePackSyncWorker(
             0,
         )
         return try {
-            if (upload) uploadSync(client, container, cacheDir, uploadTitle)
-            downloadSync(client, container, appId, cacheDir)
+            if (upload) {
+                uploadSync(client, container, cacheDir, uploadTitle)
+            } else {
+                downloadSync(client, container, appId, cacheDir)
+            }
             Result.success()
         } catch (e: CancellationException) {
             throw e
@@ -165,17 +164,6 @@ class TexturePackSyncWorker(
             .build()
     }
 
-    private fun sweep(): Result {
-        runCatching {
-            ContainerManager(applicationContext).containers.forEach { container ->
-                if (container.getExtra(TexturePackGate.CONTAINER_EXTRA_PLATFORM, "").isNotBlank()) {
-                    enqueueDownloadSync(applicationContext, container.id)
-                }
-            }
-        }.onFailure { Timber.w(it, "texture pack sweep failed") }
-        return Result.success()
-    }
-
     private suspend fun downloadSync(client: TexturePackClient, container: Container, appId: String, cacheDir: File) {
         val fingerprint = TexturePackSync.ensureFingerprint(client, container)
         if (fingerprint.isBlank()) return
@@ -215,12 +203,9 @@ class TexturePackSyncWorker(
         private const val KEY_APP_ID = "appId"
         private const val KEY_UPLOAD = "upload"
         private const val MAX_ATTEMPTS = 3
-        private const val SWEEP_INTERVAL_HOURS = 12L
         private const val CHANNEL_ID = "texture_pack_transfer"
         private const val PROGRESS_INTERVAL_MS = 1_000L
         private const val NOTIFICATION_ID = 1201
-        private const val SWEEP_NOW_WORK = "texture-pack-sweep-now"
-        private const val SWEEP_WORK = "texture-pack-sweep"
 
         fun networkType(allowMobileData: Boolean): NetworkType =
             if (allowMobileData) NetworkType.CONNECTED else NetworkType.UNMETERED
@@ -252,30 +237,11 @@ class TexturePackSyncWorker(
             }.onFailure { Timber.w(it, "could not enqueue texture pack upload for $appId") }
         }
 
-        fun schedule(context: Context) {
-            if (!PrefManager.texturePackEnabled) return
-            val sweep = OneTimeWorkRequestBuilder<TexturePackSyncWorker>()
-                .setConstraints(constraints())
-                .build()
-            val periodic = PeriodicWorkRequestBuilder<TexturePackSyncWorker>(SWEEP_INTERVAL_HOURS, TimeUnit.HOURS)
-                .setConstraints(constraints())
-                .build()
-            runCatching {
-                val manager = WorkManager.getInstance(context.applicationContext)
-                manager.enqueueUniqueWork(SWEEP_NOW_WORK, ExistingWorkPolicy.REPLACE, sweep)
-                manager.enqueueUniquePeriodicWork(
-                    SWEEP_WORK,
-                    ExistingPeriodicWorkPolicy.UPDATE,
-                    periodic,
-                )
-            }.onFailure { Timber.w(it, "could not schedule texture pack sync") }
-        }
-
         fun cancelScheduled(context: Context) {
             runCatching {
                 val manager = WorkManager.getInstance(context.applicationContext)
-                manager.cancelUniqueWork(SWEEP_NOW_WORK)
-                manager.cancelUniqueWork(SWEEP_WORK)
+                manager.cancelUniqueWork("texture-pack-sweep-now")
+                manager.cancelUniqueWork("texture-pack-sweep")
             }.onFailure { Timber.w(it, "could not cancel texture pack sync") }
         }
     }

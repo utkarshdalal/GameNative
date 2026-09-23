@@ -82,7 +82,7 @@ fun SettingsGroupPerformance() {
                 onCheckedChange = {
                     texturePackAllowMobileData = it
                     PrefManager.texturePackAllowMobileData = it
-                    TexturePackSyncWorker.schedule(context)
+                    TexturePackSyncWorker.cancelScheduled(context)
                 },
             )
         }
