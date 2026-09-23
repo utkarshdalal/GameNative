@@ -28,7 +28,6 @@ class TexturePackNetworkUnavailable : IOException("texture pack transfers are re
 class TexturePackClient(
     private val context: Context,
     private val baseUrl: String = PrefManager.texturePackServer,
-    private val token: String = PrefManager.texturePackToken,
     private val client: OkHttpClient = defaultClient,
 ) {
 
@@ -54,7 +53,7 @@ class TexturePackClient(
     suspend fun entries(keys: List<String>, onRecord: (String, ByteArray) -> Unit): Unit = withContext(Dispatchers.IO) {
         requireAllowedNetwork()
         val body = json.encodeToString(EntriesRequest.serializer(), EntriesRequest(keys)).toRequestBody(JSON_MEDIA)
-        execute(authed(Request.Builder().url(url("/v1/entries")).post(body)).build()) { response ->
+        execute(Request.Builder().url(url("/v1/entries")).post(body).build()) { response ->
             if (response.code == 404) return@execute
             response.body.byteStream().buffered(STREAM_BUFFER_BYTES).use { input ->
                 while (true) {
@@ -77,7 +76,7 @@ class TexturePackClient(
                 gzip.flush()
             }
         }
-        val request = authed(Request.Builder().url(url("/v1/sources")).post(body))
+        val request = Request.Builder().url(url("/v1/sources")).post(body)
             .header("Content-Encoding", GZIP_ENCODING)
             .build()
         execute(request) { response ->
@@ -89,19 +88,19 @@ class TexturePackClient(
     /** Returns null when the server has not encoded this entry yet (404). */
     suspend fun entry(key: String): ByteArray? = withContext(Dispatchers.IO) {
         requireAllowedNetwork()
-        execute(authed(Request.Builder().url(url("/v1/entry/${enc(key)}")).get()).build()) { response ->
+        execute(Request.Builder().url(url("/v1/entry/${enc(key)}")).get().build()) { response ->
             if (response.code == 404) null else response.body.bytes()
         }
     }
 
     private suspend fun getString(path: String): String = withContext(Dispatchers.IO) {
         requireAllowedNetwork()
-        execute(authed(Request.Builder().url(url(path)).get()).build()) { it.body.string() }
+        execute(Request.Builder().url(url(path)).get().build()) { it.body.string() }
     }
 
     private suspend fun postJson(path: String, body: String): String = withContext(Dispatchers.IO) {
         requireAllowedNetwork()
-        val request = authed(Request.Builder().url(url(path)).post(body.toRequestBody(JSON_MEDIA))).build()
+        val request = Request.Builder().url(url(path)).post(body.toRequestBody(JSON_MEDIA)).build()
         execute(request) { it.body.string() }
     }
 
@@ -111,7 +110,7 @@ class TexturePackClient(
         contentEncoding: String? = null,
     ): Unit = withContext(Dispatchers.IO) {
         requireAllowedNetwork()
-        val builder = authed(Request.Builder().url(url(path)).put(payload.toRequestBody(OCTET_MEDIA)))
+        val builder = Request.Builder().url(url(path)).put(payload.toRequestBody(OCTET_MEDIA))
         if (contentEncoding != null) builder.header("Content-Encoding", contentEncoding)
         execute(builder.build()) { }
     }
@@ -138,9 +137,6 @@ class TexturePackClient(
     }
 
     private fun url(path: String): String = baseUrl.trimEnd('/') + path
-
-    private fun authed(builder: Request.Builder): Request.Builder =
-        if (token.isBlank()) builder else builder.header("Authorization", "Bearer $token")
 
     private fun enc(value: String): String = java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 

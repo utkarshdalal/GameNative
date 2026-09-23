@@ -1714,11 +1714,6 @@ object PrefManager {
         get() = getPref(TEXTURE_PACK_SERVER, DEFAULT_TEXTURE_PACK_SERVER).ifBlank { DEFAULT_TEXTURE_PACK_SERVER }
         set(value) { setPref(TEXTURE_PACK_SERVER, value) }
 
-    private val TEXTURE_PACK_TOKEN = stringPreferencesKey("texturePackToken")
-    var texturePackToken: String
-        get() = getPref(TEXTURE_PACK_TOKEN, "")
-        set(value) { setPref(TEXTURE_PACK_TOKEN, value) }
-
     private val TEXTURE_PACK_GPU_TRANSCODE = booleanPreferencesKey("texturePackGpuTranscode")
     var texturePackGpuTranscode: Boolean
         get() = getPref(TEXTURE_PACK_GPU_TRANSCODE, true)
