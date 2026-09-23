@@ -69,39 +69,31 @@ fun PowerControlQuickMenuTab(
         },
         onGamePinningModeSelected = { mode ->
             coroutineScope.launch(Dispatchers.IO) {
-                PowerManager.currentProfile.let { profile ->
-                    PowerManager.setPowerProfile(profile.copy(gamePinningMode = mode))
+                PowerManager.updateProfile { it.copy(gamePinningMode = mode) }
+                PowerManager.refreshUiState()
+            }
+        },
+        onManualGamePinCoreToggled = { core, include ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.updateProfile {
+                    it.copy(manualGamePinCores = PowerManager.toggleCoreInList(it.manualGamePinCores, core, include))
                 }
                 PowerManager.refreshUiState()
             }
         },
-        onManualGamePinCoresChanged = { cores ->
+        onManualBackgroundPinCoreToggled = { core, include ->
             coroutineScope.launch(Dispatchers.IO) {
-                PowerManager.currentProfile.let { profile ->
-                    PowerManager.setPowerProfile(profile.copy(manualGamePinCores = cores))
-                }
-                PowerManager.refreshUiState()
-            }
-        },
-        onManualBackgroundPinCoresChanged = { cores ->
-            coroutineScope.launch(Dispatchers.IO) {
-                PowerManager.currentProfile.let { profile ->
-                    PowerManager.setPowerProfile(profile.copy(manualBackgroundPinCores = cores))
+                PowerManager.updateProfile {
+                    it.copy(manualBackgroundPinCores = PowerManager.toggleCoreInList(it.manualBackgroundPinCores, core, include))
                 }
                 PowerManager.refreshUiState()
             }
         },
         onAutoTuningModeSelected = { mode ->
             coroutineScope.launch(Dispatchers.IO) {
-                // Update current profile
-                PowerManager.currentProfile.let { profile ->
-                    val updatedProfile = profile.copy(
-                        autoTuningMode = mode,
-                        name = PerformancePreset.CUSTOM.displayName
-                    )
-                    PowerManager.setPowerProfile(updatedProfile)
+                PowerManager.updateProfile {
+                    it.copy(autoTuningMode = mode, name = PerformancePreset.CUSTOM.displayName)
                 }
-
                 PowerManager.refreshUiState()
             }
         },

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -49,6 +50,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
@@ -78,8 +80,8 @@ fun PowerControlQuickMenuContent(
     onPowerControlToggled: (Boolean) -> Unit = {},
     onFanControlToggled: (Boolean) -> Unit = {},
     onGamePinningModeSelected: (GamePinningMode) -> Unit = {},
-    onManualGamePinCoresChanged: (String) -> Unit = {},
-    onManualBackgroundPinCoresChanged: (String) -> Unit = {},
+    onManualGamePinCoreToggled: (Int, Boolean) -> Unit = { _, _ -> },
+    onManualBackgroundPinCoreToggled: (Int, Boolean) -> Unit = { _, _ -> },
     onAutoTuningModeSelected: (AutoTuningMode) -> Unit = {},
     onTuningModeSelected: (Boolean) -> Unit = {},
     onTuningStrategySelected: (AutoTuningStrategy) -> Unit = {},
@@ -118,8 +120,8 @@ fun PowerControlQuickMenuContent(
                         onPowerControlToggled = onPowerControlToggled,
                         onFanControlToggled = onFanControlToggled,
                         onGamePinningModeSelected = onGamePinningModeSelected,
-                        onManualGamePinCoresChanged = onManualGamePinCoresChanged,
-                        onManualBackgroundPinCoresChanged = onManualBackgroundPinCoresChanged,
+                        onManualGamePinCoreToggled = onManualGamePinCoreToggled,
+                        onManualBackgroundPinCoreToggled = onManualBackgroundPinCoreToggled,
                         onAutoTuningModeSelected = onAutoTuningModeSelected,
                         onTuningModeSelected = onTuningModeSelected,
                         onTuningStrategySelected = onTuningStrategySelected,
@@ -195,8 +197,8 @@ private fun FlowRowScope.SuccessView(
     onPowerControlToggled: (Boolean) -> Unit,
     onFanControlToggled: (Boolean) -> Unit,
     onGamePinningModeSelected: (GamePinningMode) -> Unit,
-    onManualGamePinCoresChanged: (String) -> Unit,
-    onManualBackgroundPinCoresChanged: (String) -> Unit,
+    onManualGamePinCoreToggled: (Int, Boolean) -> Unit,
+    onManualBackgroundPinCoreToggled: (Int, Boolean) -> Unit,
     onAutoTuningModeSelected: (AutoTuningMode) -> Unit,
     onTuningModeSelected: (Boolean) -> Unit,
     onTuningStrategySelected: (AutoTuningStrategy) -> Unit,
@@ -340,7 +342,7 @@ private fun FlowRowScope.SuccessView(
             CoreCheckboxRow(
                 title = stringResource(R.string.power_control_game_pinning_manual_game_cores),
                 value = state.selectedProfile.manualGamePinCores,
-                onValueChange = onManualGamePinCoresChanged,
+                onCoreToggled = onManualGamePinCoreToggled,
                 accentColor = accentColor,
                 topology = topology,
                 modifier = Modifier.fillMaxWidth(),
@@ -348,7 +350,7 @@ private fun FlowRowScope.SuccessView(
             CoreCheckboxRow(
                 title = stringResource(R.string.power_control_game_pinning_manual_background_cores),
                 value = state.selectedProfile.manualBackgroundPinCores,
-                onValueChange = onManualBackgroundPinCoresChanged,
+                onCoreToggled = onManualBackgroundPinCoreToggled,
                 accentColor = accentColor,
                 topology = topology,
                 modifier = Modifier.fillMaxWidth(),
@@ -841,17 +843,15 @@ private fun CpuClusterLegendRow(
 private fun CoreCheckboxRow(
     title: String,
     value: String,
-    onValueChange: (String) -> Unit,
+    onCoreToggled: (core: Int, include: Boolean) -> Unit,
     accentColor: Color,
     topology: CpuTopologyDisplayInfo?,
     modifier: Modifier = Modifier,
 ) {
     val cores = remember(topology) {
-        topology?.cores?.sorted() ?: (0 until Runtime.getRuntime().availableProcessors()).toList()
+        topology?.cores ?: (0 until Runtime.getRuntime().availableProcessors()).toList()
     }
-    val selectedCores = remember(value) {
-        value.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
-    }
+    val selectedCores = remember(value) { PowerManager.parseCpuList(value) }
 
     Column(
         modifier = modifier,
@@ -866,29 +866,71 @@ private fun CoreCheckboxRow(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             for (core in cores) {
-                val checked = selectedCores.contains(core)
-                // Lock the last checked core's checkbox so at least one core always stays selected.
-                val isLastRemainingCore = checked && selectedCores.size == 1
-                val cluster = topology?.clusterByCore?.get(core)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = checked,
-                        enabled = !isLastRemainingCore,
-                        onCheckedChange = { isChecked ->
-                            if (isLastRemainingCore) return@Checkbox
-                            val newCores = if (isChecked) selectedCores + core else selectedCores - core
-                            onValueChange(newCores.sorted().joinToString(","))
-                        },
-                        colors = CheckboxDefaults.colors(checkedColor = accentColor),
-                    )
-                    Text(
-                        text = core.toString(),
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = cluster?.let { clusterColor(it) } ?: MaterialTheme.colorScheme.onSurface,
-                    )
-                }
+                val checked = core in selectedCores
+                CoreCheckbox(
+                    core = core,
+                    checked = checked,
+                    // Lock the last checked core so at least one core always stays selected.
+                    enabled = !(checked && selectedCores.size == 1),
+                    labelColor = topology?.clusterByCore?.get(core)?.let { clusterColor(it) }
+                        ?: MaterialTheme.colorScheme.onSurface,
+                    accentColor = accentColor,
+                    onToggle = { include -> onCoreToggled(core, include) },
+                )
             }
         }
+    }
+}
+
+/** One core's checkbox and number, toggled as a whole and outlined in the accent color while focused. */
+@Composable
+private fun CoreCheckbox(
+    core: Int,
+    checked: Boolean,
+    enabled: Boolean,
+    labelColor: Color,
+    accentColor: Color,
+    onToggle: (Boolean) -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(10.dp)
+
+    Row(
+        modifier = Modifier
+            .clip(shape)
+            .then(
+                if (isFocused) {
+                    Modifier
+                        .background(accentColor.copy(alpha = 0.12f))
+                        .border(width = 2.dp, color = accentColor.copy(alpha = 0.7f), shape = shape)
+                } else {
+                    Modifier
+                }
+            )
+            .toggleable(
+                value = checked,
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                role = Role.Checkbox,
+                onValueChange = onToggle,
+            )
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = null,
+            enabled = enabled,
+            colors = CheckboxDefaults.colors(checkedColor = accentColor),
+        )
+        Text(
+            text = core.toString(),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            color = labelColor,
+        )
     }
 }
 
