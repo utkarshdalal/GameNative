@@ -2485,8 +2485,6 @@
     <string name="settings_texture_pack_mobile_data_title">Texturübertragungen über mobile Daten erlauben</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Texturpakete werden nur über WLAN übertragen, solange dies ausgeschaltet ist.</string>
     <string name="settings_texture_pack_server_title">Texturpaket-Server</string>
-    <string name="settings_texture_pack_token_title">Zugriffstoken für Texturpakete</string>
-    <string name="settings_texture_pack_token_unset">Nicht festgelegt</string>
     <string name="settings_texture_pack_server_reset">Auf Standard zurücksetzen</string>
     <string name="settings_texture_cache_title">Textur-Cache</string>
     <string name="settings_texture_cache_calculating">Wird berechnet…</string>

@@ -2559,8 +2559,6 @@
     <string name="settings_texture_pack_mobile_data_title">允许使用移动数据传输纹理</string>
     <string name="settings_texture_pack_mobile_data_subtitle">除非开启此选项，否则纹理包仅通过 Wi-Fi 传输。</string>
     <string name="settings_texture_pack_server_title">纹理包服务器</string>
-    <string name="settings_texture_pack_token_title">纹理包访问令牌</string>
-    <string name="settings_texture_pack_token_unset">未设置</string>
     <string name="settings_texture_pack_server_reset">恢复默认</string>
     <string name="settings_texture_cache_title">纹理缓存</string>
     <string name="settings_texture_cache_calculating">正在计算…</string>

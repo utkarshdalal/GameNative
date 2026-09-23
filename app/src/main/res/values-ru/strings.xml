@@ -2477,8 +2477,6 @@ https://gamenative.app
     <string name="settings_texture_pack_mobile_data_title">Разрешить передачу текстур по мобильной сети</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Без этой опции пакеты текстур передаются только по Wi-Fi.</string>
     <string name="settings_texture_pack_server_title">Сервер пакетов текстур</string>
-    <string name="settings_texture_pack_token_title">Токен доступа к пакетам текстур</string>
-    <string name="settings_texture_pack_token_unset">Не задан</string>
     <string name="settings_texture_pack_server_reset">Сбросить по умолчанию</string>
     <string name="settings_texture_cache_title">Кэш текстур</string>
     <string name="settings_texture_cache_calculating">Подсчёт…</string>

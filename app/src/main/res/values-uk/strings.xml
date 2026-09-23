@@ -2547,8 +2547,6 @@
     <string name="settings_texture_pack_mobile_data_title">Дозволити передавання текстур мобільними даними</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Без цього параметра пакети текстур передаються лише через Wi-Fi.</string>
     <string name="settings_texture_pack_server_title">Сервер пакетів текстур</string>
-    <string name="settings_texture_pack_token_title">Токен доступу до пакетів текстур</string>
-    <string name="settings_texture_pack_token_unset">Не задано</string>
     <string name="settings_texture_pack_server_reset">Скинути до типових</string>
     <string name="settings_texture_cache_title">Кеш текстур</string>
     <string name="settings_texture_cache_calculating">Обчислення…</string>

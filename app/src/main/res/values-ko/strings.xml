@@ -2539,8 +2539,6 @@
     <string name="settings_texture_pack_mobile_data_title">모바일 데이터로 텍스처 전송 허용</string>
     <string name="settings_texture_pack_mobile_data_subtitle">이 옵션을 켜지 않으면 텍스처 팩은 Wi-Fi로만 전송됩니다.</string>
     <string name="settings_texture_pack_server_title">텍스처 팩 서버</string>
-    <string name="settings_texture_pack_token_title">텍스처 팩 액세스 토큰</string>
-    <string name="settings_texture_pack_token_unset">설정되지 않음</string>
     <string name="settings_texture_pack_server_reset">기본값으로 재설정</string>
     <string name="settings_texture_cache_title">텍스처 캐시</string>
     <string name="settings_texture_cache_calculating">계산 중…</string>

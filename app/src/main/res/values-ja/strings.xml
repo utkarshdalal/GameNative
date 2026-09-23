@@ -2498,8 +2498,6 @@
     <string name="settings_texture_pack_mobile_data_title">モバイルデータでのテクスチャ転送を許可</string>
     <string name="settings_texture_pack_mobile_data_subtitle">オンにしない限り、テクスチャパックは Wi-Fi でのみ転送されます。</string>
     <string name="settings_texture_pack_server_title">テクスチャパックサーバー</string>
-    <string name="settings_texture_pack_token_title">テクスチャパックのアクセストークン</string>
-    <string name="settings_texture_pack_token_unset">未設定</string>
     <string name="settings_texture_pack_server_reset">デフォルトに戻す</string>
     <string name="settings_texture_cache_title">テクスチャキャッシュ</string>
     <string name="settings_texture_cache_calculating">計算中…</string>

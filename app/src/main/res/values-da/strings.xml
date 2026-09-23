@@ -2415,8 +2415,6 @@
     <string name="settings_texture_pack_mobile_data_title">Tillad teksturoverførsler på mobildata</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Teksturpakker overføres kun på Wi-Fi, medmindre dette er slået til.</string>
     <string name="settings_texture_pack_server_title">Teksturpakkeserver</string>
-    <string name="settings_texture_pack_token_title">Adgangstoken til teksturpakker</string>
-    <string name="settings_texture_pack_token_unset">Ikke angivet</string>
     <string name="settings_texture_pack_server_reset">Nulstil til standard</string>
     <string name="settings_texture_cache_title">Teksturcache</string>
     <string name="settings_texture_cache_calculating">Beregner…</string>

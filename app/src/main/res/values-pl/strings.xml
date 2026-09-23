@@ -2551,8 +2551,6 @@
     <string name="settings_texture_pack_mobile_data_title">Zezwalaj na przesyłanie tekstur przez dane komórkowe</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Pakiety tekstur są przesyłane tylko przez Wi-Fi, chyba że ta opcja jest włączona.</string>
     <string name="settings_texture_pack_server_title">Serwer pakietów tekstur</string>
-    <string name="settings_texture_pack_token_title">Token dostępu do pakietów tekstur</string>
-    <string name="settings_texture_pack_token_unset">Nie ustawiono</string>
     <string name="settings_texture_pack_server_reset">Przywróć domyślne</string>
     <string name="settings_texture_cache_title">Pamięć podręczna tekstur</string>
     <string name="settings_texture_cache_calculating">Obliczanie…</string>

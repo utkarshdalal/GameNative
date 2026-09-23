@@ -106,50 +106,7 @@ fun SettingsGroupPerformance() {
             },
         )
 
-        var texturePackToken by rememberSaveable { mutableStateOf(PrefManager.texturePackToken) }
-        var editingToken by rememberSaveable { mutableStateOf(false) }
-        var tokenDraft by rememberSaveable { mutableStateOf(texturePackToken) }
-        SettingsMenuLink(
-            colors = settingsTileColorsAlt(),
-            title = { Text(stringResource(R.string.settings_texture_pack_token_title)) },
-            subtitle = { Text(if (texturePackToken.isBlank()) stringResource(R.string.settings_texture_pack_token_unset) else "••••••••") },
-            onClick = {
-                tokenDraft = texturePackToken
-                editingToken = true
-            },
-        )
-
         TextureCacheSetting()
-
-        if (editingToken) {
-            AlertDialog(
-                onDismissRequest = { editingToken = false },
-                title = { Text(stringResource(R.string.settings_texture_pack_token_title)) },
-                text = {
-                    OutlinedTextField(
-                        modifier = Modifier.fillMaxWidth(),
-                        value = tokenDraft,
-                        onValueChange = { tokenDraft = it },
-                        singleLine = true,
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        val value = tokenDraft.trim()
-                        PrefManager.texturePackToken = value
-                        texturePackToken = value
-                        editingToken = false
-                    }) {
-                        Text(stringResource(android.R.string.ok))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { editingToken = false }) {
-                        Text(stringResource(android.R.string.cancel))
-                    }
-                },
-            )
-        }
 
         if (editingServer) {
             AlertDialog(

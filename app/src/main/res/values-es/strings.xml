@@ -2543,8 +2543,6 @@
     <string name="settings_texture_pack_mobile_data_title">Permitir transferencias de texturas con datos móviles</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Los paquetes de texturas solo se transfieren por Wi-Fi salvo que esto esté activado.</string>
     <string name="settings_texture_pack_server_title">Servidor de paquetes de texturas</string>
-    <string name="settings_texture_pack_token_title">Token de acceso a paquetes de texturas</string>
-    <string name="settings_texture_pack_token_unset">Sin configurar</string>
     <string name="settings_texture_pack_server_reset">Restablecer valor predeterminado</string>
     <string name="settings_texture_cache_title">Caché de texturas</string>
     <string name="settings_texture_cache_calculating">Calculando…</string>

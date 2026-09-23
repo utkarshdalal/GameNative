@@ -2550,8 +2550,6 @@
     <string name="settings_texture_pack_mobile_data_title">Permite transferul texturilor prin date mobile</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Pachetele de texturi se transferă doar prin Wi-Fi, cu excepția cazului în care această opțiune este activată.</string>
     <string name="settings_texture_pack_server_title">Server pentru pachete de texturi</string>
-    <string name="settings_texture_pack_token_title">Token de acces pentru pachetele de texturi</string>
-    <string name="settings_texture_pack_token_unset">Nesetat</string>
     <string name="settings_texture_pack_server_reset">Resetează la implicit</string>
     <string name="settings_texture_cache_title">Cache de texturi</string>
     <string name="settings_texture_cache_calculating">Se calculează…</string>

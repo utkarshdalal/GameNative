@@ -2578,8 +2578,6 @@
     <string name="settings_texture_pack_mobile_data_title">Allow texture transfers on mobile data</string>
     <string name="settings_texture_pack_mobile_data_subtitle">Texture packs transfer only on Wi-Fi unless this is on.</string>
     <string name="settings_texture_pack_server_title">Texture pack server</string>
-    <string name="settings_texture_pack_token_title">Texture pack access token</string>
-    <string name="settings_texture_pack_token_unset">Not set</string>
     <string name="settings_texture_pack_server_reset">Reset to default</string>
     <string name="settings_texture_cache_title">Texture cache</string>
     <string name="settings_texture_cache_calculating">Calculating…</string>

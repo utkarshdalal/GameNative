@@ -2550,8 +2550,6 @@
     <string name="settings_texture_pack_mobile_data_title">允許使用行動數據傳輸紋理</string>
     <string name="settings_texture_pack_mobile_data_subtitle">除非開啟此選項，否則紋理包僅透過 Wi-Fi 傳輸。</string>
     <string name="settings_texture_pack_server_title">紋理包伺服器</string>
-    <string name="settings_texture_pack_token_title">紋理包存取權杖</string>
-    <string name="settings_texture_pack_token_unset">未設定</string>
     <string name="settings_texture_pack_server_reset">重設為預設值</string>
     <string name="settings_texture_cache_title">紋理快取</string>
     <string name="settings_texture_cache_calculating">計算中…</string>
