@@ -222,10 +222,11 @@ class TexturePackSyncWorker(
         private const val SWEEP_NOW_WORK = "texture-pack-sweep-now"
         private const val SWEEP_WORK = "texture-pack-sweep"
 
-        private fun constraints(): Constraints {
-            val networkType = if (PrefManager.texturePackAllowMobileData) NetworkType.CONNECTED else NetworkType.UNMETERED
-            return Constraints.Builder().setRequiredNetworkType(networkType).build()
-        }
+        fun networkType(allowMobileData: Boolean): NetworkType =
+            if (allowMobileData) NetworkType.CONNECTED else NetworkType.UNMETERED
+
+        private fun constraints(): Constraints =
+            Constraints.Builder().setRequiredNetworkType(networkType(PrefManager.texturePackAllowMobileData)).build()
 
         fun enqueueDownloadSync(context: Context, appId: String) {
             if (!PrefManager.texturePackEnabled) return
@@ -264,7 +265,7 @@ class TexturePackSyncWorker(
                 manager.enqueueUniqueWork(SWEEP_NOW_WORK, ExistingWorkPolicy.REPLACE, sweep)
                 manager.enqueueUniquePeriodicWork(
                     SWEEP_WORK,
-                    ExistingPeriodicWorkPolicy.KEEP,
+                    ExistingPeriodicWorkPolicy.UPDATE,
                     periodic,
                 )
             }.onFailure { Timber.w(it, "could not schedule texture pack sync") }

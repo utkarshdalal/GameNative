@@ -2,7 +2,6 @@ package app.gamenative.texturepack
 
 import android.content.Context
 import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import app.gamenative.PrefManager
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -24,7 +23,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okio.BufferedSink
 
-class TexturePackNetworkUnavailable : IOException("texture pack transfers are restricted to Wi-Fi")
+class TexturePackNetworkUnavailable : IOException("texture pack transfers are restricted to unmetered networks")
 
 class TexturePackClient(
     private val context: Context,
@@ -170,15 +169,14 @@ class TexturePackClient(
                 .build()
         }
 
+        fun transferAllowed(metered: Boolean, allowMobileData: Boolean): Boolean = !metered || allowMobileData
+
         fun isTransferAllowed(context: Context): Boolean {
-            if (PrefManager.texturePackAllowMobileData) return true
+            val allowMobileData = PrefManager.texturePackAllowMobileData
+            if (allowMobileData) return true
             val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
                 ?: return false
-            val network = manager.activeNetwork ?: return false
-            val caps = manager.getNetworkCapabilities(network) ?: return false
-            if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return false
-            return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            return transferAllowed(manager.isActiveNetworkMetered, allowMobileData)
         }
     }
 }
