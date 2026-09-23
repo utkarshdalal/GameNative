@@ -83,7 +83,7 @@ fun TexturePackUploadDialog() {
     if (!visible) return
 
     AlertDialog(
-        onDismissRequest = { },
+        onDismissRequest = { TexturePackUploadPrompt.clear() },
         title = { Text(stringResource(R.string.texture_pack_upload_dialog_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
