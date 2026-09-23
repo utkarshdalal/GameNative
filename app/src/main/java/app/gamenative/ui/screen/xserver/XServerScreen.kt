@@ -6108,6 +6108,7 @@ private suspend fun extractGraphicsDriverFiles(
         val isXclipse = vendorId == 0x144D
         val excludeBcnCompute = isAdreno || (isWrapperGamenative && isXclipse)
         val bcnEmulation = graphicsDriverConfig.get("bcnEmulation")
+        val needsTexturePack = app.gamenative.texturepack.TexturePackGate.needsTexturePack(context)
         val texturePackSync = app.gamenative.texturepack.TexturePackGate.syncEnabled(context, container.id)
         val bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType")
         when (bcnEmulation) {
@@ -6129,10 +6130,19 @@ private suspend fun extractGraphicsDriverFiles(
             else -> envVars.put("WRAPPER_EMULATE_BCN", "1")
         }
 
-        val bcnEmulationCache = if (texturePackSync) "1" else graphicsDriverConfig.get("bcnEmulationCache", "1")
+        val bcnEmulationCache = when {
+            texturePackSync -> "1"
+            needsTexturePack -> graphicsDriverConfig.get("bcnEmulationCache", "1")
+            else -> graphicsDriverConfig.get("bcnEmulationCache")
+        }
         envVars.put("WRAPPER_USE_BCN_CACHE", bcnEmulationCache)
-        val textureCacheDir = app.gamenative.texturepack.TexturePackPaths.ensureCacheDir(container)
-        envVars.put("WRAPPER_CACHE_PATH", textureCacheDir.absolutePath)
+        if (needsTexturePack) {
+            val textureCacheDir = app.gamenative.texturepack.TexturePackPaths.ensureCacheDir(container)
+            envVars.put("WRAPPER_CACHE_PATH", textureCacheDir.absolutePath)
+        }
+        if (texturePackSync) {
+            envVars.put("WRAPPER_BCN_UPLOAD", "1")
+        }
 
         val transcoder = graphicsDriverConfig.get("transcoder", "cpu")
         envVars.put(
