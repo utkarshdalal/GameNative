@@ -2415,7 +2415,7 @@
     <string name="texture_pack_game_setting_needs_bcn">Ikke tilgængelig: sæt %1$s til en anden værdi end none.</string>
     <string name="settings_texture_section_title">Teksturer (Mali og andre GPU\'er uden BCn)</string>
     <string name="settings_texture_pack_title">Serverbaserede teksturpakker</string>
-    <string name="settings_texture_pack_subtitle">Tilbyd forberedte teksturer i høj kvalitet, før et spil starter på Mali-enheder. Når du slår dette fra, slås grænsen for teksturhukommelse også fra, og enhedens egen teksturkonvertering gendannes. Virker kun med grafikdriveren wrapper-gamenative og software-BCn-afkodning.</string>
+    <string name="settings_texture_pack_subtitle">Tilbyd forberedte teksturer i høj kvalitet, før et spil starter på GPU\'er uden understøttelse af BCn-teksturer (Mali, PowerVR og andre). Når du slår dette fra, slås grænsen for teksturhukommelse også fra, og enhedens egen teksturkonvertering gendannes. Virker kun med grafikdriveren wrapper-gamenative og software-BCn-afkodning.</string>
     <string name="settings_texture_pack_gpu_transcode_title">Konvertér teksturer på GPU\'en</string>
     <string name="settings_texture_pack_gpu_transcode_subtitle">Undgår CPU-stop og hukommelsesspidser første gang et spil kører. Slås dette fra, bruges den langsommere CPU-vej.</string>
     <string name="settings_texture_pack_mobile_data_title">Tillad teksturoverførsler på mobildata</string>

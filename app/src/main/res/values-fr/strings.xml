@@ -2545,7 +2545,7 @@
     <string name="texture_pack_game_setting_needs_bcn">Indisponible : réglez %1$s sur une autre valeur que none.</string>
     <string name="settings_texture_section_title">Textures (Mali et autres GPU sans BCn)</string>
     <string name="settings_texture_pack_title">Packs de textures serveur</string>
-    <string name="settings_texture_pack_subtitle">Propose des textures préparées en haute qualité avant le lancement d\'un jeu sur les appareils Mali. La désactivation supprime aussi la limite de mémoire des textures et rétablit la conversion des textures propre à l\'appareil. Fonctionne uniquement avec le pilote graphique wrapper-gamenative et le décodage BCn logiciel.</string>
+    <string name="settings_texture_pack_subtitle">Propose des textures préparées en haute qualité avant le lancement d\'un jeu sur les GPU sans prise en charge des textures BCn (Mali, PowerVR et autres). La désactivation supprime aussi la limite de mémoire des textures et rétablit la conversion des textures propre à l\'appareil. Fonctionne uniquement avec le pilote graphique wrapper-gamenative et le décodage BCn logiciel.</string>
     <string name="settings_texture_pack_gpu_transcode_title">Convertir les textures sur le GPU</string>
     <string name="settings_texture_pack_gpu_transcode_subtitle">Évite les blocages du processeur et les pics de mémoire au premier lancement d\'un jeu. Désactivé, le chemin processeur, plus lent, est utilisé.</string>
     <string name="settings_texture_pack_mobile_data_title">Autoriser les transferts de textures en données mobiles</string>

@@ -2477,7 +2477,7 @@ https://gamenative.app
     <string name="texture_pack_game_setting_needs_bcn">Недоступно: установите для параметра «%1$s» любое значение, кроме none.</string>
     <string name="settings_texture_section_title">Текстуры (Mali и другие GPU без BCn)</string>
     <string name="settings_texture_pack_title">Серверные пакеты текстур</string>
-    <string name="settings_texture_pack_subtitle">Предлагать подготовленные текстуры высокого качества перед запуском игры на устройствах с Mali. Отключение также снимает ограничение памяти текстур и возвращает собственное преобразование текстур устройства. Работает только с графическим драйвером wrapper-gamenative и программным декодированием BCn.</string>
+    <string name="settings_texture_pack_subtitle">Предлагать подготовленные текстуры высокого качества перед запуском игры на GPU без поддержки текстур BCn (Mali, PowerVR и другие). Отключение также снимает ограничение памяти текстур и возвращает собственное преобразование текстур устройства. Работает только с графическим драйвером wrapper-gamenative и программным декодированием BCn.</string>
     <string name="settings_texture_pack_gpu_transcode_title">Преобразовывать текстуры на GPU</string>
     <string name="settings_texture_pack_gpu_transcode_subtitle">Предотвращает зависания процессора и скачки памяти при первом запуске игры. При отключении используется более медленный путь через процессор.</string>
     <string name="settings_texture_pack_mobile_data_title">Разрешить передачу текстур по мобильной сети</string>

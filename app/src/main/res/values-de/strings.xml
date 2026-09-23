@@ -2485,7 +2485,7 @@
     <string name="texture_pack_game_setting_needs_bcn">Nicht verfügbar: %1$s auf einen anderen Wert als none stellen.</string>
     <string name="settings_texture_section_title">Texturen (Mali und andere GPUs ohne BCn)</string>
     <string name="settings_texture_pack_title">Serverseitige Texturpakete</string>
-    <string name="settings_texture_pack_subtitle">Vorbereitete Texturen in hoher Qualität vor dem Spielstart auf Mali-Geräten anbieten. Beim Ausschalten wird auch die Begrenzung des Texturspeichers deaktiviert und die geräteeigene Texturkonvertierung wiederhergestellt. Funktioniert nur mit dem Grafiktreiber wrapper-gamenative und BCn-Dekodierung per Software.</string>
+    <string name="settings_texture_pack_subtitle">Vorbereitete Texturen in hoher Qualität vor dem Spielstart auf GPUs ohne BCn-Texturunterstützung (Mali, PowerVR und andere) anbieten. Beim Ausschalten wird auch die Begrenzung des Texturspeichers deaktiviert und die geräteeigene Texturkonvertierung wiederhergestellt. Funktioniert nur mit dem Grafiktreiber wrapper-gamenative und BCn-Dekodierung per Software.</string>
     <string name="settings_texture_pack_gpu_transcode_title">Texturen auf der GPU umwandeln</string>
     <string name="settings_texture_pack_gpu_transcode_subtitle">Vermeidet CPU-Hänger und Speicherspitzen beim ersten Start eines Spiels. Ausgeschaltet wird der langsamere CPU-Weg verwendet.</string>
     <string name="settings_texture_pack_mobile_data_title">Texturübertragungen über mobile Daten erlauben</string>
