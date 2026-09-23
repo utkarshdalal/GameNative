@@ -584,7 +584,7 @@
     <string name="calculating_time">Obliczanie...</string>
     <string name="download_failed_try_again">Pobieranie nie powiodło się. Spróbuj ponownie.</string>
     <string name="download_preparing">Przygotowywanie pobierania...</string>
-    <string name="download_verifying_file">Weryfikowanie %1$s…</string>
+    <string name="download_verifying_files_progress">Weryfikowanie plików (%1$d/%2$d)</string>
     <string name="download_verifying_files">Weryfikowanie plików...</string>
     <string name="download_assembling_files">Składanie plików...</string>
     <string name="download_progress_chunks">Pobieranie (%1$d/%2$d fragmentów)</string>

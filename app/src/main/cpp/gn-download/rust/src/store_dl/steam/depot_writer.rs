@@ -199,8 +199,9 @@ pub const RATE_LIMIT_COOLDOWN_MS: u64 = 5_000;
 /// from the fetch/process pools and the reporter thread.
 pub type DepotLogCallback<'a> = &'a (dyn Fn(&str) + Sync);
 
-/// Resume/verify status line (currently verifying file path) — for the UI status row.
-pub type DepotStatusCallback<'a> = &'a (dyn Fn(&str) + Sync);
+/// Resume/verify status line — for the UI status row. Args: (file path, 1-based index of the
+/// file among the depot's verify candidates, total verify candidates in the depot).
+pub type DepotStatusCallback<'a> = &'a (dyn Fn(&str, u32, u32) + Sync);
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DepotWriteResult {
@@ -1763,6 +1764,16 @@ fn write_depot_single(
     let mut bytes_written = 0u64;
     let mut conn = cdn.open_connection();
     let mut last_verify_file: Option<usize> = None;
+    // 1-based index of the file being re-hashed among the depot's verify candidates (files
+    // with pre-existing on-disk bytes), for the UI status row.
+    let mut verify_seen = 0u32;
+    let verify_total = if options.status.is_some() {
+        (0..manifest.files.len())
+            .filter(|&i| files.needs_verify(i))
+            .count() as u32
+    } else {
+        0
+    };
     for (job_index, job) in plan.chunk_jobs.iter().enumerate() {
         if options
             .cancel
@@ -1782,8 +1793,9 @@ fn write_depot_single(
         if files.needs_verify(file_idx) && last_verify_file != Some(file_idx) {
             // Resume/verify: report the file whose on-disk chunks are being re-hashed.
             last_verify_file = Some(file_idx);
+            verify_seen += 1;
             if let Some(status) = options.status {
-                status(&file.filename);
+                status(&file.filename, verify_seen, verify_total);
             }
         }
         let handle = match files.acquire(file_idx) {
@@ -2318,6 +2330,18 @@ async fn run_async_fetch_driver(
     let mut retry: VecDeque<PendingChunk> = VecDeque::new();
     let mut next_job = 0usize;
     let mut verify_since_yield: u32 = 0;
+    // Resume/verify UI state, hoisted out of the driver loop so the reported file index is
+    // monotonic across dispatch passes: 1-based index of the file being re-hashed among the
+    // depot's verify candidates (files with pre-existing on-disk bytes).
+    let mut last_verify_file: Option<usize> = None;
+    let mut verify_seen = 0u32;
+    let verify_total = if status.is_some() {
+        (0..manifest.files.len())
+            .filter(|&i| files.needs_verify(i))
+            .count() as u32
+    } else {
+        0
+    };
     let mut dispatch_ages: VecDeque<Instant> = VecDeque::new();
     let mut hints_generation = 0u64;
 
@@ -2368,7 +2392,6 @@ async fn run_async_fetch_driver(
 
         // ── Dispatch up to the current window ──
         let mut aborted = false;
-        let mut last_verify_file: Option<usize> = None;
         while inflight.len() < window.current {
             if cancel.is_some_and(|c| c.load(Ordering::Relaxed))
                 || error_slot.lock().expect("err slot poisoned").is_some()
@@ -2390,10 +2413,11 @@ async fn run_async_fetch_driver(
                     if last_verify_file != Some(file_idx) {
                         // Resume/verify: report the file whose on-disk chunks are being re-hashed.
                         last_verify_file = Some(file_idx);
+                        verify_seen += 1;
                         if let (Some(status), Some(file)) =
                             (status, manifest.files.get(file_idx))
                         {
-                            status(&file.filename);
+                            status(&file.filename, verify_seen, verify_total);
                         }
                     }
                     let handle = match files.acquire(file_idx) {
@@ -3892,6 +3916,72 @@ mod tests {
         // All three chunks were verified on disk, none fetched.
         assert_eq!(verified.load(Ordering::Relaxed), 3);
         assert_eq!(fs::metadata(dir.join("data.bin")).unwrap().len(), 9);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn repro_multi_file_all_verified_completes() {
+        // REPRO: several files whose on-disk content already matches every chunk (the
+        // "verify-only depot" case from depot 228989) must drain, finalize, and return.
+        let dir = temp_dir("repro_multi_verify");
+        fs::create_dir_all(dir.join("sub")).unwrap();
+        let mk = |name: &str, parts: &[&[u8]]| {
+            let mut offset = 0u64;
+            let mut content = Vec::new();
+            let chunks = parts
+                .iter()
+                .map(|p| {
+                    let c = ChunkData {
+                        offset,
+                        cb_original: p.len() as u32,
+                        crc: depot_adler_hash(p),
+                        ..Default::default()
+                    };
+                    offset += p.len() as u64;
+                    content.extend_from_slice(p);
+                    c
+                })
+                .collect::<Vec<_>>();
+            fs::write(dir.join(name), &content).unwrap();
+            crate::store_dl::steam::content_manifest::FileMapping {
+                filename: name.into(),
+                size: content.len() as u64,
+                chunks,
+                ..Default::default()
+            }
+        };
+        let manifest = ContentManifest {
+            metadata: crate::store_dl::steam::content_manifest::Metadata {
+                filenames_encrypted: false,
+                depot_id: 228989,
+                ..Default::default()
+            },
+            files: vec![
+                mk("a.dll", &[b"aaa", b"bbb"]),
+                mk("b.dll", &[b"ccc"]),
+                mk("sub/c.dll", &[b"ddd", b"eee", b"fff"]),
+            ],
+            signature: Vec::new(),
+        };
+        let server = CContentServerDirectoryServerInfo {
+            host: "cdn.example".into(),
+            https_support: "mandatory".into(),
+            ..Default::default()
+        };
+        let result = write_depot_sequential(
+            &manifest,
+            &[3u8; 32],
+            &CdnClient::new(""),
+            &[server],
+            dir.to_str().unwrap(),
+            DepotWriteOptions {
+                max_workers: 4,
+                max_process_workers: 2,
+                ..Default::default()
+            },
+        );
+        assert!(result.ok(), "{}", result.error);
+        assert_eq!(result.bytes_written, 18);
         let _ = fs::remove_dir_all(&dir);
     }
 

@@ -118,9 +118,10 @@ pub trait GogEvents: Sync {
     /// consumers unchanged.
     fn on_bytes(&self, _bytes_fetched: u64) {}
     /// A file's on-disk bytes are about to be re-hashed against the manifest (resume verify
-    /// sweep). Fired once per candidate file from the verify threads; the default no-op keeps
-    /// tests and non-UI consumers unchanged.
-    fn on_file_verify(&self, _rel_path: &str) {}
+    /// sweep). Fired once per candidate file from the verify threads; `current` is the 1-based
+    /// claim order among the sweep's candidates, `total` the candidate count (files minus
+    /// skip-paths). The default no-op keeps tests and non-UI consumers unchanged.
+    fn on_file_verify(&self, _rel_path: &str, _current: u32, _total: u32) {}
     fn on_log(&self, line: &str);
 }
 
@@ -827,6 +828,13 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
         .map(|_| (AtomicUsize::new(0), AtomicU64::new(0)))
         .collect();
     let next = AtomicUsize::new(0);
+    // UI status-row counters: 1-based claim order among the sweep's candidates (files minus
+    // skip-paths) and the candidate total.
+    let verify_seen = AtomicU32::new(0);
+    let verify_total = files
+        .iter()
+        .filter(|f| !skip.contains(f.relative_path.as_str()))
+        .count() as u32;
     let verify_threads = process_workers.min(files.len().max(1));
     std::thread::scope(|scope| {
         for _ in 0..verify_threads {
@@ -846,7 +854,8 @@ fn run_gen2(req: &GogRequest, cancel: &AtomicBool, events: &dyn GogEvents) -> Go
                     &req.install_dir,
                     &file.relative_path,
                 ));
-                events.on_file_verify(&file.relative_path);
+                let seen = verify_seen.fetch_add(1, Ordering::Relaxed) + 1;
+                events.on_file_verify(&file.relative_path, seen, verify_total);
                 if file_verified(&out_path, file.total_size, &file.md5) {
                     files_verified.fetch_add(1, Ordering::Relaxed);
                     let done = files_done.fetch_add(1, Ordering::Relaxed) + 1;

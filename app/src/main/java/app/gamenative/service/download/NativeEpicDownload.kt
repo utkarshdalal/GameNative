@@ -38,9 +38,11 @@ object NativeEpicDownload {
 
         /**
          * Resume verify sweep: fired once per file as its on-disk bytes are re-hashed
-         * against the manifest. Default no-op so existing listeners stay source-compatible.
+         * against the manifest. [current] is the 1-based index among the pending files,
+         * [total] the pending-file count. Default no-op so existing listeners stay
+         * source-compatible.
          */
-        fun onVerifying(path: String) {}
+        fun onVerifying(path: String, current: Int, total: Int) {}
 
         /** Engine log line. */
         fun onLog(line: String)

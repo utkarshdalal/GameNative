@@ -8,6 +8,7 @@ import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import app.gamenative.utils.CdnRankingUtils
+import app.gamenative.utils.LocaleHelper
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.data.EpicGame
 import app.gamenative.service.StreamingAssembly
@@ -77,6 +78,12 @@ class EpicDownloadManager @Inject constructor(
     private val epicManager: EpicManager,
     @ApplicationContext private val context: Context,
 ) {
+    // The injected application context follows the OS locale; wrap it so download status
+    // strings resolve in the app's configured language.
+    private val localizedContext: Context by lazy {
+        LocaleHelper.applyLanguage(context, app.gamenative.PrefManager.appLanguage)
+    }
+
     companion object {
         /**
          * Internal chunk-cache dir for a download target. Keyed by the full install
@@ -297,16 +304,20 @@ class EpicDownloadManager @Inject constructor(
             // Incremental download: skip files already on disk with matching size and SHA-1.
             // On a resume this hashes every completed file, which can take minutes for a
             // large install — surface it in the UI and honor cancellation between files.
-            downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_files))
+            downloadInfo.updateStatusMessage(localizedContext.getString(R.string.download_verifying_files))
+            var verifyIndex = 0
             val pendingFiles = files.filter { file ->
                 if (!downloadInfo.isActive()) {
                     // The enclosing catch never runs on this return path, so clean up here
                     MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
-                // Whole-file SHA-1 per existing file, serial — name the file being hashed
-                // so a large resume never looks dead (same string as the native sweep).
-                downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_file, file.filename))
+                // Whole-file SHA-1 per existing file, serial — show live (k/N) so a large
+                // resume never looks dead (same string as the native sweep).
+                verifyIndex += 1
+                downloadInfo.updateStatusMessage(
+                    localizedContext.getString(R.string.download_verifying_files_progress, verifyIndex, files.size),
+                )
                 !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
             }
             downloadInfo.updateStatusMessage(null)
@@ -483,16 +494,20 @@ class EpicDownloadManager @Inject constructor(
             // Incremental download: skip files already on disk with matching size and SHA-1.
             // On a resume this hashes every completed file, which can take minutes for a
             // large install — surface it in the UI and honor cancellation between files.
-            downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_files))
+            downloadInfo.updateStatusMessage(localizedContext.getString(R.string.download_verifying_files))
+            var verifyIndex = 0
             val pendingFiles = files.filter { file ->
                 if (!downloadInfo.isActive()) {
                     // The enclosing catch never runs on this return path, so clean up here
                     MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
-                // Whole-file SHA-1 per existing file, serial — name the file being hashed
-                // so a large resume never looks dead (same string as the native sweep).
-                downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_file, file.filename))
+                // Whole-file SHA-1 per existing file, serial — show live (k/N) so a large
+                // resume never looks dead (same string as the native sweep).
+                verifyIndex += 1
+                downloadInfo.updateStatusMessage(
+                    localizedContext.getString(R.string.download_verifying_files_progress, verifyIndex, files.size),
+                )
                 !fileExistsWithCorrectHash(File(installDir, file.filename), file.fileSize, file.hash)
             }
             downloadInfo.updateStatusMessage(null)
@@ -1084,10 +1099,12 @@ class EpicDownloadManager @Inject constructor(
                 }
             }
 
-            override fun onVerifying(path: String) {
+            override fun onVerifying(path: String, current: Int, total: Int) {
                 // Resume verify sweep; the first chunk progress overwrites this with the
                 // "Downloading (i/n chunks)" status.
-                downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_file, path))
+                downloadInfo.updateStatusMessage(
+                    localizedContext.getString(R.string.download_verifying_files_progress, current, total),
+                )
             }
 
             override fun onProgress(bytesDone: Long, bytesTotal: Long, chunksDone: Int, chunksTotal: Int) {
@@ -1098,7 +1115,7 @@ class EpicDownloadManager @Inject constructor(
                 if (chunksTotal > 0) {
                     downloadInfo.setProgress(chunksDone.toFloat() / chunksTotal.toFloat())
                 }
-                downloadInfo.updateStatusMessage(context.getString(R.string.download_progress_chunks, chunksDone, chunksTotal))
+                downloadInfo.updateStatusMessage(localizedContext.getString(R.string.download_progress_chunks, chunksDone, chunksTotal))
             }
 
             override fun onAssemblyProgress(bytesWritten: Long) {
@@ -1116,7 +1133,7 @@ class EpicDownloadManager @Inject constructor(
                 val now = System.currentTimeMillis()
                 if (now - lastAssemblyEmitAt >= 250L) {
                     lastAssemblyEmitAt = now
-                    downloadInfo.updateStatusMessage(context.getString(R.string.download_assembling_files))
+                    downloadInfo.updateStatusMessage(localizedContext.getString(R.string.download_assembling_files))
                     downloadInfo.emitProgressChange()
                 }
             }
@@ -1335,7 +1352,7 @@ class EpicDownloadManager @Inject constructor(
                                 val progress = downloadedChunkIds.size.toFloat() / totalChunks
                                 downloadInfo.setProgress(progress)
                                 downloadInfo.updateStatusMessage(
-                                    context.getString(R.string.download_progress_chunks, downloadedChunkIds.size, totalChunks),
+                                    localizedContext.getString(R.string.download_progress_chunks, downloadedChunkIds.size, totalChunks),
                                 )
 
                                 // Decrement pending chunks counter

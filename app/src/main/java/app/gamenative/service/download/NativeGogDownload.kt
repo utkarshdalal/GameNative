@@ -27,9 +27,11 @@ interface NativeGogDownloadListener {
 
     /**
      * Resume verify sweep: fired once per file as its on-disk bytes are re-hashed against
-     * the manifest. Default no-op so existing listeners stay source-compatible.
+     * the manifest. [current] is the 1-based index among the sweep's candidates, [total]
+     * the candidate count (planned files minus skip-paths). Default no-op so existing
+     * listeners stay source-compatible.
      */
-    fun onVerifying(path: String) {}
+    fun onVerifying(path: String, current: Int, total: Int) {}
 
     /** Engine diagnostics. */
     fun onLog(line: String)

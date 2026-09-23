@@ -108,7 +108,7 @@ fn int_array_to_vec(env: &JNIEnv, array: &JIntArray) -> Vec<i32> {
     values
 }
 
-fn call_on_verifying(env: &mut JNIEnv, listener: &JObject, path: &str) {
+fn call_on_verifying(env: &mut JNIEnv, listener: &JObject, path: &str, current: u32, total: u32) {
     if listener.is_null() {
         return;
     }
@@ -120,8 +120,12 @@ fn call_on_verifying(env: &mut JNIEnv, listener: &JObject, path: &str) {
     let _ = env.call_method(
         listener,
         "onVerifying",
-        "(Ljava/lang/String;)V",
-        &[JValue::Object(&obj)],
+        "(Ljava/lang/String;II)V",
+        &[
+            JValue::Object(&obj),
+            JValue::Int(current as jint),
+            JValue::Int(total as jint),
+        ],
     );
     clear_pending_exception(env);
 }
@@ -396,11 +400,11 @@ fn run_on_thread(
     };
 
     // Resume verify sweep reports from the driver's verify threads.
-    let verify_status = |path: &str| {
+    let verify_status = |path: &str, current: u32, total: u32| {
         let Ok(mut env) = vm.attach_current_thread_as_daemon() else {
             return;
         };
-        call_on_verifying(&mut env, listener.as_obj(), path);
+        call_on_verifying(&mut env, listener.as_obj(), path, current, total);
     };
 
     let outcome = run_plan(

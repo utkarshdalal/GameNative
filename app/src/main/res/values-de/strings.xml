@@ -561,7 +561,7 @@
     <string name="calculating_time">Wird berechnet…</string>
     <string name="download_failed_try_again">Download fehlgeschlagen. Bitte nochmal versuchen.</string>
     <string name="download_preparing">Download wird vorbereitet…</string>
-    <string name="download_verifying_file">Überprüfe %1$s…</string>
+    <string name="download_verifying_files_progress">Überprüfe Dateien (%1$d/%2$d)</string>
     <string name="download_verifying_files">Überprüfe Dateien...</string>
     <string name="download_assembling_files">Dateien werden zusammengesetzt...</string>
     <string name="download_progress_chunks">Wird heruntergeladen (%1$d/%2$d Blöcke)</string>

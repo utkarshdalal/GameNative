@@ -27,6 +27,7 @@ import app.gamenative.ui.data.DownloadItemStatus
 import app.gamenative.ui.data.DownloadsState
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
+import app.gamenative.utils.LocaleHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.LinkedHashMap
@@ -59,6 +60,12 @@ class DownloadsViewModel @Inject constructor(
         val iconUrl: String,
         val info: DownloadInfo,
     )
+
+    // The application context follows the OS locale; wrap it so status labels resolve in the
+    // app's configured language (PrefManager is initialized before any ViewModel exists).
+    private val localizedContext: Context by lazy {
+        LocaleHelper.applyLanguage(appContext, app.gamenative.PrefManager.appLanguage)
+    }
 
     private data class ObservedDownload(
         val info: DownloadInfo,
@@ -143,7 +150,7 @@ class DownloadsViewModel @Inject constructor(
     }
 
     private fun failureMessage(message: String?): String {
-        return normalizeStatusMessage(message) ?: appContext.getString(R.string.downloads_status_failed)
+        return normalizeStatusMessage(message) ?: localizedContext.getString(R.string.downloads_status_failed)
     }
 
     private suspend fun getSteamMetadata(appId: Int): Pair<String, String> {
@@ -330,9 +337,9 @@ class DownloadsViewModel @Inject constructor(
             else -> DownloadItemStatus.RESUMABLE
         }
         val statusMessage = when (status) {
-            DownloadItemStatus.PAUSED -> appContext.getString(R.string.downloads_status_paused)
-            DownloadItemStatus.FAILED -> recentFailureMessages[key] ?: appContext.getString(R.string.downloads_status_failed)
-            DownloadItemStatus.RESUMABLE -> appContext.getString(R.string.downloads_resume_available)
+            DownloadItemStatus.PAUSED -> localizedContext.getString(R.string.downloads_status_paused)
+            DownloadItemStatus.FAILED -> recentFailureMessages[key] ?: localizedContext.getString(R.string.downloads_status_failed)
+            DownloadItemStatus.RESUMABLE -> localizedContext.getString(R.string.downloads_resume_available)
             else -> null
         }
 
@@ -530,9 +537,9 @@ class DownloadsViewModel @Inject constructor(
                 }
 
                 val finishedMessage = when (finishedStatus) {
-                    DownloadItemStatus.COMPLETED -> appContext.getString(R.string.downloads_status_complete)
-                    DownloadItemStatus.CANCELLED -> appContext.getString(R.string.downloads_status_cancelled)
-                    DownloadItemStatus.FAILED -> recentFailureMessages[key] ?: appContext.getString(R.string.downloads_status_failed)
+                    DownloadItemStatus.COMPLETED -> localizedContext.getString(R.string.downloads_status_complete)
+                    DownloadItemStatus.CANCELLED -> localizedContext.getString(R.string.downloads_status_cancelled)
+                    DownloadItemStatus.FAILED -> recentFailureMessages[key] ?: localizedContext.getString(R.string.downloads_status_failed)
                     else -> previousItem.statusMessage
                 }
 
@@ -633,7 +640,7 @@ class DownloadsViewModel @Inject constructor(
                 val installPath = game.installPath.ifBlank { GOGConstants.getGameInstallPath(game.title) }
                 val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.GOG.name}_${item.appId}")
                 val language = ContainerUtils.toContainerData(container).language
-                val result = GOGService.downloadGame(appContext, item.appId, installPath, language)
+                val result = GOGService.downloadGame(localizedContext, item.appId, installPath, language)
                 result.exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
             }
 
@@ -645,7 +652,7 @@ class DownloadsViewModel @Inject constructor(
                 }
                 val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.EPIC.name}_${item.appId}")
                 val language = ContainerUtils.toContainerData(container).language
-                val result = EpicService.downloadGame(appContext, id, emptyList(), installPath, language)
+                val result = EpicService.downloadGame(localizedContext, id, emptyList(), installPath, language)
                 result.exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
             }
 
@@ -654,7 +661,7 @@ class DownloadsViewModel @Inject constructor(
                 val installPath = game.installPath.ifBlank {
                     AmazonConstants.getGameInstallPath(appContext, game.title)
                 }
-                val result = AmazonService.downloadGame(appContext, item.appId, installPath)
+                val result = AmazonService.downloadGame(localizedContext, item.appId, installPath)
                 result.exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
             }
 
