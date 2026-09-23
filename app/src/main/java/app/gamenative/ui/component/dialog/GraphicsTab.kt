@@ -23,6 +23,7 @@ import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.LsfgVkManager
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import app.gamenative.texturepack.TexturePackGate
 import app.gamenative.texturepack.TexturePackPaths
 import com.alorma.compose.settings.ui.SettingsGroup
@@ -34,6 +35,8 @@ import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVars
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Composable
 fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
@@ -261,9 +264,9 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             )
             if (state.appId.isNotBlank()) {
                 val texturePackContext = LocalContext.current
-                val texturePackAvailable = remember {
-                    PrefManager.texturePackEnabled && TexturePackGate.needsTexturePack(texturePackContext)
-                }
+                val texturePackNeeded = remember { TexturePackGate.needsTexturePack(texturePackContext) }
+                val texturePackAvailable = remember { PrefManager.texturePackEnabled && texturePackNeeded }
+                val texturePackScope = rememberCoroutineScope()
                 if (texturePackAvailable) {
                     var texturePackOn by remember(state.appId) {
                         mutableStateOf(!TexturePackGate.isSkipped(texturePackContext, state.appId))
@@ -292,15 +295,20 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                         },
                     )
                 }
-                SettingsMenuLink(
-                    colors = settingsTileColorsAlt(),
-                    title = { Text(text = stringResource(R.string.clear_texture_cache)) },
-                    subtitle = { Text(text = stringResource(R.string.clear_texture_cache_subtitle)) },
-                    onClick = {
-                        TexturePackPaths.clear(TexturePackPaths.cacheDirForApp(texturePackContext, state.appId))
-                        TexturePackGate.resetServerEntries(texturePackContext, state.appId)
-                    },
-                )
+                if (texturePackNeeded) {
+                    SettingsMenuLink(
+                        colors = settingsTileColorsAlt(),
+                        title = { Text(text = stringResource(R.string.clear_texture_cache)) },
+                        subtitle = { Text(text = stringResource(R.string.clear_texture_cache_subtitle)) },
+                        onClick = {
+                            val appId = state.appId
+                            texturePackScope.launch(Dispatchers.IO) {
+                                TexturePackPaths.clear(TexturePackPaths.cacheDirForApp(texturePackContext, appId))
+                                TexturePackGate.resetServerEntries(texturePackContext, appId)
+                            }
+                        },
+                    )
+                }
             }
             // Sharpness (vkBasalt)
             SettingsListDropdown(
