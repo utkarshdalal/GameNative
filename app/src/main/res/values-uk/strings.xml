@@ -2555,4 +2555,5 @@
     <string name="settings_texture_cache_delete">Видалити</string>
     <string name="settings_texture_cache_delete_all">Видалити все</string>
     <string name="settings_texture_cache_close">Закрити</string>
+    <string name="clear_texture_cache_size">%1$s МБ підготовлених і перетворених текстур на цьому пристрої. Торкніться, щоб видалити.</string>
 </resources>

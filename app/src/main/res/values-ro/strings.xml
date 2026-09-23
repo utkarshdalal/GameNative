@@ -2558,4 +2558,5 @@
     <string name="settings_texture_cache_delete">Șterge</string>
     <string name="settings_texture_cache_delete_all">Șterge tot</string>
     <string name="settings_texture_cache_close">Închide</string>
+    <string name="clear_texture_cache_size">%1$s MB de texturi pregătite și convertite pe acest dispozitiv. Atinge pentru a șterge.</string>
 </resources>

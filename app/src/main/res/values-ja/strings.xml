@@ -2506,4 +2506,5 @@
     <string name="settings_texture_cache_delete">削除</string>
     <string name="settings_texture_cache_delete_all">すべて削除</string>
     <string name="settings_texture_cache_close">閉じる</string>
+    <string name="clear_texture_cache_size">この端末に準備済み・変換済みテクスチャが %1$s MB あります。タップして削除します。</string>
 </resources>

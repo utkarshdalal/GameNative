@@ -2493,4 +2493,5 @@
     <string name="settings_texture_cache_delete">Löschen</string>
     <string name="settings_texture_cache_delete_all">Alle löschen</string>
     <string name="settings_texture_cache_close">Schließen</string>
+    <string name="clear_texture_cache_size">%1$s MB vorbereitete und konvertierte Texturen auf diesem Gerät. Zum Löschen tippen.</string>
 </resources>

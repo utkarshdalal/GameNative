@@ -2485,4 +2485,5 @@ https://gamenative.app
     <string name="settings_texture_cache_delete">Удалить</string>
     <string name="settings_texture_cache_delete_all">Удалить всё</string>
     <string name="settings_texture_cache_close">Закрыть</string>
+    <string name="clear_texture_cache_size">%1$s МБ подготовленных и преобразованных текстур на этом устройстве. Нажмите, чтобы удалить.</string>
 </resources>

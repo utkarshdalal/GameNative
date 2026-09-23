@@ -2566,4 +2566,5 @@
     <string name="settings_texture_cache_close">Close</string>
     <string name="clear_texture_cache">Clear texture cache</string>
     <string name="clear_texture_cache_subtitle">Deletes the prepared and on-device converted textures for this game.</string>
+    <string name="clear_texture_cache_size">%1$s MB of prepared and converted textures on this device. Tap to delete.</string>
 </resources>

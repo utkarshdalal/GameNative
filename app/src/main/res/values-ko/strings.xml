@@ -2547,4 +2547,5 @@
     <string name="settings_texture_cache_delete">삭제</string>
     <string name="settings_texture_cache_delete_all">모두 삭제</string>
     <string name="settings_texture_cache_close">닫기</string>
+    <string name="clear_texture_cache_size">이 기기에 준비 및 변환된 텍스처가 %1$s MB 있습니다. 탭하여 삭제합니다.</string>
 </resources>

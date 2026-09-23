@@ -2544,4 +2544,5 @@
     <string name="settings_texture_cache_delete">Elimina</string>
     <string name="settings_texture_cache_delete_all">Elimina tutto</string>
     <string name="settings_texture_cache_close">Chiudi</string>
+    <string name="clear_texture_cache_size">%1$s MB di texture preparate e convertite su questo dispositivo. Tocca per eliminare.</string>
 </resources>

@@ -2558,4 +2558,5 @@
     <string name="settings_texture_cache_delete">刪除</string>
     <string name="settings_texture_cache_delete_all">全部刪除</string>
     <string name="settings_texture_cache_close">關閉</string>
+    <string name="clear_texture_cache_size">此裝置上有 %1$s MB 已準備和已轉換的材質。點按即可刪除。</string>
 </resources>

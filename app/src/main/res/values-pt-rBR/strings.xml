@@ -2423,4 +2423,5 @@
     <string name="settings_texture_cache_delete">Excluir</string>
     <string name="settings_texture_cache_delete_all">Excluir tudo</string>
     <string name="settings_texture_cache_close">Fechar</string>
+    <string name="clear_texture_cache_size">%1$s MB de texturas preparadas e convertidas neste dispositivo. Toque para excluir.</string>
 </resources>
