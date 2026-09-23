@@ -107,12 +107,36 @@ object GraphicsDriverDownloader {
         }
     }
 
+    private val remoteLock = Any()
+
+    @Volatile
+    private var remoteResolved = false
+
+    @Volatile
+    private var remoteResult: GraphicsDriverManifest? = null
+
     private fun remoteManifest(context: Context): GraphicsDriverManifest? {
+        if (remoteResolved) return remoteResult
+        synchronized(remoteLock) {
+            if (!remoteResolved) {
+                remoteResult = fetchRemoteManifest(context)
+                remoteResolved = true
+            }
+            return remoteResult
+        }
+    }
+
+    private fun fetchRemoteManifest(context: Context): GraphicsDriverManifest? {
         val cached = File(context.filesDir, "$GRAPHICS_DRIVER_CACHE_DIR/$GRAPHICS_DRIVER_MANIFEST_FILE")
+        val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(REMOTE_MANIFEST_BUDGET_MS)
         for (url in REMOTE_MANIFEST_URLS) {
+            val remainingMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime())
+            if (remainingMs <= 0L) break
             try {
                 val request = okhttp3.Request.Builder().url(url).header("Cache-Control", "no-cache").build()
-                manifestClient.newCall(request).execute().use { response ->
+                val call = manifestClient.newCall(request)
+                call.timeout().timeout(remainingMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+                call.execute().use { response ->
                     if (!response.isSuccessful) return@use
                     val body = response.body.string()
                     val parsed = json.decodeFromString<GraphicsDriverManifest>(body)
@@ -137,10 +161,14 @@ object GraphicsDriverDownloader {
         "https://pub-9fcd5294bd0d4b85a9d73615bf98f3b5.r2.dev/$GRAPHICS_DRIVER_MANIFEST_FILE",
     )
 
+    private const val REMOTE_MANIFEST_BUDGET_MS = 3_000L
+
     private val manifestClient: okhttp3.OkHttpClient by lazy {
         okhttp3.OkHttpClient.Builder()
-            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .connectTimeout(REMOTE_MANIFEST_BUDGET_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .readTimeout(REMOTE_MANIFEST_BUDGET_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .callTimeout(REMOTE_MANIFEST_BUDGET_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .retryOnConnectionFailure(false)
             .build()
     }
 
