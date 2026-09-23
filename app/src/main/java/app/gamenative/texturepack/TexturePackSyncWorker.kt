@@ -219,6 +219,8 @@ class TexturePackSyncWorker(
         private const val CHANNEL_ID = "texture_pack_transfer"
         private const val PROGRESS_INTERVAL_MS = 1_000L
         private const val NOTIFICATION_ID = 1201
+        private const val SWEEP_NOW_WORK = "texture-pack-sweep-now"
+        private const val SWEEP_WORK = "texture-pack-sweep"
 
         private fun constraints(): Constraints {
             val networkType = if (PrefManager.texturePackAllowMobileData) NetworkType.CONNECTED else NetworkType.UNMETERED
@@ -259,13 +261,21 @@ class TexturePackSyncWorker(
                 .build()
             runCatching {
                 val manager = WorkManager.getInstance(context.applicationContext)
-                manager.enqueueUniqueWork("texture-pack-sweep-now", ExistingWorkPolicy.REPLACE, sweep)
+                manager.enqueueUniqueWork(SWEEP_NOW_WORK, ExistingWorkPolicy.REPLACE, sweep)
                 manager.enqueueUniquePeriodicWork(
-                    "texture-pack-sweep",
+                    SWEEP_WORK,
                     ExistingPeriodicWorkPolicy.KEEP,
                     periodic,
                 )
             }.onFailure { Timber.w(it, "could not schedule texture pack sync") }
+        }
+
+        fun cancelScheduled(context: Context) {
+            runCatching {
+                val manager = WorkManager.getInstance(context.applicationContext)
+                manager.cancelUniqueWork(SWEEP_NOW_WORK)
+                manager.cancelUniqueWork(SWEEP_WORK)
+            }.onFailure { Timber.w(it, "could not cancel texture pack sync") }
         }
     }
 }
