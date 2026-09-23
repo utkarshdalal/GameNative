@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import kotlinx.coroutines.runBlocking
 
 class TexturePackSyncTest {
 
@@ -257,5 +258,40 @@ class TexturePackSyncTest {
         assertEquals(listOf(2, 2, 1), TexturePackSync.uploadBatches(files, maxRecords = 64, maxBytes = 25L).map { it.size })
         val big = source(dir, "bc7_4x4_0000000000000079.a4", size = 100)
         assertEquals(listOf(1, 1), TexturePackSync.uploadBatches(listOf(files[0], big), maxRecords = 64, maxBytes = 50L).map { it.size })
+    }
+
+    @Test
+    fun `stored fingerprint uses the saved install listing without scanning`() = runBlocking {
+        val install = temp.newFolder("install")
+        File(install, "fresh.pak").writeBytes(ByteArray(4))
+        val listing = File(temp.root, TexturePackSync.INSTALL_LISTING_FILE)
+        val saved = listOf(PrepareFileEntry("saved/archive.pak", 10L))
+        TexturePackSync.writeListing(listing, saved)
+
+        assertEquals(saved, TexturePackSync.installFiles("fp", listing, install))
+    }
+
+    @Test
+    fun `missing fingerprint scans the install and saves the listing`() = runBlocking {
+        val install = temp.newFolder("install")
+        File(install, "sub").mkdirs()
+        File(install, "sub/archive.pak").writeBytes(ByteArray(3))
+        val listing = File(temp.root, TexturePackSync.INSTALL_LISTING_FILE)
+        TexturePackSync.writeListing(listing, listOf(PrepareFileEntry("stale.pak", 1L)))
+
+        val files = TexturePackSync.installFiles("", listing, install)
+
+        assertEquals(listOf(PrepareFileEntry("sub/archive.pak", 3L)), files)
+        assertEquals(files, TexturePackSync.readListing(listing))
+    }
+
+    @Test
+    fun `stored fingerprint without a saved listing scans once`() = runBlocking {
+        val install = temp.newFolder("install")
+        File(install, "archive.pak").writeBytes(ByteArray(2))
+        val listing = File(temp.root, TexturePackSync.INSTALL_LISTING_FILE)
+
+        assertEquals(listOf(PrepareFileEntry("archive.pak", 2L)), TexturePackSync.installFiles("fp", listing, install))
+        assertTrue(listing.isFile)
     }
 }

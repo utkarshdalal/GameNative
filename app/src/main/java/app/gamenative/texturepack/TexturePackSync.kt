@@ -15,6 +15,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 import timber.log.Timber
 
 object TexturePackSync {
@@ -30,6 +32,10 @@ object TexturePackSync {
     const val MAX_PACK_PAGES = 1000
     const val MAX_ATTEMPTS = 3
     const val RETRY_BACKOFF_MS = 2_000L
+    const val INSTALL_LISTING_FILE = "texcache_files.json"
+
+    private val listingJson = Json { ignoreUnknownKeys = true }
+    private val listingSerializer = ListSerializer(PrepareFileEntry.serializer())
 
     fun sourceFile(cacheDir: File, key: String): File =
         File(cacheDir, TexturePackKeys.stem(key) + SOURCE_SUFFIX)
@@ -108,7 +114,11 @@ object TexturePackSync {
         val installDir = container.getExtra(TexturePackGate.CONTAINER_EXTRA_INSTALL_DIR, "")
         val title = TexturePackGate.cleanTitle(container.getExtra(TexturePackGate.CONTAINER_EXTRA_TITLE, ""))
         if (platform.isBlank() || installDir.isBlank()) return ""
-        val files = withContext(Dispatchers.IO) { scanFiles(File(installDir)) }
+        val files = installFiles(
+            container.getExtra(TexturePackGate.CONTAINER_EXTRA_FINGERPRINT, ""),
+            File(container.rootDir, INSTALL_LISTING_FILE),
+            File(installDir),
+        )
         if (files.isEmpty()) return ""
         val needsFullRes = withContext(Dispatchers.IO) {
             TexturePackGate.needsFullRes(TexturePackPaths.cacheDir(container))
@@ -320,12 +330,46 @@ object TexturePackSync {
         }
     }
 
-    fun scanFiles(root: File): List<PrepareFileEntry> {
+    suspend fun installFiles(fingerprint: String, listingFile: File, installDir: File): List<PrepareFileEntry> =
+        withContext(Dispatchers.IO) {
+            if (fingerprint.isNotBlank()) {
+                readListing(listingFile)?.takeIf { it.isNotEmpty() }?.let { return@withContext it }
+            }
+            scanFiles(installDir).also { if (it.isNotEmpty()) writeListing(listingFile, it) }
+        }
+
+    fun readListing(file: File): List<PrepareFileEntry>? = try {
+        if (file.isFile) listingJson.decodeFromString(listingSerializer, file.readText()) else null
+    } catch (e: Exception) {
+        Timber.w(e, "could not read the texture pack install listing")
+        null
+    }
+
+    fun writeListing(file: File, files: List<PrepareFileEntry>) {
+        try {
+            file.writeText(listingJson.encodeToString(listingSerializer, files))
+        } catch (e: Exception) {
+            Timber.w(e, "could not write the texture pack install listing")
+        }
+    }
+
+    suspend fun scanFiles(root: File): List<PrepareFileEntry> {
         if (!root.isDirectory) return emptyList()
         val prefix = root.absolutePath.length + 1
-        return root.walkTopDown()
-            .filter { it.isFile }
-            .map { PrepareFileEntry(it.absolutePath.substring(prefix).replace(File.separatorChar, '/'), it.length()) }
-            .toList()
+        val files = ArrayList<PrepareFileEntry>()
+        val pending = ArrayDeque<File>()
+        pending.addLast(root)
+        while (pending.isNotEmpty()) {
+            currentCoroutineContext().ensureActive()
+            val dir = pending.removeLast()
+            dir.listFiles()?.forEach { file ->
+                if (file.isDirectory) {
+                    pending.addLast(file)
+                } else if (file.isFile) {
+                    files += PrepareFileEntry(file.absolutePath.substring(prefix).replace(File.separatorChar, '/'), file.length())
+                }
+            }
+        }
+        return files
     }
 }
