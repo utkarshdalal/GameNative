@@ -48,7 +48,6 @@ import java.util.Locale
 fun GeneralTabContent(
     state: ContainerConfigState,
     nonzeroResolutionError: String,
-    aspectResolutionError: String,
 ) {
     val config = state.config.value
     val graphicsDrivers = state.graphicsDrivers.value
@@ -115,8 +114,6 @@ fun GeneralTabContent(
                         val heightInt = state.customScreenHeight.value.toIntOrNull() ?: 0
                         if (widthInt == 0 || heightInt == 0) {
                             state.customResolutionValidationError.value = nonzeroResolutionError
-                        } else if (widthInt <= heightInt) {
-                            state.customResolutionValidationError.value = aspectResolutionError
                         } else {
                             state.customResolutionValidationError.value = null
                             state.applyScreenSizeToConfig()

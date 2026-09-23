@@ -10,6 +10,8 @@ import app.gamenative.data.LaunchInfo
 import app.gamenative.data.ManifestInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.enums.LoginResult
+import `in`.dragonbra.javasteam.enums.EDepotFileFlag
+import `in`.dragonbra.javasteam.types.DepotManifest
 import app.gamenative.enums.Marker
 import app.gamenative.enums.SpecialGameSaveMapping
 import app.gamenative.enums.SteamRealm
@@ -733,6 +735,25 @@ object SteamUtils {
      * Creates a Steam ACF (Application Cache File) manifest for the given app
      * This allows real Steam to detect the game as installed
      */
+    private fun customExecutables(depots: Map<Int, DepotInfo>, installedBranch: String, downloaderCacheDir: File): List<String> =
+        depots.flatMap { (depotId, depotInfo) ->
+            val gid = (depotInfo.manifests[installedBranch]
+                ?: depotInfo.manifests["public"]
+                ?: depotInfo.manifests.values.firstOrNull())?.gid ?: return@flatMap emptyList()
+            val manifest = runCatching {
+                DepotManifest.loadFromFile(File(downloaderCacheDir, "${depotId}_${gid.toULong()}.manifest").absolutePath)
+            }.getOrNull()
+            manifest?.files.orEmpty()
+                .filter { it.flags.contains(EDepotFileFlag.CustomExecutable) }
+                .map { it.fileName.replace('/', '\\') }
+        }
+
+    fun hasCustomExecutables(steamAppId: Int): Boolean {
+        val installedBranch = SteamService.getInstalledApp(steamAppId)?.branch ?: "public"
+        val downloaderCacheDir = File(SteamService.getAppDirPath(steamAppId), ".DepotDownloader")
+        return customExecutables(SteamService.getDownloadableDepots(steamAppId), installedBranch, downloaderCacheDir).isNotEmpty()
+    }
+
     private fun createAppManifest(context: Context, steamAppId: Int) {
         try {
             Timber.i("Attempting to createAppManifest for appId: $steamAppId")
@@ -774,13 +795,14 @@ object SteamUtils {
 
             val regularDepots = mutableMapOf<Int, DepotInfo>()
             val sharedDepots = mutableMapOf<Int, DepotInfo>()
+            val downloaderCacheDir = File(gameDir, ".DepotDownloader")
 
             downloadableDepots.forEach { (depotId, depotInfo) ->
                 val manifest = depotInfo.manifests[installedBranch]
                     ?: depotInfo.manifests["public"]
                     ?: depotInfo.manifests.values.firstOrNull()
                 if (manifest != null && manifest.gid != 0L) {
-                    regularDepots[depotId] = depotInfo
+                    if (File(downloaderCacheDir, "${depotId}_${manifest.gid.toULong()}.manifest").isFile) regularDepots[depotId] = depotInfo
                 } else {
                     sharedDepots[depotId] = depotInfo
                 }
@@ -829,6 +851,14 @@ object SteamUtils {
                     appendLine("\t}")
                 }
 
+                val customExecutables = customExecutables(regularDepots, installedBranch, downloaderCacheDir)
+                if (customExecutables.isNotEmpty()) {
+                    appendLine("\t\"CheckGuid\"")
+                    appendLine("\t{")
+                    customExecutables.forEachIndexed { index, path -> appendLine("\t\t\"$index\"\t\t\"${escapeString(path)}\"") }
+                    appendLine("\t}")
+                }
+
                 appendLine("\t\"UserConfig\" { \"language\" \"english\" }")
                 appendLine("\t\"MountedConfig\" { \"language\" \"english\" }")
 
@@ -840,6 +870,19 @@ object SteamUtils {
             acfFile.writeText(acfContent)
 
             Timber.i("Created ACF manifest for ${appInfo.name} at ${acfFile.absolutePath}")
+
+            val depotCacheDir = File(steamappsDir, "depotcache").apply { mkdirs() }
+            regularDepots.forEach { (depotId, depotInfo) ->
+                val gid = (depotInfo.manifests[installedBranch]
+                    ?: depotInfo.manifests["public"]
+                    ?: depotInfo.manifests.values.firstOrNull())?.gid ?: return@forEach
+                val src = File(downloaderCacheDir, "${depotId}_${gid.toULong()}.manifest")
+                val dst = File(depotCacheDir, src.name)
+                if (src.isFile && (!dst.isFile || dst.length() != src.length())) {
+                    src.copyTo(dst, overwrite = true)
+                    Timber.i("Copied depot manifest ${src.name} to depotcache")
+                }
+            }
 
             // Create separate ACF for Steamworks Common Redistributables if we have shared depots
             if (sharedDepots.isNotEmpty()) {
@@ -918,6 +961,7 @@ object SteamUtils {
         skipFirstTimeSteamSetup(imageFs.rootDir)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_DLL_RESTORED)) {
+            createAppManifest(context, steamAppId)
             return
         }
         MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
