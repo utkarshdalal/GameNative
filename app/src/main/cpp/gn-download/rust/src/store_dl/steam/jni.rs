@@ -169,7 +169,7 @@ fn call_progress(
     clear_pending_exception(env);
 }
 
-fn call_status(env: &mut JNIEnv, listener: &JObject, message: &str) {
+fn call_status(env: &mut JNIEnv, listener: &JObject, message: &str, current: u32, total: u32) {
     if listener.is_null() {
         return;
     }
@@ -181,8 +181,12 @@ fn call_status(env: &mut JNIEnv, listener: &JObject, message: &str) {
     let _ = env.call_method(
         listener,
         "onVerifying",
-        "(Ljava/lang/String;)V",
-        &[JValue::Object(&text_obj)],
+        "(Ljava/lang/String;II)V",
+        &[
+            JValue::Object(&text_obj),
+            JValue::Int(current as jint),
+            JValue::Int(total as jint),
+        ],
     );
     clear_pending_exception(env);
 }
@@ -477,8 +481,10 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
             });
         let auth_token_refresher = Some(&auth_token_refresher);
         let status_listener = listener.clone();
-        let on_status = move |path: &str| {
-            with_attached_env(&status_listener, |env, obj| call_status(env, obj, path));
+        let on_status = move |path: &str, current: u32, total: u32| {
+            with_attached_env(&status_listener, |env, obj| {
+                call_status(env, obj, path, current, total)
+            });
         };
         let on_status: crate::store_dl::steam::depot_writer::DepotStatusCallback = &on_status;
         let log_fn = |line: &str| android_log(line);

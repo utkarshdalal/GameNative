@@ -571,7 +571,7 @@
     <string name="calculating_time">Розрахунок...</string>
     <string name="download_failed_try_again">Помилка завантаження. Спробуйте знову.</string>
     <string name="download_preparing">Підготовка завантаження...</string>
-    <string name="download_verifying_file">Перевірка %1$s…</string>
+    <string name="download_verifying_files_progress">Перевірка файлів (%1$d/%2$d)</string>
     <string name="download_verifying_files">Перевірка файлів...</string>
     <string name="download_assembling_files">Збирання файлів...</string>
     <string name="download_progress_chunks">Завантаження (%1$d/%2$d частин)</string>

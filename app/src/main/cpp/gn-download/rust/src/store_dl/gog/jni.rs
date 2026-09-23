@@ -173,7 +173,7 @@ impl GogEvents for JniEvents {
         });
     }
 
-    fn on_file_verify(&self, rel_path: &str) {
+    fn on_file_verify(&self, rel_path: &str, current: u32, total: u32) {
         self.with_env(|env| {
             let Ok(path) = env.new_string(rel_path) else {
                 return;
@@ -182,8 +182,12 @@ impl GogEvents for JniEvents {
             let _ = env.call_method(
                 self.listener.as_obj(),
                 "onVerifying",
-                "(Ljava/lang/String;)V",
-                &[JValue::Object(&path)],
+                "(Ljava/lang/String;II)V",
+                &[
+                    JValue::Object(&path),
+                    JValue::Int(current as jint),
+                    JValue::Int(total as jint),
+                ],
             );
             Self::clear_exception(env);
             let _ = env.delete_local_ref(path);

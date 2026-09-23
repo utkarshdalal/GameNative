@@ -2535,9 +2535,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 notifyDownloadStarted(appId)
                 instance?.notifierOrNull?.trackDownload(di, getAppInfoOf(appId)?.name.orEmpty(), NotificationHelper.NOTIFICATION_ID_STEAM)
 
-                val chunkStagingRedirectDir = File(DownloadService.baseCacheDirPath, "depot_chunks/$appId")
-                    .takeIf { !appDirPath.startsWith(DownloadService.baseDataDirPath) }
-
                 val downloadJob = instance!!.scope.launch {
                     try {
                         if (isUpdateOrVerify) {
@@ -2565,9 +2562,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                         Timber.i("maxDownloads: ${speedConfig.maxDownloads}")
                         Timber.i("maxDecompress: ${speedConfig.maxDecompress}")
 
-                        chunkStagingRedirectDir?.apply {
-                            NativeTreeDelete.deleteTreeFast(this)
-                            mkdirs()
+                        // Legacy: the old JavaSteam engine staged chunks in cache on external
+                        // installs. The Rust engine writes final paths directly and never
+                        // creates this — sweep only if an old app version left one behind.
+                        val legacyChunkStagingDir = File(DownloadService.baseCacheDirPath, "depot_chunks/$appId")
+                        if (legacyChunkStagingDir.exists()) {
+                            NativeTreeDelete.deleteTreeFast(legacyChunkStagingDir)
                         }
 
                         val branchPassword = instance?.steamUnlockedBranchDao
@@ -2791,7 +2791,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     // handlers, and cancellations thrown out of suspension points.
                     // second call is a no-op if the inline path already removed the entry.
                     removeDownloadJob(appId)
-                    chunkStagingRedirectDir?.let { NativeTreeDelete.deleteTreeFast(it) }
                     if (throwable is kotlinx.coroutines.CancellationException) {
                         Timber.d(throwable, "Download canceled for app $appId")
                     }

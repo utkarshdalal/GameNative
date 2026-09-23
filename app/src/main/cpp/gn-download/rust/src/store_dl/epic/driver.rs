@@ -462,7 +462,7 @@ pub fn run_plan(
     progress: &(dyn Fn(u64, u64) + Sync),
     assembly_progress: &(dyn Fn(u64) + Sync),
     log: &(dyn Fn(&str) + Sync),
-    verify_status: &(dyn Fn(&str) + Sync),
+    verify_status: &(dyn Fn(&str, u32, u32) + Sync),
 ) -> EpicOutcome {
     let chunks_total = plan.jobs.len() as u64;
     let mut outcome = EpicOutcome {
@@ -518,8 +518,9 @@ pub fn run_plan(
                     break;
                 }
                 let file = &plan.manifest.files[req.pending_file_indices[ord]];
-                // Resume verify sweep: report the file whose on-disk bytes are being re-hashed.
-                verify_status(&file.filename);
+                // Resume verify sweep: report the file whose on-disk bytes are being re-hashed
+                // (1-based claim order among the pending files, for the UI status row).
+                verify_status(&file.filename, ord as u32 + 1, req.pending_file_indices.len() as u32);
                 let on_disk = crate::store_dl::resolve_existing_case(&req.install_dir, &file.filename);
                 let (n, bytes) =
                     verified_prefix(&install_dir.join(&on_disk), file, &plan.manifest, &by_guid);
@@ -1126,7 +1127,7 @@ mod tests {
         let progress = |_: u64, _: u64| {};
         let assembly_progress = |_: u64| {};
         let log = |_: &str| {};
-        let noop_status = |_: &str| {};
+        let noop_status = |_: &str, _: u32, _: u32| {};
         let out = run_plan(
             &plan,
             &req,
@@ -1152,7 +1153,7 @@ mod tests {
         let progress = |_: u64, _: u64| {};
         let assembly_progress = |_: u64| {};
         let log = |_: &str| {};
-        let noop_status = |_: &str| {};
+        let noop_status = |_: &str, _: u32, _: u32| {};
         let out = run_plan(
             &plan,
             &req,
@@ -1185,7 +1186,7 @@ mod tests {
         let progress = |_: u64, _: u64| {};
         let assembly_progress = |_: u64| {};
         let log = |_: &str| {};
-        let noop_status = |_: &str| {};
+        let noop_status = |_: &str, _: u32, _: u32| {};
         let out = run_plan(
             &plan,
             &req,
@@ -1346,7 +1347,7 @@ mod tests {
         let progress = |_: u64, _: u64| {};
         let assembly_progress = |_: u64| {};
         let log = |_: &str| {};
-        let noop_status = |_: &str| {};
+        let noop_status = |_: &str, _: u32, _: u32| {};
         let out = run_plan(
             &plan,
             &req,

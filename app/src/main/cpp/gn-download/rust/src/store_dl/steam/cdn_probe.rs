@@ -555,27 +555,37 @@ pub fn seed_from_cache(
     hints
 }
 
+/// The chunk URL path a probe should sample, picked from the resolved manifests (empty when
+/// nothing is downloadable yet — the probe then no-ops). Computed by the caller BEFORE the
+/// depot loop so the manifests' borrow can end and the depots can move into the loop.
+pub fn sample_url_for_probe(manifests: &[&ContentManifest]) -> String {
+    sample_chunk_path(manifests, "").unwrap_or_default()
+}
+
 /// Spawn the fresh probe on a background thread (no-op when the cache already served a fresh
-/// ranking, or when there is no downloadable chunk to sample). The download starts immediately
-/// on the assigned servers; this probes them AND predicted foreign caches (same-metro siblings
-/// + cross-region metros — prediction failures simply don't respond), then — only if the
-/// results pass the congestion floor — saves the cache and publishes the ranking plus the
-/// median-gated winners into [`ProbeHints`], so the pool can grow at the NEXT depot boundary.
-/// Deliberately not wired to the download's cancel flag: the probe is bounded by
-/// [`PROBE_TOTAL_DEADLINE`] and its result is useful even if the download ends right after.
+/// ranking, or when there is no downloadable chunk to sample). The caller invokes this on the
+/// FIRST downloaded (non-verified) byte — never during preparation or the verify sweep — so
+/// the probe can neither delay nor race the download start. It probes the assigned servers AND
+/// predicted foreign caches (same-metro siblings + cross-region metros — prediction failures
+/// simply don't respond), then — only if the results pass the congestion floor — saves the
+/// cache and publishes the ranking plus the median-gated winners into [`ProbeHints`], so the
+/// pool can grow at the NEXT depot boundary. Deliberately not wired to the download's cancel
+/// flag: the probe is bounded by [`PROBE_TOTAL_DEADLINE`] and its result is useful even if the
+/// download ends right after.
 pub fn spawn_background_probe(
     hints: &Arc<ProbeHints>,
     install_dir: &str,
     ca_bundle_path: &str,
     servers: &[CContentServerDirectoryServerInfo],
-    manifests: &[&ContentManifest],
+    sample_url_path: &str,
 ) {
     if !hints.needs_probe.load(Ordering::Relaxed) {
         return;
     }
-    let Some(url_path) = sample_chunk_path(manifests, "") else {
+    if sample_url_path.is_empty() {
         return; // nothing downloadable yet — nothing to probe with
-    };
+    }
+    let url_path = sample_url_path.to_string();
     let hints = Arc::clone(hints);
     let install_dir = install_dir.to_string();
     let ca_bundle_path = ca_bundle_path.to_string();

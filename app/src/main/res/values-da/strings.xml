@@ -441,7 +441,7 @@
     <string name="downloading">Downloader...</string>
     <string name="calculating_time">Beregner...</string>
     <string name="download_preparing">Forbereder download...</string>
-    <string name="download_verifying_file">Bekræfter %1$s…</string>
+    <string name="download_verifying_files_progress">Bekræfter filer (%1$d/%2$d)</string>
     <string name="download_verifying_files">Bekræfter filer...</string>
     <string name="download_assembling_files">Samler filer...</string>
     <string name="download_progress_chunks">Downloader (%1$d/%2$d dele)</string>

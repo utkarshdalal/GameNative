@@ -5,6 +5,7 @@ import app.gamenative.R
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.service.SteamService
+import app.gamenative.utils.LocaleHelper
 import app.gamenative.utils.generateSteamApp
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.cdn.Server
@@ -185,14 +186,17 @@ object GameDownloadService {
         // late callback from an unwound run cannot wipe a newer attempt's message).
         val keyPrepCleared = AtomicBoolean(false)
         // Set while the engine is re-hashing on-disk chunks (resume/verify): the status row
-        // shows "Verifying <file>". Cleared on the first real download progress.
+        // shows "Verifying Files (k/N)" via onVerifying. Cleared on the first real download
+        // progress. Verified bytes intentionally don't move the byte counter (see onProgress).
         val verifyStatusActive = AtomicBoolean(false)
 
         val listener = object : NativeSteamDownloadListener {
-            override fun onVerifying(path: String) {
+            override fun onVerifying(path: String, current: Int, total: Int) {
                 verifyStatusActive.set(true)
                 val svc = SteamService.instance ?: return
-                downloadInfo.updateStatusMessage(svc.getString(R.string.download_verifying_file, path))
+                downloadInfo.updateStatusMessage(
+                    svc.getString(R.string.download_verifying_files_progress, current, total),
+                )
             }
 
             override fun onProgress(
@@ -215,6 +219,7 @@ object GameDownloadService {
                     // snapshot this run resumed from. Crediting them again double-counts and
                     // the bar races to 100% while remaining chunks are still downloading.
                     // Only track the high-water so later real downloads delta from it.
+                    // (Verify PROGRESS is reported through onVerifying's file counters.)
                     depotCumulativeBytes.merge(depotId, depotDone, ::maxOf)
                 } else {
                     // Parallel callbacks can arrive out of order; read-check-set must be
@@ -816,6 +821,9 @@ object GameDownloadService {
      * [queueLock]; the store startup itself runs unlocked on the caller's coroutine.
      */
     private fun resumeNextDownload(context: Context) {
+        // The queue relaunches with the bare application context, which follows the OS locale;
+        // wrap it so store managers resolve status strings in the app's configured language.
+        val context = LocaleHelper.applyLanguage(context, app.gamenative.PrefManager.appLanguage)
         val nextEntry: DownloadEntry?
         synchronized(queueLock) {
             val nextKey = downloadQueue.firstOrNull()

@@ -620,7 +620,7 @@
     <string name="calculating_time">Calculando…</string>
     <string name="download_failed_try_again">Descarga fallida, inténtalo de nuevo.</string>
     <string name="download_preparing">Preparando la descarga…</string>
-    <string name="download_verifying_file">Verificando %1$s…</string>
+    <string name="download_verifying_files_progress">Verificando archivos (%1$d/%2$d)</string>
     <string name="download_verifying_files">Verificando archivos...</string>
     <string name="download_assembling_files">Ensamblando archivos...</string>
     <string name="download_progress_chunks">Descargando (%1$d/%2$d fragmentos)</string>
