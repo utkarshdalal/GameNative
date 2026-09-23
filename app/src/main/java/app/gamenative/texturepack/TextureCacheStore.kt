@@ -70,8 +70,6 @@ object TextureCacheStore {
         try {
             FileOutputStream(temp).use { out ->
                 out.write(payload)
-                out.flush()
-                out.fd.sync()
             }
             val target = File(cacheDir, key)
             if (temp.renameTo(target)) return true

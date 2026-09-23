@@ -24,11 +24,11 @@ object TexturePackSync {
     const val SOURCE_SUFFIX = TexturePackKeys.SOURCE_SUFFIX
     const val PENDING_CAP_BYTES = 2L * 1024L * 1024L * 1024L
     const val LOOKUP_BATCH_SIZE = 2000
-    const val DOWNLOAD_BATCH_SIZE = 200
-    const val DOWNLOAD_BATCHES_IN_FLIGHT = 2
+    const val DOWNLOAD_BATCH_SIZE = 25
+    const val DOWNLOAD_BATCHES_IN_FLIGHT = 12
     const val UPLOAD_BATCH_RECORDS = 64
-    const val UPLOAD_BATCH_BYTES = 32L * 1024L * 1024L
-    const val UPLOAD_BATCHES_IN_FLIGHT = 2
+    const val UPLOAD_BATCH_BYTES = 8L * 1024L * 1024L
+    const val UPLOAD_BATCHES_IN_FLIGHT = 4
     const val MAX_PACK_PAGES = 1000
     const val MAX_ATTEMPTS = 3
     const val RETRY_BACKOFF_MS = 2_000L
