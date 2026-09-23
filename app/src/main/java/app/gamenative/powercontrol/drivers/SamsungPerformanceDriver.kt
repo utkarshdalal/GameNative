@@ -96,6 +96,29 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         }
     }
 
+    /**
+     * Drops every CPU/GPU/Bus request, the same as [stop]; the setters start them again when
+     * control is reclaimed.
+     */
+    override fun releaseFrequencyControl(): Boolean {
+        if (!isDriverSupported()) return false
+
+        return try {
+            performanceManager?.stop()
+            currentCpuMinLevel = CPU_LEVEL_MIN
+            currentCpuMaxLevel = CPU_LEVEL_MAX
+            currentGpuMinLevel = GPU_LEVEL_MIN
+            currentGpuMaxLevel = GPU_LEVEL_MAX
+            currentBusMinLevel = BUS_LEVEL_MIN
+            currentBusMaxLevel = BUS_LEVEL_MAX
+            Timber.tag(TAG).i("Released Samsung performance controls back to the OS")
+            true
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to release Samsung performance controls")
+            false
+        }
+    }
+
     override fun getCurrentMinCpuValue(): Long {
         return currentCpuMinLevel.toLong()
     }

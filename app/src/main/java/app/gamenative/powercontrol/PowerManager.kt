@@ -1283,6 +1283,7 @@ object PowerManager {
         val driver = driver
         if (driver !is PServerDriver) return
 
+        // All cores, not the container CPU list: that list only ever reaches the game's windows, so this is their pre-pin state.
         val allCores = allKnownCores(driver)
         if (allCores.isEmpty()) {
             Timber.tag("PowerManager").w("No all-cores mask available, background process affinity left alone")
