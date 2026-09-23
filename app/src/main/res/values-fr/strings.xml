@@ -2534,8 +2534,8 @@
     <string name="texture_pack_upload_dialog_title">Envoi des textures</string>
     <string name="texture_pack_skip">Passer</string>
     <string name="texture_pack_continue_background">Continuer en arrière-plan</string>
-    <string name="texture_pack_download_dialog_subtitle">Téléchargement des textures que le serveur de GameNative a déjà converties en haute qualité pour ce jeu. Cette session les utilise au lieu de les convertir sur votre appareil, pour de meilleures performances et moins de chauffe. Les téléchargements passent par le Wi-Fi, sauf si vous autorisez les données mobiles dans les paramètres. C\'est actuellement gratuit et illimité pour tout le monde.</string>
-    <string name="texture_pack_upload_dialog_subtitle">Le serveur de GameNative convertit une seule fois les textures de ce jeu en haute qualité, pour que votre prochaine session les utilise au lieu de les convertir sur votre appareil. Vous gagnez en performances et l\'appareil chauffe moins. Seules les données de textures sont envoyées, et uniquement en Wi-Fi, sauf si vous autorisez les données mobiles dans les paramètres. C\'est actuellement gratuit et illimité pour tout le monde.</string>
+    <string name="texture_pack_download_dialog_subtitle">Téléchargement des textures préparées pour ce jeu.\nIl sera plus beau, chargera plus vite et utilisera moins de RAM.\nActuellement gratuit et illimité pour tout le monde.</string>
+    <string name="texture_pack_upload_dialog_subtitle">Envoi des textures pour un traitement sur le serveur.\nAinsi, la prochaine fois que vous jouerez à ce jeu, il sera plus beau, chargera plus vite et utilisera moins de RAM.\nActuellement gratuit et illimité pour tout le monde.</string>
     <string name="texture_pack_dont_do_for_game">Ne plus le faire pour ce jeu</string>
     <string name="texture_pack_play_now">Jouer maintenant</string>
     <string name="texture_pack_game_setting_title">Pack de textures serveur pour ce jeu</string>

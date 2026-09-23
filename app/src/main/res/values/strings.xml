@@ -2542,9 +2542,9 @@
     <string name="texture_pack_notification_downloading">Downloading game textures</string>
     <string name="texture_pack_notification_remaining">%1$d files left</string>
     <string name="texture_pack_download_dialog_title">Downloading textures</string>
-    <string name="texture_pack_download_dialog_subtitle">Downloading textures that GameNative\'s server has already converted at high quality for this game. This run uses them instead of converting them on your device, for better performance and less heat. Downloads use Wi-Fi unless you allow mobile data in settings. This is free and unlimited for everyone at the moment.</string>
+    <string name="texture_pack_download_dialog_subtitle">Downloading prepared textures for this game.\nIt will look better, load faster and use less RAM.\nCurrently free and unlimited for everyone.</string>
     <string name="texture_pack_upload_dialog_title">Uploading textures</string>
-    <string name="texture_pack_upload_dialog_subtitle">GameNative\'s server converts this game\'s textures once at high quality, so your next session can use them instead of converting them on your device. That means better performance and less heat. Only texture data is sent, and only over Wi-Fi unless you allow mobile data in settings. This is free and unlimited for everyone at the moment.</string>
+    <string name="texture_pack_upload_dialog_subtitle">Uploading textures for server-side processing.\nThis means that the next time you play this game it will look better, load faster and use less RAM.\nCurrently free and unlimited for everyone.</string>
     <string name="texture_pack_skip">Skip</string>
     <string name="texture_pack_continue_background">Continue in background</string>
     <string name="texture_pack_dont_do_for_game">Don\'t do this for this game</string>

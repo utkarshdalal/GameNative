@@ -2539,8 +2539,8 @@
     <string name="texture_pack_upload_dialog_title">Se încarcă texturile</string>
     <string name="texture_pack_skip">Omite</string>
     <string name="texture_pack_continue_background">Continuă în fundal</string>
-    <string name="texture_pack_download_dialog_subtitle">Se descarcă texturile pe care serverul GameNative le-a convertit deja la calitate înaltă pentru acest joc. Această sesiune le folosește în loc să le convertească pe dispozitivul tău, pentru performanță mai bună și mai puțină căldură. Descărcările folosesc Wi-Fi, cu excepția cazului în care permiți datele mobile în setări. Momentan este gratuit și nelimitat pentru toată lumea.</string>
-    <string name="texture_pack_upload_dialog_subtitle">Serverul GameNative convertește texturile acestui joc o singură dată, la calitate înaltă, astfel încât următoarea sesiune să le folosească în loc să le convertească pe dispozitivul tău. Asta înseamnă performanță mai bună și mai puțină căldură. Se trimit doar datele texturilor și doar prin Wi-Fi, cu excepția cazului în care permiți datele mobile în setări. Momentan este gratuit și nelimitat pentru toată lumea.</string>
+    <string name="texture_pack_download_dialog_subtitle">Se descarcă texturile pregătite pentru acest joc.\nVa arăta mai bine, se va încărca mai repede și va folosi mai puțină RAM.\nMomentan gratuit și nelimitat pentru toată lumea.</string>
+    <string name="texture_pack_upload_dialog_subtitle">Se încarcă texturile pentru procesare pe server.\nAstfel, data viitoare când joci acest joc, va arăta mai bine, se va încărca mai repede și va folosi mai puțină RAM.\nMomentan gratuit și nelimitat pentru toată lumea.</string>
     <string name="texture_pack_dont_do_for_game">Nu mai face asta pentru acest joc</string>
     <string name="texture_pack_play_now">Joacă acum</string>
     <string name="texture_pack_game_setting_title">Pachet de texturi de pe server pentru acest joc</string>

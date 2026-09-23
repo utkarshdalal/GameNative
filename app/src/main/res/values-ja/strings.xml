@@ -2487,8 +2487,8 @@
     <string name="texture_pack_upload_dialog_title">テクスチャをアップロード中</string>
     <string name="texture_pack_skip">スキップ</string>
     <string name="texture_pack_continue_background">バックグラウンドで続行</string>
-    <string name="texture_pack_download_dialog_subtitle">GameNative のサーバーがこのゲーム用に高品質で変換済みのテクスチャをダウンロードしています。今回のプレイではデバイス上で変換する代わりにそれを使うため、パフォーマンスが向上し、発熱も抑えられます。設定でモバイルデータを許可しない限り、ダウンロードは Wi-Fi 経由で行われます。現在、すべてのユーザーが無料・無制限で利用できます。</string>
-    <string name="texture_pack_upload_dialog_subtitle">GameNative のサーバーがこのゲームのテクスチャを高品質で一度だけ変換するので、次回のプレイではデバイス上で変換する代わりにそれを使えます。パフォーマンスが向上し、発熱も抑えられます。送信されるのはテクスチャデータのみで、設定でモバイルデータを許可しない限り Wi-Fi 経由でのみ送信されます。現在、すべてのユーザーが無料・無制限で利用できます。</string>
+    <string name="texture_pack_download_dialog_subtitle">このゲーム用に準備されたテクスチャをダウンロードしています。\n見た目が良くなり、読み込みが速くなり、RAM の使用量も減ります。\n現在、すべてのユーザーが無料・無制限で利用できます。</string>
+    <string name="texture_pack_upload_dialog_subtitle">サーバーで処理するためにテクスチャをアップロードしています。\n次回このゲームをプレイするときは、見た目が良くなり、読み込みが速くなり、RAM の使用量も減ります。\n現在、すべてのユーザーが無料・無制限で利用できます。</string>
     <string name="texture_pack_dont_do_for_game">このゲームでは今後行わない</string>
     <string name="texture_pack_play_now">今すぐプレイ</string>
     <string name="texture_pack_game_setting_title">このゲームでサーバー側テクスチャパックを使用</string>

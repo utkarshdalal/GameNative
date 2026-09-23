@@ -2539,8 +2539,8 @@
     <string name="texture_pack_upload_dialog_title">正在上傳紋理</string>
     <string name="texture_pack_skip">略過</string>
     <string name="texture_pack_continue_background">在背景繼續</string>
-    <string name="texture_pack_download_dialog_subtitle">正在下載 GameNative 伺服器已為此遊戲以高品質轉換好的紋理。本次遊玩將直接使用這些紋理，無須在裝置上轉換，進而帶來更好的效能與更低的發熱。除非你在設定中允許使用行動數據，否則僅透過 Wi-Fi 下載。目前對所有人免費且不限量。</string>
-    <string name="texture_pack_upload_dialog_subtitle">GameNative 伺服器會以高品質將此遊戲的紋理轉換一次，下次遊玩時將直接使用這些紋理，無須在裝置上轉換，進而帶來更好的效能與更低的發熱。只會傳送紋理資料，且除非你在設定中允許使用行動數據，否則僅透過 Wi-Fi 傳輸。目前對所有人免費且不限量。</string>
+    <string name="texture_pack_download_dialog_subtitle">正在下載為此遊戲準備好的紋理。\n畫面會更好、載入更快、佔用更少記憶體。\n目前對所有人免費且不限量。</string>
+    <string name="texture_pack_upload_dialog_subtitle">正在上傳紋理以供伺服器處理。\n這樣下次玩這款遊戲時，畫面會更好、載入更快、佔用更少記憶體。\n目前對所有人免費且不限量。</string>
     <string name="texture_pack_dont_do_for_game">此遊戲不再執行此操作</string>
     <string name="texture_pack_play_now">立即遊玩</string>
     <string name="texture_pack_game_setting_title">為此遊戲使用伺服器端紋理包</string>

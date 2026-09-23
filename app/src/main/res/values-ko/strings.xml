@@ -2528,8 +2528,8 @@
     <string name="texture_pack_upload_dialog_title">텍스처 업로드 중</string>
     <string name="texture_pack_skip">건너뛰기</string>
     <string name="texture_pack_continue_background">백그라운드에서 계속</string>
-    <string name="texture_pack_download_dialog_subtitle">GameNative 서버가 이 게임용으로 이미 고품질 변환한 텍스처를 다운로드하고 있습니다. 이번 플레이에서는 기기에서 변환하지 않고 이를 사용하므로 성능은 좋아지고 발열은 줄어듭니다. 설정에서 모바일 데이터를 허용하지 않는 한 Wi-Fi로만 다운로드합니다. 현재 모든 사용자에게 무료이며 무제한입니다.</string>
-    <string name="texture_pack_upload_dialog_subtitle">GameNative 서버가 이 게임의 텍스처를 고품질로 한 번 변환해 두므로, 다음 플레이부터는 기기에서 변환하지 않고 이를 사용합니다. 성능은 좋아지고 발열은 줄어듭니다. 텍스처 데이터만 전송되며, 설정에서 모바일 데이터를 허용하지 않는 한 Wi-Fi로만 전송됩니다. 현재 모든 사용자에게 무료이며 무제한입니다.</string>
+    <string name="texture_pack_download_dialog_subtitle">이 게임용으로 준비된 텍스처를 다운로드하고 있습니다.\n더 보기 좋고, 더 빨리 로드되며, RAM을 덜 사용합니다.\n현재 모든 사용자에게 무료이며 무제한입니다.</string>
+    <string name="texture_pack_upload_dialog_subtitle">서버에서 처리하기 위해 텍스처를 업로드하고 있습니다.\n다음에 이 게임을 플레이할 때 더 보기 좋고, 더 빨리 로드되며, RAM을 덜 사용합니다.\n현재 모든 사용자에게 무료이며 무제한입니다.</string>
     <string name="texture_pack_dont_do_for_game">이 게임에서는 다시 하지 않기</string>
     <string name="texture_pack_play_now">지금 플레이</string>
     <string name="texture_pack_game_setting_title">이 게임에 서버 텍스처 팩 사용</string>

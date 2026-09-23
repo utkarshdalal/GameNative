@@ -2540,8 +2540,8 @@
     <string name="texture_pack_upload_dialog_title">Wysyłanie tekstur</string>
     <string name="texture_pack_skip">Pomiń</string>
     <string name="texture_pack_continue_background">Kontynuuj w tle</string>
-    <string name="texture_pack_download_dialog_subtitle">Pobieranie tekstur, które serwer GameNative już przekonwertował w wysokiej jakości dla tej gry. Ta sesja użyje ich zamiast konwertować je na Twoim urządzeniu, co daje lepszą wydajność i mniej ciepła. Pobieranie odbywa się przez Wi-Fi, chyba że zezwolisz na dane komórkowe w ustawieniach. Obecnie jest to bezpłatne i bez limitu dla wszystkich.</string>
-    <string name="texture_pack_upload_dialog_subtitle">Serwer GameNative jednorazowo konwertuje tekstury tej gry w wysokiej jakości, dzięki czemu następna sesja użyje ich zamiast konwertować je na Twoim urządzeniu. Oznacza to lepszą wydajność i mniej ciepła. Wysyłane są tylko dane tekstur i tylko przez Wi-Fi, chyba że zezwolisz na dane komórkowe w ustawieniach. Obecnie jest to bezpłatne i bez limitu dla wszystkich.</string>
+    <string name="texture_pack_download_dialog_subtitle">Pobieranie przygotowanych tekstur dla tej gry.\nBędzie wyglądać lepiej, szybciej się wczytywać i zużywać mniej RAM.\nObecnie bezpłatnie i bez limitu dla wszystkich.</string>
+    <string name="texture_pack_upload_dialog_subtitle">Przesyłanie tekstur do przetworzenia na serwerze.\nDzięki temu przy następnym uruchomieniu ta gra będzie wyglądać lepiej, szybciej się wczytywać i zużywać mniej RAM.\nObecnie bezpłatnie i bez limitu dla wszystkich.</string>
     <string name="texture_pack_dont_do_for_game">Nie rób tego dla tej gry</string>
     <string name="texture_pack_play_now">Graj teraz</string>
     <string name="texture_pack_game_setting_title">Pakiet tekstur z serwera dla tej gry</string>

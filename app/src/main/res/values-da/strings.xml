@@ -2404,8 +2404,8 @@
     <string name="texture_pack_upload_dialog_title">Uploader teksturer</string>
     <string name="texture_pack_skip">Spring over</string>
     <string name="texture_pack_continue_background">Fortsæt i baggrunden</string>
-    <string name="texture_pack_download_dialog_subtitle">Henter teksturer, som GameNatives server allerede har konverteret i høj kvalitet til dette spil. Denne gang bruges de i stedet for at konvertere på din enhed, hvilket giver bedre ydeevne og mindre varme. Overførslen sker over Wi-Fi, medmindre du tillader mobildata i indstillingerne. Det er lige nu gratis og ubegrænset for alle.</string>
-    <string name="texture_pack_upload_dialog_subtitle">GameNatives server konverterer dette spils teksturer én gang i høj kvalitet, så din næste session kan bruge dem i stedet for at konvertere dem på din enhed. Det giver bedre ydeevne og mindre varme. Kun teksturdata sendes, og kun over Wi-Fi, medmindre du tillader mobildata i indstillingerne. Det er lige nu gratis og ubegrænset for alle.</string>
+    <string name="texture_pack_download_dialog_subtitle">Henter forberedte teksturer til dette spil.\nDet ser bedre ud, indlæser hurtigere og bruger mindre RAM.\nLige nu gratis og ubegrænset for alle.</string>
+    <string name="texture_pack_upload_dialog_subtitle">Uploader teksturer til behandling på serveren.\nDet betyder, at dette spil næste gang ser bedre ud, indlæser hurtigere og bruger mindre RAM.\nLige nu gratis og ubegrænset for alle.</string>
     <string name="texture_pack_dont_do_for_game">Gør det ikke for dette spil</string>
     <string name="texture_pack_play_now">Spil nu</string>
     <string name="texture_pack_game_setting_title">Serverbaseret teksturpakke til dette spil</string>
