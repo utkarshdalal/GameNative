@@ -1714,5 +1714,5 @@ object PrefManager {
         get() = getPref(TEXTURE_PACK_ALLOW_MOBILE_DATA, false)
         set(value) { setPref(TEXTURE_PACK_ALLOW_MOBILE_DATA, value) }
 
-    const val DEFAULT_TEXTURE_PACK_SERVER = "https://gn-astc-cache.gamenative.workers.dev"
+    const val DEFAULT_TEXTURE_PACK_SERVER = "https://textures.gamenative.app"
 }
