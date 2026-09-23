@@ -2533,6 +2533,7 @@
     <string name="texture_pack_progress_bytes">%1$s / %2$s MB</string>
     <string name="texture_pack_notification_channel">Pakiety tekstur</string>
     <string name="texture_pack_notification_uploading">Wysyłanie tekstur gry</string>
+    <string name="texture_pack_notification_uploading_for">Wysyłanie tekstur gry %1$s</string>
     <string name="texture_pack_notification_downloading">Pobieranie tekstur gry</string>
     <string name="texture_pack_notification_remaining">Pozostało plików: %1$d</string>
     <string name="texture_pack_download_dialog_title">Pobieranie tekstur</string>

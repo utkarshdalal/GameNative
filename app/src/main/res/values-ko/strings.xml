@@ -2521,6 +2521,7 @@
     <string name="texture_pack_progress_bytes">%1$s / %2$s MB</string>
     <string name="texture_pack_notification_channel">텍스처 팩</string>
     <string name="texture_pack_notification_uploading">게임 텍스처 업로드 중</string>
+    <string name="texture_pack_notification_uploading_for">%1$s 텍스처 업로드 중</string>
     <string name="texture_pack_notification_downloading">게임 텍스처 다운로드 중</string>
     <string name="texture_pack_notification_remaining">남은 파일 %1$d개</string>
     <string name="texture_pack_download_dialog_title">텍스처 다운로드 중</string>

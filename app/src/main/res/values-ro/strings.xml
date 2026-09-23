@@ -2532,6 +2532,7 @@
     <string name="texture_pack_progress_bytes">%1$s / %2$s MB</string>
     <string name="texture_pack_notification_channel">Pachete de texturi</string>
     <string name="texture_pack_notification_uploading">Se încarcă texturile jocului</string>
+    <string name="texture_pack_notification_uploading_for">Se încarcă texturile pentru %1$s</string>
     <string name="texture_pack_notification_downloading">Se descarcă texturile jocului</string>
     <string name="texture_pack_notification_remaining">Fișiere rămase: %1$d</string>
     <string name="texture_pack_download_dialog_title">Se descarcă texturile</string>

@@ -2397,6 +2397,7 @@
     <string name="texture_pack_progress_bytes">%1$s / %2$s MB</string>
     <string name="texture_pack_notification_channel">Teksturpakker</string>
     <string name="texture_pack_notification_uploading">Uploader spilteksturer</string>
+    <string name="texture_pack_notification_uploading_for">Uploader teksturer til %1$s</string>
     <string name="texture_pack_notification_downloading">Henter spilteksturer</string>
     <string name="texture_pack_notification_remaining">%1$d filer tilbage</string>
     <string name="texture_pack_download_dialog_title">Henter teksturer</string>

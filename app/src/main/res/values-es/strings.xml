@@ -2525,6 +2525,7 @@
     <string name="texture_pack_progress_bytes">%1$s / %2$s MB</string>
     <string name="texture_pack_notification_channel">Paquetes de texturas</string>
     <string name="texture_pack_notification_uploading">Subiendo texturas del juego</string>
+    <string name="texture_pack_notification_uploading_for">Subiendo texturas de %1$s</string>
     <string name="texture_pack_notification_downloading">Descargando texturas del juego</string>
     <string name="texture_pack_notification_remaining">Quedan %1$d archivos</string>
     <string name="texture_pack_download_dialog_title">Descargando texturas</string>

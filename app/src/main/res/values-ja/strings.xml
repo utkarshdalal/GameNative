@@ -2480,6 +2480,7 @@
     <string name="texture_pack_progress_bytes">%1$s / %2$s MB</string>
     <string name="texture_pack_notification_channel">テクスチャパック</string>
     <string name="texture_pack_notification_uploading">ゲームのテクスチャをアップロード中</string>
+    <string name="texture_pack_notification_uploading_for">%1$s のテクスチャをアップロード中</string>
     <string name="texture_pack_notification_downloading">ゲームのテクスチャをダウンロード中</string>
     <string name="texture_pack_notification_remaining">残り %1$d ファイル</string>
     <string name="texture_pack_download_dialog_title">テクスチャをダウンロード中</string>

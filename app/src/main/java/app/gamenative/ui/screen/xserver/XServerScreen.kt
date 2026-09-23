@@ -4875,6 +4875,7 @@ private fun exit(
     } catch (e: Exception) {
         Timber.e(e, "winHandler.stop() failed during exit")
     }
+    val texturePackContext = (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext
     PluviaApp.shutdownEnvironment()
     EaLaunchSupport.stop()
 
@@ -4915,11 +4916,29 @@ private fun exit(
     }
     frameRating?.writeSessionSummary()
 
-    runCatching {
-        app.gamenative.texturepack.TexturePackUploadPrompt.request(appId)
-    }.onFailure { Timber.w(it, "could not request texture pack upload for $appId") }
+    val launchedViaIntent = MainActivity.wasLaunchedViaExternalIntent
+    if (!launchedViaIntent) {
+        runCatching {
+            app.gamenative.texturepack.TexturePackUploadPrompt.request(appId)
+        }.onFailure { Timber.w(it, "could not request texture pack upload for $appId") }
+    } else if (texturePackContext != null) {
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching {
+                val action = app.gamenative.texturepack.TexturePackGate.exitUploadAction(
+                    launchedViaIntent = launchedViaIntent,
+                    syncEnabled = app.gamenative.texturepack.TexturePackGate.syncEnabled(texturePackContext, appId),
+                    hasSources = app.gamenative.texturepack.TexturePackSync.sourceFiles(
+                        app.gamenative.texturepack.TexturePackPaths.cacheDir(container),
+                    ).isNotEmpty(),
+                )
+                if (action == app.gamenative.texturepack.TexturePackGate.ExitUploadAction.ENQUEUE) {
+                    app.gamenative.texturepack.TexturePackSyncWorker.enqueueUploadSync(texturePackContext, appId)
+                }
+            }.onFailure { Timber.w(it, "could not enqueue texture pack upload for $appId") }
+        }
+    }
 
-    if (MainActivity.wasLaunchedViaExternalIntent) {
+    if (launchedViaIntent) {
         Timber.i("[IntentLaunch]: Waiting for exit handling before returning to external launcher")
         onExit(navigateBack)
     } else {

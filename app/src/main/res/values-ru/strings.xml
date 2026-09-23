@@ -2459,6 +2459,7 @@ https://gamenative.app
     <string name="texture_pack_progress_bytes">%1$s / %2$s МБ</string>
     <string name="texture_pack_notification_channel">Пакеты текстур</string>
     <string name="texture_pack_notification_uploading">Отправка текстур игры</string>
+    <string name="texture_pack_notification_uploading_for">Отправка текстур для %1$s</string>
     <string name="texture_pack_notification_downloading">Загрузка текстур игры</string>
     <string name="texture_pack_notification_remaining">Осталось файлов: %1$d</string>
     <string name="texture_pack_download_dialog_title">Загрузка текстур</string>

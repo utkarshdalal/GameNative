@@ -2529,6 +2529,7 @@
     <string name="texture_pack_progress_bytes">%1$s / %2$s МБ</string>
     <string name="texture_pack_notification_channel">Пакети текстур</string>
     <string name="texture_pack_notification_uploading">Надсилання текстур гри</string>
+    <string name="texture_pack_notification_uploading_for">Надсилання текстур для %1$s</string>
     <string name="texture_pack_notification_downloading">Завантаження текстур гри</string>
     <string name="texture_pack_notification_remaining">Залишилося файлів: %1$d</string>
     <string name="texture_pack_download_dialog_title">Завантаження текстур</string>

@@ -2541,6 +2541,7 @@
     <string name="texture_pack_progress_bytes">%1$s / %2$s MB</string>
     <string name="texture_pack_notification_channel">纹理包</string>
     <string name="texture_pack_notification_uploading">正在上传游戏纹理</string>
+    <string name="texture_pack_notification_uploading_for">正在上传 %1$s 的纹理</string>
     <string name="texture_pack_notification_downloading">正在下载游戏纹理</string>
     <string name="texture_pack_notification_remaining">剩余 %1$d 个文件</string>
     <string name="texture_pack_download_dialog_title">正在下载纹理</string>

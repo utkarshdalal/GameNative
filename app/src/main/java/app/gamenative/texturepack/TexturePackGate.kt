@@ -143,6 +143,14 @@ object TexturePackGate {
     fun syncEnabled(context: Context, appId: String): Boolean =
         syncEnabled(context) && !isSkipped(context, appId)
 
+    enum class ExitUploadAction { NONE, PROMPT, ENQUEUE }
+
+    fun exitUploadAction(launchedViaIntent: Boolean, syncEnabled: Boolean, hasSources: Boolean): ExitUploadAction = when {
+        !launchedViaIntent -> ExitUploadAction.PROMPT
+        syncEnabled && hasSources -> ExitUploadAction.ENQUEUE
+        else -> ExitUploadAction.NONE
+    }
+
     fun serverPackPresent(context: Context, appId: String): Boolean = try {
         syncEnabled(context, appId) &&
             ContainerUtils.hasContainer(context, appId) &&

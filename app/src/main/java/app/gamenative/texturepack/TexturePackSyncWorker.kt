@@ -49,14 +49,13 @@ class TexturePackSyncWorker(
 
         val client = TexturePackClient(applicationContext)
         val upload = inputData.getBoolean(KEY_UPLOAD, false)
+        val uploadTitle = uploadTitle(container)
         notify(
-            applicationContext.getString(
-                if (upload) R.string.texture_pack_notification_uploading else R.string.texture_pack_notification_downloading,
-            ),
+            if (upload) uploadTitle else applicationContext.getString(R.string.texture_pack_notification_downloading),
             0,
         )
         return try {
-            if (upload) uploadSync(client, container, cacheDir)
+            if (upload) uploadSync(client, container, cacheDir, uploadTitle)
             downloadSync(client, container, appId, cacheDir)
             Result.success()
         } catch (e: CancellationException) {
@@ -75,9 +74,13 @@ class TexturePackSyncWorker(
         0,
     )
 
-    private suspend fun uploadSync(client: TexturePackClient, container: Container, cacheDir: File) {
+    private fun uploadTitle(container: Container): String =
+        TexturePackGate.cleanTitle(container.getExtra(TexturePackGate.CONTAINER_EXTRA_TITLE, ""))
+            ?.let { applicationContext.getString(R.string.texture_pack_notification_uploading_for, it) }
+            ?: applicationContext.getString(R.string.texture_pack_notification_uploading)
+
+    private suspend fun uploadSync(client: TexturePackClient, container: Container, cacheDir: File, title: String) {
         if (TexturePackGate.policyDisabled(TexturePackGate.policyOf(container))) return
-        val title = applicationContext.getString(R.string.texture_pack_notification_uploading)
         val total = withContext(Dispatchers.IO) { TexturePackSync.sourceFiles(cacheDir).sumOf { it.length() } }
         var done = 0L
         var shownAt = 0L
