@@ -539,7 +539,8 @@ fun QuickMenu(
     val inviteMenu = remember(container?.id) { SteamInviteState.createIfAvailable(container) }
     var showGyroSettingsDialog by rememberSaveable(container?.id) { mutableStateOf(false) }
     var showControlProfiles by rememberSaveable(container?.id) { mutableStateOf(false) }
-    var restoreControlProfileFocus by remember(container?.id) { mutableStateOf(false) }
+    var lastControllerFocusRequester by remember(container?.id) { mutableStateOf<FocusRequester?>(null) }
+    var controlProfileReturnFocusRequester by remember(container?.id) { mutableStateOf<FocusRequester?>(null) }
     // Owned here, not plumbed through XServerScreen (register limit; see inviteMenu).
     var lsfgPresentMode by remember(container?.id) {
         mutableStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.presentMode(it) } ?: "mailbox")
@@ -583,7 +584,6 @@ fun QuickMenu(
     val hudItemFocusRequester = remember { FocusRequester() }
     val effectsItemFocusRequester = remember { FocusRequester() }
     val controllerItemFocusRequester = remember { FocusRequester() }
-    val controlProfileItemFocusRequester = remember { FocusRequester() }
     val toolsItemFocusRequester = remember { FocusRequester() }
     val lsfgItemFocusRequester = remember { FocusRequester() }
     val inviteTabFocusRequester = remember { FocusRequester() }
@@ -1113,17 +1113,14 @@ fun QuickMenu(
                                                         if (item.id == QuickMenuAction.GYRO && gyroMenu != null) {
                                                             gyroMenu.setEnabled(!gyroEnabled)
                                                         } else if (item.id == QuickMenuAction.CONTROL_PROFILES) {
-                                                            restoreControlProfileFocus = true
+                                                            controlProfileReturnFocusRequester = lastControllerFocusRequester
                                                             showControlProfiles = true
                                                         } else if (onItemSelected(item.id)) {
                                                             onDismiss()
                                                         }
                                                     },
-                                                    focusRequester = when {
-                                                        item.id == QuickMenuAction.CONTROL_PROFILES -> controlProfileItemFocusRequester
-                                                        index == 0 -> controllerItemFocusRequester
-                                                        else -> null
-                                                    },
+                                                    focusRequester = if (index == 0) controllerItemFocusRequester else null,
+                                                    onFocused = { lastControllerFocusRequester = it },
                                                     secondaryIcon = if (item.id == QuickMenuAction.TOUCHSCREEN_MODE && touchscreenEnabled)
                                                         Icons.Default.Settings
                                                     else if (item.id == QuickMenuAction.SHOOTER_MODE && shooterEnabled)
@@ -1195,25 +1192,26 @@ fun QuickMenu(
     }
 
     LaunchedEffect(showControlProfiles, isVisible) {
-        if (showControlProfiles || !restoreControlProfileFocus) return@LaunchedEffect
+        val returnFocusRequester = controlProfileReturnFocusRequester
+        if (showControlProfiles || returnFocusRequester == null) return@LaunchedEffect
         if (!isVisible) {
-            restoreControlProfileFocus = false
+            controlProfileReturnFocusRequester = null
             return@LaunchedEffect
         }
         // The library owns a separate window. Let it detach before returning
-        // controller focus to the item that opened it.
+        // controller focus to whichever quick-menu control held it before entry.
         repeat(4) {
             delay(80)
             try {
-                if (controlProfileItemFocusRequester.requestFocus()) {
-                    restoreControlProfileFocus = false
+                if (returnFocusRequester.requestFocus()) {
+                    controlProfileReturnFocusRequester = null
                     return@LaunchedEffect
                 }
             } catch (_: IllegalStateException) {
                 // The quick-menu focus target may still be attaching.
             }
         }
-        restoreControlProfileFocus = false
+        controlProfileReturnFocusRequester = null
     }
 
     LaunchedEffect(isVisible, selectedTab) {
@@ -2800,6 +2798,7 @@ private fun QuickMenuItemRow(
     isActive: Boolean = false,
     onClick: () -> Unit,
     focusRequester: FocusRequester? = null,
+    onFocused: ((FocusRequester) -> Unit)? = null,
     secondaryIcon: ImageVector? = null,
     secondaryContentDescriptionResId: Int? = null,
     onSecondaryClick: (() -> Unit)? = null,
@@ -2818,12 +2817,14 @@ private fun QuickMenuItemRow(
 
     LaunchedEffect(isFocused, onClick) {
         inputBypass.reportActivate(interactionSource, if (isFocused) onClick else null)
+        if (isFocused) onFocused?.invoke(rowFocusRequester)
     }
     LaunchedEffect(isSecondaryFocused, onSecondaryClick) {
         inputBypass.reportActivate(
             secondaryInteractionSource,
             if (isSecondaryFocused) onSecondaryClick else null,
         )
+        if (isSecondaryFocused) onFocused?.invoke(secondaryFocusRequester)
     }
 
     val accentColor = if (item.accentColor != Color.Unspecified) {

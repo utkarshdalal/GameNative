@@ -847,7 +847,15 @@ private fun ControlProfilePreviewDialog(
 ) {
     val physicalBindings = remember(action.preview.json) { physicalProfileBindingRows(action.preview.json) }
     val radialBindings = remember(action.preview.json) { radialProfileBindingRows(action.preview.json) }
-    var expandedSections by remember(action.preview) { mutableStateOf(emptySet<ControlProfileSection>()) }
+    var expandedSections by remember(action.preview) {
+        mutableStateOf(
+            if (ControlProfileSection.ON_SCREEN in action.preview.sections) {
+                setOf(ControlProfileSection.ON_SCREEN)
+            } else {
+                emptySet()
+            },
+        )
+    }
     fun toggle(section: ControlProfileSection) {
         expandedSections = if (section in expandedSections) expandedSections - section else expandedSections + section
     }
@@ -996,8 +1004,18 @@ private fun ProfileBindingPreviewRow(label: String, row: ProfileBindingRow) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            value,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+        )
     }
 }
 
