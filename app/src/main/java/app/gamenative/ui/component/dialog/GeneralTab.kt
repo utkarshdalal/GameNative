@@ -161,8 +161,9 @@ fun GeneralTabContent(
                             if (get("presentMode").isEmpty()) put("presentMode", "mailbox")
                             if (get("resourceType").isEmpty()) put("resourceType", "auto")
                             if (get("bcnEmulation").isEmpty()) put("bcnEmulation", "auto")
-                            if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "compute")
+                            if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "software")
                             if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "1")
+                            if (get("transcoder").isEmpty()) put("transcoder", "gpu")
                             put("adrenotoolsTurnip", "1")
                         }
                         state.graphicsDriverIndex.value =
@@ -197,8 +198,9 @@ fun GeneralTabContent(
                             if (get("presentMode").isEmpty()) put("presentMode", "mailbox")
                             if (get("resourceType").isEmpty()) put("resourceType", "auto")
                             if (get("bcnEmulation").isEmpty()) put("bcnEmulation", "auto")
-                            if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "compute")
+                            if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "software")
                             if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "1")
+                            if (get("transcoder").isEmpty()) put("transcoder", "gpu")
                         }
                         state.bionicDriverIndex.value = 0
                         state.wrapperVersionIndex.value = state.wrapperOptions.ids
