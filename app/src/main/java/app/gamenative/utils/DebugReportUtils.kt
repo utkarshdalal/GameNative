@@ -11,6 +11,7 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
 import java.io.RandomAccessFile
+import java.util.Locale
 import java.util.zip.GZIPOutputStream
 
 object DebugReportUtils {
@@ -181,6 +182,7 @@ object DebugReportUtils {
             put("gpuName", gpu)
             put("androidVersion", Build.VERSION.RELEASE)
             put("appVersion", BuildConfig.VERSION_NAME)
+            put("locale", Locale.getDefault().toLanguageTag())
             put("configs", JSONObject(container.containerJson))
             if (avgFps != null) put("avgFps", avgFps.toDouble()) else put("avgFps", JSONObject.NULL)
             if (sessionLengthSec != null) put("sessionLengthSec", sessionLengthSec) else put("sessionLengthSec", JSONObject.NULL)
