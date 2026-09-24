@@ -1789,6 +1789,7 @@
     <string name="export_files_cancelled">已取消匯出</string>
     <string name="export_files_no_container">請先啟動一次遊戲以建立其容器，然後再匯出檔案。</string>
     <string name="export_files_failed_header">以下檔案無法匯出：</string>
+    <string name="app_filter_vr">VR 遊戲</string>
     <string name="option_manage_mods">管理 Nexus 模組</string>
     <string name="nexus_search_clear">清除搜尋</string>
     <string name="nexus_filter_all">全部</string>

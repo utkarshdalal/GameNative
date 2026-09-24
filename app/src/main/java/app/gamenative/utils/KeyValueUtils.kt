@@ -28,11 +28,21 @@ import timber.log.Timber
 
 const val CURRENT_UFS_PARSE_VERSION = 4
 
+// Bump when generateSteamApp() starts reading new VR metadata so cached apps get reprocessed.
+const val CURRENT_VR_CATEGORY_PARSE_VERSION = 1
+
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
  */
 
 fun KeyValue.generateSteamApp(): SteamApp {
+    // category_53/54 are Valve's "VR Supported"/"VR Only" flags; tag 21978 ("VR") catches titles
+    // whose developer didn't set the curated categories.
+    val categoryNames = this["common"]["category"].children.mapNotNull { it.name }
+    val storeTagIds = this["common"]["store_tags"].children.mapNotNull { it.asInteger(-1).takeIf { id -> id >= 0 } }
+    val isVrOnly = categoryNames.contains("category_54")
+    val isVrSupported = categoryNames.contains("category_53") || storeTagIds.contains(21978)
+
     return SteamApp(
         id = this["appid"].asInteger(INVALID_APP_ID),
         depots = this["depots"].children
@@ -104,6 +114,9 @@ fun KeyValue.generateSteamApp(): SteamApp {
         reviewScore = this["common"]["review_score"].asByte(),
         reviewPercentage = this["common"]["review_percentage"].asByte(),
         controllerSupport = ControllerSupport.from(this["common"]["controller_support"].value),
+        isVrOnly = isVrOnly,
+        isVrSupported = isVrSupported,
+        vrCategoryParseVersion = CURRENT_VR_CATEGORY_PARSE_VERSION,
         demoOfAppId = this["common"]["extended"]["demoofappid"].asInteger(),
         developer = this["extended"]["developer"].value.orEmpty(),
         publisher = this["extended"]["publisher"].value.orEmpty(),

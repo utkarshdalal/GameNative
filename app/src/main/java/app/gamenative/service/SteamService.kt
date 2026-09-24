@@ -65,6 +65,7 @@ import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.asyncIsolated
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
+import app.gamenative.utils.CURRENT_VR_CATEGORY_PARSE_VERSION
 import app.gamenative.utils.generateSteamApp
 import app.gamenative.workshop.WorkshopManager
 import com.winlator.container.Container
@@ -1479,6 +1480,28 @@ class SteamService : Service(), IChallengeUrlChanged {
             }.onFailure { error ->
                 Timber.tag("SteamService").e(error, "Failed to refresh owned games from server")
             }.getOrDefault(0)
+        }
+
+        /**
+         * Queues every cached app whose vr_category_parse_version predates
+         * [CURRENT_VR_CATEGORY_PARSE_VERSION] into the PICS channel, so apps cached before the
+         * VR columns existed get isVrOnly/isVrSupported filled in. Apps already reprocessed no
+         * longer match the query, so calling this on every login is cheap.
+         */
+        suspend fun backfillVrClassification() {
+            val service = instance ?: return
+            runCatching {
+                val outdatedIds = service.appDao.getAppIdsWithOutdatedVrCategoryParseVersion(
+                    CURRENT_VR_CATEGORY_PARSE_VERSION,
+                )
+                if (outdatedIds.isEmpty()) return
+                Timber.d("backfillVrClassification: queueing ${outdatedIds.size} app(s) for PICS reprocessing")
+                outdatedIds.chunked(MAX_PICS_BUFFER).forEach { chunk ->
+                    service.appPicsChannel.send(chunk.map { PICSRequest(id = it) })
+                }
+            }.onFailure { error ->
+                Timber.w(error, "backfillVrClassification: failed")
+            }
         }
 
         /**
@@ -4547,6 +4570,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 picsChangesCheckerJob = continuousPICSChangesChecker()
                 picsGetProductInfoJob = continuousPICSGetProductInfo()
+                scope.launch { backfillVrClassification() }
 
                 // Tell steam we're online, this allows friends to update.
                 _steamFriends?.setPersonaState(PrefManager.personaState)
@@ -5156,8 +5180,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 // TODO maybe apps with -1 for the ownerAccountId can be stripped with necessities and name.
 
                                 val ufsParseVersionOutdated = appFromDb != null && appFromDb.ufsParseVersion < CURRENT_UFS_PARSE_VERSION
+                                val vrCategoryParseVersionOutdated = appFromDb != null &&
+                                    appFromDb.vrCategoryParseVersion < CURRENT_VR_CATEGORY_PARSE_VERSION
 
-                                if (app.changeNumber != appFromDb?.lastChangeNumber || ufsParseVersionOutdated) {
+                                if (app.changeNumber != appFromDb?.lastChangeNumber ||
+                                    ufsParseVersionOutdated ||
+                                    vrCategoryParseVersionOutdated
+                                ) {
                                     val newApp = app.keyValues.generateSteamApp().copy(
                                         packageId = packageId,
                                         ownerAccountId = ownerAccountId,

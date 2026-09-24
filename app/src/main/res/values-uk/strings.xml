@@ -1777,6 +1777,7 @@
     <string name="export_files_cancelled">Експорт скасовано</string>
     <string name="export_files_no_container">Запустіть гру один раз, щоб створити її контейнер, а потім експортуйте файли.</string>
     <string name="export_files_failed_header">Не вдалося експортувати ці файли:</string>
+    <string name="app_filter_vr">VR-гра</string>
     <string name="option_manage_mods">Керування модами Nexus</string>
     <string name="nexus_search_clear">Очистити пошук</string>
     <string name="nexus_filter_all">Усі</string>

@@ -3,6 +3,8 @@ package app.gamenative.utils
 import app.gamenative.enums.PathType
 import `in`.dragonbra.javasteam.types.KeyValue
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KeyValueUtilsTest {
@@ -1054,4 +1056,89 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
     }
 
+    private fun vrApp(common: String) = KeyValue.loadFromString(
+        """
+            "appinfo"
+            {
+                "appid"     "1"
+                "common"
+                {
+                    "name"  "Test"
+                    $common
+                }
+            }
+        """.trimIndent(),
+    )!!.generateSteamApp()
+
+    /** category_54 is Valve's "VR Only" flag (e.g. Half-Life: Alyx). */
+    @Test
+    fun vrOnlyCategoryMarksAppVrOnly() {
+        val app = vrApp(
+            """
+            "category"
+            {
+                "category_31"   "1"
+                "category_54"   "1"
+            }
+            """,
+        )
+        assertTrue(app.isVrOnly)
+        assertFalse(app.isVrSupported)
+        assertTrue(app.isVrGame)
+        assertEquals(CURRENT_VR_CATEGORY_PARSE_VERSION, app.vrCategoryParseVersion)
+    }
+
+    /** category_53 is Valve's "VR Supported" flag (e.g. Elite Dangerous). */
+    @Test
+    fun vrSupportedCategoryMarksAppVrSupported() {
+        val app = vrApp(
+            """
+            "category"
+            {
+                "category_31"   "1"
+                "category_53"   "1"
+            }
+            """,
+        )
+        assertFalse(app.isVrOnly)
+        assertTrue(app.isVrSupported)
+        assertTrue(app.isVrGame)
+    }
+
+    /** Store tag 21978 ("VR") catches games whose developer didn't set the curated categories. */
+    @Test
+    fun vrStoreTagMarksAppVrSupported() {
+        val app = vrApp(
+            """
+            "store_tags"
+            {
+                "0"     "492"
+                "1"     "21978"
+            }
+            """,
+        )
+        assertFalse(app.isVrOnly)
+        assertTrue(app.isVrSupported)
+        assertTrue(app.isVrGame)
+    }
+
+    @Test
+    fun appWithoutVrCategoriesOrTagIsNotVr() {
+        val app = vrApp(
+            """
+            "category"
+            {
+                "category_2"    "1"
+            }
+            "store_tags"
+            {
+                "0"     "492"
+            }
+            """,
+        )
+        assertFalse(app.isVrOnly)
+        assertFalse(app.isVrSupported)
+        assertFalse(app.isVrGame)
+        assertEquals(CURRENT_VR_CATEGORY_PARSE_VERSION, app.vrCategoryParseVersion)
+    }
 }

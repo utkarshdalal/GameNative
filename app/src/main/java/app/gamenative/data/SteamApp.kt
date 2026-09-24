@@ -152,7 +152,21 @@ data class SteamApp(
 
     @ColumnInfo(name = "workshop_download_pending", defaultValue = "0")
     val workshopDownloadPending: Boolean = false,
+
+    // Steam PICS category_54 ("VR Only").
+    @ColumnInfo(name = "is_vr_only", defaultValue = "0")
+    val isVrOnly: Boolean = false,
+    // Steam PICS category_53 ("VR Supported") or store tag 21978 ("VR").
+    @ColumnInfo(name = "is_vr_supported", defaultValue = "0")
+    val isVrSupported: Boolean = false,
+    // Forces reprocessing of cached PICS data when CURRENT_VR_CATEGORY_PARSE_VERSION is bumped,
+    // same mechanism as ufsParseVersion.
+    @ColumnInfo(name = "vr_category_parse_version", defaultValue = "0")
+    val vrCategoryParseVersion: Int = 0,
 ) {
+    val isVrGame: Boolean
+        get() = isVrOnly || isVrSupported
+
     val logoUrl: String
         get() = "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/$id/$logoHash.jpg"
     val logoSmallUrl: String

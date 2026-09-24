@@ -1651,6 +1651,7 @@
     <string name="export_files_cancelled">Eksport annulleret</string>
     <string name="export_files_no_container">Start spillet én gang for at oprette dets container, og eksportér derefter filer.</string>
     <string name="export_files_failed_header">Disse filer kunne ikke eksporteres:</string>
+    <string name="app_filter_vr">VR-spil</string>
     <string name="option_manage_mods">Administrer Nexus-mods</string>
     <string name="nexus_search_clear">Ryd søgning</string>
     <string name="nexus_filter_all">Alle</string>

@@ -1798,6 +1798,7 @@
     <string name="export_files_cancelled">导出已取消</string>
     <string name="export_files_no_container">请先启动一次游戏以创建其容器，然后再导出文件。</string>
     <string name="export_files_failed_header">以下文件无法导出：</string>
+    <string name="app_filter_vr">VR 游戏</string>
     <string name="option_manage_mods">管理 Nexus 模组</string>
     <string name="nexus_search_clear">清除搜索</string>
     <string name="nexus_filter_all">全部</string>

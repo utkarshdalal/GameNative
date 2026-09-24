@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.annotation.StringRes
 import app.gamenative.enums.AppType
 import app.gamenative.R
+import app.gamenative.ui.icons.VrHeadset
 import java.util.EnumSet
 
 enum class AppFilter(
@@ -83,6 +84,13 @@ enum class AppFilter(
         code = 0x400,
         displayTextRes = R.string.filter_proven_gpu,
         icon = Icons.Rounded.SportsEsports,
+    ),
+
+    // Steam games flagged VR in PICS (SteamApp.isVrGame). Only offered on a VR headset.
+    VR(
+        code = 0x2000,
+        displayTextRes = R.string.app_filter_vr,
+        icon = Icons.Filled.VrHeadset,
     ),
     // ALPHABETIC(
     //     code = 0x20,

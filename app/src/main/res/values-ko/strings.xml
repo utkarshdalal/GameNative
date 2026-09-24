@@ -1778,6 +1778,7 @@
     <string name="export_files_cancelled">내보내기가 취소되었습니다</string>
     <string name="export_files_no_container">게임을 한 번 실행하여 컨테이너를 만든 다음 파일을 내보내세요.</string>
     <string name="export_files_failed_header">다음 파일을 내보낼 수 없습니다:</string>
+    <string name="app_filter_vr">VR 게임</string>
     <string name="option_manage_mods">Nexus 모드 관리</string>
     <string name="nexus_search_clear">검색 지우기</string>
     <string name="nexus_filter_all">전체</string>

@@ -1779,6 +1779,7 @@
     <string name="export_files_cancelled">Exportación cancelada</string>
     <string name="export_files_no_container">Inicia el juego una vez para crear su contenedor y luego exporta los archivos.</string>
     <string name="export_files_failed_header">No se pudieron exportar estos archivos:</string>
+    <string name="app_filter_vr">Juego de RV</string>
     <string name="option_manage_mods">Administrar mods de Nexus</string>
     <string name="nexus_search_clear">Borrar búsqueda</string>
     <string name="nexus_filter_all">Todo</string>
