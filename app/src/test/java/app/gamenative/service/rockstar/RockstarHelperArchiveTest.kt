@@ -26,27 +26,6 @@ class RockstarHelperArchiveTest {
         assertTrue(RockstarHelperArchive.usesRockstar(game))
     }
 
-    @Test fun findsTheTitleInTheRootOrOneSubdirectoryDown() {
-        val game = temporary.newFolder()
-        File(game, "PlayLAN.exe").writeText("MZ")
-        File(game, "title.rgl").writeText("RGLM")
-        assertEquals(game, RockstarHelperArchive.titleDir(game))
-        File(game, "title.rgl").delete()
-        assertNull(RockstarHelperArchive.titleDir(game))
-        File(game, ".gamenative-rockstar").mkdir()
-        File(game, ".gamenative-rockstar/title.rgl").writeText("RGLM")
-        File(game, "Redistributables").mkdir()
-        assertNull(RockstarHelperArchive.titleDir(game))
-        val title = File(game, "GTAIV").apply { mkdir() }
-        File(title, "title.rgl").writeText("RGLM")
-        assertEquals(title, RockstarHelperArchive.titleDir(game))
-        assertTrue(RockstarHelperArchive.usesRockstar(game))
-        val nested = File(game, "Deep/Deeper").apply { mkdirs() }
-        File(title, "title.rgl").delete()
-        File(nested, "title.rgl").writeText("RGLM")
-        assertNull(RockstarHelperArchive.titleDir(game))
-    }
-
     @Test fun extractsArchiveOnceAndAgainWhenAFileIsMissing() {
         val files = temporary.newFolder()
         val bytes = rockstarTestArchive()

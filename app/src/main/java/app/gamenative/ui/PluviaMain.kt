@@ -2239,6 +2239,7 @@ fun preLaunchApp(
                     setLoadingMessage(context.getString(R.string.rockstar_runtime_installing))
                     withContext(Dispatchers.IO) { RockstarRuntime.install(context, installer, prefixDriveC) { setLoadingProgress(it) } }
                 }
+                withContext(Dispatchers.IO) { RockstarRuntime.ensureX86(context, RockstarRuntime.installer(rockstarGameDir), prefixDriveC) { setLoadingProgress(it) } }
                 withContext(Dispatchers.IO) {
                     check(RockstarLaunchSupport.placeToken(context, rockstarGameDir) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir)) {
                         "Could not place Rockstar sign-in credentials in the game directory"

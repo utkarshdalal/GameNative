@@ -23,15 +23,13 @@ object RockstarHelperArchive {
     fun directory(filesDir: File) = File(filesDir, "rockstar/rgschost-$VERSION")
 
     /** Detect the installed Rockstar SDK/metadata, not the publisher or a guessed app-ID list. */
-    fun usesRockstar(gameDir: File): Boolean = titleDir(gameDir) != null
+    fun usesRockstar(gameDir: File): Boolean = candidates(gameDir).any(::holdsTitle)
 
-    fun titleDir(installDir: File): File? {
-        if (!installDir.isDirectory) return null
-        if (holdsTitle(installDir)) return installDir
-        return installDir.listFiles().orEmpty()
-            .filter { it.isDirectory && !it.name.startsWith(".") }
-            .sortedBy { it.name.lowercase() }
-            .firstOrNull(::holdsTitle)
+    fun titleDir(installDir: File): File = candidates(installDir).firstOrNull(::holdsTitle) ?: installDir
+
+    private fun candidates(installDir: File): List<File> {
+        if (!installDir.isDirectory) return emptyList()
+        return listOf(installDir) + installDir.listFiles().orEmpty().filter { it.isDirectory }.sortedBy { it.name.lowercase() }
     }
 
     private fun holdsTitle(dir: File): Boolean {

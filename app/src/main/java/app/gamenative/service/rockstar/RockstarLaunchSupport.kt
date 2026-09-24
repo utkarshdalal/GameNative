@@ -10,8 +10,6 @@ object RockstarLaunchSupport {
 
     fun isRockstarTitle(gameDir: File) = RockstarHelperArchive.usesRockstar(gameDir)
 
-    private fun titleDir(installDir: File) = RockstarHelperArchive.titleDir(installDir) ?: installDir
-
     /**
      * Removes tokens placeToken wrote into the game directories. Signing out has to clear these
      * too: preLaunchApp falls back to a token already in place when a sign-in does not complete,
@@ -20,7 +18,9 @@ object RockstarLaunchSupport {
     fun clearPlacedTokens() {
         val installed = SteamService.getAllInstalledApps() ?: return
         for (app in installed) {
-            val gameDir = RockstarHelperArchive.titleDir(File(SteamService.getAppDirPath(app.id))) ?: continue
+            val installDir = File(SteamService.getAppDirPath(app.id))
+            if (!isRockstarTitle(installDir)) continue
+            val gameDir = RockstarHelperArchive.titleDir(installDir)
             for (name in listOf(RockstarConstants.TOKEN_FILE, RockstarConstants.TOKEN_FILE + ".previous")) {
                 val file = File(gameDir, name)
                 if (file.exists() && file.delete()) Timber.i("Rockstar: removed %s from %s", name, gameDir.name)
@@ -34,7 +34,7 @@ object RockstarLaunchSupport {
      * that launch.
      */
     fun hasUsableToken(gameDir: File): Boolean = runCatching {
-        val f = File(titleDir(gameDir), RockstarConstants.TOKEN_FILE)
+        val f = File(RockstarHelperArchive.titleDir(gameDir), RockstarConstants.TOKEN_FILE)
         f.exists() && RockstarConstants.TOKEN_SHAPE.matches(f.readText().trim())
     }.getOrDefault(false)
 
@@ -50,7 +50,7 @@ object RockstarLaunchSupport {
             Timber.w("Rockstar: no stored session, cannot place the token")
             return false
         }
-        val gameDir = titleDir(installDir)
+        val gameDir = RockstarHelperArchive.titleDir(installDir)
         val target = File(gameDir, RockstarConstants.TOKEN_FILE)
         return runCatching {
             if (target.exists()) {
