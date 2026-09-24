@@ -59,6 +59,10 @@ internal fun VideoHero(
     val youTubeId = remember(videoUrl) { videoUrl?.let(::extractYouTubeId) }
     var manuallyStarted by remember(videoUrl) { mutableStateOf(false) }
 
+    LaunchedEffect(active) {
+        if (!active) manuallyStarted = false
+    }
+
     when {
         youTubeId != null -> YouTubeHero(
             videoId = youTubeId,
