@@ -32,7 +32,6 @@ import app.gamenative.R
 import app.gamenative.texturepack.TextureCacheUsage
 import app.gamenative.texturepack.TexturePackGate
 import app.gamenative.texturepack.TexturePackPaths
-import app.gamenative.texturepack.TexturePackSyncWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -82,7 +81,6 @@ fun SettingsGroupPerformance() {
                 onCheckedChange = {
                     texturePackAllowMobileData = it
                     PrefManager.texturePackAllowMobileData = it
-                    TexturePackSyncWorker.cancelScheduled(context)
                 },
             )
         }

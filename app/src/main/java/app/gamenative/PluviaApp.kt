@@ -92,8 +92,6 @@ class PluviaApp : SplitCompatApplication() {
 
         DownloadService.populateDownloadService(this)
 
-        app.gamenative.texturepack.TexturePackSyncWorker.cancelScheduled(applicationContext)
-
         migrateGogAmazonPaths()
 
         appScope.launch {

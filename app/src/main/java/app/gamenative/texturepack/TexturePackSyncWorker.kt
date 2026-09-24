@@ -236,13 +236,5 @@ class TexturePackSyncWorker(
                     .enqueueUniqueWork("texture-pack-upload-$appId", ExistingWorkPolicy.KEEP, request)
             }.onFailure { Timber.w(it, "could not enqueue texture pack upload for $appId") }
         }
-
-        fun cancelScheduled(context: Context) {
-            runCatching {
-                val manager = WorkManager.getInstance(context.applicationContext)
-                manager.cancelUniqueWork("texture-pack-sweep-now")
-                manager.cancelUniqueWork("texture-pack-sweep")
-            }.onFailure { Timber.w(it, "could not cancel texture pack sync") }
-        }
     }
 }
