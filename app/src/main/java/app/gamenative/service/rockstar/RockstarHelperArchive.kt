@@ -11,20 +11,29 @@ import java.io.InputStream
 
 /** Versioned helper cache. Does not overwrite game executables, mods, INIs or credentials. */
 object RockstarHelperArchive {
-    const val VERSION = "20260923"
+    const val VERSION = "20260924.1"
     const val ARCHIVE = "rgschost-$VERSION.tzst"
     const val SIGNIN_SHIM = "rockstar-signin-shim.js"
     private val required = setOf(
         "rgscstub.exe", "scpatch.dll", "bink2w64.dll",
+        "rgscstub32.exe", "scpatch32.dll", "binkw32.dll",
         "SocialClubD3D12Renderer.dll", "SocialClubVulkanLayer.dll", SIGNIN_SHIM,
     )
 
     fun directory(filesDir: File) = File(filesDir, "rockstar/rgschost-$VERSION")
 
     /** Detect the installed Rockstar SDK/metadata, not the publisher or a guessed app-ID list. */
-    fun usesRockstar(gameDir: File): Boolean {
-        if (!gameDir.isDirectory) return false
-        val names = gameDir.listFiles().orEmpty().associateBy { it.name.lowercase() }
+    fun usesRockstar(gameDir: File): Boolean = candidates(gameDir).any(::holdsTitle)
+
+    fun titleDir(installDir: File): File = candidates(installDir).firstOrNull(::holdsTitle) ?: installDir
+
+    private fun candidates(installDir: File): List<File> {
+        if (!installDir.isDirectory) return emptyList()
+        return listOf(installDir) + installDir.listFiles().orEmpty().filter { it.isDirectory }.sortedBy { it.name.lowercase() }
+    }
+
+    private fun holdsTitle(dir: File): Boolean {
+        val names = dir.listFiles().orEmpty().associateBy { it.name.lowercase() }
         val metadata = names["title.rgl"]
         if (metadata != null && runCatching {
                 metadata.inputStream().use { input ->
