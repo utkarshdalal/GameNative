@@ -29,6 +29,8 @@ public class InputControlsManager {
     public static final int MAX_PROFILE_NAME_LENGTH = 80;
     private static final int MAX_PROFILE_ID = 1_000_000_000;
     private static final Pattern PROFILE_FILE_PATTERN = Pattern.compile("controls-(\\d+)\\.icp");
+    private static final Object PROFILE_ID_LOCK = new Object();
+    private static final Set<String> RESERVED_PROFILE_PATHS = new HashSet<>();
 
     private final Context context;
     private ArrayList<ControlsProfile> profiles;
@@ -200,14 +202,20 @@ public class InputControlsManager {
     }
 
     public synchronized int nextProfileId() {
-        if (!profilesLoaded) loadProfiles();
-        do {
-            if (maxProfileId >= MAX_PROFILE_ID) {
-                throw new IllegalStateException("Control profile ID limit reached");
-            }
-            maxProfileId++;
-        } while (ControlsProfile.getProfileFile(context, maxProfileId).exists());
-        return maxProfileId;
+        synchronized (PROFILE_ID_LOCK) {
+            if (!profilesLoaded) loadProfiles();
+            File candidate;
+            do {
+                if (maxProfileId >= MAX_PROFILE_ID) {
+                    throw new IllegalStateException("Control profile ID limit reached");
+                }
+                maxProfileId++;
+                candidate = ControlsProfile.getProfileFile(context, maxProfileId);
+            } while (candidate.exists() || !RESERVED_PROFILE_PATHS.add(candidate.getAbsolutePath()));
+            // Keep the reservation for this process lifetime so another manager with
+            // a stale snapshot cannot reuse the ID before or after the writer commits.
+            return maxProfileId;
+        }
     }
 
     public synchronized ControlsProfile createProfile(String name) {

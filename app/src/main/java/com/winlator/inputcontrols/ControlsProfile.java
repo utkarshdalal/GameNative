@@ -191,6 +191,10 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     }
 
     public boolean save() {
+        return saveElementsForLayoutSize(0, 0);
+    }
+
+    public boolean saveElementsForLayoutSize(int layoutWidth, int layoutHeight) {
         if (elementSourceOverride != null) return false;
         File file = getProfileFile(context, id);
         Log.d("ControlsProfile", "Saving profile: " + name + " (ID: " + id + ") to " + file.getAbsolutePath());
@@ -217,7 +221,9 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 if (storedElements != null) elementsJSONArray = storedElements;
             }
             else for (ControlElement element : elements) {
-                JSONObject elementJson = element.toJSONObject();
+                JSONObject elementJson = layoutWidth > 0 && layoutHeight > 0
+                        ? element.toJSONObject(layoutWidth, layoutHeight)
+                        : element.toJSONObject();
                 AutoFitLayout fitted = autoFitLayouts.get(element);
                 if (fitted != null) {
                     if (fitted.matchesFitted(element)) {

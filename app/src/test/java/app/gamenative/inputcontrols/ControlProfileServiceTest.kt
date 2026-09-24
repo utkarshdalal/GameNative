@@ -472,4 +472,13 @@ class ControlProfileServiceTest {
             file.delete()
         }
     }
+
+    @Test
+    fun profileIds_areReservedAcrossManagerInstancesBeforeEitherWrites() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val firstId = InputControlsManager(context).nextProfileId()
+        val secondId = InputControlsManager(context).nextProfileId()
+
+        assertNotEquals(firstId, secondId)
+    }
 }

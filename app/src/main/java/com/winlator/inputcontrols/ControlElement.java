@@ -1141,6 +1141,10 @@ public class ControlElement {
     }
 
     public JSONObject toJSONObject() {
+        return toJSONObject(inputControlsView.getMaxWidth(), inputControlsView.getMaxHeight());
+    }
+
+    JSONObject toJSONObject(int maxWidth, int maxHeight) {
         try {
             JSONObject elementJSONObject = new JSONObject();
             elementJSONObject.put("type", type.name());
@@ -1151,8 +1155,8 @@ public class ControlElement {
 
             elementJSONObject.put("bindings", bindingsJSONArray);
             elementJSONObject.put("scale", Float.valueOf(scale));
-            elementJSONObject.put("x", (float)x / inputControlsView.getMaxWidth());
-            elementJSONObject.put("y", (float)y / inputControlsView.getMaxHeight());
+            elementJSONObject.put("x", (float)x / Math.max(1, maxWidth));
+            elementJSONObject.put("y", (float)y / Math.max(1, maxHeight));
             elementJSONObject.put("toggleSwitch", toggleSwitch);
             elementJSONObject.put("text", text);
             elementJSONObject.put("iconId", Byte.toUnsignedInt(iconId));
