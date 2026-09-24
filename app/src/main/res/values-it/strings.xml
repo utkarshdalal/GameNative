@@ -2607,6 +2607,7 @@
     <string name="control_profiles_empty">Nessun profilo di controllo disponibile.</string>
     <string name="control_profile_applied_sections">Applicate · %1$d di %2$d impostazioni</string>
     <string name="control_profile_apply">Applica</string>
+    <string name="control_profile_applied">Profilo di controllo applicato</string>
     <string name="control_profile_export">Esporta</string>
     <string name="control_profile_create_blank">Profilo vuoto</string>
     <string name="control_profile_create_current">Dai controlli attuali</string>

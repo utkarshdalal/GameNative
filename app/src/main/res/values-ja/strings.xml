@@ -2569,6 +2569,7 @@
     <string name="control_profiles_empty">利用できるコントロールプロファイルはありません。</string>
     <string name="control_profile_applied_sections">適用済み · %2$d 項目中 %1$d 項目</string>
     <string name="control_profile_apply">適用</string>
+    <string name="control_profile_applied">コントロールプロファイルを適用しました</string>
     <string name="control_profile_export">エクスポート</string>
     <string name="control_profile_create_blank">空のプロファイル</string>
     <string name="control_profile_create_current">現在のコントロールから</string>

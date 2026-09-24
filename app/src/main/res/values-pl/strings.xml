@@ -2622,6 +2622,7 @@
     <string name="control_profiles_empty">Brak dostępnych profili sterowania.</string>
     <string name="control_profile_applied_sections">Zastosowano · %1$d z %2$d ustawień</string>
     <string name="control_profile_apply">Zastosuj</string>
+    <string name="control_profile_applied">Zastosowano profil sterowania</string>
     <string name="control_profile_export">Eksportuj</string>
     <string name="control_profile_create_blank">Pusty profil</string>
     <string name="control_profile_create_current">Z bieżącego sterowania</string>

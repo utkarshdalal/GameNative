@@ -2548,6 +2548,7 @@ https://gamenative.app
     <string name="control_profiles_empty">Нет доступных профилей управления.</string>
     <string name="control_profile_applied_sections">Применено · %1$d из %2$d настроек</string>
     <string name="control_profile_apply">Применить</string>
+    <string name="control_profile_applied">Профиль управления применён</string>
     <string name="control_profile_export">Экспортировать</string>
     <string name="control_profile_create_blank">Пустой профиль</string>
     <string name="control_profile_create_current">Из текущего управления</string>

@@ -2614,6 +2614,7 @@
     <string name="control_profiles_empty">No hay perfiles de controles disponibles.</string>
     <string name="control_profile_applied_sections">Aplicado · %1$d de %2$d ajustes</string>
     <string name="control_profile_apply">Aplicar</string>
+    <string name="control_profile_applied">Perfil de controles aplicado</string>
     <string name="control_profile_export">Exportar</string>
     <string name="control_profile_create_blank">Perfil vacío</string>
     <string name="control_profile_create_current">Desde los controles actuales</string>

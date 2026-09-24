@@ -58,6 +58,8 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -85,7 +87,6 @@ import app.gamenative.inputcontrols.ControlProfileSection
 import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.theme.PluviaBackground
-import app.gamenative.ui.util.SnackbarManager
 import com.winlator.container.Container
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
@@ -134,6 +135,7 @@ fun ControlProfileLibraryDialog(
     // manager currently serving input events in a running game.
     val manager = remember(container.id) { InputControlsManager(context) }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     var entries by remember(container.id) { mutableStateOf<List<ProfileLibraryEntry>>(emptyList()) }
     var appliedSources by remember(container.id) {
         mutableStateOf<Map<ControlProfileSection, Int>>(emptyMap())
@@ -163,6 +165,10 @@ fun ControlProfileLibraryDialog(
     fun failure(error: Throwable) {
         // The library owns a separate window, above the activity's snackbar host.
         failureMessage = context.getString(R.string.control_profile_failed, error.message ?: error.javaClass.simpleName)
+    }
+
+    fun success(message: String) {
+        scope.launch { snackbarHostState.showSnackbar(message) }
     }
 
     suspend fun loadSnapshot(): ProfileLibrarySnapshot = withContext(Dispatchers.IO) {
@@ -226,7 +232,7 @@ fun ControlProfileLibraryDialog(
             runIo({
                 ControlProfileService.exportProfile(context, request.first, request.second, uri)
             }) {
-                SnackbarManager.show(context.getString(R.string.library_exported))
+                success(context.getString(R.string.library_exported))
             }
         }
     }
@@ -240,7 +246,7 @@ fun ControlProfileLibraryDialog(
                     onConfirm = {
                         runIo({ ControlProfileService.installImported(manager, imported) }) {
                             refresh()
-                            SnackbarManager.show(context.getString(R.string.nexus_queue_imported))
+                            success(context.getString(R.string.nexus_queue_imported))
                         }
                     },
                 )
@@ -265,6 +271,7 @@ fun ControlProfileLibraryDialog(
             modifier = Modifier.fillMaxSize(),
             containerColor = PluviaBackground,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
@@ -339,9 +346,7 @@ fun ControlProfileLibraryDialog(
                             createDialog = false
                             onProfileApplied(applied)
                             refresh(scrollToTop = true)
-                            SnackbarManager.show(
-                                context.getString(R.string.control_profile_created_applied),
-                            )
+                            success(context.getString(R.string.control_profile_created_applied))
                         }
                     },
                     modifier = Modifier.fillMaxSize().padding(padding),
@@ -399,7 +404,7 @@ fun ControlProfileLibraryDialog(
                                         }) { applied ->
                                             onProfileApplied(applied)
                                             refresh(scrollToTop = true)
-                                            SnackbarManager.show(context.getString(R.string.best_config_applied_successfully))
+                                            success(context.getString(R.string.control_profile_applied))
                                         }
                                     }
                                 },
@@ -420,7 +425,7 @@ fun ControlProfileLibraryDialog(
                                             )
                                         }) {
                                             refresh()
-                                            SnackbarManager.show(context.getString(R.string.control_profile_saved))
+                                            success(context.getString(R.string.control_profile_saved))
                                         }
                                     }
                                 }) else null,

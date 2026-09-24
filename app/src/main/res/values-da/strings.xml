@@ -2486,6 +2486,7 @@
     <string name="control_profiles_empty">Der er ingen tilgængelige styringsprofiler.</string>
     <string name="control_profile_applied_sections">Anvendt · %1$d af %2$d indstillinger</string>
     <string name="control_profile_apply">Anvend</string>
+    <string name="control_profile_applied">Styringsprofil anvendt</string>
     <string name="control_profile_export">Eksportér</string>
     <string name="control_profile_create_blank">Tom profil</string>
     <string name="control_profile_create_current">Fra aktuelle styringer</string>

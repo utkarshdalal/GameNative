@@ -2610,6 +2610,7 @@
     <string name="control_profiles_empty">사용 가능한 컨트롤 프로필이 없습니다.</string>
     <string name="control_profile_applied_sections">적용됨 · 설정 %2$d개 중 %1$d개</string>
     <string name="control_profile_apply">적용</string>
+    <string name="control_profile_applied">컨트롤 프로필을 적용했습니다</string>
     <string name="control_profile_export">내보내기</string>
     <string name="control_profile_create_blank">빈 프로필</string>
     <string name="control_profile_create_current">현재 컨트롤에서</string>

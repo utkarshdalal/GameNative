@@ -2618,6 +2618,7 @@
     <string name="control_profiles_empty">Немає доступних профілів керування.</string>
     <string name="control_profile_applied_sections">Застосовано · %1$d з %2$d налаштувань</string>
     <string name="control_profile_apply">Застосувати</string>
+    <string name="control_profile_applied">Профіль керування застосовано</string>
     <string name="control_profile_export">Експортувати</string>
     <string name="control_profile_create_blank">Порожній профіль</string>
     <string name="control_profile_create_current">З поточного керування</string>

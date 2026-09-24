@@ -2616,6 +2616,7 @@
     <string name="control_profiles_empty">Aucun profil de commandes disponible.</string>
     <string name="control_profile_applied_sections">Appliqué · %1$d paramètres sur %2$d</string>
     <string name="control_profile_apply">Appliquer</string>
+    <string name="control_profile_applied">Profil de commandes appliqué</string>
     <string name="control_profile_export">Exporter</string>
     <string name="control_profile_create_blank">Profil vide</string>
     <string name="control_profile_create_current">À partir des commandes actuelles</string>

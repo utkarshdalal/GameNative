@@ -285,6 +285,7 @@
     <string name="control_profiles_empty">No control profiles are available.</string>
     <string name="control_profile_applied_sections">Settings applied: %1$d/%2$d</string>
     <string name="control_profile_apply">Apply</string>
+    <string name="control_profile_applied">Control profile applied</string>
     <string name="control_profile_export">Export</string>
     <string name="control_profile_create_blank">Blank profile</string>
     <string name="control_profile_create_current">From current controls</string>

@@ -2630,6 +2630,7 @@
     <string name="control_profiles_empty">没有可用的控制配置。</string>
     <string name="control_profile_applied_sections">已应用 · %2$d 项设置中的 %1$d 项</string>
     <string name="control_profile_apply">应用</string>
+    <string name="control_profile_applied">已应用控制配置</string>
     <string name="control_profile_export">导出</string>
     <string name="control_profile_create_blank">空白配置</string>
     <string name="control_profile_create_current">从当前控制设置创建</string>

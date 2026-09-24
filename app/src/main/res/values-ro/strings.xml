@@ -2621,6 +2621,7 @@
     <string name="control_profiles_empty">Nu sunt disponibile profiluri de control.</string>
     <string name="control_profile_applied_sections">Aplicat · %1$d din %2$d setări</string>
     <string name="control_profile_apply">Aplică</string>
+    <string name="control_profile_applied">Profil de control aplicat</string>
     <string name="control_profile_export">Exportă</string>
     <string name="control_profile_create_blank">Profil gol</string>
     <string name="control_profile_create_current">Din controalele curente</string>

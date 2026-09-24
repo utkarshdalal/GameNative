@@ -2621,6 +2621,7 @@
     <string name="control_profiles_empty">沒有可用的控制設定檔。</string>
     <string name="control_profile_applied_sections">已套用 · %2$d 項設定中的 %1$d 項</string>
     <string name="control_profile_apply">套用</string>
+    <string name="control_profile_applied">已套用控制設定檔</string>
     <string name="control_profile_export">匯出</string>
     <string name="control_profile_create_blank">空白設定檔</string>
     <string name="control_profile_create_current">從目前控制設定建立</string>

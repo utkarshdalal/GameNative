@@ -2556,6 +2556,7 @@
     <string name="control_profiles_empty">Keine Steuerungsprofile verfügbar.</string>
     <string name="control_profile_applied_sections">Angewendet · %1$d von %2$d Einstellungen</string>
     <string name="control_profile_apply">Anwenden</string>
+    <string name="control_profile_applied">Steuerungsprofil angewendet</string>
     <string name="control_profile_export">Exportieren</string>
     <string name="control_profile_create_blank">Leeres Profil</string>
     <string name="control_profile_create_current">Aus aktueller Steuerung</string>
