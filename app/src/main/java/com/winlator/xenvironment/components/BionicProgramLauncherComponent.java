@@ -392,6 +392,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             LsfgVkManager.ensureRuntimeInstalled(environment.getContext(), container);
             LsfgVkManager.writeConfig(container);
             LsfgVkManager.applyLaunchEnv(container, envVars);
+            if (LsfgVkManager.isArmed(container)) {
+                final android.content.Context lsfgContext = environment.getContext();
+                new Thread(() -> LsfgVkManager.prepareNativeCache(lsfgContext, container),
+                    "lsfg-native-cache").start();
+            }
         }
 
         Log.d("BionicProgramLauncherComponent", "env vars are " + EnvVarRedaction.redact(envVars));

@@ -176,6 +176,7 @@ import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
 import app.gamenative.ui.screen.library.components.GameOptionsPanel
 import app.gamenative.ui.screen.library.components.VideoHero
+import app.gamenative.utils.FormatUtils
 import app.gamenative.utils.HltbService
 import app.gamenative.ui.theme.PluviaTheme
 import com.skydoves.landscapist.ImageOptions
@@ -251,6 +252,15 @@ private fun PrimaryActionButton(
         label = "primaryActionScale",
     )
 
+    // Download data arrives throttled (~5/sec) to bound GC/recomposition pressure; glide the
+    // bar AND the percent text between emissions so the digits tick smoothly instead of
+    // stepping. The tween matches the emit cadence so the animation lands with the next value.
+    val animatedProgress by animateFloatAsState(
+        targetValue = downloadProgress,
+        animationSpec = tween(durationMillis = 200, easing = LinearEasing),
+        label = "downloadProgress",
+    )
+
     val buttonColor = when {
         isDownloading -> PluviaTheme.colors.statusDownloading
         isInstalled -> PluviaTheme.colors.statusInstalled
@@ -289,7 +299,7 @@ private fun PrimaryActionButton(
                     modifier = Modifier.size(16.dp),
                 )
                 LinearProgressIndicator(
-                    progress = { downloadProgress },
+                    progress = { animatedProgress },
                     modifier = Modifier
                         .width(80.dp)
                         .height(4.dp)
@@ -308,7 +318,7 @@ private fun PrimaryActionButton(
                 )
                 Box(modifier = Modifier.width(36.dp), contentAlignment = Alignment.CenterEnd) {
                     Text(
-                        text = "${(downloadProgress * 100).toInt()}%",
+                        text = "${(animatedProgress * 100).roundToInt()}%",
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
                             fontFeatureSettings = "tnum",
@@ -854,21 +864,6 @@ fun AppScreen(
     )
 }
 
-/**
- * Formats bytes into a human-readable string (KB, MB, GB).
- * Uses binary units (1024 base).
- */
-private fun formatBytes(bytes: Long): String {
-    val kb = 1024.0
-    val mb = kb * 1024
-    val gb = mb * 1024
-    return when {
-        bytes >= gb -> String.format("%.1f GB", bytes / gb)
-        bytes >= mb -> String.format("%.1f MB", bytes / mb)
-        bytes >= kb -> String.format("%.1f KB", bytes / kb)
-        else -> "$bytes B"
-    }
-}
 
 internal data class ImmersiveModeUiState(
     val isSupported: Boolean = false,
@@ -942,6 +937,12 @@ internal fun AppScreenContent(
     val playButtonFocusRequester = remember { FocusRequester() }
 
     var downloadTimeLeftText by remember { mutableStateOf("")}
+    // ETA digits are EMA estimates — refresh them at a calm ~1/sec (Steam-client-style steady
+    // numbers) instead of at the raw emit cadence. Status text ("Verifying…", "Unpacking...")
+    // is event-driven and always applied immediately; the Rust gates already bypass their
+    // throttle for status/count milestones, so no status change is ever held back here.
+    var lastEtaTextUpdateAt by remember { mutableStateOf(0L) }
+    val unpackingText = stringResource(R.string.download_unpacking)
 
     val progressListener: (Float) -> Unit = {
         val downloadStatusMessage = downloadInfo?.getCurrentStatusMessage()
@@ -949,15 +950,27 @@ internal fun AppScreenContent(
         downloadTimeLeftText = run {
             val etaMs = downloadInfo?.getEstimatedTimeRemaining()
             if (etaMs != null && etaMs > 0L) {
-                val totalSeconds = etaMs / 1000
-                val minutesLeft = totalSeconds / 60
-                val secondsPart = totalSeconds % 60
-                "${minutesLeft}m ${secondsPart}s left"
+                val now = System.currentTimeMillis()
+                if (now - lastEtaTextUpdateAt >= 1000L) {
+                    lastEtaTextUpdateAt = now
+                    val totalSeconds = etaMs / 1000
+                    val minutesLeft = totalSeconds / 60
+                    val secondsPart = totalSeconds % 60
+                    "${minutesLeft}m ${secondsPart}s left"
+                } else {
+                    downloadTimeLeftText // keep the previous ETA text until the 1s tick
+                }
             } else if (isDownloading && downloadProgress >= 1f) {
-                "Unpacking..."
+                // Bytes at 100% while the download is still active. Prefer the real status
+                // (e.g. Epic may still be fetching chunks — its byte total can saturate
+                // early); "Unpacking..." only when there is nothing more truthful to say.
+                lastEtaTextUpdateAt = 0L
+                downloadStatusMessage?.takeUnless { it.isBlank() } ?: unpackingText
             } else if (downloadProgress in 0f..1f && downloadProgress < 1f) {
+                lastEtaTextUpdateAt = 0L
                 downloadStatusMessage?.takeUnless { it.isBlank() } ?: ""
             } else {
+                lastEtaTextUpdateAt = 0L
                 ""
             }
         }
@@ -1056,9 +1069,9 @@ internal fun AppScreenContent(
     val downloadSizeText = remember(displayInfo.gameId, downloadProgress, downloadInfo) {
         val (bytesDone, bytesTotal) = downloadInfo?.getBytesProgress() ?: (0L to 0L)
         if (bytesTotal > 0L) {
-            "${formatBytes(bytesDone)} / ${formatBytes(bytesTotal)}"
+            "${FormatUtils.formatBytes(bytesDone)} / ${FormatUtils.formatBytes(bytesTotal)}"
         } else if (bytesDone > 0L) {
-            formatBytes(bytesDone)
+            FormatUtils.formatBytes(bytesDone)
         } else {
             downloadingLabel
         }

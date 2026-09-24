@@ -24,6 +24,7 @@ import app.gamenative.enums.Marker
 import app.gamenative.service.DownloadService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
+import app.gamenative.utils.FormatUtils
 import app.gamenative.utils.MarkerUtils
 import java.io.File
 import app.gamenative.ui.data.AppMenuOption
@@ -31,7 +32,6 @@ import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils.getContainer
 import com.winlator.container.ContainerData
-import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -73,22 +73,6 @@ class GOGAppScreen : BaseAppScreen() {
 
         // Shared state for deletion progress dialog
         var showDeletingDialog by mutableStateOf(false)
-
-        /**
-         * Formats bytes into a human-readable string (KB, MB, GB).
-         * Uses binary units (1024 base).
-         */
-        private fun formatBytes(bytes: Long): String {
-            val kb = 1024.0
-            val mb = kb * 1024
-            val gb = mb * 1024
-            return when {
-                bytes >= gb -> String.format(Locale.US, "%.1f GB", bytes / gb)
-                bytes >= mb -> String.format(Locale.US, "%.1f MB", bytes / mb)
-                bytes >= kb -> String.format(Locale.US, "%.1f KB", bytes / kb)
-                else -> "$bytes B"
-            }
-        }
 
         internal suspend fun forceCloudSync(
             context: Context,
@@ -161,13 +145,13 @@ class GOGAppScreen : BaseAppScreen() {
 
         // Format sizes for display
         val sizeOnDisk = if (game != null && game.isInstalled && game.installSize > 0) {
-            formatBytes(game.installSize)
+            FormatUtils.formatBytes(game.installSize)
         } else {
             null
         }
 
         val sizeFromStore = if (game != null && game.downloadSize > 0) {
-            formatBytes(game.downloadSize)
+            FormatUtils.formatBytes(game.downloadSize)
         } else {
             null
         }
@@ -583,6 +567,31 @@ class GOGAppScreen : BaseAppScreen() {
         val disposables = mutableListOf<() -> Unit>()
         var currentProgressListener: ((Float) -> Unit)? = null
 
+        fun attachProgressListener() {
+            // GOGService expects numeric gameId
+            val downloadInfo = GOGService.getDownloadInfo(libraryItem.gameId.toString()) ?: return
+            currentProgressListener?.let { listener ->
+                downloadInfo.removeProgressListener(listener)
+            }
+            val progressListener: (Float) -> Unit = { progress ->
+                onProgressChanged(progress)
+            }
+            downloadInfo.addProgressListener(progressListener)
+            currentProgressListener = progressListener
+        }
+
+        // Attach immediately if a download is already running (the DownloadStatusChanged
+        // event fired before this screen was composed and won't fire again).
+        if (isDownloading(context, libraryItem)) {
+            attachProgressListener()
+        }
+        disposables += {
+            currentProgressListener?.let { listener ->
+                GOGService.getDownloadInfo(libraryItem.gameId.toString())?.removeProgressListener(listener)
+                currentProgressListener = null
+            }
+        }
+
         // Listen for download status changes
         val downloadStatusListener: (app.gamenative.events.AndroidEvent.DownloadStatusChanged) -> Unit = { event ->
             Timber.tag(TAG).d("[OBSERVE] DownloadStatusChanged event received: event.appId=${event.appId}, libraryItem.gameId=${libraryItem.gameId}, match=${event.appId == libraryItem.gameId}")
@@ -590,28 +599,7 @@ class GOGAppScreen : BaseAppScreen() {
                 Timber.tag(TAG).d("[OBSERVE] Download status changed for ${libraryItem.appId}, isDownloading=${event.isDownloading}")
                 if (event.isDownloading) {
                     // Download started - attach progress listener
-                    // GOGService expects numeric gameId
-                    val downloadInfo = GOGService.getDownloadInfo(libraryItem.gameId.toString())
-                    if (downloadInfo != null) {
-                        // Remove previous listener if exists
-                        currentProgressListener?.let { listener ->
-                            downloadInfo.removeProgressListener(listener)
-                        }
-                        // Add new listener and track it
-                        val progressListener: (Float) -> Unit = { progress ->
-                            onProgressChanged(progress)
-                        }
-                        downloadInfo.addProgressListener(progressListener)
-                        currentProgressListener = progressListener
-
-                        // Add cleanup for this listener
-                        disposables += {
-                            currentProgressListener?.let { listener ->
-                                downloadInfo.removeProgressListener(listener)
-                                currentProgressListener = null
-                            }
-                        }
-                    }
+                    attachProgressListener()
                 } else {
                     // Download stopped/completed - clean up listener
                     currentProgressListener?.let { listener ->

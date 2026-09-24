@@ -148,6 +148,8 @@ import app.gamenative.utils.SteamHostAuth
 import app.gamenative.utils.SteamInstallScriptRegistry
 import app.gamenative.utils.BrightnessManager
 import app.gamenative.utils.SteamTokenLogin
+import app.gamenative.enums.Marker
+import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.downloader.WinComponentDownloader
 import app.gamenative.utils.WineProcessSnapshotHelper
@@ -224,6 +226,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -718,7 +721,10 @@ fun XServerScreen(
     LaunchedEffect(xServerView?.renderer) {
         val screenEffectsConfig = loadScreenEffectsConfig(container)
         when (val renderer = xServerView?.renderer) {
-            is VulkanRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
+            is VulkanRenderer -> {
+                applyScreenEffectsConfig(renderer, screenEffectsConfig)
+                if (isLsfgAvailable) LsfgVkManager.applyNativeRuntime(renderer, container, context)
+            }
             is GLRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
         }
     }
@@ -2022,6 +2028,7 @@ fun XServerScreen(
                 setFrameRateLimit(if (fpsLimiterEnabled) fpsLimiterTarget else 0)
                 val renderer = this.renderer
                 if (!useGLRenderer && renderer is VulkanRenderer) {
+                    renderer.setFrameGenerationArmed(isLsfgAvailable)
                     val pm = container.rendererPresentMode.ifEmpty { "fifo" }
                     val vkMode = when (pm.lowercase(Locale.getDefault())) {
                         "mailbox" -> 1
@@ -3849,6 +3856,43 @@ private fun shiftXEnvironmentToContext(
     return environment
 }
 
+private fun runSteamHostCegPass(
+    appId: String,
+    imageFs: ImageFs,
+    launcher: GuestProgramLauncherComponent,
+    onGameLaunchError: ((String) -> Unit)?,
+) {
+    val steamAppId = runCatching { ContainerUtils.extractGameIdFromContainerId(appId) }.getOrNull() ?: return
+    val appDirPath = SteamService.getAppDirPath(steamAppId)
+    if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_CEG_WRAPPED)) return
+    if (!SteamUtils.hasCustomExecutables(steamAppId)) return
+
+    if (launcher.envVars.has("STEAMHOST_OFFLINE")) return
+
+    val resultFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamhost_ceg_result")
+    resultFile.delete()
+    val batch = File(imageFs.wineprefix, "drive_c/steamhost_ceg.bat")
+    batch.writeText("@\"C:\\Program Files (x86)\\Steam\\steam.exe\"\r\n")
+    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Preparing game executable..."))
+    launcher.envVars.put("STEAMHOST_CEG_ONLY", "1")
+    try {
+        Timber.i("Running steamhost CEG pass for $steamAppId")
+        val output = launcher.execShellCommand("wine cmd /c C:\\steamhost_ceg.bat && wineserver -k")
+        Timber.i("Result of steamhost CEG pass $output")
+    } catch (e: Exception) {
+        Timber.e(e, "steamhost CEG pass failed to run")
+    } finally {
+        launcher.envVars.remove("STEAMHOST_CEG_ONLY")
+    }
+    val result = runCatching { resultFile.readText().trim() }.getOrDefault("")
+    Timber.i("steamhost CEG pass result: '$result'")
+    if (result == "ok") {
+        MarkerUtils.addMarker(appDirPath, Marker.STEAM_CEG_WRAPPED)
+    } else {
+        onGameLaunchError?.invoke("Steam could not prepare the game executable (${result.ifEmpty { "steamhost gave no result" }})")
+    }
+}
+
 private fun setupXEnvironment(
     context: Context,
     appId: String,
@@ -4061,6 +4105,9 @@ private fun setupXEnvironment(
                 containerVariantChanged = containerVariantChanged,
                 onError = onGameLaunchError
             )
+            if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
+                runSteamHostCegPass(appId, imageFs, guestProgramLauncherComponent, onGameLaunchError)
+            }
             if (preInstallCommands.isNotEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
             } else {
