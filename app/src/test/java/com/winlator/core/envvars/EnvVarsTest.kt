@@ -1,5 +1,6 @@
 package com.winlator.core.envvars
 
+import com.winlator.container.Container
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -95,5 +96,17 @@ class EnvVarsTest {
         assertEquals("with space", parsed.get("A"))
         assertEquals("no_space", parsed.get("B"))
         assertEquals("another with spaces", parsed.get("C"))
+    }
+
+    // The multi-select picker drops tokens it does not list on the first edit.
+    @Test
+    fun defaultDebugTokensAreOfferedByThePicker() {
+        val defaults = EnvVars(Container.DEFAULT_ENV_VARS)
+        for (name in listOf("ZINK_DEBUG", "TU_DEBUG")) {
+            val offered = EnvVarInfo.KNOWN_ENV_VARS.getValue(name).possibleValues
+            for (token in defaults.get(name).split(",")) {
+                assertTrue("$name token '$token' is not offered by the picker", token in offered)
+            }
+        }
     }
 }
