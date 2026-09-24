@@ -239,10 +239,15 @@ public class InputControlsView extends View {
                 && (w != oldw || h != oldh)) {
             if (editMode && oldw > 0 && oldh > 0) {
                 int oldSnappingSize = Math.max(1, oldw / 100);
-                int oldMaxWidth = (int)Mathf.roundTo(oldw, oldSnappingSize);
-                int oldMaxHeight = (int)Mathf.roundTo(oldh, oldSnappingSize);
+                int oldMaxWidth = Math.max(1, (int)Mathf.roundTo(oldw, oldSnappingSize));
+                int oldMaxHeight = Math.max(1, (int)Mathf.roundTo(oldh, oldSnappingSize));
                 if (!profile.saveElementsForLayoutSize(oldMaxWidth, oldMaxHeight)) {
-                    // Keep the edited in-memory layout rather than reloading stale disk data.
+                    int newMaxWidth = Math.max(1, getMaxWidth());
+                    int newMaxHeight = Math.max(1, getMaxHeight());
+                    for (ControlElement element : profile.getElements()) {
+                        element.setX(Math.round((float)element.getX() * newMaxWidth / oldMaxWidth));
+                        element.setY(Math.round((float)element.getY() * newMaxHeight / oldMaxHeight));
+                    }
                     cancelTouchRouting();
                     return;
                 }
