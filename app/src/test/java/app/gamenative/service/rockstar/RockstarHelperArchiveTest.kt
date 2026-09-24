@@ -54,7 +54,7 @@ class RockstarHelperArchiveTest {
         val open = { opens++; bytes.inputStream() }
         val destination = RockstarHelperArchive.ensureExtracted(files, open)
         assertTrue(RockstarHelperArchive.isReady(files))
-        assertEquals(7, destination.listFiles()!!.size)
+        assertEquals(10, destination.listFiles()!!.size)
         RockstarHelperArchive.ensureExtracted(files, open)
         assertEquals(1, opens)
         File(destination, "rgscstub.exe").writeText("edited by hand")
