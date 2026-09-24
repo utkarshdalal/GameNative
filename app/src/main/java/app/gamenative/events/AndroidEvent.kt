@@ -26,8 +26,10 @@ interface AndroidEvent<T> : Event<T> {
     data class DownloadStatusChanged(val appId: Int, val isDownloading: Boolean) : AndroidEvent<Unit>
     data class PostInstallSyncStatusChanged(val appId: Int, val isSyncing: Boolean) : AndroidEvent<Unit>
     data class LibraryInstallStatusChanged(val appId: Int, val source: GameSource) : AndroidEvent<Unit>
+    data class PreferredCopyChanged(val appId: Int) : AndroidEvent<Unit>
     data class CustomGameImagesFetched(val appId: String) : AndroidEvent<Unit>
     data object RecommendationToggleChanged : AndroidEvent<Unit>
+    data class HiddenGamesSettingChanged(val showHiddenGamesByDefault: Boolean) : AndroidEvent<Unit>
     data class LibraryTabsChanged(val visibleTabs: List<LibraryTab>) : AndroidEvent<Unit>
     data class GOGAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>
     data class EpicAuthCodeReceived(val authCode: String) : AndroidEvent<Unit>

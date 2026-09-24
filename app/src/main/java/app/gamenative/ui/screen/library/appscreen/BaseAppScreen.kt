@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.library.appscreen
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -20,12 +21,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.api.isValidCommunityConfig
 import app.gamenative.api.prepareCommunityConfigForApply
@@ -48,6 +52,7 @@ import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.SessionReport
 import app.gamenative.utils.DiagnosticsLog
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
@@ -512,6 +517,7 @@ abstract class BaseAppScreen {
         libraryItem: LibraryItem,
         onAiDebugRun: () -> Unit,
     ): AppMenuOption? {
+        if (PrefManager.hideAiFeatures) return null
         return AppMenuOption(
             AppOptionMenuType.AiDebugRun,
             onClick = { onAiDebugRun() },
@@ -567,6 +573,30 @@ abstract class BaseAppScreen {
             onClick = {
                 val suggested = "${gameName}$extension"
                 exportFrontendLauncher.launch(suggested)
+            },
+        )
+    }
+
+    @Composable
+    protected open fun getCopyLaunchLinkOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        val gameId = getGameId(libraryItem)
+        val gameSource = getGameSource(libraryItem).name
+        val gameName = getGameName(context, libraryItem)
+        val uri = "gamenative://run?appid=$gameId&gamesource=$gameSource"
+        val labelText = context.getString(R.string.app_name) + " $gameName"
+        val clipboardManager = LocalClipboard.current
+        val scope = rememberCoroutineScope()
+        return AppMenuOption(
+            optionType = AppOptionMenuType.CopyLaunchLink,
+            onClick = {
+                scope.launch {
+                    clipboardManager.setClipEntry(
+                        ClipEntry(ClipData.newPlainText(labelText, uri))
+                    )
+                }
             },
         )
     }
@@ -963,6 +993,7 @@ abstract class BaseAppScreen {
                     parsedConfig,
                 )
                 ContainerUtils.applyToContainer(context, container, updatedData)
+                SessionReport.markConfigApplied(container, "known")
                 SnackbarManager.show(context.getString(R.string.best_config_applied_successfully))
             } else {
                 SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
@@ -1050,6 +1081,7 @@ abstract class BaseAppScreen {
                                     val currentData = ContainerUtils.toContainerData(container)
                                     val updatedData = ContainerUtils.applyBestConfigMapToContainerData(currentData, forced)
                                     ContainerUtils.applyToContainer(context, container, updatedData)
+                                    SessionReport.markConfigApplied(container, "imported")
                                     SnackbarManager.show(context.getString(R.string.best_config_applied_with_defaults))
                                 } else {
                                     SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
@@ -1075,6 +1107,7 @@ abstract class BaseAppScreen {
                     val currentData = ContainerUtils.toContainerData(container)
                     val updatedData = ContainerUtils.applyBestConfigMapToContainerData(currentData, parsedConfig)
                     ContainerUtils.applyToContainer(context, container, updatedData)
+                    SessionReport.markConfigApplied(container, "imported")
                 }
                 SnackbarManager.show(context.getString(R.string.best_config_applied_successfully))
                 true
@@ -1158,6 +1191,7 @@ abstract class BaseAppScreen {
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
+            getCopyLaunchLinkOption(context, libraryItem)?.let { menuOptions.add(it) }
         }
 
         // Always available options
@@ -1314,7 +1348,14 @@ abstract class BaseAppScreen {
             hasPartialDownloadState = hasPartialDownload(context, libraryItem)
             hasLeftoverInstallState = hasLeftoverInstall(context, libraryItem)
             if (includeUpdatePending) {
-                isUpdatePendingState = isUpdatePendingSuspend(context, libraryItem)
+                isUpdatePendingState = try {
+                    isUpdatePendingSuspend(context, libraryItem)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.w(e, "Update check failed for ${libraryItem.appId}")
+                    isUpdatePendingState
+                }
             }
         }
 
@@ -1360,8 +1401,10 @@ abstract class BaseAppScreen {
         }
 
         val onEditContainer: () -> Unit = {
-            containerData = loadContainerData(context, libraryItem)
-            showConfigDialog = true
+            uiScope.launch {
+                containerData = withContext(Dispatchers.IO) { loadContainerData(context, libraryItem) }
+                showConfigDialog = true
+            }
         }
 
         // Export for Frontend launcher

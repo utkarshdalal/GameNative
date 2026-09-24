@@ -884,7 +884,7 @@ fun ElementEditorDialog(
                                 currentButtonOpacityInherited = false
                                 hasUnsavedChanges = true
                             },
-                            valueRange = 0.1f..1.0f,
+                            valueRange = 0.0f..1.0f,
                             modifier = Modifier.weight(1f)
                         )
                         Text(

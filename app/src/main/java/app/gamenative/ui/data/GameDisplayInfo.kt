@@ -23,5 +23,11 @@ data class GameDisplayInfo(
     val compatibilityMessage: String? = null, // Compatibility message text (e.g., "Works on your GPU")
     val compatibilityColor: ULong? = null, // Compatibility message color (ARGB)
     val hltbStats: app.gamenative.utils.HltbService.Stats? = null, // How Long To Beat stats
+    /** Status line under Play for Steam Families preferred copy, e.g. "Using your copy". */
+    val preferredCopyStatusText: String? = null,
+    val showChangePreferredCopy: Boolean = false,
+    val onChangePreferredCopy: (() -> Unit)? = null,
+    /** True while available Family library copies are being resolved off the main thread. */
+    val isLoadingPreferredCopy: Boolean = false,
 )
 

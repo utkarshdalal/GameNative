@@ -539,6 +539,9 @@ fun QuickMenu(
     var lsfgPresentMode by remember(container?.id) {
         mutableStateOf(container?.let { app.gamenative.utils.LsfgQuickMenuHelper.presentMode(it) } ?: "mailbox")
     }
+    var lsfgBackend by remember(container?.id) {
+        mutableStateOf(container?.let { app.gamenative.utils.LsfgVkManager.backend(it) } ?: "native")
+    }
 
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
@@ -985,6 +988,13 @@ fun QuickMenu(
                                             onMultiplierChanged = onLsfgMultiplierChanged,
                                             onFlowScaleChanged = onLsfgFlowScaleChanged,
                                             onPerformanceModeChanged = onLsfgPerformanceModeChanged,
+                                            backend = lsfgBackend,
+                                            onBackendChanged = { backend ->
+                                                lsfgBackend = backend
+                                                container?.let {
+                                                    app.gamenative.utils.LsfgQuickMenuHelper.applyBackend(it, backend)
+                                                }
+                                            },
                                             presentMode = lsfgPresentMode,
                                             onPresentModeChanged = { mode ->
                                                 lsfgPresentMode = mode
@@ -1678,6 +1688,8 @@ private fun LsfgQuickMenuTab(
     onMultiplierChanged: (Int) -> Unit,
     onFlowScaleChanged: (Float) -> Unit,
     onPerformanceModeChanged: (Boolean) -> Unit,
+    backend: String,
+    onBackendChanged: (String) -> Unit,
     presentMode: String,
     onPresentModeChanged: (String) -> Unit,
     scrollState: ScrollState,
@@ -1771,6 +1783,31 @@ private fun LsfgQuickMenuTab(
                             accentColor = accentColor,
                             onClick = { onPresentModeChanged(value) },
                             modifier = Modifier.width(96.dp),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // ── Backend (Legacy layer / Native renderer) ──────────────
+                QuickMenuSectionHeader(
+                    title = stringResource(R.string.lsfg_backend),
+                    subtitle = stringResource(R.string.lsfg_backend_desc),
+                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(
+                        "native" to stringResource(R.string.lsfg_backend_native),
+                        "legacy" to stringResource(R.string.lsfg_backend_legacy),
+                    ).forEach { (value, label) ->
+                        QuickMenuChoiceChip(
+                            text = label,
+                            selected = backend == value,
+                            accentColor = accentColor,
+                            onClick = { onBackendChanged(value) },
+                            modifier = Modifier.width(120.dp),
                         )
                     }
                 }

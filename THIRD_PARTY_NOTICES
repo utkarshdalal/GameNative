@@ -238,6 +238,69 @@ to do this.
 
 ---
 
+## Launcher Compatibility Helpers (Source Withheld)
+
+**Components:**
+- `steamhost-*.tzst` — `steam.exe` (32-bit) and `steamhost64.exe`, the headless host
+  for Valve's Windows Steam client
+- `eahost-*.tzst` — `eastub.exe`, the EA launcher stand-in
+- `rgschost-*.tzst` — `Launcher.exe` (built as `rgscstub.exe`), `scpatch.dll`,
+  `bink2w64.dll`, `SocialClubVulkanLayer.dll`, `SocialClubD3D12Renderer.dll`, the
+  Rockstar Games Launcher stand-in and its in-game adapter
+**Binary location:** not in this repository and not in the APK. They are downloaded
+  from `https://downloads.gamenative.app/` only when the user turns on the headless
+  "Launch Steam Client" option or launches an EA or Rockstar title, and are stored in
+  the app's private data directory and the game's Wine prefix.
+**Source location in repo:** intentionally absent (maintained in separate private
+  repositories, not committed here)
+**Authorship:** Written from scratch by the GameNative maintainers. They contain no
+  code from Valve, Electronic Arts, Rockstar Games or Take-Two, and redistribute none
+  of those companies' files. `steamhost-*.tzst` additionally carries Valve's own Windows
+  Steam client files, which Valve distributes freely and which are used unmodified.
+**License of the binaries as distributed:** Proprietary — all rights reserved by the
+  GameNative maintainers. Each carries a VERSIONINFO resource stating this.
+
+These helpers exist so that titles which insist on their publisher's launcher can run
+inside GameNative with the user's own accounts and licences: the Steam host logs the
+genuine client on and starts the game through it; the EA stand-in answers the
+launcher protocol EA games expect and hands them a licence for the user's own
+entitlement; the Rockstar stand-in serves the launcher IPC channel and gives the game's
+own genuine Social Club library a session minted from the user's Rockstar sign-in.
+Nothing is emulated on the licensing side and no check is bypassed: every game still
+performs its own ownership verification against the publisher's servers.
+
+Their source is withheld because it necessarily documents, in working detail, how each
+publisher's launcher, licensing and DRM components talk to the game — the private
+Steam client interfaces, EA's launcher protocol and licence format, Rockstar's launcher
+IPC and service calls. Publishing that would amount to a reverse-engineering guide to
+those vendors' anti-piracy systems and would make re-targeting the helpers for misuse
+trivial. Each binary also refuses to run outside the `app.gamenative` package. Every
+other component in this repository remains fully open under GPL-3.0, including the
+app-side halves of these features (the EA LSX server, licence handling and sign-in,
+the Rockstar sign-in and hand-off, and the Steam host launch wiring).
+
+### The application does not depend on them
+
+GameNative is complete without these helpers. They are not needed for the normal,
+light or ultra-light Steam client modes, for GOG, Epic or custom games, or for any
+title that does not require its publisher's launcher. If the archives are never
+downloaded, or are deleted from the app's data directory, the only effect is that the
+headless Steam mode and EA/Rockstar launcher-dependent titles are unavailable; the app
+reports this and continues to work. A fork can build and run the application from this
+repository without them.
+
+### Relationship to the GPL-3.0 application
+
+The helpers are Windows programs that run only inside the Wine guest subprocess. They
+are not compiled or linked into the Android application, do not share its address
+space, and communicate with it solely through files, named pipes and local sockets.
+Under the FSF's and SFLC's longstanding interpretation of the GPL's "mere aggregation"
+language (GPL-3.0 §5, GPL-2.0 §2), each is a separate program distributed alongside
+GameNative rather than a derivative work of the application, and the same reasoning
+applies as for `libkgslshim.so` above.
+
+---
+
 ## Kenney Input Prompts
 
 **Asset Pack:** Input Prompts
@@ -308,6 +371,28 @@ SOFTWARE.
 
 ---
 
+## LSFG native pipeline (libvulkan_renderer.so)
+
+**Component:** `app/src/main/cpp/lsfg/`
+**Derived from:** lsfg-vk (PancakeTAS and contributors), the Eden Emulator LSFG port
+(Camille LaVey), and WinNative's Winlator adaptation
+**License:** GPL-3.0-or-later (same as this application)
+
+The frame-generation compute passes are built from shaders extracted at runtime from the
+user's own `Lossless.dll` (Lossless Scaling on Steam). The DLL and its shaders are not
+distributed with GameNative.
+
+## dxbc (DXVK shader translator)
+
+**Library:** dxbc, DXVK's DXBC-to-SPIR-V compiler extracted as a standalone library
+**Authors:** Philip Rebohle and DXVK contributors; extraction by PancakeTAS
+**Source:** https://github.com/PancakeTAS/dxbc (upstream https://github.com/doitsujin/dxvk)
+**License:** zlib/libpng
+
+Built from the `thirdparty/dxbc` submodule inside `app/src/main/cpp/lsfg-vk-android` into
+`libvulkan_renderer.so` to translate the `Lossless.dll` compute shaders to SPIR-V.
+The zlib licence text is in `LICENSE.md` of that submodule.
+
 ## OpenAL Soft
 
 **Library:** OpenAL Soft v1.25.1
@@ -341,6 +426,20 @@ FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
 for more details.
 
 Full license text: https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
+
+## LZMA SDK (7z decoder)
+
+**Library:** LZMA SDK 18.05 (7z archive reader, LZMA and BCJ2 decoders)
+**Author:** Igor Pavlov
+**Source:** https://www.7-zip.org/sdk.html
+**License:** Public domain
+
+The sources under `app/src/main/cpp/sevenzx/lzma/` are the unmodified C files of the
+LZMA SDK, which its author has placed in the public domain. They are built into
+`app/src/main/jniLibs/arm64-v8a/lib7zx.so`, a small command-line decoder the app
+runs to unpack a game's own Social Club installer (a 7z self-extractor) into the
+Wine prefix. The wrapper in `app/src/main/cpp/sevenzx/sevenzx.c` is part of this
+application and covered by its GPL-3.0 licence.
 
 ## Achievement Sound
 

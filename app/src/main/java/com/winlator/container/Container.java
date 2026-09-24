@@ -72,6 +72,7 @@ public class Container {
     public static final String STEAM_TYPE_NORMAL = "normal";
     public static final String STEAM_TYPE_LIGHT = "light";
     public static final String STEAM_TYPE_ULTRALIGHT = "ultralight";
+    public static final String STEAM_TYPE_HEADLESS = "headless";
     public static final String GLIBC = "glibc";
     public static final String BIONIC = "bionic";
     public static final byte MAX_DRIVE_LETTERS = 8;
@@ -115,6 +116,7 @@ public class Container {
     private String installPath = "";
     private JSONObject extraData;
     private JSONObject sessionMetadata;
+    private String configSource = "";
     private int rcfileId = 0;
     private String midiSoundFont = "";
     private int inputType = WinHandler.PreferredInputApi.BOTH.ordinal();
@@ -129,6 +131,7 @@ public class Container {
     private boolean sdlControllerAPI;
     private boolean fasterExternalLoading;
     private boolean disableLibredirect;
+    private boolean disableEpicOverlay;
 
     // Preferred game language for Goldberg force_language.txt
     private String language = "english";
@@ -152,7 +155,8 @@ public class Container {
     private boolean externalDisplaySwap = false;
     // Prefer DRI3 WSI path
     private boolean useDRI3 = true;
-    // Steam client type for selecting appropriate Box64 RC config: normal, light, ultralight
+    // Steam client flavour: headless (steamhost, no client UI) or the Valve GUI client under
+    // one of the Box64 RC configs (normal, light, ultralight)
     private String steamType = DefaultVersion.STEAM_TYPE;
 
     private boolean gstreamerWorkaround = false;
@@ -195,6 +199,9 @@ public class Container {
                 break;
             case STEAM_TYPE_ULTRALIGHT:
                 this.steamType = STEAM_TYPE_ULTRALIGHT;
+                break;
+            case STEAM_TYPE_HEADLESS:
+                this.steamType = STEAM_TYPE_HEADLESS;
                 break;
             default:
                 this.steamType = STEAM_TYPE_NORMAL;
@@ -379,6 +386,11 @@ public class Container {
         this.launchRealSteam = launchRealSteam;
     }
 
+    /** Real Steam through the headless steamhost rather than the Valve GUI client. */
+    public boolean isLaunchHeadlessSteam() {
+        return launchRealSteam && STEAM_TYPE_HEADLESS.equals(steamType);
+    }
+
     public boolean isLaunchBionicSteam() {
         return launchBionicSteam;
     }
@@ -417,6 +429,14 @@ public class Container {
 
     public void setDisableLibredirect(boolean disableLibredirect) {
         this.disableLibredirect = disableLibredirect;
+    }
+
+    public boolean isDisableEpicOverlay() {
+        return disableEpicOverlay;
+    }
+
+    public void setDisableEpicOverlay(boolean disableEpicOverlay) {
+        this.disableEpicOverlay = disableEpicOverlay;
     }
 
     public String getLanguage() {
@@ -751,6 +771,7 @@ public class Container {
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
             data.put("sessionMetadata", sessionMetadata);
+            data.put("configSource", configSource);
             data.put("rcfileId", rcfileId);
             data.put("midiSoundFont", midiSoundFont);
             data.put("lc_all", lc_all);
@@ -762,6 +783,7 @@ public class Container {
             data.put("sdlControllerAPI", sdlControllerAPI);
             data.put("fasterExternalLoading", fasterExternalLoading);
             data.put("disableLibredirect", disableLibredirect);
+            data.put("disableEpicOverlay", disableEpicOverlay);
             // Disable mouse input flag
             data.put("disableMouseInput", disableMouseInput);
             // Touchscreen mode flag
@@ -916,6 +938,10 @@ public class Container {
                     setExtraData(extraData);
                     break;
                 }
+                case "configSource" : {
+                    configSource = data.getString(key);
+                    break;
+                }
                 case "sessionMetadata" : {
                     try {
                         JSONObject sessionMetadata = data.getJSONObject(key);
@@ -987,6 +1013,9 @@ public class Container {
                     break;
                 case "disableLibredirect" :
                     setDisableLibredirect(data.getBoolean(key));
+                    break;
+                case "disableEpicOverlay" :
+                    setDisableEpicOverlay(data.getBoolean(key));
                     break;
                 case "disableMouseInput" :
                     setDisableMouseInput(data.getBoolean(key));
@@ -1185,6 +1214,14 @@ public class Container {
         this.portraitMode = portraitMode;
     }
 
+
+    public String getConfigSource() {
+        return configSource;
+    }
+
+    public void setConfigSource(String configSource) {
+        this.configSource = configSource;
+    }
 
     public String getContainerJson() {
         String content = FileUtils.readString(getConfigFile());

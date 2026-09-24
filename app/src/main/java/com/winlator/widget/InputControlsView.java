@@ -543,6 +543,7 @@ public class InputControlsView extends View {
 
     public void setXServer(XServer xServer) {
         this.xServer = xServer;
+        applyShooterMouseInputMode();
         createMouseMoveTimer();
     }
 
@@ -614,6 +615,7 @@ public class InputControlsView extends View {
         }
         this.shooterModeActive = active;
         if (!active) commitGamepadState();
+        applyShooterMouseInputMode();
         invalidate();
     }
 
@@ -627,6 +629,7 @@ public class InputControlsView extends View {
             releaseAllShooterInputs();
             commitGamepadState();
         }
+        applyShooterMouseInputMode();
         invalidate();
     }
 
@@ -634,6 +637,7 @@ public class InputControlsView extends View {
         releaseAllShooterInputs();
         commitGamepadState();
         this.shooterModeConfig = config != null ? config : ShooterModeConfig.fromJson("");
+        applyShooterMouseInputMode();
         lookAccumX = 0;
         lookAccumY = 0;
         lookDeadzoneAccumX = 0;
@@ -641,6 +645,15 @@ public class InputControlsView extends View {
         lookSmoothX = 0;
         lookSmoothY = 0;
         invalidate();
+    }
+
+    private void applyShooterMouseInputMode() {
+        if (xServer == null || shooterModeConfig == null) return;
+        boolean useWin32RelativeInput =
+                (shooterModeActive || containerShooterModeRuntime)
+                        && ShooterModeConfig.LOOK_MOUSE.equals(getResolvedShooterLookType())
+                        && shooterModeConfig.getWin32RelativeMouseInput();
+        xServer.setRelativeMouseMovement(useWin32RelativeInput);
     }
 
     public void setShooterModeConfigJson(String json) {
@@ -901,8 +914,9 @@ public class InputControlsView extends View {
     }
 
     private void commitGamepadState() {
-        WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
-        if (winHandler != null && profile != null) {
+        if (xServer == null || profile == null) return;
+        WinHandler winHandler = xServer.getWinHandler();
+        if (winHandler != null) {
             GamepadState state = profile.getGamepadState();
             winHandler.sendGamepadState();
             winHandler.sendVirtualGamepadState(state);
@@ -1226,6 +1240,7 @@ public class InputControlsView extends View {
                     releaseAllShooterInputs();
                     commitGamepadState();
                 }
+                applyShooterMouseInputMode();
                 performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
                 invalidate();
                 return true;

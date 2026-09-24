@@ -103,6 +103,12 @@
                 <action android:name="app.gamenative.LAUNCH_GAME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="gamenative" android:host="run" />
+            </intent-filter>
 
             <!--Allows app window to be resized on Oculus Quest VR headsets-->
             <meta-data
@@ -138,6 +144,19 @@
         <!-- GOG OAuth (in-app WebView; intercepts redirect for automatic code capture) -->
         <activity
             android:name=".ui.screen.auth.GOGOAuthActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Pluvia" />
+
+        <!-- EA OAuth (in-app WebView; intercepts the qrc:// redirect for automatic code capture) -->
+        <activity
+            android:name=".ui.screen.auth.EaOAuthActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Pluvia" />
+
+        <!-- Rockstar / Social Club sign-in (in-app WebView; the page needs a real browser
+             because it runs reCAPTCHA Enterprise and adds its own Castle token) -->
+        <activity
+            android:name=".ui.screen.auth.RockstarOAuthActivity"
             android:exported="false"
             android:theme="@style/Theme.Pluvia" />
 

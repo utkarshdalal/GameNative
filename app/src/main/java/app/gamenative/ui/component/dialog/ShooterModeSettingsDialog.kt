@@ -162,6 +162,16 @@ fun ShooterModeSettingsDialog(
                         if (showMouseLookOptions) {
                             SettingsDialogSectionHeader(stringResource(R.string.shooter_section_mouse_look))
 
+                            GestureBlock {
+                                SettingsSwitch(
+                                    colors = settingsTileColorsAlt(),
+                                    title = { Text(stringResource(R.string.win32_relative_mouse_input)) },
+                                    subtitle = { Text(stringResource(R.string.win32_relative_mouse_input_subtitle)) },
+                                    state = config.win32RelativeMouseInput,
+                                    onCheckedChange = { config = config.copy(win32RelativeMouseInput = it) },
+                                )
+                            }
+
                             SliderSettingBlock(
                                 title = stringResource(R.string.look_sensitivity_x),
                                 subtitle = stringResource(R.string.look_sensitivity_x_subtitle),

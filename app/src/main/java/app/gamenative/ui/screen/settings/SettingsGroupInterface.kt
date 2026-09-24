@@ -443,6 +443,31 @@ fun SettingsGroupInterface(
             },
         )
 
+        var showHiddenGamesByDefault by rememberSaveable { mutableStateOf(PrefManager.showHiddenGamesByDefault) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_show_hidden_games_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_show_hidden_games_subtitle)) },
+            state = showHiddenGamesByDefault,
+            onCheckedChange = {
+                showHiddenGamesByDefault = it
+                PrefManager.showHiddenGamesByDefault = it
+                PluviaApp.events.emit(AndroidEvent.HiddenGamesSettingChanged(showHiddenGamesByDefault = it))
+            },
+        )
+
+        var hideAiFeatures by rememberSaveable { mutableStateOf(PrefManager.hideAiFeatures) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_hide_ai_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_hide_ai_subtitle)) },
+            state = hideAiFeatures,
+            onCheckedChange = {
+                hideAiFeatures = it
+                PrefManager.hideAiFeatures = it
+            },
+        )
+
         var bootScreenAds by rememberSaveable { mutableStateOf(PrefManager.bootScreenAdsEnabled) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
