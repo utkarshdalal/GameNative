@@ -6,25 +6,34 @@ import timber.log.Timber
 
 /**
  * The Social Club runtime the game's own library needs. Rockstar ships its installer with every
- * title as a 7z self-extractor under Redistributables; the x64 payload is unpacked into the prefix
- * by the bundled decoder, so nothing runs under Wine and nothing is downloaded.
+ * title as a 7z self-extractor under Redistributables; its x64 and x86 payloads are unpacked into
+ * the prefix by the bundled decoder, so nothing runs under Wine and nothing is downloaded.
  */
 object RockstarRuntime {
     const val SOCIAL_CLUB_DIR = "Program Files/Rockstar Games/Social Club"
-    private const val PAYLOAD = "x64/"
+    const val SOCIAL_CLUB_X86_DIR = "Program Files (x86)/Rockstar Games/Social Club"
+    private const val PAYLOAD_X64 = "x64"
+    private const val PAYLOAD_X86 = "x86"
+    private const val RUNTIME = "socialclub.dll"
     private val installers = listOf("Redistributables/Social-Club-Setup.exe", "Installers/Social-Club-Setup.exe")
     private val signature = byteArrayOf(0x37, 0x7A, 0xBC.toByte(), 0xAF.toByte(), 0x27, 0x1C)
 
     fun interface Extractor {
-        /** Unpacks the payload at one archive offset into [stage]; false when no archive is there. */
+        /** Unpacks the archive at one offset into [stage]; false when no archive is there. */
         fun extract(installer: File, offset: Long, stage: File, onProgress: (Float) -> Unit): Boolean
     }
 
     fun socialClubDir(prefixDriveC: File) = File(prefixDriveC, SOCIAL_CLUB_DIR)
 
-    fun isInstalled(prefixDriveC: File) = File(socialClubDir(prefixDriveC), "socialclub.dll").isFile
+    fun socialClubX86Dir(prefixDriveC: File) = File(prefixDriveC, SOCIAL_CLUB_X86_DIR)
 
-    fun installer(gameDir: File): File? = installers.map { File(gameDir, it) }.firstOrNull { it.isFile }
+    fun isInstalled(prefixDriveC: File) =
+        File(socialClubDir(prefixDriveC), RUNTIME).isFile && File(socialClubX86Dir(prefixDriveC), RUNTIME).isFile
+
+    fun installer(installDir: File): File? =
+        listOfNotNull(installDir, RockstarHelperArchive.titleDir(installDir)).distinct()
+            .flatMap { dir -> installers.map { File(dir, it) } }
+            .firstOrNull { it.isFile }
 
     fun install(context: Context, installer: File, prefixDriveC: File, onProgress: (Float) -> Unit = {}) =
         install(installer, prefixDriveC, nativeExtractor(context), onProgress)
@@ -41,21 +50,29 @@ object RockstarRuntime {
             extractor.extract(installer, offset, stage, onProgress)
         }
         check(extracted) { "No readable archive inside ${installer.name}" }
-        check(File(stage, "socialclub.dll").isFile) { "The Social Club installer has no x64 runtime" }
+        val x64 = File(stage, PAYLOAD_X64)
+        check(File(x64, RUNTIME).isFile) { "The Social Club installer has no x64 runtime" }
+        val x86 = File(stage, PAYLOAD_X86)
+        check(File(x86, RUNTIME).isFile) { "The Social Club installer has no x86 runtime" }
+        copyTree(x64, target)
+        copyTree(x86, socialClubX86Dir(prefixDriveC))
+        stage.deleteRecursively()
+        Timber.i("Rockstar: Social Club runtime installed from ${installer.name}")
+    }
+
+    private fun copyTree(source: File, target: File) {
         check(target.isDirectory || target.mkdirs()) { "Cannot create the Social Club directory" }
-        stage.walkTopDown().filter { it.isFile }.forEach { file ->
-            val dest = File(target, file.relativeTo(stage).path)
+        source.walkTopDown().filter { it.isFile }.forEach { file ->
+            val dest = File(target, file.relativeTo(source).path)
             dest.parentFile!!.mkdirs()
             file.copyTo(dest, overwrite = true)
         }
-        stage.deleteRecursively()
-        Timber.i("Rockstar: Social Club runtime installed from ${installer.name}")
     }
 
     private fun nativeExtractor(context: Context) = Extractor { installer, offset, stage, onProgress ->
         val tool = File(context.applicationInfo.nativeLibraryDir, "lib7zx.so")
         check(tool.isFile) { "The archive decoder is missing from this build" }
-        val process = ProcessBuilder(tool.path, installer.path, offset.toString(), stage.path, PAYLOAD)
+        val process = ProcessBuilder(tool.path, installer.path, offset.toString(), stage.path)
             .redirectErrorStream(true).start()
         val output = StringBuilder()
         process.inputStream.bufferedReader().forEachLine { line ->

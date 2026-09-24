@@ -4750,10 +4750,11 @@ private fun getWineStartCommand(
             // and will monitor the game via nativeWaitAppExit.
             val appDirPath = SteamService.getAppDirPath(gameId)
             val isRockstar = RockstarLaunchSupport.isRockstarTitle(File(appDirPath))
-            val exePath = if (isRockstar) RockstarHelperDeployment.EXECUTABLE else container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
+            val exePath = if (isRockstar) RockstarHelperDeployment.executable(File(appDirPath)) else container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
             realSteamRockstarDirectory = if (isRockstar) File(appDirPath) else null
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
-            val executableDir = appDirPath + "/" + exePath.substringBeforeLast("/", "")
+            val exeDir = if (isRockstar) exePath.substringBeforeLast(RockstarHelperDeployment.DIRECTORY).trimEnd('/') else exePath.substringBeforeLast("/", "")
+            val executableDir = appDirPath + (if (exeDir.isNotEmpty()) "/$exeDir" else "")
             guestProgramLauncherComponent.workingDir = File(executableDir)
             Timber.i("Bionic-Steam working directory is $executableDir")
             val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
@@ -4771,14 +4772,18 @@ private fun getWineStartCommand(
             val isRockstar = RockstarLaunchSupport.isRockstarTitle(File(appDirPath))
             realSteamRockstarDirectory = if (isRockstar) File(appDirPath) else null
             val launchExe = if (isEaLaunch) "" else appLaunchInfo?.executable?.trim('/').orEmpty()
-            val exePath = if (isRockstar) RockstarHelperDeployment.EXECUTABLE else container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
+            val exePath = if (isRockstar) RockstarHelperDeployment.executable(File(appDirPath)) else container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
             val launchArgs = if (appLaunchInfo != null && exePath.replace('\\', '/').trim('/').equals(launchExe, ignoreCase = true)) appLaunchInfo.arguments.trim() else ""
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
             val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
             val steamRoot = "C:\\Program Files (x86)\\Steam"
             val gameCmd = "\"$steamRoot\\steamapps\\common\\$gameFolderName\\$normalizedExe\"" + (if (launchArgs.isNotEmpty()) " $launchArgs" else "")
             val launchWorkDir = if (isRockstar) "" else appLaunchInfo?.workingDir?.trim('/').orEmpty()
-            val relDir = if (launchWorkDir.isNotEmpty()) launchWorkDir else exePath.replace('\\', '/').substringBeforeLast("/", "")
+            val relDir = when {
+                isRockstar -> exePath.substringBeforeLast(RockstarHelperDeployment.DIRECTORY).trimEnd('/')
+                launchWorkDir.isNotEmpty() -> launchWorkDir
+                else -> exePath.replace('\\', '/').substringBeforeLast("/", "")
+            }
             val exeSubDir = relDir.replace('/', '\\')
             val gameDir = "$steamRoot\\steamapps\\common\\$gameFolderName" + (if (exeSubDir.isNotEmpty()) "\\$exeSubDir" else "")
             guestProgramLauncherComponent.workingDir = File(appDirPath + (if (relDir.isNotEmpty()) "/$relDir" else ""))

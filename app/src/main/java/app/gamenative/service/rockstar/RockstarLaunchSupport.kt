@@ -10,6 +10,8 @@ object RockstarLaunchSupport {
 
     fun isRockstarTitle(gameDir: File) = RockstarHelperArchive.usesRockstar(gameDir)
 
+    private fun titleDir(installDir: File) = RockstarHelperArchive.titleDir(installDir) ?: installDir
+
     /**
      * Removes tokens placeToken wrote into the game directories. Signing out has to clear these
      * too: preLaunchApp falls back to a token already in place when a sign-in does not complete,
@@ -18,8 +20,7 @@ object RockstarLaunchSupport {
     fun clearPlacedTokens() {
         val installed = SteamService.getAllInstalledApps() ?: return
         for (app in installed) {
-            val gameDir = File(SteamService.getAppDirPath(app.id))
-            if (!gameDir.isDirectory || !isRockstarTitle(gameDir)) continue
+            val gameDir = RockstarHelperArchive.titleDir(File(SteamService.getAppDirPath(app.id))) ?: continue
             for (name in listOf(RockstarConstants.TOKEN_FILE, RockstarConstants.TOKEN_FILE + ".previous")) {
                 val file = File(gameDir, name)
                 if (file.exists() && file.delete()) Timber.i("Rockstar: removed %s from %s", name, gameDir.name)
@@ -33,7 +34,7 @@ object RockstarLaunchSupport {
      * that launch.
      */
     fun hasUsableToken(gameDir: File): Boolean = runCatching {
-        val f = File(gameDir, RockstarConstants.TOKEN_FILE)
+        val f = File(titleDir(gameDir), RockstarConstants.TOKEN_FILE)
         f.exists() && RockstarConstants.TOKEN_SHAPE.matches(f.readText().trim())
     }.getOrDefault(false)
 
@@ -44,11 +45,12 @@ object RockstarLaunchSupport {
      * not yet confirmed, so a capture that looks right but is not would otherwise overwrite a
      * working token and leave the game unable to sign in with no way back.
      */
-    fun placeToken(context: Context, gameDir: File): Boolean {
+    fun placeToken(context: Context, installDir: File): Boolean {
         val creds = RockstarAuthManager.load(context) ?: run {
             Timber.w("Rockstar: no stored session, cannot place the token")
             return false
         }
+        val gameDir = titleDir(installDir)
         val target = File(gameDir, RockstarConstants.TOKEN_FILE)
         return runCatching {
             if (target.exists()) {
