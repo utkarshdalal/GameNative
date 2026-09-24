@@ -4750,7 +4750,7 @@ private fun getWineStartCommand(
             // and will monitor the game via nativeWaitAppExit.
             val appDirPath = SteamService.getAppDirPath(gameId)
             val isRockstar = RockstarLaunchSupport.isRockstarTitle(File(appDirPath))
-            val exePath = if (isRockstar) RockstarHelperDeployment.EXECUTABLE else container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
+            val exePath = if (isRockstar) RockstarHelperDeployment.executable(File(appDirPath)) else container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
             realSteamRockstarDirectory = if (isRockstar) File(appDirPath) else null
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
             val executableDir = appDirPath + "/" + exePath.substringBeforeLast("/", "")
@@ -4771,7 +4771,7 @@ private fun getWineStartCommand(
             val isRockstar = RockstarLaunchSupport.isRockstarTitle(File(appDirPath))
             realSteamRockstarDirectory = if (isRockstar) File(appDirPath) else null
             val launchExe = if (isEaLaunch) "" else appLaunchInfo?.executable?.trim('/').orEmpty()
-            val exePath = if (isRockstar) RockstarHelperDeployment.EXECUTABLE else container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
+            val exePath = if (isRockstar) RockstarHelperDeployment.executable(File(appDirPath)) else container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
             val launchArgs = if (appLaunchInfo != null && exePath.replace('\\', '/').trim('/').equals(launchExe, ignoreCase = true)) appLaunchInfo.arguments.trim() else ""
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
             val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
