@@ -298,8 +298,6 @@ object PowerManager {
                 unpinGame(blocking = true)
                 unpinBackgroundProcesses(blocking = true)
             }
-            // With power control off nothing is held anymore, even when the release above didn't go through.
-            synchronized(affinityLock) { pinnedGameCores = emptyList() }
             stopPowerControl()
         }
     }
@@ -1400,6 +1398,8 @@ object PowerManager {
 
         when (currentProfile.gamePinningMode) {
             GamePinningMode.OFF -> {
+                // A release that failed earlier is still recorded, so retry it instead of leaving the old mask.
+                if (pinnedGameCores.isNotEmpty()) unpinGame()
                 Timber.tag("PowerManager").i("Game pinning mode is Off, not pinning $processName")
                 return
             }
