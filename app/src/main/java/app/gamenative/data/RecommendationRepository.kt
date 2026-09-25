@@ -4,6 +4,9 @@ import android.content.Context
 import app.gamenative.PrefManager
 import app.gamenative.utils.Net
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -324,7 +327,7 @@ object RecommendationRepository {
     // Latest featured from the most recent fetch. Kept in memory (not the disk cache) so the
     // featured decision is always live and never served stale from the daily recommendation cache.
     @Volatile private var lastFeatured: List<FeaturedItem> = emptyList()
-    @Volatile private var lastFeaturedList: List<FeaturedItem> = emptyList()
+    private val featuredListState = MutableStateFlow<List<FeaturedItem>>(emptyList())
 
     /**
      * Static recommendation + optional featured for the All-tab hero slot.
@@ -335,15 +338,16 @@ object RecommendationRepository {
         withContext(Dispatchers.IO) {
             val fetched = if (MOCK_HERO_RESPONSE) parseHero(MOCK_HERO_JSON) else fetchRemote()
             if (fetched != null) {
-                lastFeatured = (listOfNotNull(fetched.featured) + fetched.featuredList).distinctBy { it.campaignId }
-                lastFeaturedList = fetched.featuredList
+                val featuredList = fetched.featuredList.distinctBy { it.campaignId }
+                lastFeatured = (listOfNotNull(fetched.featured) + featuredList).distinctBy { it.campaignId }
+                featuredListState.value = featuredList
                 val bootAds = fetched.bootAds.ifEmpty { listOfNotNull(fetched.bootAd) }
                 BootAdRepository.store(bootAds)
                 if (PrefManager.bootScreenAdsEnabled) BootAdRepository.prefetchVideos(context, bootAds)
                 return@withContext HeroResponse(
                     recommendation = stableRecommendation(fetched.recommendation),
                     featured = fetched.featured,
-                    featuredList = fetched.featuredList,
+                    featuredList = featuredList,
                 )
             }
             // Offline: last stable recommendation (or bundled), no featured.
@@ -356,8 +360,8 @@ object RecommendationRepository {
     suspend fun getCurrentRecommendation(context: Context): RecommendedGame? =
         getHero(context).recommendation
 
-    /** Latest Discover-tab campaigns (if any); no network. */
-    fun getCachedFeaturedList(): List<FeaturedItem> = lastFeaturedList
+    /** Discover-tab campaigns from the latest fetch; updates as fetches land. */
+    val featuredList: StateFlow<List<FeaturedItem>> = featuredListState.asStateFlow()
 
     /** The day's cached static recommendation, if any; no network. */
     fun getCachedRecommendation(): RecommendedGame? = loadCachedRecommendation()

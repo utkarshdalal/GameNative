@@ -91,10 +91,7 @@ fun LibraryTabBar(
     val today = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
     var recommendedSeenDay by remember { mutableLongStateOf(PrefManager.recommendedTabSeenDay) }
     LaunchedEffect(currentTab) {
-        if (currentTab == LibraryTab.RECOMMENDED && recommendedSeenDay != today) {
-            PrefManager.recommendedTabSeenDay = today
-            recommendedSeenDay = today
-        }
+        recommendedSeenDay = PrefManager.recommendedTabSeenDay
     }
     val showRecommendedDot = recommendedSeenDay != today
 

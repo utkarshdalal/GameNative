@@ -50,9 +50,11 @@ fun RecommendedTabPane(
     onItemCountChanged: (Int) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val featured by RecommendationRepository.featuredList.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.loadIfNeeded()
+        PrefManager.recommendedTabSeenDay = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
         if (PrefManager.usageAnalyticsEnabled) {
             PostHog.capture(
                 event = "recommendation_tab_opened",
@@ -61,7 +63,6 @@ fun RecommendedTabPane(
         }
     }
 
-    val featured = remember { RecommendationRepository.getCachedFeaturedList() }
     val items = remember(state.cards, featured) {
         val campaigns = featured.mapIndexed { index, item -> item.toLibraryItem(index) }
         campaigns + state.cards.mapIndexed { index, card -> card.toLibraryItem(campaigns.size + index) }
@@ -88,13 +89,14 @@ fun RecommendedTabPane(
     }
     DisposableEffect(Unit) {
         onDispose {
-            if (PrefManager.usageAnalyticsEnabled && seenIndices.isNotEmpty()) {
-                val gameIds = seenIndices.sorted().mapNotNull { currentCards.getOrNull(it - featured.size)?.productId }
+            val seenRanks = seenIndices.map { it - featured.size }.filter { it >= 0 }.sorted()
+            if (PrefManager.usageAnalyticsEnabled && seenRanks.isNotEmpty()) {
+                val gameIds = seenRanks.mapNotNull { currentCards.getOrNull(it)?.productId }
                 PostHog.capture(
                     event = "recommendation_tab_viewed",
                     properties = mapOf(
-                        "impressed_count" to seenIndices.size,
-                        "max_rank" to (seenIndices.maxOrNull() ?: -1),
+                        "impressed_count" to seenRanks.size,
+                        "max_rank" to (seenRanks.lastOrNull() ?: -1),
                         "game_ids" to gameIds,
                     ),
                 )
