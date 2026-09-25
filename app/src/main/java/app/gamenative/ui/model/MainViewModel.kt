@@ -24,6 +24,8 @@ import app.gamenative.ui.enums.Orientation
 import java.util.EnumSet
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
+import app.gamenative.utils.MarkerUtils
+import app.gamenative.enums.Marker
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicService
@@ -637,6 +639,10 @@ class MainViewModel @Inject constructor(
                 val container = ContainerUtils.getOrCreateContainer(context, appId)
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
                 if (gameSource == GameSource.STEAM) {
+                    val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
+                    if (steamAppId != null && runCatching { SteamService.decryptDepotManifests(steamAppId) }.getOrDefault(false)) {
+                        MarkerUtils.removeMarker(SteamService.getAppDirPath(steamAppId), Marker.STEAM_CEG_WRAPPED)
+                    }
                     if (container.isLaunchRealSteam() || container.isLaunchBionicSteam()) {
                         SteamUtils.restoreSteamApi(context, appId)
                     } else {

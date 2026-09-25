@@ -60,6 +60,7 @@ import app.gamenative.utils.FileUtils
 import app.gamenative.utils.LicenseSerializer
 import app.gamenative.utils.LocaleHelper
 import app.gamenative.utils.LsfgVkManager
+import app.gamenative.utils.DepotManifestFiles
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
@@ -160,6 +161,7 @@ import kotlinx.coroutines.channels.BufferOverflow
 import okio.Path.Companion.toPath
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -168,6 +170,7 @@ import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -1393,6 +1396,48 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.e(e, "requestFreeLicense($appId) failed")
                 false
             }
+        }
+
+        /**
+         * Rewrites cached depot manifests whose filenames are still encrypted with the plain
+         * names, fetching each depot key from Steam. Returns true when any manifest changed.
+         */
+        suspend fun decryptDepotManifests(appId: Int): Boolean = withContext(Dispatchers.IO) {
+            val appDirPath = getAppDirPath(appId)
+            val installedBranch = getInstalledApp(appId)?.branch ?: "public"
+            var changed = false
+            for ((depotId, depot) in getDownloadableDepots(appId)) {
+                val gid = (depot.manifests[installedBranch]
+                    ?: depot.manifests["public"]
+                    ?: depot.manifests.values.firstOrNull())?.gid ?: continue
+                val file = DepotManifestFiles.manifestFile(appDirPath, depotId, gid)
+                if (!DepotManifestFiles.hasEncryptedFilenames(file)) continue
+                val steamApps = instance?._steamApps
+                if (steamApps == null) {
+                    Timber.w("Manifest ${file.name} has encrypted filenames but Steam is not connected")
+                    continue
+                }
+                val owningAppId = when {
+                    depot.dlcAppId != INVALID_APP_ID -> depot.dlcAppId
+                    depot.depotFromApp != INVALID_APP_ID -> depot.depotFromApp
+                    else -> appId
+                }
+                val key = runCatching {
+                    withTimeoutOrNull(15_000) {
+                        var cb = steamApps.getDepotDecryptionKey(depotId, owningAppId).toFuture().await()
+                        if ((cb.result != EResult.OK || cb.depotKey.size != 32) && owningAppId != appId) {
+                            cb = steamApps.getDepotDecryptionKey(depotId, appId).toFuture().await()
+                        }
+                        cb.depotKey.takeIf { cb.result == EResult.OK && it.size == 32 }
+                    }
+                }.getOrNull()
+                if (key == null) {
+                    Timber.w("No depot key for $depotId, leaving ${file.name} encrypted")
+                    continue
+                }
+                if (DepotManifestFiles.decryptFilenames(file, key)) changed = true
+            }
+            changed
         }
 
         suspend fun getOwnedAppDlc(appId: Int): Map<Int, DepotInfo> {
@@ -3581,7 +3626,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                     packages = emptyList(),
                 ).await()
             } catch (e: CancellationException) {
-                throw e
+                currentCoroutineContext().ensureActive()
+                Timber.w("isUpdatePending: PICS request timed out for appId=$appId")
+                return@withContext false
             } catch (e: Exception) {
                 Timber.w(e, "isUpdatePending: PICS request failed for appId=$appId")
                 return@withContext false

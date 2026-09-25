@@ -5,6 +5,7 @@ import app.gamenative.R
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.service.SteamService
+import app.gamenative.utils.DepotManifestFiles
 import app.gamenative.utils.LocaleHelper
 import app.gamenative.utils.generateSteamApp
 import `in`.dragonbra.javasteam.enums.EResult
@@ -166,6 +167,13 @@ object GameDownloadService {
             downloadInfo = downloadInfo,
             parentScope = parentScope,
         )
+
+        for (resolved in resolvedDepots) {
+            DepotManifestFiles.decryptFilenames(
+                DepotManifestFiles.manifestFile(installDir, resolved.depotId, resolved.gid),
+                resolved.depotKey,
+            )
+        }
     }
 
     private suspend fun runNativeSteamDownload(
@@ -423,9 +431,11 @@ object GameDownloadService {
     private class ResolvedDepot(
         val depotId: Int,
         val gid: Long,
-        val depotKeyHex: String,
+        val depotKey: ByteArray,
         val requestCode: Long,
-    )
+    ) {
+        val depotKeyHex: String get() = depotKey.toHex()
+    }
 
     private suspend fun resolveDepotForDownload(
         steamApps: SteamApps,
@@ -471,7 +481,7 @@ object GameDownloadService {
         val requestCode = fetchManifestRequestCode(
             steamContent, depotId, owningAppId, gid, branch, parentScope,
         )
-        return ResolvedDepot(depotId, gid, keyCallback.depotKey.toHex(), requestCode)
+        return ResolvedDepot(depotId, gid, keyCallback.depotKey, requestCode)
     }
 
     private suspend fun resolveManifestGid(
