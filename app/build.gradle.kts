@@ -231,6 +231,7 @@ android {
             isIncludeAndroidResources = true
             all {
                 it.maxHeapSize = "4g"
+                it.maxParallelForks = 2
                 it.testLogging { events("started", "failed") }
             }
         }
