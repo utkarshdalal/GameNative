@@ -85,6 +85,7 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         Timber.tag(TAG).d("Samsung Performance Driver ready (controls started by individual setters)")
     }
 
+    /** Stops the Samsung Performance Manager when the SDK is available. */
     override fun stop() {
         if (!isDriverSupported()) return
 
@@ -281,6 +282,7 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         }
     }
 
+    /** Balanced full-range profile with Manual clocks; this driver can't pin, so pinning stays Off. */
     override fun getDefaultProfile(): PowerProfile {
         // Samsung driver uses integer levels (0-4)
         // Default: Balanced profile (full range)

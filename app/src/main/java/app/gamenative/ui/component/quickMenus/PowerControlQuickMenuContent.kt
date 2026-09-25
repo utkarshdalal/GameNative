@@ -69,6 +69,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.MathUtils.normalizedProgress
 import kotlinx.coroutines.delay
 
+/** Power Control quick-menu content for [uiState]; every change goes out through the callbacks. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PowerControlQuickMenuContent(
@@ -187,6 +188,7 @@ private fun LoadingView() {
     }
 }
 
+/** Profile, tuning, pinning and fan controls for a loaded [PowerControlUiState.Success]. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FlowRowScope.SuccessView(
@@ -240,6 +242,7 @@ private fun FlowRowScope.SuccessView(
         selectedMaxRamValue = state.ramInfo?.maxBusLevel ?: 0
     }
 
+    /** Formats a kHz value in the driver's display unit. */
     @SuppressLint("DefaultLocale")
     fun formatFrequency(freqKhz: Long): String {
         return when (PowerManager.getDisplayUnit()) {
@@ -795,18 +798,21 @@ private fun FlowRowScope.SuccessView(
     }
 }
 
+/** Legend and core-number color of a CPU cluster. */
 private fun clusterColor(cluster: CpuCluster): Color = when (cluster) {
     CpuCluster.EFFICIENCY -> Color(0xFF4CAF50)
     CpuCluster.PERFORMANCE -> Color(0xFFFFC107)
     CpuCluster.PRIME -> Color(0xFFE53935)
 }
 
+/** String resource naming a CPU cluster in the legend. */
 private fun clusterLabelRes(cluster: CpuCluster): Int = when (cluster) {
     CpuCluster.EFFICIENCY -> R.string.power_control_cluster_efficiency
     CpuCluster.PERFORMANCE -> R.string.power_control_cluster_performance
     CpuCluster.PRIME -> R.string.power_control_cluster_prime
 }
 
+/** Colored names of the clusters this device has; renders nothing when discovery found none. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CpuClusterLegendRow(
@@ -838,6 +844,7 @@ private fun CpuClusterLegendRow(
     }
 }
 
+/** One checkbox per core for a Manual core list, core numbers colored by cluster. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CoreCheckboxRow(
