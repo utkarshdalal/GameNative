@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.PrefManager
+import app.gamenative.data.FeaturedItem
+import app.gamenative.data.RecommendationRepository
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
@@ -59,8 +61,10 @@ fun RecommendedTabPane(
         }
     }
 
-    val items = remember(state.cards) {
-        state.cards.mapIndexed { index, card -> card.toLibraryItem(index) }
+    val featured = remember { RecommendationRepository.getCachedFeaturedList() }
+    val items = remember(state.cards, featured) {
+        val campaigns = featured.mapIndexed { index, item -> item.toLibraryItem(index) }
+        campaigns + state.cards.mapIndexed { index, card -> card.toLibraryItem(campaigns.size + index) }
     }
 
     LaunchedEffect(items.size) {
@@ -85,7 +89,7 @@ fun RecommendedTabPane(
     DisposableEffect(Unit) {
         onDispose {
             if (PrefManager.usageAnalyticsEnabled && seenIndices.isNotEmpty()) {
-                val gameIds = seenIndices.sorted().mapNotNull { currentCards.getOrNull(it)?.productId }
+                val gameIds = seenIndices.sorted().mapNotNull { currentCards.getOrNull(it - featured.size)?.productId }
                 PostHog.capture(
                     event = "recommendation_tab_viewed",
                     properties = mapOf(
@@ -155,6 +159,21 @@ fun RecommendedTabPane(
         }
     }
 }
+
+private fun FeaturedItem.toLibraryItem(index: Int): LibraryItem = LibraryItem(
+    index = index,
+    appId = "FEATURED_$campaignId",
+    name = title,
+    heroImageUrl = heroImageUrl,
+    headerImageUrl = heroImageUrl,
+    capsuleImageUrl = capsuleImageUrl ?: heroImageUrl,
+    iconHash = iconUrl ?: capsuleImageUrl ?: heroImageUrl,
+    gameSource = GameSource.STEAM,
+    isRecommended = true,
+    isFeatured = true,
+    recommendedGameId = campaignId,
+    recSource = "tab",
+)
 
 private fun GogRecCard.toLibraryItem(index: Int): LibraryItem = LibraryItem(
     index = index,

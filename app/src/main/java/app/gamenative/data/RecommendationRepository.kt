@@ -46,6 +46,36 @@ object RecommendationRepository {
               { "type": "VISIT", "url": "https://store.steampowered.com/app/3602270/" }
             ]
           },
+          "featuredList": [
+            {
+              "campaignId": "mock-lethal",
+              "title": "Lethal Company",
+              "appId": 1966720,
+              "developer": "Zeekerss",
+              "heroImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1966720/library_hero.jpg",
+              "capsuleImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1966720/library_600x900.jpg",
+              "tags": ["Roguelike", "Action"],
+              "status": "AVAILABLE",
+              "description": { "en": "Battle beyond the Underworld using dark sorcery to take on the Titan of Time." },
+              "actions": [
+                { "type": "VISIT", "url": "https://store.steampowered.com/app/1966720/", "store": "Steam", "style": "primary" }
+              ]
+            },
+            {
+              "campaignId": "mock-wukong",
+              "title": "Black Myth: Wukong",
+              "appId": 2358720,
+              "developer": "Game Science",
+              "heroImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2358720/library_hero.jpg",
+              "capsuleImageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2358720/library_600x900.jpg",
+              "tags": ["Card Game", "Roguelike"],
+              "status": "AVAILABLE",
+              "description": { "en": "A poker roguelike. Build illegal poker hands and discover game-changing jokers." },
+              "actions": [
+                { "type": "VISIT", "url": "https://store.steampowered.com/app/2358720/", "store": "Steam", "style": "primary" }
+              ]
+            }
+          ],
           "bootAds": [
             {
               "campaignId": "mock-matiks-quiz",
@@ -293,7 +323,8 @@ object RecommendationRepository {
 
     // Latest featured from the most recent fetch. Kept in memory (not the disk cache) so the
     // featured decision is always live and never served stale from the daily recommendation cache.
-    @Volatile private var lastFeatured: FeaturedItem? = null
+    @Volatile private var lastFeatured: List<FeaturedItem> = emptyList()
+    @Volatile private var lastFeaturedList: List<FeaturedItem> = emptyList()
 
     /**
      * Static recommendation + optional featured for the All-tab hero slot.
@@ -304,13 +335,15 @@ object RecommendationRepository {
         withContext(Dispatchers.IO) {
             val fetched = if (MOCK_HERO_RESPONSE) parseHero(MOCK_HERO_JSON) else fetchRemote()
             if (fetched != null) {
-                lastFeatured = fetched.featured
+                lastFeatured = (listOfNotNull(fetched.featured) + fetched.featuredList).distinctBy { it.campaignId }
+                lastFeaturedList = fetched.featuredList
                 val bootAds = fetched.bootAds.ifEmpty { listOfNotNull(fetched.bootAd) }
                 BootAdRepository.store(bootAds)
                 if (PrefManager.bootScreenAdsEnabled) BootAdRepository.prefetchVideos(context, bootAds)
                 return@withContext HeroResponse(
                     recommendation = stableRecommendation(fetched.recommendation),
                     featured = fetched.featured,
+                    featuredList = fetched.featuredList,
                 )
             }
             // Offline: last stable recommendation (or bundled), no featured.
@@ -323,8 +356,8 @@ object RecommendationRepository {
     suspend fun getCurrentRecommendation(context: Context): RecommendedGame? =
         getHero(context).recommendation
 
-    /** Latest featured (if any) — used by the detail screen; no network. */
-    fun getCachedFeatured(): FeaturedItem? = lastFeatured
+    /** Latest Discover-tab campaigns (if any); no network. */
+    fun getCachedFeaturedList(): List<FeaturedItem> = lastFeaturedList
 
     /** The day's cached static recommendation, if any; no network. */
     fun getCachedRecommendation(): RecommendedGame? = loadCachedRecommendation()
@@ -349,8 +382,8 @@ object RecommendationRepository {
 
     fun getRecommendationPool(): List<app.gamenative.data.gog.GogRecCard> = recommendationPool
 
-    fun getFeaturedGame(context: Context): RecommendedGame? =
-        lastFeatured?.toRecommendedGame(context)
+    fun getFeaturedGame(context: Context, campaignId: String): RecommendedGame? =
+        lastFeatured.firstOrNull { it.campaignId == campaignId }?.toRecommendedGame(context)
 
     private fun fetchRemote(): HeroResponse? {
         return try {
@@ -408,7 +441,7 @@ object RecommendationRepository {
                 // A payload that carries the bootAds key (even empty) is the current shape: an
                 // empty list means "no campaigns" and must clear the cache, not fall to legacy.
                 val currentShape = runCatching { json.parseToJsonElement(body).jsonObject.containsKey("bootAds") }.getOrDefault(false)
-                if (hero != null && (currentShape || hero.recommendation != null || hero.featured != null || hero.bootAd != null || hero.bootAds.isNotEmpty())) {
+                if (hero != null && (currentShape || hero.recommendation != null || hero.featured != null || hero.featuredList.isNotEmpty() || hero.bootAd != null || hero.bootAds.isNotEmpty())) {
                     hero
                 } else {
                     // Legacy: a single recommendation object.
