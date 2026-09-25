@@ -159,6 +159,10 @@ class GOGService : Service() {
                         return@withContext Result.failure(Exception("Service not running"))
                     }
 
+                    // Stop account-scoped work before deleting data so it cannot write afterward.
+                    backgroundSyncJob?.cancelAndJoin()
+                    instance.hiddenInitializationJob?.cancelAndJoin()
+
                     // Clear stored credentials
                     val credentialsCleared = credentialClearerForLogout(context)
                     if (!credentialsCleared) {

@@ -19,7 +19,13 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -335,6 +341,142 @@ class GOGServiceHiddenSyncTest {
         }
     }
 
+    @Test
+    fun logoutCancelsAndJoinsToggleInitializationBeforeClearingHiddenState() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(context, PluviaDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        database = db
+        db.gogGameDao().insertAll(
+            listOf(
+                GOGGame(
+                    id = "installed",
+                    title = "Installed",
+                    isInstalled = true,
+                    installPath = "/games/installed",
+                    gogComHidden = true,
+                    galaxyHidden = true,
+                ),
+            ),
+        )
+
+        withService { service ->
+            prefScope = installFakePrefManager(FakeDataStore())
+            PrefManager.setLastSuccessfulGogComHiddenSync(11L)
+            PrefManager.setLastSuccessfulGalaxyHiddenSync(22L)
+            val initializationStarted = CompletableDeferred<Unit>()
+            val cancellationCleanupStarted = CompletableDeferred<Unit>()
+            val releaseCancellationCleanup = CompletableDeferred<Unit>()
+            service.gogManager = GOGManager(db.gogGameDao(), context)
+            service.hiddenCredentialsAvailableForInitialization = { true }
+            service.hiddenInitializationTimestamps = { 0L to 0L }
+            service.hiddenRefreshForInitialization = {
+                initializationStarted.complete(Unit)
+                try {
+                    awaitCancellation()
+                } finally {
+                    withContext(NonCancellable) {
+                        cancellationCleanupStarted.complete(Unit)
+                        releaseCancellationCleanup.await()
+                    }
+                }
+            }
+            GOGService.credentialClearerForLogout = { true }
+            GOGService.logoutStopper = {}
+
+            emitHiddenGamesSettingChanged(showHiddenGamesByDefault = false)
+            withTimeout(2_000) { initializationStarted.await() }
+
+            val logout = async(Dispatchers.IO) { GOGService.logout(context) }
+            try {
+                withTimeout(2_000) { cancellationCleanupStarted.await() }
+                assertFalse(logout.isCompleted)
+                assertTrue(db.gogGameDao().getById("installed")!!.gogComHidden)
+                assertTrue(db.gogGameDao().getById("installed")!!.galaxyHidden)
+                assertEquals(11L, PrefManager.getLastSuccessfulGogComHiddenSync())
+                assertEquals(22L, PrefManager.getLastSuccessfulGalaxyHiddenSync())
+            } finally {
+                releaseCancellationCleanup.complete(Unit)
+            }
+
+            assertTrue(logout.await().isSuccess)
+            assertFalse(db.gogGameDao().getById("installed")!!.gogComHidden)
+            assertFalse(db.gogGameDao().getById("installed")!!.galaxyHidden)
+            assertEquals(0L, PrefManager.getLastSuccessfulGogComHiddenSync())
+            assertEquals(0L, PrefManager.getLastSuccessfulGalaxyHiddenSync())
+        }
+    }
+
+    @Test
+    fun logoutCancelsAndJoinsFullSyncBeforeClearingHiddenState() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(context, PluviaDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        database = db
+        db.gogGameDao().insertAll(
+            listOf(
+                GOGGame(
+                    id = "installed",
+                    title = "Installed",
+                    isInstalled = true,
+                    installPath = "/games/installed",
+                    gogComHidden = true,
+                    galaxyHidden = true,
+                ),
+            ),
+        )
+
+        withService { service ->
+            prefScope = installFakePrefManager(FakeDataStore())
+            PrefManager.setLastSuccessfulGogComHiddenSync(11L)
+            PrefManager.setLastSuccessfulGalaxyHiddenSync(22L)
+            val fullSyncStarted = CompletableDeferred<Unit>()
+            val cancellationCleanupStarted = CompletableDeferred<Unit>()
+            val releaseCancellationCleanup = CompletableDeferred<Unit>()
+            service.gogManager = GOGManager(db.gogGameDao(), context)
+            service.fullSyncRunner = {
+                fullSyncStarted.complete(Unit)
+                try {
+                    awaitCancellation()
+                } finally {
+                    withContext(NonCancellable) {
+                        cancellationCleanupStarted.complete(Unit)
+                        releaseCancellationCleanup.await()
+                    }
+                }
+            }
+            GOGService.credentialClearerForLogout = { true }
+            GOGService.logoutStopper = {}
+
+            service.onStartCommand(
+                Intent(context, GOGService::class.java).apply {
+                    action = "app.gamenative.GOG_MANUAL_SYNC"
+                },
+                0,
+                1,
+            )
+            withTimeout(2_000) { fullSyncStarted.await() }
+
+            val logout = async(Dispatchers.IO) { GOGService.logout(context) }
+            try {
+                withTimeout(2_000) { cancellationCleanupStarted.await() }
+                assertFalse(logout.isCompleted)
+                assertTrue(db.gogGameDao().getById("installed")!!.gogComHidden)
+                assertTrue(db.gogGameDao().getById("installed")!!.galaxyHidden)
+                assertEquals(11L, PrefManager.getLastSuccessfulGogComHiddenSync())
+                assertEquals(22L, PrefManager.getLastSuccessfulGalaxyHiddenSync())
+            } finally {
+                releaseCancellationCleanup.complete(Unit)
+            }
+
+            assertTrue(logout.await().isSuccess)
+            assertFalse(db.gogGameDao().getById("installed")!!.gogComHidden)
+            assertFalse(db.gogGameDao().getById("installed")!!.galaxyHidden)
+            assertEquals(0L, PrefManager.getLastSuccessfulGogComHiddenSync())
+            assertEquals(0L, PrefManager.getLastSuccessfulGalaxyHiddenSync())
+        }
+    }
+
 /** Verifies the behavior described by this test: logout Cleans Database And Timestamps Even When Credential Deletion Fails. */
     @Test
     fun logoutCleansDatabaseAndTimestampsEvenWhenCredentialDeletionFails() = runBlocking {
@@ -382,7 +524,7 @@ class GOGServiceHiddenSyncTest {
 
         val result = withService { service ->
             service.gogManager = manager
-            runBlocking { GOGService.logout(context) }
+            GOGService.logout(context)
         }
 
         assertTrue(result.isSuccess)
@@ -398,10 +540,10 @@ class GOGServiceHiddenSyncTest {
         PluviaApp.events.emit(AndroidEvent.HiddenGamesSettingChanged(showHiddenGamesByDefault))
     }
 
-    private fun <T> withService(block: (GOGService) -> T): T {
+    private fun <T> withService(block: suspend (GOGService) -> T): T {
         val controller = Robolectric.buildService(GOGService::class.java).create()
         return try {
-            block(controller.get())
+            runBlocking { block(controller.get()) }
         } finally {
             controller.destroy()
         }
