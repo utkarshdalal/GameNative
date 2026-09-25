@@ -4242,7 +4242,11 @@ private fun setupXEnvironment(
             return
         }
         guestProgramLauncherComponent.setGuestExecutable(remaining.first().executable)
-        guestProgramLauncherComponent.setTerminationCallback { _ ->
+        guestProgramLauncherComponent.setTerminationCallback { status ->
+            if (session != guestSession.get()) {
+                Timber.w("Ignoring pre-install step termination of a previous game session (status %d)", status)
+                return@setTerminationCallback
+            }
             val current = remaining.first()
             PreInstallSteps.markStepDone(container, current.marker)
             guestProgramLauncherComponent.setPreUnpack(null)
