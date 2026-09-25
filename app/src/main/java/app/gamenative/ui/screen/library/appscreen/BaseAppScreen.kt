@@ -41,6 +41,8 @@ import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
 import app.gamenative.ui.component.dialog.CommunityConfigsDialog
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.ExportFilesDialog
+import app.gamenative.ui.component.dialog.ImportFilesDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.data.AppMenuOption
@@ -169,6 +171,8 @@ abstract class BaseAppScreen {
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
         private val exportSavesRequests = mutableStateMapOf<String, Boolean>()
         private val importSavesRequests = mutableStateMapOf<String, Boolean>()
+        private val importFilesRequests = mutableStateMapOf<String, Boolean>()
+        private val exportFilesRequests = mutableStateMapOf<String, Boolean>()
         private val manageModsRequests = mutableStateMapOf<String, Boolean>()
         private val communityConfigRequests = mutableStateMapOf<String, Boolean>()
         private val knownConfigInstallStates = mutableStateMapOf<Int, KnownConfigInstallState>()
@@ -231,6 +235,30 @@ abstract class BaseAppScreen {
 
         fun shouldImportSaves(appId: String): Boolean {
             return importSavesRequests[appId] == true
+        }
+
+        fun requestImportFiles(appId: String) {
+            importFilesRequests[appId] = true
+        }
+
+        fun clearImportFilesRequest(appId: String) {
+            importFilesRequests.remove(appId)
+        }
+
+        fun shouldImportFiles(appId: String): Boolean {
+            return importFilesRequests[appId] == true
+        }
+
+        fun requestExportFiles(appId: String) {
+            exportFilesRequests[appId] = true
+        }
+
+        fun clearExportFilesRequest(appId: String) {
+            exportFilesRequests.remove(appId)
+        }
+
+        fun shouldExportFiles(appId: String): Boolean {
+            return exportFilesRequests[appId] == true
         }
 
         fun requestManageMods(appId: String) {
@@ -741,6 +769,28 @@ abstract class BaseAppScreen {
     }
 
     @Composable
+    protected open fun getImportFilesOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption = AppMenuOption(
+        optionType = AppOptionMenuType.ImportFiles,
+        onClick = {
+            requestImportFiles(libraryItem.appId)
+        },
+    )
+
+    @Composable
+    protected open fun getExportFilesOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption = AppMenuOption(
+        optionType = AppOptionMenuType.ExportFiles,
+        onClick = {
+            requestExportFiles(libraryItem.appId)
+        },
+    )
+
+    @Composable
     protected open fun getManageModsOption(
         context: Context,
         libraryItem: LibraryItem,
@@ -1212,7 +1262,17 @@ abstract class BaseAppScreen {
         // so container-related items appear as:
         // Reset Container, Reset DRM, Use Known Config, Export Config, Import Config.
         if (isInstalled) {
-            menuOptions.addAll(getConfigMenuOptions(context, libraryItem))
+            val configOptions = getConfigMenuOptions(context, libraryItem)
+            val fileOptions = listOf(
+                getImportFilesOption(context, libraryItem),
+                getExportFilesOption(context, libraryItem),
+            )
+            val insertAt = configOptions.indexOfLast {
+                it.optionType == AppOptionMenuType.ImportConfig || it.optionType == AppOptionMenuType.ExportConfig
+            } + 1
+            menuOptions.addAll(configOptions.take(insertAt))
+            menuOptions.addAll(fileOptions)
+            menuOptions.addAll(configOptions.drop(insertAt))
         }
 
         return menuOptions
@@ -1603,6 +1663,28 @@ abstract class BaseAppScreen {
             }
         }
 
+        var importFilesRequested by remember(appId) {
+            mutableStateOf(shouldImportFiles(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldImportFiles(appId) }
+                .collect { shouldRequest ->
+                    importFilesRequested = shouldRequest
+                }
+        }
+
+        var exportFilesRequested by remember(appId) {
+            mutableStateOf(shouldExportFiles(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldExportFiles(appId) }
+                .collect { shouldRequest ->
+                    exportFilesRequested = shouldRequest
+                }
+        }
+
         var manageModsRequested by remember(appId) {
             mutableStateOf(shouldManageMods(appId))
         }
@@ -1711,7 +1793,7 @@ abstract class BaseAppScreen {
             onBack = onBack,
             achievements = achievementsState,
             optionsMenu = optionsMenu,
-            dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested,
+            dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested || importFilesRequested || exportFilesRequested,
         )
 
         if (showReadiness && launchActivity != null) {
@@ -1782,6 +1864,30 @@ abstract class BaseAppScreen {
                     },
                 )
             }
+        }
+
+        if (importFilesRequested) {
+            ImportFilesDialog(
+                visible = true,
+                gameName = libraryItem.name,
+                gameRootDir = getInstallPath(context, libraryItem)?.let { File(it) },
+                winePrefix = ModContainerResolver.getWinePrefix(context, libraryItem.appId),
+                onDismissRequest = {
+                    clearImportFilesRequest(appId)
+                },
+            )
+        }
+
+        if (exportFilesRequested) {
+            ExportFilesDialog(
+                visible = true,
+                gameName = libraryItem.name,
+                gameRootDir = getInstallPath(context, libraryItem)?.let { File(it) },
+                winePrefix = ModContainerResolver.getWinePrefix(context, libraryItem.appId),
+                onDismissRequest = {
+                    clearExportFilesRequest(appId)
+                },
+            )
         }
 
         if (manageModsRequested) {
