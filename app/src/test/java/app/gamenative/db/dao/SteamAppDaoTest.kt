@@ -11,8 +11,11 @@ import app.gamenative.service.SteamService.Companion.INVALID_PKG_ID
 import `in`.dragonbra.javasteam.enums.ELicenseFlags
 import `in`.dragonbra.javasteam.enums.ELicenseType
 import `in`.dragonbra.javasteam.enums.EPaymentMethod
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -204,5 +207,19 @@ class SteamAppDaoTest {
         assertEquals(false, updated.isVrSupported)
         assertEquals(1, updated.vrCategoryParseVersion)
         assertEquals(before.copy(isVrOnly = true, vrCategoryParseVersion = 1), updated)
+    }
+
+    @Test
+    fun `owned apps reload when only the VR flags change`() = runBlocking {
+        licenseDao.insertAll(listOf(makeLicense(packageId = 100, appIds = listOf(1))))
+        appDao.insert(makeApp(id = 1, packageId = 100))
+        val emissions = Channel<List<SteamApp>>(Channel.UNLIMITED)
+        val collector = launch { appDao.getAllOwnedApps().collect { emissions.send(it) } }
+
+        assertEquals(false, withTimeout(5_000) { emissions.receive() }.single().isVrOnly)
+        appDao.updateVrClassification(appId = 1, isVrOnly = true, isVrSupported = true, version = 1)
+        assertTrue(withTimeout(5_000) { emissions.receive() }.single().isVrOnly)
+
+        collector.cancel()
     }
 }

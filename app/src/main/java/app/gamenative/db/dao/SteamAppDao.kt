@@ -61,14 +61,15 @@ interface SteamAppDao {
     @Update
     suspend fun update(app: SteamApp)
 
-    // observe change count — triggers re-load without pulling all blobs into one CursorWindow
+    // observe count + VR flags — triggers re-load without pulling all blobs into one CursorWindow
     @Query(
-        "SELECT COUNT(*) FROM steam_app AS app " + OWNED_APPS_WHERE,
+        "SELECT COUNT(*) || ':' || COALESCE(SUM(app.is_vr_only), 0) || ':' || " +
+            "COALESCE(SUM(app.is_vr_supported), 0) FROM steam_app AS app " + OWNED_APPS_WHERE,
     )
-    fun _observeOwnedAppCount(
+    fun _observeOwnedAppsSignature(
         invalidPkgId: Int = INVALID_PKG_ID,
         includeExpired: Int = 0,
-    ): Flow<Int>
+    ): Flow<String>
 
     // paged data load — each page fits comfortably in a CursorWindow
     @Query(
@@ -118,8 +119,8 @@ interface SteamAppDao {
         includeExpired: Boolean = false,
     ): Flow<List<SteamApp>> {
         val includeExpiredFlag = if (includeExpired) 1 else 0
-        return _observeOwnedAppCount(invalidPkgId, includeExpiredFlag)
-            .distinctUntilChanged() // skip reload when count unchanged
+        return _observeOwnedAppsSignature(invalidPkgId, includeExpiredFlag)
+            .distinctUntilChanged() // skip reload when count and VR flags unchanged
             .flatMapLatest { // cancel stale reloads during rapid PICS inserts
                 flow { emit(_getAllOwnedAppsPaged(invalidPkgId, includeExpiredFlag)) }
             }
