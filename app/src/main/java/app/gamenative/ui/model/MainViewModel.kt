@@ -56,6 +56,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -340,7 +341,11 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             _state.map { it.loadingDialogVisible || it.showBootingSplash }
                 .distinctUntilChanged()
-                .collect { SteamService.isLaunchInProgress = it }
+                .collectLatest { active ->
+                    // The dialog hands over to the splash with a short gap; don't drop the guard in it.
+                    if (!active) delay(1_000)
+                    SteamService.isLaunchInProgress = active
+                }
         }
     }
 
