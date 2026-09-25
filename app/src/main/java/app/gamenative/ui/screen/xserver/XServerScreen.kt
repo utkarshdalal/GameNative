@@ -245,6 +245,7 @@ import java.util.Locale
 import kotlin.math.ceil
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.name
 import kotlin.math.roundToInt
 import kotlin.text.lowercase
@@ -256,6 +257,9 @@ private const val ALWAYS_REEXTRACT = true
 
 // Guard to prevent duplicate game_exited events when multiple exit triggers fire simultaneously
 private val isExiting = AtomicBoolean(false)
+
+// Bumped per launch so a previous session's leftover processes can't end the current one.
+private val guestSession = AtomicInteger(0)
 private val windowActivity = WindowActivity()
 
 private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
@@ -3946,6 +3950,7 @@ private fun setupXEnvironment(
     offline: Boolean = false,
     immersiveHooks: app.gamenative.ui.screen.xr.ImmersiveSessionHooks? = null,
 ): XEnvironment {
+    val session = guestSession.incrementAndGet()
     ProcessHelper.hardKillStaleWineProcesses()
 
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
@@ -4219,6 +4224,10 @@ private fun setupXEnvironment(
     guestProgramLauncherComponent.envVars = EnvVars().apply { putAll(envVars) }
 
     val gameTerminationCallback = Callback<Int> { status ->
+        if (session != guestSession.get()) {
+            Timber.w("Ignoring termination of a previous game session (status %d)", status)
+            return@Callback
+        }
         if (status != 0) {
             Timber.e("Guest program terminated with status: $status")
             onGameLaunchError?.invoke("Game terminated with error status: $status")
