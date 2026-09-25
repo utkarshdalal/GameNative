@@ -704,11 +704,7 @@ class MainViewModel @Inject constructor(
                 Timber.tag("Exit").i("Got game id: $gameId")
                 ActiveGameRegistry.clearIfMatches(gameId)
                 SteamService.notifyRunningProcesses()
-                try {
-                    handleExitCloudSync(context, appId, gameId)
-                } finally {
-                    SteamService.isExitInProgress = false
-                }
+                handleExitCloudSync(context, appId, gameId)
 
                 // Prompt user to save temporary container configuration if one was applied
                 if (hadTemporaryOverride) {
@@ -780,6 +776,7 @@ class MainViewModel @Inject constructor(
                     _uiEvent.send(MainUiEvent.ShowMembershipPitch(appId, "long_session"))
                 }
             } finally {
+                SteamService.isExitInProgress = false
                 onComplete?.invoke()
             }
         }
