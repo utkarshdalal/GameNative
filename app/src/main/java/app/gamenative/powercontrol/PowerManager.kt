@@ -348,14 +348,17 @@ object PowerManager {
         AdaptiveFpsCapController.stop()
         PerformanceMetricsCollector.stop()
         stopPowerControl()
-        cancelPendingPins()
         isGameStarted = false
         fpsCapApplier = null
         frameSampleStride = 1
         containerDir = null
-        pinnedGameProcessName = null
-        pinnedGamePid = null
-        pinnedGameCores = emptyList()
+        // Under the lock, so a pin run past its generation check can't record into the next session.
+        synchronized(affinityLock) {
+            cancelPendingPins()
+            pinnedGameProcessName = null
+            pinnedGamePid = null
+            pinnedGameCores = emptyList()
+        }
         ownsGameAffinity = false
     }
 
@@ -1435,21 +1438,26 @@ object PowerManager {
                             "$processName has not started yet, pin attempt $attempt of $maxRetries ($reason)"
                         )
                     } else {
-                        if (!applied && applyAffinityIfCurrent(generation, processName, pid, gameCores) == null) {
-                            return@Thread
-                        }
+                        val sent = applied || (applyAffinityIfCurrent(generation, processName, pid, gameCores) ?: return@Thread)
                         val verified = verifyGameAffinity(pid, gameCores, "PowerManager")
-                        // A newer pin run or an unpin may have taken over while this one was verifying.
-                        if (generation != gamePinGeneration) {
-                            Timber.tag("PowerManager").i("Pin run of $processName called off ($reason)")
-                            return@Thread
+                        // Check and record under the lock, so a release that lands meanwhile can't be followed by a stale record.
+                        val pinned = synchronized(affinityLock) {
+                            // A newer pin run or an unpin may have taken over while this one was verifying.
+                            if (generation != gamePinGeneration) {
+                                Timber.tag("PowerManager").i("Pin run of $processName called off ($reason)")
+                                return@Thread
+                            }
+                            // false: the kernel reports another mask, so resend on the next attempt. null: unreadable,
+                            // recorded only when the request actually left this side.
+                            (verified == true || (verified == null && sent)).also {
+                                if (it) {
+                                    pinnedGameProcessName = processName
+                                    pinnedGamePid = pid
+                                    pinnedGameCores = gameCores
+                                }
+                            }
                         }
-                        // false: the kernel reports another mask, so resend on the next attempt. null: unreadable,
-                        // the request did leave, so record it rather than retry blind.
-                        if (verified != false) {
-                            pinnedGameProcessName = processName
-                            pinnedGamePid = pid
-                            pinnedGameCores = gameCores
+                        if (pinned) {
                             Timber.tag("PowerManager").i(
                                 "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} after $attempt attempts, " +
                                     "verified=${verified == true} ($reason)"
@@ -1509,9 +1517,12 @@ object PowerManager {
         val pid = pinnedGamePid
         runAffinityJob(blocking) {
             try {
-                val success = applyAffinityIfCurrent(generation, processName, pid, coresToUnpin) ?: return@runAffinityJob
-                // Keep holding the affinity until the release actually left this side.
-                if (success) pinnedGameCores = emptyList()
+                val success = synchronized(affinityLock) {
+                    val applied = applyAffinityIfCurrent(generation, processName, pid, coresToUnpin) ?: return@runAffinityJob
+                    // Keep holding the affinity until the release actually left this side.
+                    if (applied) pinnedGameCores = emptyList()
+                    applied
+                }
                 Timber.tag("PowerManager").i(
                     "Game pinning switched off, gave $processName CPUs ${coresToUnpin.joinToString()} back (success=$success)"
                 )
