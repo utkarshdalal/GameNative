@@ -298,6 +298,8 @@ object PowerManager {
                 unpinGame(blocking = true)
                 unpinBackgroundProcesses(blocking = true)
             }
+            // With power control off nothing is held anymore, even when the release above didn't go through.
+            synchronized(affinityLock) { pinnedGameCores = emptyList() }
             stopPowerControl()
         }
     }
@@ -1224,7 +1226,7 @@ object PowerManager {
         return when (currentProfile.gamePinningMode) {
             GamePinningMode.AUTO -> gameCores(pserver)
             GamePinningMode.OFF -> emptyList()
-            GamePinningMode.MANUAL -> parseCpuList(currentProfile.manualGamePinCores).sorted()
+            GamePinningMode.MANUAL -> manualCores(pserver, currentProfile.manualGamePinCores)
         }
     }
 
@@ -1233,8 +1235,14 @@ object PowerManager {
         return when (currentProfile.gamePinningMode) {
             GamePinningMode.AUTO -> lowestCores(pserver, 2)
             GamePinningMode.OFF -> emptyList()
-            GamePinningMode.MANUAL -> parseCpuList(currentProfile.manualBackgroundPinCores).sorted()
+            GamePinningMode.MANUAL -> manualCores(pserver, currentProfile.manualBackgroundPinCores)
         }
+    }
+
+    /** A saved Manual core list cut down to the cores this device has, so a stale or edited entry never reaches a mask. */
+    private fun manualCores(pserver: PServerDriver, cpuList: String): List<Int> {
+        val known = allKnownCores(pserver).toSet()
+        return parseCpuList(cpuList).filter { it in known }.sorted()
     }
 
     /**
