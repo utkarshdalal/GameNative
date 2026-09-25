@@ -161,7 +161,6 @@ import kotlinx.coroutines.channels.BufferOverflow
 import okio.Path.Companion.toPath
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -3610,48 +3609,45 @@ class SteamService : Service(), IChallengeUrlChanged {
         // Should service auto-stop when idle (backgrounded)?
         var autoStopWhenIdle: Boolean = false
 
+        /**
+         * True when a depot we install has a newer manifest in the cached app info than the one
+         * on disk. The PICS change watcher keeps the cached app info current, so no request is made.
+         */
         suspend fun isUpdatePending(
             appId: Int,
             branch: String = "public",
         ): Boolean = withContext(Dispatchers.IO) {
-            // Don't try if there's no internet
-            if (!isConnected) return@withContext false
-
-            val steamApps = instance?._steamApps ?: return@withContext false
-
-            // ── 1. Fetch the latest app header from Steam (PICS).
-            val pics = try {
-                steamApps.picsGetProductInfo(
-                    apps = listOf(PICSRequest(id = appId)),
-                    packages = emptyList(),
-                ).await()
-            } catch (e: CancellationException) {
-                currentCoroutineContext().ensureActive()
-                Timber.w("isUpdatePending: PICS request timed out for appId=$appId")
-                return@withContext false
-            } catch (e: Exception) {
-                Timber.w(e, "isUpdatePending: PICS request failed for appId=$appId")
-                return@withContext false
-            }
-
-            val remoteAppInfo = pics.results
-                .firstOrNull()
-                ?.apps
-                ?.values
-                ?.firstOrNull()
-                ?: return@withContext false // nothing returned ⇒ treat as up-to-date
-
-            val remoteSteamApp = remoteAppInfo.keyValues.generateSteamApp()
-            val localSteamApp = getAppInfoOf(appId) ?: return@withContext true // not cached yet
-
-            // ── 2. Compare manifest IDs of the depots we actually install.
+            val appInfo = getAppInfoOf(appId) ?: return@withContext false
+            val installed = installedManifestIds(appId)
+            if (installed.isEmpty()) return@withContext false
             getDownloadableDepots(appId).keys.any { depotId ->
-                val remoteManifest = remoteSteamApp.depots[depotId]?.manifests?.get(branch)
-                val localManifest = localSteamApp.depots[depotId]?.manifests?.get(branch)
-                // If remote manifest is null, skip this depot (hack for Castle Crashers)
-                if (remoteManifest == null) return@any false
-                remoteManifest?.gid != localManifest?.gid
+                val current = appInfo.depots[depotId]?.manifests?.get(branch)?.gid ?: return@any false
+                val onDisk = installed[depotId] ?: return@any false
+                current.toULong() != onDisk
             }
+        }
+
+        /** Manifest ids on disk per depot, from the native engine's depot.config or the cached manifest files. */
+        private fun installedManifestIds(appId: Int): Map<Int, ULong> {
+            val cacheDir = File(getAppDirPath(appId), ".DepotDownloader")
+            val ids = mutableMapOf<Int, ULong>()
+            runCatching { File(cacheDir, "depot.config").readText() }.getOrNull()?.let { text ->
+                val block = text.substringAfter("\"installedManifestIDs\"", "").substringAfter('{', "").substringBefore('}')
+                Regex("\"(\\d+)\"\\s*:\\s*(\\d+)").findAll(block).forEach { match ->
+                    val depotId = match.groupValues[1].toIntOrNull() ?: return@forEach
+                    val gid = match.groupValues[2].toULongOrNull() ?: return@forEach
+                    ids[depotId] = gid
+                }
+            }
+            if (ids.isEmpty()) {
+                cacheDir.listFiles()?.forEach { file ->
+                    val match = Regex("""^(\d+)_(\d+)\.manifest$""").matchEntire(file.name) ?: return@forEach
+                    val depotId = match.groupValues[1].toIntOrNull() ?: return@forEach
+                    val gid = match.groupValues[2].toULongOrNull() ?: return@forEach
+                    ids[depotId] = gid
+                }
+            }
+            return ids
         }
 
         suspend fun checkPrivateBranchPassword(appId: Int, password: String): Map<String, ByteArray> =
