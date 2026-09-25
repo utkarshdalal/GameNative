@@ -471,7 +471,13 @@ class MainActivity : ComponentActivity() {
             isChangingConfigurations,
         )
 
-        if (SteamService.isConnected && !SteamService.isLoggedIn && !isChangingConfigurations && !SteamService.keepAlive) {
+        if (SteamService.isConnected &&
+            !SteamService.isLoggedIn &&
+            !isChangingConfigurations &&
+            !SteamService.keepAlive &&
+            !SteamService.isLaunchInProgress &&
+            !SteamService.isExitInProgress
+        ) {
             Timber.i("Stopping Steam Service")
             SteamService.stop()
         }
