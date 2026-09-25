@@ -166,11 +166,12 @@ object PowerManager {
     /**
      * True while a new game window must not get the container's CPU list re-applied over Power
      * Control's own pin: Auto pins only when it owns the affinity, Manual always overrides the list.
+     * Requires a pin that was actually applied, so a skipped or failed pin keeps the container's list.
      */
     val holdsGameAffinity: Boolean
         get() {
             val profile = currentProfile
-            if (!profile.enablePowerControl) return false
+            if (!profile.enablePowerControl || pinnedGameCores.isEmpty()) return false
             return when (profile.gamePinningMode) {
                 GamePinningMode.AUTO -> ownsGameAffinity
                 GamePinningMode.MANUAL -> parseCpuList(profile.manualGamePinCores).isNotEmpty()
