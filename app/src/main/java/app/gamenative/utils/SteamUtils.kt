@@ -957,6 +957,7 @@ object SteamUtils {
         // Update or modify localconfig.vdf
         val steam3AccountId = getSteam3AccountId()?.toString().orEmpty()
         updateOrModifyLocalConfig(imageFs, container, steamAppId.toString(), steam3AccountId)
+        writeSteamHostControllerLayout(imageFs, container, steamAppId)
 
         skipFirstTimeSteamSetup(imageFs.rootDir)
         val appDirPath = SteamService.getAppDirPath(steamAppId)
@@ -1245,7 +1246,7 @@ object SteamUtils {
                 ?: container.javaClass.getMethod("getLanguage").invoke(container) as? String)
                 ?: "english"
         }.getOrDefault("english").lowercase()
-        val useSteamInput = container.getExtra("useSteamInput", "false").toBoolean()
+        val useSteamInput = isSteamInputEnabled(container, steamAppId)
 
         // Get appInfo to check if saveFilePatterns exist (used for both user and app configs)
         val appInfo = getAppInfoOf(steamAppId)
@@ -1566,11 +1567,23 @@ object SteamUtils {
     }
 
     /**
+     * Steam Input is driven for a game when the container switch is on, or when the game ships its
+     * own Steam Input action manifest: such games hand input to Steam Input and get nothing otherwise.
+     */
+    fun isSteamInputEnabled(container: Container, appId: Int): Boolean =
+        container.getExtra("useSteamInput", "false").toBoolean() || SteamService.hasOwnSteamInputManifest(appId)
+
+    /**
      * Per-app Steam Input preference the client reads from localconfig
-     * (UserLocalConfigStore/apps/<appid>/UseSteamControllerConfig): 2 = force on, 0 = global default.
+     * (UserLocalConfigStore/apps/<appid>/UseSteamControllerConfig): 2 = force on, 0 = global default;
+     * the SteamController_*Support keys at the root are the global opt-in the client checks first.
      */
     private fun setSteamInputPreference(root: KeyValue, appId: String, container: Container) {
-        val useSteamInput = container.getExtra("useSteamInput", "false").toBoolean()
+        val useSteamInput = isSteamInputEnabled(container, appId.toInt())
+        for (key in listOf("SteamController_XBoxSupport", "SteamController_GenericGamepadSupport")) {
+            val existing = root.children.firstOrNull { it.name == key }
+            if (existing != null) existing.value = "1" else if (useSteamInput) root.children.add(KeyValue(key, "1"))
+        }
         var apps = root.children.firstOrNull { it.name == "apps" }
         if (apps == null) { apps = KeyValue("apps"); root.children.add(apps) }
         var app = apps.children.firstOrNull { it.name == appId }
@@ -1578,6 +1591,16 @@ object SteamUtils {
         val value = if (useSteamInput) "2" else "0"
         val key = app.children.firstOrNull { it.name == "UseSteamControllerConfig" }
         if (key != null) key.value = value else app.children.add(KeyValue("UseSteamControllerConfig", value))
+    }
+
+    /** The layout the headless host loads and activates for the game (Steam\steamhost_controller_<appid>.vdf). */
+    private fun writeSteamHostControllerLayout(imageFs: ImageFs, container: Container, appId: Int) {
+        val layoutFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamhost_controller_$appId.vdf")
+        if (!isSteamInputEnabled(container, appId)) { layoutFile.delete(); return }
+        val text = SteamService.resolveSteamHostControllerVdfText(appId)
+        if (text.isNullOrEmpty()) { Timber.w("No Steam Input layout available for $appId"); layoutFile.delete(); return }
+        layoutFile.parentFile?.mkdirs()
+        layoutFile.writeText(text, Charsets.UTF_8)
     }
 
     fun updateOrModifyLocalConfig(imageFs: ImageFs, container: Container, appId: String, steamUserId64: String) {
