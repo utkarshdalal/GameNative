@@ -58,7 +58,7 @@ internal fun LibraryDetailPane(
             }
             LaunchedEffect(libraryItem.recommendedGameId) {
                 game = if (libraryItem.isFeatured) {
-                    RecommendationRepository.getFeaturedGame(context)
+                    RecommendationRepository.getFeaturedGame(context, libraryItem.recommendedGameId)
                 } else {
                     GogRecommendationsRepository.getRecommendedGame(libraryItem.recommendedGameId)
                         ?: RecommendationRepository.getCurrentRecommendation(context)
