@@ -191,4 +191,18 @@ class SteamAppDaoTest {
         val apps = appDao.getAllOwnedApps().first()
         assertEquals(listOf("alpha", "Beta", "Zelda"), apps.map { it.name })
     }
+
+    @Test
+    fun `updateVrClassification changes only the VR columns`() = runBlocking {
+        appDao.insert(makeApp(id = 7, packageId = 100).copy(lastChangeNumber = 42, developer = "Dev"))
+        val before = appDao.findApp(7)!!
+
+        appDao.updateVrClassification(appId = 7, isVrOnly = true, isVrSupported = false, version = 1)
+
+        val updated = appDao.findApp(7)!!
+        assertTrue(updated.isVrOnly)
+        assertEquals(false, updated.isVrSupported)
+        assertEquals(1, updated.vrCategoryParseVersion)
+        assertEquals(before.copy(isVrOnly = true, vrCategoryParseVersion = 1), updated)
+    }
 }

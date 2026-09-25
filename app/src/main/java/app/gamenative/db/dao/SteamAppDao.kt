@@ -205,8 +205,13 @@ interface SteamAppDao {
     @Query("SELECT * FROM steam_app WHERE id IN (:appIds)")
     suspend fun findSteamAppWithAppIds(appIds: List<Int>): List<SteamApp>
 
-    // Apps cached before the VR columns existed stay at the migration default until their PICS
-    // data is reprocessed — see SteamService.backfillVrClassification.
+    // Leaves depots and the change number untouched.
+    @Query(
+        "UPDATE steam_app SET is_vr_only = :isVrOnly, is_vr_supported = :isVrSupported, " +
+            "vr_category_parse_version = :version WHERE id = :appId",
+    )
+    suspend fun updateVrClassification(appId: Int, isVrOnly: Boolean, isVrSupported: Boolean, version: Int)
+
     @Query("SELECT id FROM steam_app WHERE vr_category_parse_version < :currentVersion AND package_id != :invalidPkgId")
     suspend fun getAppIdsWithOutdatedVrCategoryParseVersion(
         currentVersion: Int,

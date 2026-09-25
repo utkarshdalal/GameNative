@@ -86,7 +86,6 @@ enum class AppFilter(
         icon = Icons.Rounded.SportsEsports,
     ),
 
-    // Steam games flagged VR in PICS (SteamApp.isVrGame). Only offered on a VR headset.
     VR(
         code = 0x2000,
         displayTextRes = R.string.app_filter_vr,

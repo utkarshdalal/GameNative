@@ -1070,7 +1070,6 @@ class KeyValueUtilsTest {
         """.trimIndent(),
     )!!.generateSteamApp()
 
-    /** category_54 is Valve's "VR Only" flag (e.g. Half-Life: Alyx). */
     @Test
     fun vrOnlyCategoryMarksAppVrOnly() {
         val app = vrApp(
@@ -1088,7 +1087,6 @@ class KeyValueUtilsTest {
         assertEquals(CURRENT_VR_CATEGORY_PARSE_VERSION, app.vrCategoryParseVersion)
     }
 
-    /** category_53 is Valve's "VR Supported" flag (e.g. Elite Dangerous). */
     @Test
     fun vrSupportedCategoryMarksAppVrSupported() {
         val app = vrApp(
@@ -1105,7 +1103,6 @@ class KeyValueUtilsTest {
         assertTrue(app.isVrGame)
     }
 
-    /** Store tag 21978 ("VR") catches games whose developer didn't set the curated categories. */
     @Test
     fun vrStoreTagMarksAppVrSupported() {
         val app = vrApp(
@@ -1140,5 +1137,18 @@ class KeyValueUtilsTest {
         assertFalse(app.isVrSupported)
         assertFalse(app.isVrGame)
         assertEquals(CURRENT_VR_CATEGORY_PARSE_VERSION, app.vrCategoryParseVersion)
+    }
+
+    @Test
+    fun vrClassificationIsNullWithoutCommonSection() {
+        val kv = KeyValue.loadFromString(
+            """
+            "appinfo"
+            {
+                "appid"     "1"
+            }
+            """.trimIndent(),
+        )!!
+        assertEquals(null, kv.vrClassification())
     }
 }

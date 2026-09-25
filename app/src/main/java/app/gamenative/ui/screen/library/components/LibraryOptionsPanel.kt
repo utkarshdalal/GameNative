@@ -266,7 +266,6 @@ fun LibraryOptionsPanel(
                                 .padding(horizontal = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            // The VR filter is only useful on a headset.
                             val context = LocalContext.current
                             val statusFilters = remember {
                                 buildList {

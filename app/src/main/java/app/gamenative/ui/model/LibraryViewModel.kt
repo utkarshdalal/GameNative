@@ -1202,7 +1202,7 @@ class LibraryViewModel @Inject constructor(
             // A Steam collection can only contain Steam apps, so when one is selected the non-Steam
             // sources can't match it — keep them out of the combined list (and their tab counts).
             // Curated lists have the same source restriction.
-            // VR classification comes from Steam PICS data only, so the VR filter hides other sources.
+            // VR flags only exist for Steam apps.
             val steamListFilterSelected = allowedSteamAppIds != null ||
                 allowedCuratedAppIds != null ||
                 currentState.appInfoSortType.contains(AppFilter.VR)

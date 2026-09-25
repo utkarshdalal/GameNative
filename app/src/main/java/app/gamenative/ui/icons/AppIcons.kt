@@ -62,8 +62,7 @@ private var _amazon: ImageVector? = null
 val Icons.Filled.CustomGame: ImageVector
     get() = Icons.Filled.FolderOpen
 
-// Material Symbols "head_mounted_device" (rounded, filled) — not in material-icons-extended.
-// Its viewBox is "0 -960 960 960", hence the group translation.
+// Material Symbols head_mounted_device; its viewBox starts at y = -960, hence the translation.
 val Icons.Filled.VrHeadset: ImageVector
     get() {
         if (_vrHeadset != null) return _vrHeadset!!
