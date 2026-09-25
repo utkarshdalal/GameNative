@@ -7,11 +7,13 @@ import app.gamenative.data.GOGCloudSavesLocation
 import app.gamenative.data.GOGCloudSavesLocationTemplate
 import app.gamenative.data.GOGGame
 import app.gamenative.data.GameSource
+import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.data.LaunchInfo
 import app.gamenative.data.LibraryItem
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
+import app.gamenative.service.download.GameDownloadService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.MarkerUtils
@@ -585,6 +587,9 @@ class GOGManager @Inject constructor(
             try {
                 val gameId = libraryItem.gameId.toString()
 
+                // Remove download from GameDownloadService
+                GameDownloadService.removeDownload(context, GameSource.GOG, gameId)
+
                 val game = getGameFromDbById(gameId)
                 val storedPath = game?.installPath?.takeIf { it.isNotBlank() }
                 val computedPath = getGameInstallPath(gameId, libraryItem.name)
@@ -600,7 +605,7 @@ class GOGManager @Inject constructor(
                 for (path in pathsToClean) {
                     val dir = File(path)
                     if (dir.exists()) {
-                        if (dir.deleteRecursively()) {
+                        if (NativeTreeDelete.deleteTreeFast(dir)) {
                             Timber.i("Successfully deleted game directory: $path")
                         } else {
                             Timber.w("Failed to delete some game files at $path")
@@ -614,7 +619,7 @@ class GOGManager @Inject constructor(
                 }
 
                 // Drop any leftover chunk cache (kept on failed downloads for resume)
-                File(context.cacheDir, "gog_chunks/$gameId").deleteRecursively()
+                NativeTreeDelete.deleteTreeFast(File(context.cacheDir, "gog_chunks/$gameId"))
 
                 if (game != null) {
                     val updatedGame = game.copy(isInstalled = false, installPath = "")

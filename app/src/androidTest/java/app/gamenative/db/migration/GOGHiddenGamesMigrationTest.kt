@@ -57,7 +57,13 @@ class GOGHiddenGamesMigrationTest {
             close()
         }
 
-        helper.runMigrationsAndValidate(TEST_DB, 27, true, ROOM_MIGRATION_V26_to_V27).use { db ->
+        helper.runMigrationsAndValidate(
+            TEST_DB,
+            28,
+            true,
+            ROOM_MIGRATION_V26_to_V27,
+            ROOM_MIGRATION_V27_to_V28,
+        ).use { db ->
             val columns = db.query("PRAGMA table_info(gog_games)").use { cursor ->
                 buildList {
                     val nameIndex = cursor.getColumnIndexOrThrow("name")

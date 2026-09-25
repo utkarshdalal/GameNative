@@ -15,6 +15,11 @@ import app.gamenative.utils.MarkerUtils
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
 import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
+import app.gamenative.R
+import app.gamenative.data.GameSource
+import app.gamenative.service.download.GameDownloadService
+import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.service.NotificationHelper
 import com.winlator.container.Container
@@ -25,6 +30,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import kotlinx.coroutines.*
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.LocaleHelper
 import timber.log.Timber
 
 /**
@@ -32,6 +38,13 @@ import timber.log.Timber
  */
 @AndroidEntryPoint
 class EpicService : Service() {
+
+    override fun attachBaseContext(newBase: Context) {
+        PrefManager.init(newBase)
+        val languageCode = PrefManager.appLanguage
+        val context = LocaleHelper.applyLanguage(newBase, languageCode)
+        super.attachBaseContext(context)
+    }
 
     companion object {
         private var instance: EpicService? = null
@@ -237,10 +250,13 @@ class EpicService : Service() {
                     return Result.failure(Exception("Game not found: $appId"))
                 }
 
+                // Remove download from GameDownloadService
+                GameDownloadService.removeDownload(context, GameSource.EPIC, appId.toString())
+
                 val path = if (game.installPath.isNotEmpty()) game.installPath else EpicConstants.getGameInstallPath(context, game.appName)
                 if (File(path).exists()) {
                     Timber.tag("Epic").i("Deleting installation folder: $path")
-                    val deleted = File(path).deleteRecursively()
+                    val deleted = NativeTreeDelete.deleteTreeFast(File(path))
                     if (deleted) {
                         Timber.tag("Epic").i("Successfully deleted installation folder")
                     } else {
@@ -251,7 +267,7 @@ class EpicService : Service() {
                 }
 
                 // Drop any leftover chunk cache (kept on failed downloads for resume)
-                EpicDownloadManager.chunkCacheDirFor(context, path).deleteRecursively()
+                NativeTreeDelete.deleteTreeFast(EpicDownloadManager.chunkCacheDirFor(context, path))
 
                 // Uninstall from database (keeps the entry but marks as not installed)
                 instance.epicManager.uninstall(appId)
@@ -402,6 +418,10 @@ class EpicService : Service() {
                 ?: Result.failure(Exception("Service not available"))
         }
 
+        suspend fun backfillInstallState(context: Context, appId: Int, installPath: String, containerLanguage: String): EpicInstallState? {
+            return getInstance()?.epicManager?.backfillInstallState(context, appId, installPath, containerLanguage)
+        }
+
         suspend fun fetchManifestSizes(context: Context, appId: Int): EpicManager.ManifestSizes {
             return getInstance()?.epicManager?.fetchManifestSizes(context, appId)
                 ?: EpicManager.ManifestSizes(installSize = 0L, downloadSize = 0L)
@@ -420,7 +440,7 @@ class EpicService : Service() {
                 return Result.success(instance.activeDownloads[appId]!!)
             }
 
-            // Create DownloadInfo before launching coroutine to avoid race condition
+            // Create DownloadInfo before claiming (avoids holding the lock during I/O)
             val downloadInfo = DownloadInfo(
                 jobCount = 1,
                 gameId = appId,
@@ -434,8 +454,22 @@ class EpicService : Service() {
             }
 
             instance.activeDownloads[appId] = downloadInfo
-            downloadInfo.setActive(true)
+            // Seed an initial status and emit the start event now — not only deep in the
+            // download manager — so a resumed screen swaps to the fresh DownloadInfo and
+            // shows a status immediately.
+            downloadInfo.updateStatusMessage(context.getString(R.string.download_preparing))
+            PluviaApp.events.emitJava(AndroidEvent.DownloadStatusChanged(appId, true))
             instance.notifierOrNull?.trackDownload(downloadInfo, game.title ?: "", NotificationHelper.NOTIFICATION_ID_EPIC)
+
+            // Register with centralized queue and auto-pause other downloads
+            GameDownloadService.registerDownload(
+                gameSource = GameSource.EPIC,
+                gameId = appId.toString(),
+                downloadInfo = downloadInfo,
+                dlcGameIds = dlcGameIds,
+                installPath = installPath,
+                containerLanguage = containerLanguage
+            )
 
             // Start download in background
             val job = instance.scope.launch {
@@ -457,6 +491,9 @@ class EpicService : Service() {
 
                     if (result.isSuccess) {
                         Timber.i("[Download] Completed successfully for game $gameId")
+
+                        // Transfer is complete - unregister from GameDownloadService
+                        GameDownloadService.unregisterDownload(context, GameSource.EPIC, appId.toString())
 
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
@@ -484,13 +521,11 @@ class EpicService : Service() {
 
                         SnackbarManager.show("Download completed successfully!")
                         downloadInfo.setProgress(1.0f)
-                        downloadInfo.setActive(false)
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
-                        downloadInfo.setProgress(-1.0f)
-                        downloadInfo.setActive(false)
 
+                        downloadInfo.setProgress(1.0f)
                         SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
                     }
                 } catch (e: CancellationException) {
@@ -504,12 +539,10 @@ class EpicService : Service() {
                     downloadInfo.updateStatusMessage(null)
                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, false))
                     downloadInfo.setProgress(-1.0f)
-                    downloadInfo.setActive(false)
-
                     SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
                 } finally {
                     instance.activeDownloads.remove(appId)
-                    Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
+                    Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}")
                 }
             }
             downloadInfo.setDownloadJob(job)

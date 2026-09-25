@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.Volatile
 
-data class DownloadInfo(
+class DownloadInfo(
     val jobCount: Int = 1,
     val gameId: Int,
     var downloadingAppIds: CopyOnWriteArrayList<Int>,
@@ -25,6 +25,7 @@ data class DownloadInfo(
     private var downloadJob: Job? = null
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val downloadProgressListeners = CopyOnWriteArrayList<(Float) -> Unit>()
+
     private val progresses: Array<Float> = Array(jobCount) { 0f }
 
     // Reservation-based persistence scheduler
@@ -45,6 +46,7 @@ data class DownloadInfo(
     private val speedSamples = CopyOnWriteArrayList<SpeedSample>()
     private var emaSpeedBytesPerSec: Double = 0.0
     private var hasEmaSpeed: Boolean = false
+    @Volatile
     private var isActive: Boolean = true
     @Volatile
     private var currentStatusMessage: String = ""
@@ -52,10 +54,6 @@ data class DownloadInfo(
 
     fun cancel() {
         cancel("Cancelled by user")
-    }
-
-    fun failedToDownload() {
-        cancel("Failed to download")
     }
 
     fun cancel(message: String) {
@@ -282,8 +280,9 @@ data class DownloadInfo(
     }
 
     fun emitProgressChange() {
+        val progress = getProgress()
         for (listener in downloadProgressListeners) {
-            listener(getProgress())
+            listener(progress)
         }
     }
 

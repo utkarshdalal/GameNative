@@ -28,18 +28,49 @@ internal val ROOM_MIGRATION_V24_to_V25 = object : Migration(24, 25) {
 }
 
 /**
+ * Reconciles the two version-26 schemas that were published by parallel workstreams.
+ * One schema added GOG's hidden flag while the other added per-file placement names.
+ */
+internal val ROOM_MIGRATION_V26_to_V27 = object : Migration(26, 27) {
+    override fun migrate(connection: SQLiteConnection) {
+        if (!connection.hasColumn("gog_games", "hidden")) {
+            connection.execSQL(
+                "ALTER TABLE `gog_games` ADD COLUMN `hidden` INTEGER NOT NULL DEFAULT 0",
+            )
+        }
+        if (!connection.hasColumn("mod_placement_recipe", "target_file_name")) {
+            connection.execSQL(
+                "ALTER TABLE `mod_placement_recipe` ADD COLUMN `target_file_name` TEXT NOT NULL DEFAULT ''",
+            )
+        }
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_mod_install_app_id_source_archive_sha256` " +
+                "ON `mod_install` (`app_id`, `source`, `archive_sha256`)",
+        )
+    }
+}
+
+private fun SQLiteConnection.hasColumn(tableName: String, columnName: String): Boolean {
+    prepare("PRAGMA table_info(`$tableName`)").use { statement ->
+        while (statement.step()) {
+            if (statement.getText(1) == columnName) return true
+        }
+    }
+    return false
+}
+
+/**
  * Splits the legacy aggregate GOG hidden flag into the two independent source flags.
  *
  * Room cannot express this change as an add/drop-column migration because the old aggregate
  * hidden column must be removed. Rebuilding the table also keeps this migration valid on SQLite
  * versions where dropping a column is unavailable.
  */
-internal val ROOM_MIGRATION_V26_to_V27 = object : Migration(26, 27) {
-    /** Migrates the v26 schema to v27 while splitting legacy hidden state into source-specific flags. */
+internal val ROOM_MIGRATION_V27_to_V28 = object : Migration(27, 28) {
     override fun migrate(connection: SQLiteConnection) {
         connection.execSQL(
             """
-            CREATE TABLE `gog_games_v27` (
+            CREATE TABLE `gog_games_v28` (
                 `id` TEXT NOT NULL,
                 `title` TEXT NOT NULL,
                 `slug` TEXT NOT NULL,
@@ -69,7 +100,7 @@ internal val ROOM_MIGRATION_V26_to_V27 = object : Migration(26, 27) {
         )
         connection.execSQL(
             """
-            INSERT INTO `gog_games_v27` (
+            INSERT INTO `gog_games_v28` (
                 `id`, `title`, `slug`, `download_size`, `install_size`, `is_installed`,
                 `install_path`, `image_url`, `icon_url`, `background_url`, `vertical_cover_url`,
                 `description`, `release_date`, `developer`, `publisher`, `genres`, `languages`,
@@ -84,7 +115,7 @@ internal val ROOM_MIGRATION_V26_to_V27 = object : Migration(26, 27) {
             """.trimIndent(),
         )
         connection.execSQL("DROP TABLE `gog_games`")
-        connection.execSQL("ALTER TABLE `gog_games_v27` RENAME TO `gog_games`")
+        connection.execSQL("ALTER TABLE `gog_games_v28` RENAME TO `gog_games`")
     }
 }
 

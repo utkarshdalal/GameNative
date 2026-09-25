@@ -371,6 +371,28 @@ SOFTWARE.
 
 ---
 
+## LSFG native pipeline (libvulkan_renderer.so)
+
+**Component:** `app/src/main/cpp/lsfg/`
+**Derived from:** lsfg-vk (PancakeTAS and contributors), the Eden Emulator LSFG port
+(Camille LaVey), and WinNative's Winlator adaptation
+**License:** GPL-3.0-or-later (same as this application)
+
+The frame-generation compute passes are built from shaders extracted at runtime from the
+user's own `Lossless.dll` (Lossless Scaling on Steam). The DLL and its shaders are not
+distributed with GameNative.
+
+## dxbc (DXVK shader translator)
+
+**Library:** dxbc, DXVK's DXBC-to-SPIR-V compiler extracted as a standalone library
+**Authors:** Philip Rebohle and DXVK contributors; extraction by PancakeTAS
+**Source:** https://github.com/PancakeTAS/dxbc (upstream https://github.com/doitsujin/dxvk)
+**License:** zlib/libpng
+
+Built from the `thirdparty/dxbc` submodule inside `app/src/main/cpp/lsfg-vk-android` into
+`libvulkan_renderer.so` to translate the `Lossless.dll` compute shaders to SPIR-V.
+The zlib licence text is in `LICENSE.md` of that submodule.
+
 ## OpenAL Soft
 
 **Library:** OpenAL Soft v1.25.1
