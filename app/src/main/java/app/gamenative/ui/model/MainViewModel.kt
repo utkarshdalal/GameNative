@@ -17,6 +17,7 @@ import app.gamenative.db.dao.LibraryPlayHistoryDao
 import app.gamenative.di.IAppTheme
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
+import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
@@ -24,8 +25,6 @@ import app.gamenative.ui.enums.Orientation
 import java.util.EnumSet
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
-import app.gamenative.utils.MarkerUtils
-import app.gamenative.enums.Marker
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicService
@@ -39,6 +38,7 @@ import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateInfo
 import app.gamenative.utils.WineProcessSnapshotHelper

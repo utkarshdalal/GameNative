@@ -234,7 +234,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
-import kotlin.concurrent.thread
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -245,6 +244,7 @@ import java.util.Arrays
 import java.util.Locale
 import kotlin.math.ceil
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
 import kotlin.io.path.name
 import kotlin.math.roundToInt
 import kotlin.text.lowercase
@@ -3910,7 +3910,6 @@ private fun runSteamHostCegPass(
     }
 }
 
-/** Splash line for the CEG pass, from steamhost's progress file "<state> <jobs done> <jobs> <bytes> <total> <ms>". */
 private fun cegSplashText(progressFile: File, startedAt: Long): String {
     val elapsed = (System.currentTimeMillis() - startedAt) / 1000
     val fields = runCatching { progressFile.readText().trim().split(' ') }.getOrNull()

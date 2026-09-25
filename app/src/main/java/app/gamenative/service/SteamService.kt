@@ -56,11 +56,11 @@ import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.utils.ContainerUtils
+import app.gamenative.utils.DepotManifestFiles
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.LicenseSerializer
 import app.gamenative.utils.LocaleHelper
 import app.gamenative.utils.LsfgVkManager
-import app.gamenative.utils.DepotManifestFiles
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
@@ -169,7 +169,6 @@ import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.future.await
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -178,6 +177,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import app.gamenative.data.DownloadingAppInfo
 import app.gamenative.data.SteamUnlockedBranch
@@ -1397,10 +1397,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        /**
-         * Rewrites cached depot manifests whose filenames are still encrypted with the plain
-         * names, fetching each depot key from Steam. Returns true when any manifest changed.
-         */
         suspend fun decryptDepotManifests(appId: Int): Boolean = withContext(Dispatchers.IO) {
             val appDirPath = getAppDirPath(appId)
             val installedBranch = getInstalledApp(appId)?.branch ?: "public"
@@ -3609,10 +3605,6 @@ class SteamService : Service(), IChallengeUrlChanged {
         // Should service auto-stop when idle (backgrounded)?
         var autoStopWhenIdle: Boolean = false
 
-        /**
-         * True when a depot we install has a newer manifest in the cached app info than the one
-         * on disk. The PICS change watcher keeps the cached app info current, so no request is made.
-         */
         suspend fun isUpdatePending(
             appId: Int,
             branch: String = "public",
@@ -3627,7 +3619,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        /** Manifest ids on disk per depot, from the native engine's depot.config or the cached manifest files. */
         private fun installedManifestIds(appId: Int): Map<Int, ULong> {
             val cacheDir = File(getAppDirPath(appId), ".DepotDownloader")
             val ids = mutableMapOf<Int, ULong>()
