@@ -12,7 +12,12 @@ on:
 
 jobs:
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [Legacy, Modern]
     runs-on: ubuntu-latest
+    name: build (${{ matrix.variant }})
 
     steps:
       - name: Checking out GameNative
@@ -40,9 +45,40 @@ jobs:
         uses: gradle/actions/wrapper-validation@v4
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Run unit tests (legacy)
+      - name: Run unit tests (${{ matrix.variant }})
         timeout-minutes: 30
-        run: ./gradlew :app:testLegacyDebugUnitTest
-      - name: Run unit tests (modern)
-        timeout-minutes: 30
-        run: ./gradlew :app:testModernDebugUnitTest
+        run: |
+          : > gradle.log
+          tail -n +1 -F gradle.log &
+          tail_pid=$!
+          ./gradlew :app:test${{ matrix.variant }}DebugUnitTest > gradle.log 2>&1 &
+          gradle_pid=$!
+          last_size=0
+          stalled_for=0
+          while kill -0 "$gradle_pid" 2>/dev/null; do
+            sleep 15
+            size=$(stat -c %s gradle.log)
+            if [ "$size" -eq "$last_size" ]; then
+              stalled_for=$((stalled_for + 15))
+            else
+              stalled_for=0
+              last_size=$size
+            fi
+            if [ "$stalled_for" -ge 600 ]; then
+              echo "::error::No Gradle output for 10 minutes, dumping test JVM threads"
+              for pid in $(pgrep -f 'Gradle Test Executor'); do
+                echo "===== jstack $pid ====="
+                jstack "$pid" || true
+              done
+              pkill -f 'Gradle Test Executor' || true
+              kill "$gradle_pid" || true
+              sleep 2
+              kill "$tail_pid" || true
+              exit 1
+            fi
+          done
+          wait "$gradle_pid"
+          status=$?
+          sleep 2
+          kill "$tail_pid" || true
+          exit $status
