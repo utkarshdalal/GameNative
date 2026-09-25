@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gamenative.PrefManager
+import app.gamenative.data.FeaturedItem
+import app.gamenative.data.RecommendationRepository
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
@@ -48,9 +50,11 @@ fun RecommendedTabPane(
     onItemCountChanged: (Int) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val featured by RecommendationRepository.featuredList.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.loadIfNeeded()
+        PrefManager.recommendedTabSeenDay = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
         if (PrefManager.usageAnalyticsEnabled) {
             PostHog.capture(
                 event = "recommendation_tab_opened",
@@ -59,8 +63,9 @@ fun RecommendedTabPane(
         }
     }
 
-    val items = remember(state.cards) {
-        state.cards.mapIndexed { index, card -> card.toLibraryItem(index) }
+    val items = remember(state.cards, featured) {
+        val campaigns = featured.mapIndexed { index, item -> item.toLibraryItem(index) }
+        campaigns + state.cards.mapIndexed { index, card -> card.toLibraryItem(campaigns.size + index) }
     }
 
     LaunchedEffect(items.size) {
@@ -84,13 +89,14 @@ fun RecommendedTabPane(
     }
     DisposableEffect(Unit) {
         onDispose {
-            if (PrefManager.usageAnalyticsEnabled && seenIndices.isNotEmpty()) {
-                val gameIds = seenIndices.sorted().mapNotNull { currentCards.getOrNull(it)?.productId }
+            val seenRanks = seenIndices.map { it - featured.size }.filter { it >= 0 }.sorted()
+            if (PrefManager.usageAnalyticsEnabled && seenRanks.isNotEmpty()) {
+                val gameIds = seenRanks.mapNotNull { currentCards.getOrNull(it)?.productId }
                 PostHog.capture(
                     event = "recommendation_tab_viewed",
                     properties = mapOf(
-                        "impressed_count" to seenIndices.size,
-                        "max_rank" to (seenIndices.maxOrNull() ?: -1),
+                        "impressed_count" to seenRanks.size,
+                        "max_rank" to (seenRanks.lastOrNull() ?: -1),
                         "game_ids" to gameIds,
                     ),
                 )
@@ -155,6 +161,21 @@ fun RecommendedTabPane(
         }
     }
 }
+
+private fun FeaturedItem.toLibraryItem(index: Int): LibraryItem = LibraryItem(
+    index = index,
+    appId = "FEATURED_$campaignId",
+    name = title,
+    heroImageUrl = heroImageUrl,
+    headerImageUrl = heroImageUrl,
+    capsuleImageUrl = capsuleImageUrl ?: heroImageUrl,
+    iconHash = iconUrl ?: capsuleImageUrl ?: heroImageUrl,
+    gameSource = GameSource.STEAM,
+    isRecommended = true,
+    isFeatured = true,
+    recommendedGameId = campaignId,
+    recSource = "tab",
+)
 
 private fun GogRecCard.toLibraryItem(index: Int): LibraryItem = LibraryItem(
     index = index,

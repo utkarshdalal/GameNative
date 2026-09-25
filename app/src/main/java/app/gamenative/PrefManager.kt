@@ -1373,6 +1373,13 @@ object PrefManager {
         }
 
     // Day seed when the user last dismissed the frosted rec teaser ("Not now")
+    private val RECOMMENDED_TAB_SEEN_DAY = longPreferencesKey("recommended_tab_seen_day")
+    var recommendedTabSeenDay: Long
+        get() = getPref(RECOMMENDED_TAB_SEEN_DAY, 0L)
+        set(value) {
+            setPref(RECOMMENDED_TAB_SEEN_DAY, value)
+        }
+
     private val REC_TEASER_DISMISSED_DAY = longPreferencesKey("rec_teaser_dismissed_day")
     var recTeaserDismissedDay: Long
         get() = getPref(REC_TEASER_DISMISSED_DAY, 0L)
