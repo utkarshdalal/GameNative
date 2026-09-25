@@ -2618,9 +2618,8 @@
     <string name="texture_pack_dont_do_for_game">Ne plus le faire pour ce jeu</string>
     <string name="texture_pack_play_now">Jouer maintenant</string>
     <string name="texture_pack_game_setting_title">Pack de textures serveur pour ce jeu</string>
-    <string name="texture_pack_game_setting_subtitle">Fonctionne uniquement avec le pilote graphique wrapper-gamenative et le décodage BCn logiciel.</string>
+    <string name="texture_pack_game_setting_subtitle">Nécessite %1$s réglé sur wrapper-gamenative. %2$s est traité comme logiciel tant que ceci est activé.</string>
     <string name="texture_pack_game_setting_needs_driver">Indisponible : réglez %1$s sur wrapper-gamenative.</string>
-    <string name="texture_pack_game_setting_needs_software">Indisponible : réglez %1$s sur software.</string>
     <string name="texture_pack_game_setting_needs_bcn">Indisponible : réglez %1$s sur une autre valeur que none.</string>
     <string name="settings_texture_pack_title">Packs de textures serveur</string>
     <string name="settings_texture_pack_subtitle">Utilise des textures haute qualité préparées sur les GPU autres qu\'Adreno/Xclipse. Améliore la qualité d\'image tout en réduisant l\'utilisation de la RAM par le jeu et la chauffe.</string>

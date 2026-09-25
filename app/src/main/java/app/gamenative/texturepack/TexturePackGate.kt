@@ -126,14 +126,13 @@ object TexturePackGate {
     fun syncEnabled(context: Context): Boolean =
         PrefManager.texturePackEnabled && needsTexturePack(context)
 
-    fun compatible(driver: String?, bcnEmulation: String?, bcnEmulationType: String?): Boolean =
+    fun compatible(driver: String?, bcnEmulation: String?): Boolean =
         driver.equals(COMPATIBLE_DRIVER, ignoreCase = true) &&
-            !bcnEmulation.equals("none", ignoreCase = true) &&
-            !bcnEmulationType.equals("compute", ignoreCase = true)
+            !bcnEmulation.equals("none", ignoreCase = true)
 
     fun containerCompatible(container: Container): Boolean {
         val config = KeyValueSet(container.graphicsDriverConfig)
-        return compatible(container.graphicsDriver, config.get("bcnEmulation"), config.get("bcnEmulationType"))
+        return compatible(container.graphicsDriver, config.get("bcnEmulation"))
     }
 
     fun containerCompatible(context: Context, appId: String): Boolean = try {

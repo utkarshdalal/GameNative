@@ -2632,9 +2632,8 @@
     <string name="texture_pack_dont_do_for_game">此游戏不再执行此操作</string>
     <string name="texture_pack_play_now">立即游玩</string>
     <string name="texture_pack_game_setting_title">为此游戏使用服务器端纹理包</string>
-    <string name="texture_pack_game_setting_subtitle">仅适用于 wrapper-gamenative 图形驱动程序和软件 BCn 解码。</string>
+    <string name="texture_pack_game_setting_subtitle">需要将 %1$s 设为 wrapper-gamenative。开启期间，%2$s 按 software 处理。</string>
     <string name="texture_pack_game_setting_needs_driver">不可用：请将“%1$s”设为 wrapper-gamenative。</string>
-    <string name="texture_pack_game_setting_needs_software">不可用：请将“%1$s”设为 software。</string>
     <string name="texture_pack_game_setting_needs_bcn">不可用：请将“%1$s”设为 none 以外的任意值。</string>
     <string name="settings_texture_pack_title">服务器端纹理包</string>
     <string name="settings_texture_pack_subtitle">在非 Adreno/Xclipse GPU 上使用预先准备的高质量纹理。提升画质，同时降低游戏内存占用和发热。</string>

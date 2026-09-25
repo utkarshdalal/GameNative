@@ -2488,9 +2488,8 @@
     <string name="texture_pack_dont_do_for_game">Gør det ikke for dette spil</string>
     <string name="texture_pack_play_now">Spil nu</string>
     <string name="texture_pack_game_setting_title">Serverbaseret teksturpakke til dette spil</string>
-    <string name="texture_pack_game_setting_subtitle">Virker kun med grafikdriveren wrapper-gamenative og software-BCn-afkodning.</string>
+    <string name="texture_pack_game_setting_subtitle">Kræver, at %1$s er sat til wrapper-gamenative. %2$s behandles som software, mens dette er slået til.</string>
     <string name="texture_pack_game_setting_needs_driver">Ikke tilgængelig: sæt %1$s til wrapper-gamenative.</string>
-    <string name="texture_pack_game_setting_needs_software">Ikke tilgængelig: sæt %1$s til software.</string>
     <string name="texture_pack_game_setting_needs_bcn">Ikke tilgængelig: sæt %1$s til en anden værdi end none.</string>
     <string name="settings_texture_pack_title">Serverbaserede teksturpakker</string>
     <string name="settings_texture_pack_subtitle">Brug forberedte teksturer i høj kvalitet på GPU\'er, der ikke er Adreno/Xclipse. Forbedrer billedkvaliteten og reducerer samtidig spillets RAM-forbrug og varme.</string>

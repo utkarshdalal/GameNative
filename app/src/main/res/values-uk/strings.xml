@@ -2620,9 +2620,8 @@
     <string name="texture_pack_dont_do_for_game">Більше не робити для цієї гри</string>
     <string name="texture_pack_play_now">Грати зараз</string>
     <string name="texture_pack_game_setting_title">Серверний пакет текстур для цієї гри</string>
-    <string name="texture_pack_game_setting_subtitle">Працює лише з графічним драйвером wrapper-gamenative і програмним декодуванням BCn.</string>
+    <string name="texture_pack_game_setting_subtitle">Потрібно встановити %1$s = wrapper-gamenative. Поки цю опцію ввімкнено, %2$s вважається програмним (software).</string>
     <string name="texture_pack_game_setting_needs_driver">Недоступно: встановіть для параметра «%1$s» значення wrapper-gamenative.</string>
-    <string name="texture_pack_game_setting_needs_software">Недоступно: встановіть для параметра «%1$s» значення software.</string>
     <string name="texture_pack_game_setting_needs_bcn">Недоступно: встановіть для параметра «%1$s» будь-яке значення, крім none.</string>
     <string name="settings_texture_pack_title">Серверні пакети текстур</string>
     <string name="settings_texture_pack_subtitle">Використовує підготовлені високоякісні текстури на GPU, відмінних від Adreno/Xclipse. Підвищує якість зображення, водночас зменшуючи використання ОЗП грою та нагрівання.</string>

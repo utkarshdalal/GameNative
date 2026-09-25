@@ -2612,9 +2612,8 @@
     <string name="texture_pack_dont_do_for_game">이 게임에서는 다시 하지 않기</string>
     <string name="texture_pack_play_now">지금 플레이</string>
     <string name="texture_pack_game_setting_title">이 게임에 서버 텍스처 팩 사용</string>
-    <string name="texture_pack_game_setting_subtitle">wrapper-gamenative 그래픽 드라이버와 소프트웨어 BCn 디코딩에서만 작동합니다.</string>
+    <string name="texture_pack_game_setting_subtitle">%1$s을(를) wrapper-gamenative로 설정해야 합니다. 켜져 있는 동안 %2$s은(는) 소프트웨어로 처리됩니다.</string>
     <string name="texture_pack_game_setting_needs_driver">사용 불가: %1$s을(를) wrapper-gamenative로 설정하세요.</string>
-    <string name="texture_pack_game_setting_needs_software">사용 불가: %1$s을(를) software로 설정하세요.</string>
     <string name="texture_pack_game_setting_needs_bcn">사용 불가: %1$s을(를) none 이외의 값으로 설정하세요.</string>
     <string name="settings_texture_pack_title">서버 텍스처 팩</string>
     <string name="settings_texture_pack_subtitle">Adreno/Xclipse가 아닌 GPU에서 미리 준비된 고품질 텍스처를 사용합니다. 화질을 높이면서 게임의 RAM 사용량과 발열을 줄입니다.</string>

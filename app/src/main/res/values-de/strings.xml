@@ -2558,9 +2558,8 @@
     <string name="texture_pack_dont_do_for_game">Für dieses Spiel nicht mehr machen</string>
     <string name="texture_pack_play_now">Jetzt spielen</string>
     <string name="texture_pack_game_setting_title">Serverseitiges Texturpaket für dieses Spiel</string>
-    <string name="texture_pack_game_setting_subtitle">Funktioniert nur mit dem Grafiktreiber wrapper-gamenative und BCn-Dekodierung per Software.</string>
+    <string name="texture_pack_game_setting_subtitle">Erfordert %1$s = wrapper-gamenative. %2$s wird als Software behandelt, solange dies aktiv ist.</string>
     <string name="texture_pack_game_setting_needs_driver">Nicht verfügbar: %1$s auf wrapper-gamenative stellen.</string>
-    <string name="texture_pack_game_setting_needs_software">Nicht verfügbar: %1$s auf software stellen.</string>
     <string name="texture_pack_game_setting_needs_bcn">Nicht verfügbar: %1$s auf einen anderen Wert als none stellen.</string>
     <string name="settings_texture_pack_title">Serverseitige Texturpakete</string>
     <string name="settings_texture_pack_subtitle">Verwendet vorbereitete hochwertige Texturen auf GPUs, die nicht von Adreno/Xclipse sind. Verbessert die Bildqualität und senkt zugleich den RAM-Verbrauch des Spiels und die Wärmeentwicklung.</string>

@@ -2571,9 +2571,8 @@
     <string name="texture_pack_dont_do_for_game">このゲームでは今後行わない</string>
     <string name="texture_pack_play_now">今すぐプレイ</string>
     <string name="texture_pack_game_setting_title">このゲームでサーバー側テクスチャパックを使用</string>
-    <string name="texture_pack_game_setting_subtitle">wrapper-gamenative グラフィックドライバーとソフトウェア BCn デコードでのみ動作します。</string>
+    <string name="texture_pack_game_setting_subtitle">%1$s を wrapper-gamenative に設定する必要があります。有効な間は %2$s をソフトウェアとして扱います。</string>
     <string name="texture_pack_game_setting_needs_driver">利用不可: %1$s を wrapper-gamenative に設定してください。</string>
-    <string name="texture_pack_game_setting_needs_software">利用不可: %1$s を software に設定してください。</string>
     <string name="texture_pack_game_setting_needs_bcn">利用不可: %1$s を none 以外に設定してください。</string>
     <string name="settings_texture_pack_title">サーバー側テクスチャパック</string>
     <string name="settings_texture_pack_subtitle">Adreno/Xclipse 以外の GPU で、準備済みの高品質テクスチャを使用します。画質を向上させつつ、ゲームの RAM 使用量と発熱を抑えます。</string>

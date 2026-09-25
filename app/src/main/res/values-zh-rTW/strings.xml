@@ -2623,9 +2623,8 @@
     <string name="texture_pack_dont_do_for_game">此遊戲不再執行此操作</string>
     <string name="texture_pack_play_now">立即遊玩</string>
     <string name="texture_pack_game_setting_title">為此遊戲使用伺服器端紋理包</string>
-    <string name="texture_pack_game_setting_subtitle">僅適用於 wrapper-gamenative 圖形驅動程式和軟體 BCn 解碼。</string>
+    <string name="texture_pack_game_setting_subtitle">需要將 %1$s 設為 wrapper-gamenative。開啟期間，%2$s 會視為 software。</string>
     <string name="texture_pack_game_setting_needs_driver">無法使用：請將「%1$s」設為 wrapper-gamenative。</string>
-    <string name="texture_pack_game_setting_needs_software">無法使用：請將「%1$s」設為 software。</string>
     <string name="texture_pack_game_setting_needs_bcn">無法使用：請將「%1$s」設為 none 以外的任何值。</string>
     <string name="settings_texture_pack_title">伺服器端紋理包</string>
     <string name="settings_texture_pack_subtitle">在非 Adreno/Xclipse GPU 上使用預先準備的高品質紋理。提升畫質，同時降低遊戲記憶體用量與發熱。</string>

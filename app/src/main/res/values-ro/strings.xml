@@ -2626,9 +2626,8 @@
     <string name="texture_pack_dont_do_for_game">Nu mai face asta pentru acest joc</string>
     <string name="texture_pack_play_now">Joacă acum</string>
     <string name="texture_pack_game_setting_title">Pachet de texturi de pe server pentru acest joc</string>
-    <string name="texture_pack_game_setting_subtitle">Funcționează doar cu driverul grafic wrapper-gamenative și decodarea BCn software.</string>
+    <string name="texture_pack_game_setting_subtitle">Necesită %1$s setat la wrapper-gamenative. %2$s este tratat ca software cât timp opțiunea este activă.</string>
     <string name="texture_pack_game_setting_needs_driver">Indisponibil: setează %1$s la wrapper-gamenative.</string>
-    <string name="texture_pack_game_setting_needs_software">Indisponibil: setează %1$s la software.</string>
     <string name="texture_pack_game_setting_needs_bcn">Indisponibil: setează %1$s la orice valoare în afară de none.</string>
     <string name="settings_texture_pack_title">Pachete de texturi de pe server</string>
     <string name="settings_texture_pack_subtitle">Folosește texturi de înaltă calitate pregătite pe GPU-urile care nu sunt Adreno/Xclipse. Îmbunătățește calitatea imaginii, reducând totodată consumul de RAM al jocului și încălzirea.</string>

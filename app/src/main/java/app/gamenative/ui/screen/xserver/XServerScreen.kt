@@ -6153,7 +6153,7 @@ private suspend fun extractGraphicsDriverFiles(
         val bcnEmulation = graphicsDriverConfig.get("bcnEmulation")
         val needsTexturePack = app.gamenative.texturepack.TexturePackGate.needsTexturePack(context)
         val texturePackSync = app.gamenative.texturepack.TexturePackGate.syncEnabled(context, container.id)
-        val bcnEmulationType = graphicsDriverConfig.get("bcnEmulationType")
+        val bcnEmulationType = if (texturePackSync) "software" else graphicsDriverConfig.get("bcnEmulationType")
         when (bcnEmulation) {
             "auto" -> {
                 if (bcnEmulationType.equals("compute") && !excludeBcnCompute) {

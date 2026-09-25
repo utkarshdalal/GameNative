@@ -2550,9 +2550,8 @@ https://gamenative.app
     <string name="texture_pack_dont_do_for_game">Больше не делать для этой игры</string>
     <string name="texture_pack_play_now">Играть сейчас</string>
     <string name="texture_pack_game_setting_title">Серверный пакет текстур для этой игры</string>
-    <string name="texture_pack_game_setting_subtitle">Работает только с графическим драйвером wrapper-gamenative и программным декодированием BCn.</string>
+    <string name="texture_pack_game_setting_subtitle">Требуется %1$s = wrapper-gamenative. Пока эта опция включена, %2$s считается программным (software).</string>
     <string name="texture_pack_game_setting_needs_driver">Недоступно: установите для параметра «%1$s» значение wrapper-gamenative.</string>
-    <string name="texture_pack_game_setting_needs_software">Недоступно: установите для параметра «%1$s» значение software.</string>
     <string name="texture_pack_game_setting_needs_bcn">Недоступно: установите для параметра «%1$s» любое значение, кроме none.</string>
     <string name="settings_texture_pack_title">Серверные пакеты текстур</string>
     <string name="settings_texture_pack_subtitle">Использует подготовленные высококачественные текстуры на GPU, отличных от Adreno/Xclipse. Повышает качество изображения, одновременно снижая расход ОЗУ игрой и нагрев.</string>
