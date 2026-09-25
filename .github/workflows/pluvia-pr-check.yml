@@ -48,6 +48,9 @@ jobs:
       - name: Run unit tests (${{ matrix.variant }})
         timeout-minutes: 30
         run: |
+          : > gradle.log
+          tail -n +1 -F gradle.log &
+          tail_pid=$!
           ./gradlew :app:test${{ matrix.variant }}DebugUnitTest > gradle.log 2>&1 &
           gradle_pid=$!
           last_size=0
@@ -69,11 +72,13 @@ jobs:
               done
               pkill -f 'Gradle Test Executor' || true
               kill "$gradle_pid" || true
-              cat gradle.log
+              sleep 2
+              kill "$tail_pid" || true
               exit 1
             fi
           done
           wait "$gradle_pid"
           status=$?
-          cat gradle.log
+          sleep 2
+          kill "$tail_pid" || true
           exit $status
