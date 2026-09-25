@@ -161,7 +161,7 @@ private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
 private var steamUpdateDeferred: CompletableDeferred<Boolean>? = null
 
 /** Valve Windows client tree (build 2026-01-29) + headless steam.exe for Real Steam mode; see extractSteamFiles. */
-const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20260922-2.tzst"
+const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20260924.2.tzst"
 
 private fun NavHostController.navigateFromLoginIfNeeded(
     targetRoute: String,
@@ -2241,6 +2241,7 @@ fun preLaunchApp(
                     setLoadingMessage(context.getString(R.string.rockstar_runtime_installing))
                     withContext(Dispatchers.IO) { RockstarRuntime.install(context, installer, prefixDriveC) { setLoadingProgress(it) } }
                 }
+                withContext(Dispatchers.IO) { RockstarRuntime.ensureX86(context, RockstarRuntime.installer(rockstarGameDir), prefixDriveC) { setLoadingProgress(it) } }
                 withContext(Dispatchers.IO) {
                     check(RockstarLaunchSupport.placeToken(context, rockstarGameDir) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir)) {
                         "Could not place Rockstar sign-in credentials in the game directory"
