@@ -56,7 +56,6 @@ import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.utils.ContainerUtils
-import app.gamenative.utils.DepotManifestFiles
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.LicenseSerializer
 import app.gamenative.utils.LocaleHelper
@@ -177,7 +176,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import app.gamenative.data.DownloadingAppInfo
 import app.gamenative.data.SteamUnlockedBranch
@@ -1395,44 +1393,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.e(e, "requestFreeLicense($appId) failed")
                 false
             }
-        }
-
-        suspend fun decryptDepotManifests(appId: Int): Boolean = withContext(Dispatchers.IO) {
-            val appDirPath = getAppDirPath(appId)
-            val installedBranch = getInstalledApp(appId)?.branch ?: "public"
-            var changed = false
-            for ((depotId, depot) in getDownloadableDepots(appId)) {
-                val gid = (depot.manifests[installedBranch]
-                    ?: depot.manifests["public"]
-                    ?: depot.manifests.values.firstOrNull())?.gid ?: continue
-                val file = DepotManifestFiles.manifestFile(appDirPath, depotId, gid)
-                if (!DepotManifestFiles.hasEncryptedFilenames(file)) continue
-                val steamApps = instance?._steamApps
-                if (steamApps == null) {
-                    Timber.w("Manifest ${file.name} has encrypted filenames but Steam is not connected")
-                    continue
-                }
-                val owningAppId = when {
-                    depot.dlcAppId != INVALID_APP_ID -> depot.dlcAppId
-                    depot.depotFromApp != INVALID_APP_ID -> depot.depotFromApp
-                    else -> appId
-                }
-                val key = runCatching {
-                    withTimeoutOrNull(15_000) {
-                        var cb = steamApps.getDepotDecryptionKey(depotId, owningAppId).toFuture().await()
-                        if ((cb.result != EResult.OK || cb.depotKey.size != 32) && owningAppId != appId) {
-                            cb = steamApps.getDepotDecryptionKey(depotId, appId).toFuture().await()
-                        }
-                        cb.depotKey.takeIf { cb.result == EResult.OK && it.size == 32 }
-                    }
-                }.getOrNull()
-                if (key == null) {
-                    Timber.w("No depot key for $depotId, leaving ${file.name} encrypted")
-                    continue
-                }
-                if (DepotManifestFiles.decryptFilenames(file, key)) changed = true
-            }
-            changed
         }
 
         suspend fun getOwnedAppDlc(appId: Int): Map<Int, DepotInfo> {

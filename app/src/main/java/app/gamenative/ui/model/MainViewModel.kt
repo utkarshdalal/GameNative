@@ -17,7 +17,6 @@ import app.gamenative.db.dao.LibraryPlayHistoryDao
 import app.gamenative.di.IAppTheme
 import app.gamenative.enums.AppTheme
 import app.gamenative.enums.LoginResult
-import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
@@ -38,7 +37,6 @@ import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.IntentLaunchManager
-import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.UpdateInfo
 import app.gamenative.utils.WineProcessSnapshotHelper
@@ -639,10 +637,6 @@ class MainViewModel @Inject constructor(
                 val container = ContainerUtils.getOrCreateContainer(context, appId)
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
                 if (gameSource == GameSource.STEAM) {
-                    val steamAppId = ContainerUtils.extractGameIdFromContainerId(appId)
-                    if (steamAppId != null && runCatching { SteamService.decryptDepotManifests(steamAppId) }.getOrDefault(false)) {
-                        MarkerUtils.removeMarker(SteamService.getAppDirPath(steamAppId), Marker.STEAM_CEG_WRAPPED)
-                    }
                     if (container.isLaunchRealSteam() || container.isLaunchBionicSteam()) {
                         SteamUtils.restoreSteamApi(context, appId)
                     } else {
