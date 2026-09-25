@@ -26,6 +26,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
@@ -193,6 +198,13 @@ object PowerManager {
     @Volatile
     private var audioPinGeneration: Int = 0
 
+    /** Calls off every pending pin run (game, background, audio) without touching any affinity. */
+    private fun cancelPendingPins() {
+        gamePinGeneration++
+        backgroundPinGeneration++
+        audioPinGeneration++
+    }
+
     /**
      * Held while an affinity change is checked against its generation and applied, so a pin or an
      * unpin that got superseded meanwhile can never land after the newer one.
@@ -279,6 +291,7 @@ object PowerManager {
                 pinBackgroundProcesses(initialDelayMs = 0L)
             }
         } else {
+            cancelPendingPins()
             if (isGameStarted) {
                 Timber.tag("PowerManager").i("Power control disabled, releasing CPU pinning")
                 // Blocking, so the release finishes before stopPowerControl() shuts the root executor down.
@@ -335,6 +348,7 @@ object PowerManager {
         AdaptiveFpsCapController.stop()
         PerformanceMetricsCollector.stop()
         stopPowerControl()
+        cancelPendingPins()
         isGameStarted = false
         fpsCapApplier = null
         frameSampleStride = 1
@@ -1281,6 +1295,9 @@ object PowerManager {
      * [blocking] runs it on the calling thread, for callers that stop the driver right after.
      */
     private fun unpinBackgroundProcesses(blocking: Boolean = false) {
+        // Before any early return, so a pending pin run can't land after this release.
+        val generation = ++backgroundPinGeneration
+        val audioGeneration = ++audioPinGeneration
         val driver = driver
         if (driver !is PServerDriver) return
 
@@ -1291,8 +1308,6 @@ object PowerManager {
             return
         }
 
-        val generation = ++backgroundPinGeneration
-        val audioGeneration = ++audioPinGeneration
         runAffinityJob(blocking) {
             try {
                 synchronized(affinityLock) {
@@ -1429,13 +1444,18 @@ object PowerManager {
                             Timber.tag("PowerManager").i("Pin run of $processName called off ($reason)")
                             return@Thread
                         }
-                        pinnedGameProcessName = processName
-                        pinnedGamePid = pid
-                        pinnedGameCores = gameCores
-                        Timber.tag("PowerManager").i(
-                            "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} after $attempt attempts, verified=$verified ($reason)"
-                        )
-                        return@Thread
+                        // false: the kernel reports another mask, so resend on the next attempt. null: unreadable,
+                        // the request did leave, so record it rather than retry blind.
+                        if (verified != false) {
+                            pinnedGameProcessName = processName
+                            pinnedGamePid = pid
+                            pinnedGameCores = gameCores
+                            Timber.tag("PowerManager").i(
+                                "Pinned $processName (PID: $pid) to CPUs ${gameCores.joinToString()} after $attempt attempts, " +
+                                    "verified=${verified == true} ($reason)"
+                            )
+                            return@Thread
+                        }
                     }
 
                     if (attempt < maxRetries) Thread.sleep(retryDelayMs)
@@ -1450,6 +1470,7 @@ object PowerManager {
         }.start()
     }
 
+    /** Every core of the device: cluster discovery when it worked, else the container's fallback CPU list. */
     private fun allKnownCores(pserver: PServerDriver? = driver as? PServerDriver): List<Int> {
         pserver?.getAllCpuCores()?.takeIf { it.isNotEmpty() }?.let { return it }
         return parseCpuList(Container.getFallbackCPUList()).sorted()
@@ -1471,6 +1492,8 @@ object PowerManager {
      * the pinned mask. [blocking] runs it on the calling thread, for callers that stop the driver right after.
      */
     private fun unpinGame(blocking: Boolean = false) {
+        // Before any early return, so a pending pin run can't land after this release.
+        val generation = ++gamePinGeneration
         val processName = pinnedGameProcessName
         if (processName == null) {
             Timber.tag("PowerManager").i("No game process recorded, nothing to unpin")
@@ -1484,11 +1507,11 @@ object PowerManager {
         }
 
         val pid = pinnedGamePid
-        val generation = ++gamePinGeneration
         runAffinityJob(blocking) {
             try {
                 val success = applyAffinityIfCurrent(generation, processName, pid, coresToUnpin) ?: return@runAffinityJob
-                pinnedGameCores = emptyList()
+                // Keep holding the affinity until the release actually left this side.
+                if (success) pinnedGameCores = emptyList()
                 Timber.tag("PowerManager").i(
                     "Game pinning switched off, gave $processName CPUs ${coresToUnpin.joinToString()} back (success=$success)"
                 )
@@ -1560,20 +1583,20 @@ object PowerManager {
     /**
      * Waits for the winhandler round trip and compares what the kernel reports for [pid] with the
      * core list this app applied.
-     * @return true when the mask took effect
+     * @return true when the mask took effect, false when the kernel reports another one, null when it couldn't be read
      */
-    internal fun verifyGameAffinity(pid: Int, cores: List<Int>, tag: String): Boolean {
+    internal fun verifyGameAffinity(pid: Int, cores: List<Int>, tag: String): Boolean? {
         try {
             Thread.sleep(AFFINITY_SETTLE_MS)
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
-            return false
+            return null
         }
 
         val kernelCores = kernelCpuList(pid)
         if (kernelCores == null) {
             Timber.tag(tag).w("Could not read the affinity of PID $pid, treating the pin as unverified")
-            return false
+            return null
         }
 
         if (kernelCores == cores.toSet()) {
@@ -1619,6 +1642,7 @@ object PowerManager {
         return cores
     }
 
+    /** Formats cores for log lines, e.g. `4, 5, 6`. */
     internal fun formatCores(cores: Collection<Int>): String = cores.sorted().joinToString(", ")
 
     /** Formats cores the way the Manual core-list profile fields store them, e.g. `4,5,6`. */
@@ -1689,8 +1713,25 @@ object PowerManager {
         } else {
             val jsonString = profileFile.readText()
             Timber.tag("PowerManager").d("Restoring power profile from ${profileFile.absolutePath}: $jsonString")
-            json.decodeFromString<PowerProfile>(jsonString)
+            json.decodeFromJsonElement(PowerProfile.serializer(), migrateLegacyProfile(json.parseToJsonElement(jsonString).jsonObject))
         }
+    }
+
+    /**
+     * Maps the boolean toggles of a profile saved before the Auto/Manual/Off modes onto the mode
+     * fields, so an update keeps the old behavior instead of falling back to the Auto defaults.
+     */
+    private fun migrateLegacyProfile(saved: JsonObject): JsonObject {
+        val migrated = saved.toMutableMap()
+        if ("gamePinningMode" !in saved) {
+            val pinning = saved["enableGamePinning"]?.jsonPrimitive?.booleanOrNull ?: false
+            migrated["gamePinningMode"] = JsonPrimitive(if (pinning) GamePinningMode.AUTO.name else GamePinningMode.OFF.name)
+        }
+        if ("autoTuningMode" !in saved) {
+            val tuning = saved["enableAutoTuning"]?.jsonPrimitive?.booleanOrNull ?: false
+            migrated["autoTuningMode"] = JsonPrimitive(if (tuning) AutoTuningMode.AUTO.name else AutoTuningMode.MANUAL.name)
+        }
+        return JsonObject(migrated)
     }
 
     /**

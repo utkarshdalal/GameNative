@@ -95,6 +95,7 @@ public class Win32AppWorkarounds {
         applyWorkaround(workaround);
     }
 
+    /** Applies the container CPU list to the window's process, unless Power Control holds the game's affinity. */
     private void setProcessAffinity(Window window, int processAffinity) {
         int processId = window.getProcessId();
         String className = window.getClassName();

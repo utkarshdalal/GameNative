@@ -1310,6 +1310,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         return writeGpuPowerLevel(maxPath, sysfsLevel)
     }
 
+    /** Full-range profile: tested devices start with Auto tuning and pinning, others with Manual clocks and pinning Off. */
     override fun getDefaultProfile(): PowerProfile {
         val availableFrequencies = getAvailableCpuFrequencies()
         val availableGovernors = getAvailableGovernors()

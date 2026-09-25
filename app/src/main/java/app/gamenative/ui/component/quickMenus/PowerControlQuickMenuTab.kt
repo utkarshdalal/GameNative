@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+/** Quick-menu tab binding [PowerManager] state to [PowerControlQuickMenuContent]; changes are applied off the main thread. */
 @Composable
 fun PowerControlQuickMenuTab(
     modifier: Modifier = Modifier,
