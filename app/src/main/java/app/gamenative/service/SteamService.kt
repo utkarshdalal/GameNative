@@ -2292,15 +2292,32 @@ class SteamService : Service(), IChallengeUrlChanged {
             return FileUtils.findFileCaseInsensitive(File(appDirPath), manifestPath)
         }
 
+        /** True when the game ships its own Steam Input action manifest, i.e. it hands input to Steam Input. */
+        fun hasOwnSteamInputManifest(appId: Int): Boolean {
+            val config = getAppInfoOf(appId)?.config ?: return false
+            if (config.steamControllerTemplateIndex != 13) return false
+            return resolveSteamInputManifestFile(appId, getAppDirPath(appId)) != null
+        }
+
+        /** Layout the headless client activates for the pad, which identifies as an Xbox 360 controller. */
+        fun resolveSteamHostControllerVdfText(appId: Int): String? {
+            if (hasOwnSteamInputManifest(appId)) {
+                val manifestFile = resolveSteamInputManifestFile(appId, getAppDirPath(appId)) ?: return null
+                return loadConfigFromManifest(manifestFile, HOST_CONTROLLER_TYPES)
+            }
+            return resolveSteamControllerVdfText(appId)
+        }
+
         private fun loadConfigFromManifest(
             manifestFile: File,
+            controllerTypes: List<String> = PREFERRED_CONTROLLER_TYPES,
         ): String? {
             if (!manifestFile.exists()) return null
             val manifestDirPath = manifestFile.parentFile?.path ?: return null
 
             val manifestText = manifestFile.readText(Charsets.UTF_8)
             val configText = try {
-                parseManifestForConfig(manifestDirPath, manifestText)
+                parseManifestForConfig(manifestDirPath, manifestText, controllerTypes)
             } catch (e: Exception) {
                 Timber.e(e, "Failed to parse Steam Input manifest config at ${manifestFile.path}")
                 return null
@@ -2311,6 +2328,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         private fun parseManifestForConfig(
             manifestDirPath: String,
             manifestText: String,
+            controllerTypes: List<String> = PREFERRED_CONTROLLER_TYPES,
         ): String? {
             return try {
                 val kv = KeyValue.loadFromString(manifestText) ?: return null
@@ -2320,16 +2338,16 @@ class SteamService : Service(), IChallengeUrlChanged {
                     kv["Action Manifest"]
                 }
                 if (actionManifest === KeyValue.INVALID) {
-                    return findSiblingControllerConfig(manifestDirPath)
+                    return findSiblingControllerConfig(manifestDirPath, controllerTypes)
                 }
 
                 val configs = actionManifest["configurations"]
                 if (configs === KeyValue.INVALID || configs.children.isEmpty()) {
-                    return findSiblingControllerConfig(manifestDirPath)
+                    return findSiblingControllerConfig(manifestDirPath, controllerTypes)
                         ?: throw IllegalStateException("No configurations found in Action Manifest")
                 }
 
-                for (controllerType in PREFERRED_CONTROLLER_TYPES) {
+                for (controllerType in controllerTypes) {
                     val controllerBlock = configs[controllerType]
                     if (controllerBlock === KeyValue.INVALID) continue
 
@@ -2344,7 +2362,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
-                findSiblingControllerConfig(manifestDirPath)
+                findSiblingControllerConfig(manifestDirPath, controllerTypes)
                     ?: throw IllegalStateException("No valid controller configuration found in Action Manifest")
             } catch (e: Exception) {
                 Timber.e(e, "Failed to parse Steam Input manifest config")
@@ -2359,8 +2377,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             "controller_xbox360",
         )
 
-        private fun findSiblingControllerConfig(manifestDirPath: String): String? {
-            for (controllerType in PREFERRED_CONTROLLER_TYPES) {
+        private val HOST_CONTROLLER_TYPES = listOf(
+            "controller_xbox360",
+            "controller_xboxone",
+            "controller_generic",
+        )
+
+        private fun findSiblingControllerConfig(manifestDirPath: String, controllerTypes: List<String> = PREFERRED_CONTROLLER_TYPES): String? {
+            for (controllerType in controllerTypes) {
                 val configFile = FileUtils.findFileCaseInsensitive(File(manifestDirPath), "$controllerType.vdf")
                     ?: continue
                 return configFile.readText(Charsets.UTF_8)
