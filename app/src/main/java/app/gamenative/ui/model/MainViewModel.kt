@@ -373,6 +373,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun setLoadingDialogVisible(value: Boolean) {
+        // Raised here too: the collector below runs later and onStop can come first.
+        if (value) SteamService.isLaunchInProgress = true
         _state.update { it.copy(loadingDialogVisible = value) }
     }
 
@@ -389,6 +391,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun setShowBootingSplash(value: Boolean) {
+        if (value) SteamService.isLaunchInProgress = true
         val wasShowing = _state.value.showBootingSplash
         if (value && !wasShowing) {
             // The splash hides and re-shows between boot phases; a quick re-show is the same

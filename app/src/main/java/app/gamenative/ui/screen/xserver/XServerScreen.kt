@@ -4288,6 +4288,11 @@ private fun setupXEnvironment(
         }
     }
 
+    // Before the guest starts, so a game window that maps early can't miss it.
+    if (!PluviaApp.isActivityInForeground && !PluviaApp.isNeverSuspendMode()) {
+        PluviaApp.suspendWhenGameShows = true
+    }
+
     try {
         immersiveHooks?.windowsVr?.beforeGuestProcessStart()
         environment.startEnvironmentComponents()

@@ -4253,7 +4253,11 @@ class SteamService : Service(), IChallengeUrlChanged {
             Timber.i("Task of %s removed — keeping service alive", root)
             return
         }
-        if (!hasActiveOperations() && !(BuildConfig.XR_BUILD && keepAlive)) {
+        if (!hasActiveOperations() &&
+            !isLaunchInProgress &&
+            !isExitInProgress &&
+            !(BuildConfig.XR_BUILD && keepAlive)
+        ) {
             Timber.i("Task removed and no active work — stopping service")
             stopSelf()
         } else {
