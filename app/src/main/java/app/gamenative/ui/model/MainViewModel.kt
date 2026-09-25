@@ -56,6 +56,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -334,9 +336,16 @@ class MainViewModel @Inject constructor(
                 _state.update { it.copy(paletteStyle = value) }
             }
         }
+
+        viewModelScope.launch {
+            _state.map { it.loadingDialogVisible || it.showBootingSplash }
+                .distinctUntilChanged()
+                .collect { SteamService.isLaunchInProgress = it }
+        }
     }
 
     override fun onCleared() {
+        SteamService.isLaunchInProgress = false
         PluviaApp.events.off<AndroidEvent.BackPressed, Unit>(onBackPressed)
         PluviaApp.events.off<AndroidEvent.ExternalGameLaunch, Unit>(onExternalGameLaunch)
         PluviaApp.events.off<AndroidEvent.SetBootingSplashText, Unit>(onSetBootingSplashText)
@@ -687,7 +696,11 @@ class MainViewModel @Inject constructor(
                 Timber.tag("Exit").i("Got game id: $gameId")
                 ActiveGameRegistry.clearIfMatches(gameId)
                 SteamService.notifyRunningProcesses()
-                handleExitCloudSync(context, appId, gameId)
+                try {
+                    handleExitCloudSync(context, appId, gameId)
+                } finally {
+                    SteamService.isExitInProgress = false
+                }
 
                 // Prompt user to save temporary container configuration if one was applied
                 if (hadTemporaryOverride) {
@@ -887,6 +900,14 @@ class MainViewModel @Inject constructor(
             // end it; with no card (or outside boot) any window map hides it as before.
             if (window.isApplicationWindow() && !WineProcessSnapshotHelper.isSystemProcessName(window.className)) {
                 gameWindowSeen = true
+                if (PluviaApp.suspendWhenGameShows) {
+                    PluviaApp.suspendWhenGameShows = false
+                    if (!PluviaApp.isActivityInForeground && !PluviaApp.isNeverSuspendMode()) {
+                        PluviaApp.xEnvironment?.onPause()
+                        if (PluviaApp.isManualSuspendMode()) PluviaApp.isOverlayPaused = true
+                        Timber.d("Game paused now that it booted while the app was backgrounded")
+                    }
+                }
             }
             val windowClass = window.className.trim().lowercase()
             if (bootAwaitingGameWindow && (windowClass.isEmpty() || windowClass == "explorer.exe")) {

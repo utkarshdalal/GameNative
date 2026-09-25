@@ -2438,15 +2438,8 @@ fun XServerScreen(
                             PowerManager.pinBackgroundProcesses()
 
                             if (!PluviaApp.isActivityInForeground && !neverSuspend) {
-                                PluviaApp.xEnvironment?.onPause()
-                                if (manualResumeMode) {
-                                    view.post {
-                                        PluviaApp.isOverlayPaused = true
-                                        Timber.d("Game paused after environment setup while app was backgrounded (manual resume required)")
-                                    }
-                                } else {
-                                    Timber.d("Game paused after environment setup while app was backgrounded")
-                                }
+                                PluviaApp.suspendWhenGameShows = true
+                                Timber.d("App backgrounded during boot; game will be paused once its window shows")
                             }
                         } catch (e: Exception) {
                             Timber.e(e, "Error during wine setup operations")
@@ -4888,6 +4881,7 @@ private fun exit(
         Timber.i("Exit already in progress, ignoring duplicate request")
         return
     }
+    SteamService.isExitInProgress = true
 
     PerfSampler.halt()
 
