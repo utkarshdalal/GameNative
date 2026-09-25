@@ -8,11 +8,8 @@ object DepotManifestFiles {
     fun manifestFile(appDirPath: String, depotId: Int, gid: Long): File =
         File(appDirPath, ".DepotDownloader/${depotId}_${gid.toULong()}.manifest")
 
-    fun hasEncryptedFilenames(file: File): Boolean =
-        file.isFile && runCatching { DepotManifest.loadFromFile(file.absolutePath)?.filenamesEncrypted }.getOrNull() == true
-
-    fun decryptFilenames(file: File, depotKey: ByteArray): Boolean {
-        val manifest = runCatching { DepotManifest.loadFromFile(file.absolutePath) }.getOrNull() ?: return false
+    fun decryptFilenames(file: File, depotKey: ByteArray): Boolean = runCatching {
+        val manifest = DepotManifest.loadFromFile(file.absolutePath) ?: return false
         if (!manifest.filenamesEncrypted) return false
         if (!manifest.decryptFilenames(depotKey)) {
             Timber.w("Could not decrypt filenames in ${file.name}")
@@ -20,6 +17,9 @@ object DepotManifestFiles {
         }
         manifest.saveToFile(file.absolutePath)
         Timber.i("Decrypted filenames in ${file.name}")
-        return true
+        true
+    }.getOrElse { e ->
+        Timber.w(e, "Could not decrypt filenames in ${file.name}")
+        false
     }
 }
