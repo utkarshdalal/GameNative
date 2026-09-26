@@ -13,6 +13,7 @@ import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
 import com.winlator.core.FileUtils;
 import com.winlator.core.OnExtractFileListener;
+import com.winlator.core.SharedComponents;
 import com.winlator.core.TarCompressorUtils;
 import com.winlator.core.WineInfo;
 import com.winlator.core.WineThemeManager;
@@ -291,7 +292,7 @@ public class ContainerManager {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            FileUtils.copy(new File(srcDir, dlname), dstFile);
+            FileUtils.link(new File(srcDir, dlname), dstFile);
         }
     }
 
@@ -312,8 +313,8 @@ public class ContainerManager {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            Log.d("Extraction", "copying " + file + " to " + dstFile);
-            FileUtils.copy(file, dstFile);
+            Log.d("Extraction", "linking " + file + " to " + dstFile);
+            FileUtils.link(file, dstFile);
         }
     }
 
@@ -355,10 +356,10 @@ public class ContainerManager {
 
         if (componentFile == null) {
             Log.d("Extraction", "Using bundled asset for container_pattern_common");
-            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "container_pattern_common.tzst", containerDir, onExtractFileListener);
+            return SharedComponents.extractAndLink(context, "container_pattern_common", TarCompressorUtils.Type.ZSTD, "container_pattern_common.tzst", containerDir, onExtractFileListener);
         } else {
             Log.d("Extraction", "Using downloaded file for container_pattern_common: " + componentFile.getAbsolutePath());
-            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, componentFile, containerDir, onExtractFileListener);
+            return SharedComponents.extractAndLink(context, "container_pattern_common", TarCompressorUtils.Type.ZSTD, componentFile, containerDir, onExtractFileListener);
         }
     }
 

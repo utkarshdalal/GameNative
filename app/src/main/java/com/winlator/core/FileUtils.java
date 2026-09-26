@@ -78,6 +78,7 @@ public abstract class FileUtils {
     }
 
     public static boolean write(File file, byte[] data) {
+        if (file.exists()) file.delete();
         try (OutputStream os = new FileOutputStream(file)) {
             os.write(data, 0, data.length);
             return true;
@@ -149,6 +150,39 @@ public abstract class FileUtils {
         return Files.isSymbolicLink(file.toPath());
     }
 
+    public static final int SHARED_FILE_MODE = 0555;
+
+    public static boolean link(File srcFile, File dstFile) {
+        if (srcFile == null || !srcFile.isFile()) return false;
+        File parent = dstFile.getParentFile();
+        if (parent != null && !parent.exists()) {
+            if (!parent.mkdirs()) return false;
+            chmod(parent, 0771);
+        }
+        if (dstFile.exists() || isSymlink(dstFile)) {
+            if (isSameFile(srcFile, dstFile)) return true;
+            if (!dstFile.delete()) return false;
+        }
+        try {
+            Files.createLink(dstFile.toPath(), srcFile.toPath());
+            chmod(srcFile, SHARED_FILE_MODE);
+            return true;
+        }
+        catch (IOException | UnsupportedOperationException e) {
+            Log.w("FileUtils", "Hardlink failed, copying instead: " + dstFile + " (" + e.getMessage() + ")");
+            return copy(srcFile, dstFile);
+        }
+    }
+
+    public static boolean isSameFile(File a, File b) {
+        try {
+            return Files.isSameFile(a.toPath(), b.toPath());
+        }
+        catch (IOException e) {
+            return false;
+        }
+    }
+
     public static boolean delete(File targetFile) {
         if (targetFile == null) return false;
         if (targetFile.isDirectory()) {
@@ -203,6 +237,7 @@ public abstract class FileUtils {
             if (!srcFile.exists() || (parent != null && !parent.exists() && !parent.mkdirs())) return false;
 
             try {
+                if (dstFile.exists() && !dstFile.isDirectory()) dstFile.delete();
                 FileChannel inChannel = (new FileInputStream(srcFile)).getChannel();
                 FileChannel outChannel = (new FileOutputStream(dstFile)).getChannel();
                 inChannel.transferTo(0, inChannel.size(), outChannel);
@@ -240,6 +275,7 @@ public abstract class FileUtils {
             if (dstFile.isDirectory()) dstFile = new File(dstFile, FileUtils.getName(assetFile));
             File parent = dstFile.getParentFile();
             if (!parent.isDirectory()) parent.mkdirs();
+            if (dstFile.exists()) dstFile.delete();
             try (InputStream inStream = context.getAssets().open(assetFile);
                  BufferedOutputStream outStream = new BufferedOutputStream(new FileOutputStream(dstFile), StreamUtils.BUFFER_SIZE)) {
                 StreamUtils.copy(inStream, outStream);
@@ -331,17 +367,31 @@ public abstract class FileUtils {
     public static boolean contentEquals(File origin, File target) {
         if (origin.length() != target.length()) return false;
 
-        try (InputStream inStream1 = new BufferedInputStream(new FileInputStream(origin));
-             InputStream inStream2 = new BufferedInputStream(new FileInputStream(target))) {
-            int data;
-            while ((data = inStream1.read()) != -1) {
-                if (data != inStream2.read()) return false;
+        try (InputStream inStream1 = new BufferedInputStream(new FileInputStream(origin), 65536);
+             InputStream inStream2 = new BufferedInputStream(new FileInputStream(target), 65536)) {
+            byte[] buf1 = new byte[65536];
+            byte[] buf2 = new byte[65536];
+            while (true) {
+                int n1 = readFully(inStream1, buf1);
+                int n2 = readFully(inStream2, buf2);
+                if (n1 != n2) return false;
+                if (n1 <= 0) return true;
+                for (int i = 0; i < n1; i++) if (buf1[i] != buf2[i]) return false;
             }
-            return true;
         }
         catch (IOException e) {
             return false;
         }
+    }
+
+    private static int readFully(InputStream in, byte[] buf) throws IOException {
+        int total = 0;
+        while (total < buf.length) {
+            int n = in.read(buf, total, buf.length - total);
+            if (n < 0) break;
+            total += n;
+        }
+        return total;
     }
 
     public static void getSizeAsync(File file, Callback<Long> callback) {
@@ -449,6 +499,7 @@ public abstract class FileUtils {
                 } else {
                     File parent = outFile.getParentFile();
                     if (parent != null && !parent.isDirectory()) parent.mkdirs();
+                    if (outFile.exists()) outFile.delete();
                     try (FileOutputStream fos = new FileOutputStream(outFile)) {
                         byte[] buffer = new byte[8192];
                         int len;
@@ -478,6 +529,7 @@ public abstract class FileUtils {
                 } else {
                     File parent = outFile.getParentFile();
                     if (parent != null && !parent.isDirectory()) parent.mkdirs();
+                    if (outFile.exists()) outFile.delete();
                     try (FileOutputStream fos = new FileOutputStream(outFile)) {
                         byte[] buffer = new byte[8192];
                         int len;
