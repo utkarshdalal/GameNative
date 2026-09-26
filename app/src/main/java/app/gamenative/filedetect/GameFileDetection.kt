@@ -1,7 +1,7 @@
 package app.gamenative.filedetect
 
 import android.content.Context
-import app.gamenative.mods.FomodEnvironment
+import app.gamenative.mods.FomodEnvironmentSnapshotBuilder
 import app.gamenative.mods.NativeBinaryArchitecture
 import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
@@ -75,7 +75,7 @@ object GameFileDetection {
     private fun relativePath(root: Path, file: Path): String =
         root.relativize(file).joinToString("/") { it.toString() }
 
-    fun exeBitness(exe: File): Int? = when (FomodEnvironment.readPeArchitecture(exe)) {
+    fun exeBitness(exe: File): Int? = when (FomodEnvironmentSnapshotBuilder.readPeArchitecture(exe)) {
         NativeBinaryArchitecture.X86 -> 32
         NativeBinaryArchitecture.X64, NativeBinaryArchitecture.ARM64 -> 64
         NativeBinaryArchitecture.UNKNOWN -> null
