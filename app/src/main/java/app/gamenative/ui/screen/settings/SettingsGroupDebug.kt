@@ -168,6 +168,8 @@ fun SettingsGroupDebug() {
         val wineText by produceState("Loading...", latestWineLogFile) {
             value = withContext(Dispatchers.IO) { readTail(latestWineLogFile) }
         }
+
+        val wineLogDir = File(context.getExternalFilesDir(null), "wine_logs")
         CrashLogDialog(
             visible = true,
             fileName = latestWineLogFile?.name ?: "wine_debug.log",
