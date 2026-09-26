@@ -98,6 +98,7 @@ import app.gamenative.data.GyroSettings
 import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.gamefixes.GameInputCompatibility
 import app.gamenative.data.LaunchInfo
+import app.gamenative.filedetect.GameFileDetection
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.ShooterModeConfig
 import app.gamenative.data.SteamApp
@@ -139,6 +140,7 @@ import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
 import app.gamenative.utils.WindowActivity
 import app.gamenative.utils.PerfSampler
+import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.SessionReport
 import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
 import app.gamenative.utils.downloader.DXWrapperDownloader
@@ -246,6 +248,7 @@ import java.util.Arrays
 import java.util.Locale
 import kotlin.math.ceil
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
 import kotlin.io.path.name
 import kotlin.math.roundToInt
 import kotlin.text.lowercase
@@ -3869,48 +3872,65 @@ private fun runSteamHostCegPass(
     if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_CEG_WRAPPED)) return
     if (!SteamUtils.hasCustomExecutables(steamAppId)) return
 
-    val steamDir = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam")
-    val progressFile = File(steamDir, "steamhost_ceg")
-    val resultFile = File(steamDir, "steamhost_ceg_result")
-    progressFile.delete()
+    if (launcher.envVars.has("STEAMHOST_OFFLINE")) return
+
+    val resultFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamhost_ceg_result")
     resultFile.delete()
+    val progressFile = File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamhost_ceg")
+    progressFile.delete()
     val batch = File(imageFs.wineprefix, "drive_c/steamhost_ceg.bat")
     batch.writeText("@\"C:\\Program Files (x86)\\Steam\\steam.exe\"\r\n")
-    val watcher = CoroutineScope(Dispatchers.IO).launch {
-        while (isActive) {
-            val fields = runCatching { progressFile.readText().trim().split(' ') }.getOrNull()
-            val text = if (fields != null && fields.size == 4) {
-                val done = fields[0].toIntOrNull() ?: 0
-                val jobs = fields[1].toIntOrNull() ?: 0
-                val bytes = fields[2].toLongOrNull() ?: 0L
-                val total = fields[3].toLongOrNull() ?: 0L
-                val percent = if (total > 0) " ${(bytes * 100 / total).coerceIn(0, 100)}%" else ""
-                "Preparing game executable (${(done + 1).coerceAtMost(jobs)}/$jobs)$percent"
-            } else {
-                "Preparing game executable..."
+    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Preparing game executable..."))
+    launcher.envVars.put("STEAMHOST_CEG_ONLY", "1")
+    val passStartedAt = System.currentTimeMillis()
+    val pollProgress = AtomicBoolean(true)
+    thread(name = "steamhost-ceg-progress") {
+        var lastText = ""
+        while (pollProgress.get()) {
+            val text = cegSplashText(progressFile, passStartedAt)
+            if (text != lastText) {
+                lastText = text
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(text))
             }
-            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(text))
-            delay(500)
+            Thread.sleep(500)
         }
     }
-    launcher.envVars.put("STEAMHOST_CEG_ONLY", "1")
     try {
         Timber.i("Running steamhost CEG pass for $steamAppId")
-        launcher.execShellCommand("wine cmd /c C:\\steamhost_ceg.bat")
+        val output = launcher.execShellCommand("wine cmd /c C:\\steamhost_ceg.bat && wineserver -k")
+        Timber.i("Result of steamhost CEG pass $output")
     } catch (e: Exception) {
         Timber.e(e, "steamhost CEG pass failed to run")
     } finally {
+        pollProgress.set(false)
         launcher.envVars.remove("STEAMHOST_CEG_ONLY")
-        watcher.cancel()
     }
     val result = runCatching { resultFile.readText().trim() }.getOrDefault("")
     Timber.i("steamhost CEG pass result: '$result'")
     if (result == "ok") {
         MarkerUtils.addMarker(appDirPath, Marker.STEAM_CEG_WRAPPED)
     } else {
-        onGameLaunchError?.invoke("Steam could not prepare the game executable ($result)")
+        onGameLaunchError?.invoke("Steam could not prepare the game executable (${result.ifEmpty { "steamhost gave no result" }})")
     }
-    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
+}
+
+private fun cegSplashText(progressFile: File, startedAt: Long): String {
+    val elapsed = (System.currentTimeMillis() - startedAt) / 1000
+    val fields = runCatching { progressFile.readText().trim().split(' ') }.getOrNull()
+    if (fields == null || fields.size < 6) {
+        return "Preparing game executable... signing in to Steam (${elapsed}s)"
+    }
+    val jobsDone = fields[1].toIntOrNull() ?: 0
+    val jobs = fields[2].toIntOrNull() ?: 0
+    val bytes = fields[3].toLongOrNull() ?: 0L
+    val total = fields[4].toLongOrNull() ?: 0L
+    val progress = if (total > 0) {
+        "downloading %.1f / %.1f MB".format(bytes / 1_000_000.0, total / 1_000_000.0)
+    } else {
+        "waiting for Steam's DRM service"
+    }
+    val files = if (jobs > 1) ", file ${(jobsDone + 1).coerceAtMost(jobs)} of $jobs" else ""
+    return "Preparing game executable... $progress$files (${elapsed}s)"
 }
 
 private fun setupXEnvironment(
@@ -4125,6 +4145,9 @@ private fun setupXEnvironment(
                 containerVariantChanged = containerVariantChanged,
                 onError = onGameLaunchError
             )
+            if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
+                runSteamHostCegPass(appId, imageFs, guestProgramLauncherComponent, onGameLaunchError)
+            }
             if (preInstallCommands.isNotEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
             } else {
@@ -4242,10 +4265,6 @@ private fun setupXEnvironment(
 
     environment.addComponent(guestProgramLauncherComponent)
 
-    if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
-        runSteamHostCegPass(appId, imageFs, guestProgramLauncherComponent, onGameLaunchError)
-    }
-
     environment.addComponent(WineRequestComponent())
 
     FEXCoreManager.ensureAppConfigOverrides(context)
@@ -4320,6 +4339,9 @@ private fun setupXEnvironment(
         immersiveHooks?.windowsVr?.beforeGuestProcessStart()
         environment.startEnvironmentComponents()
         immersiveHooks?.windowsVr?.onEnvironmentStarted()
+        if (container != null && !bootToContainer) {
+            CoroutineScope(Dispatchers.IO).launch { GameFileDetection.ensure(context, container) }
+        }
     } catch (e: Exception) {
         Timber.e(e, "Failed to start environment components, cleaning up")
         try {
@@ -4771,7 +4793,7 @@ private fun getWineStartCommand(
             // and will monitor the game via nativeWaitAppExit.
             val appDirPath = SteamService.getAppDirPath(gameId)
             val isRockstar = RockstarLaunchSupport.isRockstarTitle(File(appDirPath))
-            val exePath = if (isRockstar) RockstarHelperDeployment.EXECUTABLE else container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
+            val exePath = if (isRockstar) RockstarHelperDeployment.executable(File(appDirPath)) else container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
             realSteamRockstarDirectory = if (isRockstar) File(appDirPath) else null
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
             val executableDir = appDirPath + "/" + exePath.substringBeforeLast("/", "")
@@ -4792,7 +4814,7 @@ private fun getWineStartCommand(
             val isRockstar = RockstarLaunchSupport.isRockstarTitle(File(appDirPath))
             realSteamRockstarDirectory = if (isRockstar) File(appDirPath) else null
             val launchExe = if (isEaLaunch) "" else appLaunchInfo?.executable?.trim('/').orEmpty()
-            val exePath = if (isRockstar) RockstarHelperDeployment.EXECUTABLE else container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
+            val exePath = if (isRockstar) RockstarHelperDeployment.executable(File(appDirPath)) else container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
             val launchArgs = if (appLaunchInfo != null && exePath.replace('\\', '/').trim('/').equals(launchExe, ignoreCase = true)) appLaunchInfo.arguments.trim() else ""
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
             val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
@@ -4816,6 +4838,7 @@ private fun getWineStartCommand(
                 )
             }
             envVars.put("PROTON_DISABLE_LSTEAMCLIENT", "1")
+            envVars.put("PROTON_LIMIT_ADDRESS_SPACE", "1")
             if (offline || container.isSteamOfflineMode) envVars.put("STEAMHOST_OFFLINE", "1")
             envVars.put("STEAMHOST_ACCOUNT", PrefManager.username)
             envVars.put("STEAMHOST_TOKEN", SteamHostAuth.seal(context.packageName, PrefManager.refreshToken))
@@ -4828,7 +4851,7 @@ private fun getWineStartCommand(
                 val launcher = "$steamRoot\\steamapps\\common\\$gameFolderName\\$normalizedExe"
                 envVars.put("STEAMHOST_LAUNCH_PARAMS", "-forceLauncherPath \"$launcher\" -skipInstallers")
             }
-            if (container.getExtra("useSteamInput", "false").toBoolean()) envVars.put("STEAMHOST_STEAMINPUT", "1")
+            if (SteamUtils.isSteamInputEnabled(container, gameId)) envVars.put("STEAMHOST_STEAMINPUT", "1")
             Timber.i("Real-Steam via steamhost: game=$gameCmd dir=$gameDir")
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\""
         } else {
@@ -4922,6 +4945,8 @@ private fun exit(
             "container_config" to container.containerJson,
         ) + runCatching {
             SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
+        }.getOrElse { emptyMap() } + runCatching {
+            GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
         }.getOrElse { emptyMap() },
     )
     runCatching { windowActivity.stop() }
@@ -5112,7 +5137,9 @@ private fun unpackExecutableFile(
         val rootDir: File = imageFs.getRootDir()
 
         try {
-            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
+            if (!container.isLaunchRealSteam && !container.isLaunchBionicSteam) {
+                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
+            }
             // a:/.../GameDir/orig_dll_path.txt  (same dir as the EXE inside A:)
             val origTxtFile  = File("${imageFs.wineprefix}/dosdevices/a:/orig_dll_path.txt")
 

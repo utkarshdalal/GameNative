@@ -2292,15 +2292,32 @@ class SteamService : Service(), IChallengeUrlChanged {
             return FileUtils.findFileCaseInsensitive(File(appDirPath), manifestPath)
         }
 
+        /** True when the game ships its own Steam Input action manifest, i.e. it hands input to Steam Input. */
+        fun hasOwnSteamInputManifest(appId: Int): Boolean {
+            val config = getAppInfoOf(appId)?.config ?: return false
+            if (config.steamControllerTemplateIndex != 13) return false
+            return resolveSteamInputManifestFile(appId, getAppDirPath(appId)) != null
+        }
+
+        /** Layout the headless client activates for the pad, which identifies as an Xbox 360 controller. */
+        fun resolveSteamHostControllerVdfText(appId: Int): String? {
+            if (hasOwnSteamInputManifest(appId)) {
+                val manifestFile = resolveSteamInputManifestFile(appId, getAppDirPath(appId)) ?: return null
+                return loadConfigFromManifest(manifestFile, HOST_CONTROLLER_TYPES)
+            }
+            return resolveSteamControllerVdfText(appId)
+        }
+
         private fun loadConfigFromManifest(
             manifestFile: File,
+            controllerTypes: List<String> = PREFERRED_CONTROLLER_TYPES,
         ): String? {
             if (!manifestFile.exists()) return null
             val manifestDirPath = manifestFile.parentFile?.path ?: return null
 
             val manifestText = manifestFile.readText(Charsets.UTF_8)
             val configText = try {
-                parseManifestForConfig(manifestDirPath, manifestText)
+                parseManifestForConfig(manifestDirPath, manifestText, controllerTypes)
             } catch (e: Exception) {
                 Timber.e(e, "Failed to parse Steam Input manifest config at ${manifestFile.path}")
                 return null
@@ -2311,6 +2328,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         private fun parseManifestForConfig(
             manifestDirPath: String,
             manifestText: String,
+            controllerTypes: List<String> = PREFERRED_CONTROLLER_TYPES,
         ): String? {
             return try {
                 val kv = KeyValue.loadFromString(manifestText) ?: return null
@@ -2320,16 +2338,16 @@ class SteamService : Service(), IChallengeUrlChanged {
                     kv["Action Manifest"]
                 }
                 if (actionManifest === KeyValue.INVALID) {
-                    return findSiblingControllerConfig(manifestDirPath)
+                    return findSiblingControllerConfig(manifestDirPath, controllerTypes)
                 }
 
                 val configs = actionManifest["configurations"]
                 if (configs === KeyValue.INVALID || configs.children.isEmpty()) {
-                    return findSiblingControllerConfig(manifestDirPath)
+                    return findSiblingControllerConfig(manifestDirPath, controllerTypes)
                         ?: throw IllegalStateException("No configurations found in Action Manifest")
                 }
 
-                for (controllerType in PREFERRED_CONTROLLER_TYPES) {
+                for (controllerType in controllerTypes) {
                     val controllerBlock = configs[controllerType]
                     if (controllerBlock === KeyValue.INVALID) continue
 
@@ -2344,7 +2362,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                     }
                 }
 
-                findSiblingControllerConfig(manifestDirPath)
+                findSiblingControllerConfig(manifestDirPath, controllerTypes)
                     ?: throw IllegalStateException("No valid controller configuration found in Action Manifest")
             } catch (e: Exception) {
                 Timber.e(e, "Failed to parse Steam Input manifest config")
@@ -2359,8 +2377,14 @@ class SteamService : Service(), IChallengeUrlChanged {
             "controller_xbox360",
         )
 
-        private fun findSiblingControllerConfig(manifestDirPath: String): String? {
-            for (controllerType in PREFERRED_CONTROLLER_TYPES) {
+        private val HOST_CONTROLLER_TYPES = listOf(
+            "controller_xbox360",
+            "controller_xboxone",
+            "controller_generic",
+        )
+
+        private fun findSiblingControllerConfig(manifestDirPath: String, controllerTypes: List<String> = PREFERRED_CONTROLLER_TYPES): String? {
+            for (controllerType in controllerTypes) {
                 val configFile = FileUtils.findFileCaseInsensitive(File(manifestDirPath), "$controllerType.vdf")
                     ?: continue
                 return configFile.readText(Charsets.UTF_8)
@@ -2535,9 +2559,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                 notifyDownloadStarted(appId)
                 instance?.notifierOrNull?.trackDownload(di, getAppInfoOf(appId)?.name.orEmpty(), NotificationHelper.NOTIFICATION_ID_STEAM)
 
-                val chunkStagingRedirectDir = File(DownloadService.baseCacheDirPath, "depot_chunks/$appId")
-                    .takeIf { !appDirPath.startsWith(DownloadService.baseDataDirPath) }
-
                 val downloadJob = instance!!.scope.launch {
                     try {
                         if (isUpdateOrVerify) {
@@ -2565,9 +2586,12 @@ class SteamService : Service(), IChallengeUrlChanged {
                         Timber.i("maxDownloads: ${speedConfig.maxDownloads}")
                         Timber.i("maxDecompress: ${speedConfig.maxDecompress}")
 
-                        chunkStagingRedirectDir?.apply {
-                            NativeTreeDelete.deleteTreeFast(this)
-                            mkdirs()
+                        // Legacy: the old JavaSteam engine staged chunks in cache on external
+                        // installs. The Rust engine writes final paths directly and never
+                        // creates this — sweep only if an old app version left one behind.
+                        val legacyChunkStagingDir = File(DownloadService.baseCacheDirPath, "depot_chunks/$appId")
+                        if (legacyChunkStagingDir.exists()) {
+                            NativeTreeDelete.deleteTreeFast(legacyChunkStagingDir)
                         }
 
                         val branchPassword = instance?.steamUnlockedBranchDao
@@ -2791,7 +2815,6 @@ class SteamService : Service(), IChallengeUrlChanged {
                     // handlers, and cancellations thrown out of suspension points.
                     // second call is a no-op if the inline path already removed the entry.
                     removeDownloadJob(appId)
-                    chunkStagingRedirectDir?.let { NativeTreeDelete.deleteTreeFast(it) }
                     if (throwable is kotlinx.coroutines.CancellationException) {
                         Timber.d(throwable, "Download canceled for app $appId")
                     }
@@ -3570,42 +3593,36 @@ class SteamService : Service(), IChallengeUrlChanged {
             appId: Int,
             branch: String = "public",
         ): Boolean = withContext(Dispatchers.IO) {
-            // Don't try if there's no internet
-            if (!isConnected) return@withContext false
-
-            val steamApps = instance?._steamApps ?: return@withContext false
-
-            // ── 1. Fetch the latest app header from Steam (PICS).
-            val pics = try {
-                steamApps.picsGetProductInfo(
-                    apps = listOf(PICSRequest(id = appId)),
-                    packages = emptyList(),
-                ).await()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Timber.w(e, "isUpdatePending: PICS request failed for appId=$appId")
-                return@withContext false
-            }
-
-            val remoteAppInfo = pics.results
-                .firstOrNull()
-                ?.apps
-                ?.values
-                ?.firstOrNull()
-                ?: return@withContext false // nothing returned ⇒ treat as up-to-date
-
-            val remoteSteamApp = remoteAppInfo.keyValues.generateSteamApp()
-            val localSteamApp = getAppInfoOf(appId) ?: return@withContext true // not cached yet
-
-            // ── 2. Compare manifest IDs of the depots we actually install.
+            val appInfo = getAppInfoOf(appId) ?: return@withContext false
+            val installed = installedManifestIds(appId)
+            if (installed.isEmpty()) return@withContext false
             getDownloadableDepots(appId).keys.any { depotId ->
-                val remoteManifest = remoteSteamApp.depots[depotId]?.manifests?.get(branch)
-                val localManifest = localSteamApp.depots[depotId]?.manifests?.get(branch)
-                // If remote manifest is null, skip this depot (hack for Castle Crashers)
-                if (remoteManifest == null) return@any false
-                remoteManifest?.gid != localManifest?.gid
+                val current = appInfo.depots[depotId]?.manifests?.get(branch)?.gid ?: return@any false
+                val onDisk = installed[depotId] ?: return@any false
+                current.toULong() != onDisk
             }
+        }
+
+        private fun installedManifestIds(appId: Int): Map<Int, ULong> {
+            val cacheDir = File(getAppDirPath(appId), ".DepotDownloader")
+            val ids = mutableMapOf<Int, ULong>()
+            runCatching { File(cacheDir, "depot.config").readText() }.getOrNull()?.let { text ->
+                val block = text.substringAfter("\"installedManifestIDs\"", "").substringAfter('{', "").substringBefore('}')
+                Regex("\"(\\d+)\"\\s*:\\s*(\\d+)").findAll(block).forEach { match ->
+                    val depotId = match.groupValues[1].toIntOrNull() ?: return@forEach
+                    val gid = match.groupValues[2].toULongOrNull() ?: return@forEach
+                    ids[depotId] = gid
+                }
+            }
+            if (ids.isEmpty()) {
+                cacheDir.listFiles()?.forEach { file ->
+                    val match = Regex("""^(\d+)_(\d+)\.manifest$""").matchEntire(file.name) ?: return@forEach
+                    val depotId = match.groupValues[1].toIntOrNull() ?: return@forEach
+                    val gid = match.groupValues[2].toULongOrNull() ?: return@forEach
+                    ids[depotId] = gid
+                }
+            }
+            return ids
         }
 
         suspend fun checkPrivateBranchPassword(appId: Int, password: String): Map<String, ByteArray> =

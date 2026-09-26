@@ -32,6 +32,7 @@ import com.posthog.PersonProfiles
 
 // Add PostHog imports
 import com.posthog.android.PostHogAndroid
+import com.posthog.PostHogPropertiesSanitizer
 import com.posthog.android.PostHogAndroidConfig
 import com.winlator.container.Container
 import com.winlator.inputcontrols.InputControlsManager
@@ -103,8 +104,12 @@ class PluviaApp : SplitCompatApplication() {
         }
 
         // Preload all container files in the background
-        appScope.launch {
-            ContainerFilesDownloader.preloadAllContainerFiles(applicationContext)
+        // not under Robolectric: every test boots a fresh app with a fresh filesDir, so this re-downloaded
+        // every container archive per test. code that needs a file still fetches it on demand.
+        if (Build.FINGERPRINT != "robolectric") {
+            appScope.launch {
+                ContainerFilesDownloader.preloadAllContainerFiles(applicationContext)
+            }
         }
 
         // Clear any stale temporary config overrides from previous app sessions
@@ -122,6 +127,21 @@ class PluviaApp : SplitCompatApplication() {
         ).apply {
             /* turn every event into an identified one */
             personProfiles = PersonProfiles.ALWAYS
+            propertiesSanitizer = PostHogPropertiesSanitizer { properties ->
+                // SDK deep-link capture copies every query parameter (OAuth code, relay token,
+                // nxm key) into its own property. Our own events only carry https urls, so a
+                // non-http url marks a deep link: keep where it pointed, drop the parameters.
+                val uri = (properties["url"] as? String)?.let(android.net.Uri::parse)
+                val scheme = uri?.scheme
+                if (uri == null || scheme == null || scheme == "http" || scheme == "https") {
+                    return@PostHogPropertiesSanitizer properties
+                }
+                val trimmed = buildString {
+                    append(scheme).append("://").append(uri.host.orEmpty())
+                    if (scheme != "content") append(uri.path.orEmpty())
+                }
+                properties.filterKeys { it.startsWith("$") }.toMutableMap().apply { put("url", trimmed) }
+            }
         }
         PostHogAndroid.setup(this, postHogConfig)
         com.posthog.PostHog.register("build_flavor", BuildConfig.FLAVOR)

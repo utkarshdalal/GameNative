@@ -31,7 +31,8 @@ object GameCompatibilityCache {
         val gpuPlayableCount: Int,
         val avgRating: Float,
         val hasBeenTried: Boolean,
-        val isNotWorking: Boolean
+        val isNotWorking: Boolean,
+        val state: String? = null,
     )
 
     /**
@@ -44,7 +45,8 @@ object GameCompatibilityCache {
             gpuPlayableCount = this.gpuPlayableCount,
             avgRating = this.avgRating,
             hasBeenTried = this.hasBeenTried,
-            isNotWorking = this.isNotWorking
+            isNotWorking = this.isNotWorking,
+            state = this.state,
         )
     }
 
@@ -58,7 +60,8 @@ object GameCompatibilityCache {
             gpuPlayableCount = this.gpuPlayableCount,
             avgRating = this.avgRating,
             hasBeenTried = this.hasBeenTried,
-            isNotWorking = this.isNotWorking
+            isNotWorking = this.isNotWorking,
+            state = this.state,
         )
     }
 

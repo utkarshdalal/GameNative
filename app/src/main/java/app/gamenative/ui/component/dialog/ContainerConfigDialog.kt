@@ -1058,9 +1058,6 @@ fun ContainerConfigDialog(
         val nonzeroResolutionError = stringResource(
             R.string.container_config_custom_resolution_error_nonzero
         )
-        val aspectResolutionError = stringResource(
-            R.string.container_config_custom_resolution_error_aspect
-        )
 
         val state = ContainerConfigState(
             config = configState,
@@ -1317,7 +1314,7 @@ fun ContainerConfigDialog(
                                 .verticalScroll(scrollState)
                                 .weight(1f),
                         ) {
-                            if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError, aspectResolutionError)
+                            if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError)
                             if (selectedTab == 1) GraphicsTabContent(state, default)
                             if (selectedTab == 2) EmulationTabContent(state)
                             if (selectedTab == 3) ControllerTabContent(state, default)

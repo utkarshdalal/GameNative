@@ -9,7 +9,10 @@ import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStr
 /** Unit tests need no shipped binaries; a downloaded release can also be tested explicitly. */
 internal fun rockstarTestArchive(): ByteArray {
     System.getenv("ROCKSTAR_TEST_ARCHIVE")?.let { return File(it).readBytes() }
-    val binaries = listOf("rgscstub.exe", "scpatch.dll", "bink2w64.dll", "SocialClubD3D12Renderer.dll", "SocialClubVulkanLayer.dll")
+    val binaries = listOf(
+        "rgscstub.exe", "scpatch.dll", "bink2w64.dll", "rgscstub32.exe", "scpatch32.dll", "binkw32.dll",
+        "SocialClubD3D12Renderer.dll", "SocialClubVulkanLayer.dll",
+    )
         .associateWith { "MZ-test-$it".toByteArray() }
     val entries = binaries + mapOf(
         "NOTICE.txt" to "Test fixture".toByteArray(),

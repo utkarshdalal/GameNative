@@ -18,6 +18,7 @@ import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.service.download.NativeGogDownload
 import app.gamenative.service.download.NativeGogDownloadListener
 import app.gamenative.utils.CdnRankingUtils
+import app.gamenative.utils.LocaleHelper
 import app.gamenative.utils.ContainerStorageManager
 import app.gamenative.utils.DownloadSpeedConfig
 import app.gamenative.utils.StorageUtils
@@ -95,6 +96,12 @@ class GOGDownloadManager @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val WINDOWS_OS_VERSION = "windows"
+
+    // The injected application context follows the OS locale; wrap it so download status
+    // strings resolve in the app's configured language.
+    private val localizedContext: Context by lazy {
+        LocaleHelper.applyLanguage(context, app.gamenative.PrefManager.appLanguage)
+    }
 
     /**
      * Context needed to refresh secure CDN links when they expire
@@ -302,16 +309,20 @@ class GOGDownloadManager @Inject constructor(
             // On a resume this MD5-reads every completed file, which can take minutes for
             // a large install — surface it in the UI and honor cancellation between files.
             val gameInstallDir = installPath
-            downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_files))
+            downloadInfo.updateStatusMessage(localizedContext.getString(R.string.download_verifying_files))
             val beforeCount = gameFiles.size
+            var verifyIndex = 0
             gameFiles = gameFiles.filter { file ->
                 if (!downloadInfo.isActive()) {
                     MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
                 // Whole-file MD5 per existing file, serial — tens of minutes for a large
-                // install on SD. Name the file being hashed so the UI never looks dead.
-                downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_file, file.path))
+                // install on SD. Show live (k/N) so the UI never looks dead.
+                verifyIndex += 1
+                downloadInfo.updateStatusMessage(
+                    localizedContext.getString(R.string.download_verifying_files_progress, verifyIndex, beforeCount),
+                )
                 val outputFile = File(gameInstallDir, file.path)
                 val expectedSize = file.chunks.sumOf { it.size }
                 !fileExistsWithCorrectSize(outputFile, expectedSize, file.md5)
@@ -319,12 +330,16 @@ class GOGDownloadManager @Inject constructor(
             Timber.tag("GOG").d("Skipping ${beforeCount - gameFiles.size} existing file(s), downloading ${gameFiles.size}")
 
             val beforeSupportCount = supportFiles.size
+            var supportVerifyIndex = 0
             supportFiles = supportFiles.filter { file ->
                 if (!downloadInfo.isActive()) {
                     MarkerUtils.removeMarker(installPath.absolutePath, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                     return@withContext Result.failure(Exception("Download cancelled"))
                 }
-                downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_file, file.path))
+                supportVerifyIndex += 1
+                downloadInfo.updateStatusMessage(
+                    localizedContext.getString(R.string.download_verifying_files_progress, supportVerifyIndex, beforeSupportCount),
+                )
                 val installRelativePath = getSupportInstallPath(file.path)
                 val outputFile = File(gameInstallDir, installRelativePath)
                 val expectedSize = file.chunks.sumOf { it.size }
@@ -939,12 +954,14 @@ class GOGDownloadManager @Inject constructor(
                 // Per-run high-water mark for the compressed-byte stream reported via onBytes.
                 var fetchedBytes = 0L
                 // Set while the engine re-hashes on-disk bytes (resume verify sweep): the
-                // status row shows "Verifying <file>". Cleared on the first fetched byte.
+                // status row shows "Verifying Files (k/N)". Cleared on the first fetched byte.
                 val verifyStatusActive = java.util.concurrent.atomic.AtomicBoolean(false)
                 val listener = object : NativeGogDownloadListener {
-                    override fun onVerifying(path: String) {
+                    override fun onVerifying(path: String, current: Int, total: Int) {
                         verifyStatusActive.set(true)
-                        downloadInfo.updateStatusMessage(context.getString(R.string.download_verifying_file, path))
+                        downloadInfo.updateStatusMessage(
+                            localizedContext.getString(R.string.download_verifying_files_progress, current, total),
+                        )
                     }
 
                     override fun onProgress(
@@ -968,7 +985,7 @@ class GOGDownloadManager @Inject constructor(
                         // Aggregate across products: donePaths tracks every completed file.
                         val globalDone = donePaths.size
                         downloadInfo.setProgress((globalDone.toFloat() / totalFiles).coerceIn(0f, 1f))
-                        downloadInfo.updateStatusMessage(context.getString(R.string.download_progress_files, globalDone, totalFiles))
+                        downloadInfo.updateStatusMessage(localizedContext.getString(R.string.download_progress_files, globalDone, totalFiles))
                         downloadInfo.emitProgressChange()
                         downloadInfo.persistProgressSnapshot()
                     }
@@ -1295,7 +1312,7 @@ class GOGDownloadManager @Inject constructor(
                                 val progress = downloadedChunkIds.size.toFloat() / totalChunks
                                 downloadInfo.setProgress(progress)
                                 downloadInfo.updateStatusMessage(
-                                    context.getString(R.string.download_progress_chunks, downloadedChunkIds.size, totalChunks),
+                                    localizedContext.getString(R.string.download_progress_chunks, downloadedChunkIds.size, totalChunks),
                                 )
 
                                 // Decrement pending chunks counter

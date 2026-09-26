@@ -558,20 +558,18 @@ pub fn download_resolved_depots_with_cancel_progress(
     // ── CDN probe: rank the ASSIGNED servers and promote predicted foreign caches that
     // measurably beat the assigned-set median. The on-disk cache seeds the ranking (and any
     // cached winners) synchronously so even the first chunks follow the last known order, and
-    // the download starts IMMEDIATELY on the assigned servers; when the cache is stale the
-    // fresh probe runs in the background (its results are congestion-guarded — a probe that
-    // raced saturated download traffic is discarded, not cached/published). The pool grows at
-    // depot boundaries only (extended_servers below): an in-flight depot's futures borrow a
-    // fixed server slice.
+    // the download starts IMMEDIATELY on the assigned servers. The fresh probe runs in the
+    // background but is only spawned on the FIRST downloaded byte (below) — never during
+    // preparation or the verify sweep, so it can't race or delay the start (its results are
+    // congestion-guarded — a probe that raced saturated download traffic is discarded, not
+    // cached/published). The pool grows at depot boundaries only (extended_servers below):
+    // an in-flight depot's futures borrow a fixed server slice.
     let probe_hints = crate::store_dl::steam::cdn_probe::seed_from_cache(install_dir, &usable_servers);
     let probe_manifests: Vec<&ContentManifest> = resolved.iter().map(|(_, m)| m).collect();
-    crate::store_dl::steam::cdn_probe::spawn_background_probe(
-        &probe_hints,
-        install_dir,
-        ca_bundle_path,
-        &usable_servers,
-        &probe_manifests,
-    );
+    // Sampled BEFORE the depot loop so `resolved` can move into the loop (owned String).
+    let probe_url_path = crate::store_dl::steam::cdn_probe::sample_url_for_probe(&probe_manifests);
+    drop(probe_manifests);
+    let probe_spawned = AtomicBool::new(false);
 
     // ── Phase 2: all metadata resolved — download the depots in order.
     for (depot, manifest) in resolved {
@@ -587,6 +585,18 @@ pub fn download_resolved_depots_with_cancel_progress(
 
         let depot_id = depot.depot_id;
         let chunk_progress = |done: u64, total: u64, verifying: bool| {
+            // First real (non-verify) byte = the download has genuinely started: NOW spawn
+            // the background CDN probe. An all-verified run never spawns it (nothing to
+            // optimize); a cancelled start never probes either.
+            if !verifying && !probe_spawned.swap(true, Ordering::Relaxed) {
+                crate::store_dl::steam::cdn_probe::spawn_background_probe(
+                    &probe_hints,
+                    install_dir,
+                    ca_bundle_path,
+                    &usable_servers,
+                    &probe_url_path,
+                );
+            }
             if let Some(on_progress) = on_progress {
                 let progress = map_write_progress(
                     depot_id,

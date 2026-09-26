@@ -24,9 +24,12 @@ interface NativeSteamDownloadListener {
 
     /**
      * Resume/verify: fired once per file as its on-disk chunks are re-hashed against the
-     * manifest. Default no-op so existing listeners stay source-compatible.
+     * manifest. [current] is the 1-based index of the file among the depot's verify
+     * candidates, [total] how many files in the depot need re-hashing (both per-depot —
+     * depots are prepared lazily, so a whole-run total is not known up front). Default
+     * no-op so existing listeners stay source-compatible.
      */
-    fun onVerifying(path: String) {}
+    fun onVerifying(path: String, current: Int, total: Int) {}
 
     /**
      * Called from native worker threads when a manifest fetch needs a fresh manifest request
