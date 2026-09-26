@@ -286,6 +286,10 @@
     <string name="dpad_right">方向键 右</string>
     <string name="input_controls">屏幕控制器</string>
     <string name="edit_controls">编辑屏幕控制器</string>
+    <string name="on_screen_controller_settings">屏幕控制器设置</string>
+    <string name="mouse_speed">鼠标速度</string>
+    <string name="mouse_speed_subtitle">调整触摸移动和分配为移动鼠标的控件的指针速度。射击模式使用独立的视角灵敏度。</string>
+    <string name="reset_mouse_speed">重置鼠标速度</string>
     <string name="edit_physical_controller">编辑实体控制器</string>
     <string name="controller_disconnected">已断开</string>
     <string name="reset_onscreen_controls">重置屏幕控制器</string>
