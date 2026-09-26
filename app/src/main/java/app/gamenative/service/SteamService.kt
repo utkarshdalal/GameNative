@@ -17,6 +17,7 @@ import app.gamenative.service.callback.GameInviteCallback
 import app.gamenative.service.handler.GameInviteHandler
 import androidx.room.withTransaction
 import app.gamenative.BuildConfig
+import app.gamenative.MainActivity
 import app.gamenative.NetworkMonitor
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
@@ -527,6 +528,14 @@ class SteamService : Service(), IChallengeUrlChanged {
         @JvmStatic
         @Volatile
         var keepAlive: Boolean = false
+
+        // A game is loading (loading dialog or boot splash); keepAlive only starts with the game exe.
+        @Volatile
+        var isLaunchInProgress: Boolean = false
+
+        // From the start of a game exit until its cloud sync has run.
+        @Volatile
+        var isExitInProgress: Boolean = false
 
         @Volatile
         var isImporting: Boolean = false
@@ -4256,7 +4265,17 @@ class SteamService : Service(), IChallengeUrlChanged {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        if (!hasActiveOperations() && !(BuildConfig.XR_BUILD && keepAlive)) {
+        // Headset activities run in their own task: closing one doesn't mean the app was swiped away.
+        val root = rootIntent?.component?.className
+        if (root != null && root != MainActivity::class.java.name) {
+            Timber.i("Task of %s removed — keeping service alive", root)
+            return
+        }
+        if (!hasActiveOperations() &&
+            !isLaunchInProgress &&
+            !isExitInProgress &&
+            !(BuildConfig.XR_BUILD && keepAlive)
+        ) {
             Timber.i("Task removed and no active work — stopping service")
             stopSelf()
         } else {

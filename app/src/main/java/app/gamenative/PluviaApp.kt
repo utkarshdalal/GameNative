@@ -238,6 +238,10 @@ class PluviaApp : SplitCompatApplication() {
         @Volatile
         var isBootingSplashShowing: Boolean = false
 
+        // Backgrounded during boot: the game keeps loading and is suspended once its window shows.
+        @Volatile
+        var suspendWhenGameShows: Boolean = false
+
         // Active runtime suspend policy for the current in-game session.
         var activeSuspendPolicy: String = Container.SUSPEND_POLICY_MANUAL
             private set
@@ -287,6 +291,7 @@ class PluviaApp : SplitCompatApplication() {
             activeSuspendPolicy = Container.SUSPEND_POLICY_MANUAL
             isOverlayPaused = false
             hasInitializedSuspendPolicyState = false
+            suspendWhenGameShows = false
         }
 
         fun hasValidSuspendPolicyState(): Boolean = hasInitializedSuspendPolicyState
