@@ -63,10 +63,10 @@ class FileDetectorTest {
     fun `detect sorts by count then name and matching is case insensitive`() {
         val files = listOf("BIN/STEAMWORKS.NET.DLL", "bin/UnityPlayer.dll", "Game_Data/globalgamemanagers.assets", "x/EasyAntiCheat/EasyAntiCheat_x64.dll", "Game_Data/Managed/Unity.Entities.dll", "Game_Data/Plugins/lib_burst_generated.dll")
         val d = detector.detect(files)
-        assertTrue("Unity" in d.engines, d.toString())
-        assertTrue("SteamworksNET" in d.sdks, d.toString())
+        assertTrue(d.toString(), "Unity" in d.engines)
+        assertTrue(d.toString(), "SteamworksNET" in d.sdks)
         assertEquals(listOf("SteamworksNET", "UnityBurst", "UnityEntities"), d.sdks)
-        assertTrue("EasyAntiCheat" in d.antiCheat, d.toString())
+        assertTrue(d.toString(), "EasyAntiCheat" in d.antiCheat)
         val counts = detector.matches(files)
         val sdkCounts = counts.filterKeys { it.startsWith("SDK.") }
         val expectedOrder = sdkCounts.entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }).map { it.key.removePrefix("SDK.") }
