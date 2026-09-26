@@ -10,6 +10,12 @@ import android.util.Log;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.annotation.TargetApi;
+import android.media.AudioAttributes;
+import android.os.Build;
+import android.os.CombinedVibration;
+import android.os.VibrationAttributes;
+import android.os.VibratorManager;
 import android.view.View;
 
 // import com.winlator.XServerDisplayActivity;
@@ -46,6 +52,10 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 
@@ -82,11 +92,18 @@ public class WinHandler {
 
     private InputControlsView inputControlsView;
     private Thread[] rumblePollerThreads = new Thread[MAX_PLAYERS];
+    private Thread rumbleKeepaliveThread;
+    // Serializes vibration apply/cancel across the pollers, keepalive, and UI threads.
+    private final Object rumbleLock = new Object();
+    // waitForRumble() blocks until the game sends a NEW rumble command, so the poller can't
+    // refresh a held rumble; this is the cadence at which the keepalive re-applies it. It re-arms
+    // 1s before the controller one-shot expires (long one-shot + rare refresh per upstream #1584 —
+    // far fewer vibrate() IPC/Bluetooth calls than a short one-shot refreshed every ~240ms).
+    private static final int RUMBLE_KEEPALIVE_MS = 9000;
     private final short[] lastLowFreq = new short[MAX_PLAYERS];
     private final short[] lastHighFreq = new short[MAX_PLAYERS];
     private final boolean[] isRumbling = new boolean[MAX_PLAYERS];
     private final int[] rumbleDeviceIds = new int[MAX_PLAYERS];
-    private long lastStandalonePhoneRumbleMs = 0;
     private boolean isShowingAssignDialog = false;
     private Context activity;
     private final java.util.Set<Integer> ignoredDeviceIds = new java.util.HashSet<>();
@@ -118,6 +135,27 @@ public class WinHandler {
     private static final int PHONE_RUMBLE_FALLBACK_DURATION_MS = 40;
     private static final int STANDALONE_PHONE_RUMBLE_DURATION_MS = 70;
     private static final int STANDALONE_PHONE_RUMBLE_THROTTLE_MS = 120;
+
+    // --- Vibration routing (off / controller / device) + intensity ---
+    // Long one-shots refreshed shortly before expiry: vibrate() replaces the in-flight effect, so
+    // rumble changes/stops still apply instantly, but a held rumble costs one re-arm per period
+    // instead of constant refreshing.
+    private static final int CONTROLLER_RUMBLE_MS = 10000;
+    private static final int DEVICE_RUMBLE_MS = 60000;
+    // Refresh the device one-shot only as it nears expiry (its period is longer than the controller's).
+    private static final long DEVICE_RUMBLE_REFRESH_MS = DEVICE_RUMBLE_MS - 5_000L;
+    private static final String DEFAULT_VIBRATION_MODE = "controller";
+    private static final Set<String> VALID_VIBRATION_MODES =
+            new HashSet<>(Arrays.asList("off", "controller", "device"));
+    // AudioAttributes is available on all supported API levels; VibrationAttributes needs API 31.
+    private static final AudioAttributes AUDIO_ATTRS_GAME = new AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_GAME)
+            .build();
+    private final VibrationAttributes vibrationAttrs;
+    // Motor-ID pairs already logged once, to avoid flooding logcat on every rumble.
+    private final Set<String> loggedRumbleMotorIds = new HashSet<>();
+    private volatile String vibrationMode = DEFAULT_VIBRATION_MODE;
+    private volatile int vibrationIntensity = 100;
 
     // Add method to set InputControlsView
     public void setInputControlsView(InputControlsView view) {
@@ -167,6 +205,16 @@ public class WinHandler {
         this.controllerManager = ControllerManager.getInstance();
         this.activity = xServerView.getContext();
         this.currentControllerId = -1;
+
+        // VibrationAttributes and its Vibrator/VibratorManager overloads are API 33+; below that
+        // we fall back to AudioAttributes, so only build it on TIRAMISU+ (null acts as the gate).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            this.vibrationAttrs = new VibrationAttributes.Builder()
+                    .setUsage(VibrationAttributes.USAGE_MEDIA)
+                    .build();
+        } else {
+            this.vibrationAttrs = null;
+        }
         for (int i = 0; i < rumbleDeviceIds.length; i++) {
             rumbleDeviceIds[i] = -1;
         }
@@ -519,6 +567,7 @@ public class WinHandler {
         for (int slot = 0; slot < MAX_PLAYERS; slot++) {
             rumbleTeardown(slot);
         }
+        if (rumbleKeepaliveThread != null) rumbleKeepaliveThread.interrupt();
         try {
             if (rumblePollerThreads != null && rumblePollerThreads.length > 0) {
                 for (Thread t : rumblePollerThreads) {
@@ -527,8 +576,12 @@ public class WinHandler {
                     }
                 }
             }
+            if (rumbleKeepaliveThread != null)
+                this.rumbleKeepaliveThread.join();
         } catch (InterruptedException ignored) {
         }
+        // Cancel any in-flight one-shot so the device doesn't keep vibrating after shutdown.
+        stopAllVibration();
         DatagramSocket datagramSocket = this.socket;
         if (datagramSocket != null) {
             datagramSocket.close();
@@ -794,6 +847,7 @@ public class WinHandler {
                 int lastSeq = 0;
                 while (running) {
                     try {
+                        // Blocks until the game issues a new rumble command (or teardown wakes us).
                         curSeq = WinHandler.waitForRumble(sl, lastSeq);
                         if (!running) break;
                         if (curSeq == lastSeq) {
@@ -810,23 +864,25 @@ public class WinHandler {
                         short lowFreq = buffer.getShort(OFF_RUMBLE_LOW);
                         short highFreq = buffer.getShort(OFF_RUMBLE_HIGH);
 
-                        ExternalController controller = getControllerFromSlot(sl);
-                        int deviceId = controller != null ? controller.getDeviceId() : -1;
-                        if (rumbleDeviceIds[sl] != deviceId) {
-                            if (isRumbling[sl]) {
-                                stopVibration(sl);
+                        synchronized (rumbleLock) {
+                            ExternalController controller = getControllerFromSlot(sl);
+                            int deviceId = controller != null ? controller.getDeviceId() : -1;
+                            if (rumbleDeviceIds[sl] != deviceId) {
+                                if (isRumbling[sl]) {
+                                    stopVibration(sl);
+                                }
+                                rumbleDeviceIds[sl] = deviceId;
                             }
-                            rumbleDeviceIds[sl] = deviceId;
-                        }
 
-                        // Check if the rumble state has changed
-                        if (lowFreq != lastLowFreq[sl] || highFreq != lastHighFreq[sl]) {
-                            lastLowFreq[sl] = lowFreq;
-                            lastHighFreq[sl] = highFreq;
-                            if (lowFreq == 0 && highFreq == 0) {
-                                stopVibration(sl);
-                            } else {
-                                startVibration(sl, lowFreq, highFreq);
+                            // Check if the rumble state has changed
+                            if (lowFreq != lastLowFreq[sl] || highFreq != lastHighFreq[sl]) {
+                                lastLowFreq[sl] = lowFreq;
+                                lastHighFreq[sl] = highFreq;
+                                if (lowFreq == 0 && highFreq == 0) {
+                                    stopVibration(sl);
+                                } else {
+                                    startVibration(sl, lowFreq, highFreq);
+                                }
                             }
                         }
                     } catch (Exception ignored) {
@@ -836,105 +892,331 @@ public class WinHandler {
             thread.start();
             rumblePollerThreads[sl] = thread;
         }
+        startRumbleKeepalive();
     }
 
-    private void startVibration(int slot, short lowFreq, short highFreq) {
-        if (slot < 0 || slot >= MAX_PLAYERS) {
-            return;
-        }
-        if (startDeviceVibration(rumbleDeviceIds[slot], lowFreq, highFreq)) {
-            isRumbling[slot] = true;
-        }
-    }
-
-    private InputDevice getCurrentPhysicalControllerDevice() {
-        InputDevice device = InputDevice.getDevice(currentControllerId);
-        return ExternalController.isGameController(device) ? device : null;
-    }
-
-    private int getPhoneRumbleAmplitude(int amplitude) {
-        float normalizedAmplitude = (float) amplitude / 255.0f;
-        float curvedAmplitude = (float) Math.pow(normalizedAmplitude, 0.6f);
-        int phoneAmplitude = (int) (curvedAmplitude * 255);
-        if (phoneAmplitude > 255) phoneAmplitude = 255;
-        if (phoneAmplitude <= 1) phoneAmplitude = 0;
-        return phoneAmplitude;
-    }
-
-    private boolean startDeviceVibration(int deviceId, short lowFreq, short highFreq) {
-        // --- Step 1: Calculate the base amplitude once at the top ---
-        int unsignedLowFreq = lowFreq & 0xFFFF;
-        int unsignedHighFreq = highFreq & 0xFFFF;
-        int dominantRumble = Math.max(unsignedLowFreq, unsignedHighFreq);
-        // This is the raw amplitude for a physical X-Input device
-        int amplitude = Math.round((float) dominantRumble / 65535.0f * 254.0f) + 1;
-        if (amplitude > 255) amplitude = 255;
-        // If amplitude is negligible, just stop and exit.
-        if (amplitude <= 1) {
-            return false;
-        }
-        boolean controllerVibrated = false;
-        boolean phoneVibrated = false;
-        // --- Step 2: Attempt to vibrate the physical controller first ---
-        InputDevice device = InputDevice.getDevice(deviceId);
-        if (device != null) {
-            Vibrator controllerVibrator = device.getVibrator();
-            if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
-                controllerVibrator.vibrate(VibrationEffect.createOneShot(CONTROLLER_RUMBLE_DURATION_MS, amplitude));
-                controllerVibrated = true;
-            }
-        }
-
-        // --- Step 3: Fallback to phone vibration only for a real controller without rumble.
-        if (!controllerVibrated && device != null) {
-            Log.w("WinHandler", "No physical controller vibrator found, falling back to device vibration.");
-            Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
-            if (phoneVibrator != null && phoneVibrator.hasVibrator()) {
-                int finalPhoneAmplitude = getPhoneRumbleAmplitude(amplitude);
-                if (finalPhoneAmplitude > 0) {
-                    phoneVibrator.vibrate(VibrationEffect.createOneShot(PHONE_RUMBLE_FALLBACK_DURATION_MS, finalPhoneAmplitude));
-                    phoneVibrated = true;
-                }
-            }
-        } else if (device == null) {
-            long now = SystemClock.uptimeMillis();
-            if (now - lastStandalonePhoneRumbleMs >= STANDALONE_PHONE_RUMBLE_THROTTLE_MS) {
-                Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
-                if (phoneVibrator != null && phoneVibrator.hasVibrator()) {
-                    int finalPhoneAmplitude = getPhoneRumbleAmplitude(amplitude);
-                    if (finalPhoneAmplitude > 0) {
-                        phoneVibrator.vibrate(VibrationEffect.createOneShot(STANDALONE_PHONE_RUMBLE_DURATION_MS, finalPhoneAmplitude));
-                        lastStandalonePhoneRumbleMs = now;
-                        phoneVibrated = true;
+    /**
+     * waitForRumble() blocks until the game issues a NEW rumble command, so the pollers cannot
+     * refresh a sustained rumble — the motor one-shot would lapse (~1s) while the game holds a
+     * constant value. This thread re-applies each slot's active rumble on a per-mode cadence so it
+     * sustains. It is event-driven: it blocks on rumbleLock while idle and is woken by
+     * startVibration(), so it does not poll when nothing is rumbling. Re-issuing the same constant
+     * amplitude is seamless.
+     */
+    private void startRumbleKeepalive() {
+        rumbleKeepaliveThread = new Thread(() -> {
+            synchronized (rumbleLock) {
+                while (running) {
+                    try {
+                        boolean anyRumbling = false;
+                        for (int sl = 0; sl < MAX_PLAYERS; sl++) {
+                            if (isRumbling[sl] && (lastLowFreq[sl] != 0 || lastHighFreq[sl] != 0)) {
+                                anyRumbling = true;
+                                break;
+                            }
+                        }
+                        if (!anyRumbling) {
+                            // Idle: block until a rumble starts (woken by startVibration). No polling.
+                            rumbleLock.wait();
+                        } else {
+                            // Active: re-arm each mode's one-shot shortly before it expires.
+                            long interval = "device".equals(vibrationMode)
+                                    ? DEVICE_RUMBLE_REFRESH_MS : RUMBLE_KEEPALIVE_MS;
+                            rumbleLock.wait(interval);
+                            for (int sl = 0; sl < MAX_PLAYERS; sl++) {
+                                if (isRumbling[sl] && (lastLowFreq[sl] != 0 || lastHighFreq[sl] != 0)) {
+                                    startVibration(sl, lastLowFreq[sl], lastHighFreq[sl]);
+                                }
+                            }
+                        }
+                    } catch (InterruptedException e) {
+                        return;
                     }
                 }
             }
-        }
-        return controllerVibrated || phoneVibrated;
+        });
+        rumbleKeepaliveThread.setName("rumble-keepalive");
+        rumbleKeepaliveThread.start();
     }
 
-    private void stopVibration(int slot) {
-        if (slot < 0 || slot >= MAX_PLAYERS) {
-            return;
+    /** Sets the vibration routing mode (off/controller/device), normalizing and validating input. */
+    public void setVibrationMode(String mode) {
+        String newMode;
+        if (mode == null) {
+            newMode = DEFAULT_VIBRATION_MODE;
+        } else {
+            String normalized = mode.trim().toLowerCase(Locale.US);
+            newMode = VALID_VIBRATION_MODES.contains(normalized) ? normalized : DEFAULT_VIBRATION_MODE;
         }
-        if (!isRumbling[slot]) return;
-        stopDeviceVibration(rumbleDeviceIds[slot]);
-        isRumbling[slot] = false;
+        if (newMode.equals(this.vibrationMode)) return;
+        this.vibrationMode = newMode;
+        reconcileActiveRumble();
     }
 
-    private void stopDeviceVibration(int deviceId) {
-        // Attempt to stop the physical controller's vibration if it exists
-        InputDevice device = InputDevice.getDevice(deviceId);
-        if (device != null) {
-            Vibrator vibrator = device.getVibrator();
-            if (vibrator != null && vibrator.hasVibrator()) {
-                vibrator.cancel();
+    /** Sets the vibration intensity percentage, clamped to 0–100. */
+    public void setVibrationIntensity(int intensity) {
+        int clamped = Math.max(0, Math.min(100, intensity));
+        if (clamped == this.vibrationIntensity) return;
+        this.vibrationIntensity = clamped;
+        reconcileActiveRumble();
+    }
+
+    /**
+     * Apply a mode/intensity change immediately. Cancels any in-flight vibration, then proactively
+     * re-applies the rumble currently in shared memory under the new settings — the pollers only wake
+     * on a NEW game rumble command, so a sustained rumble would otherwise stay stale until the game
+     * next changed it.
+     */
+    private void reconcileActiveRumble() {
+        synchronized (rumbleLock) {
+            for (int sl = 0; sl < MAX_PLAYERS; sl++) {
+                if (isRumbling[sl]) stopVibration(sl);
+                lastLowFreq[sl] = 0;
+                lastHighFreq[sl] = 0;
+            }
+            if ("off".equals(vibrationMode) || vibrationIntensity == 0) return;
+            for (int sl = 0; sl < MAX_PLAYERS; sl++) {
+                MappedByteBuffer buffer = getGamepadBuffer(sl);
+                if (buffer == null) continue;
+                try {
+                    short low = buffer.getShort(OFF_RUMBLE_LOW);
+                    short high = buffer.getShort(OFF_RUMBLE_HIGH);
+                    if (low != 0 || high != 0) {
+                        lastLowFreq[sl] = low;
+                        lastHighFreq[sl] = high;
+                        startVibration(sl, low, high);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "reconcileActiveRumble: failed to re-apply P" + (sl + 1) + " rumble", e);
+                }
             }
         }
-        // Always attempt to stop the phone's vibration
-        Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
-        if (phoneVibrator != null) {
-            phoneVibrator.cancel();
+    }
+
+    /** Cancels vibration on every player slot. */
+    private void stopAllVibration() {
+        synchronized (rumbleLock) {
+            for (int sl = 0; sl < MAX_PLAYERS; sl++) {
+                stopVibration(sl);
+            }
+        }
+    }
+
+    /** Converts a raw 16-bit XInput rumble value (0–65535) to a 0–255 amplitude, scaled by intensity percent. */
+    private int scaleAmplitude(short rawFreq, int intensityPercent) {
+        int unsigned = rawFreq & 0xFFFF;
+        if (unsigned == 0 || intensityPercent == 0) return 0;
+        // Map full 16-bit range to 1–255 so any non-zero game rumble produces a non-zero
+        // amplitude, then scale by the user's intensity preference.
+        int base = (int) Math.round(unsigned * 255.0 / 65535.0);
+        return Math.min(255, Math.max(1, (base * intensityPercent) / 100));
+    }
+
+    /**
+     * Collapses the low-freq (heavy) and high-freq (light) motor amplitudes into a single value
+     * for one-vibrator targets, weighting the heavy motor. Floors to 1 (never silence) whenever
+     * either motor is non-zero, so a high-freq-only rumble still vibrates.
+     */
+    private static int blendMotors(int lowAmp, int highAmp) {
+        if (lowAmp <= 0 && highAmp <= 0) return 0;
+        return Math.max(1, Math.min(255, (int) Math.round(lowAmp * 0.80 + highAmp * 0.33)));
+    }
+
+    /** Issues a one-shot vibration on a single vibrator, respecting amplitude-control availability. */
+    private void vibrateSingle(Vibrator vibrator, int amplitude, int durationMs) {
+        if (amplitude <= 0) { vibrator.cancel(); return; }
+        int amp = Math.min(255, amplitude);
+        int finalAmp = vibrator.hasAmplitudeControl() ? amp : VibrationEffect.DEFAULT_AMPLITUDE;
+        VibrationEffect effect = VibrationEffect.createOneShot(durationMs, finalAmp);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && vibrationAttrs != null) {
+            vibrator.vibrate(effect, vibrationAttrs);
+        } else {
+            vibrator.vibrate(effect, AUDIO_ATTRS_GAME);
+        }
+    }
+
+    /**
+     * Drives per-motor rumble through VibratorManager (API 31+). Sorts vibrator IDs ascending so the
+     * low-freq (heavy/left) and high-freq (light/right) motor selection is well-defined; falls back to
+     * a blended single-motor vibration when only one vibrator is available.
+     */
+    @TargetApi(31)
+    private boolean rumbleViaVibratorManager(VibratorManager vm, short lowFreq, short highFreq) {
+        int[] ids = vm.getVibratorIds();
+        if (ids.length == 0) return false;
+
+        int highAmp = scaleAmplitude(highFreq, vibrationIntensity);
+        int lowAmp  = scaleAmplitude(lowFreq,  vibrationIntensity);
+        if (lowAmp == 0 && highAmp == 0) { vm.cancel(); return true; }
+
+        Arrays.sort(ids);
+        int lowMotorId  = ids[0];
+        int highMotorId = ids.length >= 2 ? ids[1] : ids[0];
+
+        if (ids.length >= 2) {
+            String motorKey = lowMotorId + "_" + highMotorId;
+            if (loggedRumbleMotorIds.add(motorKey)) {
+                Log.d(TAG, "Rumble motors: lowMotor=" + lowMotorId + " highMotor=" + highMotorId);
+            }
+        }
+
+        CombinedVibration.ParallelCombination combo = CombinedVibration.startParallel();
+        boolean anyAdded = false;
+
+        if (ids.length >= 2) {
+            if (lowAmp > 0) {
+                int a = vm.getVibrator(lowMotorId).hasAmplitudeControl() ? lowAmp : VibrationEffect.DEFAULT_AMPLITUDE;
+                combo.addVibrator(lowMotorId, VibrationEffect.createOneShot(CONTROLLER_RUMBLE_MS, a));
+                anyAdded = true;
+            }
+            if (highAmp > 0) {
+                int a = vm.getVibrator(highMotorId).hasAmplitudeControl() ? highAmp : VibrationEffect.DEFAULT_AMPLITUDE;
+                combo.addVibrator(highMotorId, VibrationEffect.createOneShot(CONTROLLER_RUMBLE_MS, a));
+                anyAdded = true;
+            }
+        } else {
+            int blended = blendMotors(lowAmp, highAmp);
+            if (blended > 0) {
+                int a = vm.getVibrator(ids[0]).hasAmplitudeControl() ? blended : VibrationEffect.DEFAULT_AMPLITUDE;
+                combo.addVibrator(ids[0], VibrationEffect.createOneShot(CONTROLLER_RUMBLE_MS, a));
+                anyAdded = true;
+            }
+        }
+
+        if (!anyAdded) { vm.cancel(); return true; }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && vibrationAttrs != null) {
+            vm.vibrate(combo.combine(), vibrationAttrs);
+        } else {
+            vm.vibrate(combo.combine());
+        }
+        return true;
+    }
+
+    /** Resolves the physical InputDevice currently driving the given player slot, or null if none. */
+    private InputDevice resolveInputDevice(int slot) {
+        int deviceId = slot >= 0 && slot < MAX_PLAYERS ? rumbleDeviceIds[slot] : -1;
+        if (deviceId < 0) {
+            ExternalController controller = getControllerFromSlot(slot);
+            if (controller != null) deviceId = controller.getDeviceId();
+        }
+        if (deviceId < 0) return null;
+        return InputDevice.getDevice(deviceId);
+    }
+
+    /** Vibrates the slot's physical controller, trying VibratorManager (per-motor) first, then legacy Vibrator. */
+    private boolean vibrateController(int slot, short lowFreq, short highFreq) {
+        InputDevice device = resolveInputDevice(slot);
+        if (device == null) {
+            Log.w(TAG, "Rumble: no physical controller found for P" + (slot + 1));
+            return false;
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                VibratorManager vm = device.getVibratorManager();
+                if (rumbleViaVibratorManager(vm, lowFreq, highFreq)) {
+                    return true;
+                }
+            }
+            Vibrator v = device.getVibrator();
+            if (v != null && v.hasVibrator()) {
+                int lowMSB = scaleAmplitude(lowFreq, vibrationIntensity);
+                int highMSB = scaleAmplitude(highFreq, vibrationIntensity);
+                int blended = blendMotors(lowMSB, highMSB);
+                vibrateSingle(v, blended, CONTROLLER_RUMBLE_MS);
+                return true;
+            }
+            Log.w(TAG, "Rumble: no vibrators available on '" + device.getName() + "'");
+        } catch (Exception e) {
+            Log.e(TAG, "Rumble: exception vibrating controller", e);
+        }
+        return false;
+    }
+
+    /** Vibrates the Android device's built-in vibrator with a haptic-curved amplitude. Returns true if a vibration was issued. */
+    private boolean vibrateDevice(short lowFreq, short highFreq) {
+        try {
+            int lowMSB = scaleAmplitude(lowFreq, vibrationIntensity);
+            int highMSB = scaleAmplitude(highFreq, vibrationIntensity);
+            int rawAmplitude = blendMotors(lowMSB, highMSB);
+
+            Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+            if (phoneVibrator == null || !phoneVibrator.hasVibrator()) return false;
+
+            if (rawAmplitude <= 0) {
+                phoneVibrator.cancel();
+                return false;
+            }
+            float curved = (float) Math.pow((float) rawAmplitude / 255f, 0.6f);
+            int amp = Math.max(1, Math.round(curved * 255));
+            vibrateSingle(phoneVibrator, amp, DEVICE_RUMBLE_MS);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Rumble: exception vibrating device", e);
+            return false;
+        }
+    }
+
+    /** Routes a slot's rumble command to the controller or the phone based on the current vibration mode. */
+    private void startVibration(int slot, short lowFreq, short highFreq) {
+        if (slot < 0 || slot >= MAX_PLAYERS) return;
+        synchronized (rumbleLock) {
+            if ("off".equals(vibrationMode) || vibrationIntensity == 0) {
+                stopVibration(slot);
+                return;
+            }
+            boolean started = "device".equals(vibrationMode)
+                    ? vibrateDevice(lowFreq, highFreq)
+                    : vibrateController(slot, lowFreq, highFreq);
+            if (started) {
+                isRumbling[slot] = true;
+                rumbleLock.notifyAll();  // wake the idle keepalive so it begins refreshing
+            } else {
+                // Nothing handled it (e.g. no controller present) — don't mark rumbling so the
+                // keepalive won't retry, and clear any prior in-flight rumble.
+                stopVibration(slot);
+            }
+        }
+    }
+
+    /** Cancels the slot's controller vibration, plus the phone vibrator once no slot is rumbling. */
+    private void stopVibration(int slot) {
+        if (slot < 0 || slot >= MAX_PLAYERS) return;
+        synchronized (rumbleLock) {
+            if (!isRumbling[slot]) return;
+            isRumbling[slot] = false;
+            try {
+                InputDevice device = resolveInputDevice(slot);
+                if (device != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        VibratorManager vm = device.getVibratorManager();
+                        if (vm != null && vm.getVibratorIds().length > 0) {
+                            vm.cancel();
+                        } else {
+                            Vibrator v = device.getVibrator();
+                            if (v != null && v.hasVibrator()) v.cancel();
+                        }
+                    } else {
+                        Vibrator v = device.getVibrator();
+                        if (v != null && v.hasVibrator()) v.cancel();
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error cancelling controller vibration", e);
+            }
+            // The phone vibrator is shared across slots (device mode), so only cancel it once
+            // no slot is rumbling anymore.
+            boolean anyRumbling = false;
+            for (int sl = 0; sl < MAX_PLAYERS; sl++) {
+                if (isRumbling[sl]) { anyRumbling = true; break; }
+            }
+            if (!anyRumbling) {
+                try {
+                    Vibrator phoneVibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+                    if (phoneVibrator != null) phoneVibrator.cancel();
+                } catch (Exception e) {
+                    Log.e(TAG, "Error cancelling device vibration", e);
+                }
+            }
         }
     }
 
