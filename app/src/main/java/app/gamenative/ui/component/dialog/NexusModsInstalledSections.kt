@@ -111,6 +111,8 @@ internal fun ProfilesSection(
 internal fun ProfileNameDialog(
     title: String,
     initialName: String,
+    labelResId: Int = R.string.nexus_profile_name,
+    maxLength: Int = Int.MAX_VALUE,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -122,9 +124,9 @@ internal fun ProfileNameDialog(
         text = {
             NoExtractOutlinedTextField(
                 value = name,
-                onValueChange = { name = it },
+                onValueChange = { name = it.take(maxLength) },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.nexus_profile_name)) },
+                label = { Text(stringResource(labelResId)) },
                 singleLine = true,
             )
         },

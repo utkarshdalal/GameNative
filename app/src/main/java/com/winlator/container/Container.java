@@ -555,6 +555,10 @@ public class Container {
         this.extraData = extraData;
     }
 
+    public JSONObject getExtraData() {
+        return extraData;
+    }
+
     public boolean isGstreamerWorkaround() { // Add this getter
         return this.gstreamerWorkaround;
     }
@@ -732,6 +736,11 @@ public class Container {
     }
 
     public void saveData() {
+        saveDataChecked();
+    }
+
+    /** Checked persistence for callers that must not report success after a failed write. */
+    public boolean saveDataChecked() {
         try {
             JSONObject data = new JSONObject();
             data.put("id", id);
@@ -831,10 +840,11 @@ public class Container {
             data.put("portraitMode", portraitMode);
 
             if (!WineInfo.isMainWineVersion(wineVersion)) data.put("wineVersion", wineVersion);
-            FileUtils.writeString(getConfigFile(), data.toString());
+            return FileUtils.writeString(getConfigFile(), data.toString());
         }
         catch (JSONException e) {
             Log.e("Container", "Failed to save data: " + e);
+            return false;
         }
     }
 

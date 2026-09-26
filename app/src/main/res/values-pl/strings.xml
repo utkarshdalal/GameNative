@@ -209,6 +209,7 @@
 
     <!--Winlator-->
     <string name="disabled">Wyłączone</string>
+    <string name="enabled">Włączone</string>
     <string name="copy">Kopiuj</string>
     <string name="stability">Stabilność</string>
     <string name="compatibility">Kompatybilność</string>
@@ -237,7 +238,6 @@
     <string name="remove">Usuń</string>
     <string name="add">Dodaj</string>
     <string name="delete">Usuń</string>
-    <string name="copy_from">Kopiuj z</string>
     <string name="ok">Ok</string>
     <string name="container_config_custom_resolution_title">Ustaw własną rozdzielczość</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -478,7 +478,6 @@
     <string name="not_set">Nie ustawiono</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Kontroler zresetowany</string>
     <string name="toast_failed_log_save">Nie udało się zapisać logcat do miejsca docelowego</string>
 
     <!-- Settings -->
@@ -2660,4 +2659,32 @@
     <string name="nexus_apply_failure_title">Ostatnia instalacja moda nie powiodła się</string>
     <string name="nexus_apply_failure_description">Mod nie został oznaczony jako zainstalowany. Zmiany cofnięto tam, gdzie można było to bezpiecznie zweryfikować. Sprawdź poniższe błędy plików, a następnie wróć do Rozmieszczenia, aby poprawić lub ponowić instalację moda.</string>
     <string name="nexus_apply_failure_details">Błędy plików: %1$d</string>
+    <string name="control_profiles">Profile sterowania</string>
+    <string name="more_options">Więcej opcji</string>
+    <string name="control_profiles_empty">Brak dostępnych profili sterowania.</string>
+    <string name="control_profile_applied_sections">Zastosowano · %1$d z %2$d ustawień</string>
+    <string name="control_profile_apply">Zastosuj</string>
+    <string name="control_profile_applied">Zastosowano profil sterowania</string>
+    <string name="control_profile_export">Eksportuj</string>
+    <string name="control_profile_create_blank">Pusty profil</string>
+    <string name="control_profile_create_current">Z bieżącego sterowania</string>
+    <string name="control_profile_start_with">Rozpocznij od</string>
+    <string name="control_profile_create_current_hint">Wybierz ustawienia, które mają zostać zapisane z tej gry.</string>
+    <string name="control_profile_create_blank_hint">Rozpocznij z pustym układem elementów sterowania na ekranie.</string>
+    <string name="control_profile_create_applies_hint">Nowy profil zostanie zapisany w bibliotece i natychmiast zastosowany do tej gry.</string>
+    <string name="control_profile_create_and_apply">Utwórz i zastosuj</string>
+    <string name="control_profile_created_applied">Utworzono i zastosowano profil sterowania</string>
+    <string name="control_profile_save_current">Zapisz bieżące sterowanie</string>
+    <string name="control_profile_update_current">Zaktualizuj z bieżącego sterowania</string>
+    <string name="control_profile_sections">Dołączone ustawienia</string>
+    <string name="control_profile_section_on_screen">Elementy sterowania na ekranie</string>
+    <string name="control_profile_section_physical">Kontroler fizyczny</string>
+    <string name="control_profile_controls_count">Elementy sterowania na ekranie: %1$d</string>
+    <string name="control_profile_bindings_count">Przypisania kontrolera fizycznego: %1$d</string>
+    <string name="control_profile_radial_count">Pola menu radialnego: %1$d</string>
+    <string name="control_profile_import_confirm">Dodaj do biblioteki</string>
+    <string name="control_profile_saved">Zapisano profil sterowania</string>
+    <string name="control_profile_failed">Operacja na profilu sterowania nie powiodła się: %1$s</string>
+    <string name="control_profile_delete_title">Usunąć profil sterowania?</string>
+    <string name="control_profile_delete_message">Usunąć „%1$s” z biblioteki? Gry już skonfigurowane z tym profilem zachowają swoje sterowanie.</string>
 </resources>

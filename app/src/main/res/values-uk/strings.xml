@@ -195,6 +195,7 @@
 
     <!--Winlator-->
     <string name="disabled">Вимкнено</string>
+    <string name="enabled">Увімкнено</string>
     <string name="copy">Копіювати</string>
     <string name="stability">Стабільність</string>
     <string name="compatibility">Сумісність</string>
@@ -224,7 +225,6 @@
     <string name="remove">Видалити</string>
     <string name="add">Додати</string>
     <string name="delete">Видалити</string>
-    <string name="copy_from">Копіювати з</string>
     <string name="ok">ОК</string>
     <string name="container_config_custom_resolution_title">Встановити власну роздільну здатність</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -465,7 +465,6 @@
     <string name="not_set">Не задано</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Елементи керування скинуто</string>
     <string name="toast_failed_log_save">Не вдалося зберегти logcat у місце призначення</string>
 
     <!-- Settings -->
@@ -2656,4 +2655,32 @@
     <string name="nexus_apply_failure_title">Останнє встановлення мода не вдалося</string>
     <string name="nexus_apply_failure_description">Мод не позначено як встановлений. Зміни скасовано там, де це вдалося безпечно перевірити. Перегляньте помилки файлів нижче, а потім поверніться до розміщення, щоб виправити або повторити встановлення.</string>
     <string name="nexus_apply_failure_details">Помилки файлів: %1$d</string>
+    <string name="control_profiles">Профілі керування</string>
+    <string name="more_options">Додаткові параметри</string>
+    <string name="control_profiles_empty">Немає доступних профілів керування.</string>
+    <string name="control_profile_applied_sections">Застосовано · %1$d з %2$d налаштувань</string>
+    <string name="control_profile_apply">Застосувати</string>
+    <string name="control_profile_applied">Профіль керування застосовано</string>
+    <string name="control_profile_export">Експортувати</string>
+    <string name="control_profile_create_blank">Порожній профіль</string>
+    <string name="control_profile_create_current">З поточного керування</string>
+    <string name="control_profile_start_with">Почати з</string>
+    <string name="control_profile_create_current_hint">Виберіть налаштування цієї гри, які слід зберегти.</string>
+    <string name="control_profile_create_blank_hint">Почати з порожньої схеми екранного керування.</string>
+    <string name="control_profile_create_applies_hint">Новий профіль буде збережено в бібліотеці й одразу застосовано до цієї гри.</string>
+    <string name="control_profile_create_and_apply">Створити й застосувати</string>
+    <string name="control_profile_created_applied">Профіль керування створено й застосовано</string>
+    <string name="control_profile_save_current">Зберегти поточне керування</string>
+    <string name="control_profile_update_current">Оновити з поточного керування</string>
+    <string name="control_profile_sections">Включені налаштування</string>
+    <string name="control_profile_section_on_screen">Екранне керування</string>
+    <string name="control_profile_section_physical">Фізичний контролер</string>
+    <string name="control_profile_controls_count">Елементів екранного керування: %1$d</string>
+    <string name="control_profile_bindings_count">Призначень фізичного контролера: %1$d</string>
+    <string name="control_profile_radial_count">Секторів радіального меню: %1$d</string>
+    <string name="control_profile_import_confirm">Додати до бібліотеки</string>
+    <string name="control_profile_saved">Профіль керування збережено</string>
+    <string name="control_profile_failed">Не вдалося виконати операцію з профілем керування: %1$s</string>
+    <string name="control_profile_delete_title">Видалити профіль керування?</string>
+    <string name="control_profile_delete_message">Видалити «%1$s» з бібліотеки? Ігри, уже налаштовані з ним, збережуть своє керування.</string>
 </resources>

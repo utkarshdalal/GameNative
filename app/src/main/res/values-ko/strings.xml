@@ -209,6 +209,7 @@
 
     <!--Winlator-->
     <string name="disabled">비활성화</string>
+    <string name="enabled">활성화됨</string>
     <string name="copy">복사</string>
     <string name="stability">안정성</string>
     <string name="compatibility">호환성</string>
@@ -238,7 +239,6 @@
     <string name="remove">제거</string>
     <string name="add">추가</string>
     <string name="delete">삭제</string>
-    <string name="copy_from">복사 위치</string>
     <string name="ok">확인</string>
     <string name="container_config_custom_resolution_title">사용자 지정 해상도 설정</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -476,7 +476,6 @@
     <string name="not_set">설정 안 됨</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">컨트롤 재설정됨</string>
     <string name="toast_failed_log_save">대상에 logcat 저장 실패</string>
 
     <!-- Settings -->
@@ -2648,4 +2647,32 @@
     <string name="nexus_apply_failure_title">마지막 모드 설치 실패</string>
     <string name="nexus_apply_failure_description">모드가 설치 완료로 표시되지 않았습니다. 안전하게 확인할 수 있는 변경 사항은 되돌렸습니다. 아래 파일 오류를 확인한 뒤 배치 화면으로 돌아가 수정하거나 다시 시도하세요.</string>
     <string name="nexus_apply_failure_details">파일 오류: %1$d</string>
+    <string name="control_profiles">컨트롤 프로필</string>
+    <string name="more_options">추가 옵션</string>
+    <string name="control_profiles_empty">사용 가능한 컨트롤 프로필이 없습니다.</string>
+    <string name="control_profile_applied_sections">적용됨 · 설정 %2$d개 중 %1$d개</string>
+    <string name="control_profile_apply">적용</string>
+    <string name="control_profile_applied">컨트롤 프로필을 적용했습니다</string>
+    <string name="control_profile_export">내보내기</string>
+    <string name="control_profile_create_blank">빈 프로필</string>
+    <string name="control_profile_create_current">현재 컨트롤에서</string>
+    <string name="control_profile_start_with">시작 항목</string>
+    <string name="control_profile_create_current_hint">이 게임에서 저장할 설정을 선택하세요.</string>
+    <string name="control_profile_create_blank_hint">빈 화면 컨트롤 레이아웃으로 시작합니다.</string>
+    <string name="control_profile_create_applies_hint">새 프로필이 라이브러리에 저장되고 이 게임에 즉시 적용됩니다.</string>
+    <string name="control_profile_create_and_apply">생성 및 적용</string>
+    <string name="control_profile_created_applied">컨트롤 프로필을 생성하고 적용했습니다</string>
+    <string name="control_profile_save_current">현재 컨트롤 저장</string>
+    <string name="control_profile_update_current">현재 컨트롤에서 업데이트</string>
+    <string name="control_profile_sections">포함된 설정</string>
+    <string name="control_profile_section_on_screen">화면 컨트롤</string>
+    <string name="control_profile_section_physical">물리 컨트롤러</string>
+    <string name="control_profile_controls_count">화면 컨트롤 %1$d개</string>
+    <string name="control_profile_bindings_count">물리 버튼 매핑 %1$d개</string>
+    <string name="control_profile_radial_count">방사형 메뉴 슬롯 %1$d개</string>
+    <string name="control_profile_import_confirm">라이브러리에 추가</string>
+    <string name="control_profile_saved">컨트롤 프로필을 저장했습니다</string>
+    <string name="control_profile_failed">컨트롤 프로필 작업 실패: %1$s</string>
+    <string name="control_profile_delete_title">컨트롤 프로필을 삭제할까요?</string>
+    <string name="control_profile_delete_message">라이브러리에서 “%1$s”을(를) 제거할까요? 이미 이 프로필로 설정된 게임의 컨트롤은 유지됩니다.</string>
 </resources>

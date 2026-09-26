@@ -200,6 +200,7 @@
 
     <!--Winlator-->
     <string name="disabled">Disabilitato</string>
+    <string name="enabled">Attivato</string>
     <string name="copy">Copia</string>
     <string name="stability">Stabilità</string>
     <string name="compatibility">Compatibilità</string>
@@ -229,7 +230,6 @@
     <string name="remove">Rimuovi</string>
     <string name="add">Aggiungi</string>
     <string name="delete">Elimina</string>
-    <string name="copy_from">Copia Da</string>
     <string name="ok">Ok</string>
     <string name="container_config_custom_resolution_title">Imposta Risoluzione Personalizzata</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -470,7 +470,6 @@
     <string name="not_set">Non Impostato</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Controlli reimpostati</string>
     <string name="toast_failed_log_save">Impossibile salvare logcat nella destinazione</string>
 
     <!-- Settings -->
@@ -2645,4 +2644,32 @@
     <string name="nexus_apply_failure_title">Ultima installazione del mod non riuscita</string>
     <string name="nexus_apply_failure_description">Il mod non è stato contrassegnato come installato. Le modifiche sono state annullate dove era possibile verificarle in sicurezza. Controlla gli errori dei file qui sotto, poi torna a Posizionamento per correggere o riprovare questo mod.</string>
     <string name="nexus_apply_failure_details">Errori dei file: %1$d</string>
+    <string name="control_profiles">Profili di controllo</string>
+    <string name="more_options">Altre opzioni</string>
+    <string name="control_profiles_empty">Nessun profilo di controllo disponibile.</string>
+    <string name="control_profile_applied_sections">Applicate · %1$d di %2$d impostazioni</string>
+    <string name="control_profile_apply">Applica</string>
+    <string name="control_profile_applied">Profilo di controllo applicato</string>
+    <string name="control_profile_export">Esporta</string>
+    <string name="control_profile_create_blank">Profilo vuoto</string>
+    <string name="control_profile_create_current">Dai controlli attuali</string>
+    <string name="control_profile_start_with">Inizia con</string>
+    <string name="control_profile_create_current_hint">Scegli quali impostazioni acquisire da questo gioco.</string>
+    <string name="control_profile_create_blank_hint">Inizia con una disposizione vuota dei controlli su schermo.</string>
+    <string name="control_profile_create_applies_hint">Il nuovo profilo verrà salvato nella raccolta e applicato subito a questo gioco.</string>
+    <string name="control_profile_create_and_apply">Crea e applica</string>
+    <string name="control_profile_created_applied">Profilo di controllo creato e applicato</string>
+    <string name="control_profile_save_current">Salva controlli attuali</string>
+    <string name="control_profile_update_current">Aggiorna dai controlli attuali</string>
+    <string name="control_profile_sections">Impostazioni incluse</string>
+    <string name="control_profile_section_on_screen">Controlli su schermo</string>
+    <string name="control_profile_section_physical">Controller fisico</string>
+    <string name="control_profile_controls_count">%1$d controlli su schermo</string>
+    <string name="control_profile_bindings_count">%1$d associazioni del controller fisico</string>
+    <string name="control_profile_radial_count">%1$d spazi del menu radiale</string>
+    <string name="control_profile_import_confirm">Aggiungi alla raccolta</string>
+    <string name="control_profile_saved">Profilo di controllo salvato</string>
+    <string name="control_profile_failed">Operazione del profilo di controllo non riuscita: %1$s</string>
+    <string name="control_profile_delete_title">Eliminare il profilo di controllo?</string>
+    <string name="control_profile_delete_message">Rimuovere “%1$s” dalla raccolta? I giochi già configurati con questo profilo manterranno i propri controlli.</string>
 </resources>

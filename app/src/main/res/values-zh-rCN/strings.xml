@@ -198,6 +198,7 @@
 
     <!-- Winlator -->
     <string name="disabled">已禁用</string>
+    <string name="enabled">已启用</string>
     <string name="copy">复制</string>
     <string name="stability">稳定</string>
     <string name="compatibility">兼容性</string>
@@ -227,7 +228,6 @@
     <string name="remove">移除</string>
     <string name="add">添加</string>
     <string name="delete">删除</string>
-    <string name="copy_from">从…复制</string>
     <string name="ok">确认</string>
     <string name="storage_info">存储信息</string>
     <string name="duplicate">复制</string>
@@ -462,7 +462,6 @@
     <string name="not_set">未设置</string>
 
     <!-- 提示消息 -->
-    <string name="toast_controls_reset">控制器已重置</string>
     <string name="toast_failed_log_save">无法将 logcat 保存到目标</string>
 
     <!-- 设置 -->
@@ -2668,4 +2667,32 @@
     <string name="nexus_apply_failure_title">上次模组安装失败</string>
     <string name="nexus_apply_failure_description">该模组未被标记为已安装。对于能够安全核实的更改，已尝试回滚。请查看下方的文件错误，然后返回放置页面进行修正或重试。</string>
     <string name="nexus_apply_failure_details">文件错误：%1$d</string>
+    <string name="control_profiles">控制配置</string>
+    <string name="more_options">更多选项</string>
+    <string name="control_profiles_empty">没有可用的控制配置。</string>
+    <string name="control_profile_applied_sections">已应用 · %2$d 项设置中的 %1$d 项</string>
+    <string name="control_profile_apply">应用</string>
+    <string name="control_profile_applied">已应用控制配置</string>
+    <string name="control_profile_export">导出</string>
+    <string name="control_profile_create_blank">空白配置</string>
+    <string name="control_profile_create_current">从当前控制设置创建</string>
+    <string name="control_profile_start_with">开始方式</string>
+    <string name="control_profile_create_current_hint">选择要从此游戏保存的设置。</string>
+    <string name="control_profile_create_blank_hint">从空白的屏幕控制布局开始。</string>
+    <string name="control_profile_create_applies_hint">新配置将保存到库中并立即应用到此游戏。</string>
+    <string name="control_profile_create_and_apply">创建并应用</string>
+    <string name="control_profile_created_applied">已创建并应用控制配置</string>
+    <string name="control_profile_save_current">保存当前控制设置</string>
+    <string name="control_profile_update_current">从当前控制设置更新</string>
+    <string name="control_profile_sections">包含的设置</string>
+    <string name="control_profile_section_on_screen">屏幕控制</string>
+    <string name="control_profile_section_physical">实体控制器</string>
+    <string name="control_profile_controls_count">%1$d 个屏幕控制</string>
+    <string name="control_profile_bindings_count">%1$d 个实体控制器绑定</string>
+    <string name="control_profile_radial_count">%1$d 个径向菜单槽位</string>
+    <string name="control_profile_import_confirm">添加到库</string>
+    <string name="control_profile_saved">已保存控制配置</string>
+    <string name="control_profile_failed">控制配置操作失败：%1$s</string>
+    <string name="control_profile_delete_title">删除控制配置？</string>
+    <string name="control_profile_delete_message">要从库中移除“%1$s”吗？已使用此配置的游戏将保留其控制设置。</string>
 </resources>

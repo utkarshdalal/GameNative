@@ -340,7 +340,6 @@
     <string name="continue_offline">Продолжить в автономном режиме</string>
     <string name="controller_disconnected">Отключено</string>
     <string name="copy">Копировать</string>
-    <string name="copy_from">Копировать из</string>
     <string name="copy_size_from_element">Скопировать размер из элемента</string>
     <string name="copy_toast_msg">Ссылка скопирована в буфер обмена</string>
     <string name="cpu_label">CPU%d</string>
@@ -381,6 +380,7 @@
     <string name="disable_mouse_input">Отключить ввод мыши</string>
     <string name="disable_present_wait">Отключить KHR_present_wait</string>
     <string name="disabled">Отключено</string>
+    <string name="enabled">Включено</string>
     <string name="discard">Отменить</string>
     <string name="done">Готово</string>
     <string name="download">Загрузить</string>
@@ -1357,7 +1357,6 @@ https://gamenative.app
     <string name="thumbstick_buttons">Кнопки джойстика</string>
     <string name="thumbstick_buttons_category">Кнопки джойстика</string>
     <string name="title_ubuntufs">Ubuntu FS</string>
-    <string name="toast_controls_reset">Управления сброшены</string>
     <string name="toast_copied_size">Скопирован размер: %.2fx</string>
     <string name="toast_failed_log_save">Ошибка сохранения logcat в место назначения</string>
     <string name="toast_no_elements_to_copy">Нет других доступных элементов для копирования размера из</string>
@@ -2586,4 +2585,32 @@ https://gamenative.app
     <string name="nexus_apply_failure_title">Последняя установка мода не удалась</string>
     <string name="nexus_apply_failure_description">Мод не отмечен как установленный. Изменения отменены там, где это удалось безопасно проверить. Просмотрите ошибки файлов ниже, затем вернитесь к размещению, чтобы исправить или повторить установку.</string>
     <string name="nexus_apply_failure_details">Ошибки файлов: %1$d</string>
+    <string name="control_profiles">Профили управления</string>
+    <string name="more_options">Дополнительные параметры</string>
+    <string name="control_profiles_empty">Нет доступных профилей управления.</string>
+    <string name="control_profile_applied_sections">Применено · %1$d из %2$d настроек</string>
+    <string name="control_profile_apply">Применить</string>
+    <string name="control_profile_applied">Профиль управления применён</string>
+    <string name="control_profile_export">Экспортировать</string>
+    <string name="control_profile_create_blank">Пустой профиль</string>
+    <string name="control_profile_create_current">Из текущего управления</string>
+    <string name="control_profile_start_with">Начать с</string>
+    <string name="control_profile_create_current_hint">Выберите настройки этой игры, которые нужно сохранить.</string>
+    <string name="control_profile_create_blank_hint">Начать с пустой раскладки экранного управления.</string>
+    <string name="control_profile_create_applies_hint">Новый профиль будет сохранён в библиотеке и сразу применён к этой игре.</string>
+    <string name="control_profile_create_and_apply">Создать и применить</string>
+    <string name="control_profile_created_applied">Профиль управления создан и применён</string>
+    <string name="control_profile_save_current">Сохранить текущее управление</string>
+    <string name="control_profile_update_current">Обновить из текущего управления</string>
+    <string name="control_profile_sections">Включённые настройки</string>
+    <string name="control_profile_section_on_screen">Экранное управление</string>
+    <string name="control_profile_section_physical">Физический контроллер</string>
+    <string name="control_profile_controls_count">Экранных элементов управления: %1$d</string>
+    <string name="control_profile_bindings_count">Назначений физического контроллера: %1$d</string>
+    <string name="control_profile_radial_count">Секторов радиального меню: %1$d</string>
+    <string name="control_profile_import_confirm">Добавить в библиотеку</string>
+    <string name="control_profile_saved">Профиль управления сохранён</string>
+    <string name="control_profile_failed">Ошибка операции с профилем управления: %1$s</string>
+    <string name="control_profile_delete_title">Удалить профиль управления?</string>
+    <string name="control_profile_delete_message">Удалить «%1$s» из библиотеки? Игры, уже настроенные с ним, сохранят свои элементы управления.</string>
 </resources>

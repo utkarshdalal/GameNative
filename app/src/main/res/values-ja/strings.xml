@@ -159,6 +159,7 @@
 
     <!--Winlator-->
     <string name="disabled">無効</string>
+    <string name="enabled">有効</string>
     <string name="copy">コピー</string>
     <string name="stability">安定性</string>
     <string name="compatibility">互換性</string>
@@ -185,7 +186,6 @@
     <string name="edit">編集</string>
     <string name="remove">取り除く</string>
     <string name="add">追加</string>
-    <string name="copy_from">コピー元</string>
     <string name="ok">わかりました</string>
     <string name="container_config_custom_resolution_title">カスタム解像度の設定</string>
     <string name="container_config_custom_resolution_separator">×</string>
@@ -491,7 +491,6 @@
     <string name="not_set">未設定</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">コントロールのリセット</string>
     <string name="toast_failed_log_save">logcat を宛先に保存できませんでした</string>
 
     <!-- Settings -->
@@ -2607,4 +2606,32 @@
     <string name="nexus_apply_failure_title">直前の MOD のインストールに失敗しました</string>
     <string name="nexus_apply_failure_description">MOD は適用済みとして記録されませんでした。安全に確認できた変更は元に戻しました。以下のファイルエラーを確認し、配置画面に戻って修正または再試行してください。</string>
     <string name="nexus_apply_failure_details">ファイルエラー: %1$d</string>
+    <string name="control_profiles">コントロールプロファイル</string>
+    <string name="more_options">その他のオプション</string>
+    <string name="control_profiles_empty">利用できるコントロールプロファイルはありません。</string>
+    <string name="control_profile_applied_sections">適用済み · %2$d 項目中 %1$d 項目</string>
+    <string name="control_profile_apply">適用</string>
+    <string name="control_profile_applied">コントロールプロファイルを適用しました</string>
+    <string name="control_profile_export">エクスポート</string>
+    <string name="control_profile_create_blank">空のプロファイル</string>
+    <string name="control_profile_create_current">現在のコントロールから</string>
+    <string name="control_profile_start_with">開始内容</string>
+    <string name="control_profile_create_current_hint">このゲームから保存する設定を選択してください。</string>
+    <string name="control_profile_create_blank_hint">空のオンスクリーンコントロールレイアウトで開始します。</string>
+    <string name="control_profile_create_applies_hint">新しいプロファイルをライブラリに保存し、このゲームにすぐ適用します。</string>
+    <string name="control_profile_create_and_apply">作成して適用</string>
+    <string name="control_profile_created_applied">コントロールプロファイルを作成して適用しました</string>
+    <string name="control_profile_save_current">現在のコントロールを保存</string>
+    <string name="control_profile_update_current">現在のコントロールから更新</string>
+    <string name="control_profile_sections">含まれる設定</string>
+    <string name="control_profile_section_on_screen">オンスクリーンコントロール</string>
+    <string name="control_profile_section_physical">物理コントローラー</string>
+    <string name="control_profile_controls_count">オンスクリーンコントロール %1$d 個</string>
+    <string name="control_profile_bindings_count">物理ボタン割り当て %1$d 件</string>
+    <string name="control_profile_radial_count">ラジアルメニュースロット %1$d 個</string>
+    <string name="control_profile_import_confirm">ライブラリに追加</string>
+    <string name="control_profile_saved">コントロールプロファイルを保存しました</string>
+    <string name="control_profile_failed">コントロールプロファイルの操作に失敗しました: %1$s</string>
+    <string name="control_profile_delete_title">コントロールプロファイルを削除しますか？</string>
+    <string name="control_profile_delete_message">ライブラリから「%1$s」を削除しますか？すでにこのプロファイルで設定されたゲームのコントロールは維持されます。</string>
 </resources>

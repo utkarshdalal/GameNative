@@ -185,6 +185,7 @@
 
     <!--Winlator-->
     <string name="disabled">Disabled</string>
+    <string name="enabled">Enabled</string>
     <string name="copy">Copy</string>
     <string name="stability">Stability</string>
     <string name="compatibility">Compatibility</string>
@@ -213,7 +214,6 @@
     <string name="edit">Edit</string>
     <string name="remove">Remove</string>
     <string name="add">Add</string>
-    <string name="copy_from">Copy From</string>
     <string name="ok">Ok</string>
     <string name="container_config_custom_resolution_title">Set Custom Resolution</string>
     <string name="container_config_custom_resolution_separator">x</string>
@@ -281,6 +281,34 @@
     <string name="input_controls">On-screen Controller</string>
     <string name="edit_controls">Edit On-screen Controller</string>
     <string name="edit_physical_controller">Edit Physical Controller</string>
+    <string name="control_profiles">Control Profiles</string>
+    <string name="control_profiles_empty">No control profiles are available.</string>
+    <string name="control_profile_applied_sections">Settings applied: %1$d/%2$d</string>
+    <string name="control_profile_apply">Apply</string>
+    <string name="control_profile_applied">Control profile applied</string>
+    <string name="control_profile_export">Export</string>
+    <string name="control_profile_create_blank">Blank profile</string>
+    <string name="control_profile_create_current">From current controls</string>
+    <string name="control_profile_start_with">Start with</string>
+    <string name="control_profile_create_current_hint">Choose which settings to capture from this game.</string>
+    <string name="control_profile_create_blank_hint">Start with an empty on-screen layout.</string>
+    <string name="control_profile_create_applies_hint">Your new profile will be saved to the library and applied to this game immediately.</string>
+    <string name="control_profile_create_and_apply">Create and apply</string>
+    <string name="control_profile_created_applied">Control profile created and applied</string>
+    <string name="control_profile_save_current">Save current controls</string>
+    <string name="control_profile_update_current">Update from current controls</string>
+    <string name="control_profile_sections">Included settings</string>
+    <string name="control_profile_section_on_screen">On-screen controls</string>
+    <string name="control_profile_section_physical">Physical controller</string>
+    <string name="control_profile_controls_count">On-screen controls: %1$d</string>
+    <string name="control_profile_bindings_count">Physical bindings: %1$d</string>
+    <string name="control_profile_radial_count">Radial slots: %1$d</string>
+    <string name="control_profile_import_confirm">Add to library</string>
+    <string name="control_profile_saved">Control profile saved</string>
+    <string name="control_profile_failed">Control profile operation failed: %1$s</string>
+    <string name="control_profile_delete_title">Delete control profile?</string>
+    <string name="control_profile_delete_message">Remove “%1$s” from the library? Games already configured from it will keep their controls.</string>
+    <string name="more_options">More options</string>
     <string name="controller_disconnected">Disconnected</string>
     <string name="reset_onscreen_controls">Reset On-Screen Controls</string>
     <string name="open_navigation_menu">Open Navigation Menu</string>
@@ -634,7 +662,6 @@
     <string name="not_set">Not Set</string>
 
     <!-- Toast -->
-    <string name="toast_controls_reset">Controls reset</string>
     <string name="toast_failed_log_save">Failed to save logcat to destination</string>
 
     <!-- Settings -->
