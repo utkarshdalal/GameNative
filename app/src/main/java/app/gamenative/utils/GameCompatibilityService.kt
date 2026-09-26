@@ -39,7 +39,6 @@ object GameCompatibilityService {
         val hasBeenTried: Boolean,
         val isNotWorking: Boolean,
         val state: String? = null,
-        val tier: String? = null,
     )
 
     /**
@@ -77,10 +76,7 @@ object GameCompatibilityService {
 
     fun badgeProperties(gameName: String): Map<String, Any> {
         val cached = GameCompatibilityCache.getCached(gameName) ?: return emptyMap()
-        return buildMap {
-            put("compat_badge", cached.state ?: statusFor(cached).name)
-            cached.tier?.let { put("compat_tier", it) }
-        }
+        return mapOf("compat_badge" to (cached.state ?: statusFor(cached).name))
     }
 
     /**

@@ -33,7 +33,6 @@ object GameCompatibilityCache {
         val hasBeenTried: Boolean,
         val isNotWorking: Boolean,
         val state: String? = null,
-        val tier: String? = null,
     )
 
     /**
@@ -48,7 +47,6 @@ object GameCompatibilityCache {
             hasBeenTried = this.hasBeenTried,
             isNotWorking = this.isNotWorking,
             state = this.state,
-            tier = this.tier,
         )
     }
 
@@ -64,7 +62,6 @@ object GameCompatibilityCache {
             hasBeenTried = this.hasBeenTried,
             isNotWorking = this.isNotWorking,
             state = this.state,
-            tier = this.tier,
         )
     }
 
