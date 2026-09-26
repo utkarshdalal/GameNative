@@ -16,6 +16,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,8 +30,13 @@ import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
+import app.gamenative.utils.ModDllOverrideLauncher
+import app.gamenative.utils.ModDllOverrides
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
+import com.alorma.compose.settings.ui.SettingsSwitch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.winlator.core.envvars.EnvVarInfo
 import com.winlator.core.envvars.EnvVars
 import com.winlator.core.envvars.EnvVarSelectionType
@@ -39,7 +45,30 @@ import com.winlator.core.envvars.EnvVarSelectionType
 fun EnvironmentTabContent(state: ContainerConfigState) {
     val config = state.config.value
     val envVars = EnvVars(config.envVars)
+    val detected by produceState<List<String>>(emptyList(), config.executablePath, config.drives) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                val executable = ModDllOverrides.resolveExecutable(config.executablePath, ModDllOverrideLauncher.drives(config.drives))
+                ModDllOverrides.detect(executable)
+            }.getOrDefault(emptyList())
+        }
+    }
     SettingsGroup() {
+        SettingsSwitch(
+            colors = settingsTileColors(),
+            title = { Text(stringResource(R.string.auto_mod_dll_overrides)) },
+            subtitle = { Text(stringResource(R.string.auto_mod_dll_overrides_description)) },
+            state = config.autoModDllOverrides,
+            onCheckedChange = { state.config.value = config.copy(autoModDllOverrides = it) },
+        )
+        if (config.autoModDllOverrides && detected.isNotEmpty()) {
+            SettingsCenteredLabel(
+                colors = settingsTileColors(),
+                title = {
+                    Text(stringResource(R.string.auto_mod_dll_overrides_detected, detected.joinToString { "$it.dll" }))
+                },
+            )
+        }
         if (config.envVars.isNotEmpty()) {
             SettingsEnvVars(
                 colors = settingsTileColors(),

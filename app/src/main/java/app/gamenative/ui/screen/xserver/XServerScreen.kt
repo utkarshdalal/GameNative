@@ -96,6 +96,7 @@ import app.gamenative.SteamBootstrap
 import app.gamenative.data.GameSource
 import app.gamenative.data.GyroSettings
 import app.gamenative.gamefixes.GameFixesRegistry
+import app.gamenative.utils.ModDllOverrideLauncher
 import app.gamenative.gamefixes.GameInputCompatibility
 import app.gamenative.data.LaunchInfo
 import app.gamenative.filedetect.GameFileDetection
@@ -4218,7 +4219,15 @@ private fun setupXEnvironment(
         environment.addComponent(VortekRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options2, context))
     }
 
-    guestProgramLauncherComponent.envVars = EnvVars().apply { putAll(envVars) }
+    // Keep setup tools on the base environment, including when they run before the game.
+    val baseLaunchEnv = EnvVars().apply { putAll(envVars) }
+    guestProgramLauncherComponent.envVars = EnvVars().apply { putAll(baseLaunchEnv) }
+    fun prepareGameEnvironment() {
+        guestProgramLauncherComponent.envVars = EnvVars().apply {
+            putAll(baseLaunchEnv)
+            ModDllOverrideLauncher.apply(container, this, gameLaunch = !bootToContainer && !testGraphics)
+        }
+    }
 
     val gameTerminationCallback = Callback<Int> { status ->
         if (status != 0) {
@@ -4230,6 +4239,7 @@ private fun setupXEnvironment(
 
     fun chainPreInstallSteps(remaining: List<PreInstallSteps.PreInstallCommand>) {
         if (remaining.isEmpty()) {
+            prepareGameEnvironment()
             guestProgramLauncherComponent.setGuestExecutable(gameExecutable)
             guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
             return
@@ -4258,6 +4268,7 @@ private fun setupXEnvironment(
     if (preInstallCommands.isNotEmpty()) {
         chainPreInstallSteps(preInstallCommands)
     } else {
+        prepareGameEnvironment()
         guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
     }
 
@@ -4298,7 +4309,7 @@ private fun setupXEnvironment(
         Timber.i("CPU List: ${container.cpuList}")
         Timber.i("CPU List WoW64: ${container.cpuListWoW64}")
         Timber.i("Env Vars (Container Base): ${EnvVarRedaction.redact(container.envVars)}") // Log base container vars
-        Timber.i("Env Vars (Final Guest): ${EnvVarRedaction.redact(envVars)}")   // Log the actual env vars being passed
+        Timber.i("Env Vars (Final Guest): ${EnvVarRedaction.redact(guestProgramLauncherComponent.envVars)}")
         Timber.i("Guest Executable: ${guestProgramLauncherComponent.guestExecutable}") // Log the command
         Timber.i("---------------------------")
     }

@@ -114,6 +114,7 @@ object ContainerUtils {
         return ContainerData(
             screenSize = PrefManager.screenSize,
             envVars = PrefManager.envVars,
+            autoModDllOverrides = PrefManager.autoModDllOverrides,
             graphicsDriver = PrefManager.graphicsDriver,
             graphicsDriverVersion = PrefManager.graphicsDriverVersion,
             graphicsDriverConfig = PrefManager.graphicsDriverConfig,
@@ -182,6 +183,7 @@ object ContainerUtils {
     fun setDefaultContainerData(containerData: ContainerData) {
         PrefManager.screenSize = containerData.screenSize
         PrefManager.envVars = containerData.envVars
+        PrefManager.autoModDllOverrides = containerData.autoModDllOverrides
         PrefManager.graphicsDriver = containerData.graphicsDriver
         PrefManager.graphicsDriverVersion = containerData.graphicsDriverVersion
         PrefManager.graphicsDriverConfig = containerData.graphicsDriverConfig
@@ -303,6 +305,7 @@ object ContainerUtils {
             name = container.name,
             screenSize = container.screenSize,
             envVars = container.envVars,
+            autoModDllOverrides = container.getExtra(ModDllOverrides.SETTING, "true").toBoolean(),
             graphicsDriver = container.graphicsDriver,
             graphicsDriverVersion = container.graphicsDriverVersion,
             graphicsDriverConfig = container.graphicsDriverConfig,
@@ -494,6 +497,7 @@ object ContainerUtils {
         container.name = containerData.name
         container.screenSize = containerData.screenSize
         container.envVars = containerData.envVars
+        container.putExtra(ModDllOverrides.SETTING, containerData.autoModDllOverrides.toString())
         container.graphicsDriver = containerData.graphicsDriver
         // Save driver config through to container
         container.graphicsDriverConfig = containerData.graphicsDriverConfig
@@ -888,6 +892,7 @@ object ContainerUtils {
             ContainerData(
                 screenSize = PrefManager.screenSize,
                 envVars = PrefManager.envVars,
+                autoModDllOverrides = PrefManager.autoModDllOverrides,
                 cpuList = PrefManager.cpuList,
                 cpuListWoW64 = PrefManager.cpuListWoW64,
                 graphicsDriver = PrefManager.graphicsDriver,
