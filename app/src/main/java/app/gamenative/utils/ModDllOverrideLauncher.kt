@@ -13,17 +13,14 @@ object ModDllOverrideLauncher {
         if (!gameLaunch || !container.getExtra(ModDllOverrides.SETTING, "true").toBoolean()) return
         try {
             val prefix = File(container.rootDir, ".wine")
-            val executable = ModDllOverrides.resolveExecutable(container.executablePath, drives(container.drives), File(prefix, "drive_c"))
+            val inspection = ModDllOverrides.inspect(container.executablePath, drives(container.drives), prefix)
+            val executable = inspection.executable
             if (executable == null) {
                 Timber.tag("ModDllOverrides").i("Skipped: game executable could not be resolved")
                 return
             }
-            val detected = ModDllOverrides.detect(executable)
-            if (detected.isEmpty()) return
-            val result = ModDllOverrides.merge(
-                env.get("WINEDLLOVERRIDES"), detected,
-                ModDllOverrides.readRegistry(File(prefix, "user.reg"), executable.name),
-            )
+            if (inspection.detected.isEmpty()) return
+            val result = inspection.merge(env.get("WINEDLLOVERRIDES"))
             if (result.added.isNotEmpty()) env.put("WINEDLLOVERRIDES", result.value)
             Timber.tag("ModDllOverrides").i(
                 "Game=%s; automatic=%s; existing settings preserved=%s",

@@ -49,6 +49,44 @@ class ModDllOverrideLauncherTest {
         assertEquals("icu=n;gameoverlayrenderer=n;dinput8=b", env.get("WINEDLLOVERRIDES"))
     }
 
+    @Test fun editorPreviewMatchesLaunchWithPrefixPathsAndRegistryOverrides() {
+        val prefix = File(container.rootDir, ".wine")
+        val game = File(prefix, "drive_c/Games/Muck").apply { mkdirs() }
+        File(game, "Muck.exe").writeText("test")
+        File(game, "winhttp.dll").writeText("test")
+        File(game, "dinput8.dll").writeText("test")
+        File(prefix, "user.reg").writeText("[Software\\\\Wine\\\\DllOverrides]\n\"dinput8\"=\"native\"\n")
+        container.executablePath = "C:\\Games\\Muck\\Muck.exe"
+
+        val inspection = ModDllOverrides.inspect(container.executablePath, ModDllOverrideLauncher.drives(container.drives), prefix)
+        val preview = inspection.merge(EnvVars(container.envVars).get("WINEDLLOVERRIDES"))
+        assertEquals(listOf("dinput8", "winhttp"), inspection.detected)
+        assertEquals(listOf("dinput8"), preview.preserved)
+        assertEquals(listOf("winhttp"), preview.added)
+        assertEquals("icu=n;winhttp=n,b", preview.value)
+
+        val env = EnvVars(container.envVars)
+        ModDllOverrideLauncher.apply(container, env, true)
+        assertEquals(preview.value, env.get("WINEDLLOVERRIDES"))
+        assertEquals("WINEDLLOVERRIDES=icu=n", container.envVars)
+        assertFalse(container.configFile.exists())
+    }
+
+    @Test fun editorPreviewReflectsUnsavedManualOverridesAndModRemoval() {
+        val prefix = File(container.rootDir, ".wine")
+        val drives = ModDllOverrideLauncher.drives(container.drives)
+        val inspection = ModDllOverrides.inspect(container.executablePath, drives, prefix)
+        assertEquals("icu=n;dinput8=n,b", inspection.merge("icu=n").value)
+        val manual = inspection.merge("icu=n;dinput8=b")
+        assertEquals("icu=n;dinput8=b", manual.value)
+        assertTrue(manual.added.isEmpty())
+        assertEquals(listOf("dinput8"), manual.preserved)
+        assertTrue(dll.delete())
+        val refreshed = ModDllOverrides.inspect(container.executablePath, drives, prefix).merge("icu=n")
+        assertEquals("icu=n", refreshed.value)
+        assertTrue(refreshed.added.isEmpty())
+    }
+
     @Test fun skipsDesktopAndSetupLaunches() {
         val env = EnvVars(container.envVars)
         ModDllOverrideLauncher.apply(container, env, false)

@@ -11,6 +11,26 @@ object ModDllOverrides {
     private val frameworkDirectories = setOf("bepinex", "melonloader", "reframework")
 
     data class Result(val value: String, val added: List<String>, val preserved: List<String>)
+    data class Inspection(
+        val executable: File?,
+        val detected: List<String>,
+        val registry: RegistryOverrides,
+    ) {
+        fun merge(value: String): Result = ModDllOverrides.merge(value, detected, registry)
+    }
+
+    /** Shared by the editor preview and launch so both respect the same files and Wine settings. */
+    fun inspect(path: String, drives: Map<String, File>, prefix: File? = null): Inspection {
+        val executable = resolveExecutable(path, drives, prefix?.let { File(it, "drive_c") })
+        val detected = detect(executable)
+        val registry = if (prefix != null && executable != null && detected.isNotEmpty()) {
+            readRegistry(File(prefix, "user.reg"), executable.name)
+        } else {
+            RegistryOverrides()
+        }
+        return Inspection(executable, detected, registry)
+    }
+
     data class RegistryOverrides(val global: Map<String, String> = emptyMap(), val app: Map<String, String> = emptyMap()) {
         fun preserves(dll: String): Boolean {
             if (app.keys.any { WineDllOverrides.matches(it, dll) }) return true

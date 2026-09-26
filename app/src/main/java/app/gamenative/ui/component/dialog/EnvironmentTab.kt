@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.Delete
@@ -13,60 +14,86 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
 import app.gamenative.ui.theme.settingsTileColors
+import app.gamenative.ui.theme.settingsTileColorsAlt
+import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ModDllOverrideLauncher
 import app.gamenative.utils.ModDllOverrides
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
 import com.alorma.compose.settings.ui.SettingsSwitch
+import com.winlator.core.envvars.EnvVarInfo
+import com.winlator.core.envvars.EnvVarSelectionType
+import com.winlator.core.envvars.EnvVars
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.winlator.core.envvars.EnvVarInfo
-import com.winlator.core.envvars.EnvVars
-import com.winlator.core.envvars.EnvVarSelectionType
 
 @Composable
-fun EnvironmentTabContent(state: ContainerConfigState) {
+fun EnvironmentTabContent(state: ContainerConfigState, appId: String? = null) {
+    val context = LocalContext.current
     val config = state.config.value
     val envVars = EnvVars(config.envVars)
-    val detected by produceState<List<String>>(emptyList(), config.executablePath, config.drives) {
+    val inspection by produceState<ModDllOverrides.Inspection?>(
+        null, appId, config.executablePath, config.drives, config.autoModDllOverrides,
+    ) {
+        value = null
+        if (!config.autoModDllOverrides) return@produceState
         value = withContext(Dispatchers.IO) {
             runCatching {
-                val executable = ModDllOverrides.resolveExecutable(config.executablePath, ModDllOverrideLauncher.drives(config.drives))
-                ModDllOverrides.detect(executable)
-            }.getOrDefault(emptyList())
+                val prefix = appId?.let { File(ContainerUtils.getContainer(context, it).rootDir, ".wine") }
+                ModDllOverrides.inspect(config.executablePath, ModDllOverrideLauncher.drives(config.drives), prefix)
+            }.getOrNull()
         }
     }
-    SettingsGroup() {
+    val detected = inspection?.detected.orEmpty()
+    val overrides = inspection?.merge(envVars.get("WINEDLLOVERRIDES"))
+    SettingsGroup {
         SettingsSwitch(
-            colors = settingsTileColors(),
+            colors = settingsTileColorsAlt(),
             title = { Text(stringResource(R.string.auto_mod_dll_overrides)) },
-            subtitle = { Text(stringResource(R.string.auto_mod_dll_overrides_description)) },
+            subtitle = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(R.string.auto_mod_dll_overrides_description))
+                    if (config.autoModDllOverrides && detected.isNotEmpty()) {
+                        Text(stringResource(R.string.auto_mod_dll_overrides_detected, detected.joinToString { "$it.dll" }))
+                    }
+                    if (config.autoModDllOverrides && overrides?.preserved?.isNotEmpty() == true) {
+                        Text(stringResource(R.string.auto_mod_dll_overrides_preserved, overrides.preserved.joinToString { "$it.dll" }))
+                    }
+                }
+            },
             state = config.autoModDllOverrides,
             onCheckedChange = { state.config.value = config.copy(autoModDllOverrides = it) },
         )
-        if (config.autoModDllOverrides && detected.isNotEmpty()) {
-            SettingsCenteredLabel(
-                colors = settingsTileColors(),
-                title = {
-                    Text(stringResource(R.string.auto_mod_dll_overrides_detected, detected.joinToString { "$it.dll" }))
-                },
+        if (config.autoModDllOverrides && overrides?.added?.isNotEmpty() == true) {
+            NoExtractOutlinedTextField(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                value = overrides.value,
+                onValueChange = {},
+                readOnly = true,
+                textStyle = MaterialTheme.typography.bodyMedium,
+                label = { Text(stringResource(R.string.auto_mod_dll_overrides_preview)) },
+                supportingText = { Text(stringResource(R.string.auto_mod_dll_overrides_preview_description)) },
             )
         }
         if (config.envVars.isNotEmpty()) {
@@ -89,7 +116,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                     )
                 },
             )
-        } else {
+        } else if (!config.autoModDllOverrides || overrides?.added?.isNotEmpty() != true) {
             SettingsCenteredLabel(
                 colors = settingsTileColors(),
                 title = { Text(text = stringResource(R.string.no_environment_variables)) },
@@ -212,7 +239,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                                         Text(
                                                             text = suggestion.removePrefix("---"),
                                                             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                                                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                                         )
                                                     },
                                                     onClick = {},
@@ -230,7 +257,9 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                         }
                                     }
                                 }
-                            } else null,
+                            } else {
+                                null
+                            },
                         )
                     }
                 }

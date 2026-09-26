@@ -1814,6 +1814,7 @@ abstract class BaseAppScreen {
             ContainerConfigDialog(
                 title = "${displayInfo.name} Config",
                 initialConfig = containerData,
+                appId = libraryItem.appId,
                 onDismissRequest = { showConfigDialog = false },
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)
