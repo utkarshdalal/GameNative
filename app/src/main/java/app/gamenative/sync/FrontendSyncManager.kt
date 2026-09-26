@@ -12,6 +12,7 @@ import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.CustomGameScanner
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.EntryPoint
@@ -167,13 +168,19 @@ object FrontendSyncManager {
         val dir = PrefManager.getFrontendSyncDir(source)
         if (dir.isEmpty()) return
 
+        val ext = extensionFor(source)
         val gameName = lookupGameName(appId, source) ?: run {
-            Timber.w("FrontendSyncManager: no game name for appId=%d source=%s", appId, source)
+            Timber.w(
+                "FrontendSyncManager: no game name for appId=%d source=%s, removing stale export if present",
+                appId,
+                source,
+            )
+            deleteExportFileForAppId(dir, ext, appId)
             return
         }
 
         val isInstalled = isGameInstalled(appId, source)
-        val file = File(dir, "${sanitizeFileName(gameName)}${extensionFor(source)}")
+        val file = File(dir, "${sanitizeFileName(gameName)}$ext")
 
         try {
             if (isInstalled) {
@@ -190,8 +197,13 @@ object FrontendSyncManager {
     private suspend fun syncAllInstalledGames(source: GameSource, dir: String) {
         try {
             val games: List<Pair<Int, String>> = when (source) {
-                GameSource.STEAM, GameSource.CUSTOM_GAME -> {
+                GameSource.STEAM -> {
                     steamAppDao.getInstalledGames().map { it.id to it.name }
+                }
+                GameSource.CUSTOM_GAME -> {
+                    CustomGameScanner.scanAsLibraryItems()
+                        .filter { it.gameSource == GameSource.CUSTOM_GAME }
+                        .map { it.gameId to it.name }
                 }
                 GameSource.EPIC -> {
                     epicGameDao.getInstalledGames().map { it.id to it.title }
@@ -225,14 +237,16 @@ object FrontendSyncManager {
     }
 
     private suspend fun lookupGameName(appId: Int, source: GameSource): String? = when (source) {
-        GameSource.STEAM, GameSource.CUSTOM_GAME -> steamAppDao.findApp(appId)?.name
+        GameSource.STEAM -> steamAppDao.findApp(appId)?.name
+        GameSource.CUSTOM_GAME -> CustomGameScanner.findCustomGameById(appId)?.let { File(it).name }
         GameSource.EPIC -> epicGameDao.getById(appId)?.title
         GameSource.GOG -> gogGameDao.getById(appId.toString())?.title
         GameSource.AMAZON -> amazonGameDao.getByAppId(appId)?.title
     }
 
     private suspend fun isGameInstalled(appId: Int, source: GameSource): Boolean = when (source) {
-        GameSource.STEAM, GameSource.CUSTOM_GAME -> SteamService.isAppInstalled(appId)
+        GameSource.STEAM -> SteamService.isAppInstalled(appId)
+        GameSource.CUSTOM_GAME -> CustomGameScanner.isGameInstalled(appId)
         GameSource.EPIC -> epicGameDao.getById(appId)?.isInstalled ?: false
         GameSource.GOG -> gogGameDao.getById(appId.toString())?.isInstalled ?: false
         GameSource.AMAZON -> amazonGameDao.getByAppId(appId)?.isInstalled ?: false
@@ -242,6 +256,29 @@ object FrontendSyncManager {
 
     private fun sanitizeFileName(name: String): String =
         name.replace(invalidFileChars, "_").trim().ifEmpty { "unknown" }
+
+    /**
+     * Finds and deletes the export file for [appId] inside [dir] by matching each candidate
+     * file's stored appId content, since the game's current name may no longer be resolvable
+     * (e.g. a custom game whose folder was deleted).
+     */
+    private fun deleteExportFileForAppId(dir: String, extension: String, appId: Int) {
+        try {
+            val directory = File(dir)
+            if (!directory.isDirectory) return
+            val target = appId.toString()
+            directory.walkTopDown().maxDepth(1)
+                .filter { it.isFile && it.name.endsWith(extension) }
+                .firstOrNull { it.readText(Charsets.UTF_8).trim() == target }
+                ?.let { file ->
+                    if (!file.delete()) {
+                        Timber.w("FrontendSyncManager: could not delete stale export %s", file.absolutePath)
+                    }
+                }
+        } catch (e: Exception) {
+            Timber.e(e, "FrontendSyncManager: failed to remove stale export for appId=%d in %s", appId, dir)
+        }
+    }
 
     /** Deletes all files with [extension] directly inside [dir] (non-recursive, depth = 1). */
     internal fun deleteAllFilesWithExtension(dir: String, extension: String) {
