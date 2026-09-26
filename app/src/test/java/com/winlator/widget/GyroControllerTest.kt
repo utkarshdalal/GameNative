@@ -93,7 +93,7 @@ class GyroControllerTest {
             ),
         )
 
-        val mapped = controller.mapAndFilterRates(0.4f, 0.2f, Surface.ROTATION_90)
+        val mapped = controller.mapAndFilterRates(-0.2f, -0.4f, 0f, Surface.ROTATION_90)
 
         assertEquals(-0.2f, mapped[0], 0.0001f)
         assertEquals(0.4f, mapped[1], 0.0001f)
@@ -105,12 +105,14 @@ class GyroControllerTest {
         controller.setSettings(GyroSettings(steadyingDegreesPerSecond = 5f))
 
         val belowThreshold = controller.mapAndFilterRates(
-            Math.toRadians(4.0).toFloat(),
+            0f,
+            -Math.toRadians(4.0).toFloat(),
             0f,
             Surface.ROTATION_0,
         )
         val aboveThreshold = controller.mapAndFilterRates(
-            Math.toRadians(7.0).toFloat(),
+            0f,
+            -Math.toRadians(7.0).toFloat(),
             0f,
             Surface.ROTATION_0,
         )

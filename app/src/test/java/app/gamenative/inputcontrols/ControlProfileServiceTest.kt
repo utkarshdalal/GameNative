@@ -72,7 +72,8 @@ class ControlProfileServiceTest {
             val otherWorking = ControlProfileService.applyProfile(context, other, manager, target).also { ids += it.id }
             val otherBefore = ControlProfileService.readProfileJson(context, otherWorking).toString()
             val gyro = GyroSettings(mode = GyroSettings.MODE_MOUSE, lastTarget = GyroSettings.MODE_MOUSE,
-                sensitivity = 2.25f, invertY = true, activationMode = GyroSettings.ACTIVATION_TOGGLE)
+                sensitivity = 2.25f, invertY = true, activationMode = GyroSettings.ACTIVATION_TOGGLE,
+                conversionStyle = GyroSettings.CONVERSION_WORLD_SPACE)
             val shooter = ShooterModeConfig(lookSensitivityX = 2.5f, invertLookY = true, movementZoneSplit = 0.4f)
             val touch = TouchGestureConfig(longPressEnabled = true, longPressDelay = 700)
             gyro.saveTo(first, persist = false)

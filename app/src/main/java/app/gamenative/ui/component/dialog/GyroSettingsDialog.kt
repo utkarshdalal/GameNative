@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -204,6 +205,37 @@ fun GyroSettingsDialog(
                 }
 
                 SettingsDialogSectionHeader(stringResource(R.string.gyro_section_response))
+                if (!tiltActive) {
+                    val conversionStyles = listOf(
+                        GyroSettings.CONVERSION_LOCAL_YAW,
+                        GyroSettings.CONVERSION_LOCAL_ROLL,
+                        GyroSettings.CONVERSION_LOCAL_YAW_ROLL,
+                        GyroSettings.CONVERSION_PLAYER_SPACE,
+                        GyroSettings.CONVERSION_WORLD_SPACE,
+                    )
+                    val needsOrientation = config.conversionStyle == GyroSettings.CONVERSION_PLAYER_SPACE ||
+                        config.conversionStyle == GyroSettings.CONVERSION_WORLD_SPACE
+                    SettingsDropdownBlock(
+                        title = stringResource(R.string.gyro_conversion_style),
+                        subtitle = stringResource(
+                            if (needsOrientation && !tiltAvailable) {
+                                R.string.gyro_conversion_unavailable
+                            } else {
+                                when (config.conversionStyle) {
+                                    GyroSettings.CONVERSION_LOCAL_ROLL -> R.string.gyro_conversion_roll_help
+                                    GyroSettings.CONVERSION_LOCAL_YAW_ROLL -> R.string.gyro_conversion_yaw_roll_help
+                                    GyroSettings.CONVERSION_PLAYER_SPACE -> R.string.gyro_conversion_player_help
+                                    GyroSettings.CONVERSION_WORLD_SPACE -> R.string.gyro_conversion_world_help
+                                    else -> R.string.gyro_conversion_yaw_help
+                                }
+                            },
+                        ),
+                        value = config.conversionStyle,
+                        values = conversionStyles,
+                        labels = conversionStyles.map { stringResource(gyroConversionStyleLabel(it)) },
+                        onValueChange = { config = config.copy(conversionStyle = it) },
+                    )
+                }
                 if (tiltActive) {
                     SettingsSliderBlock(
                         title = stringResource(R.string.gyro_tilt_full_scale),
@@ -326,4 +358,13 @@ fun GyroSettingsDialog(
             }
         }
     }
+}
+
+@StringRes
+internal fun gyroConversionStyleLabel(style: Int): Int = when (style) {
+    GyroSettings.CONVERSION_LOCAL_ROLL -> R.string.gyro_conversion_roll
+    GyroSettings.CONVERSION_LOCAL_YAW_ROLL -> R.string.gyro_conversion_yaw_roll
+    GyroSettings.CONVERSION_PLAYER_SPACE -> R.string.gyro_conversion_player
+    GyroSettings.CONVERSION_WORLD_SPACE -> R.string.gyro_conversion_world
+    else -> R.string.gyro_conversion_yaw
 }

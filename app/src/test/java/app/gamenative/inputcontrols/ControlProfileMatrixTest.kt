@@ -126,6 +126,7 @@ class ControlProfileMatrixTest(private val mask: Int) {
         sensitivity = if (alternate) 2.25f else 1.25f,
         invertY = alternate,
         activationMode = GyroSettings.ACTIVATION_TOGGLE,
+        conversionStyle = if (alternate) mask % 5 else GyroSettings.CONVERSION_LOCAL_YAW,
     )
 
     private fun touch(alternate: Boolean) = TouchGestureConfig(longPressEnabled = true, longPressDelay = if (alternate) 700 else 500)
