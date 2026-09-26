@@ -71,6 +71,10 @@ internal fun LibraryDetailPane(
                                 "campaign_id" to (game?.id ?: ""),
                                 "game_name" to (game?.name ?: ""),
                                 "source" to libraryItem.recSource,
+                                "rank" to libraryItem.index,
+                                "status" to (game?.featuredStatus ?: ""),
+                                "cta_count" to (game?.featuredCtas?.size ?: 0),
+                                "cta_types" to (game?.featuredCtas?.map { it.type } ?: emptyList<String>()),
                             ),
                         )
                     } else {

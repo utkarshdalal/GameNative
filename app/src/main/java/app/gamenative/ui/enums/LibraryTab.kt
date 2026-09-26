@@ -94,7 +94,7 @@ enum class LibraryTab(
     ;
 
     companion object {
-        val configurableEntries = listOf(STEAM, GOG, EPIC, AMAZON)
+        val configurableEntries = listOf(RECOMMENDED, STEAM, GOG, EPIC, AMAZON)
 
         /**
          * Tabs shown in the UI. Custom (LOCAL) games work on all flavors: legacy maps folders

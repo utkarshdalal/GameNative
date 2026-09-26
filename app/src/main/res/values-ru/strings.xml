@@ -832,7 +832,7 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="main_save_conflict_upgrade_v1_title">Выберите версию сохранения</string>
     <string name="main_save_conflict_upgrade_v1_message">Мы исправили обработку путей облачных сохранений для этой игры и обнаружили различия между локальным и облачным сохранением.\n\nЛокальное сохранение:\n\t%1$s\nОблачное сохранение:\n\t%2$s</string>
     <string name="main_thank_you_title">Нравится GameNative?</string>
-    <string name="main_thank_you_message">Станьте участником сегодня. Участники получают:\n\n• Ранний доступ к новым версиям\n• Приоритетную помощь с запуском игр\n• Премиум-роли и эксклюзивные каналы в Discord\n• …и не только\n\nОт $5/мес.</string>
+    <string name="main_thank_you_message">Станьте участником сегодня. Участники получают:\n\n• Помощь ИИ с запуском игр\n• Ранний доступ к новым версиям\n• Премиум-роли и эксклюзивные каналы в Discord\n• …и не только\n\nОт $5/мес.</string>
     <string name="main_join_kofi">Стать участником</string>
     <string name="pitch_session_title">Нравится %1$s?</string>
     <string name="pitch_five_star_title">Рады, что %1$s отлично работает!</string>
@@ -1146,7 +1146,7 @@ https://gamenative.app
     <string name="settings_info_usage_analytics_subtitle">Мы никогда не отслеживаем личную информацию. Отключение останавливает несущественную аналитику, однако основные данные о производительности игр по-прежнему собираются как законный интерес для улучшения совместимости.</string>
     <string name="settings_info_source_subtitle">Просмотреть исходный код этого проекта</string>
     <string name="settings_info_send_tip_title">Стать участником</string>
-    <string name="settings_info_send_tip_subtitle">Ранний доступ к версиям, приоритетная помощь и другое</string>
+    <string name="settings_info_send_tip_subtitle">Помощь ИИ с запуском игр, ранний доступ к версиям и другое</string>
     <string name="settings_info_ask_tip_title">Предложения о членстве</string>
     <string name="settings_info_ask_tip_subtitle">Иногда показывать предложения стать участником GameNative</string>
     <string name="settings_info_source_title">Исходный код</string>
@@ -2536,6 +2536,15 @@ https://gamenative.app
     <string name="settings_info_boot_recs_title">Рекомендации игр на экранах загрузки</string>
     <string name="settings_info_boot_recs_subtitle">Показывать игру, которая может вам понравиться, во время запуска, если нет карточки спонсора.</string>
     <string name="boot_rec_badge">Рекомендовано для вас</string>
+    <string name="boot_ad_close_cd">Закрыть эту карточку</string>
+    <string name="boot_ad_sheet_title_sponsored">О спонсорских карточках</string>
+    <string name="boot_ad_sheet_title_rec">О рекомендациях</string>
+    <string name="boot_ad_sheet_body_sponsored">Спонсорские карточки помогают финансировать работу над GameNative на полную ставку. Это можно изменить в любой момент в Настройках.</string>
+    <string name="boot_ad_sheet_body_rec">Рекомендации подбираются по играм, в которые вы играете. Это можно изменить в любой момент в Настройках.</string>
+    <string name="boot_ad_close_one">Закрыть эту</string>
+    <string name="boot_ad_turn_off_sponsored">Отключить спонсорские карточки</string>
+    <string name="boot_ad_turn_off_rec">Отключить рекомендации</string>
+    <string name="boot_ad_not_now">Не сейчас</string>
     <string name="boot_quiz_win_default">Верно!</string>
     <string name="boot_quiz_lose_default">Правильный ответ: %1$s</string>
     <string name="gyro_aiming">Гироскопическое прицеливание</string>

@@ -1001,7 +1001,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">정보</string>
     <string name="settings_info_send_tip_title">멤버 되기</string>
-    <string name="settings_info_send_tip_subtitle">릴리스 조기 이용, 우선 지원 등</string>
+    <string name="settings_info_send_tip_subtitle">게임 실행 AI 지원, 릴리스 조기 이용 등</string>
     <string name="settings_info_ask_tip_title">멤버십 안내</string>
     <string name="settings_info_ask_tip_subtitle">GameNative 멤버가 될 수 있는 안내를 가끔 표시합니다</string>
     <string name="settings_info_source_title">소스 코드</string>
@@ -1118,7 +1118,7 @@
     <string name="main_recent_crash_title">최근 충돌</string>
     <string name="main_recent_crash_message">죄송합니다!\n최근 발생한 문제에 대해 알려주시면 감사하겠습니다.\n앱 설정에서 가장 최근의 충돌 로그를 보고 내보낼 수 있으며 프로젝트 저장소에 Github 이슈로 첨부할 수 있습니다.\nGithub 저장소 링크도 설정에 있습니다!</string>
     <string name="main_thank_you_title">GameNative를 즐기고 계신가요?</string>
-    <string name="main_thank_you_message">지금 멤버가 되세요. 멤버 혜택:\n\n• 새 릴리스 조기 이용\n• 게임 실행을 위한 우선 지원\n• Discord 프리미엄 역할 및 전용 채널\n• …그 외 다수\n\n월 $5부터</string>
+    <string name="main_thank_you_message">지금 멤버가 되세요. 멤버 혜택:\n\n• 게임 실행을 위한 AI 지원\n• 새 릴리스 조기 이용\n• Discord 프리미엄 역할 및 전용 채널\n• …그 외 다수\n\n월 $5부터</string>
     <string name="main_join_kofi">멤버 되기</string>
     <string name="pitch_session_title">%1$s 재미있으신가요?</string>
     <string name="pitch_five_star_title">%1$s이(가) 잘 실행되어 다행이에요!</string>
@@ -2598,6 +2598,15 @@
     <string name="settings_info_boot_recs_title">로딩 화면에 게임 추천 표시</string>
     <string name="settings_info_boot_recs_subtitle">스폰서 카드가 없을 때 게임이 부팅되는 동안 마음에 들 만한 게임을 표시합니다.</string>
     <string name="boot_rec_badge">회원님을 위한 추천</string>
+    <string name="boot_ad_close_cd">이 카드 닫기</string>
+    <string name="boot_ad_sheet_title_sponsored">스폰서 카드 안내</string>
+    <string name="boot_ad_sheet_title_rec">추천 안내</string>
+    <string name="boot_ad_sheet_body_sponsored">스폰서 카드는 GameNative의 전업 개발을 지원합니다. 설정에서 언제든지 변경할 수 있습니다.</string>
+    <string name="boot_ad_sheet_body_rec">추천은 플레이한 게임을 바탕으로 선택됩니다. 설정에서 언제든지 변경할 수 있습니다.</string>
+    <string name="boot_ad_close_one">이것만 닫기</string>
+    <string name="boot_ad_turn_off_sponsored">스폰서 카드 끄기</string>
+    <string name="boot_ad_turn_off_rec">추천 끄기</string>
+    <string name="boot_ad_not_now">나중에</string>
     <string name="boot_quiz_win_default">정답!</string>
     <string name="boot_quiz_lose_default">정답은 %1$s였습니다</string>
     <string name="gyro_aiming">자이로 조준</string>

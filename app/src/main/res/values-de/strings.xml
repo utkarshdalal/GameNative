@@ -967,7 +967,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
     <string name="settings_info_send_tip_title">Mitglied werden</string>
-    <string name="settings_info_send_tip_subtitle">Frühzugang zu Versionen, bevorzugte Hilfe und mehr</string>
+    <string name="settings_info_send_tip_subtitle">KI-Hilfe für deine Spiele, Frühzugang zu Versionen und mehr</string>
     <string name="settings_info_ask_tip_title">Mitgliedschaftsangebote</string>
     <string name="settings_info_ask_tip_subtitle">Gelegentlich Angebote anzeigen, GameNative-Mitglied zu werden</string>
     <string name="settings_info_source_title">Quellcode</string>
@@ -1076,7 +1076,7 @@
     <string name="main_recent_crash_title">Kürzlicher Absturz</string>
     <string name="main_recent_crash_message">Tut uns leid!\nTeile uns gern mit, was passiert ist.\nDu kannst das letzte Crash-Log im App-Setup anzeigen/exportieren und bei Github als Issue einreichen.\nDer Link ist auch in den Einstellungen!</string>
     <string name="main_thank_you_title">Gefällt dir GameNative?</string>
-    <string name="main_thank_you_message">Werde noch heute Mitglied. Mitglieder erhalten:\n\n• Frühzugang zu neuen Versionen\n• Bevorzugte Hilfe, um deine Spiele zum Laufen zu bringen\n• Premium-Rollen und exklusive Kanäle auf Discord\n• …und mehr\n\nAb 5 $/Monat</string>
+    <string name="main_thank_you_message">Werde noch heute Mitglied. Mitglieder erhalten:\n\n• KI-Hilfe, um deine Spiele zum Laufen zu bringen\n• Frühzugang zu neuen Versionen\n• Premium-Rollen und exklusive Kanäle auf Discord\n• …und mehr\n\nAb 5 $/Monat</string>
     <string name="main_join_kofi">Mitglied werden</string>
     <string name="pitch_session_title">Gefällt dir %1$s?</string>
     <string name="pitch_five_star_title">Schön, dass %1$s super lief!</string>
@@ -2544,6 +2544,15 @@
     <string name="settings_info_boot_recs_title">Spielempfehlungen auf Ladebildschirmen</string>
     <string name="settings_info_boot_recs_subtitle">Zeigt beim Start eines Spiels ein Spiel, das dir gefallen könnte – wenn keine Sponsorkarte vorliegt.</string>
     <string name="boot_rec_badge">Für dich empfohlen</string>
+    <string name="boot_ad_close_cd">Diese Karte schließen</string>
+    <string name="boot_ad_sheet_title_sponsored">Über Sponsorkarten</string>
+    <string name="boot_ad_sheet_title_rec">Über Empfehlungen</string>
+    <string name="boot_ad_sheet_body_sponsored">Sponsorkarten helfen, die Vollzeitarbeit an GameNative zu finanzieren. Du kannst das jederzeit in den Einstellungen ändern.</string>
+    <string name="boot_ad_sheet_body_rec">Empfehlungen basieren auf den Spielen, die du spielst. Du kannst das jederzeit in den Einstellungen ändern.</string>
+    <string name="boot_ad_close_one">Diese schließen</string>
+    <string name="boot_ad_turn_off_sponsored">Sponsorkarten ausschalten</string>
+    <string name="boot_ad_turn_off_rec">Empfehlungen ausschalten</string>
+    <string name="boot_ad_not_now">Nicht jetzt</string>
     <string name="boot_quiz_win_default">Richtig!</string>
     <string name="boot_quiz_lose_default">Die Antwort war %1$s</string>
     <string name="gyro_aiming">Gyro-Zielen</string>

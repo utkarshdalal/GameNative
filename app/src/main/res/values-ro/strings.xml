@@ -1003,7 +1003,7 @@
 	<!-- Settings: Info Group -->
 	<string name="settings_info_title">Informații</string>
     <string name="settings_info_send_tip_title">Devino membru</string>
-    <string name="settings_info_send_tip_subtitle">Acces anticipat la versiuni, ajutor prioritar și altele</string>
+    <string name="settings_info_send_tip_subtitle">Ajutor cu AI pentru jocurile tale, acces anticipat la versiuni și altele</string>
     <string name="settings_info_ask_tip_title">Oferte de membru</string>
     <string name="settings_info_ask_tip_subtitle">Afișează ocazional oferte pentru a deveni membru GameNative</string>
 	<string name="settings_info_source_title">Cod sursă</string>
@@ -1122,7 +1122,7 @@
 	<string name="main_recent_crash_title">Crash recent</string>
 	<string name="main_recent_crash_message">Ne pare rău!\nAr fi util să știm ce problemă ai întâmpinat.\nPoți vizualiza și exporta cel mai recent crash log din setările aplicației și îl poți atașa ca issue pe Github în repository-ul proiectului.\nLinkul către repo este tot în setări!</string>
     <string name="main_thank_you_title">Îți place GameNative?</string>
-    <string name="main_thank_you_message">Devino membru astăzi. Membrii primesc:\n\n• Acces anticipat la versiuni noi\n• Ajutor prioritar pentru a-ți face jocurile să funcționeze\n• Roluri premium și canale exclusive pe Discord\n• …și altele\n\nDe la 5 $/lună</string>
+    <string name="main_thank_you_message">Devino membru astăzi. Membrii primesc:\n\n• Ajutor cu AI pentru a-ți face jocurile să funcționeze\n• Acces anticipat la versiuni noi\n• Roluri premium și canale exclusive pe Discord\n• …și altele\n\nDe la 5 $/lună</string>
     <string name="main_join_kofi">Devino membru</string>
     <string name="pitch_session_title">Îți place %1$s?</string>
     <string name="pitch_five_star_title">Ne bucurăm că %1$s a mers excelent!</string>
@@ -2598,6 +2598,15 @@
     <string name="settings_info_boot_recs_title">Recomandări de jocuri pe ecranele de încărcare</string>
     <string name="settings_info_boot_recs_subtitle">Afișează un joc care ți-ar putea plăcea în timp ce un joc pornește, când nu există un card sponsor.</string>
     <string name="boot_rec_badge">Recomandat pentru tine</string>
+    <string name="boot_ad_close_cd">Închide acest card</string>
+    <string name="boot_ad_sheet_title_sponsored">Despre cardurile sponsorizate</string>
+    <string name="boot_ad_sheet_title_rec">Despre recomandări</string>
+    <string name="boot_ad_sheet_body_sponsored">Cardurile sponsorizate ajută la finanțarea muncii cu normă întreagă la GameNative. Poți schimba asta oricând din Setări.</string>
+    <string name="boot_ad_sheet_body_rec">Recomandările sunt alese în funcție de jocurile pe care le joci. Poți schimba asta oricând din Setări.</string>
+    <string name="boot_ad_close_one">Închide acesta</string>
+    <string name="boot_ad_turn_off_sponsored">Dezactivează cardurile sponsorizate</string>
+    <string name="boot_ad_turn_off_rec">Dezactivează recomandările</string>
+    <string name="boot_ad_not_now">Nu acum</string>
     <string name="boot_quiz_win_default">Corect!</string>
     <string name="boot_quiz_lose_default">Răspunsul era %1$s</string>
     <string name="gyro_aiming">Țintire giroscopică</string>

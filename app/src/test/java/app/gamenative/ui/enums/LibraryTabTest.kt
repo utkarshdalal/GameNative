@@ -23,7 +23,6 @@ class LibraryTabTest {
 
         assertEquals(
             listOf(
-                LibraryTab.RECOMMENDED,
                 LibraryTab.ALL,
                 LibraryTab.FAVORITES,
                 LibraryTab.STEAM,
@@ -47,7 +46,6 @@ class LibraryTabTest {
 
         assertEquals(
             listOf(
-                LibraryTab.RECOMMENDED,
                 LibraryTab.ALL,
                 LibraryTab.FAVORITES,
                 LibraryTab.STEAM,
@@ -66,7 +64,6 @@ class LibraryTabTest {
 
         assertEquals(
             listOf(
-                LibraryTab.RECOMMENDED,
                 LibraryTab.ALL,
                 LibraryTab.FAVORITES,
                 LibraryTab.GOG,
@@ -103,9 +100,9 @@ class LibraryTabTest {
     }
 
     @Test
-    fun configurableEntries_containsOnlyStoreTabs() {
+    fun configurableEntries_containsRecommendedAndStoreTabs() {
         assertEquals(
-            listOf(LibraryTab.STEAM, LibraryTab.GOG, LibraryTab.EPIC, LibraryTab.AMAZON),
+            listOf(LibraryTab.RECOMMENDED, LibraryTab.STEAM, LibraryTab.GOG, LibraryTab.EPIC, LibraryTab.AMAZON),
             LibraryTab.configurableEntries,
         )
     }

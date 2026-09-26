@@ -818,7 +818,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
     <string name="settings_info_send_tip_title">Bliv medlem</string>
-    <string name="settings_info_send_tip_subtitle">Tidlig adgang til udgivelser, prioriteret hjælp og mere</string>
+    <string name="settings_info_send_tip_subtitle">AI-hjælp til dine spil, tidlig adgang til udgivelser og mere</string>
     <string name="settings_info_ask_tip_title">Medlemstilbud</string>
     <string name="settings_info_ask_tip_subtitle">Vis lejlighedsvise tilbud om at blive GameNative-medlem</string>
     <string name="settings_info_source_title">Kildekode</string>
@@ -940,7 +940,7 @@
     <string name="main_recent_crash_title">Nylig crash</string>
     <string name="main_recent_crash_message">Beklager det!\nDet ville være dejligt at vide om det nylige problem, du har haft.\nDu kan se og eksportere den nyeste crash-log i appens indstillinger og vedhæfte den som et Github-problem i projektets repository.\nLink til Github-repo er også i indstillinger!</string>
     <string name="main_thank_you_title">Nyder du GameNative?</string>
-    <string name="main_thank_you_message">Bliv medlem i dag. Medlemmer får:\n\n• Tidlig adgang til nye udgivelser\n• Prioriteret hjælp til at få dine spil til at køre\n• Premium-roller og eksklusive kanaler på Discord\n• …og mere\n\nFra $5/måned</string>
+    <string name="main_thank_you_message">Bliv medlem i dag. Medlemmer får:\n\n• AI-hjælp til at få dine spil til at køre\n• Tidlig adgang til nye udgivelser\n• Premium-roller og eksklusive kanaler på Discord\n• …og mere\n\nFra $5/måned</string>
     <string name="main_join_kofi">Bliv medlem</string>
     <string name="pitch_session_title">Nyder du %1$s?</string>
     <string name="pitch_five_star_title">Godt, at %1$s kørte perfekt!</string>
@@ -2474,6 +2474,15 @@
     <string name="settings_info_boot_recs_title">Spilanbefalinger på indlæsningsskærme</string>
     <string name="settings_info_boot_recs_subtitle">Vis et spil, du måske kan lide, mens et spil starter, når der ikke er et sponsorkort.</string>
     <string name="boot_rec_badge">Anbefalet til dig</string>
+    <string name="boot_ad_close_cd">Luk dette kort</string>
+    <string name="boot_ad_sheet_title_sponsored">Om sponsorkort</string>
+    <string name="boot_ad_sheet_title_rec">Om anbefalinger</string>
+    <string name="boot_ad_sheet_body_sponsored">Sponsorkort er med til at finansiere fuldtidsarbejdet på GameNative. Du kan altid ændre dette i Indstillinger.</string>
+    <string name="boot_ad_sheet_body_rec">Anbefalinger vælges ud fra de spil, du spiller. Du kan altid ændre dette i Indstillinger.</string>
+    <string name="boot_ad_close_one">Luk dette</string>
+    <string name="boot_ad_turn_off_sponsored">Slå sponsorkort fra</string>
+    <string name="boot_ad_turn_off_rec">Slå anbefalinger fra</string>
+    <string name="boot_ad_not_now">Ikke nu</string>
     <string name="boot_quiz_win_default">Korrekt!</string>
     <string name="boot_quiz_lose_default">Svaret var %1$s</string>
     <string name="gyro_aiming">Gyrosigte</string>
