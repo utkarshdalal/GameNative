@@ -4,7 +4,7 @@ import java.util.Locale
 
 /** Reads Wine's semicolon-separated override sets without rewriting the user's spelling or order. */
 object WineDllOverrides {
-    data class Entry(val names: List<String>, val order: String)
+    data class Entry(val names: List<String>)
 
     fun parse(value: String): List<Entry>? {
         val entries = mutableListOf<Entry>()
@@ -19,7 +19,7 @@ object WineDllOverrides {
             ) {
                 return null
             }
-            entries += Entry(names, order)
+            entries += Entry(names)
         }
         return entries
     }
@@ -32,12 +32,4 @@ object WineDllOverrides {
 
     fun mentions(entries: List<Entry>, dll: String): Boolean =
         entries.any { entry -> entry.names.any { matches(it, dll) } }
-
-    fun appendMissing(value: String, dlls: List<String>): String {
-        val entries = parse(value) ?: return value
-        val missing = dlls.distinct().filterNot { mentions(entries, it) }
-        if (missing.isEmpty()) return value
-        val separator = if (value.isBlank() || value.trimEnd().endsWith(';')) "" else ";"
-        return value + separator + missing.joinToString(";") { "$it=n,b" }
-    }
 }

@@ -376,9 +376,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
 
         // Merge any additional environment variables from external sources
-        if (this.envVars != null) {
-            envVars.putAll(this.envVars);
-        }
+        envVars.putAll(getGuestEnvironment());
 
         if (BuildConfig.XR_BUILD) {
             String shimPath = context.getApplicationInfo().nativeLibraryDir + "/libkgslshim.so";

@@ -972,6 +972,9 @@ object BestConfigService {
                     envVars = envVars.replace(Regex("""\s*VKD3D_FRAME_RATE=\d+"""), "")
                     resultMap["envVars"] = envVars.trim()
                 }
+                // Container exports store this setting in extraData. Older exports leave the current choice intact.
+                filteredJson.optJSONObject("extraData")?.optString(ModDllOverrides.SETTING)
+                    ?.toBooleanStrictOrNull()?.let { resultMap[ModDllOverrides.SETTING] = it }
                 if (filteredJson.has("cpuList") && !filteredJson.isNull("cpuList")) {
                     resultMap["cpuList"] = filteredJson.optString("cpuList", PrefManager.cpuList)
                 }

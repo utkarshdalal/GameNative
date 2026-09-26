@@ -221,7 +221,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
             Log.w("GlibcProgramLauncherComponent", "Neither libredirect.so nor libandroid-sysvshm.so found in " + glibc64Dir.getPath());
         }
         envVars.put("WINEESYNC_WINLATOR", "1");
-        if (this.envVars != null) envVars.putAll(this.envVars);
+        envVars.putAll(getGuestEnvironment());
 
         String box64Path = rootDir.getPath() + "/usr/local/bin/box64";
 

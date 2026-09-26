@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -28,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
@@ -53,8 +56,10 @@ fun EnvironmentTabContent(state: ContainerConfigState, appId: String? = null) {
     val context = LocalContext.current
     val config = state.config.value
     val envVars = EnvVars(config.envVars)
+    var inspectionRevision by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { inspectionRevision++ }
     val inspection by produceState<ModDllOverrides.Inspection?>(
-        null, appId, config.executablePath, config.drives, config.autoModDllOverrides,
+        null, appId, config.executablePath, config.drives, config.autoModDllOverrides, inspectionRevision,
     ) {
         value = null
         if (!config.autoModDllOverrides) return@produceState

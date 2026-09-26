@@ -4219,13 +4219,11 @@ private fun setupXEnvironment(
         environment.addComponent(VortekRendererComponent(xServer, UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VORTEK_SERVER_PATH), options2, context))
     }
 
-    // Keep setup tools on the base environment, including when they run before the game.
-    val baseLaunchEnv = EnvVars().apply { putAll(envVars) }
-    guestProgramLauncherComponent.envVars = EnvVars().apply { putAll(baseLaunchEnv) }
+    // Resolve mod overrides only for the game process, after all setup commands have finished.
+    guestProgramLauncherComponent.envVars = envVars
     fun prepareGameEnvironment() {
-        guestProgramLauncherComponent.envVars = EnvVars().apply {
-            putAll(baseLaunchEnv)
-            ModDllOverrideLauncher.apply(container, this, gameLaunch = !bootToContainer && !testGraphics)
+        guestProgramLauncherComponent.setGuestEnvironmentCallback { gameEnv ->
+            ModDllOverrideLauncher.apply(container, gameEnv, gameLaunch = !bootToContainer && !testGraphics)
         }
     }
 

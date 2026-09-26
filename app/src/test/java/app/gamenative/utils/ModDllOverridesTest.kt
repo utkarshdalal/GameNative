@@ -16,34 +16,36 @@ class ModDllOverridesTest {
 
     @Test fun mergesWithoutChangingExistingEntries() {
         val original = "icu=n;xaudio2_7=native,builtin"
-        assertEquals("$original;dinput8=n,b;winhttp=n,b", WineDllOverrides.appendMissing(original, listOf("dinput8", "winhttp")))
+        assertEquals("$original;dinput8=n,b;winhttp=n,b", ModDllOverrides.merge(original, listOf("dinput8", "winhttp")).value)
     }
 
     @Test fun preservesGroupedMixedCaseAndExtensionChoices() {
         val original = "DINPUT8.dll,winhttp=b;version="
-        assertEquals(original, WineDllOverrides.appendMissing(original, listOf("dinput8", "winhttp", "version")))
+        assertEquals(original, ModDllOverrides.merge(original, listOf("dinput8", "winhttp", "version")).value)
     }
 
     @Test fun preservesWildcardsAndPathSpecificChoices() {
         for (original in listOf("*=b", "*dinput8=b", "C:\\Game\\dinput8.dll=")) {
-            assertEquals(original, WineDllOverrides.appendMissing(original, listOf("dinput8")))
+            assertEquals(original, ModDllOverrides.merge(original, listOf("dinput8")).value)
         }
     }
 
     @Test fun nativeAliasesAndDuplicateNamesAreNotRewritten() {
         val original = "dinput8=native,builtin;dinput8=b"
-        assertEquals(original, WineDllOverrides.appendMissing(original, listOf("dinput8", "dinput8")))
+        assertEquals(original, ModDllOverrides.merge(original, listOf("dinput8", "dinput8")).value)
     }
 
     @Test fun malformedSettingsAreLeftAlone() {
         for (original in listOf("dinput8", "icu=n winhttp=b", "winhttp=surprise")) {
-            assertEquals(original, WineDllOverrides.appendMissing(original, listOf("dinput8")))
+            assertEquals(original, ModDllOverrides.merge(original, listOf("dinput8")).value)
         }
     }
 
     @Test fun emptyValueAndTrailingSeparatorAreSupported() {
-        assertEquals("dinput8=n,b", WineDllOverrides.appendMissing("", listOf("dinput8", "dinput8")))
-        assertEquals("icu=n;winhttp=n,b", WineDllOverrides.appendMissing("icu=n;", listOf("winhttp")))
+        val result = ModDllOverrides.merge("", listOf("dinput8", "dinput8"))
+        assertEquals("dinput8=n,b", result.value)
+        assertEquals(listOf("dinput8"), result.added)
+        assertEquals("icu=n;winhttp=n,b", ModDllOverrides.merge("icu=n;", listOf("winhttp")).value)
     }
 
     @Test fun detectsMixedCaseBesideExecutableOnly() {

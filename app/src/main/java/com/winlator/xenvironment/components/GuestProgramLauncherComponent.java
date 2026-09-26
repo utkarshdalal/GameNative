@@ -30,6 +30,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private static int pid = -1;
     private String[] bindingPaths;
     private EnvVars envVars;
+    private Callback<EnvVars> guestEnvironmentCallback;
     private String box86Version = DefaultVersion.BOX86;
     private String box64Version = DefaultVersion.BOX64;
     private String box86Preset = Box86_64Preset.COMPATIBILITY;
@@ -150,6 +151,18 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         this.envVars = envVars;
     }
 
+    public void setGuestEnvironmentCallback(Callback<EnvVars> callback) {
+        this.guestEnvironmentCallback = callback;
+    }
+
+    /** Called when creating the guest process, after setup. Shell commands keep the base environment. */
+    protected EnvVars getGuestEnvironment() {
+        EnvVars result = new EnvVars();
+        if (getEnvVars() != null) result.putAll(getEnvVars());
+        if (guestEnvironmentCallback != null) guestEnvironmentCallback.call(result);
+        return result;
+    }
+
     public String getBox86Version() { return box86Version; }
 
     public void setBox86Version(String box86Version) { this.box86Version = box86Version; }
@@ -191,7 +204,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         EnvVars envVars = new EnvVars();
         if (!wow64Mode) addBox86EnvVars(envVars, enableBox86_64Logs);
         addBox64EnvVars(envVars, enableBox86_64Logs);
-        if (this.envVars != null) envVars.putAll(this.envVars);
+        envVars.putAll(getGuestEnvironment());
 
         return exec(context, !wow64Mode, bindingPaths, envVars, terminationCallback, "box64 " + guestExecutable, workingDir);
     }

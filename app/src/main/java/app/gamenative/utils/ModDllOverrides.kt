@@ -83,9 +83,10 @@ object ModDllOverrides {
 
     fun merge(value: String, detected: List<String>, registry: RegistryOverrides = RegistryOverrides()): Result {
         val entries = WineDllOverrides.parse(value) ?: return Result(value, emptyList(), detected)
-        val preserved = detected.filter { WineDllOverrides.mentions(entries, it) || registry.preserves(it) }
-        val added = detected.filterNot { it in preserved }
-        return Result(WineDllOverrides.appendMissing(value, added), added, preserved)
+        val (preserved, added) = detected.distinct().partition { WineDllOverrides.mentions(entries, it) || registry.preserves(it) }
+        if (added.isEmpty()) return Result(value, added, preserved)
+        val separator = if (value.isBlank() || value.trimEnd().endsWith(';')) "" else ";"
+        return Result(value + separator + added.joinToString(";") { "$it=n,b" }, added, preserved)
     }
 
     /** Read only the two relevant sections; do not open an editor or rewrite Wine's live registry. */
