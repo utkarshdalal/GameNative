@@ -77,6 +77,21 @@ object SteamAutoCloud {
         val wasCacheHit: Boolean,
     )
 
+    // cache for the post-EResult.Fail reconcile. files in cloud keep cloud's sha on mismatch (a failed PUT)
+    // so the next diff sees "modified" and retries. local-only files are EXCLUDED so the next diff treats
+    // them as new and retries; caching them with local's sha would never retry.
+    internal fun buildUploadFailCacheEntries(
+        localFiles: List<UserFileInfo>,
+        remoteShaByPath: Map<String, ByteArray>,
+        keyOf: (UserFileInfo) -> String,
+    ): List<UserFileInfo> =
+        localFiles
+            .filter { remoteShaByPath.containsKey(keyOf(it)) }
+            .map { local ->
+                val cloudSha = remoteShaByPath[keyOf(local)]
+                if (cloudSha != null && !cloudSha.contentEquals(local.sha)) local.copy(sha = cloudSha) else local
+            }
+
     /** Computes SHA-1 hash by streaming the file in chunks to avoid OOM on large files. */
     private fun streamingShaHash(path: Path): ByteArray {
         val digest = MessageDigest.getInstance("SHA-1")
@@ -923,6 +938,44 @@ object SteamAutoCloud {
                         }
                     } else {
                         syncResult = SyncResult.UpdateFail
+
+                        // Steam advances the cloud change number even when completeAppUploadBatch reports EResult.Fail;
+                        // without reconciling, every later launch reports a spurious conflict. rebuilding the cache
+                        // from the refetched manifest makes failed files re-upload next launch. cloud orphans stay.
+                        runCatching {
+                            val refreshed = steamCloud.getAppFileListChange(appInfo.id, 0L).await()
+                            val remoteEntries = refreshed.files.filter { it.persistState.number == 0 }
+                            val remoteByPath = remoteEntries.associate {
+                                getFullFilePath(it, refreshed).toString().lowercase() to it.shaFile
+                            }
+                            val localByPath = allLocalUserFiles.associate {
+                                it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
+                            }
+                            val cloudOnlyCount = (remoteByPath.keys - localByPath.keys).size
+                            val mismatchedShas = (localByPath.keys intersect remoteByPath.keys)
+                                .count { !localByPath[it]!!.contentEquals(remoteByPath[it]) }
+
+                            val cacheEntries = buildUploadFailCacheEntries(allLocalUserFiles, remoteByPath) {
+                                it.getAbsPath(prefixToPath).toString().lowercase()
+                            }
+                            val localOnlyDropped = allLocalUserFiles.size - cacheEntries.size
+                            Timber.i(
+                                "Upload-fail reconcile: writing cache (${cacheEntries.size} entries, " +
+                                    "$mismatchedShas sha-mismatch retained as cloud SHA for next-launch retry, " +
+                                    "$localOnlyDropped local-only excluded for next-launch retry, " +
+                                    "$cloudOnlyCount cloud orphan(s) left in cloud) " +
+                                    "to CN ${refreshed.currentChangeNumber}",
+                            )
+                            with(steamInstance) {
+                                db.withTransaction {
+                                    fileChangeListsDao.insert(appInfo.id, cacheEntries)
+                                    changeNumbersDao.insert(appInfo.id, refreshed.currentChangeNumber)
+                                }
+                            }
+                            // result stays UpdateFail: the upload did not land, so the user is told.
+                        }.onFailure { e ->
+                            Timber.e(e, "Upload-fail reconcile failed")
+                        }
                     }
                 }
             }
@@ -976,7 +1029,10 @@ object SteamAutoCloud {
 
                     val hasUncachedLocalFiles = cacheIsAbsentOrEmpty && allLocalUserFiles.isNotEmpty()
                     var rehydratedSilently = false
-                    if (hasUncachedLocalFiles) {
+
+                    // also consulted with a cache present: cached prefixPath keys can drift between builds, which
+                    // getFilesDiff (path equality) reports as deleted+new despite identical SHAs.
+                    val computeLocalMatchesRemote: () -> Boolean = {
                         // no cache but local files exist. before declaring conflict,
                         // check if local state is byte-identical to remote — this is
                         // the "cache-wiped by destructive migration, nothing actually
@@ -994,12 +1050,14 @@ object SteamAutoCloud {
                         val remoteByPath = appFileListChange.files.associate {
                             getFullFilePath(it, appFileListChange).toString().lowercase() to it.shaFile
                         }
-                        val localMatchesRemote = localByPath.keys == remoteByPath.keys &&
+                        localByPath.keys == remoteByPath.keys &&
                             localByPath.all { (path, sha) ->
                                 sha.contentEquals(remoteByPath[path])
                             }
+                    }
 
-                        if (localMatchesRemote) {
+                    if (hasUncachedLocalFiles) {
+                        if (computeLocalMatchesRemote()) {
                             Timber.i("Cache absent but local matches remote — rehydrating cache silently")
                             with(steamInstance) {
                                 db.withTransaction {
@@ -1029,6 +1087,18 @@ object SteamAutoCloud {
                         downloadUserFiles(parentScope).await()?.let {
                             return@asyncIsolated it
                         }
+                    } else if (computeLocalMatchesRemote()) {
+                        // path encoding drifted but SHAs match: no real divergence. real SHA differences never
+                        // reach here, so this can't suppress a genuine conflict.
+                        Timber.i("Cache present but local matches remote — rehydrating cache silently")
+                        with(steamInstance) {
+                            db.withTransaction {
+                                fileChangeListsDao.insert(appInfo.id, allLocalUserFiles)
+                                changeNumbersDao.insert(appInfo.id, cloudAppChangeNumber)
+                            }
+                        }
+                        syncResult = SyncResult.UpToDate
+                        filesManaged = allLocalUserFiles.size
                     } else {
                         Timber.i("Found local changes and new cloud user files, conflict resolution...")
 
