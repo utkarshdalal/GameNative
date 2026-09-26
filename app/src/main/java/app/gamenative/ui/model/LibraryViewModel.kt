@@ -1447,5 +1447,4 @@ class LibraryViewModel @Inject constructor(
     private fun compatibilityStatusFor(
         response: GameCompatibilityService.GameCompatibilityResponse,
     ): GameCompatibilityStatus = GameCompatibilityService.statusFor(response)
-    }
 }
