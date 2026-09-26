@@ -8,7 +8,6 @@ import android.os.Environment;
 import android.os.StatFs;
 import android.system.ErrnoException;
 import android.system.Os;
-import android.system.StructStat;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
@@ -165,11 +164,11 @@ public abstract class FileUtils {
             if (!dstFile.delete()) return false;
         }
         try {
-            Os.link(srcFile.getAbsolutePath(), dstFile.getAbsolutePath());
+            Files.createLink(dstFile.toPath(), srcFile.toPath());
             chmod(srcFile, SHARED_FILE_MODE);
             return true;
         }
-        catch (ErrnoException e) {
+        catch (IOException | UnsupportedOperationException e) {
             Log.w("FileUtils", "Hardlink failed, copying instead: " + dstFile + " (" + e.getMessage() + ")");
             return copy(srcFile, dstFile);
         }
@@ -177,11 +176,9 @@ public abstract class FileUtils {
 
     public static boolean isSameFile(File a, File b) {
         try {
-            StructStat sa = Os.stat(a.getAbsolutePath());
-            StructStat sb = Os.stat(b.getAbsolutePath());
-            return sa.st_dev == sb.st_dev && sa.st_ino == sb.st_ino;
+            return Files.isSameFile(a.toPath(), b.toPath());
         }
-        catch (ErrnoException e) {
+        catch (IOException e) {
             return false;
         }
     }
