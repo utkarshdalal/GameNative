@@ -249,7 +249,17 @@ public class InputControlsManager {
             int profileId = 0;
             String profileName = null;
             float cursorSpeed = Float.NaN;
+            float leftStickDeadzone = Float.NaN;
+            float rightStickDeadzone = Float.NaN;
+            float leftStickSensitivity = Float.NaN;
+            float rightStickSensitivity = Float.NaN;
+            ControlsProfile.StickDeadzoneMode leftStickDeadzoneMode = null;
+            ControlsProfile.StickDeadzoneMode rightStickDeadzoneMode = null;
+            ControlsProfile.StickDigitalMode leftStickDigitalMode = null;
+            ControlsProfile.StickDigitalMode rightStickDigitalMode = null;
             int fieldsRead = 0;
+            final int allProfileFields = (1 << 11) - 1;
+            boolean stoppedEarly = false;
 
             reader.beginObject();
             while (reader.hasNext()) {
@@ -257,25 +267,72 @@ public class InputControlsManager {
 
                 if (name.equals("id")) {
                     profileId = reader.nextInt();
-                    fieldsRead++;
+                    fieldsRead |= 1 << 0;
                 }
                 else if (name.equals("name")) {
                     profileName = reader.nextString();
-                    fieldsRead++;
+                    fieldsRead |= 1 << 1;
                 }
                 else if (name.equals("cursorSpeed")) {
                     cursorSpeed = (float) reader.nextDouble();
-                    fieldsRead++;
+                    fieldsRead |= 1 << 2;
+                }
+                else if (name.equals("leftStickDeadzone")) {
+                    leftStickDeadzone = (float) reader.nextDouble();
+                    fieldsRead |= 1 << 3;
+                }
+                else if (name.equals("rightStickDeadzone")) {
+                    rightStickDeadzone = (float) reader.nextDouble();
+                    fieldsRead |= 1 << 4;
+                }
+                else if (name.equals("leftStickSensitivity")) {
+                    leftStickSensitivity = (float) reader.nextDouble();
+                    fieldsRead |= 1 << 5;
+                }
+                else if (name.equals("rightStickSensitivity")) {
+                    rightStickSensitivity = (float) reader.nextDouble();
+                    fieldsRead |= 1 << 6;
+                }
+                else if (name.equals("leftStickDeadzoneMode")) {
+                    leftStickDeadzoneMode = ControlsProfile.StickDeadzoneMode.fromJsonName(reader.nextString());
+                    fieldsRead |= 1 << 7;
+                }
+                else if (name.equals("rightStickDeadzoneMode")) {
+                    rightStickDeadzoneMode = ControlsProfile.StickDeadzoneMode.fromJsonName(reader.nextString());
+                    fieldsRead |= 1 << 8;
+                }
+                else if (name.equals("leftStickDigitalMode")) {
+                    leftStickDigitalMode = ControlsProfile.StickDigitalMode.fromJsonName(reader.nextString());
+                    fieldsRead |= 1 << 9;
+                }
+                else if (name.equals("rightStickDigitalMode")) {
+                    rightStickDigitalMode = ControlsProfile.StickDigitalMode.fromJsonName(reader.nextString());
+                    fieldsRead |= 1 << 10;
                 }
                 else {
-                    if (fieldsRead == 3) break;
                     reader.skipValue();
                 }
+
+                // Current profiles write all summary fields before their potentially large arrays.
+                // Keep accepting arbitrary field order, but avoid scanning those arrays when possible.
+                if (fieldsRead == allProfileFields) {
+                    stoppedEarly = true;
+                    break;
+                }
             }
+            if (!stoppedEarly) reader.endObject();
 
             ControlsProfile profile = new ControlsProfile(context, profileId);
             profile.setName(profileName);
-            profile.setCursorSpeed(cursorSpeed);
+            if (!Float.isNaN(cursorSpeed)) profile.setCursorSpeed(cursorSpeed);
+            if (!Float.isNaN(leftStickDeadzone)) profile.setLeftStickDeadzone(leftStickDeadzone);
+            if (!Float.isNaN(rightStickDeadzone)) profile.setRightStickDeadzone(rightStickDeadzone);
+            if (!Float.isNaN(leftStickSensitivity)) profile.setLeftStickSensitivity(leftStickSensitivity);
+            if (!Float.isNaN(rightStickSensitivity)) profile.setRightStickSensitivity(rightStickSensitivity);
+            if (leftStickDeadzoneMode != null) profile.setLeftStickDeadzoneMode(leftStickDeadzoneMode);
+            if (rightStickDeadzoneMode != null) profile.setRightStickDeadzoneMode(rightStickDeadzoneMode);
+            if (leftStickDigitalMode != null) profile.setLeftStickDigitalMode(leftStickDigitalMode);
+            if (rightStickDigitalMode != null) profile.setRightStickDigitalMode(rightStickDigitalMode);
             return profile;
         }
         catch (IOException e) {
