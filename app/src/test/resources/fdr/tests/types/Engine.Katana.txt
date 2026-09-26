@@ -1,0 +1,6 @@
+.ktsl2asbin
+.ktsl2stbin
+@.ktsl2asbin
+@.ktsl2stbin
+FILE/SOUND/BGM/BGM.ktsl2stbin
+res/SFX.ktsl2asbin

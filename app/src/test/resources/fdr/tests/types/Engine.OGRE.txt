@@ -1,0 +1,6 @@
+/OgreMain.dll
+/OgreMain_x64.dll
+OgreMain.dll
+OgreMain_x64.dll
+sub/dir/OgreMain.dll
+sub/dir/OgreMain_x64.dll

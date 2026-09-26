@@ -1,0 +1,4 @@
+.hdll
+@.hdll
+something.hdll
+sub/dir/something.hdll

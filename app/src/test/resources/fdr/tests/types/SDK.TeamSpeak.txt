@@ -1,0 +1,9 @@
+/ts3client.dll
+/ts3client_win32.dll
+/ts3client_win64.dll
+Binaries/ts3client_win32.dll
+Submerge/Binaries/Win64/ts3client_win64.dll
+bin/win_x64/ts3client.dll
+ts3client.dll
+ts3client_win32.dll
+ts3client_win64.dll

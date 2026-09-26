@@ -1,0 +1,4 @@
+/TrueAudioNext.dll
+TrueAudioNext.dll
+app_Data/Plugins/x86_64/TrueAudioNext.dll
+bin/win64/TrueAudioNext.dll

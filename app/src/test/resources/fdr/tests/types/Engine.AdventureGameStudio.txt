@@ -1,0 +1,5 @@
+/AGSteam.dll
+/acsetup.cfg
+AGSteam.dll
+Sub/Folder/acsetup.cfg
+acsetup.cfg

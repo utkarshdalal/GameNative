@@ -1,0 +1,10 @@
+/libodin.dll
+/libodin.so
+/odin.dll
+/odin.so
+Odin/Source/OdinCore/x64/Linux/odin.so
+Odin/Source/OdinCore/x64/Win/odin.dll
+libodin.dll
+libodin.so
+odin.dll
+odin.so

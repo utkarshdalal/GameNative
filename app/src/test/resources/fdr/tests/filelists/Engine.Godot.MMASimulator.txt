@@ -1,0 +1,5 @@
+gdsqlite.32.dll
+mmasimulator.exe
+mmasimulator.pck
+steam_api.dll
+steam_appid.txt

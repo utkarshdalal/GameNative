@@ -1,0 +1,4 @@
+Data/dialog_3.tlk
+Data/textures00.bif
+Data/Djinni/Textures/door_icon.tga
+Data/Djinni/Textures/target.tga

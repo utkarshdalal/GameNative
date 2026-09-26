@@ -1,0 +1,10 @@
+/bass.dll
+/bassflac.dll
+/bassmidi.dll
+/libbass.dylib
+/libbass.so
+bass.dll
+bassflac.dll
+bassmidi.dll
+libbass.dylib
+libbass.so

@@ -1,0 +1,10 @@
+/libopenxr_loader.dll
+/libopenxr_loader.so
+/openxr_loader.dll
+/openxr_loader.so
+bin/linux64/libopenxr_loader.so
+bin/win64/openxr_loader.dll
+libopenxr_loader.dll
+libopenxr_loader.so
+openxr_loader.dll
+openxr_loader.so

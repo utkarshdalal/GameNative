@@ -1,0 +1,7 @@
+/audiopluginresonanceaudio.dll
+/resonanceaudio.dll
+ChildrenOfMorta_Data/Plugins/resonanceaudio.dll
+RobocraftClient_Data/Plugins/audiopluginresonanceaudio.dll
+armello_Data/Plugins/x86_64/resonanceaudio.dll
+audiopluginresonanceaudio.dll
+resonanceaudio.dll

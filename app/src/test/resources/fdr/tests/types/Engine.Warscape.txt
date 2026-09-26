@@ -1,0 +1,4 @@
+/startpos.esf
+@/startpos.esf
+data/campaigns/episodic_1/startpos.esf
+data/campaigns/phar_main/startpos.esf

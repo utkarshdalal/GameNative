@@ -1,0 +1,9 @@
+/Photon3DotNet.dll
+/Photon3Unity3D.dll
+/PhotonEncryptorPlugin.dll
+Humankind_Data/Managed/Photon3DotNet.dll
+Photon3DotNet.dll
+Photon3Unity3D.dll
+PhotonEncryptorPlugin.dll
+TotallyAccurateBattleSimulator_Data/Managed/Photon3Unity3D.dll
+VRChat_Data/Plugins/x86_64/PhotonEncryptorPlugin.dll

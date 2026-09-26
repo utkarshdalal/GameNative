@@ -1,0 +1,4 @@
+@AudioPluginDissonance.dll
+AudioPluginDissonance.dll
+Paranoia Place_Data/Plugins/x86_64/AudioPluginDissonance.dll
+RecRoom_Data/Plugins/x86_64/AudioPluginDissonance.dll

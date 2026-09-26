@@ -1,0 +1,12 @@
+/NvCloth_x64.dll
+/NvCloth_x86.dll
+/NvClothprofile_x64.dll
+/NvClothprofile_x86.dll
+Engine/Binaries/ThirdParty/PhysX3/Win32/VS2015/NvClothPROFILE_x86.dll
+Engine/Binaries/ThirdParty/PhysX3/Win32/VS2015/NvCloth_x86.dll
+Engine/Binaries/ThirdParty/PhysX3/Win64/VS2015/NvClothPROFILE_x64.dll
+Engine/Binaries/ThirdParty/PhysX3/Win64/VS2015/NvCloth_x64.dll
+NvCloth_x64.dll
+NvCloth_x86.dll
+NvClothprofile_x64.dll
+NvClothprofile_x86.dll

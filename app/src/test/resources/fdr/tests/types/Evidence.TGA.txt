@@ -1,0 +1,6 @@
+.tga
+@.tga
+Sub/Folder/something.tga
+blah.tga
+something.tga
+sub/blah.tga

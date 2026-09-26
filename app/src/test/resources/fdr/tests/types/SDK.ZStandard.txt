@@ -1,0 +1,3 @@
+/zstd.dll
+bin/zstd.dll
+zstd.dll

@@ -1,0 +1,16 @@
+/cudart
+/cudart.dll
+/cudart32_30_9.dll
+/cudart32_41_22.dll
+/cudart32_50_35.dll
+/cudart@
+/libcudart
+/libcudart@
+Binaries/cudart.dll
+addons/pythonscript/x11-64/lib/python3.8/site-packages/nvidia/cuda_runtime/lib/libcudart.so.12
+bin/cudart32_30_9.dll
+cudart
+cudart64_30_9.dll
+cudart@
+libcudart
+libcudart@

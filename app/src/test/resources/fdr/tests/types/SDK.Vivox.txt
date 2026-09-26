@@ -1,0 +1,15 @@
+/ortp.dll
+@vivox@
+Bin32/ortp.dll
+Binaries/vivoxsdk.dll
+Binary/vivoxoal.dll
+Binary/vivoxplatform.dll
+Engine/Binaries/ThirdParty/Vivox/Win64/vivoxsdk_x64.dll
+Vivox.Core.dll
+VivoxNative.dll
+ortp.dll
+vivox
+vivoxoal.dll
+vivoxplatform.dll
+vivoxsdk.dll
+vivoxsdk_x64.dll

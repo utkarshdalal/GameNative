@@ -1,0 +1,8 @@
+/TrueSkyPluginRender_MD.dll
+/TrueSkyPluginRender_MT.dll
+/TrueSkyUI_MD.dll
+Engine/Binaries/ThirdParty/Simul/Win64/TrueSkyPluginRender_MD.dll
+Engine/Binaries/ThirdParty/Simul/Win64/TrueSkyUI_MD.dll
+TrueSkyPluginRender_MD.dll
+TrueSkyPluginRender_MT.dll
+TrueSkyUI_MD.dll

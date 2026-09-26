@@ -1,0 +1,4 @@
+@gideros@
+gideros
+gideros.dll
+libgideros.1.dylib

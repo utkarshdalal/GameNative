@@ -1,0 +1,36 @@
+.DS_Store
+Haiki EA (64bit).exe
+Haiki EA (64bit).pck
+steam_api64.dll
+steam_appid.txt
+.DS_Store
+Haiki.app
+Haiki.app/Contents
+Haiki.app/Contents/CodeResources
+Haiki.app/Contents/Info.plist
+Haiki.app/Contents/MacOS
+Haiki.app/Contents/MacOS/Haiki
+Haiki.app/Contents/MacOS/libsteam_api.dylib
+Haiki.app/Contents/MacOS/steam_appid.txt
+Haiki.app/Contents/PkgInfo
+Haiki.app/Contents/Resources
+Haiki.app/Contents/Resources/Haiki.pck
+Haiki.app/Contents/Resources/icon.icns
+Haiki.app/Contents/_CodeSignature
+Haiki.app/Contents/_CodeSignature/CodeResources
+.DS_Store
+Haiki Linux EA (64bit).pck
+Haiki Linux EA (64bit).x86_64
+Start_with_overlay.sh
+libsteam_api.so
+steam_appid.txt
+.DS_Store
+Haiki EA (32bit).exe
+Haiki EA (32bit).pck
+steam_api.dll
+steam_appid.txt
+.DS_Store
+Haiki Linux EA (32bit).pck
+Haiki Linux EA (32bit).x86
+libsteam_api.so
+steam_appid.txt

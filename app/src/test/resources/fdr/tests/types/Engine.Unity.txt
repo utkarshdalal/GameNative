@@ -1,0 +1,15 @@
+/UnityEngine.dll
+/UnityEngine.dylib
+/UnityPlayer.dll
+/UnityPlayer.dylib
+/globalgamemanagers.assets
+Sub/Folder/UnityEngine.dll
+Sub/Folder/UnityEngine.dylib
+Sub/Folder/UnityPlayer.dll
+Sub/Folder/UnityPlayer.dylib
+Sub/Folder/globalgamemanagers.assets
+UnityEngine.dll
+UnityEngine.dylib
+UnityPlayer.dll
+UnityPlayer.dylib
+globalgamemanagers.assets

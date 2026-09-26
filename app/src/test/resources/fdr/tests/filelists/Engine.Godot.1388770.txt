@@ -1,0 +1,12 @@
+GODOT_LICENSE.txt
+crueltysquad.exe
+crueltysquad.pck
+libmap.dll
+libqodot.dll
+steam_api64.dll
+GODOT_LICENSE.txt
+crueltysquad32.exe
+crueltysquad32.pck
+libmap.dll
+libqodot.dll
+steam_api.dll

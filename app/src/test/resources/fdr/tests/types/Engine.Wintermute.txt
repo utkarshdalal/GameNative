@@ -1,0 +1,6 @@
+/data.dcp
+/wme_steam.dll
+Sub/Folder/data.dcp
+Sub/Folder/wme_steam.dll
+data.dcp
+wme_steam.dll

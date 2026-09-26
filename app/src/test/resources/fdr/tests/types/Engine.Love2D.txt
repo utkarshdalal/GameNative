@@ -1,0 +1,13 @@
+/liblove.dll
+/liblove.so
+/liblove.so.0
+/love.dll
+/love.so
+/love.so.0
+Sub/Folder/love.dll
+liblove.dll
+liblove.so
+liblove.so.0
+love.dll
+love.so
+love.so.0

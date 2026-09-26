@@ -1,0 +1,4 @@
+/gmesdk.dll
+DungeonCrawler/Plugins/TencentGME_Wwise/ThirdParty/x64_vc160/Release/bin/gmesdk.dll
+Engine/Plugins/WWise/ThirdParty/x64_vc150/Release/bin/gmesdk.dll
+gmesdk.dll

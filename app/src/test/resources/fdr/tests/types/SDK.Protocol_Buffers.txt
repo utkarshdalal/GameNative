@@ -1,0 +1,7 @@
+/protobuf-net.dll
+@protobuf@
+Binaries/Win32/protobuf-net.dll
+DubWars_Data/Managed/ProtobufSerializer.dll
+OccupyMars_Data/Managed/Google.Protobuf.dll
+protobuf
+protobuf-net.dll

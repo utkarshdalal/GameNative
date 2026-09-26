@@ -1,0 +1,6 @@
+/Stride.Core.dll
+/Xenko.Core.dll
+Folder/Stride.Core.dll
+Folder/Xenko.Core.dll
+Stride.Core.dll
+Xenko.Core.dll

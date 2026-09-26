@@ -1,0 +1,8 @@
+/libpanda.
+/libpanda.@
+Plith.app/Contents/Resources/panda3d/cmu_1.9/osx_i386/libpanda.dylib
+lib/panda3d/cmu_1.9/linux_amd64/libpanda.so
+libpanda.
+libpanda.@
+libpanda.dll
+panda3d/spacebullet_1.9/win_i386/libpanda.dll

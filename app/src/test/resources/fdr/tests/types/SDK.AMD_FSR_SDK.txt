@@ -1,0 +1,3 @@
+/amd_fidelityfx_loader_dx12.dll
+amd_fidelityfx_loader_dx12.dll
+

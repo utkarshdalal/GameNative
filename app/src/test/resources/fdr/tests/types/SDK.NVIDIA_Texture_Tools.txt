@@ -1,0 +1,5 @@
+/nvtt.dll
+/nvtt_64.dll
+Binaries/Win32/nvtt.dll
+nvtt.dll
+nvtt_64.dll

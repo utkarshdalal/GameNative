@@ -1,0 +1,4 @@
+/OVRPlugin.dll
+BONEWORKS/BONEWORKS_Data/Plugins/OVRPlugin.dll
+Engine/Binaries/ThirdParty/Oculus/OVRPlugin/OVRPlugin/Win64/OVRPlugin.dll
+OVRPlugin.dll

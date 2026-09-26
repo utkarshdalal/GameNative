@@ -1,0 +1,5 @@
+/slimdx.dll
+Mission Editor/SlimDX.dll
+SlimDX.dll
+slimdx.dll
+sub/SlimDX.dll

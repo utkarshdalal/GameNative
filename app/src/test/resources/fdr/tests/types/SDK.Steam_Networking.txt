@@ -1,0 +1,13 @@
+/libsteamnetworkingsockets.dll
+/libsteamnetworkingsockets.dylib
+/libsteamnetworkingsockets.so
+/steamnetworkingsockets.dll
+/steamnetworkingsockets.dylib
+/steamnetworkingsockets.so
+bin/x64/steamnetworkingsockets.dll
+libsteamnetworkingsockets.dll
+libsteamnetworkingsockets.dylib
+libsteamnetworkingsockets.so
+steamnetworkingsockets.dll
+steamnetworkingsockets.dylib
+steamnetworkingsockets.so

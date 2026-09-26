@@ -1,0 +1,6 @@
+.pk3
+@.pk3
+Sub/Folder/something.pk3
+blah.pk3
+bspsomething.pk3
+sub/blah.pk3

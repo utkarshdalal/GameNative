@@ -1,0 +1,3 @@
+/data.win
+data.win
+some/dir/data.win

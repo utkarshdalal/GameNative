@@ -1,0 +1,8 @@
+/irrKlang-32bit.dll
+/irrKlang.NET4.dll
+/irrKlang.dll
+DarkStory Online Steam/irrKlang.NET4.dll
+bin/release/irrKlang.dll
+irrKlang-32bit.dll
+irrKlang.NET4.dll
+irrKlang.dll

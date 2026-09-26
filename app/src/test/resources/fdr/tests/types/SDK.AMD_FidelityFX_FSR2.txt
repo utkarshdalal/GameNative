@@ -1,0 +1,4 @@
+/ffx_fsr2_api_x64.dll
+/ffx_fsr2_api_x86.dll
+ffx_fsr2_api_x64.dll
+ffx_fsr2_api_x86.dll

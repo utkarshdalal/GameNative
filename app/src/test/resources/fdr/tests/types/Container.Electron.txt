@@ -1,0 +1,3 @@
+/LICENSE.electron.txt
+LICENSE.electron.txt
+sub/dir/LICENSE.electron.txt

@@ -1,0 +1,12 @@
+/Microsoft_Xbox_Services_141_GDK_C_Thunks.dll
+/XCurl.dll
+/XGamingRuntime.dll
+/XGamingRuntimeThunks.dll
+Microsoft_Xbox_Services_141_GDK_C_Thunks.dll
+XCurl.dll
+XGamingRuntime.dll
+XGamingRuntimeThunks.dll
+game_data/Plugins/x86_64/Microsoft_Xbox_Services_141_GDK_C_Thunks.dll
+game_data/Plugins/x86_64/XCurl.dll
+game_data/Plugins/x86_64/XGamingRuntime.dll
+game_data/Plugins/x86_64/XGamingRuntimeThunks.dll

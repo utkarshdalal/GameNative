@@ -1,0 +1,14 @@
+Cossanox.pck
+Cossanox.x86_64
+Cossanox.exe
+Cossanox.app
+Cossanox.app/Contents
+Cossanox.app/Contents/Info.plist
+Cossanox.app/Contents/MacOS
+Cossanox.app/Contents/MacOS/Cossanox
+Cossanox.app/Contents/PkgInfo
+Cossanox.app/Contents/Resources
+Cossanox.app/Contents/Resources/Cossanox.pck
+Cossanox.app/Contents/Resources/icon.icns
+Cossanox.exe
+Cossanox.x86

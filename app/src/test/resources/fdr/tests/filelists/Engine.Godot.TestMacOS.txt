@@ -1,0 +1,9 @@
+MyGame.app
+MyGame.app/Contents
+MyGame.app/Contents/Info.plist
+MyGame.app/Contents/MacOS
+MyGame.app/Contents/MacOS/MyGame
+MyGame.app/Contents/PkgInfo
+MyGame.app/Contents/Resources
+MyGame.app/Contents/Resources/icon.icns
+MyGame.app/Contents/Resources/MyGame.pck

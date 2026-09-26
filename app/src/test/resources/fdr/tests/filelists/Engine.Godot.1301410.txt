@@ -1,0 +1,4 @@
+game.pck
+game.x86_64
+game.exe
+game.pck

@@ -1,0 +1,17 @@
+/coreclr.dll
+/coreclr.dylib
+/coreclr.so
+/libcoreclr.dll
+/libcoreclr.dylib
+/libcoreclr.so
+Sub/Folder/coreclr.dll
+Sub/Folder/libcoreclr.dylib
+Sub/Folder/libcoreclr.so
+bin/Win64_Shipping_Client/Microsoft.NETCore.App/coreclr.dll
+coreclr.dll
+coreclr.dylib
+coreclr.so
+dotnet/shared/Microsoft.NETCore.App/9.0.0/libcoreclr.so
+libcoreclr.dll
+libcoreclr.dylib
+libcoreclr.so

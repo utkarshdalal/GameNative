@@ -1,0 +1,2 @@
+Comic Company Manager.exe
+Comic Company Manager.pck

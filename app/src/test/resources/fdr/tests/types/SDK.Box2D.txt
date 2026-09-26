@@ -1,0 +1,16 @@
+/Box2D.XNA.dll
+/Box2D.dll
+/box2d.XNA.dll
+/box2d.XNA.txt
+/box2d.XNA.wasm
+/box2d.dll
+/box2d.txt
+/box2d.wasm
+Box2D.XNA.dll
+Box2D.dll
+box2d.XNA.dll
+box2d.XNA.txt
+box2d.XNA.wasm
+box2d.dll
+box2d.txt
+box2d.wasm

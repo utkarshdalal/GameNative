@@ -1,0 +1,7 @@
+/Adobe AIR
+/Adobe AIR/
+Adobe AIR
+Adobe AIR/
+Adobe AIR/Versions
+Adobe AIR/Versions/1.0
+Adobe AIR/Versions/1.0/Adobe AIR.dll

@@ -1,0 +1,6 @@
+.tlk
+@.tlk
+Sub/Folder/something.tlk
+blah.tlk
+something.tlk
+sub/blah.tlk

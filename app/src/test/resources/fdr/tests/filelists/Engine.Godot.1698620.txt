@@ -1,0 +1,6 @@
+Spindle_Demo_1.0.0.pck
+Spindle_Demo_1.0.0.x86_64
+Spindle_Demo_v1.0.0.app/Contents/MacOS/Spindle_Demo_v1.0.0
+Spindle_Demo_v1.0.0.app/Contents/Resources/Spindle_Demo_v1.0.0.pck
+Spindle_Demo_1.0.0.exe
+Spindle_Demo_1.0.0.pck

@@ -1,0 +1,12 @@
+/Noesis.dll
+/Noesis.dylib
+/Noesis.so
+/libNoesis.dll
+/libNoesis.dylib
+/libNoesis.so
+Noesis.dll
+Noesis.dylib
+Noesis.so
+libNoesis.dll
+libNoesis.dylib
+libNoesis.so

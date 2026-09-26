@@ -1,0 +1,4 @@
+/PCTouchHelper.dll
+PCTouchHelper.dll
+win32/PCTouchHelper.dll
+x64/PCTouchHelper.dll

@@ -1,0 +1,4 @@
+.pfp
+@.pfp
+something.pfp
+sub/dir/something.pfp

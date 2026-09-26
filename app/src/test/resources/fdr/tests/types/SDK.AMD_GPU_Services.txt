@@ -1,0 +1,9 @@
+/amd_ags.dll
+/amd_ags_x64.dll
+/amd_ags_x86.dll
+Binaries/amd_ags_x64.dll
+XSplitBroadcaster/amd_ags.dll
+amd_ags.dll
+amd_ags_x64.dll
+amd_ags_x86.dll
+win32/amd_ags_x86.dll

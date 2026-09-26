@@ -1,0 +1,6 @@
+/nvngx_dlss.dll
+/sl.dlss.dll
+bin/nvngx_dlss.dll
+bin/x64/sl.dlss.dll
+nvngx_dlss.dll
+sl.dlss.dll

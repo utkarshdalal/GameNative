@@ -1,0 +1,6 @@
+Archives/pc0.arc
+Archives/pc.tab
+archives_win64/game0.arc
+archives_win64/game0.tab
+game0.arc
+game0.tab

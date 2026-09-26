@@ -1,0 +1,3 @@
+/TP3Helper.exe
+TP3Helper.exe
+XVersion/TP3Helper.exe

@@ -1,0 +1,6 @@
+/Steamworks.NET.dll
+/com.rlabrecque.steamworks.net.dll
+RimWorldWin64_Data/Managed/com.rlabrecque.steamworks.net.dll
+Steamworks.NET.dll
+Surgeon Simulator 2_Data/Managed/Steamworks.NET.dll
+com.rlabrecque.steamworks.net.dll

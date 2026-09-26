@@ -1,0 +1,10 @@
+/datapc.forge
+/datapc64.forge
+/datapc_boot.forge
+/gamedatapc_00.forge
+DataPC_boot.forge
+datapc.forge
+datapc64.forge
+datapc_boot.forge
+gamedatapc_00.forge
+multi/DataPC.forge

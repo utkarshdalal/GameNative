@@ -1,0 +1,13 @@
+protocorgi_demo_windows_x64.exe
+protocorgi_demo_windows_x64.pck
+protocorgi_demo_linux_x64
+protocorgi_demo_linux_x64.pck
+ProtoCorgi Demo.app
+ProtoCorgi Demo.app/Contents
+ProtoCorgi Demo.app/Contents/Info.plist
+ProtoCorgi Demo.app/Contents/MacOS
+ProtoCorgi Demo.app/Contents/MacOS/ProtoCorgi Demo
+ProtoCorgi Demo.app/Contents/PkgInfo
+ProtoCorgi Demo.app/Contents/Resources
+ProtoCorgi Demo.app/Contents/Resources/icon.icns
+ProtoCorgi Demo.app/Contents/Resources/ProtoCorgi Demo.pck

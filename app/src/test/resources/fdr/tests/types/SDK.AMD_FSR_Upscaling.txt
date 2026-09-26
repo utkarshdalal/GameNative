@@ -1,0 +1,2 @@
+/amd_fidelityfx_upscaler_dx12.dll
+amd_fidelityfx_upscaler_dx12.dll

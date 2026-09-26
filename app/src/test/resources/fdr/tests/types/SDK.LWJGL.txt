@@ -1,0 +1,13 @@
+/lwjgl.dll
+/lwjgl.jar
+/lwjgl64.dll
+/lwjgl64.jar
+bin/lwjgl.dll
+lib/lwjgl.dll
+lib/lwjgl.jar
+lib/lwjgl64.dll
+lwjgl.dll
+lwjgl.jar
+lwjgl64.dll
+lwjgl64.jar
+natives/lwjgl64.dll

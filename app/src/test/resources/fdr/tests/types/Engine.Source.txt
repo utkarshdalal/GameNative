@@ -1,0 +1,22 @@
+/bsppack.dll
+/bsppack.dylib
+/bsppack.so
+/vphysics.dll
+/vphysics.dylib
+/vphysics.so
+The Burton Equation/bin/bsppack.dll
+The Burton Equation/bin/vphysics.dll
+bin/bsppack.dylib
+bin/bsppack.so
+bin/vphysics.dylib
+bin/vphysics.so
+bin/x64_retail/bsppack.dll
+bin/x64_retail/vphysics.dll
+bsppack.dll
+bsppack.dylib
+bsppack.so
+server/bin/bsppack.dll
+server/bin/vphysics.dll
+vphysics.dll
+vphysics.dylib
+vphysics.so

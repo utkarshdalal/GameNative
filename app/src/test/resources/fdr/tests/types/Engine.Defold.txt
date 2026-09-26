@@ -1,0 +1,3 @@
+/game.dmanifest
+Sub/Folder/game.dmanifest
+game.dmanifest

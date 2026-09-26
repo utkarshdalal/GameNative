@@ -1,0 +1,12 @@
+/Engine.BuildInfo.dll
+/Engine.BuildInfo_Win32_retail.dll
+/Engine.BuildInfo_Win32_retail_dll.dll
+/Engine.BuildInfo_Win64_retail.dll
+/Engine.BuildInfo_Win64_retail_dll.dll
+/Runtime_Win64_retail.BuildSettings
+Engine.BuildInfo.dll
+Engine.BuildInfo_Win32_retail.dll
+Engine.BuildInfo_Win32_retail_dll.dll
+Engine.BuildInfo_Win64_retail.dll
+Engine.BuildInfo_Win64_retail_dll.dll
+Runtime_Win64_retail.BuildSettings

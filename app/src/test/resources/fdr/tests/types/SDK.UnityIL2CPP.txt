@@ -1,0 +1,4 @@
+/Metal_Data/il2cpp_data/Metadata/global-metadata.dat
+/il2cpp_data/Metadata/global-metadata.dat
+Binaries/Game_Data/il2cpp_data/Metadata/global-metadata.dat
+il2cpp_data/Metadata/global-metadata.dat

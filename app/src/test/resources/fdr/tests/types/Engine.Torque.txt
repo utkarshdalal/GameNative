@@ -1,0 +1,6 @@
+.cs.dso
+/main.cs.dso
+@.cs.dso
+base/client/scripts/allClientScripts.cs.dso
+common/main.cs.dso
+main.cs.dso

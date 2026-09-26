@@ -1,0 +1,11 @@
+/jme3-core
+/jme3-core-3.2.4-stable.jar
+/jme3-core-3.3.0-SNAPSHOT.jar
+/jme3-core-3.5.2-stable.jar
+/jme3-core@
+app/lib/jme3-core.jar
+core/jme3-core.jar
+jME3-core.jar
+jme3-core
+jme3-core@
+lib/jme3-core.jar

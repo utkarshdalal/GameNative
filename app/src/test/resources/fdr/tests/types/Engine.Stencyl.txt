@@ -1,0 +1,3 @@
+/assets/data/behaviors.mbs
+Tiny Dangerous Dungeons.app/Contents/Resources/assets/data/behaviors.mbs
+assets/data/behaviors.mbs

@@ -1,0 +1,3 @@
+.b3d
+@.b3d
+GFX/173box.b3d

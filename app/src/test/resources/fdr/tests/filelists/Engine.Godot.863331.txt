@@ -1,0 +1,50 @@
+rpginabox.exe
+steam_api64.dll
+libsteam_api.so
+rpginabox
+RPG in a Box.app
+RPG in a Box.app/Contents
+RPG in a Box.app/Contents/Info.plist
+RPG in a Box.app/Contents/MacOS
+RPG in a Box.app/Contents/MacOS/libsteam_api.dylib
+RPG in a Box.app/Contents/MacOS/rpginabox
+RPG in a Box.app/Contents/PkgInfo
+RPG in a Box.app/Contents/Resources
+RPG in a Box.app/Contents/Resources/export_templates
+RPG in a Box.app/Contents/Resources/export_templates/Game.app
+RPG in a Box.app/Contents/Resources/export_templates/Game.app/Contents
+RPG in a Box.app/Contents/Resources/export_templates/Game.app/Contents/Info.plist
+RPG in a Box.app/Contents/Resources/export_templates/Game.app/Contents/MacOS
+RPG in a Box.app/Contents/Resources/export_templates/Game.app/Contents/MacOS/rpginabox
+RPG in a Box.app/Contents/Resources/export_templates/Game.app/Contents/PkgInfo
+RPG in a Box.app/Contents/Resources/export_templates/Game.app/Contents/Resources
+RPG in a Box.app/Contents/Resources/export_templates/Game.app/Contents/Resources/rpginabox.icns
+RPG in a Box.app/Contents/Resources/export_templates/linux_32_debug
+RPG in a Box.app/Contents/Resources/export_templates/linux_64_debug
+RPG in a Box.app/Contents/Resources/export_templates/windows_32_debug.exe
+RPG in a Box.app/Contents/Resources/export_templates/windows_64_debug.exe
+RPG in a Box.app/Contents/Resources/models.pck
+RPG in a Box.app/Contents/Resources/music.pck
+RPG in a Box.app/Contents/Resources/rpginabox.icns
+RPG in a Box.app/Contents/Resources/rpginabox.pck
+rpginabox.exe
+steam_api.dll
+libsteam_api.so
+rpginabox
+export_templates
+export_templates/Game.app
+export_templates/Game.app/Contents
+export_templates/Game.app/Contents/Info.plist
+export_templates/Game.app/Contents/MacOS
+export_templates/Game.app/Contents/MacOS/rpginabox
+export_templates/Game.app/Contents/PkgInfo
+export_templates/Game.app/Contents/Resources
+export_templates/Game.app/Contents/Resources/rpginabox.icns
+export_templates/linux_32_debug
+export_templates/linux_64_debug
+export_templates/windows_32_debug.exe
+export_templates/windows_64_debug.exe
+models.pck
+music.pck
+rpginabox.pck
+steam_appid.txt

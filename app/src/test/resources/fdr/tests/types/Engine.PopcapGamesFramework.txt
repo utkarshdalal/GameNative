@@ -1,0 +1,3 @@
+/partner.xml.sig
+partner.xml.sig
+sub/dir/partner.xml.sig

@@ -1,0 +1,6 @@
+.scr
+@.scr
+Sub/Folder/something.scr
+blah.scr
+something.scr
+sub/blah.scr

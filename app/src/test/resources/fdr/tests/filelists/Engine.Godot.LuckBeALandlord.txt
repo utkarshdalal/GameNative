@@ -1,0 +1,12 @@
+Luck be a Landlord.exe
+Luck be a Landlord.app/Contents/Resources/Luck be a Landlord.pck
+Luck be a Landlord.app
+Luck be a Landlord.app/Contents
+Luck be a Landlord.app/Contents/Info.plist
+Luck be a Landlord.app/Contents/MacOS
+Luck be a Landlord.app/Contents/MacOS/Luck be a Landlord
+Luck be a Landlord.app/Contents/PkgInfo
+Luck be a Landlord.app/Contents/Resources
+Luck be a Landlord.app/Contents/Resources/icon.icns
+Luck be a Landlord.app/Contents/Resources/Luck be a Landlord.pck
+Luck be a Landlord.x86_64

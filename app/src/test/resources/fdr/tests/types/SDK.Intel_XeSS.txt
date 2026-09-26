@@ -1,0 +1,10 @@
+/igxess.dll
+/libxess.dll
+Dysterra/Plugins/XeSS/Binaries/ThirdParty/Win64/igxess.dll
+Dysterra/Plugins/XeSS/Binaries/ThirdParty/Win64/libxess.dll
+Engine/Plugins/Runtime/Intel/XeSS/Binaries/ThirdParty/Win64/igxess.dll
+Engine/Plugins/Runtime/Intel/XeSS/Binaries/ThirdParty/Win64/libxess.dll
+game/x64/Ship/client/igxess.dll
+game/x64/Ship/client/libxess.dll
+igxess.dll
+libxess.dll

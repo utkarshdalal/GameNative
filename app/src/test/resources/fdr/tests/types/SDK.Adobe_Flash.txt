@@ -1,0 +1,26 @@
+/Flash Player
+/Flash Player.
+/Flash Player/
+/FlashPlayer
+/FlashPlayer.
+/FlashPlayer/
+/Flash_Player
+/Flash_Player.
+/Flash_Player/
+/StandalonePlayerLocalizable.strings
+/StandalonePlayerLocalizable.strings/
+Flash Player
+Flash Player.
+Flash Player/
+FlashPlayer
+FlashPlayer.
+FlashPlayer/
+Flash_Player
+Flash_Player.
+Flash_Player/
+StandalonePlayerLocalizable.strings
+StandalonePlayerLocalizable.strings/
+flash_player
+gateway.app/Contents/MacOS/Flash Player
+gateway.app/Contents/Resources/Flash Player.rsrc
+gateway.app/Contents/Resources/FlashPlayer.icns

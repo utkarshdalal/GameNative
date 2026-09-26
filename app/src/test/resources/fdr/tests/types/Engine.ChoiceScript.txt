@@ -1,0 +1,3 @@
+/SteamChoiceScript-Info.plist
+7th Sea A Pirates Pact.app/Contents/Resources/SteamChoiceScript-Info.plist
+SteamChoiceScript-Info.plist

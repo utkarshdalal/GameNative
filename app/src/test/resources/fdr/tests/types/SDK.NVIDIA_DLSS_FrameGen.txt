@@ -1,0 +1,6 @@
+/nvngx_dlssg.dll
+/sl.dlss_g.dll
+Engine/Plugins/Runtime/Nvidia/Streamline/Binaries/ThirdParty/Win64/Development/sl.dlss_g.dll
+launcher/nvngx_dlssg.dll
+nvngx_dlssg.dll
+sl.dlss_g.dll

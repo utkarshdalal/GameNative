@@ -1,0 +1,6 @@
+/gzdoom.pk3
+/gzdoom.sf2
+/zmusic.dll
+gzdoom.pk3
+gzdoom.sf2
+zmusic.dll

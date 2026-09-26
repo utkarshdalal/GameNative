@@ -1,0 +1,17 @@
+/0000000000000000.stream
+/0123456789abcdef.stream
+/4444444444444444.stream
+/9999999999999999.stream
+/aaaaaaaaaaaaaaaa.stream
+/abcdef0123456789.stream
+/cccccccccccccccc.stream
+/ffffffffffffffff.stream
+/job_animation_player_win32_release.dll
+0000000000000000.stream
+4444444444444444.stream
+9999999999999999.stream
+aaaaaaaaaaaaaaaa.stream
+binaries/job_animation_player_win32_release.dll
+cccccccccccccccc.stream
+ffffffffffffffff.stream
+job_animation_player_win32_release.dll

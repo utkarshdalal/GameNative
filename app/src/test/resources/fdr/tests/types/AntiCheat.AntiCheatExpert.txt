@@ -1,0 +1,16 @@
+/AceAntibotClient/
+/AceAntibotClient/@
+/AceAntibotClient/InGame/x64/ACE-ATS64.dll
+/AntiCheatExpert/
+/AntiCheatExpert/@
+/anticheatexpert/@
+/anticheatexpert/ingame/x64/ace-drv64.dll
+AceAntibotClient/
+AceAntibotClient/@
+AceAntibotClient/ingame/x64/ace-drv64.dll
+AntiCheatExpert/
+AntiCheatExpert/@
+Sub/Folder/AceAntibotClient/InGame/x64/ACE-ATS64.dll
+Sub/Folder/anticheatexpert/ingame/x64/ace-drv64.dll
+anticheatexpert/@
+anticheatexpert/ingame/x64/ace-drv64.dll

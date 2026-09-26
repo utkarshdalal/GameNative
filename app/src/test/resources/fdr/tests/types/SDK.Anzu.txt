@@ -1,0 +1,7 @@
+/anzu.dll
+/libanzu.dll
+Dakar2Game/Plugins/ThirdParty/Anzu/Source/AnzuSDK/Win64/libAnzu.dll
+Engine/Plugins/Anzu/Source/AnzuSDK/Win64/libAnzu.dll
+Slapshot_Data/Plugins/x86_64/anzu.dll
+anzu.dll
+libanzu.dll

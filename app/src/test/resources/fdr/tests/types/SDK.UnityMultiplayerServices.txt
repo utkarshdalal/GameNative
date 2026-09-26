@@ -1,0 +1,13 @@
+/Unity.Services.Multiplay.dll
+/Unity.Services.Multiplayer.dll
+Battlecruisers_Data/Managed/Unity.Services.Multiplay.dll
+Unity.Services.Multiplay.dll
+Unity.Services.Multiplayer.dll
+build/output/Unity.Services.Multiplayer.dll
+folder/Multiplay/Unity.Services.Multiplay.dll
+folder/Unity.Services.Multiplayer.dll
+game_Data/Managed/Unity.Services.Multiplayer.dll
+games/Unity.Services.Multiplay.dll
+libs/Unity.Services.Multiplayer.dll
+path/To/File/Unity.Services.Multiplay.dll
+path/to/Unity.Services.Multiplayer.dll

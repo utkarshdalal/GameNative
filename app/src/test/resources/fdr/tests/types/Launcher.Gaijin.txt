@@ -1,0 +1,2 @@
+/gaijin_downloader.exe
+gaijin_downloader.exe

@@ -1,0 +1,10 @@
+Alphaman.exe
+Alphaman.pck
+license_prstart.txt
+steam_api64.dll
+steam_appid.txt
+Alphaman_linux.pck
+Alphaman_linux.x86
+libsteam_api.so
+license_prstart.txt
+steam_appid.txt

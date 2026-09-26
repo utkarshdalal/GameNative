@@ -1,0 +1,3 @@
+/CoronaLabs.Corona.Native.dll
+CoronaLabs.Corona.Native.dll
+sub/dir/CoronaLabs.Corona.Native.dll

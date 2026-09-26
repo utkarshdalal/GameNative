@@ -1,0 +1,3 @@
+/scummvm.exe
+scummvm.exe
+sub/dir/scummvm.exe

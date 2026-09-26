@@ -1,0 +1,14 @@
+/00_All.gro
+/All.gro
+00_All.gro
+01.gro
+1_04_patch.gro
+@01.gro
+@All.gro
+@patch.gro
+All.gro
+Content/SeriousSam2017/00_All.gro
+Content/SeriousSam3/All_01.gro
+Content/SeriousSamHD/All.gro
+Content/SeriousSamTLH/All_01.gro
+patch.gro
