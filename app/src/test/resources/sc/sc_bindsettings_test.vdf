@@ -1,0 +1,61 @@
+"controller_mappings"
+{
+	"version"		"3"
+	"title"		"SC Bind-Settings Test (delays + toggle + macro)"
+	"description"		"A=macro(1 then 2), B=toggle M (hold-latch), X=delayed N (start 500ms), Y=delayed-release O (end 500ms). Type into a text field to see them. Right pad = mouse."
+	"controller_type"		"controller_triton"
+	"group"
+	{
+		"id"		"0"
+		"mode"		"four_buttons"
+		"inputs"
+		{
+			"button_a"
+			{
+				"activators"
+				{
+					"Full_Press" { "bindings" { "binding" "key_press 1" } }
+					"Full_Press" { "bindings" { "binding" "key_press 2" } }
+				}
+			}
+			"button_b" { "activators" { "Full_Press" { "bindings" { "binding" "key_press M" } "settings" { "toggle" "1" } } } }
+			"button_x" { "activators" { "Full_Press" { "bindings" { "binding" "key_press N" } "settings" { "delay_start" "500" } } } }
+			"button_y" { "activators" { "Full_Press" { "bindings" { "binding" "key_press O" } "settings" { "delay_end" "500" } } } }
+		}
+	}
+	"group"
+	{
+		"id"		"1"
+		"mode"		"joystick_move"
+		"inputs" { "click" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button JOYSTICK_LEFT" } } } } }
+	}
+	"group"
+	{
+		"id"		"2"
+		"mode"		"mouse"
+		"inputs" { "click" { "activators" { "Full_Press" { "bindings" { "binding" "mouse_button LEFT" } } } } }
+		"settings" { "sensitivity" "120" }
+	}
+	"group"
+	{
+		"id"		"3"
+		"mode"		"switches"
+		"inputs"
+		{
+			"button_menu" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button START" } } } }
+			"button_escape" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button SELECT" } } } }
+		}
+	}
+	"preset"
+	{
+		"id"		"0"
+		"name"		"Default"
+		"group_source_bindings"
+		{
+			"0"		"button_diamond active"
+			"1"		"joystick active"
+			"2"		"right_trackpad active"
+			"3"		"switch active"
+		}
+	}
+}

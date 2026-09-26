@@ -1,0 +1,83 @@
+"controller_mappings"
+{
+	"version"		"3"
+	"title"		"SC Gyro Touch-to-Aim Test"
+	"description"		"Gyro = mouse aim, gated by ANY thumb-surface touch (gyro_ratchet_button_mask = 4 touch surfaces). Touch any pad/stick -> gyro aims; let go -> stops. Right pad = mouse, left stick = move."
+	"controller_type"		"controller_triton"
+	"group"
+	{
+		"id"		"0"
+		"mode"		"four_buttons"
+		"inputs"
+		{
+			"button_a" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button A" } } } }
+			"button_b" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button B" } } } }
+			"button_x" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button X" } } } }
+			"button_y" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button Y" } } } }
+		}
+	}
+	"group"
+	{
+		"id"		"1"
+		"mode"		"joystick_move"
+		"inputs" { "click" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button JOYSTICK_LEFT" } } } } }
+	}
+	"group"
+	{
+		"id"		"2"
+		"mode"		"mouse"
+		"inputs" { "click" { "activators" { "Full_Press" { "bindings" { "binding" "mouse_button LEFT" } } } } }
+		"settings" { "sensitivity" "120" }
+	}
+	"group"
+	{
+		"id"		"3"
+		"mode"		"trigger"
+		"inputs" {}
+		"settings" { "output_trigger" "1" }
+	}
+	"group"
+	{
+		"id"		"4"
+		"mode"		"trigger"
+		"inputs" {}
+		"settings" { "output_trigger" "2" }
+	}
+	"group"
+	{
+		"id"		"5"
+		"mode"		"gyro_to_mouse"
+		"inputs" {}
+		"settings"
+		{
+			"sensitivity"		"100"
+			"gyro_ratchet_button_mask"		"211106234105856"
+			"gyro_ratchet_button_requireany_or_all"		"1"
+		}
+	}
+	"group"
+	{
+		"id"		"6"
+		"mode"		"switches"
+		"inputs"
+		{
+			"button_menu" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button START" } } } }
+			"button_escape" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button SELECT" } } } }
+		}
+	}
+	"preset"
+	{
+		"id"		"0"
+		"name"		"Default"
+		"group_source_bindings"
+		{
+			"0"		"button_diamond active"
+			"1"		"joystick active"
+			"2"		"right_trackpad active"
+			"3"		"left_trigger active"
+			"4"		"right_trigger active"
+			"5"		"gyro active"
+			"6"		"switch active"
+		}
+	}
+}

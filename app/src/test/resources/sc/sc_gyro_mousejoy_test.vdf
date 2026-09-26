@@ -1,0 +1,78 @@
+"controller_mappings"
+{
+	"version"		"3"
+	"title"		"SC Gyro + MouseJoystick Test"
+	"description"		"Gyro = mouse aim (grip-gated) to check A5 direction; right pad = mouse_joystick (displacement-from-center = cursor velocity); left stick = move. Best in a mouse-look game (DOOM)."
+	"controller_type"		"controller_triton"
+	"group"
+	{
+		"id"		"0"
+		"mode"		"four_buttons"
+		"inputs"
+		{
+			"button_a" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button A" } } } }
+			"button_b" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button B" } } } }
+			"button_x" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button X" } } } }
+			"button_y" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button Y" } } } }
+		}
+	}
+	"group"
+	{
+		"id"		"1"
+		"mode"		"joystick_move"
+		"inputs" { "click" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button JOYSTICK_LEFT" } } } } }
+	}
+	"group"
+	{
+		"id"		"2"
+		"mode"		"mouse_joystick"
+		"inputs" { "click" { "activators" { "Full_Press" { "bindings" { "binding" "mouse_button LEFT" } } } } }
+		"settings" { "sensitivity" "100" }
+	}
+	"group"
+	{
+		"id"		"3"
+		"mode"		"trigger"
+		"inputs" {}
+		"settings" { "output_trigger" "1" }
+	}
+	"group"
+	{
+		"id"		"4"
+		"mode"		"trigger"
+		"inputs" {}
+		"settings" { "output_trigger" "2" }
+	}
+	"group"
+	{
+		"id"		"5"
+		"mode"		"gyro_to_mouse"
+		"inputs" {}
+		"settings" { "sensitivity" "100" }
+	}
+	"group"
+	{
+		"id"		"6"
+		"mode"		"switches"
+		"inputs"
+		{
+			"button_menu" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button START" } } } }
+			"button_escape" { "activators" { "Full_Press" { "bindings" { "binding" "xinput_button SELECT" } } } }
+		}
+	}
+	"preset"
+	{
+		"id"		"0"
+		"name"		"Default"
+		"group_source_bindings"
+		{
+			"0"		"button_diamond active"
+			"1"		"joystick active"
+			"2"		"right_trackpad active"
+			"3"		"left_trigger active"
+			"4"		"right_trigger active"
+			"5"		"gyro active"
+			"6"		"switch active"
+		}
+	}
+}
