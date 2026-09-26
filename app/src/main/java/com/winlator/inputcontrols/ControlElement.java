@@ -1425,6 +1425,15 @@ public class ControlElement {
                             }
                             this.states[i] = bindingCombo.isSingleBinding() || nextState;
                         }
+                        else if (bindingCombo.isSingleBinding() &&
+                                (binding == Binding.MOUSE_SCROLL_UP || binding == Binding.MOUSE_SCROLL_DOWN)) {
+                            // Wheel ticks are pulses, not held buttons. Repeat for each active movement sample.
+                            if (states[i]) {
+                                handleBindingInputEvent(i, true, value);
+                                handleBindingInputEvent(i, false, value);
+                            }
+                            this.states[i] = false;
+                        }
                         else if (this.states[i] != states[i]) {
                             handleBindingInputEvent(i, states[i], value);
                             this.states[i] = states[i];
