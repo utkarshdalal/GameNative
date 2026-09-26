@@ -1011,7 +1011,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Informacje</string>
     <string name="settings_info_send_tip_title">Zostań członkiem</string>
-    <string name="settings_info_send_tip_subtitle">Wcześniejszy dostęp do wydań, priorytetowa pomoc i więcej</string>
+    <string name="settings_info_send_tip_subtitle">Pomoc AI w uruchamianiu gier, wcześniejszy dostęp do wydań i więcej</string>
     <string name="settings_info_ask_tip_title">Oferty członkostwa</string>
     <string name="settings_info_ask_tip_subtitle">Pokazuj od czasu do czasu oferty członkostwa GameNative</string>
     <string name="settings_info_source_title">Kod źródłowy</string>
@@ -1130,7 +1130,7 @@
     <string name="main_recent_crash_title">Ostatnia awaria</string>
     <string name="main_recent_crash_message">Przykro nam!\nDobrze byłoby wiedzieć o ostatnim problemie, który wystąpił.\nMożesz zobaczyć i wyeksportować log ostatniej awarii w ustawieniach aplikacji i dołączyć go jako zgłoszenie w repozytorium projektu na Githubie.\nLink do repozytorium Github znajduje się również w ustawieniach!</string>
     <string name="main_thank_you_title">Podoba Ci się GameNative?</string>
-    <string name="main_thank_you_message">Zostań członkiem już dziś. Członkowie otrzymują:\n\n• Wcześniejszy dostęp do nowych wydań\n• Priorytetową pomoc w uruchamianiu gier\n• Role premium i ekskluzywne kanały na Discordzie\n• …i więcej\n\nOd 5 $/mies.</string>
+    <string name="main_thank_you_message">Zostań członkiem już dziś. Członkowie otrzymują:\n\n• Pomoc AI w uruchamianiu gier\n• Wcześniejszy dostęp do nowych wydań\n• Role premium i ekskluzywne kanały na Discordzie\n• …i więcej\n\nOd 5 $/mies.</string>
     <string name="main_join_kofi">Zostań członkiem</string>
     <string name="pitch_session_title">Podoba Ci się %1$s?</string>
     <string name="pitch_five_star_title">Świetnie, że %1$s działa doskonale!</string>
@@ -2610,6 +2610,15 @@
     <string name="settings_info_boot_recs_title">Polecane gry na ekranach ładowania</string>
     <string name="settings_info_boot_recs_subtitle">Pokazuj grę, która może Ci się spodobać, podczas uruchamiania gry, gdy nie ma karty sponsora.</string>
     <string name="boot_rec_badge">Polecane dla Ciebie</string>
+    <string name="boot_ad_close_cd">Zamknij tę kartę</string>
+    <string name="boot_ad_sheet_title_sponsored">O kartach sponsorów</string>
+    <string name="boot_ad_sheet_title_rec">O rekomendacjach</string>
+    <string name="boot_ad_sheet_body_sponsored">Karty sponsorów pomagają finansować pełnoetatową pracę nad GameNative. Możesz to zmienić w każdej chwili w Ustawieniach.</string>
+    <string name="boot_ad_sheet_body_rec">Rekomendacje są dobierane na podstawie gier, w które grasz. Możesz to zmienić w każdej chwili w Ustawieniach.</string>
+    <string name="boot_ad_close_one">Zamknij tę</string>
+    <string name="boot_ad_turn_off_sponsored">Wyłącz karty sponsorów</string>
+    <string name="boot_ad_turn_off_rec">Wyłącz rekomendacje</string>
+    <string name="boot_ad_not_now">Nie teraz</string>
     <string name="boot_quiz_win_default">Poprawnie!</string>
     <string name="boot_quiz_lose_default">Odpowiedź to %1$s</string>
     <string name="gyro_aiming">Celowanie żyroskopowe</string>

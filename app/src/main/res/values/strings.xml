@@ -150,7 +150,7 @@
     <string name="curated_lists_empty">No curated lists available right now.</string>
     <string name="curated_list_4_3_name">Does it 4:3?</string>
     <string name="settings_interface_library_tabs_title">Library tabs</string>
-    <string name="settings_interface_library_tabs_subtitle">Choose which store tabs appear in the library.</string>
+    <string name="settings_interface_library_tabs_subtitle">Choose which tabs appear in the library.</string>
     <string name="settings_interface_library_tabs_none">No store tabs</string>
     <string name="default_user_name">User</string>
 
@@ -1141,7 +1141,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
     <string name="settings_info_send_tip_title">Become a member</string>
-    <string name="settings_info_send_tip_subtitle">Early access to releases, priority help, and more</string>
+    <string name="settings_info_send_tip_subtitle">AI help getting your games running, early access to releases, and more</string>
     <string name="settings_info_ask_tip_title">Membership offers</string>
     <string name="settings_info_ask_tip_subtitle">Show occasional offers to become a GameNative member</string>
     <string name="settings_info_source_title">Source code</string>
@@ -1323,7 +1323,7 @@
     <string name="main_recent_crash_title">Recent Crash</string>
     <string name="main_recent_crash_message">Sorry about that!\nIt would be nice to know about the recent issue you\'ve had.\nYou can view and export the most recent crash log in the app\'s settings and attach it as a Github issue in the project\'s repository.\nLink to the Github repo is also in settings!</string>
     <string name="main_thank_you_title">Enjoying GameNative?</string>
-    <string name="main_thank_you_message">Become a member today. Members get:\n\n• Early access to new releases\n• Priority help getting your games running\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom $5/month</string>
+    <string name="main_thank_you_message">Become a member today. Members get:\n\n• AI help getting your games running\n• Early access to new releases\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom $5/month</string>
     <string name="main_join_kofi">Become a member</string>
     <string name="pitch_session_title">Enjoying %1$s?</string>
     <string name="pitch_five_star_title">Glad %1$s ran great!</string>
@@ -2352,6 +2352,15 @@
     <!-- FeaturedItem (server-driven promoted slot) -->
     <string name="featured_badge">Sponsored</string>
     <string name="boot_rec_badge">Recommended for you</string>
+    <string name="boot_ad_close_cd">Close this card</string>
+    <string name="boot_ad_sheet_title_sponsored">About sponsor cards</string>
+    <string name="boot_ad_sheet_title_rec">About recommendations</string>
+    <string name="boot_ad_sheet_body_sponsored">Sponsor cards help fund full-time work on GameNative. You can change this any time in Settings.</string>
+    <string name="boot_ad_sheet_body_rec">Recommendations are picked from the games you play. You can change this any time in Settings.</string>
+    <string name="boot_ad_close_one">Close this one</string>
+    <string name="boot_ad_turn_off_sponsored">Turn off sponsor cards</string>
+    <string name="boot_ad_turn_off_rec">Turn off recommendations</string>
+    <string name="boot_ad_not_now">Not now</string>
     <string name="boot_quiz_win_default">Correct!</string>
     <string name="boot_quiz_lose_default">The answer was %1$s</string>
     <string name="featured_action_wishlist">Wishlist</string>

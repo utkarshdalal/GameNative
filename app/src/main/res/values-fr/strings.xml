@@ -1020,7 +1020,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Informations</string>
     <string name="settings_info_send_tip_title">Devenir membre</string>
-    <string name="settings_info_send_tip_subtitle">Accès anticipé aux versions, aide prioritaire et plus encore</string>
+    <string name="settings_info_send_tip_subtitle">Aide par IA pour vos jeux, accès anticipé aux versions et plus encore</string>
     <string name="settings_info_ask_tip_title">Offres d\'adhésion</string>
     <string name="settings_info_ask_tip_subtitle">Afficher occasionnellement des offres pour devenir membre de GameNative</string>
     <string name="settings_info_source_title">Code source</string>
@@ -1140,7 +1140,7 @@
     <string name="main_recent_crash_title">Plantage récent</string>
     <string name="main_recent_crash_message">Désolé pour ça !\nIl serait utile de connaître le problème récent que vous avez rencontré.\nVous pouvez consulter et exporter le journal de plantage le plus récent dans les paramètres de l\'application et le joindre comme problème Github dans le dépôt du projet.\nLe lien vers le dépôt Github se trouve également dans les paramètres !</string>
     <string name="main_thank_you_title">Vous appréciez GameNative ?</string>
-    <string name="main_thank_you_message">Devenez membre dès aujourd\'hui. Les membres bénéficient de :\n\n• Accès anticipé aux nouvelles versions\n• Aide prioritaire pour faire fonctionner vos jeux\n• Rôles premium et salons exclusifs sur Discord\n• …et plus encore\n\nÀ partir de 5 $/mois</string>
+    <string name="main_thank_you_message">Devenez membre dès aujourd\'hui. Les membres bénéficient de :\n\n• Aide par IA pour faire fonctionner vos jeux\n• Accès anticipé aux nouvelles versions\n• Rôles premium et salons exclusifs sur Discord\n• …et plus encore\n\nÀ partir de 5 $/mois</string>
     <string name="main_join_kofi">Devenir membre</string>
     <string name="pitch_session_title">Vous appréciez %1$s ?</string>
     <string name="pitch_five_star_title">Ravi que %1$s ait bien tourné !</string>
@@ -2604,6 +2604,15 @@
     <string name="settings_info_boot_recs_title">Recommandations de jeux sur les écrans de chargement</string>
     <string name="settings_info_boot_recs_subtitle">Afficher un jeu qui pourrait vous plaire pendant le démarrage, en l\'absence de carte sponsorisée.</string>
     <string name="boot_rec_badge">Recommandé pour vous</string>
+    <string name="boot_ad_close_cd">Fermer cette carte</string>
+    <string name="boot_ad_sheet_title_sponsored">À propos des cartes sponsorisées</string>
+    <string name="boot_ad_sheet_title_rec">À propos des recommandations</string>
+    <string name="boot_ad_sheet_body_sponsored">Les cartes sponsorisées aident à financer le travail à plein temps sur GameNative. Vous pouvez modifier ce choix à tout moment dans les Paramètres.</string>
+    <string name="boot_ad_sheet_body_rec">Les recommandations sont choisies selon les jeux auxquels vous jouez. Vous pouvez modifier ce choix à tout moment dans les Paramètres.</string>
+    <string name="boot_ad_close_one">Fermer celle-ci</string>
+    <string name="boot_ad_turn_off_sponsored">Désactiver les cartes sponsorisées</string>
+    <string name="boot_ad_turn_off_rec">Désactiver les recommandations</string>
+    <string name="boot_ad_not_now">Pas maintenant</string>
     <string name="boot_quiz_win_default">Correct !</string>
     <string name="boot_quiz_lose_default">La réponse était %1$s</string>
     <string name="gyro_aiming">Visée gyroscopique</string>

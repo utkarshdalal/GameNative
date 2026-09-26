@@ -818,7 +818,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Informações</string>
     <string name="settings_info_send_tip_title">Tornar-se membro</string>
-    <string name="settings_info_send_tip_subtitle">Acesso antecipado a lançamentos, ajuda prioritária e mais</string>
+    <string name="settings_info_send_tip_subtitle">Ajuda com IA para seus jogos, acesso antecipado a lançamentos e mais</string>
     <string name="settings_info_ask_tip_title">Ofertas para membros</string>
     <string name="settings_info_ask_tip_subtitle">Mostrar ofertas ocasionais para se tornar membro do GameNative</string>
     <string name="settings_info_source_title">Código-fonte</string>
@@ -940,7 +940,7 @@
     <string name="main_recent_crash_title">Falha recente</string>
     <string name="main_recent_crash_message">Desculpe por isso!\nSeria bom saber sobre o problema recente que você teve.\nVocê pode visualizar e exportar o log de falha mais recente nas configurações do aplicativo e anexá-lo como um problema do Github no repositório do projeto.\nO link para o repositório do Github também está nas configurações!</string>
     <string name="main_thank_you_title">Curtindo o GameNative?</string>
-    <string name="main_thank_you_message">Torne-se membro hoje. Membros recebem:\n\n• Acesso antecipado a novos lançamentos\n• Ajuda prioritária para fazer seus jogos rodarem\n• Cargos premium e canais exclusivos no Discord\n• …e mais\n\nA partir de $5/mês</string>
+    <string name="main_thank_you_message">Torne-se membro hoje. Membros recebem:\n\n• Ajuda com IA para fazer seus jogos rodarem\n• Acesso antecipado a novos lançamentos\n• Cargos premium e canais exclusivos no Discord\n• …e mais\n\nA partir de $5/mês</string>
     <string name="main_join_kofi">Tornar-se membro</string>
     <string name="pitch_session_title">Curtindo %1$s?</string>
     <string name="pitch_five_star_title">Que bom que %1$s rodou muito bem!</string>
@@ -2474,6 +2474,15 @@
     <string name="settings_info_boot_recs_title">Recomendações de jogos nas telas de carregamento</string>
     <string name="settings_info_boot_recs_subtitle">Mostrar um jogo que você pode gostar enquanto um jogo inicia, quando não há card de patrocinador.</string>
     <string name="boot_rec_badge">Recomendado para você</string>
+    <string name="boot_ad_close_cd">Fechar este cartão</string>
+    <string name="boot_ad_sheet_title_sponsored">Sobre os cartões de patrocínio</string>
+    <string name="boot_ad_sheet_title_rec">Sobre as recomendações</string>
+    <string name="boot_ad_sheet_body_sponsored">Os cartões de patrocínio ajudam a financiar o trabalho em tempo integral no GameNative. Você pode mudar isso a qualquer momento nas Configurações.</string>
+    <string name="boot_ad_sheet_body_rec">As recomendações são escolhidas com base nos jogos que você joga. Você pode mudar isso a qualquer momento nas Configurações.</string>
+    <string name="boot_ad_close_one">Fechar este</string>
+    <string name="boot_ad_turn_off_sponsored">Desativar cartões de patrocínio</string>
+    <string name="boot_ad_turn_off_rec">Desativar recomendações</string>
+    <string name="boot_ad_not_now">Agora não</string>
     <string name="boot_quiz_win_default">Correto!</string>
     <string name="boot_quiz_lose_default">A resposta era %1$s</string>
     <string name="gyro_aiming">Mira por giroscópio</string>

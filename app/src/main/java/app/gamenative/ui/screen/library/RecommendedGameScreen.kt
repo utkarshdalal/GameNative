@@ -58,6 +58,8 @@ import app.gamenative.data.RecommendedGame
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.library.components.VideoHero
 import app.gamenative.PrefManager
+import app.gamenative.utils.ConversionTracker
+import app.gamenative.data.gog.GogRecommendationsRepository
 import com.posthog.PostHog
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
@@ -366,6 +368,9 @@ internal fun RecommendedGameScreen(
                         action = action,
                         campaignId = game.id,
                         recSource = recSource,
+                        recRank = recRank,
+                        ctaIndex = index,
+                        ctaCount = game.featuredCtas.size,
                         focusRequester = firstActionFocusRequester.takeIf { index == 0 },
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -376,6 +381,9 @@ internal fun RecommendedGameScreen(
                 Button(
                     interactionSource = buyInteractionSource,
                     onClick = {
+                        val clickId = ConversionTracker.newClickId()
+                        val sid = GogRecommendationsRepository.affiliateSubId(recSource, recRank, clickId)
+                        val url = GogRecommendationsRepository.withAffiliateSubId(game.affiliateUrl, sid)
                         if (PrefManager.usageAnalyticsEnabled) {
                             PostHog.capture(
                                 event = "recommendation_link_clicked",
@@ -386,10 +394,14 @@ internal fun RecommendedGameScreen(
                                     "rank" to recRank,
                                     "source" to recSource,
                                     "because_played" to (game.becausePlayed ?: ""),
+                                    "seed_count" to game.becauseGames.size,
+                                    "sid" to sid,
+                                    "click_id" to (clickId ?: ""),
                                 ),
                             )
                         }
-                        val browserIntent = Intent(Intent.ACTION_VIEW, game.affiliateUrl.toUri())
+                        ConversionTracker.rememberClickOut("gog", game.id, recSource, recRank, sid)
+                        val browserIntent = Intent(Intent.ACTION_VIEW, url.toUri())
                         context.startActivity(browserIntent)
                     },
                     modifier = Modifier

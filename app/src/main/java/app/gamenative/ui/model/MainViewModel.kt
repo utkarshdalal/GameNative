@@ -28,6 +28,7 @@ import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicCloudSavesManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.utils.BootAdView
 import app.gamenative.utils.ConversionTracker
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.ui.data.MainState
@@ -87,6 +88,7 @@ class MainViewModel @Inject constructor(
     private var gameSessionStartTime = 0L
     private var bootAdShownAtMs = 0L
     private var bootAdHiddenAtMs = 0L
+    private var bootAdDismissedAtMs = 0L
     private var bootAdDwellReported = false
     private var bootAwaitingGameWindow = false
     private var gameWindowSeen = false
@@ -389,13 +391,14 @@ class MainViewModel @Inject constructor(
             val heldAllowed = held != null &&
                 (if (held.sponsored) PrefManager.bootScreenAdsEnabled else PrefManager.bootScreenRecommendationsEnabled)
             val reuse = heldAllowed && System.currentTimeMillis() - bootAdHiddenAtMs < BOOT_AD_REUSE_WINDOW_MS
-            val ad = if (reuse) {
+            val dismissed = System.currentTimeMillis() - bootAdDismissedAtMs < BOOT_AD_REUSE_WINDOW_MS
+            val ad = if (reuse || dismissed) {
                 held
             } else {
                 BootAdRepository.pickBootCard()?.also {
                     bootAdShownAtMs = System.currentTimeMillis()
-                    // House recommendation cards carry no cap and report no ad dwell.
-                    bootAdDwellReported = !it.sponsored
+                    bootAdDwellReported = false
+                    BootAdView.begin(it)
                     if (it.sponsored) BootAdRepository.recordShown(it.campaignId) else BootAdRepository.noteShown(it.campaignId)
                 }
             }
@@ -415,10 +418,12 @@ class MainViewModel @Inject constructor(
             _state.value.bootAd?.let { ad ->
                 if (!bootAdDwellReported) {
                     bootAdDwellReported = true
-                    ConversionTracker.bootAdShown(
-                        campaignId = ad.campaignId,
-                        dwellSeconds = (System.currentTimeMillis() - bootAdShownAtMs) / 1000L,
-                    )
+                    val dwellSeconds = (System.currentTimeMillis() - bootAdShownAtMs) / 1000L
+                    if (ad.sponsored) {
+                        ConversionTracker.bootAdShown(campaignId = ad.campaignId, dwellSeconds = dwellSeconds)
+                    } else {
+                        ConversionTracker.bootRecShown(campaignId = ad.campaignId, dwellSeconds = dwellSeconds)
+                    }
                 }
             }
             // bootAd stays in state so the exit fade keeps rendering it; the next show replaces it.
@@ -554,6 +559,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun setLaunchedAppId(value: String) {
+        // A dismissed card stays gone for the rest of that boot only.
+        bootAdDismissedAtMs = 0L
         _state.update { it.copy(launchedAppId = value) }
     }
 
@@ -979,6 +986,46 @@ class MainViewModel @Inject constructor(
             // You could also show an error dialog here if needed
             Timber.tag("MainViewModel").e("Game launch error: $error")
         }
+    }
+
+    /** The card's close control: drop the boot card for this boot, optionally turning the channel off. */
+    fun dismissBootAd(optOut: Boolean) {
+        val ad = _state.value.bootAd ?: return
+        val now = System.currentTimeMillis()
+        val dwellMs = now - bootAdShownAtMs
+        Timber.tag("BootAdTrace").i("dismiss: ad=%s optOut=%s dwellMs=%d", ad.campaignId, optOut, dwellMs)
+        ConversionTracker.track(
+            "boot_ad_dismissed",
+            mapOf(
+                "campaign_id" to ad.campaignId,
+                "sponsored" to ad.sponsored,
+                "template" to ad.template,
+                "opt_out" to optOut,
+                "dwell_ms" to dwellMs,
+            ),
+        )
+        if (optOut) {
+            if (ad.sponsored) PrefManager.bootScreenAdsEnabled = false else PrefManager.bootScreenRecommendationsEnabled = false
+            ConversionTracker.track(
+                "boot_ad_opted_out",
+                mapOf(
+                    "campaign_id" to ad.campaignId,
+                    "sponsored" to ad.sponsored,
+                    "\$set" to mapOf((if (ad.sponsored) "boot_ads_enabled" else "boot_recs_enabled") to false),
+                ),
+            )
+        }
+        if (!bootAdDwellReported) {
+            bootAdDwellReported = true
+            val dwellSeconds = dwellMs / 1000L
+            if (ad.sponsored) {
+                ConversionTracker.bootAdShown(campaignId = ad.campaignId, dwellSeconds = dwellSeconds)
+            } else {
+                ConversionTracker.bootRecShown(campaignId = ad.campaignId, dwellSeconds = dwellSeconds)
+            }
+        }
+        bootAdDismissedAtMs = now
+        _state.update { it.copy(bootAd = null) }
     }
 
     /** The splash's back button: hide the splash and close the guest the way a blocked session does. */

@@ -1,6 +1,7 @@
 package app.gamenative.data
 
 import android.content.Context
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import kotlinx.serialization.Serializable
 
@@ -32,7 +33,15 @@ data class FeaturedItem(
     val actions: List<FeaturedAction> = emptyList(),
     val startsAt: String? = null,
     val endsAt: String? = null,
+    // Build flavors this campaign targets ("modern", "legacy"); empty = every build.
+    val flavors: List<String> = emptyList(),
 )
+
+private val currentBuildFlavor = if (BuildConfig.MODERN_ANDROID) "modern" else "legacy"
+
+/** True when a campaign's flavor list is empty or names this build. */
+fun List<String>.targetsThisBuild(): Boolean =
+    isEmpty() || any { it.equals(currentBuildFlavor, ignoreCase = true) }
 
 @Serializable
 data class FeaturedAction(

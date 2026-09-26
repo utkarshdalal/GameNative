@@ -57,6 +57,7 @@ import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
 import app.gamenative.utils.LocaleHelper
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
 import com.skydoves.landscapist.coil.LocalCoilImageLoader
 import com.winlator.core.AppUtils
@@ -555,6 +556,7 @@ class MainActivity : ComponentActivity() {
         if (PrefManager.usageAnalyticsEnabled) {
             PostHog.capture(event = "app_foregrounded")
         }
+        ConversionTracker.onAppForegrounded()
     }
 
     override fun onPause() {

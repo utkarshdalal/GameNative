@@ -990,7 +990,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">資訊</string>
     <string name="settings_info_send_tip_title">成為會員</string>
-    <string name="settings_info_send_tip_subtitle">版本搶先體驗、優先支援等</string>
+    <string name="settings_info_send_tip_subtitle">AI 遊戲執行協助、版本搶先體驗等</string>
     <string name="settings_info_ask_tip_title">會員優惠</string>
     <string name="settings_info_ask_tip_subtitle">偶爾顯示成為 GameNative 會員的優惠資訊</string>
     <string name="settings_info_source_title">原始碼</string>
@@ -1104,7 +1104,7 @@
     <string name="main_recent_crash_title">最近應用程式當機</string>
     <string name="main_recent_crash_message">若能了解您最近遇到的問題, 將有助於我們改善應用程式.\n您可在應用程式設定中檢視並匯出最近的崩潰日誌, 將其附加至專案原始碼儲存庫的 Github Issue中\nGithub 原始碼儲存庫的連結亦位於設定頁面內</string>
     <string name="main_thank_you_title">喜歡 GameNative 嗎？</string>
-    <string name="main_thank_you_message">立即成為會員。會員可享有：\n\n• 新版本搶先體驗\n• 遊戲執行問題優先支援\n• Discord 進階身分組與專屬頻道\n• …還有更多\n\n每月 $5 起</string>
+    <string name="main_thank_you_message">立即成為會員。會員可享有：\n\n• AI 幫你解決遊戲執行問題\n• 新版本搶先體驗\n• Discord 進階身分組與專屬頻道\n• …還有更多\n\n每月 $5 起</string>
     <string name="main_join_kofi">成為會員</string>
     <string name="pitch_session_title">喜歡《%1$s》嗎？</string>
     <string name="pitch_five_star_title">很高興《%1$s》執行順暢！</string>
@@ -2609,6 +2609,15 @@
     <string name="settings_info_boot_recs_title">在載入畫面顯示遊戲推薦</string>
     <string name="settings_info_boot_recs_subtitle">沒有贊助商卡片時，在遊戲啟動期間顯示你可能喜歡的遊戲。</string>
     <string name="boot_rec_badge">為你推薦</string>
+    <string name="boot_ad_close_cd">關閉此卡片</string>
+    <string name="boot_ad_sheet_title_sponsored">關於贊助卡片</string>
+    <string name="boot_ad_sheet_title_rec">關於推薦</string>
+    <string name="boot_ad_sheet_body_sponsored">贊助卡片有助於支持 GameNative 的全職開發。你可以隨時在設定中更改。</string>
+    <string name="boot_ad_sheet_body_rec">推薦內容依你玩過的遊戲挑選。你可以隨時在設定中更改。</string>
+    <string name="boot_ad_close_one">關閉這一個</string>
+    <string name="boot_ad_turn_off_sponsored">關閉贊助卡片</string>
+    <string name="boot_ad_turn_off_rec">關閉推薦</string>
+    <string name="boot_ad_not_now">暫不</string>
     <string name="boot_quiz_win_default">答對了！</string>
     <string name="boot_quiz_lose_default">正確答案是 %1$s</string>
     <string name="gyro_aiming">陀螺儀瞄準</string>

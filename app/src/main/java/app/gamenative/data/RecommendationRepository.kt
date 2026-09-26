@@ -338,15 +338,19 @@ object RecommendationRepository {
         withContext(Dispatchers.IO) {
             val fetched = if (MOCK_HERO_RESPONSE) parseHero(MOCK_HERO_JSON) else fetchRemote()
             if (fetched != null) {
-                val featuredList = fetched.featuredList.distinctBy { it.campaignId }
-                lastFeatured = (listOfNotNull(fetched.featured) + featuredList).distinctBy { it.campaignId }
+                val featured = fetched.featured?.takeIf { it.flavors.targetsThisBuild() }
+                val featuredList = fetched.featuredList
+                    .filter { it.flavors.targetsThisBuild() }
+                    .distinctBy { it.campaignId }
+                lastFeatured = (listOfNotNull(featured) + featuredList).distinctBy { it.campaignId }
                 featuredListState.value = featuredList
                 val bootAds = fetched.bootAds.ifEmpty { listOfNotNull(fetched.bootAd) }
+                    .filter { it.flavors.targetsThisBuild() }
                 BootAdRepository.store(bootAds)
                 if (PrefManager.bootScreenAdsEnabled) BootAdRepository.prefetchVideos(context, bootAds)
                 return@withContext HeroResponse(
                     recommendation = stableRecommendation(fetched.recommendation),
-                    featured = fetched.featured,
+                    featured = featured,
                     featuredList = featuredList,
                 )
             }

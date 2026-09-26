@@ -994,7 +994,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
     <string name="settings_info_send_tip_title">Diventa membro</string>
-    <string name="settings_info_send_tip_subtitle">Accesso anticipato alle versioni, aiuto prioritario e altro</string>
+    <string name="settings_info_send_tip_subtitle">Aiuto con IA per i tuoi giochi, accesso anticipato alle versioni e altro</string>
     <string name="settings_info_ask_tip_title">Offerte per i membri</string>
     <string name="settings_info_ask_tip_subtitle">Mostra occasionalmente offerte per diventare membro di GameNative</string>
     <string name="settings_info_source_title">Codice sorgente</string>
@@ -1113,7 +1113,7 @@
     <string name="main_recent_crash_title">Crash Recente</string>
     <string name="main_recent_crash_message">Ci dispiace!\nSarebbe utile conoscere il problema recente che hai avuto.\nPuoi visualizzare ed esportare il log del crash più recente nelle impostazioni dell\'app e allegarlo come issue GitHub nel repository del progetto.\nIl link al repository Github è anche nelle impostazioni!</string>
     <string name="main_thank_you_title">Ti piace GameNative?</string>
-    <string name="main_thank_you_message">Diventa membro oggi. I membri ottengono:\n\n• Accesso anticipato alle nuove versioni\n• Aiuto prioritario per far funzionare i tuoi giochi\n• Ruoli premium e canali esclusivi su Discord\n• …e altro ancora\n\nDa $5/mese</string>
+    <string name="main_thank_you_message">Diventa membro oggi. I membri ottengono:\n\n• Aiuto con IA per far funzionare i tuoi giochi\n• Accesso anticipato alle nuove versioni\n• Ruoli premium e canali esclusivi su Discord\n• …e altro ancora\n\nDa $5/mese</string>
     <string name="main_join_kofi">Diventa membro</string>
     <string name="pitch_session_title">Ti stai divertendo con %1$s?</string>
     <string name="pitch_five_star_title">Bello che %1$s abbia funzionato alla grande!</string>
@@ -2595,6 +2595,15 @@
     <string name="settings_info_boot_recs_title">Giochi consigliati nelle schermate di caricamento</string>
     <string name="settings_info_boot_recs_subtitle">Mostra un gioco che potrebbe piacerti durante l\'avvio, quando non c\'è una scheda sponsor.</string>
     <string name="boot_rec_badge">Consigliato per te</string>
+    <string name="boot_ad_close_cd">Chiudi questa scheda</string>
+    <string name="boot_ad_sheet_title_sponsored">Informazioni sulle schede sponsorizzate</string>
+    <string name="boot_ad_sheet_title_rec">Informazioni sui consigli</string>
+    <string name="boot_ad_sheet_body_sponsored">Le schede sponsorizzate aiutano a finanziare il lavoro a tempo pieno su GameNative. Puoi cambiare questa scelta in qualsiasi momento nelle Impostazioni.</string>
+    <string name="boot_ad_sheet_body_rec">I consigli sono scelti in base ai giochi a cui giochi. Puoi cambiare questa scelta in qualsiasi momento nelle Impostazioni.</string>
+    <string name="boot_ad_close_one">Chiudi questa</string>
+    <string name="boot_ad_turn_off_sponsored">Disattiva le schede sponsorizzate</string>
+    <string name="boot_ad_turn_off_rec">Disattiva i consigli</string>
+    <string name="boot_ad_not_now">Non ora</string>
     <string name="boot_quiz_win_default">Corretto!</string>
     <string name="boot_quiz_lose_default">La risposta era %1$s</string>
     <string name="gyro_aiming">Mira giroscopica</string>

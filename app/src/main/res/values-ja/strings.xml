@@ -972,7 +972,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">情報</string>
     <string name="settings_info_send_tip_title">メンバーになる</string>
-    <string name="settings_info_send_tip_subtitle">リリースへの早期アクセス、優先サポートなど</string>
+    <string name="settings_info_send_tip_subtitle">ゲームを動かす AI サポート、リリースへの早期アクセスなど</string>
     <string name="settings_info_ask_tip_title">メンバーシップのご案内</string>
     <string name="settings_info_ask_tip_subtitle">GameNativeメンバーになるための案内を時々表示します</string>
     <string name="settings_info_source_title">ソースコード</string>
@@ -1149,7 +1149,7 @@
     <string name="main_recent_crash_title">最近のクラッシュ</string>
     <string name="main_recent_crash_message">申し訳ありません!\n\' が抱えていた最近の問題について知っていただければ幸いです。\nアプリ\'s の設定で最新のクラッシュ ログを表示およびエクスポートし、プロジェクト ZESC4ZZs リポジトリの Github の問題として添付できます。\nGithub リポジトリへのリンクも設定にあります。</string>
     <string name="main_thank_you_title">GameNativeを楽しんでいますか？</string>
-    <string name="main_thank_you_message">今すぐメンバーになりましょう。メンバー特典:\n\n• 新リリースへの早期アクセス\n• ゲームを動かすための優先サポート\n• Discordのプレミアムロールと限定チャンネル\n• …その他多数\n\n月額$5から</string>
+    <string name="main_thank_you_message">今すぐメンバーになりましょう。メンバー特典:\n\n• ゲームを動かすための AI サポート\n• 新リリースへの早期アクセス\n• Discordのプレミアムロールと限定チャンネル\n• …その他多数\n\n月額$5から</string>
     <string name="main_join_kofi">メンバーになる</string>
     <string name="pitch_session_title">%1$sを楽しんでいますか？</string>
     <string name="pitch_five_star_title">%1$sが快適に動いてよかったです！</string>
@@ -2557,6 +2557,15 @@
     <string name="settings_info_boot_recs_title">ローディング画面におすすめゲームを表示</string>
     <string name="settings_info_boot_recs_subtitle">スポンサーカードがないとき、ゲームの起動中におすすめのゲームを表示します。</string>
     <string name="boot_rec_badge">あなたへのおすすめ</string>
+    <string name="boot_ad_close_cd">このカードを閉じる</string>
+    <string name="boot_ad_sheet_title_sponsored">スポンサーカードについて</string>
+    <string name="boot_ad_sheet_title_rec">おすすめについて</string>
+    <string name="boot_ad_sheet_body_sponsored">スポンサーカードは GameNative の専任開発を支えています。設定でいつでも変更できます。</string>
+    <string name="boot_ad_sheet_body_rec">おすすめはプレイしたゲームをもとに選ばれます。設定でいつでも変更できます。</string>
+    <string name="boot_ad_close_one">これを閉じる</string>
+    <string name="boot_ad_turn_off_sponsored">スポンサーカードをオフにする</string>
+    <string name="boot_ad_turn_off_rec">おすすめをオフにする</string>
+    <string name="boot_ad_not_now">今はしない</string>
     <string name="boot_quiz_win_default">正解！</string>
     <string name="boot_quiz_lose_default">正解は %1$s でした</string>
     <string name="gyro_aiming">ジャイロエイム</string>
