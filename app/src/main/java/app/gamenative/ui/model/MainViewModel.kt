@@ -49,6 +49,7 @@ import javax.inject.Inject
 import kotlin.io.path.name
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import app.gamenative.service.cloud.CloseSyncTracker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -672,6 +673,15 @@ class MainViewModel @Inject constructor(
     }
 
     fun exitSteamApp(context: Context, appId: String, onComplete: (() -> Unit)? = null) {
+        // the close-time sync uploads straight out of the install dir, so the store's delete joins this.
+        // reserved HERE, before the launch, so an uninstall started right after exit can't miss it.
+        val closeSyncKey = runCatching {
+            CloseSyncTracker.keyOf(
+                ContainerUtils.extractGameSourceFromContainerId(appId),
+                ContainerUtils.extractGameIdFromContainerId(appId),
+            )
+        }.getOrDefault(appId)
+        val closeSync = CloseSyncTracker.reserve(closeSyncKey)
         viewModelScope.launch {
             try {
                 Timber.tag("Exit").i("Exiting, getting feedback for appId: $appId")
@@ -688,6 +698,7 @@ class MainViewModel @Inject constructor(
                 ActiveGameRegistry.clearIfMatches(gameId)
                 SteamService.notifyRunningProcesses()
                 handleExitCloudSync(context, appId, gameId)
+                closeSync.complete()
 
                 // Prompt user to save temporary container configuration if one was applied
                 if (hadTemporaryOverride) {
@@ -761,6 +772,10 @@ class MainViewModel @Inject constructor(
             } finally {
                 onComplete?.invoke()
             }
+        }.invokeOnCompletion {
+            // backstop: a launch cancelled before it runs, or one that throws before the sync, must not
+            // leave the delete waiting forever.
+            closeSync.complete()
         }
     }
 
