@@ -1446,6 +1446,13 @@ class LibraryViewModel @Inject constructor(
 
     private fun compatibilityStatusFor(
         response: GameCompatibilityService.GameCompatibilityResponse,
-    ): GameCompatibilityStatus = GameCompatibilityService.statusFor(response)
+    ): GameCompatibilityStatus {
+        return when {
+            response.isNotWorking -> GameCompatibilityStatus.NOT_COMPATIBLE
+            !response.hasBeenTried -> GameCompatibilityStatus.UNKNOWN
+            response.gpuPlayableCount > 0 -> GameCompatibilityStatus.GPU_COMPATIBLE
+            response.totalPlayableCount > 0 -> GameCompatibilityStatus.COMPATIBLE
+            else -> GameCompatibilityStatus.UNKNOWN
+        }
     }
 }

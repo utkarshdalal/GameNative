@@ -102,20 +102,8 @@ object DeviceInfo {
 object SessionReport {
 
     private val CONFIG_DIFF_IGNORED = setOf(
-        "id", "name", "sessionMetadata", "drives", "configSource", "needsUnpacking", "desktopTheme", "language", "showFPS",
-        "installPath", "rcfileId",
+        "id", "name", "sessionMetadata", "drives", "executablePath", "execArgs", "configSource",
     )
-
-    private val CONFIG_DIFF_IGNORED_EXTRA = setOf(
-        "appliedWineVersion", "appliedContainerVariant", "lastInstalledMainWrapper", "box64Version", "fexcoreVersion",
-        "appVersion", "imgVersion", "openal_dlls", "xaudioDllsExtracted", "config_changed", "wineprefixNeedsUpdate",
-        "dxwrapper", "wincomponents", "audioDriver", "graphicsDriver", "graphicsDriverAdreno", "desktopTheme",
-        "startupSelection", "language", "profileId", "selected_menu_item_id", "discord_support_prompt_shown",
-        "ai_debug_offer_last_shown", "app_id", "game_source", "workshopModPath",
-        "sharpnessLevel", "sharpnessEffect", "sharpnessDenoise",
-    )
-
-    private fun isIgnoredExtra(key: String) = key in CONFIG_DIFF_IGNORED_EXTRA || key.startsWith("screenEffects")
 
     fun markConfigApplied(container: Container, source: String) {
         try {
@@ -147,11 +135,8 @@ object SessionReport {
                 if (key == "extraData") {
                     val b = before.optJSONObject(key) ?: JSONObject()
                     val a = after.optJSONObject(key) ?: JSONObject()
-                    for (sub in a.keys()) {
-                        if (isIgnoredExtra(sub)) continue
-                        if (b.optString(sub) != a.optString(sub)) changed.add("extraData.$sub")
-                    }
-                } else if (before.has(key) && before.optString(key) != after.optString(key)) {
+                    for (sub in a.keys()) if (b.optString(sub) != a.optString(sub)) changed.add("extraData.$sub")
+                } else if (before.optString(key) != after.optString(key)) {
                     changed.add(key)
                 }
             }
