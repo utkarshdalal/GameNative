@@ -95,6 +95,7 @@ public class Win32AppWorkarounds {
         applyWorkaround(workaround);
     }
 
+    /** Applies the container CPU list to the window's process, unless Power Control holds the game's affinity. */
     private void setProcessAffinity(Window window, int processAffinity) {
         int processId = window.getProcessId();
         String className = window.getClassName();
@@ -104,7 +105,7 @@ public class Win32AppWorkarounds {
             return;
         }
         String pinnedProcessName = PowerManager.INSTANCE.getPinnedGameProcessName();
-        if (PowerManager.INSTANCE.getOwnsGameAffinity() && pinnedProcessName != null
+        if (PowerManager.INSTANCE.getHoldsGameAffinity() && pinnedProcessName != null
                 && pinnedProcessName.equalsIgnoreCase(className)) {
             Timber.tag("PowerManager").i("Power control holds the affinity of %s, container CPU list not applied", className);
             return;

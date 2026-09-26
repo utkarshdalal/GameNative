@@ -20,10 +20,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -47,13 +50,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.powercontrol.AutoTuningMode
 import app.gamenative.powercontrol.AutoTuningStrategy
+import app.gamenative.powercontrol.CpuTopologyDisplayInfo
+import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerControlUiState
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.PowerProfile
+import app.gamenative.powercontrol.drivers.PServerDriver.CpuCluster
 import app.gamenative.powercontrol.drivers.PerformanceDriver
 import app.gamenative.ui.component.QuickMenuAdjustmentRow
 import app.gamenative.ui.component.QuickMenuToggleRow
@@ -61,6 +69,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.MathUtils.normalizedProgress
 import kotlinx.coroutines.delay
 
+/** Power Control quick-menu content for [uiState]; every change goes out through the callbacks. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PowerControlQuickMenuContent(
@@ -71,8 +80,10 @@ fun PowerControlQuickMenuContent(
     onAdaptiveFpsCapToggled: (Boolean) -> Unit = {},
     onPowerControlToggled: (Boolean) -> Unit = {},
     onFanControlToggled: (Boolean) -> Unit = {},
-    onGamePinningToggled: (Boolean) -> Unit = {},
-    onAutoTuningToggled: (Boolean) -> Unit = {},
+    onGamePinningModeSelected: (GamePinningMode) -> Unit = {},
+    onManualGamePinCoreToggled: (Int, Boolean) -> Unit = { _, _ -> },
+    onManualBackgroundPinCoreToggled: (Int, Boolean) -> Unit = { _, _ -> },
+    onAutoTuningModeSelected: (AutoTuningMode) -> Unit = {},
     onTuningModeSelected: (Boolean) -> Unit = {},
     onTuningStrategySelected: (AutoTuningStrategy) -> Unit = {},
     onProfileSelected: (PowerProfile) -> Unit = {},
@@ -109,8 +120,10 @@ fun PowerControlQuickMenuContent(
                         onAdaptiveFpsCapToggled = onAdaptiveFpsCapToggled,
                         onPowerControlToggled = onPowerControlToggled,
                         onFanControlToggled = onFanControlToggled,
-                        onGamePinningToggled = onGamePinningToggled,
-                        onAutoTuningToggled = onAutoTuningToggled,
+                        onGamePinningModeSelected = onGamePinningModeSelected,
+                        onManualGamePinCoreToggled = onManualGamePinCoreToggled,
+                        onManualBackgroundPinCoreToggled = onManualBackgroundPinCoreToggled,
+                        onAutoTuningModeSelected = onAutoTuningModeSelected,
                         onTuningModeSelected = onTuningModeSelected,
                         onTuningStrategySelected = onTuningStrategySelected,
                         onProfileSelected = onProfileSelected,
@@ -175,6 +188,7 @@ private fun LoadingView() {
     }
 }
 
+/** Profile, tuning, pinning and fan controls for a loaded [PowerControlUiState.Success]. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FlowRowScope.SuccessView(
@@ -184,8 +198,10 @@ private fun FlowRowScope.SuccessView(
     onAdaptiveFpsCapToggled: (Boolean) -> Unit,
     onPowerControlToggled: (Boolean) -> Unit,
     onFanControlToggled: (Boolean) -> Unit,
-    onGamePinningToggled: (Boolean) -> Unit,
-    onAutoTuningToggled: (Boolean) -> Unit,
+    onGamePinningModeSelected: (GamePinningMode) -> Unit,
+    onManualGamePinCoreToggled: (Int, Boolean) -> Unit,
+    onManualBackgroundPinCoreToggled: (Int, Boolean) -> Unit,
+    onAutoTuningModeSelected: (AutoTuningMode) -> Unit,
     onTuningModeSelected: (Boolean) -> Unit,
     onTuningStrategySelected: (AutoTuningStrategy) -> Unit,
     onProfileSelected: (PowerProfile) -> Unit,
@@ -202,6 +218,8 @@ private fun FlowRowScope.SuccessView(
     var isGovernorDropdownExpanded by remember { mutableStateOf(false) }
     var isTuningStrategyDropdownExpanded by remember { mutableStateOf(false) }
     var isTuningModeDropdownExpanded by remember { mutableStateOf(false) }
+    var isGamePinningModeDropdownExpanded by remember { mutableStateOf(false) }
+    var isAutoTuningModeDropdownExpanded by remember { mutableStateOf(false) }
     var selectedMinFreqIndex by remember { mutableIntStateOf(state.cpuInfo?.selectedMinFreqIndex ?: 0) }
     var selectedMaxFreqIndex by remember { mutableIntStateOf(state.cpuInfo?.selectedMaxFreqIndex ?: 0) }
     var selectedMinGpuPowerLevel by remember { mutableIntStateOf(state.gpuInfo?.minPowerLevel ?: 0) }
@@ -224,6 +242,7 @@ private fun FlowRowScope.SuccessView(
         selectedMaxRamValue = state.ramInfo?.maxBusLevel ?: 0
     }
 
+    /** Formats a kHz value in the driver's display unit. */
     @SuppressLint("DefaultLocale")
     fun formatFrequency(freqKhz: Long): String {
         return when (PowerManager.getDisplayUnit()) {
@@ -277,35 +296,111 @@ private fun FlowRowScope.SuccessView(
         )
 
         val isGamePinningAvailable = PowerManager.isGamePinningAvailable()
-        QuickMenuToggleRow(
-            title = stringResource(R.string.power_control_game_pinning),
-            subtitle = stringResource(R.string.power_control_game_pinning_desc),
+        Column(
             modifier = Modifier.weight(1f),
-            selectable = isDriverSupported && isGamePinningAvailable,
-            enabled = state.selectedProfile.enableGamePinning,
-            onToggle = {
-                if (isGamePinningAvailable) {
-                    onGamePinningToggled(!state.selectedProfile.enableGamePinning)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.power_control_game_pinning),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            SelectorRow(
+                valueText = stringResource(state.selectedProfile.gamePinningMode.displayNameRes),
+                descriptionText = stringResource(state.selectedProfile.gamePinningMode.descriptionRes),
+                accentColor = accentColor,
+                expanded = isGamePinningModeDropdownExpanded,
+                onExpandedChange = { expand ->
+                    if (isDriverSupported && isGamePinningAvailable) isGamePinningModeDropdownExpanded = expand
+                },
+            ) { menuFocusRequester ->
+                GamePinningMode.entries.forEachIndexed { index, mode ->
+                    SelectorMenuItem(
+                        accentColor = accentColor,
+                        focusRequester = if (index == 0) menuFocusRequester else null,
+                        onClick = {
+                            isGamePinningModeDropdownExpanded = false
+                            onGamePinningModeSelected(mode)
+                        },
+                        text = {
+                            Text(
+                                text = stringResource(mode.displayNameRes),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        },
+                    )
                 }
-            },
-            accentColor = accentColor,
-        )
+            }
+        }
 
-        QuickMenuToggleRow(
-            title = stringResource(R.string.power_control_auto_tuning),
-            subtitle = stringResource(R.string.power_control_auto_tuning_desc),
-            enabled = state.selectedProfile.enableAutoTuning,
-            selectable = isDriverSupported,
-            onToggle = {
-                onAutoTuningToggled(!state.selectedProfile.enableAutoTuning)
-            },
-            accentColor = accentColor,
+        if (state.selectedProfile.gamePinningMode == GamePinningMode.MANUAL) {
+            val topology = state.cpuTopology
+            if (topology != null) {
+                CpuClusterLegendRow(
+                    presentClusters = topology.presentClusters,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            CoreCheckboxRow(
+                title = stringResource(R.string.power_control_game_pinning_manual_game_cores),
+                value = state.selectedProfile.manualGamePinCores,
+                onCoreToggled = onManualGamePinCoreToggled,
+                accentColor = accentColor,
+                topology = topology,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            CoreCheckboxRow(
+                title = stringResource(R.string.power_control_game_pinning_manual_background_cores),
+                value = state.selectedProfile.manualBackgroundPinCores,
+                onCoreToggled = onManualBackgroundPinCoreToggled,
+                accentColor = accentColor,
+                topology = topology,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        Column(
             modifier = Modifier.fillMaxWidth(),
-        )
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.power_control_auto_tuning),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
 
-        // Tuning Mode Dropdown (only shown when auto-tuning is enabled)
+            SelectorRow(
+                valueText = stringResource(state.selectedProfile.autoTuningMode.displayNameRes),
+                descriptionText = stringResource(state.selectedProfile.autoTuningMode.descriptionRes),
+                accentColor = accentColor,
+                expanded = isAutoTuningModeDropdownExpanded,
+                onExpandedChange = { expand ->
+                    if (isDriverSupported) isAutoTuningModeDropdownExpanded = expand
+                },
+            ) { menuFocusRequester ->
+                AutoTuningMode.entries.forEachIndexed { index, mode ->
+                    SelectorMenuItem(
+                        accentColor = accentColor,
+                        focusRequester = if (index == 0) menuFocusRequester else null,
+                        onClick = {
+                            isAutoTuningModeDropdownExpanded = false
+                            onAutoTuningModeSelected(mode)
+                        },
+                        text = {
+                            Text(
+                                text = stringResource(mode.displayNameRes),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+
+        // Tuning Mode Dropdown (only shown when auto-tuning mode is Auto)
         val isClusterTuningAvailable = PowerManager.isClusterTuningAvailable()
-        if (state.selectedProfile.enableAutoTuning) {
+        if (state.selectedProfile.autoTuningMode == AutoTuningMode.AUTO) {
             val isPerClusterSelected = isClusterTuningAvailable && state.selectedProfile.enablePerClusterTuning
 
             Column(
@@ -405,7 +500,7 @@ private fun FlowRowScope.SuccessView(
             }
         }
 
-        if (!state.selectedProfile.enableAutoTuning) {
+        if (state.selectedProfile.autoTuningMode == AutoTuningMode.MANUAL) {
             SectionHeader(title = "Profile")
 
             Column(
@@ -452,47 +547,49 @@ private fun FlowRowScope.SuccessView(
         }
 
         if (isDriverSupported) {
-            state.cpuInfo?.let { cpuInfo ->
-                SectionHeader(title = "CPU")
+            if (state.selectedProfile.autoTuningMode != AutoTuningMode.OFF) {
+                state.cpuInfo?.let { cpuInfo ->
+                    SectionHeader(title = "CPU")
 
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.power_control_governor),
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.power_control_governor),
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
 
-                    SelectorRow(
-                        valueText = cpuInfo.currentGovernor.replaceFirstChar { it.uppercase() },
-                        accentColor = accentColor,
-                        expanded = isGovernorDropdownExpanded,
-                        onExpandedChange = { isGovernorDropdownExpanded = it },
-                    ) { menuFocusRequester ->
-                        cpuInfo.availableGovernors.forEachIndexed { index, governor ->
-                            SelectorMenuItem(
-                                accentColor = accentColor,
-                                focusRequester = if (index == 0) menuFocusRequester else null,
-                                onClick = {
-                                    isGovernorDropdownExpanded = false
-                                    onGovernorSelected(governor)
-                                },
-                                text = {
-                                    Text(
-                                        text = governor.replaceFirstChar { it.uppercase() },
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                },
-                            )
+                        SelectorRow(
+                            valueText = cpuInfo.currentGovernor.replaceFirstChar { it.uppercase() },
+                            accentColor = accentColor,
+                            expanded = isGovernorDropdownExpanded,
+                            onExpandedChange = { isGovernorDropdownExpanded = it },
+                        ) { menuFocusRequester ->
+                            cpuInfo.availableGovernors.forEachIndexed { index, governor ->
+                                SelectorMenuItem(
+                                    accentColor = accentColor,
+                                    focusRequester = if (index == 0) menuFocusRequester else null,
+                                    onClick = {
+                                        isGovernorDropdownExpanded = false
+                                        onGovernorSelected(governor)
+                                    },
+                                    text = {
+                                        Text(
+                                            text = governor.replaceFirstChar { it.uppercase() },
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    },
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // Only show manual controls when auto-tuning is disabled
-            if (!state.selectedProfile.enableAutoTuning) {
+            // Only show manual controls when auto-tuning mode is Manual
+            if (state.selectedProfile.autoTuningMode == AutoTuningMode.MANUAL) {
                 state.cpuInfo?.let { cpuInfo ->
                     if (cpuInfo.availableFrequencies.isNotEmpty()) {
                         val maxFreqIndex = cpuInfo.availableFrequencies.size - 1
@@ -698,6 +795,149 @@ private fun FlowRowScope.SuccessView(
                 }
             } // End of auto-tuning check
         }
+    }
+}
+
+/** Legend and core-number color of a CPU cluster. */
+private fun clusterColor(cluster: CpuCluster): Color = when (cluster) {
+    CpuCluster.EFFICIENCY -> Color(0xFF4CAF50)
+    CpuCluster.PERFORMANCE -> Color(0xFFFFC107)
+    CpuCluster.PRIME -> Color(0xFFE53935)
+}
+
+/** String resource naming a CPU cluster in the legend. */
+private fun clusterLabelRes(cluster: CpuCluster): Int = when (cluster) {
+    CpuCluster.EFFICIENCY -> R.string.power_control_cluster_efficiency
+    CpuCluster.PERFORMANCE -> R.string.power_control_cluster_performance
+    CpuCluster.PRIME -> R.string.power_control_cluster_prime
+}
+
+/** Colored names of the clusters this device has; renders nothing when discovery found none. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CpuClusterLegendRow(
+    presentClusters: List<CpuCluster>,
+    modifier: Modifier = Modifier,
+) {
+    if (presentClusters.isEmpty()) return
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.power_control_cluster_legend_title),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            for (cluster in presentClusters) {
+                Text(
+                    text = stringResource(clusterLabelRes(cluster)),
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = clusterColor(cluster),
+                )
+            }
+        }
+    }
+}
+
+/** One checkbox per core for a Manual core list, core numbers colored by cluster. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CoreCheckboxRow(
+    title: String,
+    value: String,
+    onCoreToggled: (core: Int, include: Boolean) -> Unit,
+    accentColor: Color,
+    topology: CpuTopologyDisplayInfo?,
+    modifier: Modifier = Modifier,
+) {
+    val cores = remember(topology) {
+        topology?.cores ?: (0 until Runtime.getRuntime().availableProcessors()).toList()
+    }
+    val selectedCores = remember(value) { PowerManager.parseCpuList(value) }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            for (core in cores) {
+                val checked = core in selectedCores
+                CoreCheckbox(
+                    core = core,
+                    checked = checked,
+                    // Lock the last checked core so at least one core always stays selected.
+                    enabled = !(checked && selectedCores.size == 1),
+                    labelColor = topology?.clusterByCore?.get(core)?.let { clusterColor(it) }
+                        ?: MaterialTheme.colorScheme.onSurface,
+                    accentColor = accentColor,
+                    onToggle = { include -> onCoreToggled(core, include) },
+                )
+            }
+        }
+    }
+}
+
+/** One core's checkbox and number, toggled as a whole and outlined in the accent color while focused. */
+@Composable
+private fun CoreCheckbox(
+    core: Int,
+    checked: Boolean,
+    enabled: Boolean,
+    labelColor: Color,
+    accentColor: Color,
+    onToggle: (Boolean) -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(10.dp)
+
+    Row(
+        modifier = Modifier
+            .clip(shape)
+            .then(
+                if (isFocused) {
+                    Modifier
+                        .background(accentColor.copy(alpha = 0.12f))
+                        .border(width = 2.dp, color = accentColor.copy(alpha = 0.7f), shape = shape)
+                } else {
+                    Modifier
+                }
+            )
+            .toggleable(
+                value = checked,
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                role = Role.Checkbox,
+                onValueChange = onToggle,
+            )
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = null,
+            enabled = enabled,
+            colors = CheckboxDefaults.colors(checkedColor = accentColor),
+        )
+        Text(
+            text = core.toString(),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            color = labelColor,
+        )
     }
 }
 

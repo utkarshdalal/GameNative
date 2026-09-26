@@ -6,6 +6,8 @@ import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.Parcel
 import app.gamenative.PrefManager
+import app.gamenative.powercontrol.AutoTuningMode
+import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerBaseline
 import app.gamenative.powercontrol.PowerBaselineEntry
 import app.gamenative.powercontrol.PowerBaselineScripts
@@ -302,7 +304,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 Timber.tag(TAG).e("Failed to execute batch script: ${execResult.exceptionOrNull()?.message}")
             } else {
                 // When using auto-tuning, this log can spam around, suppress it
-                if (PowerManager.currentProfile?.enableAutoTuning == false) {
+                if (PowerManager.currentProfile?.autoTuningMode != AutoTuningMode.AUTO) {
                     Timber.tag(TAG).d("Successfully executed ${batchCommands.size} batched commands")
                 }
             }
@@ -647,6 +649,37 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         Timber.tag(POWER_TAG).i(
             "Clean restore executed: ${if (success) "success" else "failure"} " +
                 "(entries=${sessionBaseline?.entries?.size ?: 0}, extraFiles=${modifiedSysfsFiles.size}, script=$scriptPath)"
+        )
+        return success
+    }
+
+    /**
+     * Restores CPU governor/min/max and GPU min/max power level to their baseline, writable
+     * again; does not touch pinning, fan control, or the rest of the baseline ([stop] still does).
+     */
+    override fun releaseFrequencyControl(): Boolean {
+        val baseline = sessionBaseline
+        if (baseline == null) {
+            Timber.tag(POWER_TAG).w("No session baseline recorded, cannot release frequency control")
+            return false
+        }
+
+        val relevantPaths = baselinePaths().toSet()
+        val entries = baseline.entries.filter { it.path in relevantPaths }
+        if (entries.isEmpty()) {
+            Timber.tag(POWER_TAG).w("Baseline has no CPU/GPU frequency entries to release")
+            return false
+        }
+
+        beginUpdate()
+        for (entry in entries) {
+            batchCommands.add("echo '${entry.value}' > '${entry.path}'")
+            batchFilePaths.add(entry.path)
+        }
+
+        val success = commitInternal(skipPermissionLock = true)
+        Timber.tag(POWER_TAG).i(
+            "Released CPU/GPU frequency control back to the OS: ${if (success) "success" else "failure"} (${entries.size} paths)"
         )
         return success
     }
@@ -1277,6 +1310,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         return writeGpuPowerLevel(maxPath, sysfsLevel)
     }
 
+    /** Full-range profile: tested devices start with Auto tuning and pinning, others with Manual clocks and pinning Off. */
     override fun getDefaultProfile(): PowerProfile {
         val availableFrequencies = getAvailableCpuFrequencies()
         val availableGovernors = getAvailableGovernors()
@@ -1286,9 +1320,9 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val defaultProfile = PowerProfile(
             enablePowerControl = PrefManager.powerControlDefaultEnabled,
             adaptiveFpsCapEnabled = isTestedDevice,
-            enableAutoTuning = isTestedDevice,
+            autoTuningMode = if (isTestedDevice) AutoTuningMode.AUTO else AutoTuningMode.MANUAL,
             enablePerClusterTuning = isTestedDevice,
-            enableGamePinning = isTestedDevice,
+            gamePinningMode = if (isTestedDevice) GamePinningMode.AUTO else GamePinningMode.OFF,
             enableFanControl = isTestedDevice,
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,
@@ -1553,6 +1587,12 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     fun getCpuClusterCount(): Int {
         return cpuClusters.size
     }
+
+    /** Every discovered core, efficiency cluster first; empty when cluster discovery failed. */
+    fun getAllCpuCores(): List<Int> = CpuCluster.entries.flatMap { getCpuCoresByCluster(it) }
+
+    /** Discovered cores per cluster, only the clusters this device has; empty when discovery failed. */
+    fun getCpuClusters(): Map<CpuCluster, List<Int>> = cpuClusters.filterValues { it.isNotEmpty() }
 
     /**
      * Pin a process to specific CPU cores using taskset.

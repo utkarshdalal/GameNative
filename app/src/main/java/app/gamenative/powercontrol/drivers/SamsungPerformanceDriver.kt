@@ -2,6 +2,8 @@ package app.gamenative.powercontrol.drivers
 
 import android.content.Context
 import app.gamenative.PrefManager
+import app.gamenative.powercontrol.AutoTuningMode
+import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerProfile
 import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.profiles.CpuGovernor
@@ -83,6 +85,7 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         Timber.tag(TAG).d("Samsung Performance Driver ready (controls started by individual setters)")
     }
 
+    /** Stops the Samsung Performance Manager when the SDK is available. */
     override fun stop() {
         if (!isDriverSupported()) return
 
@@ -91,6 +94,29 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
             Timber.tag(TAG).d("Stopped Samsung Performance Manager")
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to stop Samsung Performance Manager")
+        }
+    }
+
+    /**
+     * Drops every CPU/GPU/Bus request, the same as [stop]; the setters start them again when
+     * control is reclaimed.
+     */
+    override fun releaseFrequencyControl(): Boolean {
+        if (!isDriverSupported()) return false
+
+        return try {
+            performanceManager?.stop()
+            currentCpuMinLevel = CPU_LEVEL_MIN
+            currentCpuMaxLevel = CPU_LEVEL_MAX
+            currentGpuMinLevel = GPU_LEVEL_MIN
+            currentGpuMaxLevel = GPU_LEVEL_MAX
+            currentBusMinLevel = BUS_LEVEL_MIN
+            currentBusMaxLevel = BUS_LEVEL_MAX
+            Timber.tag(TAG).i("Released Samsung performance controls back to the OS")
+            true
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Failed to release Samsung performance controls")
+            false
         }
     }
 
@@ -256,6 +282,7 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         }
     }
 
+    /** Balanced full-range profile with Manual clocks; this driver can't pin, so pinning stays Off. */
     override fun getDefaultProfile(): PowerProfile {
         // Samsung driver uses integer levels (0-4)
         // Default: Balanced profile (full range)
@@ -263,9 +290,9 @@ class SamsungPerformanceDriver(private val context: Context) : PerformanceDriver
         return PowerProfile(
             enablePowerControl = PrefManager.powerControlDefaultEnabled,
             adaptiveFpsCapEnabled = DeviceGate.isDeviceSupported(),
-            enableAutoTuning = false,
+            autoTuningMode = AutoTuningMode.MANUAL,
             enablePerClusterTuning = false,
-            enableGamePinning = false,
+            gamePinningMode = GamePinningMode.OFF,
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL, // Samsung doesn't use governors, but we need a value
             minCpuFreq = 0, // CPU level 0

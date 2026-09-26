@@ -11,6 +11,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.tooling.preview.Preview
+import app.gamenative.powercontrol.AutoTuningMode
 import app.gamenative.powercontrol.CpuDisplayInfo
 import app.gamenative.powercontrol.GpuDisplayInfo
 import app.gamenative.powercontrol.PowerControlUiState
@@ -24,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+/** Quick-menu tab binding [PowerManager] state to [PowerControlQuickMenuContent]; changes are applied off the main thread. */
 @Composable
 fun PowerControlQuickMenuTab(
     modifier: Modifier = Modifier,
@@ -66,25 +68,33 @@ fun PowerControlQuickMenuTab(
                 PowerManager.refreshUiState()
             }
         },
-        onGamePinningToggled = { enabled ->
+        onGamePinningModeSelected = { mode ->
             coroutineScope.launch(Dispatchers.IO) {
-                PowerManager.currentProfile.let { profile ->
-                    PowerManager.setPowerProfile(profile.copy(enableGamePinning = enabled))
+                PowerManager.updateProfile { it.copy(gamePinningMode = mode) }
+                PowerManager.refreshUiState()
+            }
+        },
+        onManualGamePinCoreToggled = { core, include ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.updateProfile {
+                    it.copy(manualGamePinCores = PowerManager.toggleCoreInList(it.manualGamePinCores, core, include))
                 }
                 PowerManager.refreshUiState()
             }
         },
-        onAutoTuningToggled = { enabled ->
+        onManualBackgroundPinCoreToggled = { core, include ->
             coroutineScope.launch(Dispatchers.IO) {
-                // Update current profile
-                PowerManager.currentProfile.let { profile ->
-                    val updatedProfile = profile.copy(
-                        enableAutoTuning = enabled,
-                        name = PerformancePreset.CUSTOM.displayName
-                    )
-                    PowerManager.setPowerProfile(updatedProfile)
+                PowerManager.updateProfile {
+                    it.copy(manualBackgroundPinCores = PowerManager.toggleCoreInList(it.manualBackgroundPinCores, core, include))
                 }
-
+                PowerManager.refreshUiState()
+            }
+        },
+        onAutoTuningModeSelected = { mode ->
+            coroutineScope.launch(Dispatchers.IO) {
+                PowerManager.updateProfile {
+                    it.copy(autoTuningMode = mode, name = PerformancePreset.CUSTOM.displayName)
+                }
                 PowerManager.refreshUiState()
             }
         },
@@ -113,17 +123,19 @@ fun PowerControlQuickMenuTab(
         onProfileSelected = { profile ->
             coroutineScope.launch(Dispatchers.IO) {
                 // Update PowerManager's current profile reference immediately
-                // Preserve current enableFanControl and enableGamePinning settings
+                // Preserve current enableFanControl and game pinning settings
                 val currentProfile = PowerManager.currentProfile.copy()
                 Timber.d("Current profile: $currentProfile")
 
                 val updatedProfile = profile.copy(
                     enablePowerControl = currentProfile.enablePowerControl,
                     adaptiveFpsCapEnabled = currentProfile.adaptiveFpsCapEnabled,
-                    enableAutoTuning = false,
+                    autoTuningMode = AutoTuningMode.MANUAL,
                     enablePerClusterTuning = false,
                     enableFanControl = currentProfile.enableFanControl,
-                    enableGamePinning = currentProfile.enableGamePinning,
+                    gamePinningMode = currentProfile.gamePinningMode,
+                    manualGamePinCores = currentProfile.manualGamePinCores,
+                    manualBackgroundPinCores = currentProfile.manualBackgroundPinCores,
                 )
 
                 Timber.d("Applying profile: $updatedProfile")

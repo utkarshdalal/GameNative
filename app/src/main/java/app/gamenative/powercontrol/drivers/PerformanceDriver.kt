@@ -1,7 +1,8 @@
 package app.gamenative.powercontrol.drivers
 
+import app.gamenative.powercontrol.AutoTuningMode
+import app.gamenative.powercontrol.GamePinningMode
 import app.gamenative.powercontrol.PowerProfile
-import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
 
@@ -75,6 +76,12 @@ abstract class PerformanceDriver {
      * Stop the performance driver
      */
     open fun stop() {}
+
+    /**
+     * Hands CPU/GPU frequency control back to the OS on [AutoTuningMode.OFF]; drivers with no
+     * baseline to restore from return false and leave things as they are.
+     */
+    open fun releaseFrequencyControl(): Boolean = false
 
     /**
      * Begin a batch update session.
@@ -179,9 +186,9 @@ abstract class PerformanceDriver {
     open fun getDefaultProfile(): PowerProfile {
         // Return a dummy Balanced profile for devices without driver support
         return PowerProfile(
-            enableAutoTuning = false,
+            autoTuningMode = AutoTuningMode.MANUAL,
             adaptiveFpsCapEnabled = false,
-            enableGamePinning = false,
+            gamePinningMode = GamePinningMode.OFF,
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,
             minCpuFreq = 0,
