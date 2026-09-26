@@ -1,5 +1,0 @@
-/UbisoftConnectInstaller.exe
-/UplayInstaller.exe
-Support/UplayInstaller.exe
-UbisoftConnectInstaller.exe
-UplayInstaller.exe

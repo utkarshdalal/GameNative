@@ -1,4 +1,0 @@
-/Update.wiz
-/resource.pff
-Update.wiz
-resource.pff

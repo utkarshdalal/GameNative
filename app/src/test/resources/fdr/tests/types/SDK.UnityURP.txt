@@ -1,2 +1,0 @@
-/Unity.RenderPipelines.Universal.Runtime.dll
-Unity.RenderPipelines.Universal.Runtime.dll

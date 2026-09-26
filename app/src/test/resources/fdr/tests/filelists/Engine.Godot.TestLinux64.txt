@@ -1,2 +1,0 @@
-MyGame.x86_64
-MyGame.pck

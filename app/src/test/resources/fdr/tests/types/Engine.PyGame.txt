@@ -1,9 +1,0 @@
-/pygame
-/pygame@
-pygame
-pygame.base.pyd
-pygame/
-pygame@
-pygame_gui/
-pygame_sdl2.error.pyd
-pygame_sdl2.event.pyd

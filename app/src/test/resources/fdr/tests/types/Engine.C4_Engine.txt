@@ -1,5 +1,0 @@
-/Data/C4
-/Data/C4.pak
-Data/C4
-Data/C4.pak
-Game/Data/C4.pak

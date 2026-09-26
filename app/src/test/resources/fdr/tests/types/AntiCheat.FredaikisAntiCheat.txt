@@ -1,7 +1,0 @@
-/FredaikisAntiCheat/
-/FredaikisAntiCheat/@
-/FredaikisAntiCheat/cfg.json
-Binaries/Win64/FredaikisAntiCheat/cfg.json
-FredaikisAntiCheat/
-FredaikisAntiCheat/@
-FredaikisAntiCheat/cfg.json

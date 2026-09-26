@@ -77,9 +77,9 @@ class RequiredLiteralTest {
         val byName = Fixtures.ruleSet.rules.groupBy { it.fullName }
         val withLiteral = Fixtures.ruleSet.rules.count { it.requiredLiteral != null }
         println("rules with a required literal: $withLiteral / ${Fixtures.ruleSet.rules.size}")
-        for (file in Fixtures.dir("types")) {
-            val rules = byName[file.nameWithoutExtension] ?: continue
-            for (path in Fixtures.lines(file)) {
+        for (file in Fixtures.set("types")) {
+            val rules = byName[file.name] ?: continue
+            for (path in file.lines) {
                 val lower = asciiLower(path)
                 val matchedByRegex = rules.filter { it.pattern.matcher(lower).find() }
                 for (rule in matchedByRegex) {

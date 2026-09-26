@@ -1,4 +1,0 @@
-.sdfdata
-@.sdfdata
-camel/sdf/pc/data/sdf-A-0000.sdfdata
-rogue/sdf/pc/data/sdf-a-0000.sdfdata

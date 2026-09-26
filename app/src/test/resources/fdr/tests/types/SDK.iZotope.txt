@@ -1,4 +1,0 @@
-/iZotope.dll
-MultiVersus/Plugins/Wwise/ThirdParty/x64_vc160/Release/bin/iZotope.dll
-The Architect Paris_Data/Plugins/x86_64/iZotope.dll
-iZotope.dll

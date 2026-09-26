@@ -1,4 +1,0 @@
-_bin_PC/BuildData/FILELIST.BIN
-_bin_PC/BuildData/Filelist.bin
-data/FILELIST.BIN
-data/Filelist.bin

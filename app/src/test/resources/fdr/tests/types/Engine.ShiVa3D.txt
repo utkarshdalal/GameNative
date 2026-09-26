@@ -1,3 +1,0 @@
-.stk
-@.stk
-aRageRunner.stk

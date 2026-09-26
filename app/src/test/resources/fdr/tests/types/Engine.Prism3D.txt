@@ -1,6 +1,0 @@
-/base.scs
-/p3shared.dll
-Duke Nukem Manhattan Project.app/Contents/Resources/drive_c/Program Files/Duke Nukem - Manhattan Project/p3shared.dll
-base.scs
-folder/base.scs
-p3shared.dll

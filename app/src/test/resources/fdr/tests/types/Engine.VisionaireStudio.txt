@@ -1,3 +1,0 @@
-/VisionaireConfigurationTool.exe
-VisionaireConfigurationTool.exe
-sub/dir/VisionaireConfigurationTool.exe

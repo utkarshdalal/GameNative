@@ -1,3 +1,0 @@
-data/DEFAULT.BIF
-data/AR08XX.BIF
-lang/en_US/dialog.tlk

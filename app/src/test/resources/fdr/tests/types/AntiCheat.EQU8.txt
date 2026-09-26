@@ -1,2 +1,0 @@
-/equ8_conf.json
-equ8_conf.json

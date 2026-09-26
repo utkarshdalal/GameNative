@@ -1,4 +1,0 @@
-/SharpDX.dll
-Bin64/SharpDX.dll
-MapEditor/SharpDX.dll
-SharpDX.dll

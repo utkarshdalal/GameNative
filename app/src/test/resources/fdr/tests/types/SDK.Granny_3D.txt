@@ -1,4 +1,0 @@
-/granny2.dll
-/granny2_x64.dll
-granny2.dll
-granny2_x64.dll

@@ -1,6 +1,0 @@
-/AnselSDK32.dll
-/AnselSDK64.dll
-AnselSDK32.dll
-AnselSDK64.dll
-dx12Retail/AnselSDK32.dll
-dx12Retail/AnselSDK64.dll

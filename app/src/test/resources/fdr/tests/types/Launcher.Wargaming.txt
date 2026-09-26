@@ -1,2 +1,0 @@
-/wgcs_api.exe
-wgcs_api.exe

@@ -1,3 +1,0 @@
-.phyre.
-@.phyre.@
-Data/Wads/Additive0_39764.Phyre.D3D11x64.gz

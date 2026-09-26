@@ -1,3 +1,0 @@
-/kmyCore.dll
-data/kmyCore.dll
-kmyCore.dll

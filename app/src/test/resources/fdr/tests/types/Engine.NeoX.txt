@@ -1,2 +1,0 @@
-/neox.xml
-neox.xml

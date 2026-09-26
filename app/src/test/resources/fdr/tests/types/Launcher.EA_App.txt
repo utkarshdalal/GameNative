@@ -1,3 +1,0 @@
-/EAappInstaller.exe
-EAappInstaller.exe
-__Installer/Origin/redist/internal/EAappInstaller.exe

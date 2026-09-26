@@ -1,6 +1,5 @@
 package app.gamenative.filedetect
 
-import java.io.File
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -9,16 +8,16 @@ class FixtureTest {
 
     @Test
     fun `types fixtures`() {
-        val failures = Fixtures.dir("types").mapNotNull { file ->
+        val failures = Fixtures.set("types").mapNotNull { file ->
             runCatching { checkTypeFile(file) }.exceptionOrNull()?.let { "${file.name}: ${it.message}" }
         }
         assertTrue(failures.joinToString("\n"), failures.isEmpty())
     }
 
-    private fun checkTypeFile(file: File) {
-        val paths = Fixtures.lines(file)
+    private fun checkTypeFile(file: Fixture) {
+        val paths = file.lines
         assertTrue("File is empty: ${file.name}", paths.isNotEmpty())
-        val expected = file.nameWithoutExtension.takeIf { it != "_NonMatchingTests" }
+        val expected = file.name.takeIf { it != "_NonMatchingTests" }
         val failures = ArrayList<String>()
         val seen = HashSet<String>()
         for (path in paths) {
@@ -42,16 +41,16 @@ class FixtureTest {
 
     @Test
     fun `filelists fixtures`() {
-        val failures = Fixtures.dir("filelists").mapNotNull { file ->
+        val failures = Fixtures.set("filelists").mapNotNull { file ->
             runCatching { checkFileList(file) }.exceptionOrNull()?.let { "${file.name}: ${it.message}" }
         }
         assertTrue(failures.joinToString("\n"), failures.isEmpty())
     }
 
-    private fun checkFileList(file: File) {
-        val paths = Fixtures.lines(file)
+    private fun checkFileList(file: Fixture) {
+        val paths = file.lines
         assertTrue("File is empty: ${file.name}", paths.isNotEmpty())
-        val bits = file.nameWithoutExtension.split('.', limit = 3)
+        val bits = file.name.split('.', limit = 3)
         val expected = bits[0] + "." + bits[1]
         val matches = detector.matches(paths, filterEvidence = false)
         assertTrue("Failed to match $expected for ${file.name} (matched as ${matches.keys})", matches.containsKey(expected))

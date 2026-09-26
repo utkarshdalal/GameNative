@@ -1,3 +1,0 @@
-/bytecode.byc
-bytecode.byc
-media/bytecode.byc

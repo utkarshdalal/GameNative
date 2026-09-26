@@ -1,4 +1,0 @@
-data.pck
-DeepSixed_win32.exe
-steam_api.dll
-steam_appid.txt

@@ -1,6 +1,0 @@
-/Yarn.System.Memory.dll-resources.dat
-/YarnSpinner.dll
-Night In The Woods_Data/il2cpp_data/Resources/Yarn.System.Memory.dll-resources.dat
-NightInTheWoods_Data/Managed/YarnSpinner.dll
-Yarn.System.Memory.dll-resources.dat
-YarnSpinner.dll

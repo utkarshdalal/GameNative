@@ -1,7 +1,0 @@
-.bisign
-.pbo
-@.bisign
-@.pbo
-AddOns/6G30.pbo
-Addons/3den.pbo.a3.bisign
-rocks.pbo.bi.bisign

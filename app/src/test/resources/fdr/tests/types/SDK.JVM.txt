@@ -1,6 +1,0 @@
-/bin/java.dll
-/bin/java.exe
-bin/java.dll
-bin/java.exe
-jre/bin/java.dll
-jre/bin/java.exe

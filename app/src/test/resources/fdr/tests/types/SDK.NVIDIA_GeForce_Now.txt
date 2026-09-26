@@ -1,2 +1,0 @@
-/GfnRuntimeSdk.dll
-GfnRuntimeSdk.dll

@@ -1,3 +1,0 @@
-/fx_core.dll
-Sub/Folder/fx_core.dll
-fx_core.dll

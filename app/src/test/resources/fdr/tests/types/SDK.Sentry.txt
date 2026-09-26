@@ -1,5 +1,0 @@
-/libsentry.dll
-/sentry.dll
-launcher/sentry.dll
-libsentry.dll
-sentry.dll

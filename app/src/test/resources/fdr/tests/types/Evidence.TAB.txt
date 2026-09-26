@@ -1,5 +1,0 @@
-.tab
-@.tab
-Archives/pc.tab
-archives_win64/game0.tab
-game0.tab

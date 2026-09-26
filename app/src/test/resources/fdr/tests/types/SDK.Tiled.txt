@@ -1,7 +1,0 @@
-.tmx
-.tsx
-@.tmx
-@.tsx
-deluxe/assets/tiled/overworld/decor.tsx
-fmdata/Default.tmx
-mods/screecher/layout_source/bigrock.tmx

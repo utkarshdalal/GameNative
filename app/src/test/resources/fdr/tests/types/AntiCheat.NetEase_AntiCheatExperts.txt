@@ -1,4 +1,0 @@
-/NeacSafe64.sys
-/NeacSafe64_ex.sys
-NeacSafe64.sys
-NeacSafe64_ex.sys

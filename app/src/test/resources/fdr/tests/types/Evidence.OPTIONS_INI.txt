@@ -1,3 +1,0 @@
-/options.ini
-options.ini
-some/dir/options.ini

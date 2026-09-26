@@ -1,1 +1,0 @@
-Data/Localization/language.lsx

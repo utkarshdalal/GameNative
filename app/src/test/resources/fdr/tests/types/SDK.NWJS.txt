@@ -1,6 +1,0 @@
-/nw.dll
-/nw.pak
-elliot_quest/nw.pak
-nw.dll
-nw.pak
-nwjs-win/nw.dll

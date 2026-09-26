@@ -1,2 +1,0 @@
-/Xors3d.dll
-Xors3d.dll

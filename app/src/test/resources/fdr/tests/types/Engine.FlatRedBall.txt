@@ -1,8 +1,0 @@
-/FlatRedBall.
-/FlatRedBall.@
-Content/Shaders/FlatRedBall.fx
-FlatRedBall.
-FlatRedBall.@
-FlatRedBall.Forms.DesktopGlNet6.dll
-FlatRedBall.Forms.dll
-FlatRedBall.dll

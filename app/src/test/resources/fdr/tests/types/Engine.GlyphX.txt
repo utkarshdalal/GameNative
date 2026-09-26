@@ -1,2 +1,0 @@
-ClientLauncherG.exe
-ClientLauncherG64.exe

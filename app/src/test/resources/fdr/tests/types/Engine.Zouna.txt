@@ -1,4 +1,0 @@
-/DATAS/SHARED.DPC
-/GameData/Bigfiles/PC/P4/MISC.BFPC
-DATAS/SHARED.DPC
-GameData/Bigfiles/PC/P4/MISC.BFPC

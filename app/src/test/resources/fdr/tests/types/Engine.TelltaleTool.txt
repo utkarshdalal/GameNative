@@ -1,9 +1,0 @@
-.ttarch
-.ttarch2
-1_Hector101_english_pc_data.ttarch
-@.ttarch
-@.ttarch2
-BackToTheFuture104.app/Contents/Resources/Pack/0_9.ttarch
-Pack/1_wallacegromit101_pc_data.ttarch
-archives/MCSM_pc_JesseMaleChores101_chore.ttarch2
-sub/dir/1_SamMax304_pc_data.ttarch

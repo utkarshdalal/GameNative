@@ -1,4 +1,0 @@
-/Unity.RenderPipelines.HighDefinition.Config.Runtime.dll
-/Unity.RenderPipelines.HighDefinition.Runtime.dll
-Unity.RenderPipelines.HighDefinition.Config.Runtime.dll
-Unity.RenderPipelines.HighDefinition.Runtime.dll

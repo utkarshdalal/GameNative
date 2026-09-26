@@ -1,3 +1,0 @@
-/EAAntiCheat.Installer.exe
-EAAntiCheat.Installer.exe
-__Installer/EAAntiCheat/EAAntiCheat.Installer.exe

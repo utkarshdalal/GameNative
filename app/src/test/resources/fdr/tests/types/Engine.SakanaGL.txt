@@ -1,4 +1,0 @@
-.sxstorage
-/sakanagl.dll
-@.sxstorage
-sakanagl.dll

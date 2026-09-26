@@ -1,5 +1,0 @@
-@fbxsdk@
-Binaries/Win32/fbxsdk_20113_1.dll
-Binaries/Win32/fbxsdk_20113_1d.dll
-Subnautica_Data/Plugins/x86_64/UnityFbxSdkNative.dll
-fbxsdk

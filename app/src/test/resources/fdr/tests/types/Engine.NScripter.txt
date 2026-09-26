@@ -1,2 +1,0 @@
-arc.nsa
-nscript.dat

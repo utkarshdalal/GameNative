@@ -1,5 +1,0 @@
-.ccb
-@.ccb
-GameOver.ccb
-KeyInput.ccb
-Resources/Screens/BadgeController.ccb

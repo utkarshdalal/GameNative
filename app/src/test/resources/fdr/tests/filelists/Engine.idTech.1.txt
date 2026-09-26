@@ -1,3 +1,0 @@
-base/DEFAULT.CFG
-base/DOOM.WAD
-base/dosbox.exe

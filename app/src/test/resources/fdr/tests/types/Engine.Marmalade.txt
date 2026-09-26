@@ -1,4 +1,0 @@
-/angle/libEGLMarmalade.dll
-/angle/libGLESv2Marmalade.dll
-angle/libEGLMarmalade.dll
-angle/libGLESv2Marmalade.dll

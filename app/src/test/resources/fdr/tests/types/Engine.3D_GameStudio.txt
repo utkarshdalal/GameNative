@@ -1,6 +1,0 @@
-/acknex.dll
-/acknex.wdf
-Game/acknex.dll
-Game/acknex.wdf
-acknex.dll
-acknex.wdf

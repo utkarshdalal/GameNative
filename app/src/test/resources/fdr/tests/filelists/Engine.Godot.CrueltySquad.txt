@@ -1,3 +1,0 @@
-crueltysquad.exe
-crueltysquad.pck
-GODOT_LICENSE.txt

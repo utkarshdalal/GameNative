@@ -1,3 +1,0 @@
-Data/Config/User.cfg
-Data/Config/User.lua
-Data/Config/user.lua

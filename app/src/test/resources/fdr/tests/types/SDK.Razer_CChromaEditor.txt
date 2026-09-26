@@ -1,6 +1,0 @@
-/CChromaEditorLibrary.dll
-/CChromaEditorLibrary64.dll
-CChromaEditorLibrary.dll
-CChromaEditorLibrary64.dll
-binaries/CChromaEditorLibrary.dll
-binaries/CChromaEditorLibrary64.dll

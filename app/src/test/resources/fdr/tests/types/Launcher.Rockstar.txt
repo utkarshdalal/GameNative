@@ -1,3 +1,0 @@
-/Rockstar-Games-Launcher.exe
-Redistributables/Rockstar-Games-Launcher.exe
-Rockstar-Games-Launcher.exe
