@@ -90,6 +90,11 @@ public abstract class SharedComponents {
         return "file:" + file.getName() + ":" + file.length() + ":" + file.lastModified();
     }
 
+    private static boolean isEditableConfig(String fileName) {
+        String lower = fileName.toLowerCase();
+        return lower.endsWith(".ini") || lower.endsWith(".conf");
+    }
+
     private static boolean linkTree(File sharedDir, File currentDir, File destDir, OnExtractFileListener onExtractFileListener) {
         File[] files = currentDir.listFiles();
         if (files == null) return true;
@@ -116,6 +121,9 @@ public abstract class SharedComponents {
                 }
                 else if (isSymlink) {
                     FileUtils.symlink(FileUtils.readSymlink(file), destFile.getAbsolutePath());
+                }
+                else if (isEditableConfig(fileName)) {
+                    if (!FileUtils.copy(file, destFile)) return false;
                 }
                 else if (!FileUtils.link(file, destFile)) return false;
             }
