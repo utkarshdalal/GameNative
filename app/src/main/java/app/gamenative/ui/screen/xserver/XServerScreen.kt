@@ -140,6 +140,7 @@ import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
 import app.gamenative.utils.WindowActivity
 import app.gamenative.utils.PerfSampler
+import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.SessionReport
 import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
 import app.gamenative.utils.downloader.DXWrapperDownloader
@@ -4942,6 +4943,8 @@ private fun exit(
             "container_config" to container.containerJson,
         ) + runCatching {
             SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
+        }.getOrElse { emptyMap() } + runCatching {
+            GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
         }.getOrElse { emptyMap() },
     )
     runCatching { windowActivity.stop() }
