@@ -18,6 +18,8 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.data.GOGGame
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.StoreGameDetails
+import app.gamenative.data.sanitizeGogDescription
 import app.gamenative.enums.Marker
 import app.gamenative.service.DownloadService
 import app.gamenative.service.gog.GOGConstants
@@ -194,6 +196,10 @@ class GOGAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            storeDetails = StoreGameDetails(
+                description = sanitizeGogDescription(game?.description.orEmpty()),
+                tags = game?.genres.orEmpty(),
+            ),
         )
         return displayInfo
     }
