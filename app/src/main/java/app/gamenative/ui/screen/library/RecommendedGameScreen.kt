@@ -400,7 +400,6 @@ internal fun RecommendedGameScreen(
                                 ),
                             )
                         }
-                        ConversionTracker.rememberClickOut("gog", game.id, recSource, recRank, sid)
                         val browserIntent = Intent(Intent.ACTION_VIEW, url.toUri())
                         context.startActivity(browserIntent)
                     },

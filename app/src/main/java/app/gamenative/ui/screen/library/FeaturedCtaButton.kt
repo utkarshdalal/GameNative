@@ -102,7 +102,6 @@ internal fun FeaturedCtaButton(
                 source = recSource,
                 extras = extras,
             )
-            ConversionTracker.rememberClickOut(if (affiliate) "gog" else "featured", campaignId, recSource, recRank, sid)
             openUrl(url)
         } else {
             busy = true

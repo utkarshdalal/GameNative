@@ -13,7 +13,6 @@ import timber.log.Timber
 
 object ConversionTracker {
 
-    private const val RETURN_WINDOW_MS = 30L * 60L * 1000L
     private const val CAMPAIGN_CLICK_TTL_MS = 14L * 24L * 60L * 60L * 1000L
     private const val MAX_CAMPAIGN_CLICKS = 20
 
@@ -78,17 +77,7 @@ object ConversionTracker {
         }
     }
 
-    // ---- Post-click attribution (usage analytics only) ----
-
-    @Serializable
-    private data class ClickOut(
-        val kind: String,
-        val id: String,
-        val source: String,
-        val rank: Int,
-        val sid: String,
-        val ts: Long,
-    )
+    // ---- Campaign attribution for later installs/launches (usage analytics only) ----
 
     @Serializable
     private data class CampaignClick(val appId: Int, val campaignId: String, val source: String, val ts: Long)
@@ -96,39 +85,6 @@ object ConversionTracker {
     /** Short random token appended to outbound affiliate links so a sale can be joined back to the click event. */
     fun newClickId(): String? =
         if (PrefManager.usageAnalyticsEnabled) UUID.randomUUID().toString().replace("-", "").take(12) else null
-
-    fun rememberClickOut(kind: String, id: String, source: String, rank: Int, sid: String) {
-        if (!PrefManager.usageAnalyticsEnabled) return
-        runCatching {
-            PrefManager.lastClickOutJson = json.encodeToString(
-                ClickOut(kind, id, source, rank, sid, System.currentTimeMillis()),
-            )
-        }.onFailure { Timber.w(it, "Failed to store click-out") }
-    }
-
-    /** Called when the app returns to the foreground; emits `recommendation_returned` for a recent click-out. */
-    fun onAppForegrounded() {
-        if (!PrefManager.usageAnalyticsEnabled) return
-        runCatching {
-            val raw = PrefManager.lastClickOutJson
-            if (raw.isEmpty()) return
-            PrefManager.lastClickOutJson = ""
-            val click = json.decodeFromString<ClickOut>(raw)
-            val away = System.currentTimeMillis() - click.ts
-            if (away !in 0..RETURN_WINDOW_MS) return
-            track(
-                "recommendation_returned",
-                mapOf(
-                    "kind" to click.kind,
-                    "id" to click.id,
-                    "source" to click.source,
-                    "rank" to click.rank,
-                    "sid" to click.sid,
-                    "away_ms" to away,
-                ),
-            )
-        }.onFailure { Timber.w(it, "Failed to report click-out return") }
-    }
 
     fun rememberCampaignClick(appId: Int?, campaignId: String, source: String) {
         if (appId == null || !PrefManager.usageAnalyticsEnabled) return

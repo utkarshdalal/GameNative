@@ -1380,14 +1380,6 @@ object PrefManager {
             setPref(RECOMMENDED_TAB_SEEN_DAY, value)
         }
 
-    // Most recent affiliate/CTA click-out, so the next foreground can report a return
-    private val LAST_CLICK_OUT_JSON = stringPreferencesKey("last_click_out_json")
-    var lastClickOutJson: String
-        get() = getPref(LAST_CLICK_OUT_JSON, "")
-        set(value) {
-            setPref(LAST_CLICK_OUT_JSON, value)
-        }
-
     // Recent campaign CTA clicks keyed by app id, attached to later install/launch events
     private val CAMPAIGN_CLICKS_JSON = stringPreferencesKey("campaign_clicks_json")
     var campaignClicksJson: String
