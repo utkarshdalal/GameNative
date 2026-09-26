@@ -50,7 +50,7 @@ class PrefManagerTestScope(
  * deterministic in unit tests. Returns a scope that restores the previous store, preventing the
  * fake from leaking into other tests in the shared JVM.
  */
-fun installFakePrefManager(fake: FakeDataStore): PrefManagerTestScope {
+fun installFakePrefManager(fake: DataStore<Preferences>): PrefManagerTestScope {
     val dataStoreField = PrefManager::class.java.getDeclaredField("dataStore")
     dataStoreField.isAccessible = true
     val originalStore = dataStoreField.get(PrefManager)

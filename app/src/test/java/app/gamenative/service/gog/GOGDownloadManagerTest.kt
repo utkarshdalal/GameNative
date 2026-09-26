@@ -4,6 +4,8 @@ import android.content.Context
 import app.gamenative.PrefManager
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.GOGGame
+import app.gamenative.events.AndroidEvent
+import app.gamenative.PluviaApp
 import app.gamenative.service.gog.api.BuildsResponse
 import app.gamenative.service.gog.api.Depot
 import app.gamenative.service.gog.api.DepotFile
@@ -23,6 +25,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -49,6 +52,9 @@ class GOGDownloadManagerTest {
 
     @Before
     fun setUp() {
+        // Successful downloads emit a process-global install event. Do not let listeners owned by
+        // another Robolectric application instance start background work in this test class.
+        PluviaApp.events.listeners.remove(AndroidEvent.LibraryInstallStatusChanged::class)
         apiClient = mock()
         parser = mock()
         gogManager = mock()
@@ -56,6 +62,11 @@ class GOGDownloadManagerTest {
         manager = GOGDownloadManager(apiClient, parser, gogManager, context)
         PrefManager.init(RuntimeEnvironment.getApplication())
         PrefManager.downloadSpeed = 32
+    }
+
+    @After
+    fun tearDown() {
+        PluviaApp.events.listeners.remove(AndroidEvent.LibraryInstallStatusChanged::class)
     }
 
     // ===== Gen 2 =====
