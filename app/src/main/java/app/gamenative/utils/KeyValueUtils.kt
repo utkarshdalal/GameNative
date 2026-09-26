@@ -28,11 +28,31 @@ import timber.log.Timber
 
 const val CURRENT_UFS_PARSE_VERSION = 4
 
+// Bump to reprocess the VR flags of cached apps.
+const val CURRENT_VR_CATEGORY_PARSE_VERSION = 1
+
 /**
  * Extension functions relating to [KeyValue] as the receiver type.
  */
 
+data class VrClassification(val isVrOnly: Boolean, val isVrSupported: Boolean)
+
+// category_53/54 are Valve's "VR Supported"/"VR Only" flags; tag 21978 ("VR") catches titles
+// whose developer didn't set the curated categories. Null without a common section.
+fun KeyValue.vrClassification(): VrClassification? {
+    val common = this["common"]
+    if (common.children.isEmpty()) return null
+    val categoryNames = common["category"].children.mapNotNull { it.name }
+    val storeTagIds = common["store_tags"].children.mapNotNull { it.asInteger(-1).takeIf { id -> id >= 0 } }
+    return VrClassification(
+        isVrOnly = categoryNames.contains("category_54"),
+        isVrSupported = categoryNames.contains("category_53") || storeTagIds.contains(21978),
+    )
+}
+
 fun KeyValue.generateSteamApp(): SteamApp {
+    val vr = vrClassification()
+
     return SteamApp(
         id = this["appid"].asInteger(INVALID_APP_ID),
         depots = this["depots"].children
@@ -104,6 +124,9 @@ fun KeyValue.generateSteamApp(): SteamApp {
         reviewScore = this["common"]["review_score"].asByte(),
         reviewPercentage = this["common"]["review_percentage"].asByte(),
         controllerSupport = ControllerSupport.from(this["common"]["controller_support"].value),
+        isVrOnly = vr?.isVrOnly == true,
+        isVrSupported = vr?.isVrSupported == true,
+        vrCategoryParseVersion = CURRENT_VR_CATEGORY_PARSE_VERSION,
         demoOfAppId = this["common"]["extended"]["demoofappid"].asInteger(),
         developer = this["extended"]["developer"].value.orEmpty(),
         publisher = this["extended"]["publisher"].value.orEmpty(),

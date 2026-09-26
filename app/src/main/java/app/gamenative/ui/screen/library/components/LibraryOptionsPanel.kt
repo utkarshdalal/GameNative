@@ -266,18 +266,26 @@ fun LibraryOptionsPanel(
                                 .padding(horizontal = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            AppFilter.entries.forEach { appFilter ->
-                                if (appFilter in listOf(
-                                        AppFilter.INSTALLED,
-                                        AppFilter.SHARED,
-                                        AppFilter.COMPATIBLE,
-                                        AppFilter.EXPIRED,
-                                        AppFilter.PLAYABLE,
-                                        AppFilter.FIVE_STAR,
-                                        AppFilter.FIVE_STAR_GPU,
-                                        AppFilter.PROVEN_GPU,
+                            val context = LocalContext.current
+                            val statusFilters = remember {
+                                buildList {
+                                    addAll(
+                                        listOf(
+                                            AppFilter.INSTALLED,
+                                            AppFilter.SHARED,
+                                            AppFilter.COMPATIBLE,
+                                            AppFilter.EXPIRED,
+                                            AppFilter.PLAYABLE,
+                                            AppFilter.FIVE_STAR,
+                                            AppFilter.FIVE_STAR_GPU,
+                                            AppFilter.PROVEN_GPU,
+                                        ),
                                     )
-                                ) {
+                                    if (app.gamenative.MainActivity.isHeadset(context)) add(AppFilter.VR)
+                                }
+                            }
+                            AppFilter.entries.forEach { appFilter ->
+                                if (appFilter in statusFilters) {
                                     OptionListItem(
                                         text = stringResource(appFilter.displayTextRes),
                                         selected = selectedFilters.contains(appFilter),

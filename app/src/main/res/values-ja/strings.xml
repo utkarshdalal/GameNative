@@ -1737,6 +1737,7 @@
     <string name="export_files_cancelled">エクスポートをキャンセルしました</string>
     <string name="export_files_no_container">ゲームを一度起動してコンテナを作成してから、ファイルをエクスポートしてください。</string>
     <string name="export_files_failed_header">次のファイルをエクスポートできませんでした:</string>
+    <string name="app_filter_vr">VRゲーム</string>
     <string name="option_manage_mods">Nexus Mod を管理</string>
     <string name="nexus_search_clear">検索をクリア</string>
     <string name="nexus_filter_all">すべて</string>

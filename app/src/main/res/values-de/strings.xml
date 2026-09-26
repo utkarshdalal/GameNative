@@ -1721,6 +1721,7 @@
     <string name="export_files_cancelled">Export abgebrochen</string>
     <string name="export_files_no_container">Starte das Spiel einmal, um seinen Container zu erstellen, und exportiere dann Dateien.</string>
     <string name="export_files_failed_header">Diese Dateien konnten nicht exportiert werden:</string>
+    <string name="app_filter_vr">VR-Spiel</string>
     <string name="option_manage_mods">Nexus-Mods verwalten</string>
     <string name="nexus_search_clear">Suche löschen</string>
     <string name="nexus_filter_all">Alle</string>

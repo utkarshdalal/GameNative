@@ -65,7 +65,10 @@ import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.asyncIsolated
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
+import app.gamenative.utils.CURRENT_VR_CATEGORY_PARSE_VERSION
+import app.gamenative.utils.VrClassification
 import app.gamenative.utils.generateSteamApp
+import app.gamenative.utils.vrClassification
 import app.gamenative.workshop.WorkshopManager
 import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
@@ -1479,6 +1482,24 @@ class SteamService : Service(), IChallengeUrlChanged {
             }.onFailure { error ->
                 Timber.tag("SteamService").e(error, "Failed to refresh owned games from server")
             }.getOrDefault(0)
+        }
+
+        suspend fun backfillVrClassification() {
+            val service = instance ?: return
+            runCatching {
+                val outdatedIds = service.appDao.getAppIdsWithOutdatedVrCategoryParseVersion(
+                    CURRENT_VR_CATEGORY_PARSE_VERSION,
+                )
+                if (outdatedIds.isEmpty()) return
+                Timber.d("backfillVrClassification: queueing ${outdatedIds.size} app(s) for PICS reprocessing")
+                outdatedIds.chunked(MAX_PICS_BUFFER).forEach { chunk ->
+                    service.appPicsChannel.send(
+                        chunk.map { PICSRequest(id = it, accessToken = service.appTokens[it] ?: 0L) },
+                    )
+                }
+            }.onFailure { error ->
+                Timber.w(error, "backfillVrClassification: failed")
+            }
         }
 
         /**
@@ -4565,6 +4586,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 picsChangesCheckerJob = continuousPICSChangesChecker()
                 picsGetProductInfoJob = continuousPICSGetProductInfo()
+                scope.launch { backfillVrClassification() }
 
                 // Tell steam we're online, this allows friends to update.
                 _steamFriends?.setPersonaState(PrefManager.personaState)
@@ -5162,6 +5184,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                             )
 
                             ensureActive()
+                            val vrOnlyUpdates = mutableListOf<Pair<Int, VrClassification>>()
                             val steamAppsMap = picsCallback.apps.values.mapNotNull { app ->
                                 val appFromDb = appDao.findApp(app.id)
                                 val packageId = appFromDb?.packageId ?: INVALID_PKG_ID
@@ -5174,8 +5197,21 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 // TODO maybe apps with -1 for the ownerAccountId can be stripped with necessities and name.
 
                                 val ufsParseVersionOutdated = appFromDb != null && appFromDb.ufsParseVersion < CURRENT_UFS_PARSE_VERSION
+                                val vrCategoryParseVersionOutdated = appFromDb != null &&
+                                    appFromDb.vrCategoryParseVersion < CURRENT_VR_CATEGORY_PARSE_VERSION
 
-                                if (app.changeNumber != appFromDb?.lastChangeNumber || ufsParseVersionOutdated) {
+                                // Only the VR flags are stale: the response may lack the app token,
+                                // so don't replace the row.
+                                if (vrCategoryParseVersionOutdated &&
+                                    !ufsParseVersionOutdated &&
+                                    app.changeNumber == appFromDb?.lastChangeNumber
+                                ) {
+                                    app.keyValues.vrClassification()?.let { vrOnlyUpdates += app.id to it }
+                                    null
+                                } else if (app.changeNumber != appFromDb?.lastChangeNumber ||
+                                    ufsParseVersionOutdated ||
+                                    vrCategoryParseVersionOutdated
+                                ) {
                                     val newApp = app.keyValues.generateSteamApp().copy(
                                         packageId = packageId,
                                         ownerAccountId = ownerAccountId,
@@ -5198,6 +5234,18 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 Timber.i("Inserting ${steamAppsMap.size} PICS apps to database")
                                 db.withTransaction {
                                     appDao.insertAll(steamAppsMap)
+                                }
+                            }
+                            if (vrOnlyUpdates.isNotEmpty()) {
+                                db.withTransaction {
+                                    vrOnlyUpdates.forEach { (appId, vr) ->
+                                        appDao.updateVrClassification(
+                                            appId,
+                                            vr.isVrOnly,
+                                            vr.isVrSupported,
+                                            CURRENT_VR_CATEGORY_PARSE_VERSION,
+                                        )
+                                    }
                                 }
                             }
                         }

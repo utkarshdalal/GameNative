@@ -1799,6 +1799,7 @@
     <string name="export_files_cancelled">Exportation annulée</string>
     <string name="export_files_no_container">Lancez le jeu une fois pour créer son conteneur, puis exportez les fichiers.</string>
     <string name="export_files_failed_header">Ces fichiers n\'ont pas pu être exportés :</string>
+    <string name="app_filter_vr">Jeu VR</string>
     <string name="option_manage_mods">Gérer les mods Nexus</string>
     <string name="nexus_search_clear">Effacer la recherche</string>
     <string name="nexus_filter_all">Tout</string>
