@@ -6,8 +6,13 @@ import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
+import app.gamenative.html5.Html5OptInService
+import app.gamenative.html5.savesync.Html5SaveSyncService
+import app.gamenative.runtime.WebViewContainer
+import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
+import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import com.winlator.container.Container
@@ -20,11 +25,17 @@ import com.winlator.core.GPUInformation
 import com.winlator.core.envvars.EnvVars
 import com.winlator.core.WineRegistryEditor
 import com.winlator.core.WineThemeManager
+import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.winhandler.WinHandler.PreferredInputApi
 import com.winlator.xenvironment.ImageFs
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
 import org.json.JSONObject
@@ -176,6 +187,8 @@ object ContainerUtils {
             sharpnessEffect = PrefManager.sharpnessEffect,
             sharpnessLevel = PrefManager.sharpnessLevel,
             sharpnessDenoise = PrefManager.sharpnessDenoise,
+            // this IS the global slot, so no -1 follow-global sentinel here.
+            renderScale = PrefManager.html5RenderScale,
         )
     }
 
@@ -245,6 +258,8 @@ object ContainerUtils {
         PrefManager.sharpnessEffect = containerData.sharpnessEffect
         PrefManager.sharpnessLevel = containerData.sharpnessLevel
         PrefManager.sharpnessDenoise = containerData.sharpnessDenoise
+        // clamp negative (follow-global sentinel) to 0 -- global slot can never follow itself.
+        PrefManager.html5RenderScale = containerData.renderScale.coerceAtLeast(0f)
     }
 
     fun toContainerData(container: Container): ContainerData {
@@ -384,6 +399,162 @@ object ContainerUtils {
         applyToContainer(context, container, containerData)
     }
 
+    // single save choke point: html5 runs Html5OptInService.optIn BEFORE applyToContainer, or games with no
+    // html5 payload would silently flip to webview. false = rejected; the snackbar is already shown.
+    suspend fun applyToContainerGated(
+        context: Context,
+        appId: String,
+        containerData: ContainerData,
+    ): Boolean {
+        // BEFORE any mutation, to capture the TRUE prior runtime: applyToContainer overwrites containerVariant.
+        val flipDirection: Html5SaveSyncService.FlipDirection? = computeHtml5FlipDirection(context, appId, containerData)
+        if (flipDirection != null) {
+            val svc = runCatching {
+                EntryPointAccessors
+                    .fromApplication(context.applicationContext, Html5SaveSyncEntryPoint::class.java)
+                    .html5SaveSyncService()
+            }.onFailure { Timber.tag("ContainerUtils").w(it, "Html5SaveSyncService EntryPoint lookup failed") }
+                .getOrNull()
+            svc?.mirrorOnFlip(appId, flipDirection)
+        }
+        val applied = applyGatedVariant(context, appId, containerData)
+        // invalidates LibraryViewModel's runtime cache. emit AFTER the Container is written, or it re-caches
+        // the pre-flip runtime.
+        if (applied && flipDirection != null) {
+            runtimeFlipEvent(appId)?.let { app.gamenative.PluviaApp.events.emit(it) }
+        }
+        return applied
+    }
+
+    private suspend fun applyGatedVariant(
+        context: Context,
+        appId: String,
+        containerData: ContainerData,
+    ): Boolean {
+        if (containerData.containerVariant.equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)) {
+            // optIn is FIRST-TIME-ONLY: it writes a default WebViewContainer, which would wipe fields edited
+            // through other paths (controller tab, QuickMenu). re-saves go via persistHtml5ContainerOverrides.
+            val alreadyOptedIn = loadWebViewContainerForAppId(appId) != null
+            if (!alreadyOptedIn) {
+                return when (val r = Html5OptInService.optIn(context, appId, containerData)) {
+                    Html5OptInService.Result.Matched -> {
+                        withContext(Dispatchers.IO) {
+                            applyToContainer(context, appId, containerData)
+                            persistHtml5ContainerOverrides(appId, containerData)
+                        }
+                        true
+                    }
+                    is Html5OptInService.Result.NoMatch -> {
+                        SnackbarManager.show(r.message)
+                        false
+                    }
+                    is Html5OptInService.Result.CannotResolveInstallPath -> {
+                        SnackbarManager.show(r.message)
+                        false
+                    }
+                    is Html5OptInService.Result.PackLoadFailure -> {
+                        SnackbarManager.show(
+                            "HTML5 pack '${r.engineId}' failed to load — see logs",
+                        )
+                        false
+                    }
+                }
+            }
+            withContext(Dispatchers.IO) {
+                applyToContainer(context, appId, containerData)
+                persistHtml5ContainerOverrides(appId, containerData)
+            }
+            return true
+        }
+        withContext(Dispatchers.IO) { applyToContainer(context, appId, containerData) }
+        return true
+    }
+
+    // LibraryInstallStatusChanged carries the store-local int id: "STEAM_123" -> (123, STEAM). null if unprefixed.
+    @androidx.annotation.VisibleForTesting
+    internal fun runtimeFlipEvent(appId: String): app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged? {
+        val source = GameSource.fromContainerId(appId) ?: return null
+        val id = source.idOf(appId).toIntOrNull() ?: return null
+        return app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged(id, source)
+    }
+
+    // null when no html5-relevant flip is happening. WINE_TO_WEBVIEW also needs an existing WebViewContainer
+    // JSON: on first opt-in there's no engineProfile yet, so resolveSetup would fail with "Save path not found".
+    // launch-time syncInbound covers that case.
+    private fun computeHtml5FlipDirection(
+        context: Context,
+        appId: String,
+        containerData: ContainerData,
+    ): Html5SaveSyncService.FlipDirection? {
+        if (!hasContainer(context, appId)) return null
+        val currentRuntime = runCatching { getContainer(context, appId).runtime }.getOrNull()
+            ?: return null
+        val newIsHtml5 = containerData.containerVariant.equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
+        val currentIsWebview = currentRuntime == Container.RUNTIME_WEBVIEW
+        return when {
+            !currentIsWebview && newIsHtml5 -> {
+                if (loadWebViewContainerForAppId(appId) == null) null
+                else Html5SaveSyncService.FlipDirection.WINE_TO_WEBVIEW
+            }
+            currentIsWebview && !newIsHtml5 -> Html5SaveSyncService.FlipDirection.WEBVIEW_TO_WINE
+            else -> null
+        }
+    }
+
+    // ContainerUtils is an object and can't @Inject.
+    @EntryPoint
+    @InstallIn(SingletonComponent::class)
+    interface Html5SaveSyncEntryPoint {
+        fun html5SaveSyncService(): Html5SaveSyncService
+    }
+
+    // WebViewScreen reads these from the sidecar at launch. suspendPolicy is INTENTIONALLY not here: the wine
+    // Container owns it for both runtimes. other html5 fields persist through their own paths.
+    @androidx.annotation.VisibleForTesting
+    internal fun persistHtml5ContainerOverrides(appId: String, containerData: ContainerData) {
+        val slug = webViewContainerSlugForAppId(appId) ?: run {
+            Timber.tag("ContainerUtils").w("no html5 slug for $appId (unsupported id or no install path) -- html5 overrides dropped")
+            return
+        }
+        val existing = WebViewContainer.load(slug) ?: run {
+            Timber.tag("ContainerUtils").w("no WebViewContainer JSON at slug=$slug — html5 overrides dropped")
+            return
+        }
+        val updated = existing.copy(
+            inputMap = containerData.inputMap,
+            renderScale = containerData.renderScale,
+        )
+        if (updated == existing) return // avoid spurious disk writes
+        WebViewContainer.save(slug, updated)
+        Timber.tag("ContainerUtils").i(
+            "persisted html5 overrides for slug=$slug: inputMap='%s' renderScale=%.2f",
+            updated.inputMap,
+            updated.renderScale,
+        )
+    }
+
+    // without this the config dialog shows defaults for sidecar fields (inputMap, renderScale), and saving
+    // CLOBBERS the persisted values.
+    fun mergeHtml5SidecarFields(data: ContainerData, appId: String): ContainerData {
+        if (!data.containerVariant.equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)) {
+            return data
+        }
+        val sidecar = loadWebViewContainerForAppId(appId) ?: return data
+        return data.copy(
+            inputMap = sidecar.inputMap,
+            renderScale = sidecar.renderScale,
+        )
+    }
+
+    // MUST match optIn's slug, or the container looks un-opted-in and every Config save resets its sidecar.
+    // null = unsupported id or install path missing.
+    fun webViewContainerSlugForAppId(appId: String): String? = Html5OptInService.slugFor(appId)
+
+    fun loadWebViewContainerForAppId(appId: String): WebViewContainer? {
+        val slug = webViewContainerSlugForAppId(appId) ?: return null
+        return WebViewContainer.load(slug)
+    }
+
     /**
      * Applies best config map to containerData, handling all possible fields.
      * Used when applyKnownConfig=true returns all validated fields.
@@ -461,6 +632,38 @@ object ContainerUtils {
 
     fun applyToContainer(context: Context, container: Container, containerData: ContainerData, saveToDisk: Boolean) {
         Timber.d("Applying containerData to container. execArgs: '${containerData.execArgs}', saveToDisk: $saveToDisk")
+
+        // html5-born containers skip prefix extraction, so a flip to wine must extract it NOW (the registry
+        // edit below and wine boot need it), with the NEW wineVersion.
+        val newVariantIsHtml5 = containerData.containerVariant
+            .equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
+        val isFlipHtml5ToWine = container.runtime == Container.RUNTIME_WEBVIEW && !newVariantIsHtml5
+        if (isFlipHtml5ToWine) {
+            val driveCExists = File(container.rootDir, ".wine/drive_c/windows").isDirectory
+            if (!driveCExists) {
+                Timber.tag("ContainerUtils").i(
+                    "Variant flip html5→wine: extracting prefix for appId=%s wineVersion=%s",
+                    container.id,
+                    containerData.wineVersion,
+                )
+                val containerManager = ContainerManager(context)
+                val contentsManager = com.winlator.contents.ContentsManager(context)
+                val ok = containerManager.extractContainerPatternFile(
+                    containerData.wineVersion,
+                    contentsManager,
+                    container.rootDir,
+                    null,
+                )
+                if (!ok) {
+                    Timber.tag("ContainerUtils").e(
+                        "Prefix extraction failed for variant flip html5→wine on appId=%s; container will be unbootable in wine until reset",
+                        container.id,
+                    )
+                    // fall through: the Save is committed to the flip; this surfaces as a wine-boot error.
+                }
+            }
+        }
+
         // Detect language change before mutating container
         val previousLanguage: String = try {
             container.language
@@ -671,6 +874,12 @@ object ContainerUtils {
         }
     }
 
+    // not-installed = RUNTIME_WINE. runCatching covers a concurrent uninstall between hasContainer and
+    // getContainer's rescan.
+    fun resolveRuntime(context: Context, appId: String): String =
+        runCatching { getContainer(context, appId).runtime }
+            .getOrDefault(Container.RUNTIME_WINE)
+
     private fun createNewContainer(
         context: Context,
         appId: String,
@@ -785,6 +994,13 @@ object ContainerUtils {
         // Set up data for container creation
         val data = JSONObject()
         data.put("name", "container_$containerId")
+
+        // optIn writes the sidecar BEFORE the wine Container is created, so its presence means html5: skip
+        // the ~60MB prefix extraction html5 never uses.
+        if (loadWebViewContainerForAppId(appId) != null) {
+            data.put("containerVariant", Container.CONTAINER_VARIANT_HTML5)
+            data.put("runtime", Container.RUNTIME_WEBVIEW)
+        }
 
         // Create the actual container
         var container = containerManager.createContainerFuture(containerId, data).get()
@@ -1193,6 +1409,161 @@ object ContainerUtils {
                 Timber.w("[ContainerDeletion] Dirs present on disk but NOT loaded by ContainerManager (corrupt/empty config): $unloadedIds")
             }
         }
+
+        runCatching {
+            deleteHtml5OriginStorage(context, appId)
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "html5 origin storage cleanup failed appId=%s", appId)
+        }
+
+        runCatching {
+            deleteHtml5ControlsProfileIfOrphan(context, appId)
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "html5 controls profile cleanup failed appId=%s", appId)
+        }
+
+        // MUST run after deleteHtml5ControlsProfileIfOrphan, which scans config.json to resolve the profileId.
+        runCatching {
+            deleteHtml5JsonDir(context, appId)
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "html5 json dir cleanup failed appId=%s", appId)
+        }
+
+        // diagnostic logs aren't origin-scoped, so the storage cleanup above misses them.
+        runCatching {
+            File(context.filesDir, "html5-logs/$appId").deleteRecursively()
+            File(DownloadService.baseExternalAppDirPath, "html5-logs/$appId")
+                .deleteRecursively()
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "html5 logs cleanup failed appId=%s", appId)
+        }
+    }
+
+    // matches by chromium origin filename (https_game-<id>_0) so siblings in the shared profile are untouched.
+    // LS is queued, not purged here: WebStorage.deleteOrigin leaves it alone, and chromium keeps the shared LS leveldb
+    // open for the whole process once any WebView ran, so an iq80 purge now would be a second writer.
+    internal fun deleteHtml5OriginStorage(context: Context, appId: String) {
+        val origin = app.gamenative.html5.host.WebViewOrigin.originUrl(appId)
+        runCatching {
+            android.webkit.WebStorage.getInstance().deleteOrigin(origin)
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "WebStorage.deleteOrigin failed origin=%s", origin)
+        }
+        runCatching {
+            app.gamenative.html5.savesync.Html5PendingLsPurge.enqueue(context, appId)
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "LS purge enqueue failed appId=%s", appId)
+        }
+        val defaultDir = File(context.dataDir, "app_webview/Default")
+        val idbDir = File(defaultDir, "IndexedDB")
+        val prefix = app.gamenative.html5.host.WebViewOrigin.levelDbPrefix(appId)
+        for (suffix in listOf("indexeddb.leveldb", "indexeddb.blob")) {
+            val target = File(idbDir, "$prefix.$suffix")
+            runCatching {
+                if (target.exists()) target.deleteRecursively()
+            }.onFailure {
+                Timber.tag("ContainerUtils").w(it, "IDB delete failed path=%s", target)
+            }
+        }
+        // OPFS lives under File System/<bucket>/, which the deletes above don't cover. pack:c3 keeps live saves
+        // there, so leaving it makes a reinstall read stale OPFS over the cloud-restored copy. the dangling
+        // Origins index entry is fine: chromium recreates the bucket on access.
+        runCatching {
+            val fsDir = File(defaultDir, "File System")
+            val bucket = app.gamenative.html5.savesync.LevelDbRewriter
+                .resolveOpfsBucketDir(File(fsDir, "Origins"), origin)
+            if (bucket != null) {
+                val bucketDir = File(fsDir, bucket)
+                if (bucketDir.isDirectory && bucketDir.deleteRecursively()) {
+                    Timber.tag("ContainerUtils").i("deleted OPFS bucket %s for origin=%s", bucket, origin)
+                }
+            }
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "OPFS bucket cleanup failed origin=%s", origin)
+        }
+        // inbound-gate marker: a reinstall's cloud restore writes backdated mtimes that look older than a
+        // stale marker, so launch-sync would skip and stale OPFS would win.
+        runCatching {
+            app.gamenative.html5.savesync.Html5SaveSyncService.clearSyncState(context, appId)
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "sync-state marker cleanup failed appId=%s", appId)
+        }
+        // fs-authoritative marker. permanent otherwise, so a reinstall (or a different build of the
+        // title) keeps skipping chromium LS/IDB sync from a decision made on the old install.
+        runCatching {
+            app.gamenative.html5.savesync.Html5FsAuthoritative.clear(context, appId)
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "fs-authoritative marker cleanup failed appId=%s", appId)
+        }
+    }
+
+    // the install folder is gone post-uninstall so the slug can't be recomputed; match config.id instead.
+    internal fun deleteHtml5JsonDir(context: Context, appId: String) {
+        val rootDir = File(DownloadService.baseExternalAppDirPath, "html5-containers")
+        if (!rootDir.isDirectory) return
+        val dirs = rootDir.listFiles { f -> f.isDirectory } ?: return
+        for (dir in dirs) {
+            val sibling = WebViewContainer.load(dir.name) ?: continue
+            if (sibling.id != appId) continue
+            val deleted = dir.deleteRecursively()
+            Timber.tag("ContainerUtils").i(
+                "deleteHtml5JsonDir: appId=%s slug=%s deleted=%s",
+                appId, dir.name, deleted,
+            )
+            app.gamenative.html5.host.WebViewScreenViewModel.invalidateSlugCache(appId)
+            return // slug → appId is 1:1
+        }
+    }
+
+    // otherwise per-container profiles pile up in InputControlsManager's global pool. skipped while another
+    // html5 container shares the profileId; no-op for wine containers. internal for ContainerStorageManager,
+    // which deletes container dirs directly.
+    internal fun deleteHtml5ControlsProfileIfOrphan(context: Context, appId: String) {
+        val rootDir = File(DownloadService.baseExternalAppDirPath, "html5-containers")
+        if (!rootDir.exists()) return
+        val dirs = rootDir.listFiles { f -> f.isDirectory } ?: return
+
+        var thisProfileId: Long = 0L
+        val siblingProfileIds = mutableListOf<Long>()
+        var foundSelf = false
+        for (dir in dirs) {
+            val sibling = WebViewContainer.load(dir.name) ?: continue
+            if (sibling.id == appId) {
+                thisProfileId = sibling.controlsProfileId
+                foundSelf = true
+            } else if (sibling.controlsProfileId > 0L) {
+                siblingProfileIds.add(sibling.controlsProfileId)
+            }
+        }
+        if (!foundSelf) return // wine container OR html5 JSON dir already gone -- no-op
+        if (thisProfileId <= 0L) {
+            Timber.tag("ContainerUtils").d(
+                "html5 container delete: no controlsProfileId for appId=%s (bootstrap never ran)",
+                appId,
+            )
+            return
+        }
+        if (thisProfileId in siblingProfileIds) {
+            Timber.tag("ContainerUtils").i(
+                "html5 container delete: skipping profile cleanup for appId=%s id=%d — sibling references same id (lazy-fork window)",
+                appId, thisProfileId,
+            )
+            return
+        }
+        val manager = InputControlsManager(context)
+        val profile = manager.getProfiles(false).firstOrNull { it.id.toLong() == thisProfileId }
+        if (profile == null) {
+            Timber.tag("ContainerUtils").d(
+                "html5 container delete: profile id=%d already gone for appId=%s",
+                thisProfileId, appId,
+            )
+            return
+        }
+        manager.removeProfile(profile)
+        Timber.tag("ContainerUtils").d(
+            "html5 container delete: removing orphan profile id=%d for deleted container=%s",
+            thisProfileId, appId,
+        )
     }
 
     /**

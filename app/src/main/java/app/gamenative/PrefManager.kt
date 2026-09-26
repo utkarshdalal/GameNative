@@ -548,6 +548,23 @@ object PrefManager {
         set(value) {
             setPref(SHOW_CONTROLLER_DEBUG_MENU, value)
         }
+
+    // one-shot wipe of the shared app_webview/Default storage subtrees; set true only AFTER a successful wipe.
+    private val HTML5_DEFAULT_PROFILE_WIPED = booleanPreferencesKey("html5_default_profile_wiped")
+    var html5DefaultProfileWiped: Boolean
+        get() = getPref(HTML5_DEFAULT_PROFILE_WIPED, false)
+        set(value) {
+            setPref(HTML5_DEFAULT_PROFILE_WIPED, value)
+        }
+
+    // global html5 devicePixelRatio override; 0f = device-native. WebViewContainer.renderScale -1f follows this.
+    private val HTML5_RENDER_SCALE = floatPreferencesKey("html5_render_scale")
+    var html5RenderScale: Float
+        get() = getPref(HTML5_RENDER_SCALE, 0f)
+        set(value) {
+            setPref(HTML5_RENDER_SCALE, value)
+        }
+
     private val LAUNCH_BIONIC_STEAM = booleanPreferencesKey("launch_bionic_steam")
     var launchBionicSteam: Boolean
         get() = getPref(LAUNCH_BIONIC_STEAM, false)
@@ -1547,6 +1564,13 @@ object PrefManager {
                 }
             }
         }
+
+    // Effekseer WASM stub for the chromium-109 audio CHECK crash. "auto" = stub below
+    // EffekseerWasmGate.AFFECTED_BELOW_MAJOR, "on" = always (no particle effects), "off" = never.
+    private val HTML5_EFFEKSEER_WASM_STUB_MODE = stringPreferencesKey("html5_effekseer_wasm_stub_mode")
+    var html5EffekseerWasmStubMode: String
+        get() = getPref(HTML5_EFFEKSEER_WASM_STUB_MODE, "auto")
+        set(value) = setPref(HTML5_EFFEKSEER_WASM_STUB_MODE, value)
 
     // Add new setting for Wine debug logging
     private val ENABLE_WINE_DEBUG = booleanPreferencesKey("enable_wine_debug")

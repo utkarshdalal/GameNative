@@ -48,7 +48,12 @@ import java.util.Locale
 fun GeneralTabContent(
     state: ContainerConfigState,
     nonzeroResolutionError: String,
+    // editing the GLOBAL default config: hides per-container-only options like "follow global".
+    default: Boolean = false,
+    // greys out (doesn't hide) wine-only items, e.g. screenSize, which is inert for the WebView.
+    isHtml5: Boolean = false,
 ) {
+    val wineOnlyEnabled = !isHtml5
     val config = state.config.value
     val graphicsDrivers = state.graphicsDrivers.value
     val glibcWineEntries = state.glibcWineEntries.value
@@ -134,7 +139,7 @@ fun GeneralTabContent(
         )
     }
 
-    SettingsGroup() {
+    SettingsGroup {
         run {
             val variantIndex = rememberSaveable {
                 mutableIntStateOf(
@@ -149,7 +154,11 @@ fun GeneralTabContent(
                 onItemSelected = { idx ->
                     variantIndex.value = idx
                     val newVariant = state.containerVariants[idx]
-                    if (newVariant.equals(Container.GLIBC, ignoreCase = true)) {
+                    if (newVariant.equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)) {
+                        // leave wine fields alone so flipping back restores the working state. the save gate
+                        // (Html5OptInService), not this cascade, enforces a fingerprint match.
+                        state.config.value = config.copy(containerVariant = newVariant)
+                    } else if (newVariant.equals(Container.GLIBC, ignoreCase = true)) {
                         val defaultDriver = Container.DEFAULT_GRAPHICS_DRIVER
                         val newCfg = KeyValueSet(config.graphicsDriverConfig).apply {
                             put("version", "")
@@ -181,9 +190,11 @@ fun GeneralTabContent(
                         )
                     } else {
                         val defaultBionicDriver = StringUtils.parseIdentifier(state.bionicGraphicsDrivers.first())
-                        val newWine = if (config.wineVersion == (glibcWineEntries.firstOrNull() ?: Container.DEFAULT_WINE_VERSION))
+                        val newWine = if (config.wineVersion == (glibcWineEntries.firstOrNull() ?: Container.DEFAULT_WINE_VERSION)) {
                             bionicWineEntries.firstOrNull() ?: config.wineVersion
-                        else config.wineVersion
+                        } else {
+                            config.wineVersion
+                        }
                         val newCfg = KeyValueSet(config.graphicsDriverConfig).apply {
                             put("version", DefaultVersion.WRAPPER)
                             put("syncFrame", "0")
@@ -226,6 +237,7 @@ fun GeneralTabContent(
                     }
                 },
             )
+            // the BIONIC gate alone excludes html5 -- the html5 variant is never BIONIC.
             if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
                 val wineIndex = state.bionicWineOptions.ids.indexOfFirst { it == config.wineVersion }.coerceAtLeast(0)
                 SettingsListDropdown(
@@ -259,11 +271,13 @@ fun GeneralTabContent(
             value = config.executablePath,
             onValueChange = { state.config.value = config.copy(executablePath = it) },
             containerData = config,
+            enabled = wineOnlyEnabled,
         )
         NoExtractOutlinedTextField(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             value = config.execArgs,
             onValueChange = { state.config.value = config.copy(execArgs = it) },
+            enabled = wineOnlyEnabled,
             label = { Text(text = stringResource(R.string.exec_arguments)) },
             placeholder = { Text(text = stringResource(R.string.exec_arguments_example)) },
             singleLine = true,
@@ -292,6 +306,7 @@ fun GeneralTabContent(
         )
         SettingsListDropdown(
             colors = settingsTileColors(),
+            enabled = wineOnlyEnabled,
             title = { Text(text = stringResource(R.string.screen_size)) },
             value = state.screenSizeIndex.value,
             items = state.screenSizes,
@@ -306,6 +321,7 @@ fun GeneralTabContent(
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            enabled = wineOnlyEnabled,
             title = { Text(text = stringResource(R.string.portrait_mode)) },
             subtitle = { Text(text = stringResource(R.string.portrait_mode_description)) },
             state = config.portraitMode,
@@ -313,6 +329,7 @@ fun GeneralTabContent(
         )
         SettingsListDropdown(
             colors = settingsTileColors(),
+            enabled = wineOnlyEnabled,
             title = { Text(text = stringResource(R.string.audio_driver)) },
             value = state.audioDriverIndex.value,
             items = state.audioDrivers,
@@ -331,6 +348,7 @@ fun GeneralTabContent(
         }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            enabled = wineOnlyEnabled,
             title = { Text(text = stringResource(R.string.force_dlc)) },
             subtitle = { Text(text = stringResource(R.string.force_dlc_description)) },
             state = config.forceDlc,
@@ -339,6 +357,7 @@ fun GeneralTabContent(
 
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            enabled = wineOnlyEnabled,
             title = { Text(text = stringResource(R.string.use_legacy_drm)) },
             state = config.useLegacyDRM,
             onCheckedChange = { state.config.value = config.copy(useLegacyDRM = it) },
@@ -346,6 +365,7 @@ fun GeneralTabContent(
         if (!config.useLegacyDRM) {
             SettingsSwitch(
                 colors = settingsTileColorsAlt(),
+                enabled = wineOnlyEnabled,
                 title = { Text(text = stringResource(R.string.unpack_files)) },
                 subtitle = { Text(text = stringResource(R.string.unpack_files_description)) },
                 state = config.unpackFiles,
@@ -354,6 +374,7 @@ fun GeneralTabContent(
         }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            enabled = wineOnlyEnabled,
             title = { Text(text = stringResource(R.string.steam_offline_mode)) },
             subtitle = { Text(text = stringResource(R.string.steam_offline_mode_description)) },
             state = config.steamOfflineMode,
@@ -361,6 +382,7 @@ fun GeneralTabContent(
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            enabled = wineOnlyEnabled,
             title = { Text(text = stringResource(R.string.epic_offline_mode)) },
             subtitle = { Text(text = stringResource(R.string.epic_offline_mode_description)) },
             state = config.epicOfflineMode,
@@ -368,6 +390,7 @@ fun GeneralTabContent(
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            enabled = wineOnlyEnabled,
             title = { Text(text = stringResource(R.string.disable_epic_overlay_title)) },
             subtitle = { Text(text = stringResource(R.string.disable_epic_overlay_subtitle)) },
             state = config.disableEpicOverlay,
@@ -375,6 +398,7 @@ fun GeneralTabContent(
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            enabled = wineOnlyEnabled,
             title = { Text(text = stringResource(R.string.launch_steam_client_beta)) },
             subtitle = { Text(text = stringResource(R.string.launch_steam_client_description)) },
             state = config.launchRealSteam,
@@ -396,6 +420,7 @@ fun GeneralTabContent(
             }
             SettingsListDropdown(
                 colors = settingsTileColors(),
+                enabled = wineOnlyEnabled,
                 title = { Text(text = stringResource(R.string.steam_type)) },
                 value = currentSteamTypeIndex,
                 items = steamTypeItems,

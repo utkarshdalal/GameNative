@@ -1,0 +1,4 @@
+# leveldb/IndexedDB save-sync test fixtures are byte-exact binary databases.
+# CURRENT/LOG look like text to git but leveldb requires them unmodified; EOL
+# normalization on some CI checkouts corrupts them. force binary, never normalize.
+app/src/test/resources/html5-saves/** -text

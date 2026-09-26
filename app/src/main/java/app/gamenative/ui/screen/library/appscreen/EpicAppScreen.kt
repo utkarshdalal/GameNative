@@ -33,6 +33,7 @@ import app.gamenative.enums.Marker
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId
 import app.gamenative.utils.MarkerUtils
+import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.core.StringUtils
@@ -293,6 +294,7 @@ class EpicAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             compatibilityMessage = compatibilityMessage,
             compatibilityColor = compatibilityColor,
+            runtime = app.gamenative.utils.ContainerUtils.resolveRuntime(context, libraryItem.appId),
         )
         Timber.tag(TAG).d("Returning GameDisplayInfo: name=${displayInfo.name}, iconUrl=${displayInfo.iconUrl}, heroImageUrl=${displayInfo.heroImageUrl}, developer=${displayInfo.developer}, installLocation=${displayInfo.installLocation}")
         return displayInfo
@@ -620,15 +622,21 @@ class EpicAppScreen : BaseAppScreen() {
         return containerData
     }
 
-    override fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData) {
+    override suspend fun saveContainerConfig(context: Context, libraryItem: LibraryItem, config: ContainerData): Boolean {
         Timber.tag(TAG).i("saveContainerConfig: appId=${libraryItem.appId}")
         // Save Epic-specific container configuration using ContainerUtils
-        val previousLanguage = ContainerUtils.getContainer(context, libraryItem.appId).language
-        app.gamenative.utils.ContainerUtils.applyToContainer(context, libraryItem.appId, config)
-        Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
-
-        if (previousLanguage != config.language) {
-            triggerEpicUpdateDownload(context, libraryItem, config.language, clearPrerequisiteMarkers = false)
+        val container = ContainerUtils.getContainer(context, libraryItem.appId)
+        val previousLanguage = container.language
+        return app.gamenative.utils.ContainerUtils.applyToContainerGated(context, libraryItem.appId, config).also {
+            if (it) {
+                Timber.tag(TAG).d("saveContainerConfig: saved container config for ${libraryItem.appId}")
+                // gated write refused -> container language unchanged, so nothing to re-download.
+                // html5 has NO per-language depot (language is a runtime setting), so the re-fetch a
+                // language change triggers would select no depots and never complete.
+                if (previousLanguage != config.language && container.runtime != Container.RUNTIME_WEBVIEW) {
+                    triggerEpicUpdateDownload(context, libraryItem, config.language, clearPrerequisiteMarkers = false)
+                }
+            }
         }
     }
 
@@ -859,6 +867,7 @@ class EpicAppScreen : BaseAppScreen() {
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         Timber.tag(TAG).d("AdditionalDialogs: composing for appId=${libraryItem.appId}")
         val context = LocalContext.current
