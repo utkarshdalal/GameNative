@@ -126,6 +126,7 @@ class PluviaApp : SplitCompatApplication() {
         ).apply {
             /* turn every event into an identified one */
             personProfiles = PersonProfiles.ALWAYS
+            captureDeepLinks = false
         }
         PostHogAndroid.setup(this, postHogConfig)
         com.posthog.PostHog.register("build_flavor", BuildConfig.FLAVOR)
