@@ -344,7 +344,7 @@ class MainActivity : ComponentActivity() {
         }
         Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}, isNewIntent=$isNewIntent")
         try {
-            val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
+            val launchRequest = IntentLaunchManager.parseLaunchIntent(intent, applicationContext)
             if (launchRequest != null) {
                 Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")
 
@@ -357,7 +357,7 @@ class MainActivity : ComponentActivity() {
                         IntentLaunchManager.applyTemporaryConfigOverride(this, launchRequest.appId, config)
                     }
                     lifecycleScope.launch {
-                        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
+                        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId, launchRequest.execArgs))
                     }
                 } else {
                     // cold start — store as pending, PluviaMain consumes when UI is ready
