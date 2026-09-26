@@ -1164,6 +1164,9 @@ object ContainerUtils {
         val manager = ContainerManager(context)
         val hasContainer = manager.hasContainer(appId)
         Timber.i("[ContainerDeletion] hasContainer($appId) = $hasContainer")
+        app.gamenative.texturepack.TexturePackPaths.delete(
+            app.gamenative.texturepack.TexturePackPaths.cacheDirForApp(context, appId),
+        )
         if (hasContainer) {
             // Remove the container directory asynchronously
             manager.removeContainerAsync(

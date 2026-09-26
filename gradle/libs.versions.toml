@@ -118,6 +118,8 @@ ktor-engine = { module = "io.ktor:ktor-client-cio", version = "3.0.3" } # https:
 okhttp = { module = "com.squareup.okhttp3:okhttp", version = "5.1.0"} # https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp
 okhttp-coroutines = { module = "com.squareup.okhttp3:okhttp-coroutines", version = "5.1.0"} # https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp-coroutines
 okhttp-dnsoverhttps = { module = "com.squareup.okhttp3:okhttp-dnsoverhttps", version = "5.1.0"} # https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp-dnsoverhttps
+lz4-java = { module = "org.lz4:lz4-java", version = "1.8.0" } # https://mvnrepository.com/artifact/org.lz4/lz4-java
+androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version = "2.9.1" } # https://mvnrepository.com/artifact/androidx.work/work-runtime-ktx
 xz = { module = "org.tukaani:xz", version = "1.10" } # https://mvnrepository.com/artifact/org.tukaani/xz
 
 [plugins]

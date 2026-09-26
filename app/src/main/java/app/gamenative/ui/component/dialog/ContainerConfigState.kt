@@ -140,4 +140,5 @@ class ContainerConfigState(
     val applyScreenSizeToConfig: () -> Unit,
     val vkd3dForcedVersion: () -> String,
     val currentDxvkContext: () -> ManifestComponentHelper.DxvkContext,
+    val appId: String = "",
 )

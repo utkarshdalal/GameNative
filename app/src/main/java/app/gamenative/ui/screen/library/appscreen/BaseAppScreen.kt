@@ -1707,7 +1707,29 @@ abstract class BaseAppScreen {
                 }
         }
 
-        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, onClickPlay, onTestGraphics, onPlayWithDiagnostics, onAiDebugRun, exportFrontendLauncher)
+        val texturePackInstallDir = remember(appId) { getInstallPath(context, libraryItem) }
+        var texturePackDownloadFor by remember(appId) { mutableStateOf<Boolean?>(null) }
+        val gatedClickPlay: (Boolean) -> Unit = { asRoot ->
+            var gated = false
+            try {
+                if (app.gamenative.texturepack.TexturePackGate.syncEnabled(context, appId)) {
+                    app.gamenative.texturepack.TexturePackGate.rememberLaunchInfo(
+                        context,
+                        appId,
+                        libraryItem.gameSource,
+                        texturePackInstallDir,
+                        libraryItem.name,
+                    )
+                    texturePackDownloadFor = asRoot
+                    gated = true
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "texture pack sync trigger failed for $appId")
+            }
+            if (!gated) onClickPlay(asRoot)
+        }
+
+        val optionsMenu = getOptionsMenu(context, libraryItem, onEditContainer, onBack, gatedClickPlay, onTestGraphics, onPlayWithDiagnostics, onAiDebugRun, exportFrontendLauncher)
 
         // Get download info based on game source for progress tracking
         val downloadInfo = when (libraryItem.gameSource) {
@@ -1770,7 +1792,7 @@ abstract class BaseAppScreen {
                 if (app.gamenative.launch.LaunchReadiness.pending) {
                     showReadiness = true
                 } else {
-                    onDownloadInstallClick(context, libraryItem, onClickPlay)
+                    onDownloadInstallClick(context, libraryItem, gatedClickPlay)
                     uiScope.launch {
                         delay(100)
                         performStateRefresh(true)
@@ -1796,11 +1818,21 @@ abstract class BaseAppScreen {
             dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested || importFilesRequested || exportFilesRequested,
         )
 
+        texturePackDownloadFor?.let { asRoot ->
+            app.gamenative.ui.component.dialog.TexturePackDownloadDialog(
+                appId = appId,
+                onLaunch = {
+                    texturePackDownloadFor = null
+                    onClickPlay(asRoot)
+                },
+            )
+        }
+
         if (showReadiness && launchActivity != null) {
             app.gamenative.launch.LaunchReadiness.Prompt(launchActivity) {
                 showReadiness = false
                 if (!app.gamenative.launch.LaunchReadiness.pending) {
-                    onDownloadInstallClick(context, libraryItem, onClickPlay)
+                    onDownloadInstallClick(context, libraryItem, gatedClickPlay)
                     uiScope.launch {
                         delay(100)
                         performStateRefresh(true)
@@ -1813,6 +1845,7 @@ abstract class BaseAppScreen {
         if (showConfigDialog) {
             ContainerConfigDialog(
                 title = "${displayInfo.name} Config",
+                appId = appId,
                 initialConfig = containerData,
                 onDismissRequest = { showConfigDialog = false },
                 onSave = {

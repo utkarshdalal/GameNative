@@ -1718,4 +1718,16 @@ object PrefManager {
     var powerControlDefaultEnabled: Boolean
         get() = getPref(POWER_CONTROL_DEFAULT_ENABLED, DeviceGate.isDeviceSupported())
         set(value) { setPref(POWER_CONTROL_DEFAULT_ENABLED, value) }
+
+    private val TEXTURE_PACK_ENABLED = booleanPreferencesKey("texturePackEnabled")
+    var texturePackEnabled: Boolean
+        get() = getPref(TEXTURE_PACK_ENABLED, true)
+        set(value) { setPref(TEXTURE_PACK_ENABLED, value) }
+
+    private val TEXTURE_PACK_ALLOW_MOBILE_DATA = booleanPreferencesKey("texturePackAllowMobileData")
+    var texturePackAllowMobileData: Boolean
+        get() = getPref(TEXTURE_PACK_ALLOW_MOBILE_DATA, false)
+        set(value) { setPref(TEXTURE_PACK_ALLOW_MOBILE_DATA, value) }
+
+    const val DEFAULT_TEXTURE_PACK_SERVER = "https://textures.gamenative.app"
 }

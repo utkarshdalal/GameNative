@@ -219,6 +219,11 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
         <!--
             Handles the Exit action on foreground-service notifications.
             See app.gamenative.service.NotificationActionReceiver for the rationale —
