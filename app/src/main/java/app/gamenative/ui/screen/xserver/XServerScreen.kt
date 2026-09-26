@@ -98,6 +98,7 @@ import app.gamenative.data.GyroSettings
 import app.gamenative.gamefixes.GameFixesRegistry
 import app.gamenative.gamefixes.GameInputCompatibility
 import app.gamenative.data.LaunchInfo
+import app.gamenative.filedetect.GameFileDetection
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.ShooterModeConfig
 import app.gamenative.data.SteamApp
@@ -4335,6 +4336,9 @@ private fun setupXEnvironment(
         immersiveHooks?.windowsVr?.beforeGuestProcessStart()
         environment.startEnvironmentComponents()
         immersiveHooks?.windowsVr?.onEnvironmentStarted()
+        if (container != null && !bootToContainer) {
+            CoroutineScope(Dispatchers.IO).launch { GameFileDetection.ensure(context, container) }
+        }
     } catch (e: Exception) {
         Timber.e(e, "Failed to start environment components, cleaning up")
         try {

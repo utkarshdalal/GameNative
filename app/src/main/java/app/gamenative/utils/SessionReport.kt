@@ -13,6 +13,7 @@ import android.os.SystemClock
 import android.view.Display
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
+import app.gamenative.filedetect.GameFileDetection
 import com.winlator.container.Container
 import java.io.File
 import org.json.JSONObject
@@ -155,6 +156,7 @@ object SessionReport {
         put("exit_reason", reason)
         try {
             putAll(configProperties(container))
+            putAll(GameFileDetection.properties(container))
             putAll(windowActivity.snapshot(context, frameRating?.totalFrames ?: 0L))
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)

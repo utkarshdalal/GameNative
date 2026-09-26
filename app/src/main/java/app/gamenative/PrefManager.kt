@@ -1293,6 +1293,13 @@ object PrefManager {
             setPref(RECOMMENDATION_CACHE_TIMESTAMP, value)
         }
 
+    private val FILE_DETECTION_RULES_FETCHED_AT = longPreferencesKey("file_detection_rules_fetched_at")
+    var fileDetectionRulesFetchedAt: Long
+        get() = getPref(FILE_DETECTION_RULES_FETCHED_AT, 0L)
+        set(value) {
+            setPref(FILE_DETECTION_RULES_FETCHED_AT, value)
+        }
+
     // Cached boot-screen sponsor payload; boot renders from this, never from network
     private val BOOT_AD_CACHE_JSON = stringPreferencesKey("boot_ad_cache_json")
     var bootAdCacheJson: String
